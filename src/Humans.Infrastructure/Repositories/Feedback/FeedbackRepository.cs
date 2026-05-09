@@ -124,7 +124,6 @@ public sealed class FeedbackRepository : IFeedbackRepository
             .AsNoTracking()
             .Include(fr => fr.Messages)
             .Where(fr => fr.UserId == userId)
-            .OrderByDescending(fr => fr.CreatedAt)
             .ToListAsync(ct);
     }
 

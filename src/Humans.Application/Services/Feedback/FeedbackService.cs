@@ -471,21 +471,23 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
     {
         var reports = await _repository.GetForUserExportAsync(userId, ct);
 
-        var shaped = reports.Select(fr => new
-        {
-            fr.Category,
-            fr.Description,
-            fr.PageUrl,
-            fr.Status,
-            CreatedAt = fr.CreatedAt.ToInvariantInstantString(),
-            ResolvedAt = fr.ResolvedAt.ToInvariantInstantString(),
-            Messages = fr.Messages.OrderBy(m => m.CreatedAt).Select(m => new
+        var shaped = reports
+            .OrderByDescending(fr => fr.CreatedAt)
+            .Select(fr => new
             {
-                m.Content,
-                IsFromUser = m.SenderUserId == userId,
-                CreatedAt = m.CreatedAt.ToInvariantInstantString()
-            })
-        }).ToList();
+                fr.Category,
+                fr.Description,
+                fr.PageUrl,
+                fr.Status,
+                CreatedAt = fr.CreatedAt.ToInvariantInstantString(),
+                ResolvedAt = fr.ResolvedAt.ToInvariantInstantString(),
+                Messages = fr.Messages.OrderBy(m => m.CreatedAt).Select(m => new
+                {
+                    m.Content,
+                    IsFromUser = m.SenderUserId == userId,
+                    CreatedAt = m.CreatedAt.ToInvariantInstantString()
+                })
+            }).ToList();
 
         return [new UserDataSlice(GdprExportSections.FeedbackReports, shaped)];
     }
