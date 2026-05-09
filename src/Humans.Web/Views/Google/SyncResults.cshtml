@@ -62,11 +62,11 @@
                                 <tr>
                                     <td><span class="badge @badgeClass">@change.Action</span></td>
                                     <td>
-                                        @* Issue #692: change.User.DisplayName is sourced from User.DisplayName
+                                        @* Issue #692: change.User.BurnerName is sourced from User.DisplayName
                                            which equals BurnerName after Profile save's write-through sync; the
                                            human-link tag helper also re-resolves through FullProfile when the
-                                           display-name attribute is empty. *@
-                                        <human-link user-id="@change.User.UserId" display-name="@change.User.DisplayName" admin="true" show-popover="true" />
+                                           burner-name attribute is empty. *@
+                                        <human-link user-id="@change.User.UserId" burner-name="@change.User.BurnerName" admin="true" show-popover="true" />
                                     </td>
                                     <td class="text-muted">@change.Detail</td>
                                 </tr>

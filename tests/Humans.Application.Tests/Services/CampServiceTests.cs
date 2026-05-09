@@ -493,7 +493,7 @@ public class CampServiceTests : IDisposable
         detail.Links.Should().ContainSingle(link => link.Url == "https://example.com/fallback");
         detail.HistoricalNames.Should().Contain("Old Fallback");
         detail.ImageUrls.Should().ContainSingle("/uploads/camps/fallback.jpg");
-        detail.Leads.Should().ContainSingle(lead => lead.DisplayName == "Camp Lead");
+        detail.Leads.Should().ContainSingle(lead => lead.BurnerName == "Camp Lead");
         detail.CurrentSeason.Should().NotBeNull();
         detail.CurrentSeason!.Year.Should().Be(2026);
         detail.CurrentSeason.IsNameLocked.Should().BeTrue();

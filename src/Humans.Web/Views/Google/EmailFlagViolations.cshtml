@@ -43,7 +43,7 @@
                         <tr>
                             <td>
                                 <a asp-controller="Profile" asp-action="AdminDetail" asp-route-id="@v.UserId">
-                                    @(string.IsNullOrWhiteSpace(v.DisplayName) ? v.UserId.ToString() : v.DisplayName)
+                                    @(string.IsNullOrWhiteSpace(v.BurnerName) ? v.UserId.ToString() : v.BurnerName)
                                 </a>
                             </td>
                             <td>

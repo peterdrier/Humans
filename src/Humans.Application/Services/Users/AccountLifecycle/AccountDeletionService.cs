@@ -272,7 +272,7 @@ public sealed class AccountDeletionService : IAccountDeletionService
 
         return new AnonymizedAccountSummary(
             identity.OriginalEmail,
-            identity.OriginalDisplayName,
+            identity.OriginalBurnerName,
             identity.PreferredLanguage,
             cancelledSignupIds);
     }

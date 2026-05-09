@@ -38,9 +38,9 @@ public class HumanLinkTagHelper : TagHelper
     [HtmlAttributeName("user-id")]
     public Guid UserId { get; set; }
 
-    /// <summary>Display name (required).</summary>
-    [HtmlAttributeName("display-name")]
-    public string DisplayName { get; set; } = "";
+    /// <summary>Burner name (required). Issue #692: never accept a person-named "BurnerName" attribute on owned interfaces — use BurnerName.</summary>
+    [HtmlAttributeName("burner-name")]
+    public string BurnerName { get; set; } = "";
 
     /// <summary>
     /// Profile picture URL. Deprecated — the tag helper now resolves the custom
@@ -94,9 +94,9 @@ public class HumanLinkTagHelper : TagHelper
             var fullProfile = await _profileService.GetFullProfileAsync(UserId);
             if (fullProfile is not null)
             {
-                if (string.IsNullOrEmpty(DisplayName))
+                if (string.IsNullOrEmpty(BurnerName))
                 {
-                    DisplayName = fullProfile.DisplayName;
+                    BurnerName = fullProfile.BurnerName;
                 }
 
                 if (fullProfile.HasCustomPicture && fullProfile.ProfileId != Guid.Empty)
@@ -107,11 +107,13 @@ public class HumanLinkTagHelper : TagHelper
                         values: new { id = fullProfile.ProfileId, v = fullProfile.UpdatedAtTicks });
                 }
             }
-            else if (string.IsNullOrEmpty(DisplayName))
+            else if (string.IsNullOrEmpty(BurnerName))
             {
                 // Fall back to the User row when the Profile isn't built yet (pre-onboarding).
+                // user.DisplayName is the legacy auth-provider name, the only legitimate
+                // pre-Profile fallback for a person's rendered name.
                 var user = await _userService.GetByIdAsync(UserId);
-                DisplayName = user?.DisplayName ?? "Unknown";
+                BurnerName = user?.DisplayName ?? "Unknown";
             }
         }
 
@@ -139,7 +141,7 @@ public class HumanLinkTagHelper : TagHelper
                 MergeClass(output, "text-decoration-none");
                 if (childContent.IsEmptyOrWhiteSpace)
                 {
-                    output.Content.Append(DisplayName);
+                    output.Content.Append(BurnerName);
                 }
                 else
                 {
@@ -150,7 +152,7 @@ public class HumanLinkTagHelper : TagHelper
             case HumanLinkMode.Avatar:
                 if (!output.Attributes.ContainsName("title"))
                 {
-                    output.Attributes.SetAttribute("title", DisplayName);
+                    output.Attributes.SetAttribute("title", BurnerName);
                 }
                 output.Content.SetHtmlContent(RenderAvatar());
                 break;
@@ -158,7 +160,7 @@ public class HumanLinkTagHelper : TagHelper
             case HumanLinkMode.AvatarName:
                 MergeClass(output, "d-flex align-items-center text-decoration-none text-reset");
                 var avatarHtml = RenderAvatar(extraCssClass: "me-2");
-                var nameHtml = HtmlEncoder.Default.Encode(DisplayName);
+                var nameHtml = HtmlEncoder.Default.Encode(BurnerName);
                 var subContent = childContent.IsEmptyOrWhiteSpace
                     ? ""
                     : childContent.GetContent();
@@ -169,7 +171,7 @@ public class HumanLinkTagHelper : TagHelper
             case HumanLinkMode.Card:
                 MergeClass(output, "text-center text-decoration-none d-block");
                 var cardAvatar = RenderAvatar(extraCssClass: "mb-2 mx-auto");
-                var cardName = HtmlEncoder.Default.Encode(DisplayName);
+                var cardName = HtmlEncoder.Default.Encode(BurnerName);
                 var cardChild = childContent.IsEmptyOrWhiteSpace
                     ? ""
                     : childContent.GetContent();
@@ -188,13 +190,13 @@ public class HumanLinkTagHelper : TagHelper
 
         if (!string.IsNullOrEmpty(ProfilePictureUrl))
         {
-            var altEncoded = HtmlEncoder.Default.Encode(DisplayName);
+            var altEncoded = HtmlEncoder.Default.Encode(BurnerName);
             return $"<img src=\"{HtmlEncoder.Default.Encode(ProfilePictureUrl)}\" alt=\"{altEncoded}\" " +
                    $"class=\"rounded-circle {cssClassStr}\" " +
                    $"style=\"width: {Size}px; height: {Size}px; object-fit: cover;\" />";
         }
 
-        var initial = string.IsNullOrEmpty(DisplayName) ? "?" : DisplayName[..1];
+        var initial = string.IsNullOrEmpty(BurnerName) ? "?" : BurnerName[..1];
         var fontRem = Math.Round(Size / 100.0 * 2.0, 1);
         if (fontRem < 0.7) fontRem = 0.7;
 

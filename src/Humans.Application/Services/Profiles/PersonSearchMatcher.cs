@@ -62,13 +62,9 @@ public static class PersonSearchMatcher
             var byId = snapshot.FirstOrDefault(p => p.UserId == idGuid);
             if (byId is null) return Array.Empty<HumanSearchResult>();
 
-            var idBurnerName = string.IsNullOrWhiteSpace(byId.BurnerName)
-                ? byId.DisplayName
-                : byId.BurnerName!;
-
             return new[] { new HumanSearchResult(
                 UserId: byId.UserId,
-                BurnerName: idBurnerName,
+                BurnerName: byId.BurnerName,
                 ProfilePictureUrl: byId.ProfilePictureUrl,
                 MatchField: "User ID",
                 MatchSnippet: null,
@@ -91,13 +87,9 @@ public static class PersonSearchMatcher
             var match = TryMatch(p, query, fields, contactFieldsByProfileId);
             if (match is null) continue;
 
-            var burnerName = string.IsNullOrWhiteSpace(p.BurnerName)
-                ? p.DisplayName
-                : p.BurnerName!;
-
             results.Add(new HumanSearchResult(
                 UserId: p.UserId,
-                BurnerName: burnerName,
+                BurnerName: p.BurnerName,
                 ProfilePictureUrl: p.ProfilePictureUrl,
                 MatchField: match.Value.Field,
                 MatchSnippet: match.Value.Snippet,
@@ -124,13 +116,11 @@ public static class PersonSearchMatcher
         if (includeName)
         {
             // Issue #692: BurnerName is the only public name we search.
-            // FullProfile.DisplayName resolves to BurnerName when present, so
-            // matching it duplicates the BurnerName check; for Stub-state
-            // pre-onboarding rows DisplayName falls through to
-            // User.DisplayName (the legacy auth-provider name) — those
-            // rows are pre-public and not in the search corpus by intent.
-            if (!string.IsNullOrEmpty(p.BurnerName) &&
-                p.BurnerName.Contains(query, StringComparison.OrdinalIgnoreCase))
+            // FullProfile.BurnerName resolves through Profile.BurnerName when
+            // present, falling back to User.DisplayName for Stub-state
+            // pre-onboarding rows — those rows are pre-public and not in the
+            // search corpus by intent.
+            if (p.BurnerName.Contains(query, StringComparison.OrdinalIgnoreCase))
                 return ("Name", null, null);
         }
 

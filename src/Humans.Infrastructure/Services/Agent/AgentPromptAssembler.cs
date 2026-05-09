@@ -46,7 +46,7 @@ public sealed class AgentPromptAssembler : IAgentPromptAssembler
         var sb = new StringBuilder();
         sb.AppendLine("# User Context (this turn only, do not cache)");
         sb.AppendLine();
-        sb.AppendLine(string.Create(CultureInfo.InvariantCulture, $"DisplayName: {snapshot.DisplayName}"));
+        sb.AppendLine(string.Create(CultureInfo.InvariantCulture, $"BurnerName: {snapshot.BurnerName}"));
         sb.AppendLine(string.Create(CultureInfo.InvariantCulture, $"Locale: {snapshot.PreferredLocale}"));
         sb.AppendLine(string.Create(CultureInfo.InvariantCulture, $"Tier: {snapshot.Tier}"));
         sb.AppendLine(string.Create(CultureInfo.InvariantCulture, $"ApprovedFlag: {snapshot.IsApproved}"));

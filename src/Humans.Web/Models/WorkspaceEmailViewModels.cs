@@ -36,7 +36,7 @@ public class WorkspaceEmailAccountViewModel
     /// The matched human in the system (if any).
     /// </summary>
     public Guid? MatchedUserId { get; set; }
-    public string? MatchedDisplayName { get; set; }
+    public string? MatchedBurnerName { get; set; }
 
     /// <summary>
     /// Whether the @nobodies.team email is being used as the notification target.

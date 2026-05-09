@@ -66,7 +66,7 @@ public class FeedbackController : HumansControllerBase
         var users = await _userService.GetByIdsAsync(activeIds, ct);
         return users.Values
             .OrderBy(u => u.DisplayName, StringComparer.OrdinalIgnoreCase)
-            .Select(u => new AssigneeOption { Id = u.Id, DisplayName = u.DisplayName })
+            .Select(u => new AssigneeOption { Id = u.Id, BurnerName = u.DisplayName })
             .ToList();
     }
 
@@ -103,7 +103,7 @@ public class FeedbackController : HumansControllerBase
             reporters = distinctReporters.Select(r => new ReporterDropdownItem
             {
                 UserId = r.UserId,
-                DisplayName = r.DisplayName,
+                BurnerName = r.BurnerName,
                 Count = r.Count
             }).ToList();
         }
@@ -438,7 +438,7 @@ public class FeedbackController : HumansControllerBase
         {
             var label = viewModel.AssignedToName ?? "Unknown";
             viewModel.AssigneeOptions.Insert(0,
-                new AssigneeOption { Id = viewModel.AssignedToUserId.Value, DisplayName = $"{label} (inactive)" });
+                new AssigneeOption { Id = viewModel.AssignedToUserId.Value, BurnerName = $"{label} (inactive)" });
         }
     }
 }

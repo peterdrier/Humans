@@ -32,7 +32,7 @@ internal static class ShiftBrowseMapper
             UrgencyScore = u.UrgencyScore,
             Signups = u.Signups
                 .Select(s => new ShiftSignupInfo(
-                    s.UserId, s.DisplayName, s.Status,
+                    s.UserId, s.BurnerName, s.Status,
                     s.HasProfilePicture ? $"/Profile/Picture?id={s.UserId}" : null))
                 .ToList(),
         };

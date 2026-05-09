@@ -12,7 +12,7 @@ public record CachedTeam(
     Guid? ParentTeamId = null);
 
 public record CachedTeamMember(
-    Guid TeamMemberId, Guid UserId, string DisplayName,
+    Guid TeamMemberId, Guid UserId, string BurnerName,
     string? ProfilePictureUrl, TeamMemberRole Role, Instant JoinedAt);
 
 public record TeamDirectorySummary(
@@ -43,7 +43,7 @@ public record TeamDirectoryResult(
 
 public record TeamDetailMemberSummary(
     Guid UserId,
-    string DisplayName,
+    string BurnerName,
     string? Email,
     string? ProfilePictureUrl,
     TeamMemberRole Role,

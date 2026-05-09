@@ -1,5 +1,5 @@
 namespace Humans.Web.Models;
 
-public record HumanLookupSearchResult(Guid UserId, string DisplayName);
+public record HumanLookupSearchResult(Guid UserId, string BurnerName);
 
-public record RoleAssignmentSearchResult(Guid Id, string DisplayName, string Email, bool OnTeam);
+public record RoleAssignmentSearchResult(Guid Id, string BurnerName, string Email, bool OnTeam);

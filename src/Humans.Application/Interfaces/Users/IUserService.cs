@@ -293,8 +293,9 @@ public interface IUserService
 /// The effective email on the account before anonymization. May be null
 /// when the account never had an email set.
 /// </param>
-/// <param name="OriginalDisplayName">
-/// The display name on the account before anonymization.
+/// <param name="OriginalBurnerName">
+/// The BurnerName on the account before anonymization. Sourced from
+/// User.DisplayName, which equals Profile.BurnerName post-write-through-sync.
 /// </param>
 /// <param name="PreferredLanguage">
 /// The user's preferred language, used to render the confirmation email.
@@ -306,6 +307,6 @@ public interface IUserService
 /// </param>
 public record AnonymizedAccountSummary(
     string? OriginalEmail,
-    string OriginalDisplayName,
+    string OriginalBurnerName,
     string PreferredLanguage,
     IReadOnlyList<(Guid SignupId, Guid ShiftId)> CancelledSignupIds);

@@ -174,10 +174,11 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
                 try
                 {
                     // Issue #692: BurnerName-aware recipient label — never the
-                    // legacy auth-provider name. FullProfile.DisplayName resolves
-                    // to BurnerName when a Profile exists.
+                    // legacy auth-provider name. FullProfile.BurnerName resolves
+                    // through Profile.BurnerName when a Profile exists, falling
+                    // back to User.DisplayName for pre-onboarding rows.
                     var fullProfile = await _profileService.GetFullProfileAsync(application.UserId, cancellationToken);
-                    var recipientName = fullProfile?.DisplayName ?? user.DisplayName;
+                    var recipientName = fullProfile?.BurnerName ?? user.DisplayName;
                     await _emailService.SendApplicationApprovedAsync(
                         recipientEmail,
                         recipientName,
@@ -274,7 +275,7 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
                     // Issue #692: BurnerName-aware recipient label — never the
                     // legacy auth-provider name.
                     var fullProfile = await _profileService.GetFullProfileAsync(application.UserId, cancellationToken);
-                    var recipientName = fullProfile?.DisplayName ?? user.DisplayName;
+                    var recipientName = fullProfile?.BurnerName ?? user.DisplayName;
                     await _emailService.SendApplicationRejectedAsync(
                         recipientEmail,
                         recipientName,
@@ -465,7 +466,7 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
                 Id: a.Id,
                 UserId: a.UserId,
                 UserEmail: user?.Email ?? string.Empty,
-                UserDisplayName: user?.DisplayName ?? string.Empty,
+                UserBurnerName: user?.DisplayName ?? string.Empty,
                 Status: a.Status,
                 MembershipTier: a.MembershipTier,
                 SubmittedAt: a.SubmittedAt,
@@ -503,7 +504,7 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
                 Status: h.Status,
                 ChangedAt: h.ChangedAt,
                 ChangedByUserId: h.ChangedByUserId,
-                ChangedByDisplayName: users.GetValueOrDefault(h.ChangedByUserId)?.DisplayName,
+                ChangedByBurnerName: users.GetValueOrDefault(h.ChangedByUserId)?.DisplayName,
                 Notes: h.Notes))
             .ToList();
 
@@ -511,7 +512,7 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
             Id: application.Id,
             UserId: application.UserId,
             UserEmail: applicant?.Email ?? string.Empty,
-            UserDisplayName: applicant?.DisplayName ?? string.Empty,
+            UserBurnerName: applicant?.DisplayName ?? string.Empty,
             UserProfilePictureUrl: applicant?.ProfilePictureUrl,
             Status: application.Status,
             MembershipTier: application.MembershipTier,
@@ -561,7 +562,7 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
             return new BoardVotingDashboardRow(
                 ApplicationId: a.Id,
                 UserId: a.UserId,
-                UserDisplayName: applicant?.DisplayName ?? string.Empty,
+                UserBurnerName: applicant?.DisplayName ?? string.Empty,
                 UserProfilePictureUrl: applicant?.ProfilePictureUrl,
                 MembershipTier: a.MembershipTier,
                 ApplicationMotivation: a.Motivation,
@@ -570,7 +571,7 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
                 Votes: a.BoardVotes
                     .Select(v => new BoardVoteRow(
                         BoardMemberUserId: v.BoardMemberUserId,
-                        BoardMemberDisplayName: null,
+                        BoardMemberBurnerName: null,
                         Vote: v.Vote,
                         Note: v.Note,
                         VotedAt: v.VotedAt))
@@ -582,7 +583,7 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
         var boardUsersById = await _userService.GetByIdsAsync(boardMemberIds, ct);
         var boardMembers = boardUsersById.Values
             .Select(u => new BoardMemberInfo(u.Id, u.DisplayName))
-            .OrderBy(m => m.DisplayName, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(m => m.BurnerName, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         return new BoardVotingDashboardData(rows, boardMembers);
@@ -607,7 +608,7 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
         var voteRows = application.BoardVotes
             .Select(v => new BoardVoteRow(
                 BoardMemberUserId: v.BoardMemberUserId,
-                BoardMemberDisplayName: votersById.GetValueOrDefault(v.BoardMemberUserId)?.DisplayName,
+                BoardMemberBurnerName: votersById.GetValueOrDefault(v.BoardMemberUserId)?.DisplayName,
                 Vote: v.Vote,
                 Note: v.Note,
                 VotedAt: v.VotedAt))
@@ -616,7 +617,7 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
         return new BoardVotingDetailData(
             ApplicationId: application.Id,
             UserId: application.UserId,
-            DisplayName: applicant?.DisplayName ?? string.Empty,
+            BurnerName: applicant?.DisplayName ?? string.Empty,
             ProfilePictureUrl: applicant?.ProfilePictureUrl,
             Email: applicant?.Email ?? string.Empty,
             FirstName: profile?.FirstName ?? string.Empty,
@@ -796,7 +797,7 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
                 Status: h.Status,
                 ChangedAt: h.ChangedAt,
                 ChangedByUserId: h.ChangedByUserId,
-                ChangedByDisplayName: users.GetValueOrDefault(h.ChangedByUserId)?.DisplayName,
+                ChangedByBurnerName: users.GetValueOrDefault(h.ChangedByUserId)?.DisplayName,
                 Notes: h.Notes))
             .ToList();
 

@@ -109,7 +109,7 @@ public class SendReConsentReminderJob : IRecurringJob
                 {
                     // Issue #692: BurnerName-aware recipient label.
                     var fp = await _profileService.GetFullProfileAsync(userId, cancellationToken);
-                    var recipientName = fp?.DisplayName ?? user.DisplayName;
+                    var recipientName = fp?.BurnerName ?? user.DisplayName;
                     await _emailService.SendReConsentReminderAsync(
                         effectiveEmail,
                         recipientName,

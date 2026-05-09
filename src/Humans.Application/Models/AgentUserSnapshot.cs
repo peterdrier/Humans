@@ -4,7 +4,7 @@ namespace Humans.Application.Models;
 
 public sealed record AgentUserSnapshot(
     Guid UserId,
-    string DisplayName,
+    string BurnerName,
     string PreferredLocale,
     string Tier,
     bool IsApproved,

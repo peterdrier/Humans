@@ -9,7 +9,7 @@ public class DashboardViewModel
     public ParticipationStatus? ParticipationStatus { get; set; }
 
     public Guid UserId { get; set; }
-    public string DisplayName { get; set; } = string.Empty;
+    public string BurnerName { get; set; } = string.Empty;
     public string? ProfilePictureUrl { get; set; }
     public MembershipStatus MembershipStatus { get; set; }
 

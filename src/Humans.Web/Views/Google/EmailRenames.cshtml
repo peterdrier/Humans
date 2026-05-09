@@ -53,7 +53,7 @@
                         @foreach (var rename in Model.Renames)
                         {
                             <tr>
-                                <td>@rename.DisplayName</td>
+                                <td>@rename.BurnerName</td>
                                 <td><code class="text-danger">@rename.OldEmail</code></td>
                                 <td><i class="fa-solid fa-arrow-right text-muted"></i></td>
                                 <td><code class="text-success">@rename.NewEmail</code></td>
@@ -73,7 +73,7 @@
                                         <input type="hidden" name="userId" value="@rename.UserId" />
                                         <input type="hidden" name="newEmail" value="@rename.NewEmail" />
                                         <button type="submit" class="btn btn-sm btn-outline-primary"
-                                                data-confirm="Update email for @rename.DisplayName from @rename.OldEmail to @rename.NewEmail?">
+                                                data-confirm="Update email for @rename.BurnerName from @rename.OldEmail to @rename.NewEmail?">
                                             <i class="fa-solid fa-wrench me-1"></i>Fix
                                         </button>
                                     </form>

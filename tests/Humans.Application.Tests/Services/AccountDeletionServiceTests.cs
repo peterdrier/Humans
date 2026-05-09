@@ -238,14 +238,14 @@ public class AccountDeletionServiceTests
         _userService.ApplyExpiredDeletionAnonymizationAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ExpiredDeletionAnonymizationResult(
                 OriginalEmail: "expired@example.com",
-                OriginalDisplayName: "Expired Human",
+                OriginalBurnerName: "Expired Human",
                 PreferredLanguage: "es"));
 
         var result = await _service.AnonymizeExpiredAccountAsync(userId);
 
         result.Should().NotBeNull();
         result!.OriginalEmail.Should().Be("expired@example.com");
-        result.OriginalDisplayName.Should().Be("Expired Human");
+        result.OriginalBurnerName.Should().Be("Expired Human");
         result.PreferredLanguage.Should().Be("es");
         result.CancelledSignupIds.Should().ContainSingle()
             .Which.Should().Be((signupId, shiftId));
@@ -276,7 +276,7 @@ public class AccountDeletionServiceTests
 
         result.Should().NotBeNull();
         result!.OriginalEmail.Should().Be("gone@example.com");
-        result.OriginalDisplayName.Should().Be("Gone");
+        result.OriginalBurnerName.Should().Be("Gone");
         // Steps 1–5 already invalidated their own section caches; the
         // step-7 cross-section invalidations key off the identity write
         // completing, so they're correctly skipped on this branch.

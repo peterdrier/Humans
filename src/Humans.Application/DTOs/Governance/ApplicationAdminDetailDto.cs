@@ -13,7 +13,7 @@ public record ApplicationAdminDetailDto(
     Guid Id,
     Guid UserId,
     string UserEmail,
-    string UserDisplayName,
+    string UserBurnerName,
     string? UserProfilePictureUrl,
     ApplicationStatus Status,
     MembershipTier MembershipTier,

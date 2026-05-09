@@ -40,20 +40,20 @@
                                 @if (hasLegalName)
                                 {
                                     <input class="form-check-input me-3" type="checkbox" name="selectedUserIds"
-                                           value="@item.UserId" aria-label="Select @item.DisplayName" />
+                                           value="@item.UserId" aria-label="Select @item.BurnerName" />
                                 }
                                 else
                                 {
                                     <span class="form-check-input me-3 invisible" aria-hidden="true"></span>
                                 }
-                                <human-link user-id="@item.UserId" display-name="@item.DisplayName"
+                                <human-link user-id="@item.UserId" burner-name="@item.BurnerName"
                                             mode="Avatar" size="40" show-popover="false"
                                             profile-picture-url="@item.ProfilePictureUrl" />
                                 <a asp-controller="Profile" asp-action="ViewProfile" asp-route-id="@item.UserId"
                                    class="ms-2 text-decoration-none text-reset"
                                    data-human-popover="true"
                                    data-user-id="@item.UserId">
-                                    <span class="fw-semibold">@item.DisplayName</span>
+                                    <span class="fw-semibold">@item.BurnerName</span>
                                     @if (hasLegalName)
                                     {
                                         <span class="fw-normal text-muted"> - @item.LegalName</span>
@@ -105,20 +105,20 @@
                                 @if (hasLegalName)
                                 {
                                     <input class="form-check-input me-3" type="checkbox" name="selectedUserIds"
-                                           value="@item.UserId" aria-label="Select @item.DisplayName" />
+                                           value="@item.UserId" aria-label="Select @item.BurnerName" />
                                 }
                                 else
                                 {
                                     <span class="form-check-input me-3 invisible" aria-hidden="true"></span>
                                 }
-                                <human-link user-id="@item.UserId" display-name="@item.DisplayName"
+                                <human-link user-id="@item.UserId" burner-name="@item.BurnerName"
                                             mode="Avatar" size="40" show-popover="false"
                                             profile-picture-url="@item.ProfilePictureUrl" />
                                 <a asp-controller="Profile" asp-action="ViewProfile" asp-route-id="@item.UserId"
                                    class="ms-2 text-decoration-none text-reset"
                                    data-human-popover="true"
                                    data-user-id="@item.UserId">
-                                    <span class="fw-semibold">@item.DisplayName</span>
+                                    <span class="fw-semibold">@item.BurnerName</span>
                                     @if (hasLegalName)
                                     {
                                         <span class="fw-normal text-muted"> - @item.LegalName</span>

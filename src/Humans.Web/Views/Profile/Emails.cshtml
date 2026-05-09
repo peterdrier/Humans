@@ -23,7 +23,7 @@
             <ol class="breadcrumb">
                 @if (Model.IsAdminContext)
                 {
-                    <li class="breadcrumb-item"><a asp-action="AdminDetail" asp-route-id="@Model.TargetUserId">@(Model.TargetDisplayName ?? Localizer["Emails_AdminUnknownTarget"].Value)</a></li>
+                    <li class="breadcrumb-item"><a asp-action="AdminDetail" asp-route-id="@Model.TargetUserId">@(Model.TargetBurnerName ?? Localizer["Emails_AdminUnknownTarget"].Value)</a></li>
                 }
                 else
                 {
@@ -40,9 +40,9 @@
             <div class="alert alert-warning d-flex align-items-center mb-3">
                 <i class="fa-solid fa-user-shield me-2 fs-4"></i>
                 <div>
-                    @if (!string.IsNullOrWhiteSpace(Model.TargetDisplayName))
+                    @if (!string.IsNullOrWhiteSpace(Model.TargetBurnerName))
                     {
-                        @string.Format(Localizer["EmailGrid_AdminContextBannerNamed"].Value, Model.TargetDisplayName)
+                        @string.Format(Localizer["EmailGrid_AdminContextBannerNamed"].Value, Model.TargetBurnerName)
                     }
                     else
                     {

@@ -544,11 +544,11 @@ public class GoogleController : HumansControllerBase
 
         // Issue #692: BurnerName-aware audit page header.
         var fullProfile = await _profileService.GetFullProfileAsync(id);
-        var displayName = fullProfile?.DisplayName ?? user.DisplayName;
+        var burnerName = fullProfile?.BurnerName ?? user.DisplayName;
 
         var events = await _auditViewer.GetGoogleSyncForUserAsync(id);
         return GoogleSyncAuditView(
-            $"Google Sync Audit: {displayName}",
+            $"Google Sync Audit: {burnerName}",
             Url.Action("AdminDetail", "Profile", new { id }),
             "Back to Human Detail",
             events);
@@ -620,7 +620,7 @@ public class GoogleController : HumansControllerBase
                 CreationTime = a.CreationTime,
                 LastLoginTime = a.LastLoginTime,
                 MatchedUserId = a.MatchedUserId,
-                MatchedDisplayName = a.MatchedDisplayName,
+                MatchedBurnerName = a.MatchedBurnerName,
                 IsUsedAsPrimary = a.IsUsedAsPrimary,
                 IsEnrolledIn2Sv = a.IsEnrolledIn2Sv,
                 RecoveryEmail = a.RecoveryEmail
@@ -961,7 +961,7 @@ public class GoogleController : HumansControllerBase
     {
         var violations = await userEmailService.GetEmailFlagViolationsAsync(ct);
         var sorted = violations
-            .OrderBy(v => v.DisplayName, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(v => v.BurnerName, StringComparer.OrdinalIgnoreCase)
             .ToList();
         return View(sorted);
     }

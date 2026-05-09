@@ -263,7 +263,7 @@ public class RotaShiftGroup
     public int TotalSlots { get; set; }
 }
 
-public record ShiftSignupInfo(Guid UserId, string DisplayName, SignupStatus Status, string? ProfilePictureUrl);
+public record ShiftSignupInfo(Guid UserId, string BurnerName, SignupStatus Status, string? ProfilePictureUrl);
 
 public class ShiftDisplayItem
 {
@@ -312,7 +312,7 @@ public class ShiftAdminViewModel
     public Dictionary<Guid, VolunteerEventProfile> VolunteerProfiles { get; set; } = new();
 
     /// <summary>
-    /// User display data (DisplayName, ProfilePictureUrl) keyed by UserId for every signup
+    /// User display data (BurnerName, ProfilePictureUrl) keyed by UserId for every signup
     /// in <see cref="Rotas"/> and <see cref="PendingSignups"/>. Resolved by the controller via
     /// <c>IUserService.GetByIdsAsync</c>; the view reads from this dictionary instead of
     /// navigating <c>ShiftSignup.User</c> (cross-domain nav, removed per design-rules §6c).
@@ -535,7 +535,7 @@ public record BuildDayCountdown(int DaysToBuild, LocalDate FirstBuildDay, int We
 public class VolunteerSearchResult
 {
     public Guid UserId { get; set; }
-    public string DisplayName { get; set; } = string.Empty;
+    public string BurnerName { get; set; } = string.Empty;
     public List<string> Skills { get; set; } = [];
     public List<string> Quirks { get; set; } = [];
     public List<string> Languages { get; set; } = [];
@@ -579,7 +579,7 @@ public class ShiftSignupsViewModel
     public EventSettings? EventSettings { get; set; }
     public ShiftSignupsViewMode ViewMode { get; set; }
     public Guid UserId { get; set; }
-    public string? DisplayName { get; set; }
+    public string? BurnerName { get; set; }
 }
 
 // === Rota Partial View Models ===

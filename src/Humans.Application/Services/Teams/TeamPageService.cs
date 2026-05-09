@@ -66,7 +66,7 @@ public sealed class TeamPageService : ITeamPageService
         var members = visibleMembers
             .Select(member => new TeamPageMemberSummary(
                 member.UserId,
-                member.DisplayName,
+                member.BurnerName,
                 detail.IsAuthenticated ? member.Email : null,
                 member.ProfilePictureUrl,
                 member.Role,
@@ -74,7 +74,7 @@ public sealed class TeamPageService : ITeamPageService
                 customPictures.GetValueOrDefault(member.UserId)))
             .ToList();
 
-        var pageContentUpdatedByDisplayName = await GetPageContentUpdatedByDisplayNameAsync(
+        var pageContentUpdatedByBurnerName = await GetPageContentUpdatedByBurnerNameAsync(
             detail.Team.PageContentUpdatedByUserId,
             cancellationToken);
 
@@ -110,7 +110,7 @@ public sealed class TeamPageService : ITeamPageService
             detail.CanCurrentUserEditTeam,
             detail.CurrentUserPendingRequestId,
             detail.PendingRequestCount,
-            pageContentUpdatedByDisplayName,
+            pageContentUpdatedByBurnerName,
             shiftsSummary);
     }
 
@@ -132,7 +132,7 @@ public sealed class TeamPageService : ITeamPageService
             picture => new TeamPageCustomPicture(picture.ProfileId, picture.UpdatedAtTicks));
     }
 
-    private async Task<string?> GetPageContentUpdatedByDisplayNameAsync(
+    private async Task<string?> GetPageContentUpdatedByBurnerNameAsync(
         Guid? userId,
         CancellationToken cancellationToken)
     {

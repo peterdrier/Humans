@@ -3,7 +3,7 @@ namespace Humans.Application.DTOs;
 public class EmailMismatch
 {
     public Guid UserId { get; init; }
-    public string DisplayName { get; init; } = string.Empty;
+    public string BurnerName { get; init; } = string.Empty;
     public string StoredEmail { get; init; } = string.Empty;
     public string GoogleEmail { get; init; } = string.Empty;
 }

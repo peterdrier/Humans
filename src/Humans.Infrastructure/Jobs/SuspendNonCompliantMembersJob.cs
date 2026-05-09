@@ -137,7 +137,7 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
                 // 1. Send email notification.
                 // Issue #692: BurnerName-aware recipient label.
                 var fp = await _profileService.GetFullProfileAsync(user.Id, cancellationToken);
-                var recipientName = fp?.DisplayName ?? user.DisplayName;
+                var recipientName = fp?.BurnerName ?? user.DisplayName;
                 var effectiveEmail = user.Email;
                 if (effectiveEmail is not null)
                 {

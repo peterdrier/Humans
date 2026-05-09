@@ -1,6 +1,6 @@
 @model Humans.Web.Models.AdminHumanDetailViewModel
 @{
-    ViewData["Title"] = string.Format(Localizer["AdminHumanDetail_Title"].Value, Model.DisplayName);
+    ViewData["Title"] = string.Format(Localizer["AdminHumanDetail_Title"].Value, Model.BurnerName);
     Layout = "_AdminLayout";
     var campaignGrants = (IList<CampaignGrant>?)ViewBag.CampaignGrants;
     var outboxCount = (int?)ViewBag.OutboxCount ?? 0;
@@ -9,7 +9,7 @@
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a asp-action="AdminList">Humans</a></li>
-        <li class="breadcrumb-item"><a asp-action="ViewProfile" asp-route-id="@Model.UserId">@Model.DisplayName</a></li>
+        <li class="breadcrumb-item"><a asp-action="ViewProfile" asp-route-id="@Model.UserId">@Model.BurnerName</a></li>
         <li class="breadcrumb-item active" aria-current="page">Admin</li>
     </ol>
 </nav>
@@ -28,7 +28,7 @@
                                         size="80" />
                     </div>
                     <div class="col-md-10">
-                        <h4>@Model.DisplayName</h4>
+                        <h4>@Model.BurnerName</h4>
                         <p class="text-muted mb-1">@Model.Email</p>
                         @if (Model.IsSuspended)
                         {
@@ -211,7 +211,7 @@
             }
         </div>
 
-        <vc:shift-signups user-id="@Model.UserId" view-mode="@ShiftSignupsViewMode.Admin" display-name="@Model.DisplayName" />
+        <vc:shift-signups user-id="@Model.UserId" view-mode="@ShiftSignupsViewMode.Admin" burner-name="@Model.BurnerName" />
 
         <vc:audit-log user-id="@Model.UserId" limit="50" title="@Localizer["AdminHuman_AuditHistory"].Value" />
 
@@ -425,7 +425,7 @@
                 <environment exclude="Production">
                     <hr />
                     <form asp-controller="Admin" asp-action="PurgeHuman" asp-route-id="@Model.UserId" method="post"
-                          data-confirm="PURGE @Model.DisplayName? This severs their login — they will get a completely fresh account next time they sign in.">
+                          data-confirm="PURGE @Model.BurnerName? This severs their login — they will get a completely fresh account next time they sign in.">
                         @Html.AntiForgeryToken()
                         <button type="submit" class="btn btn-danger w-100">
                             <i class="fa-solid fa-skull-crossbones me-1"></i> Purge (Dev/QA Only)

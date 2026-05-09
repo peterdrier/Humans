@@ -8,7 +8,7 @@ public record TeamPageCustomPicture(Guid ProfileId, long UpdatedAtTicks);
 
 public record TeamPageMemberSummary(
     Guid UserId,
-    string DisplayName,
+    string BurnerName,
     string? Email,
     string? ProfilePictureUrl,
     TeamMemberRole Role,
@@ -43,7 +43,7 @@ public record TeamPageDetailResult(
     bool CanCurrentUserEditTeam,
     Guid? CurrentUserPendingRequestId,
     int PendingRequestCount,
-    string? PageContentUpdatedByDisplayName,
+    string? PageContentUpdatedByBurnerName,
     TeamPageShiftsSummary? ShiftsSummary);
 
 public interface ITeamPageService

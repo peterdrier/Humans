@@ -208,7 +208,7 @@
                                                     <option value="">Select human...</option>
                                                     @foreach (var member in Model.TeamMembers.Where(m => !role.AssignedUserIds.Contains(m.UserId)))
                                                     {
-                                                        <option value="@member.UserId">@member.DisplayName</option>
+                                                        <option value="@member.UserId">@member.BurnerName</option>
                                                     }
                                                 </select>
                                                 <button type="submit" class="btn btn-sm btn-outline-primary">Assign</button>

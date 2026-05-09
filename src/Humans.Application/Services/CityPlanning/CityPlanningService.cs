@@ -83,7 +83,7 @@ public sealed class CityPlanningService : ICityPlanningService
             .ToList();
     }
 
-    public async Task<string?> GetUserDisplayNameAsync(
+    public async Task<string?> GetUserBurnerNameAsync(
         Guid userId, CancellationToken cancellationToken = default)
     {
         // Use targeted per-user lookup (GetProfileAsync) instead of GetFullProfileAsync

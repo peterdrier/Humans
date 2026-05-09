@@ -13,7 +13,7 @@ public sealed class EmailProblemsCompareViewModel
 
 public sealed record CompareSide(
     Guid UserId,
-    string DisplayName,
+    string BurnerName,
     string? ProfilePictureUrl,
     IReadOnlyList<UserEmailSnapshot> AllUserEmails,
     int TeamCount,

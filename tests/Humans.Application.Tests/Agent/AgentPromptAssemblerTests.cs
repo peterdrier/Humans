@@ -14,7 +14,7 @@ public class AgentPromptAssemblerTests
     {
         var snapshot = new AgentUserSnapshot(
             UserId: Guid.NewGuid(),
-            DisplayName: "Felipe García",
+            BurnerName: "Felipe García",
             PreferredLocale: "es",
             Tier: "Volunteer",
             IsApproved: true,
@@ -43,7 +43,7 @@ public class AgentPromptAssemblerTests
     {
         var snapshot = new AgentUserSnapshot(
             UserId: Guid.NewGuid(),
-            DisplayName: "Volunteer",
+            BurnerName: "Volunteer",
             PreferredLocale: "es",
             Tier: "Volunteer",
             IsApproved: true,
@@ -134,7 +134,7 @@ public class AgentPromptAssemblerTests
     {
         var snapshot = new AgentUserSnapshot(
             UserId: Guid.NewGuid(),
-            DisplayName: "Test",
+            BurnerName: "Test",
             PreferredLocale: "es",
             Tier: "Volunteer",
             IsApproved: true,
@@ -199,7 +199,7 @@ public class AgentPromptAssemblerTests
     private static AgentUserSnapshot MakeSnapshot(params UpcomingShiftEntry[] upcoming) =>
         new(
             UserId: Guid.NewGuid(),
-            DisplayName: "Test",
+            BurnerName: "Test",
             PreferredLocale: "es",
             Tier: "Volunteer",
             IsApproved: true,

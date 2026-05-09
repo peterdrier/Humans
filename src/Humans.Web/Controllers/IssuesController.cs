@@ -123,7 +123,7 @@ public class IssuesController : HumansControllerBase
                 .Select(r => new ReporterDropdownItem
                 {
                     UserId = r.UserId,
-                    DisplayName = r.DisplayName,
+                    BurnerName = r.BurnerName,
                     Count = r.Count
                 })
                 .ToList();
@@ -279,7 +279,7 @@ public class IssuesController : HumansControllerBase
             var users = await _users.GetByIdsAsync(activeIds);
             vm.AssigneeOptions = users.Values
                 .OrderBy(u => u.DisplayName, StringComparer.OrdinalIgnoreCase)
-                .Select(u => new AssigneeOption { Id = u.Id, DisplayName = u.DisplayName })
+                .Select(u => new AssigneeOption { Id = u.Id, BurnerName = u.DisplayName })
                 .ToList();
         }
 
@@ -291,7 +291,7 @@ public class IssuesController : HumansControllerBase
             vm.AssigneeOptions.Insert(0, new AssigneeOption
             {
                 Id = vm.AssigneeUserId.Value,
-                DisplayName = (vm.AssigneeName ?? "Unknown") + " (inactive)"
+                BurnerName = (vm.AssigneeName ?? "Unknown") + " (inactive)"
             });
         }
     }
@@ -532,7 +532,7 @@ public class IssuesController : HumansControllerBase
                     Type = "comment",
                     At = c.At.ToDateTimeUtc(),
                     ActorUserId = c.ActorUserId,
-                    ActorName = c.ActorDisplayName,
+                    ActorName = c.ActorBurnerName,
                     Content = c.Content,
                     ActorIsReporter = c.ActorIsReporter
                 },
@@ -541,7 +541,7 @@ public class IssuesController : HumansControllerBase
                     Type = "audit",
                     At = a.At.ToDateTimeUtc(),
                     ActorUserId = a.ActorUserId,
-                    ActorName = a.ActorDisplayName,
+                    ActorName = a.ActorBurnerName,
                     Description = a.Description
                 },
                 _ => throw new NotSupportedException($"Unknown thread event type {e.GetType().Name}")

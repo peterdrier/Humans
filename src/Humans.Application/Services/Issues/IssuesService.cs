@@ -510,7 +510,7 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
                 r.UserId,
                 users.TryGetValue(r.UserId, out var u) ? u.DisplayName : r.UserId.ToString(),
                 r.Count))
-            .OrderBy(r => r.DisplayName, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(r => r.BurnerName, StringComparer.OrdinalIgnoreCase)
             .ToList();
     }
 

@@ -12,7 +12,7 @@
                             css-class="me-3" />
             <div>
                 <h1 class="mb-1">
-                    @Html.Raw(string.Format(Localizer["Dashboard_Welcome"].Value, Html.Encode(Model.DisplayName)))
+                    @Html.Raw(string.Format(Localizer["Dashboard_Welcome"].Value, Html.Encode(Model.BurnerName)))
                     @if (Model.MembershipTier != MembershipTier.Volunteer)
                     {
                         <span class="badge bg-primary ms-2 align-middle" style="font-size: 0.4em; vertical-align: middle;">@Model.MembershipTier</span>

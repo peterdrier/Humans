@@ -11,7 +11,16 @@ public class ProfileViewModel
     public Guid Id { get; set; }
     public Guid UserId { get; set; }
     public string Email { get; set; } = string.Empty;
-    public string DisplayName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Issue #692: BurnerName-aware resolved name for rendering (page heading,
+    /// breadcrumbs, child-component labels). Distinct from <see cref="BurnerName"/>
+    /// which is the bound form-input field — `BurnerName` is what the human is
+    /// actively editing (may be transiently empty during a failed-validation
+    /// post-back), `ResolvedBurnerName` is the BurnerName the rest of the site
+    /// shows them as.
+    /// </summary>
+    public string ResolvedBurnerName { get; set; } = string.Empty;
     public string? ProfilePictureUrl { get; set; }
 
     /// <summary>

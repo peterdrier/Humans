@@ -4,22 +4,22 @@ using Humans.Domain.Enums;
 namespace Humans.Application.Interfaces.Issues;
 
 /// <summary>One row in the inline thread — either a comment or an audit event.</summary>
-public abstract record IssueThreadEvent(Instant At, Guid? ActorUserId, string? ActorDisplayName);
+public abstract record IssueThreadEvent(Instant At, Guid? ActorUserId, string? ActorBurnerName);
 
 public sealed record IssueCommentEvent(
     Guid CommentId,
     Instant At,
     Guid? ActorUserId,
-    string? ActorDisplayName,
+    string? ActorBurnerName,
     bool ActorIsReporter,
-    string Content) : IssueThreadEvent(At, ActorUserId, ActorDisplayName);
+    string Content) : IssueThreadEvent(At, ActorUserId, ActorBurnerName);
 
 public sealed record IssueAuditEvent(
     Instant At,
     Guid? ActorUserId,
-    string? ActorDisplayName,
+    string? ActorBurnerName,
     AuditAction Action,
-    string Description) : IssueThreadEvent(At, ActorUserId, ActorDisplayName);
+    string Description) : IssueThreadEvent(At, ActorUserId, ActorBurnerName);
 
 /// <summary>Filter criteria for the index list query.</summary>
 public sealed record IssueListFilter(
@@ -31,4 +31,4 @@ public sealed record IssueListFilter(
     string? SearchText = null,
     int Limit = 100);
 
-public sealed record DistinctReporterRow(Guid UserId, string DisplayName, int Count);
+public sealed record DistinctReporterRow(Guid UserId, string BurnerName, int Count);

@@ -2,7 +2,7 @@ namespace Humans.Application.DTOs;
 
 public record BirthdayProfileInfo(
     Guid UserId,
-    string DisplayName,
+    string BurnerName,
     string? ProfilePictureUrl,
     bool HasCustomPicture,
     Guid ProfileId,

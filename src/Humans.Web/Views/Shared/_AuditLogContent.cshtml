@@ -84,9 +84,9 @@ else
                                 {
                                     <span class="badge bg-info">System</span>
                                 }
-                                else if (!string.IsNullOrEmpty(ev.ActorDisplayName))
+                                else if (!string.IsNullOrEmpty(ev.ActorBurnerName))
                                 {
-                                    <human-link user-id="@ev.ActorUserId.Value" display-name="@ev.ActorDisplayName" mode="Text" />
+                                    <human-link user-id="@ev.ActorUserId.Value" burner-name="@ev.ActorBurnerName" mode="Text" />
                                 }
                                 else
                                 {
@@ -97,9 +97,9 @@ else
                                 <span class="badge @ev.Action.ToAuditBadgeClass()">@ev.Action.ToAuditBadgeLabel()</span>
                             </td>
                             <td>
-                                @if (ev.SubjectUserId.HasValue && !string.IsNullOrEmpty(ev.SubjectDisplayName))
+                                @if (ev.SubjectUserId.HasValue && !string.IsNullOrEmpty(ev.SubjectBurnerName))
                                 {
-                                    <human-link user-id="@ev.SubjectUserId.Value" display-name="@ev.SubjectDisplayName" mode="Text" />
+                                    <human-link user-id="@ev.SubjectUserId.Value" burner-name="@ev.SubjectBurnerName" mode="Text" />
                                 }
                                 else if (ev.SubjectUserId.HasValue)
                                 {

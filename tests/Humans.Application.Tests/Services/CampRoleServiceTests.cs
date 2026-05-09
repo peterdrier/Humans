@@ -431,7 +431,7 @@ public class CampRoleServiceTests : IDisposable
         row1.FilledSlots.Should().HaveCount(1);
         row1.EmptySlotCount.Should().Be(1);
         row1.OverCapacity.Should().BeFalse();
-        row1.FilledSlots[0].DisplayName.Should().Be("Member One");
+        row1.FilledSlots[0].BurnerName.Should().Be("Member One");
 
         var row2 = panel.Rows.First(r => r.Definition.Id == def2.Id);
         row2.FilledSlots.Should().BeEmpty();

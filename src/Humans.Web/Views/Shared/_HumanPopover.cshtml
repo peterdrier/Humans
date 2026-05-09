@@ -7,7 +7,7 @@
     <vc:user-avatar user-id="@Model.UserId" size="72" css-class="me-2" />
     <div>
         <div class="fw-semibold">
-            @Model.DisplayName
+            @Model.BurnerName
             @if ((await AuthService.AuthorizeAsync(User, PolicyNames.HumanAdminBoardOrAdmin)).Succeeded
                 && !string.IsNullOrEmpty(Model.PreferredLanguage?.ToFlagClass()))
             {

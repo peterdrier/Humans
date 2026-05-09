@@ -83,9 +83,9 @@
                         <hr />
                         <small class="text-muted">
                             @Localizer["TeamDetail_LastUpdated"] @Model.PageContentUpdatedAt.Value.ToString("MMMM d, yyyy")
-                            @if (!string.IsNullOrEmpty(Model.PageContentUpdatedByDisplayName))
+                            @if (!string.IsNullOrEmpty(Model.PageContentUpdatedByBurnerName))
                             {
-                                @: &mdash; @Model.PageContentUpdatedByDisplayName
+                                @: &mdash; @Model.PageContentUpdatedByBurnerName
                             }
                         </small>
                     }
@@ -163,7 +163,7 @@
                                 <div class="col-6 col-sm-4 col-md-3">
                                     @if (Model.IsAuthenticated)
                                     {
-                                        <human-link user-id="@member.UserId" display-name="@member.DisplayName"
+                                        <human-link user-id="@member.UserId" burner-name="@member.BurnerName"
                                                     mode="Card" size="128"
                                                     profile-picture-url="@member.EffectiveProfilePictureUrl"
                                                     avatar-css-class="border border-primary border-3"
@@ -178,7 +178,7 @@
                                                             size="128"
                                                             css-class="mb-2 mx-auto border border-primary border-3"
                                                             bg-color="bg-primary" />
-                                            <div class="fw-semibold small">@member.DisplayName</div>
+                                            <div class="fw-semibold small">@member.BurnerName</div>
                                         </div>
                                     }
                                 </div>
@@ -196,7 +196,7 @@
                             @foreach (var member in regularMembers)
                             {
                                 <div class="col-6 col-sm-4 col-md-3">
-                                    <human-link user-id="@member.UserId" display-name="@member.DisplayName"
+                                    <human-link user-id="@member.UserId" burner-name="@member.BurnerName"
                                                 mode="Card" size="102"
                                                 profile-picture-url="@member.EffectiveProfilePictureUrl" />
                                 </div>
@@ -220,10 +220,10 @@
             </div>
             <div class="card-body">
                 <div class="row g-3">
-                    @foreach (var lead in Model.SubteamLeads.OrderBy(l => l.DisplayName, StringComparer.OrdinalIgnoreCase))
+                    @foreach (var lead in Model.SubteamLeads.OrderBy(l => l.BurnerName, StringComparer.OrdinalIgnoreCase))
                     {
                         <div class="col-6 col-sm-4 col-md-3">
-                            <human-link user-id="@lead.UserId" display-name="@lead.DisplayName"
+                            <human-link user-id="@lead.UserId" burner-name="@lead.BurnerName"
                                         mode="Card" size="128"
                                         profile-picture-url="@lead.EffectiveProfilePictureUrl"
                                         avatar-css-class="border border-primary border-3"
@@ -246,10 +246,10 @@
             </div>
             <div class="card-body">
                 <div class="row g-3">
-                    @foreach (var member in Model.ChildTeamMembers.OrderBy(m => m.DisplayName, StringComparer.OrdinalIgnoreCase))
+                    @foreach (var member in Model.ChildTeamMembers.OrderBy(m => m.BurnerName, StringComparer.OrdinalIgnoreCase))
                     {
                         <div class="col-6 col-sm-4 col-md-3">
-                            <human-link user-id="@member.UserId" display-name="@member.DisplayName"
+                            <human-link user-id="@member.UserId" burner-name="@member.BurnerName"
                                         mode="Card" size="102"
                                         profile-picture-url="@member.EffectiveProfilePictureUrl">
                                 <span class="badge bg-secondary bg-opacity-50 small">@member.ChildTeamName</span>

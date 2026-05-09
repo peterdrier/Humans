@@ -112,7 +112,7 @@ public class IssuesApiController : ControllerBase
             CommentId = c.CommentId,
             At = c.At.ToDateTimeUtc(),
             ActorUserId = c.ActorUserId,
-            ActorName = c.ActorDisplayName,
+            ActorName = c.ActorBurnerName,
             ActorIsReporter = c.ActorIsReporter,
             Content = c.Content
         });
@@ -294,7 +294,7 @@ public class IssuesApiController : ControllerBase
                 type = "comment",
                 at = c.At.ToDateTimeUtc(),
                 actorUserId = c.ActorUserId,
-                actorName = c.ActorDisplayName,
+                actorName = c.ActorBurnerName,
                 actorIsReporter = c.ActorIsReporter,
                 content = c.Content
             },
@@ -303,7 +303,7 @@ public class IssuesApiController : ControllerBase
                 type = "audit",
                 at = a.At.ToDateTimeUtc(),
                 actorUserId = a.ActorUserId,
-                actorName = a.ActorDisplayName,
+                actorName = a.ActorBurnerName,
                 action = a.Action.ToString(),
                 description = a.Description
             },

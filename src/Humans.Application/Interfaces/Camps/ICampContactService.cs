@@ -16,7 +16,7 @@ public interface ICampContactService
         string campContactEmail,
         string campDisplayName,
         Guid senderUserId,
-        string senderDisplayName,
+        string senderBurnerName,
         string senderEmail,
         string message,
         bool includeContactInfo);

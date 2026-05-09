@@ -99,10 +99,10 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
     private IProfileService ProfileService
         => _serviceProvider.GetRequiredService<IProfileService>();
 
-    private async Task<string> ResolveDisplayNameAsync(Guid userId, string fallback, CancellationToken ct)
+    private async Task<string> ResolveBurnerNameAsync(Guid userId, string fallback, CancellationToken ct)
     {
         var fp = await ProfileService.GetFullProfileAsync(userId, ct);
-        return fp?.DisplayName ?? fallback;
+        return fp?.BurnerName ?? fallback;
     }
 
     public TeamService(
@@ -789,7 +789,7 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
         if (joinedUser is not null)
         {
             // Issue #692: BurnerName-aware cached label.
-            var displayName = await ResolveDisplayNameAsync(userId, joinedUser.DisplayName, cancellationToken);
+            var displayName = await ResolveBurnerNameAsync(userId, joinedUser.DisplayName, cancellationToken);
             AddMemberToTeamCache(teamId, new CachedTeamMember(
                 member.Id, userId, displayName, joinedUser.ProfilePictureUrl,
                 TeamMemberRole.Member, member.JoinedAt));
@@ -923,7 +923,7 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
         if (joinedUser is not null)
         {
             // Issue #692: BurnerName-aware cached label.
-            var displayName = await ResolveDisplayNameAsync(request.UserId, joinedUser.DisplayName, cancellationToken);
+            var displayName = await ResolveBurnerNameAsync(request.UserId, joinedUser.DisplayName, cancellationToken);
             AddMemberToTeamCache(request.TeamId, new CachedTeamMember(
                 member.Id, request.UserId, displayName, joinedUser.ProfilePictureUrl,
                 TeamMemberRole.Member, member.JoinedAt));
@@ -1215,7 +1215,7 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
         if (addedUser is not null)
         {
             // Issue #692: BurnerName-aware cached label.
-            var displayName = await ResolveDisplayNameAsync(targetUserId, addedUser.DisplayName, cancellationToken);
+            var displayName = await ResolveBurnerNameAsync(targetUserId, addedUser.DisplayName, cancellationToken);
             AddMemberToTeamCache(teamId, new CachedTeamMember(
                 member.Id, targetUserId, displayName, addedUser.ProfilePictureUrl,
                 TeamMemberRole.Member, member.JoinedAt));
@@ -1625,7 +1625,7 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
         if (targetUser is not null)
         {
             // Issue #692: BurnerName-aware cached label.
-            var displayName = await ResolveDisplayNameAsync(targetUserId, targetUser.DisplayName, cancellationToken);
+            var displayName = await ResolveBurnerNameAsync(targetUserId, targetUser.DisplayName, cancellationToken);
             var cachedMember = new CachedTeamMember(
                 persistedMember.Id, targetUserId, displayName, targetUser.ProfilePictureUrl,
                 persistedMember.Role, persistedMember.JoinedAt);
@@ -1755,7 +1755,7 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
         if (addedUser is not null)
         {
             // Issue #692: BurnerName-aware cached label.
-            var displayName = await ResolveDisplayNameAsync(userId, addedUser.DisplayName, cancellationToken);
+            var displayName = await ResolveBurnerNameAsync(userId, addedUser.DisplayName, cancellationToken);
             AddMemberToTeamCache(teamId, new CachedTeamMember(
                 member.Id, userId, displayName, addedUser.ProfilePictureUrl, role, joinedAt));
         }
@@ -2016,7 +2016,7 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
                 return new CachedTeamMember(
                     TeamMemberId: m.Id,
                     UserId: m.UserId,
-                    DisplayName: u?.DisplayName ?? string.Empty,
+                    BurnerName: u?.DisplayName ?? string.Empty,
                     ProfilePictureUrl: u?.ProfilePictureUrl,
                     Role: m.Role,
                     JoinedAt: m.JoinedAt);
@@ -2215,7 +2215,7 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
 
             var email = user.Email!;
             // Issue #692: BurnerName-aware recipient label.
-            var recipientName = await ResolveDisplayNameAsync(userId, user.DisplayName, cancellationToken);
+            var recipientName = await ResolveBurnerNameAsync(userId, user.DisplayName, cancellationToken);
             var resources = await TeamResourceService.GetTeamResourcesAsync(team.Id, cancellationToken);
 
             await EmailService.SendAddedToTeamAsync(
@@ -2340,7 +2340,7 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
     private static TeamDetailMemberSummary MapTeamDetailMemberSummary(TeamMember member) => new(
         UserId: member.UserId,
 #pragma warning disable CS0618 // populated in memory
-        DisplayName: member.User?.DisplayName ?? string.Empty,
+        BurnerName: member.User?.DisplayName ?? string.Empty,
         Email: member.User?.Email,
         ProfilePictureUrl: member.User?.ProfilePictureUrl,
 #pragma warning restore CS0618

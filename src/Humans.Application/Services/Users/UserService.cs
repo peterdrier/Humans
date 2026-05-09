@@ -20,7 +20,7 @@ namespace Humans.Application.Services.Users;
 /// <remarks>
 /// <para>
 /// Cross-section invalidation: writes that change fields exposed by
-/// <see cref="FullProfile"/> (DisplayName, GoogleEmail) call
+/// <see cref="FullProfile"/> (BurnerName via User.DisplayName, GoogleEmail) call
 /// <see cref="IFullProfileInvalidator.InvalidateAsync"/> so the Profile cache
 /// reloads the affected entry. Writes to deletion state and event
 /// participation do not invalidate — those fields are not included in the

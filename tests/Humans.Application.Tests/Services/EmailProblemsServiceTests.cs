@@ -38,9 +38,9 @@ public class EmailProblemsServiceTests
 
     private static FullProfile MakeProfile(Guid userId, params UserEmailSnapshot[] emails) =>
         new FullProfile(
-            UserId: userId, DisplayName: "Test User", ProfilePictureUrl: null,
+            UserId: userId, BurnerName: "Test User", ProfilePictureUrl: null,
             HasCustomPicture: false, ProfileId: Guid.NewGuid(), UpdatedAtTicks: 0,
-            BurnerName: "Test", Bio: null, Pronouns: null, ContributionInterests: null,
+            Bio: null, Pronouns: null, ContributionInterests: null,
             City: null, CountryCode: null, Latitude: null, Longitude: null,
             BirthdayDay: null, BirthdayMonth: null,
             IsApproved: true, IsSuspended: false,

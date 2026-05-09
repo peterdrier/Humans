@@ -57,11 +57,11 @@ public sealed class GoogleAdminService : IGoogleAdminService
         _logger = logger;
     }
 
-    private async Task<string> ResolveDisplayNameAsync(Guid userId, string fallback, CancellationToken ct)
+    private async Task<string> ResolveBurnerNameAsync(Guid userId, string fallback, CancellationToken ct)
     {
         // Issue #692: BurnerName-aware display label.
         var fp = await _profileService.GetFullProfileAsync(userId, ct);
-        return fp?.DisplayName ?? fallback;
+        return fp?.BurnerName ?? fallback;
     }
 
     // Resolve a single Workspace email to the linked human's UserId for audit
@@ -141,7 +141,7 @@ public sealed class GoogleAdminService : IGoogleAdminService
                     CreationTime: account.CreationTime,
                     LastLoginTime: account.LastLoginTime,
                     MatchedUserId: matched?.UserId,
-                    MatchedDisplayName: matchedUser?.DisplayName,
+                    MatchedBurnerName: matchedUser?.DisplayName,
                     IsUsedAsPrimary: isUsedAsPrimary,
                     IsEnrolledIn2Sv: account.IsEnrolledIn2Sv,
                     RecoveryEmail: account.RecoveryEmail));
@@ -577,7 +577,7 @@ public sealed class GoogleAdminService : IGoogleAdminService
                 $"Linked @{NobodiesTeamDomain} account {email}",
                 actorUserId);
 
-            var resolvedName = await ResolveDisplayNameAsync(userId, user.DisplayName, ct);
+            var resolvedName = await ResolveBurnerNameAsync(userId, user.DisplayName, ct);
             return new WorkspaceAccountActionResult(true,
                 Message: $"Linked {email} to {resolvedName}.");
         }
@@ -794,13 +794,13 @@ public sealed class GoogleAdminService : IGoogleAdminService
                                 teamResourceCounts.TryGetValue(tid, out var count) ? count : 0);
                         }
 
-                        var displayName = nameProfiles.TryGetValue(user.Id, out var p) && !string.IsNullOrWhiteSpace(p.BurnerName)
+                        var burnerName = nameProfiles.TryGetValue(user.Id, out var p) && !string.IsNullOrWhiteSpace(p.BurnerName)
                             ? p.BurnerName
                             : user.DisplayName ?? "Unknown";
                         renames.Add(new EmailRenameInfo
                         {
                             UserId = user.Id,
-                            DisplayName = displayName,
+                            BurnerName = burnerName,
                             OldEmail = user.GoogleEmail!,
                             NewEmail = account.PrimaryEmail,
                             AffectedResourceCount = affectedResources
@@ -913,7 +913,7 @@ public sealed class GoogleAdminService : IGoogleAdminService
                 $"Fixed email rename: {oldEmail} -> {newEmail}",
                 actorUserId);
 
-            var resolvedName = await ResolveDisplayNameAsync(userId, user.DisplayName, ct);
+            var resolvedName = await ResolveBurnerNameAsync(userId, user.DisplayName, ct);
             return new EmailRenameFixResult(true,
                 Message: $"Updated email for {resolvedName}: {oldEmail} -> {newEmail}");
         }

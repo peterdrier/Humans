@@ -371,9 +371,9 @@ public interface IUserRepository
 /// verified notification-target <c>UserEmail</c> row, falling back to
 /// <c>User.Email</c>). May be null when the account never had an email.
 /// </param>
-/// <param name="OriginalDisplayName">Display name on the user before the write.</param>
+/// <param name="OriginalBurnerName">BurnerName on the user before the write (User.DisplayName, which post-write-through-sync equals Profile.BurnerName).</param>
 /// <param name="PreferredLanguage">Preferred language on the user before the write.</param>
 public record ExpiredDeletionAnonymizationResult(
     string? OriginalEmail,
-    string OriginalDisplayName,
+    string OriginalBurnerName,
     string PreferredLanguage);

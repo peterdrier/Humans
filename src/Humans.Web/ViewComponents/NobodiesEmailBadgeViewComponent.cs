@@ -37,12 +37,12 @@ public class NobodiesEmailBadgeViewComponent : ViewComponent
     /// <param name="userId">The user to check.</param>
     /// <param name="mode">Display mode — see class doc.</param>
     /// <param name="teamSlug">Team slug for provisioning form (provision mode only).</param>
-    /// <param name="displayName">User display name for confirm dialog (provision mode only).</param>
+    /// <param name="burnerName">User BurnerName for confirm dialog (provision mode only).</param>
     public async Task<IViewComponentResult> InvokeAsync(
         Guid userId,
         string mode = "badge",
         string? teamSlug = null,
-        string? displayName = null)
+        string? burnerName = null)
     {
         var allStatuses = await GetCachedStatusesAsync();
 
@@ -54,7 +54,7 @@ public class NobodiesEmailBadgeViewComponent : ViewComponent
         ViewBag.IsPrimary = hasEmail && info.IsPrimary;
         ViewBag.Mode = mode;
         ViewBag.TeamSlug = teamSlug;
-        ViewBag.DisplayName = displayName;
+        ViewBag.BurnerName = burnerName;
 
         return View();
     }

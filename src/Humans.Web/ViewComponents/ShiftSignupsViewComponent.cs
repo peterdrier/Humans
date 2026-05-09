@@ -29,13 +29,13 @@ public class ShiftSignupsViewComponent : ViewComponent
         _logger = logger;
     }
 
-    public async Task<IViewComponentResult> InvokeAsync(Guid userId, ShiftSignupsViewMode viewMode, string? displayName = null)
+    public async Task<IViewComponentResult> InvokeAsync(Guid userId, ShiftSignupsViewMode viewMode, string? burnerName = null)
     {
         var model = new ShiftSignupsViewModel
         {
             ViewMode = viewMode,
             UserId = userId,
-            DisplayName = displayName
+            BurnerName = burnerName
         };
 
         try

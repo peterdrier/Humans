@@ -32,7 +32,7 @@ else
                             @foreach (var member in Model.BoardMembers)
                             {
                                 <th class="text-center" style="min-width: 80px;">
-                                    <small><human-link user-id="@member.UserId" display-name="@member.DisplayName" /></small>
+                                    <small><human-link user-id="@member.UserId" burner-name="@member.BurnerName" /></small>
                                 </th>
                             }
                             <th></th>
@@ -55,7 +55,7 @@ else
                             }
                             <tr data-href="@Url.Action("BoardVotingDetail", new { applicationId = app.ApplicationId })">
                                 <td>
-                                    <human-link user-id="@app.UserId" display-name="@app.DisplayName"
+                                    <human-link user-id="@app.UserId" burner-name="@app.BurnerName"
                                                 mode="AvatarName" size="32"
                                                 profile-picture-url="@app.ProfilePictureUrl" />
                                 </td>

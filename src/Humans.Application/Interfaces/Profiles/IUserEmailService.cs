@@ -450,8 +450,8 @@ public record UserEmailMatch(
 /// admin remediation screen.
 /// </summary>
 /// <param name="UserId">The user with the violation.</param>
-/// <param name="DisplayName">Display name (for the admin grid). May be null
-/// if the User row is missing or has no display name.</param>
+/// <param name="BurnerName">BurnerName (for the admin grid). May be null
+/// if the User row is missing or has no display name. Issue #692.</param>
 /// <param name="IsGoogleCount">How many rows have <c>IsGoogle = true</c>.
 /// A healthy value is 0 or 1; values &gt; 1 are violations.</param>
 /// <param name="VerifiedCount">How many rows are verified.</param>
@@ -464,7 +464,7 @@ public record UserEmailMatch(
 /// rows exist and <see cref="VerifiedPrimaryCount"/> is not exactly 1.</param>
 public record UserEmailFlagViolation(
     Guid UserId,
-    string? DisplayName,
+    string? BurnerName,
     int IsGoogleCount,
     int VerifiedCount,
     int VerifiedPrimaryCount,

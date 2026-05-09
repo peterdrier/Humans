@@ -35,7 +35,7 @@ public class CampContactService : ICampContactService
         string campContactEmail,
         string campDisplayName,
         Guid senderUserId,
-        string senderDisplayName,
+        string senderBurnerName,
         string senderEmail,
         string message,
         bool includeContactInfo)
@@ -55,7 +55,7 @@ public class CampContactService : ICampContactService
             await _emailService.SendFacilitatedMessageAsync(
                 campContactEmail,
                 campDisplayName,
-                senderDisplayName,
+                senderBurnerName,
                 cleanMessage,
                 includeContactInfo,
                 senderEmail);

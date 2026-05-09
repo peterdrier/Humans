@@ -54,7 +54,7 @@ public static class ShiftVolunteerSearchBuilder
             results.Add(new VolunteerSearchResult
             {
                 UserId = user.Id,
-                DisplayName = user.DisplayName,
+                BurnerName = user.DisplayName,
                 Skills = profile?.Skills ?? [],
                 Quirks = profile?.Quirks ?? [],
                 Languages = profile?.Languages ?? [],

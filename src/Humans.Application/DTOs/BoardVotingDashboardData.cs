@@ -12,4 +12,4 @@ public record BoardVotingDashboardData(
     List<BoardVotingDashboardRow> Applications,
     List<BoardMemberInfo> BoardMembers);
 
-public record BoardMemberInfo(Guid UserId, string DisplayName);
+public record BoardMemberInfo(Guid UserId, string BurnerName);

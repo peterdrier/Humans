@@ -114,7 +114,7 @@ public class GovernanceController : HumansControllerBase
                 Id = ra.Id,
                 UserId = ra.UserId,
                 UserEmail = ra.User.Email ?? string.Empty,
-                UserDisplayName = ResolveName(ra.UserId, ra.User.DisplayName),
+                UserBurnerName = ResolveName(ra.UserId, ra.User.DisplayName),
                 RoleName = ra.RoleName,
                 ValidFrom = ra.ValidFrom.ToDateTimeUtc(),
                 ValidTo = ra.ValidTo?.ToDateTimeUtc(),

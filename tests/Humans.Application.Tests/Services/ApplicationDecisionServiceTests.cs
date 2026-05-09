@@ -606,7 +606,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         result.Should().NotBeNull();
         result!.ReviewerName.Should().Be("Reviewer");
         result.History.Should().NotBeEmpty();
-        result.History[0].ChangedByDisplayName.Should().Be("Reviewer");
+        result.History[0].ChangedByBurnerName.Should().Be("Reviewer");
     }
 
     [HumansFact]
@@ -720,7 +720,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         var (items, _) = await _service.GetFilteredApplicationsAsync(null, null, 1, 10);
 
         items.Should().HaveCount(1);
-        items[0].UserDisplayName.Should().Be("Applicant");
+        items[0].UserBurnerName.Should().Be("Applicant");
         items[0].UserEmail.Should().Be("a@t.com");
     }
 
@@ -764,7 +764,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
 
         result.Should().NotBeNull();
         result!.UserId.Should().Be(applicantId);
-        result.UserDisplayName.Should().Be("Applicant");
+        result.UserBurnerName.Should().Be("Applicant");
         result.UserEmail.Should().Be("a@t.com");
         result.UserProfilePictureUrl.Should().Be("https://example.com/pic.png");
         result.ReviewerName.Should().Be("Admin");

@@ -113,11 +113,11 @@ public class AdminController : HumansControllerBase
 
         // Issue #692: BurnerName-aware audit/log label.
         var fullProfile = await profileService.GetFullProfileAsync(id);
-        var displayName = fullProfile?.DisplayName ?? user.DisplayName;
+        var burnerName = fullProfile?.BurnerName ?? user.DisplayName;
 
         _logger.LogWarning(
-            "Admin {AdminId} purging human {HumanId} ({DisplayName}) in {Environment}",
-            currentUser?.Id, id, displayName, _environment.EnvironmentName);
+            "Admin {AdminId} purging human {HumanId} ({BurnerName}) in {Environment}",
+            currentUser?.Id, id, burnerName, _environment.EnvironmentName);
 
         // Sever OAuth link so next Google login creates a fresh user
         var logins = await _userManager.GetLoginsAsync(user);
@@ -132,7 +132,7 @@ public class AdminController : HumansControllerBase
             return NotFound();
         }
 
-        SetSuccess($"Purged {displayName}. They will get a fresh account on next login.");
+        SetSuccess($"Purged {burnerName}. They will get a fresh account on next login.");
         return RedirectToAction(nameof(ProfileController.AdminList), "Profile");
     }
 

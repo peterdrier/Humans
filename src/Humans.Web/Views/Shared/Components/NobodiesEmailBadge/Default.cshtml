@@ -5,7 +5,7 @@
     bool isPrimary = ViewBag.IsPrimary;
     string mode = ViewBag.Mode;
     string? teamSlug = ViewBag.TeamSlug;
-    string? displayName = ViewBag.DisplayName;
+    string? burnerName = ViewBag.BurnerName;
 }
 
 @if (string.Equals(mode, "badge", StringComparison.Ordinal))
@@ -54,7 +54,7 @@ else if (string.Equals(mode, "provision", StringComparison.Ordinal))
                        placeholder="username" required style="max-width: 120px;" />
                 <span class="input-group-text">@@nobodies.team</span>
                 <button type="submit" class="btn btn-sm btn-outline-primary"
-                        data-confirm="Provision a new @@nobodies.team account for @displayName?">
+                        data-confirm="Provision a new @@nobodies.team account for @burnerName?">
                     <i class="fa-solid fa-plus"></i>
                 </button>
             </div>

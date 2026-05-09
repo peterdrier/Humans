@@ -346,9 +346,9 @@ public class CachingProfileServiceTests
         ApplicationSignificantContribution: null, ApplicationRoleUnderstanding: null);
 
     private static FullProfile SampleFullProfile(Guid userId) => new(
-        UserId: userId, DisplayName: "Name", ProfilePictureUrl: null,
+        UserId: userId, BurnerName: "Name", ProfilePictureUrl: null,
         HasCustomPicture: false, ProfileId: Guid.NewGuid(), UpdatedAtTicks: 0,
-        BurnerName: null, Bio: null, Pronouns: null, ContributionInterests: null,
+        Bio: null, Pronouns: null, ContributionInterests: null,
         City: null, CountryCode: null, Latitude: null, Longitude: null,
         BirthdayDay: null, BirthdayMonth: null,
         IsApproved: true, IsSuspended: false,

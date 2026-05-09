@@ -101,7 +101,7 @@ public class ProcessAccountDeletionsJob : IRecurringJob
                     // Audit AFTER the business save has succeeded, per design-rules §7a.
                     await _auditLogService.LogAsync(
                         AuditAction.AccountAnonymized, nameof(User), userId,
-                        $"Account anonymized (was {summary.OriginalDisplayName})",
+                        $"Account anonymized (was {summary.OriginalBurnerName})",
                         nameof(ProcessAccountDeletionsJob));
 
                     foreach (var (signupId, shiftId) in summary.CancelledSignupIds)
@@ -116,7 +116,7 @@ public class ProcessAccountDeletionsJob : IRecurringJob
                     {
                         await _emailService.SendAccountDeletedAsync(
                             summary.OriginalEmail,
-                            summary.OriginalDisplayName,
+                            summary.OriginalBurnerName,
                             summary.PreferredLanguage,
                             cancellationToken);
                     }

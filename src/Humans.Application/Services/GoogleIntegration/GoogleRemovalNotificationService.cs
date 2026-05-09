@@ -99,8 +99,8 @@ public sealed class GoogleRemovalNotificationService : IGoogleRemovalNotificatio
 
         // Issue #692: BurnerName-aware recipient label.
         var fullProfile = await _profileService.GetFullProfileAsync(user.Id, cancellationToken);
-        var userName = !string.IsNullOrWhiteSpace(fullProfile?.DisplayName)
-            ? fullProfile!.DisplayName
+        var userName = !string.IsNullOrWhiteSpace(fullProfile?.BurnerName)
+            ? fullProfile!.BurnerName
             : !string.IsNullOrWhiteSpace(user.DisplayName)
                 ? user.DisplayName
                 : removedEmail;

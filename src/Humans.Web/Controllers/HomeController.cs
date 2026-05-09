@@ -100,7 +100,7 @@ public class HomeController : HumansControllerBase
         {
             UserId = user.Id,
             // Issue #692: BurnerName-aware. data.Profile is loaded above.
-            DisplayName = data.Profile?.BurnerName ?? user.DisplayName,
+            BurnerName = data.Profile?.BurnerName ?? user.DisplayName,
             ProfilePictureUrl = user.ProfilePictureUrl,
             MembershipStatus = data.MembershipSnapshot.Status,
             HasProfile = data.Profile is not null,

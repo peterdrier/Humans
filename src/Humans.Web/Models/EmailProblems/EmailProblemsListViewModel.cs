@@ -19,7 +19,10 @@ public sealed class EmailProblemsListViewModel
         EmailProblemsReport report,
         IReadOnlyDictionary<Guid, User> users)
     {
-        string DisplayName(Guid? id) =>
+        // Issue #692: User.DisplayName == Profile.BurnerName post-write-through-sync,
+        // so reading User.DisplayName here resolves to BurnerName for any
+        // post-onboarding row.
+        string BurnerName(Guid? id) =>
             id is Guid g && users.TryGetValue(g, out var u) ? u.DisplayName : "(unknown)";
 
         var crossUser = new List<CrossUserConflictRow>();
@@ -32,7 +35,7 @@ public sealed class EmailProblemsListViewModel
             switch (p.Kind)
             {
                 case EmailProblemKind.SharedAcrossUsers when p.UserId is Guid u1 && p.OtherUserId is Guid u2:
-                    crossUser.Add(new CrossUserConflictRow(p.Email ?? "(unknown)", u1, DisplayName(u1), u2, DisplayName(u2)));
+                    crossUser.Add(new CrossUserConflictRow(p.Email ?? "(unknown)", u1, BurnerName(u1), u2, BurnerName(u2)));
                     break;
 
                 case EmailProblemKind.MultipleIsPrimary or EmailProblemKind.MultipleIsGoogle
@@ -68,14 +71,14 @@ public sealed class EmailProblemsListViewModel
                     break;
 
                 case EmailProblemKind.LegacyIdentityEmailNotInUserEmails when p.UserId is Guid uid:
-                    legacyEmails.Add(new LegacyEmailRow(uid, DisplayName(uid), p.Email ?? "(unknown)"));
+                    legacyEmails.Add(new LegacyEmailRow(uid, BurnerName(uid), p.Email ?? "(unknown)"));
                     break;
             }
         }
 
         var singleUser = singleUserMap
-            .Select(kvp => new SingleUserIssueRow(kvp.Key, DisplayName(kvp.Key), kvp.Value))
-            .OrderBy(r => r.DisplayName, StringComparer.OrdinalIgnoreCase)
+            .Select(kvp => new SingleUserIssueRow(kvp.Key, BurnerName(kvp.Key), kvp.Value))
+            .OrderBy(r => r.BurnerName, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         return new EmailProblemsListViewModel
@@ -85,7 +88,7 @@ public sealed class EmailProblemsListViewModel
             SingleUserIssues = singleUser,
             SystemLevelIssues = systemLevel,
             LegacyEmailRows = legacyEmails
-                .OrderBy(r => r.DisplayName, StringComparer.OrdinalIgnoreCase)
+                .OrderBy(r => r.BurnerName, StringComparer.OrdinalIgnoreCase)
                 .ToList()
         };
     }
@@ -93,11 +96,11 @@ public sealed class EmailProblemsListViewModel
 
 public sealed record CrossUserConflictRow(
     string Email,
-    Guid User1Id, string User1DisplayName,
-    Guid User2Id, string User2DisplayName);
+    Guid User1Id, string User1BurnerName,
+    Guid User2Id, string User2BurnerName);
 
 public sealed record SingleUserIssueRow(
-    Guid UserId, string DisplayName,
+    Guid UserId, string BurnerName,
     IReadOnlyList<string> ProblemSummaries);
 
 public sealed record SystemLevelIssueRow(
@@ -108,5 +111,5 @@ public sealed record SystemLevelIssueRow(
 
 public sealed record LegacyEmailRow(
     Guid UserId,
-    string DisplayName,
+    string BurnerName,
     string LegacyEmail);

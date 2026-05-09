@@ -111,7 +111,7 @@ public sealed class ProfileBackfillAdminController : HumansControllerBase
 public sealed record MissingProfileRow(
     Guid UserId,
     string Email,
-    string DisplayName,
+    string BurnerName,
     Instant CreatedAt,
     ContactSource? ContactSource);
 

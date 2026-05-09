@@ -57,10 +57,10 @@ public class AdminMergeController : HumansControllerBase
             {
                 Id = r.Id,
                 Email = r.Email,
-                PrimaryUserDisplayName = ResolveName(r.TargetUserId, r.TargetUser.DisplayName),
+                PrimaryUserBurnerName = ResolveName(r.TargetUserId, r.TargetUser.DisplayName),
                 PrimaryUserEmail = r.TargetUser.Email,
                 PrimaryUserId = r.TargetUserId,
-                DuplicateUserDisplayName = ResolveName(r.SourceUserId, r.SourceUser.DisplayName),
+                DuplicateUserBurnerName = ResolveName(r.SourceUserId, r.SourceUser.DisplayName),
                 DuplicateUserEmail = r.SourceUser.Email,
                 DuplicateUserId = r.SourceUserId,
                 CreatedAt = r.CreatedAt.ToDateTimeUtc()
@@ -110,7 +110,7 @@ public class AdminMergeController : HumansControllerBase
         {
             UserId = user.Id,
             // Issue #692: BurnerName-aware label.
-            DisplayName = profile?.BurnerName ?? user.DisplayName,
+            BurnerName = profile?.BurnerName ?? user.DisplayName,
             Email = user.Email,
             ProfilePictureUrl = user.ProfilePictureUrl,
             PreferredLanguage = user.PreferredLanguage,

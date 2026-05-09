@@ -90,7 +90,7 @@ public sealed class WidgetGalleryController : HumansControllerBase
             SampleProfileSummary = new ProfileSummaryViewModel
             {
                 UserId = currentUser.Id,
-                DisplayName = displayName,
+                BurnerName = displayName,
                 Email = currentUser.Email,
                 MembershipStatus = "Active",
                 MembershipTier = "Volunteer",
@@ -218,7 +218,7 @@ public sealed class WidgetGalleryController : HumansControllerBase
             UrgencyScore = u.UrgencyScore,
             Signups = u.Signups
                 .Select(s => new ShiftSignupInfo(
-                    s.UserId, s.DisplayName, s.Status,
+                    s.UserId, s.BurnerName, s.Status,
                     s.HasProfilePicture ? $"/Profile/Picture?id={s.UserId}" : null))
                 .ToList(),
         };

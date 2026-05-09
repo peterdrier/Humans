@@ -12,7 +12,7 @@ public record ApplicationAdminRowDto(
     Guid Id,
     Guid UserId,
     string UserEmail,
-    string UserDisplayName,
+    string UserBurnerName,
     ApplicationStatus Status,
     MembershipTier MembershipTier,
     Instant SubmittedAt,

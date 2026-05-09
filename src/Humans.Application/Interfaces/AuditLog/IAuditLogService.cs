@@ -84,9 +84,10 @@ public interface IAuditLogService
         string? actionFilter, int page, int pageSize, CancellationToken ct = default);
 
     /// <summary>
-    /// Batch-loads user display names for a set of user IDs.
+    /// Batch-loads user BurnerNames for a set of user IDs (sourced from User.DisplayName,
+    /// which equals Profile.BurnerName post-write-through-sync per issue #692).
     /// </summary>
-    Task<Dictionary<Guid, string>> GetUserDisplayNamesAsync(IReadOnlyList<Guid> userIds, CancellationToken ct = default);
+    Task<Dictionary<Guid, string>> GetUserBurnerNamesAsync(IReadOnlyList<Guid> userIds, CancellationToken ct = default);
 
     /// <summary>
     /// Batch-loads team names and slugs for a set of team IDs.
@@ -123,11 +124,11 @@ public interface IAuditLogService
 }
 
 /// <summary>
-/// Full audit log page with display name dictionaries for rendering.
+/// Full audit log page with BurnerName dictionaries for rendering (issue #692).
 /// </summary>
 public record AuditLogPageResult(
     IReadOnlyList<AuditLogEntry> Items,
     int TotalCount,
     int AnomalyCount,
-    Dictionary<Guid, string> UserDisplayNames,
+    Dictionary<Guid, string> UserBurnerNames,
     Dictionary<Guid, (string Name, string Slug)> TeamNames);

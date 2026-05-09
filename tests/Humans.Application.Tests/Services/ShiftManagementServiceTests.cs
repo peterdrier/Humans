@@ -251,7 +251,7 @@ public class ShiftManagementServiceTests : IDisposable
         results.Should().HaveCount(1);
         var signups = results[0].Signups;
         signups.Should().HaveCount(2);
-        signups.Select(s => s.DisplayName).Should().BeEquivalentTo(["Alice", "Bob"]);
+        signups.Select(s => s.BurnerName).Should().BeEquivalentTo(["Alice", "Bob"]);
     }
 
     [HumansFact]
@@ -273,9 +273,9 @@ public class ShiftManagementServiceTests : IDisposable
         // Assert: Confirmed (Zara) first, then Pending (Alice), regardless of name order
         var signups = results[0].Signups;
         signups.Should().HaveCount(2);
-        signups[0].DisplayName.Should().Be("Zara");
+        signups[0].BurnerName.Should().Be("Zara");
         signups[0].Status.Should().Be(SignupStatus.Confirmed);
-        signups[1].DisplayName.Should().Be("Alice");
+        signups[1].BurnerName.Should().Be("Alice");
         signups[1].Status.Should().Be(SignupStatus.Pending);
     }
 

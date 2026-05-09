@@ -233,7 +233,7 @@ public class CampController : HumansCampControllerBase
 
         // Issue #692: BurnerName-aware sender label.
         var senderProfile = await _profileService.GetFullProfileAsync(currentUser.Id);
-        var senderName = senderProfile?.DisplayName ?? currentUser.DisplayName;
+        var senderName = senderProfile?.BurnerName ?? currentUser.DisplayName;
 
         try
         {
@@ -458,7 +458,7 @@ public class CampController : HumansCampControllerBase
                 m.Id,
                 m.UserId,
                 users.TryGetValue(m.UserId, out var u) ? u.DisplayName ?? "(unknown)" : "(unknown)"))
-            .OrderBy(o => o.DisplayName, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(o => o.BurnerName, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         var rows = panelData.Rows.Select(r => new CampRoleRowViewModel
@@ -469,7 +469,7 @@ public class CampController : HumansCampControllerBase
             SlotCount = r.Definition.SlotCount,
             MinimumRequired = r.Definition.MinimumRequired,
             FilledSlots = r.FilledSlots
-                .Select(s => new CampRoleSlotViewModel(s.AssignmentId, s.CampMemberId, s.UserId, s.DisplayName))
+                .Select(s => new CampRoleSlotViewModel(s.AssignmentId, s.CampMemberId, s.UserId, s.BurnerName))
                 .ToList(),
             EmptySlotCount = r.EmptySlotCount,
             OverCapacity = r.OverCapacity,
@@ -499,7 +499,7 @@ public class CampController : HumansCampControllerBase
             {
                 CampMemberId = m.CampMemberId,
                 UserId = m.UserId,
-                DisplayName = m.DisplayName,
+                BurnerName = m.BurnerName,
                 RequestedAt = m.RequestedAt,
                 ConfirmedAt = m.ConfirmedAt,
                 IsLead = m.IsLead
@@ -510,7 +510,7 @@ public class CampController : HumansCampControllerBase
             {
                 CampMemberId = m.CampMemberId,
                 UserId = m.UserId,
-                DisplayName = m.DisplayName,
+                BurnerName = m.BurnerName,
                 RequestedAt = m.RequestedAt,
                 ConfirmedAt = m.ConfirmedAt,
                 IsLead = m.IsLead
@@ -1259,7 +1259,7 @@ public class CampController : HumansCampControllerBase
             {
                 LeadId = lead.LeadId,
                 UserId = lead.UserId,
-                DisplayName = lead.DisplayName
+                BurnerName = lead.BurnerName
             })
             .ToList();
         model.Images = editData.Images
@@ -1310,7 +1310,7 @@ public class CampController : HumansCampControllerBase
                 {
                     LeadId = lead.LeadId,
                     UserId = lead.UserId,
-                    DisplayName = lead.DisplayName
+                    BurnerName = lead.BurnerName
                 }).ToList(),
             Images = editData.Images
                 .Select(image => new CampImageViewModel
@@ -1349,7 +1349,7 @@ public class CampController : HumansCampControllerBase
             {
                 LeadId = lead.LeadId,
                 UserId = lead.UserId,
-                DisplayName = lead.DisplayName
+                BurnerName = lead.BurnerName
             }).ToList(),
             CurrentSeason = campDetail.CurrentSeason is null
             ? null

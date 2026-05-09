@@ -125,7 +125,7 @@ public record WorkspaceAccountInfo(
     DateTime CreationTime,
     DateTime? LastLoginTime,
     Guid? MatchedUserId,
-    string? MatchedDisplayName,
+    string? MatchedBurnerName,
     bool IsUsedAsPrimary,
     bool IsEnrolledIn2Sv,
     string? RecoveryEmail = null);

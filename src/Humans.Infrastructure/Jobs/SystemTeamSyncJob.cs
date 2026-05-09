@@ -576,10 +576,10 @@ public class SystemTeamSyncJob : ISystemTeamSync
 
             // Issue #692: BurnerName-aware audit/log label.
             var fp = await ProfileService.GetFullProfileAsync(user.Id, cancellationToken);
-            var displayName = fp?.DisplayName ?? user.DisplayName;
-            step.Fixed(user.Id, displayName, $"Set GoogleEmail to {nobodiesEmail}");
+            var burnerName = fp?.BurnerName ?? user.DisplayName;
+            step.Fixed(user.Id, burnerName, $"Set GoogleEmail to {nobodiesEmail}");
             _logger.LogInformation(
-                "Backfilled GoogleEmail for {User} to {Email}", displayName, nobodiesEmail);
+                "Backfilled GoogleEmail for {User} to {Email}", burnerName, nobodiesEmail);
         }
 
         report?.Steps.Add(step);

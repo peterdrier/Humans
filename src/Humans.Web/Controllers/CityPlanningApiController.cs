@@ -76,7 +76,7 @@ public class CityPlanningApiController : ControllerBase
         var response = history.Select(h => new
         {
             id = h.Id,
-            modifiedByDisplayName = h.ModifiedByDisplayName,
+            modifiedByBurnerName = h.ModifiedByBurnerName,
             modifiedAt = h.ModifiedAt.ToDisplayDateTime(),
             areaSqm = h.AreaSqm,
             note = h.Note,

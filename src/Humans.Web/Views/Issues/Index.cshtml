@@ -70,11 +70,11 @@
                 {
                     if (Model.ReporterFilter == r.UserId)
                     {
-                        <option value="@r.UserId" selected>@r.DisplayName (@r.Count)</option>
+                        <option value="@r.UserId" selected>@r.BurnerName (@r.Count)</option>
                     }
                     else
                     {
-                        <option value="@r.UserId">@r.DisplayName (@r.Count)</option>
+                        <option value="@r.UserId">@r.BurnerName (@r.Count)</option>
                     }
                 }
             </select>

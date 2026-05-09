@@ -25,11 +25,11 @@ public sealed record AuditEvent(
     Instant OccurredAt,
     AuditAction Action,
     Guid? ActorUserId,
-    string? ActorDisplayName,
+    string? ActorBurnerName,
     string EntityType,
     Guid EntityId,
     Guid? SubjectUserId,
-    string? SubjectDisplayName,
+    string? SubjectBurnerName,
     Guid? TargetTeamId,
     string? TargetTeamName,
     string? TargetTeamSlug,
@@ -81,7 +81,7 @@ public sealed record AuditEvent(
         string actor = ActorUserId.HasValue
             ? actorIsViewer
                 ? "You"
-                : (ActorDisplayName ?? "Someone")
+                : (ActorBurnerName ?? "Someone")
             : "System";
 
         // Subject token. Suppressed when actor == subject (keeps the sentence
@@ -91,7 +91,7 @@ public sealed record AuditEvent(
         {
             subject = subjectIsViewer
                 ? actorIsViewer ? "you" : "You"
-                : (SubjectDisplayName ?? "someone");
+                : (SubjectBurnerName ?? "someone");
         }
 
         // When no subject will render, prefer the self-verb if defined; else

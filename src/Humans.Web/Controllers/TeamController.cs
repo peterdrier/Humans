@@ -163,7 +163,7 @@ public class TeamController : HumansControllerBase
             PageContentHtml = pageContentHtml,
             CallsToAction = team.CallsToAction ?? [],
             PageContentUpdatedAt = team.PageContentUpdatedAt?.ToDateTimeUtc(),
-            PageContentUpdatedByDisplayName = teamPage.PageContentUpdatedByDisplayName,
+            PageContentUpdatedByBurnerName = teamPage.PageContentUpdatedByBurnerName,
             IsAuthenticated = teamPage.IsAuthenticated,
             CanEditPageContent = teamPage.CanCurrentUserManage,
             RoleDefinitions = teamPage.RoleDefinitions.Select(TeamRoleDefinitionViewModel.FromEntity).ToList(),
@@ -224,7 +224,7 @@ public class TeamController : HumansControllerBase
                         viewModel.SubteamLeads.Add(new ChildTeamMemberViewModel
                         {
                             UserId = cm.UserId,
-                            DisplayName = ResolveChildName(cm),
+                            BurnerName = ResolveChildName(cm),
                             // Populated below via ProfilePictureUrlHelper (custom uploads only).
                             ProfilePictureUrl = null,
                             ChildTeamName = child.Name,
@@ -240,7 +240,7 @@ public class TeamController : HumansControllerBase
                     viewModel.ChildTeamMembers.Add(new ChildTeamMemberViewModel
                     {
                         UserId = cm.UserId,
-                        DisplayName = ResolveChildName(cm),
+                        BurnerName = ResolveChildName(cm),
                         // Populated below via ProfilePictureUrlHelper (custom uploads only).
                         ProfilePictureUrl = null,
                         ChildTeamName = child.Name,
@@ -312,7 +312,7 @@ public class TeamController : HumansControllerBase
         IReadOnlyDictionary<Guid, string> customPictureByUserId) => new()
         {
             UserId = member.UserId,
-            DisplayName = member.DisplayName,
+            BurnerName = member.BurnerName,
             Email = member.Email ?? string.Empty,
             ProfilePictureUrl = member.ProfilePictureUrl,
             HasCustomProfilePicture = customPictureByUserId.ContainsKey(member.UserId),
@@ -375,7 +375,7 @@ public class TeamController : HumansControllerBase
             Birthdays = profilesWithBirthdays.Select(p => new BirthdayEntryViewModel
             {
                 UserId = p.UserId,
-                DisplayName = p.DisplayName,
+                BurnerName = p.BurnerName,
                 EffectiveProfilePictureUrl = effectiveUrls.GetValueOrDefault(p.UserId),
                 DayOfMonth = p.Day,
                 Month = p.Month,
@@ -423,7 +423,7 @@ public class TeamController : HumansControllerBase
         var markers = profiles.Select(p => new MapMarkerViewModel
         {
             UserId = p.UserId,
-            DisplayName = p.DisplayName,
+            BurnerName = p.BurnerName,
             ProfilePictureUrl = effectiveUrls.GetValueOrDefault(p.UserId),
             Latitude = p.Latitude,
             Longitude = p.Longitude,
@@ -558,7 +558,7 @@ public class TeamController : HumansControllerBase
         // to OTHER users (the team coordinators). Never the legacy
         // auth-provider name.
         var actorProfile = await _profileService.GetFullProfileAsync(user.Id);
-        var actorName = actorProfile?.DisplayName ?? user.DisplayName;
+        var actorName = actorProfile?.BurnerName ?? user.DisplayName;
 
         try
         {

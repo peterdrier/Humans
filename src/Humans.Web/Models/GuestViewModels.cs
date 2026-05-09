@@ -5,7 +5,7 @@ namespace Humans.Web.Models;
 /// </summary>
 public class GuestDashboardViewModel
 {
-    public string DisplayName { get; set; } = string.Empty;
+    public string BurnerName { get; set; } = string.Empty;
 
     /// <summary>Whether the user has any matched ticket orders or attendee records.</summary>
     public bool HasTickets { get; set; }

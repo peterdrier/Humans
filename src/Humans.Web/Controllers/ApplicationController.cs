@@ -188,7 +188,7 @@ public class ApplicationController : HumansControllerBase
                 {
                     Status = h.Status,
                     ChangedAt = h.ChangedAt.ToDateTimeUtc(),
-                    ChangedBy = h.ChangedByDisplayName ?? string.Empty,
+                    ChangedBy = h.ChangedByBurnerName ?? string.Empty,
                     Notes = h.Notes
                 }).ToList()
         };
@@ -239,7 +239,7 @@ public class ApplicationController : HumansControllerBase
             Id = a.Id,
             UserId = a.UserId,
             UserEmail = a.UserEmail,
-            UserDisplayName = a.UserDisplayName,
+            UserBurnerName = a.UserBurnerName,
             Status = a.Status,
             StatusBadgeClass = a.Status.GetBadgeClass(),
             SubmittedAt = a.SubmittedAt.ToDateTimeUtc(),
@@ -276,7 +276,7 @@ public class ApplicationController : HumansControllerBase
             Id = application.Id,
             UserId = application.UserId,
             UserEmail = application.UserEmail,
-            UserDisplayName = application.UserDisplayName,
+            UserBurnerName = application.UserBurnerName,
             UserProfilePictureUrl = application.UserProfilePictureUrl,
             Status = application.Status,
             Motivation = application.Motivation,
@@ -295,7 +295,7 @@ public class ApplicationController : HumansControllerBase
                 {
                     Status = h.Status,
                     ChangedAt = h.ChangedAt.ToDateTimeUtc(),
-                    ChangedBy = h.ChangedByDisplayName ?? string.Empty,
+                    ChangedBy = h.ChangedByBurnerName ?? string.Empty,
                     Notes = h.Notes
                 }).ToList()
         };

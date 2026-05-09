@@ -126,8 +126,8 @@ public class AgentController : HumansControllerBase
         var conv = await LoadConversationForViewerAsync(isAdmin, currentUser.Id, id, cancellationToken);
         if (conv is null) return NotFound();
 
-        var displayName = await ResolveOwnerDisplayNameAsync(isAdmin, conv, cancellationToken);
-        return View(new AgentConversationDetailViewModel(conv, displayName, IsAdminView: isAdmin));
+        var burnerName = await ResolveOwnerBurnerNameAsync(isAdmin, conv, cancellationToken);
+        return View(new AgentConversationDetailViewModel(conv, burnerName, IsAdminView: isAdmin));
     }
 
     private Task<IReadOnlyList<AgentConversation>> LoadConversationsAsync(
@@ -151,13 +151,13 @@ public class AgentController : HumansControllerBase
         // Display names are only meaningful in admin mode (where the table
         // shows the Human column). Skip the lookup entirely for non-admins.
         if (!isAdmin || rows.Count == 0)
-            return rows.Select(r => new AgentConversationRow(r, DisplayName: null)).ToList();
+            return rows.Select(r => new AgentConversationRow(r, BurnerName: null)).ToList();
 
         var distinctUserIds = rows.Select(r => r.UserId).Distinct().ToArray();
         var users = await _users.GetByIdsAsync(distinctUserIds, ct);
         return rows.Select(r => new AgentConversationRow(
             Conversation: r,
-            DisplayName: users.TryGetValue(r.UserId, out var u) ? u.DisplayName : null)
+            BurnerName: users.TryGetValue(r.UserId, out var u) ? u.DisplayName : null)
         ).ToList();
     }
 
@@ -167,10 +167,11 @@ public class AgentController : HumansControllerBase
             ? _agent.GetConversationForAdminAsync(conversationId, ct)
             : _agent.GetConversationForUserAsync(currentUserId, conversationId, ct);
 
-    private async Task<string?> ResolveOwnerDisplayNameAsync(
+    private async Task<string?> ResolveOwnerBurnerNameAsync(
         bool isAdmin, AgentConversation conv, CancellationToken ct)
     {
         if (!isAdmin) return null;
+        // Issue #692: User.DisplayName == Profile.BurnerName post-write-through-sync.
         var owner = await _users.GetByIdAsync(conv.UserId, ct);
         return owner?.DisplayName ?? conv.UserId.ToString();
     }
@@ -195,15 +196,15 @@ public sealed record AgentConversationsViewModel(
     IReadOnlyList<AgentConversationRow> Rows,
     bool IsAdminView);
 
-/// <summary>One row in the conversations list. <see cref="DisplayName"/> is null
+/// <summary>One row in the conversations list. <see cref="BurnerName"/> is null
 /// for non-admin views (the column is hidden) and stitched in from
 /// <c>IUserService</c> for admin views.</summary>
-public sealed record AgentConversationRow(AgentConversation Conversation, string? DisplayName);
+public sealed record AgentConversationRow(AgentConversation Conversation, string? BurnerName);
 
-/// <summary>Conversation detail with display name (admin only) and an admin flag
+/// <summary>Conversation detail with BurnerName (admin only) and an admin flag
 /// the view uses to gate token counts, tool invocations, and the prompt-preview
 /// link.</summary>
 public sealed record AgentConversationDetailViewModel(
     AgentConversation Conversation,
-    string? DisplayName,
+    string? BurnerName,
     bool IsAdminView);

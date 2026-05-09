@@ -1811,7 +1811,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
                 mismatches.Add(new EmailMismatch
                 {
                     UserId = dbUser.Id,
-                    DisplayName = dbUser.DisplayName,
+                    BurnerName = dbUser.DisplayName,
                     StoredEmail = dbUser.Email,
                     GoogleEmail = matchedGoogleEmail
                 });

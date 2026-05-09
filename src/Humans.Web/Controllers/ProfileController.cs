@@ -244,7 +244,7 @@ public class ProfileController : HumansControllerBase
             PendingConsentCount = pendingConsentCount,
             IsApproved = profile?.IsApproved ?? false,
             IsOwnProfile = true,
-            DisplayName = ResolveDisplayName(profile, user),
+            ResolvedBurnerName = ResolveBurnerName(profile, user),
             CampaignGrants = campaignGrants,
         };
 
@@ -304,7 +304,7 @@ public class ProfileController : HumansControllerBase
             Id = profile?.Id ?? Guid.Empty,
             UserId = user.Id,
             Email = user.Email ?? string.Empty,
-            DisplayName = ResolveDisplayName(profile, user),
+            ResolvedBurnerName = ResolveBurnerName(profile, user),
             ProfilePictureUrl = user.ProfilePictureUrl,
             HasCustomProfilePicture = hasCustomPicture,
             CustomProfilePictureUrl = hasCustomPicture
@@ -655,7 +655,7 @@ public class ProfileController : HumansControllerBase
             var fullProfile = await _profileService.GetFullProfileAsync(user.Id);
             await _emailService.SendEmailVerificationAsync(
                 model.NewEmail.Trim(),
-                ResolveDisplayName(fullProfile, user),
+                ResolveBurnerName(fullProfile, user),
                 verificationUrl!,
                 result.IsConflict,
                 user.PreferredLanguage);
@@ -1213,7 +1213,7 @@ public class ProfileController : HumansControllerBase
             var targetFullProfile = await _profileService.GetFullProfileAsync(id, ct);
             await _emailService.SendEmailVerificationAsync(
                 email.Trim(),
-                ResolveDisplayName(targetFullProfile, targetUser),
+                ResolveBurnerName(targetFullProfile, targetUser),
                 verificationUrl!,
                 result.IsConflict,
                 targetUser.PreferredLanguage,
@@ -1822,7 +1822,8 @@ public class ProfileController : HumansControllerBase
         {
             Id = profile.Id,
             UserId = id,
-            DisplayName = profileUser?.DisplayName ?? "Unknown",
+            // Issue #692: User.DisplayName == Profile.BurnerName post-write-through-sync.
+            ResolvedBurnerName = profileUser?.DisplayName ?? "Unknown",
             IsOwnProfile = isOwnProfile,
             IsApproved = profile.IsApproved,
             NoShowHistory = noShowHistory,
@@ -1855,7 +1856,8 @@ public class ProfileController : HumansControllerBase
             var vm = new ProfileSummaryViewModel
             {
                 UserId = id,
-                DisplayName = popoverUser?.DisplayName ?? "Unknown",
+                // Issue #692: User.DisplayName == Profile.BurnerName post-write-through-sync.
+                BurnerName = popoverUser?.DisplayName ?? "Unknown",
                 Email = popoverUser?.Email,
                 ProfilePictureUrl = effectivePictureUrl,
                 PreferredLanguage = popoverUser?.PreferredLanguage,
@@ -1910,7 +1912,7 @@ public class ProfileController : HumansControllerBase
         var viewModel = new SendMessageViewModel
         {
             RecipientId = id,
-            RecipientDisplayName = ResolveDisplayName(recipientFullProfile, targetUser)
+            RecipientBurnerName = ResolveBurnerName(recipientFullProfile, targetUser)
         };
 
         return View(viewModel);
@@ -1948,7 +1950,7 @@ public class ProfileController : HumansControllerBase
         var recipientName = ResolveBurnerNameOrFallback(nameProfiles, id, targetUser.DisplayName);
 
         model.RecipientId = id;
-        model.RecipientDisplayName = recipientName;
+        model.RecipientBurnerName = recipientName;
 
         if (!ModelState.IsValid)
             return View(model);
@@ -2051,8 +2053,8 @@ public class ProfileController : HumansControllerBase
                 ? allRows.OrderBy(r => r.MembershipStatus, StringComparer.OrdinalIgnoreCase)
                 : allRows.OrderByDescending(r => r.MembershipStatus, StringComparer.OrdinalIgnoreCase),
             _ => ascending
-                ? allRows.OrderBy(r => r.DisplayName, StringComparer.OrdinalIgnoreCase)
-                : allRows.OrderByDescending(r => r.DisplayName, StringComparer.OrdinalIgnoreCase),
+                ? allRows.OrderBy(r => r.BurnerName, StringComparer.OrdinalIgnoreCase)
+                : allRows.OrderByDescending(r => r.BurnerName, StringComparer.OrdinalIgnoreCase),
         };
 
         var humans = sorted.Skip((page - 1) * pageSize)
@@ -2060,7 +2062,7 @@ public class ProfileController : HumansControllerBase
             .Select(r => new HumanSearchResultViewModel
             {
                 UserId = r.UserId,
-                BurnerName = r.DisplayName,
+                BurnerName = r.BurnerName,
                 ProfilePictureUrl = r.ProfilePictureUrl,
                 AdminEmail = r.Email,
                 MembershipStatus = r.MembershipStatus,
@@ -2117,7 +2119,7 @@ public class ProfileController : HumansControllerBase
         {
             UserId = data.User.Id,
             Email = effectiveEmail ?? string.Empty,
-            DisplayName = ResolveDisplayName(data.Profile, data.User),
+            BurnerName = ResolveBurnerName(data.Profile, data.User),
             ProfilePictureUrl = data.User.ProfilePictureUrl,
             CreatedAt = data.User.CreatedAt.ToDateTimeUtc(),
             LastLoginAt = data.User.LastLoginAt?.ToDateTimeUtc(),
@@ -2283,7 +2285,7 @@ public class ProfileController : HumansControllerBase
         var viewModel = new CreateRoleAssignmentViewModel
         {
             UserId = id,
-            UserDisplayName = ResolveDisplayName(fullProfile, user),
+            UserBurnerName = ResolveBurnerName(fullProfile, user),
             AvailableRoles = [.. RoleChecks.GetAssignableRoles(User)]
         };
 
@@ -2307,7 +2309,7 @@ public class ProfileController : HumansControllerBase
             // Issue #692: BurnerName-aware label.
             var fullProfile = await _profileService.GetFullProfileAsync(id);
             model.UserId = id;
-            model.UserDisplayName = ResolveDisplayName(fullProfile, user);
+            model.UserBurnerName = ResolveBurnerName(fullProfile, user);
             model.AvailableRoles = [.. RoleChecks.GetAssignableRoles(User)];
             return View(model);
         }
@@ -2381,8 +2383,8 @@ public class ProfileController : HumansControllerBase
 
         // Issue #692: BurnerName-aware label.
         var fullProfile = await _profileService.GetFullProfileAsync(roleAssignment.UserId);
-        var displayName = ResolveDisplayName(fullProfile, roleAssignment.User);
-        SetSuccess(string.Format(_localizer["Admin_RoleEnded"].Value, roleAssignment.RoleName, displayName));
+        var burnerName = ResolveBurnerName(fullProfile, roleAssignment.User);
+        SetSuccess(string.Format(_localizer["Admin_RoleEnded"].Value, roleAssignment.RoleName, burnerName));
         return RedirectToAction(nameof(AdminDetail), new { id = roleAssignment.UserId });
     }
 
@@ -2395,15 +2397,15 @@ public class ProfileController : HumansControllerBase
     /// readable at the call site without inflating action-method
     /// cyclomatic complexity (memory/architecture/no-business-logic-in-controllers).
     /// </summary>
-    private static string ResolveDisplayName(Profile? profile, User user)
+    private static string ResolveBurnerName(Profile? profile, User user)
     {
         if (profile is not null && !string.IsNullOrWhiteSpace(profile.BurnerName))
             return profile.BurnerName;
         return user.DisplayName;
     }
 
-    private static string ResolveDisplayName(FullProfile? fullProfile, User user) =>
-        fullProfile?.DisplayName ?? user.DisplayName;
+    private static string ResolveBurnerName(FullProfile? fullProfile, User user) =>
+        fullProfile?.BurnerName ?? user.DisplayName;
 
     private static string ResolveBurnerNameOrFallback(
         IReadOnlyDictionary<Guid, Profile> profiles,
@@ -2423,7 +2425,7 @@ public class ProfileController : HumansControllerBase
         var emails = await _userEmailService.GetUserEmailsAsync(user.Id, ct);
         // Issue #692: BurnerName-aware label for the emails view.
         var fullProfileForName = await _profileService.GetFullProfileAsync(user.Id, ct);
-        var burnerAwareDisplayName = ResolveDisplayName(fullProfileForName, user);
+        var burnerName = ResolveBurnerName(fullProfileForName, user);
 
         var canAdd = true;
         var minutesUntilResend = 0;
@@ -2484,7 +2486,7 @@ public class ProfileController : HumansControllerBase
             HasNobodiesTeamEmail = hasNobodiesTeam,
             GoogleEmailStatus = user.GoogleEmailStatus,
             TargetUserId = user.Id,
-            TargetDisplayName = burnerAwareDisplayName,
+            TargetBurnerName = burnerName,
             IsAdminContext = isAdminContext,
             WorkspaceLockedEmailId = workspaceLockedEmail?.Id,
             LegacyIdentityEmailColumn = isAdminContext

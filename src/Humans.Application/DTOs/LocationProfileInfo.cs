@@ -2,7 +2,7 @@ namespace Humans.Application.DTOs;
 
 public record LocationProfileInfo(
     Guid UserId,
-    string DisplayName,
+    string BurnerName,
     string? ProfilePictureUrl,
     double Latitude,
     double Longitude,

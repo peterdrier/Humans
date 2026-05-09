@@ -492,7 +492,7 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
 
         // Issue #692: BurnerName-aware recipient label.
         var fullProfile = await _profileService.GetFullProfileAsync(grant.UserId, ct);
-        var recipientName = fullProfile?.DisplayName ?? user.DisplayName;
+        var recipientName = fullProfile?.BurnerName ?? user.DisplayName;
 
         await _emailService.SendCampaignCodeAsync(
             BuildCampaignCodeRequest(

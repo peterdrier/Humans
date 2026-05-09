@@ -11,7 +11,7 @@ public interface ICityPlanningService
     Task<List<CampPolygonDto>> GetCampPolygonsAsync(int year, CancellationToken cancellationToken = default);
     Task<List<CampSeasonSummaryDto>> GetCampSeasonsWithoutCampPolygonAsync(int year, CancellationToken cancellationToken = default);
     Task<List<CampPolygonHistoryEntryDto>> GetCampPolygonHistoryAsync(Guid campSeasonId, CancellationToken cancellationToken = default);
-    Task<string?> GetUserDisplayNameAsync(Guid userId, CancellationToken cancellationToken = default);
+    Task<string?> GetUserBurnerNameAsync(Guid userId, CancellationToken cancellationToken = default);
 
     // Cross-section helpers removed in PR #543 (§15 migration). Call the owning section directly:
     //   - GetCampSeasonSoundZoneAsync / GetCampSeasonNameAsync → ICampService
@@ -64,7 +64,7 @@ public record CampSeasonSummaryDto(
 
 public record CampPolygonHistoryEntryDto(
     Guid Id,
-    string ModifiedByDisplayName,
+    string ModifiedByBurnerName,
     Instant ModifiedAt,
     double AreaSqm,
     string Note,

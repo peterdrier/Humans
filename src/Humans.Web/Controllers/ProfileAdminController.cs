@@ -95,7 +95,7 @@ public class ProfileAdminController : HumansControllerBase
 
         // Issue #692: BurnerName-aware label.
         CompareSide BuildSide(User user, FullProfile? profile, int teamCount, int roleCount) =>
-            new(user.Id, profile?.DisplayName ?? user.DisplayName, user.ProfilePictureUrl,
+            new(user.Id, profile?.BurnerName ?? user.DisplayName, user.ProfilePictureUrl,
                 profile?.AllUserEmails ?? Array.Empty<UserEmailSnapshot>(),
                 teamCount, roleCount,
                 user.LastLoginAt,

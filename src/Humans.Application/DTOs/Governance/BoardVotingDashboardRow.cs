@@ -11,7 +11,7 @@ namespace Humans.Application.DTOs.Governance;
 public record BoardVotingDashboardRow(
     Guid ApplicationId,
     Guid UserId,
-    string UserDisplayName,
+    string UserBurnerName,
     string? UserProfilePictureUrl,
     MembershipTier MembershipTier,
     string ApplicationMotivation,

@@ -383,7 +383,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         result[0].TeamName.Should().Be("Gate");
         result[0].PendingSignupCount.Should().Be(1);
         result[0].Coordinators.Should().HaveCount(1);
-        result[0].Coordinators[0].DisplayName.Should().Be("coord");
+        result[0].Coordinators[0].BurnerName.Should().Be("coord");
     }
 
     [HumansFact]

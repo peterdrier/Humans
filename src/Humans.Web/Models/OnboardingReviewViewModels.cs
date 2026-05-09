@@ -11,7 +11,7 @@ public class OnboardingReviewIndexViewModel
 public class OnboardingReviewItemViewModel
 {
     public Guid UserId { get; set; }
-    public string DisplayName { get; set; } = string.Empty;
+    public string BurnerName { get; set; } = string.Empty;
     public string LegalName { get; set; } = string.Empty;
     public string? ProfilePictureUrl { get; set; }
     public string Email { get; set; } = string.Empty;
@@ -26,7 +26,7 @@ public class OnboardingReviewItemViewModel
 public class OnboardingReviewDetailViewModel
 {
     public Guid UserId { get; set; }
-    public string DisplayName { get; set; } = string.Empty;
+    public string BurnerName { get; set; } = string.Empty;
     public string? ProfilePictureUrl { get; set; }
     public string Email { get; set; } = string.Empty;
     public string FirstName { get; set; } = string.Empty;

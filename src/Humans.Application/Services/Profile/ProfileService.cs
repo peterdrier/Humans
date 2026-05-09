@@ -628,7 +628,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
             .Where(p => p.IsApproved && !p.IsSuspended && p.BirthdayMonth == month && p.BirthdayDay.HasValue)
             .OrderBy(p => p.BirthdayDay)
             .Select(p => new BirthdayProfileInfo(
-                p.UserId, p.DisplayName, p.ProfilePictureUrl,
+                p.UserId, p.BurnerName, p.ProfilePictureUrl,
                 p.HasCustomPicture, p.ProfileId, p.BirthdayDay!.Value, p.BirthdayMonth!.Value))
             .ToList();
     }
@@ -643,7 +643,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         return snapshot
             .Where(p => p.IsApproved && !p.IsSuspended && p.Latitude.HasValue && p.Longitude.HasValue)
             .Select(p => new LocationProfileInfo(
-                p.UserId, p.DisplayName, p.ProfilePictureUrl,
+                p.UserId, p.BurnerName, p.ProfilePictureUrl,
                 p.Latitude!.Value, p.Longitude!.Value, p.City, p.CountryCode))
             .ToList();
     }

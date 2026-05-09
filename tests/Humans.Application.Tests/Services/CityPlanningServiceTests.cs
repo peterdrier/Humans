@@ -412,7 +412,7 @@ public class CityPlanningServiceTests : IDisposable
         history.Should().HaveCount(2);
         history[0].AreaSqm.Should().Be(200.0); // Most recent first
         history[1].AreaSqm.Should().Be(100.0);
-        history[0].ModifiedByDisplayName.Should().Be("Test User");
+        history[0].ModifiedByBurnerName.Should().Be("Test User");
     }
 
     [HumansFact(Timeout = 10000)]
@@ -432,7 +432,7 @@ public class CityPlanningServiceTests : IDisposable
         var history = await _sut.GetCampPolygonHistoryAsync(campSeasonId);
 
         history.Should().HaveCount(1);
-        history[0].ModifiedByDisplayName.Should().Be(userId.ToString());
+        history[0].ModifiedByBurnerName.Should().Be(userId.ToString());
     }
 
     [HumansFact]
@@ -538,25 +538,25 @@ public class CityPlanningServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task GetUserDisplayNameAsync_ReturnsProfileBurnerName()
+    public async Task GetUserBurnerNameAsync_ReturnsProfileBurnerName()
     {
         var userId = Guid.NewGuid();
         _profileService.GetProfileAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new Profile { UserId = userId, BurnerName = "Burner Name" });
 
-        var result = await _sut.GetUserDisplayNameAsync(userId);
+        var result = await _sut.GetUserBurnerNameAsync(userId);
 
         result.Should().Be("Burner Name");
     }
 
     [HumansFact]
-    public async Task GetUserDisplayNameAsync_ReturnsNull_WhenNoProfile()
+    public async Task GetUserBurnerNameAsync_ReturnsNull_WhenNoProfile()
     {
         var userId = Guid.NewGuid();
         _profileService.GetProfileAsync(userId, Arg.Any<CancellationToken>())
             .Returns((Profile?)null);
 
-        var result = await _sut.GetUserDisplayNameAsync(userId);
+        var result = await _sut.GetUserBurnerNameAsync(userId);
 
         result.Should().BeNull();
     }

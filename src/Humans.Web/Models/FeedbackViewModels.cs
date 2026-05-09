@@ -43,13 +43,13 @@ public class FeedbackPageViewModel
 public class AssigneeOption
 {
     public Guid Id { get; set; }
-    public string DisplayName { get; set; } = string.Empty;
+    public string BurnerName { get; set; } = string.Empty;
 }
 
 public class ReporterDropdownItem
 {
     public Guid UserId { get; set; }
-    public string DisplayName { get; set; } = string.Empty;
+    public string BurnerName { get; set; } = string.Empty;
     public int Count { get; set; }
 }
 

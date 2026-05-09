@@ -54,10 +54,10 @@ public class EmailsViewModel
     public Guid TargetUserId { get; set; }
 
     /// <summary>
-    /// Display name of the target user. Used in the admin context banner so
+    /// BurnerName of the target user. Used in the admin context banner so
     /// it reads "Managing emails for {name}" rather than a guid fragment.
     /// </summary>
-    public string? TargetDisplayName { get; set; }
+    public string? TargetBurnerName { get; set; }
 
     /// <summary>
     /// True when this view is being rendered against another user's grid by an admin.

@@ -8,7 +8,7 @@ namespace Humans.Application.DTOs;
 /// </summary>
 public record MemberSummary(
     Guid UserId,
-    string DisplayName,
+    string BurnerName,
     string Email,
     MembershipStatus Status,
     IReadOnlyList<string> Roles,

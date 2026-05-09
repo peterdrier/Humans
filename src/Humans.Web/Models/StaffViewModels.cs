@@ -76,6 +76,6 @@ public class StaffRoleSectionViewModel
 public class StaffRoleHolderViewModel
 {
     public Guid UserId { get; init; }
-    public string DisplayName { get; init; } = string.Empty;
+    public string BurnerName { get; init; } = string.Empty;
     public string? ProfilePictureUrl { get; init; }
 }

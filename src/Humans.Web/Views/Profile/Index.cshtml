@@ -3,16 +3,16 @@
 @inject IAuthorizationService AuthService
 @model Humans.Web.Models.ProfileViewModel
 @{
-    ViewData["Title"] = Model.IsOwnProfile ? Localizer["Profile_Title"].Value : Model.DisplayName;
+    ViewData["Title"] = Model.IsOwnProfile ? Localizer["Profile_Title"].Value : Model.ResolvedBurnerName;
 }
 
 <div class="row align-items-start">
     <div class="@(Model.IsOwnProfile ? "col-md-8" : "col-md-12")">
         <div class="d-flex justify-content-between align-items-center">
-            <h1>@(Model.IsOwnProfile ? Localizer["Profile_Title"] : Model.DisplayName)</h1>
+            <h1>@(Model.IsOwnProfile ? Localizer["Profile_Title"] : Model.ResolvedBurnerName)</h1>
             <div class="d-flex gap-2">
                 <vc:access-matrix section="Profile" />
-                <human-link user-id="@Model.UserId" display-name="Admin" admin="true" class="btn btn-sm btn-outline-secondary" authorize-policy="HumanAdminBoardOrAdmin">
+                <human-link user-id="@Model.UserId" burner-name="Admin" admin="true" class="btn btn-sm btn-outline-secondary" authorize-policy="HumanAdminBoardOrAdmin">
                     <i class="fa-solid fa-user-shield"></i> Admin <i class="fa-solid fa-lock auth-lock-icon"></i>
                 </human-link>
             </div>
@@ -73,7 +73,7 @@
 
         @if (!Model.IsOwnProfile && Model.CanViewShiftSignups)
         {
-            <vc:shift-signups user-id="@Model.UserId" view-mode="@ShiftSignupsViewMode.Admin" display-name="@Model.DisplayName" />
+            <vc:shift-signups user-id="@Model.UserId" view-mode="@ShiftSignupsViewMode.Admin" burner-name="@Model.ResolvedBurnerName" />
         }
 
         @if (Model.NoShowHistory != null && Model.NoShowHistory.Count > 0)

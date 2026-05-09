@@ -44,7 +44,7 @@ public interface IFeedbackService
     Task<int> GetActionableCountAsync(
         CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<(Guid UserId, string DisplayName, int Count)>> GetDistinctReportersAsync(
+    Task<IReadOnlyList<(Guid UserId, string BurnerName, int Count)>> GetDistinctReportersAsync(
         CancellationToken cancellationToken = default);
 
     /// <summary>

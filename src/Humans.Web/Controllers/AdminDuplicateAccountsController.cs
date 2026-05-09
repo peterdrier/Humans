@@ -46,7 +46,7 @@ public class AdminDuplicateAccountsController : HumansControllerBase
                 Accounts = g.Accounts.Select(a => new DuplicateAccountItemViewModel
                 {
                     UserId = a.UserId,
-                    DisplayName = a.DisplayName,
+                    BurnerName = a.BurnerName,
                     Email = a.Email,
                     ProfilePictureUrl = a.ProfilePictureUrl,
                     MembershipTier = a.MembershipTier,
@@ -128,7 +128,7 @@ public class AdminDuplicateAccountsController : HumansControllerBase
         return new ProfileSummaryViewModel
         {
             UserId = userId,
-            DisplayName = accountInfo.DisplayName,
+            BurnerName = accountInfo.BurnerName,
             Email = accountInfo.Email,
             ProfilePictureUrl = accountInfo.ProfilePictureUrl,
             MembershipTier = accountInfo.MembershipTier,

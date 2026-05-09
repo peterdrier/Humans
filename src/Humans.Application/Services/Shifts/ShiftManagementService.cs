@@ -627,12 +627,14 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
                             userLookup?.TryGetValue(ss.UserId, out user);
                             return (
                                 ss.UserId,
-                                DisplayName: user?.DisplayName ?? string.Empty,
+                                // Issue #692: User.DisplayName == Profile.BurnerName
+                                // post-write-through-sync.
+                                BurnerName: user?.DisplayName ?? string.Empty,
                                 ss.Status,
                                 HasProfilePicture: user?.ProfilePictureUrl is not null);
                         })
                         .OrderBy(ss => ss.Status == SignupStatus.Confirmed ? 0 : 1)
-                        .ThenBy(ss => ss.DisplayName, StringComparer.OrdinalIgnoreCase)
+                        .ThenBy(ss => ss.BurnerName, StringComparer.OrdinalIgnoreCase)
                         .ToList()
                     : [];
                 return new UrgentShift(s, score, confirmedCount, remaining, teamName, signups);

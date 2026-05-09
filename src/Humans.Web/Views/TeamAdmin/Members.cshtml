@@ -119,7 +119,7 @@
                     {
                         <tr>
                             <td>
-                                <human-link user-id="@request.UserId" display-name="@request.UserDisplayName"
+                                <human-link user-id="@request.UserId" burner-name="@request.UserBurnerName"
                                            mode="AvatarName" size="32" show-popover="true"
                                            profile-picture-url="@request.UserProfilePictureUrl">
                                     <small class="text-muted">@request.UserEmail</small>
@@ -167,7 +167,7 @@
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                         </div>
                         <div class="modal-body">
-                            <p>@string.Format(Localizer["TeamAdmin_RejectingFrom"].Value, request.UserDisplayName)</p>
+                            <p>@string.Format(Localizer["TeamAdmin_RejectingFrom"].Value, request.UserBurnerName)</p>
                             <div class="mb-3">
                                 <label for="notes-@request.Id" class="form-label">@Localizer["TeamAdmin_RejectionReason"]</label>
                                 <textarea name="Notes" id="notes-@request.Id" class="form-control" rows="3" required></textarea>
@@ -241,7 +241,7 @@
                     {
                         <tr>
                             <td>
-                                <human-link user-id="@member.UserId" display-name="@member.DisplayName"
+                                <human-link user-id="@member.UserId" burner-name="@member.BurnerName"
                                            mode="AvatarName" size="40" show-popover="true"
                                            profile-picture-url="@member.EffectiveProfilePictureUrl">
                                     <small class="text-muted">@member.Email</small>
@@ -253,7 +253,7 @@
                             @if (Model.CanProvisionEmails)
                             {
                                 <td>
-                                    @await Component.InvokeAsync("NobodiesEmailBadge", new { userId = member.UserId, mode = "provision", teamSlug = Model.TeamSlug, displayName = member.DisplayName })
+                                    @await Component.InvokeAsync("NobodiesEmailBadge", new { userId = member.UserId, mode = "provision", teamSlug = Model.TeamSlug, burnerName = member.BurnerName })
                                 </td>
                             }
                             <td>@member.JoinedAt.ToDisplayCompactDate()</td>
@@ -347,7 +347,7 @@ else
                         <div class="card-body py-2">
                             <strong>This action will be recorded:</strong>
                             <em id="sensitiveAuditPreview">
-                                @Model.ActorDisplayName granting <span id="sensitiveTargetName">this human</span> access to @Model.TeamName on @DateTime.UtcNow.ToString("d MMM yyyy") at @DateTime.UtcNow.ToString("HH:mm") UTC
+                                @Model.ActorBurnerName granting <span id="sensitiveTargetName">this human</span> access to @Model.TeamName on @DateTime.UtcNow.ToString("d MMM yyyy") at @DateTime.UtcNow.ToString("HH:mm") UTC
                             </em>
                         </div>
                     </div>

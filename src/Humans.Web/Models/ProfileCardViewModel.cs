@@ -11,11 +11,10 @@ namespace Humans.Web.Models;
 public class ProfileCardViewModel
 {
     public Guid UserId { get; set; }
-    public string DisplayName { get; set; } = string.Empty;
+    public string BurnerName { get; set; } = string.Empty;
     public string? ProfilePictureUrl { get; set; }
     public bool HasCustomProfilePicture { get; set; }
     public string? CustomProfilePictureUrl { get; set; }
-    public string BurnerName { get; set; } = string.Empty;
     public string? Pronouns { get; set; }
     public MembershipStatus MembershipStatus { get; set; }
     public bool IsApproved { get; set; }

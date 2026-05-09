@@ -66,9 +66,12 @@ public sealed class AgentUserSnapshotProvider : IAgentUserSnapshotProvider
             .Select(r => (r.RoleName, r.ValidTo?.ToInvariantInstantString() ?? "—"))
             .ToList();
 
+        // Issue #692: User.DisplayName == Profile.BurnerName post-write-through-sync,
+        // so reading User.DisplayName here yields the BurnerName for any post-onboarding
+        // human; pre-onboarding rows fall through to the legacy auth-provider name.
         return new AgentUserSnapshot(
             UserId: userId,
-            DisplayName: user?.DisplayName ?? string.Empty,
+            BurnerName: user?.DisplayName ?? string.Empty,
             PreferredLocale: user?.PreferredLanguage ?? "es",
             Tier: profile?.MembershipTier.ToString() ?? "Volunteer",
             IsApproved: profile?.IsApproved ?? false,

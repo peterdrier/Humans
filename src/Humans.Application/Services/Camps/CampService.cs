@@ -1672,13 +1672,13 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         var users = await _userService.GetByIdsAsync(userIds, cancellationToken);
         var userMap = users.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.DisplayName);
 
-        static string DisplayName(Guid userId, IReadOnlyDictionary<Guid, string> names) =>
+        static string ResolveBurnerName(Guid userId, IReadOnlyDictionary<Guid, string> names) =>
             names.GetValueOrDefault(userId) ?? "Unknown";
 
         var pending = members
             .Where(m => m.Status == CampMemberStatus.Pending)
             .Select(m => new CampMemberRow(
-                m.Id, m.UserId, DisplayName(m.UserId, userMap), m.RequestedAt, m.ConfirmedAt,
+                m.Id, m.UserId, ResolveBurnerName(m.UserId, userMap), m.RequestedAt, m.ConfirmedAt,
                 IsLead: leadUserIds.Contains(m.UserId)))
             .ToList();
 
@@ -1690,7 +1690,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         var activeFromMembers = members
             .Where(m => m.Status == CampMemberStatus.Active)
             .Select(m => new CampMemberRow(
-                m.Id, m.UserId, DisplayName(m.UserId, userMap), m.RequestedAt, m.ConfirmedAt,
+                m.Id, m.UserId, ResolveBurnerName(m.UserId, userMap), m.RequestedAt, m.ConfirmedAt,
                 IsLead: leadUserIds.Contains(m.UserId)));
 
         var activeFromLeads = activeLeads
@@ -1698,7 +1698,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             .Select(l => new CampMemberRow(
                 CampMemberId: Guid.Empty,
                 UserId: l.UserId,
-                DisplayName: DisplayName(l.UserId, userMap),
+                BurnerName: ResolveBurnerName(l.UserId, userMap),
                 RequestedAt: l.JoinedAt,
                 ConfirmedAt: l.JoinedAt,
                 IsLead: true));
@@ -1706,7 +1706,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         var active = activeFromMembers
             .Concat(activeFromLeads)
             .OrderByDescending(r => r.IsLead)
-            .ThenBy(r => r.DisplayName, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(r => r.BurnerName, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         return new CampMemberListData(campSeasonId, season.Year, pending, active);

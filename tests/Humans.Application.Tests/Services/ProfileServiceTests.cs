@@ -1323,12 +1323,11 @@ public class ProfileServiceTests : IDisposable
 
         result.Should().NotBeNull();
         result!.UserId.Should().Be(userId);
-        // Issue #692: BurnerName-aware DisplayName — when a Profile has a
-        // BurnerName, FullProfile.DisplayName resolves to it.
-        result.DisplayName.Should().Be("Burner");
+        // Issue #692: FullProfile.BurnerName resolves through Profile.BurnerName
+        // when present, falling back to User.DisplayName for pre-onboarding rows.
+        result.BurnerName.Should().Be("Burner");
         result.ProfilePictureUrl.Should().Be("https://img");
         result.ProfileId.Should().Be(profileId);
-        result.BurnerName.Should().Be("Burner");
         result.City.Should().Be("Madrid");
         result.IsApproved.Should().BeTrue();
         result.CVEntries.Should().BeEmpty();
@@ -1510,17 +1509,20 @@ public class ProfileServiceTests : IDisposable
         return profile.Id;
     }
 
-    private FullProfile MakeFullProfile(Profile profile, Guid userId, string? displayName = null)
+    private FullProfile MakeFullProfile(Profile profile, Guid userId, string? burnerName = null)
     {
         var user = _dbContext.Users.Find(userId)!;
+        // Issue #692: BurnerName is the resolved name (Profile.BurnerName when set,
+        // else User.DisplayName per the canonical resolution rule).
+        var resolved = burnerName
+            ?? (!string.IsNullOrWhiteSpace(profile.BurnerName) ? profile.BurnerName : user.DisplayName);
         return new FullProfile(
             UserId: userId,
-            DisplayName: displayName ?? user.DisplayName,
+            BurnerName: resolved,
             ProfilePictureUrl: user.ProfilePictureUrl,
             HasCustomPicture: profile.ProfilePictureData is not null,
             ProfileId: profile.Id,
             UpdatedAtTicks: profile.UpdatedAt.ToUnixTimeTicks(),
-            BurnerName: profile.BurnerName,
             Bio: profile.Bio,
             Pronouns: profile.Pronouns,
             ContributionInterests: profile.ContributionInterests,

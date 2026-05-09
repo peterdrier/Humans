@@ -143,20 +143,20 @@ public sealed class MagicLinkService : IMagicLinkService
 
         var magicLinkUrl = _urlBuilder.BuildLoginUrl(user.Id, returnUrl);
 
-        // Issue #692: BurnerName-aware recipient label. FullProfile.DisplayName
-        // resolves to BurnerName when a Profile exists; we fall back through
-        // user.DisplayName (acceptable pre-onboarding fallback per the
-        // burnername-is-the-display-name rule) and ultimately the email
-        // address so the greeting is never blank.
+        // Issue #692: BurnerName-aware recipient label. FullProfile.BurnerName
+        // resolves through Profile.BurnerName when a Profile exists; we fall
+        // back through user.DisplayName (acceptable pre-onboarding fallback
+        // per the burnername-is-the-display-name rule) and ultimately the
+        // email address so the greeting is never blank.
         var fullProfile = await _profileService.GetFullProfileAsync(user.Id, ct);
-        var displayName = !string.IsNullOrWhiteSpace(fullProfile?.DisplayName)
-            ? fullProfile!.DisplayName
+        var burnerName = !string.IsNullOrWhiteSpace(fullProfile?.BurnerName)
+            ? fullProfile!.BurnerName
             : !string.IsNullOrWhiteSpace(user.DisplayName)
                 ? user.DisplayName
                 : sendToEmail;
 
         await _emailService.SendMagicLinkLoginAsync(
-            sendToEmail, displayName, magicLinkUrl, ct: ct);
+            sendToEmail, burnerName, magicLinkUrl, ct: ct);
 
         user.MagicLinkSentAt = now;
         await _userManager.UpdateAsync(user);

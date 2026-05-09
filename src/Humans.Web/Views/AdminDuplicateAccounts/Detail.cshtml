@@ -84,8 +84,8 @@
             <div class="card-header bg-success text-white">Keep Account A, Archive Account B</div>
             <div class="card-body">
                 <p class="small text-muted">
-                    Archive <strong>@Model.Account2.DisplayName</strong> and re-link its logins to
-                    <strong>@Model.Account1.DisplayName</strong>.
+                    Archive <strong>@Model.Account2.BurnerName</strong> and re-link its logins to
+                    <strong>@Model.Account1.BurnerName</strong>.
                 </p>
                 <form asp-action="Resolve" method="post">
                     @Html.AntiForgeryToken()
@@ -108,8 +108,8 @@
             <div class="card-header bg-success text-white">Keep Account B, Archive Account A</div>
             <div class="card-body">
                 <p class="small text-muted">
-                    Archive <strong>@Model.Account1.DisplayName</strong> and re-link its logins to
-                    <strong>@Model.Account2.DisplayName</strong>.
+                    Archive <strong>@Model.Account1.BurnerName</strong> and re-link its logins to
+                    <strong>@Model.Account2.BurnerName</strong>.
                 </p>
                 <form asp-action="Resolve" method="post">
                     @Html.AntiForgeryToken()

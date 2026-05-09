@@ -13,7 +13,7 @@ namespace Humans.Application.DTOs.Governance;
 public record BoardVotingDetailData(
     Guid ApplicationId,
     Guid UserId,
-    string DisplayName,
+    string BurnerName,
     string? ProfilePictureUrl,
     string Email,
     string FirstName,

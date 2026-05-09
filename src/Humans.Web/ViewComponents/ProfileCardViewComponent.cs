@@ -136,12 +136,12 @@ public class ProfileCardViewComponent : ViewComponent
         var model = new ProfileCardViewModel
         {
             UserId = userId,
-            // Issue #692: BurnerName-aware. profile is loaded above.
-            DisplayName = profile?.BurnerName ?? user.DisplayName,
+            // Issue #692: BurnerName resolves through Profile.BurnerName when
+            // present, falling back to User.DisplayName for pre-onboarding rows.
+            BurnerName = !string.IsNullOrWhiteSpace(profile?.BurnerName) ? profile.BurnerName : user.DisplayName,
             ProfilePictureUrl = user.ProfilePictureUrl,
             HasCustomProfilePicture = hasCustomPicture,
             CustomProfilePictureUrl = pictureUrl,
-            BurnerName = profile?.BurnerName ?? string.Empty,
             Pronouns = profile?.Pronouns,
             MembershipStatus = membershipSnapshot.Status,
             IsApproved = profile?.IsApproved ?? false,

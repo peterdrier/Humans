@@ -21,4 +21,4 @@ public sealed record CampRolesPanelSlot(
     Guid AssignmentId,
     Guid CampMemberId,
     Guid UserId,
-    string DisplayName);
+    string BurnerName);

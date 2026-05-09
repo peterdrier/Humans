@@ -20,7 +20,7 @@
                     @Localizer["Issue_OpenedBy"]
                     @if (Model.IsHandler)
                     {
-                        <human-link user-id="@Model.ReporterUserId" display-name="@Model.ReporterName" admin="true" show-popover="true" />
+                        <human-link user-id="@Model.ReporterUserId" burner-name="@Model.ReporterName" admin="true" show-popover="true" />
                     }
                     else
                     {
@@ -178,7 +178,7 @@
 
                 <dt class="col-5">@Localizer["Issue_Reporter"]</dt>
                 <dd class="col-7">
-                    <human-link user-id="@Model.ReporterUserId" display-name="@Model.ReporterName" admin="@Model.IsHandler" show-popover="true" />
+                    <human-link user-id="@Model.ReporterUserId" burner-name="@Model.ReporterName" admin="@Model.IsHandler" show-popover="true" />
                 </dd>
 
                 <dt class="col-5">@Localizer["Issue_Assignee"]</dt>
@@ -193,11 +193,11 @@
                                 {
                                     if (Model.AssigneeUserId == a.Id)
                                     {
-                                        <option value="@a.Id" selected>@a.DisplayName</option>
+                                        <option value="@a.Id" selected>@a.BurnerName</option>
                                     }
                                     else
                                     {
-                                        <option value="@a.Id">@a.DisplayName</option>
+                                        <option value="@a.Id">@a.BurnerName</option>
                                     }
                                 }
                             </select>
@@ -209,7 +209,7 @@
                     }
                     else
                     {
-                        <human-link user-id="@Model.AssigneeUserId.GetValueOrDefault()" display-name="@Model.AssigneeName" />
+                        <human-link user-id="@Model.AssigneeUserId.GetValueOrDefault()" burner-name="@Model.AssigneeName" />
                     }
                 </dd>
 

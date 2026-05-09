@@ -10,7 +10,7 @@ namespace Humans.Web.ViewComponents;
 /// Renders a user's avatar by looking up all display data from the cached profile
 /// given only a user ID. Resolution precedence:
 /// 1. Custom uploaded picture (served via <c>/Profile/{profileId}/Picture</c>)
-/// 2. Initial-letter fallback from the display name
+/// 2. Initial-letter fallback from the BurnerName (issue #692).
 /// </summary>
 /// <remarks>
 /// Google OAuth avatar URLs are intentionally not used as a fallback — they frequently
@@ -38,7 +38,7 @@ public class UserAvatarViewComponent : ViewComponent
         string bgColor = "bg-secondary")
     {
         string? profilePictureUrl = null;
-        string? displayName = null;
+        string? burnerName = null;
 
         if (userId != Guid.Empty)
         {
@@ -46,20 +46,22 @@ public class UserAvatarViewComponent : ViewComponent
 
             if (fullProfile is not null)
             {
-                displayName = fullProfile.DisplayName;
+                burnerName = fullProfile.BurnerName;
                 profilePictureUrl = ResolveAvatarUrl(fullProfile);
             }
             else if (IsCurrentUser(userId))
             {
-                // Onboarding/guest users have no Profile row yet. Use display name from the
-                // signed-in principal so the initial-letter placeholder still renders in the
-                // nav and dashboard until a Profile is created. No avatar URL until they
-                // upload a custom picture (or import their Google photo once the profile exists).
-                displayName = UserClaimsPrincipal.FindFirstValue(ClaimTypes.Name);
+                // Onboarding/guest users have no Profile row yet. Use the Name
+                // claim from the signed-in principal so the initial-letter
+                // placeholder still renders in nav/dashboard until a Profile
+                // is created. The Name claim is the legacy auth-provider name
+                // (the only legitimate pre-Profile fallback per the
+                // burnername-is-the-display-name rule).
+                burnerName = UserClaimsPrincipal.FindFirstValue(ClaimTypes.Name);
             }
         }
 
-        var initial = string.IsNullOrEmpty(displayName) ? "?" : displayName[0].ToString();
+        var initial = string.IsNullOrEmpty(burnerName) ? "?" : burnerName[0].ToString();
 
         // Scale font size proportionally: roughly size * 0.4 as rem, capped reasonably
         var fontRem = Math.Round(size / 100.0 * 2.0, 1);

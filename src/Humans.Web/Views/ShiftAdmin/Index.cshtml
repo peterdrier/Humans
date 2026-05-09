@@ -77,7 +77,7 @@
                                 var first = signups[0];
                                 var isRange = signups.Count > 1;
                                 <tr>
-                                    <td><human-link user-id="@first.UserId" display-name="@Model.Users.GetValueOrDefault(first.UserId)?.DisplayName" show-popover="true" /></td>
+                                    <td><human-link user-id="@first.UserId" burner-name="@Model.Users.GetValueOrDefault(first.UserId)?.DisplayName" show-popover="true" /></td>
                                     <td>
                                         @{
                                             var pendingProfile = Model.VolunteerProfiles.GetValueOrDefault(first.UserId);
@@ -424,7 +424,7 @@
                                                         var ss = activeSignups[i];
                                                         var ssUser = Model.Users.GetValueOrDefault(ss.UserId);
                                                         if (i > 0) { <text>, </text> }
-                                                        <human-link user-id="@ss.UserId" display-name="@ssUser?.DisplayName" show-popover="true"
+                                                        <human-link user-id="@ss.UserId" burner-name="@ssUser?.DisplayName" show-popover="true"
                                                                    class="@(ss.Status == SignupStatus.Pending ? "text-muted fst-italic" : "")" />@if (ss.Status == SignupStatus.Pending)
                                                         {<small class="text-muted"> @Localizer["Shifts_Pending"]</small>}
                                                     }
@@ -435,7 +435,7 @@
                                                         @foreach (var ss in activeSignups)
                                                         {
                                                             var ssUser = Model.Users.GetValueOrDefault(ss.UserId);
-                                                            <human-link user-id="@ss.UserId" display-name="@(ssUser?.DisplayName)" mode="Avatar" size="26"
+                                                            <human-link user-id="@ss.UserId" burner-name="@(ssUser?.DisplayName)" mode="Avatar" size="26"
                                                                        profile-picture-url="@(ssUser?.ProfilePictureUrl != null ? $"/Profile/Picture?id={ss.UserId}" : null)" show-popover="true"
                                                                        title="@(ssUser?.DisplayName)@(ss.Status == SignupStatus.Pending ? $" ({Localizer["Shifts_Pending"]})" : "")"
                                                                        class="@(ss.Status == SignupStatus.Pending ? "opacity-50" : "")"
@@ -571,7 +571,7 @@
                                                         {
                                                             <div class="d-flex justify-content-between align-items-center border-bottom py-1">
                                                                 <div>
-                                                                    <human-link user-id="@signup.UserId" display-name="@Model.Users.GetValueOrDefault(signup.UserId)?.DisplayName" show-popover="true" />
+                                                                    <human-link user-id="@signup.UserId" burner-name="@Model.Users.GetValueOrDefault(signup.UserId)?.DisplayName" show-popover="true" />
                                                                     @{
                                                                         var manageProfile = Model.VolunteerProfiles.GetValueOrDefault(signup.UserId);
                                                                     }
@@ -607,7 +607,7 @@
                                                     {
                                                         <div class="d-flex justify-content-between align-items-center border-bottom py-1">
                                                             <div>
-                                                                <human-link user-id="@signup.UserId" display-name="@Model.Users.GetValueOrDefault(signup.UserId)?.DisplayName" show-popover="true" />
+                                                                <human-link user-id="@signup.UserId" burner-name="@Model.Users.GetValueOrDefault(signup.UserId)?.DisplayName" show-popover="true" />
                                                                 @{
                                                                     var signupProfile = Model.VolunteerProfiles.GetValueOrDefault(signup.UserId);
                                                                 }
@@ -1225,7 +1225,7 @@
             results.forEach(function(result) {
                 html += '<li class="list-group-item list-group-item-action voluntell-range-pick" style="cursor:pointer"'
                     + ' data-user-id="' + escapeHtml(result.userId) + '"'
-                    + ' data-display-name="' + escapeHtml(result.displayName) + '"'
+                    + ' data-burner-name="' + escapeHtml(result.displayName) + '"'
                     + ' data-rota-id="' + escapeHtml(rotaId) + '">';
                 html += '<strong>' + escapeHtml(result.displayName) + '</strong>';
                 html += ' <small class="text-muted">(' + result.bookedShiftCount + ' shifts)</small>';

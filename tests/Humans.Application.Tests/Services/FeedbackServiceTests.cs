@@ -386,9 +386,9 @@ public class FeedbackServiceTests : IDisposable
         var reporters = await _service.GetDistinctReportersAsync();
 
         reporters.Should().HaveCount(2);
-        reporters[0].DisplayName.Should().Be("Alice");
+        reporters[0].BurnerName.Should().Be("Alice");
         reporters[0].Count.Should().Be(1);
-        reporters[1].DisplayName.Should().Be("Bob");
+        reporters[1].BurnerName.Should().Be("Bob");
         reporters[1].Count.Should().Be(2);
     }
 

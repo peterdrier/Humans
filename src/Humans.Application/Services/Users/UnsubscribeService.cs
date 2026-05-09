@@ -38,11 +38,11 @@ public sealed class UnsubscribeService : IUnsubscribeService
         _logger = logger;
     }
 
-    private async Task<string> ResolveDisplayNameAsync(Guid userId, string fallback, CancellationToken ct)
+    private async Task<string> ResolveBurnerNameAsync(Guid userId, string fallback, CancellationToken ct)
     {
         // Issue #692: BurnerName-aware label for the unsubscribe page.
         var fp = await _profileService.GetFullProfileAsync(userId, ct);
-        return fp?.DisplayName ?? fallback;
+        return fp?.BurnerName ?? fallback;
     }
 
     public async Task<UnsubscribeTokenResult> ValidateTokenAsync(string token, CancellationToken ct = default)
@@ -55,8 +55,8 @@ public sealed class UnsubscribeService : IUnsubscribeService
             if (user is null)
                 return UnsubscribeTokenResult.Invalid();
 
-            var displayName = await ResolveDisplayNameAsync(result.UserId, user.DisplayName, ct);
-            return UnsubscribeTokenResult.Valid(result.UserId, displayName, result.Category);
+            var burnerName = await ResolveBurnerNameAsync(result.UserId, user.DisplayName, ct);
+            return UnsubscribeTokenResult.Valid(result.UserId, burnerName, result.Category);
         }
 
         // Expired new-format token — don't fall through to legacy
@@ -106,7 +106,7 @@ public sealed class UnsubscribeService : IUnsubscribeService
         if (user is null)
             return UnsubscribeTokenResult.Invalid();
 
-        var legacyDisplayName = await ResolveDisplayNameAsync(userId, user.DisplayName, ct);
-        return UnsubscribeTokenResult.Valid(userId, legacyDisplayName, MessageCategory.Marketing, isLegacy: true);
+        var legacyBurnerName = await ResolveBurnerNameAsync(userId, user.DisplayName, ct);
+        return UnsubscribeTokenResult.Valid(userId, legacyBurnerName, MessageCategory.Marketing, isLegacy: true);
     }
 }

@@ -32,3 +32,5 @@ Sorting / searching that naturally falls on `User.DisplayName` after a `.Where`/
 Sync alone makes existing reads "happen to be correct." Migrating reads to `FullProfile.DisplayName` / batched profile lookups makes the rule **read at the call site** — future code can't accidentally introduce a leak by reading `user.DisplayName` thinking it's the canonical display field, because the codebase consistently resolves through Profile.
 
 No data backfill — see [`process/no-data-backfills`](../process/no-data-backfills.md). Pre-existing drift from before this rule landed is left alone; on the next Profile save the row self-corrects. If existing drift becomes a visible problem, an admin scanner is appropriate; do not add one speculatively.
+
+See also: [`no-displayname-for-people`](no-displayname-for-people.md) — naming convention for person identity in owned interfaces (always `BurnerName`, never `DisplayName`).

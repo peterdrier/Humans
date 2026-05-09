@@ -30,7 +30,7 @@ public class AuditViewerServiceTests
         var auditLog = Substitute.For<IAuditLogService>();
         auditLog.GetByUserAsync(viewer, 10, Arg.Any<CancellationToken>())
             .Returns(new[] { entry });
-        auditLog.GetUserDisplayNamesAsync(Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
+        auditLog.GetUserBurnerNamesAsync(Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, string>
             {
                 [actor] = "Frank",
@@ -45,9 +45,9 @@ public class AuditViewerServiceTests
 
         events.Should().HaveCount(1);
         var ev = events[0];
-        ev.ActorDisplayName.Should().Be("Frank");
+        ev.ActorBurnerName.Should().Be("Frank");
         ev.SubjectUserId.Should().Be(viewer);
-        ev.SubjectDisplayName.Should().Be("Peter");
+        ev.SubjectBurnerName.Should().Be("Peter");
     }
 
     [HumansFact]
@@ -62,7 +62,7 @@ public class AuditViewerServiceTests
 
         events.Should().BeEmpty();
         // No name lookups should fire on empty input — short-circuit guard.
-        await auditLog.DidNotReceive().GetUserDisplayNamesAsync(
+        await auditLog.DidNotReceive().GetUserBurnerNamesAsync(
             Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>());
     }
 
@@ -109,7 +109,7 @@ public class AuditViewerServiceTests
 
         var auditLog = Substitute.For<IAuditLogService>();
         auditLog.GetByResourceAsync(resourceId).Returns(new[] { entry });
-        auditLog.GetUserDisplayNamesAsync(Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
+        auditLog.GetUserBurnerNamesAsync(Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, string>());
         auditLog.GetTeamNamesAsync(Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, (string Name, string Slug)>());
@@ -140,7 +140,7 @@ public class AuditViewerServiceTests
             Items: new[] { entry },
             TotalCount: 1,
             AnomalyCount: 0,
-            UserDisplayNames: new Dictionary<Guid, string> { [actor] = "Frank" },
+            UserBurnerNames: new Dictionary<Guid, string> { [actor] = "Frank" },
             TeamNames: new Dictionary<Guid, (string Name, string Slug)>());
 
         var auditLog = Substitute.For<IAuditLogService>();
@@ -153,7 +153,7 @@ public class AuditViewerServiceTests
 
         result.TotalCount.Should().Be(1);
         result.Items.Should().HaveCount(1);
-        result.Items[0].ActorDisplayName.Should().Be("Frank");
+        result.Items[0].ActorBurnerName.Should().Be("Frank");
     }
 
     private static IAuditLogService MakeAuditLog(
@@ -162,7 +162,7 @@ public class AuditViewerServiceTests
         var auditLog = Substitute.For<IAuditLogService>();
         auditLog.GetByUserAsync(viewer, Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(new[] { entry });
-        auditLog.GetUserDisplayNamesAsync(Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
+        auditLog.GetUserBurnerNamesAsync(Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, string>
             {
                 [actor] = actorName,

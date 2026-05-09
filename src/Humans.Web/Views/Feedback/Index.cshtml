@@ -44,11 +44,11 @@
                 {
                     if (Model.ReporterFilter == r.UserId)
                     {
-                        <option value="@r.UserId" selected>@r.DisplayName (@r.Count)</option>
+                        <option value="@r.UserId" selected>@r.BurnerName (@r.Count)</option>
                     }
                     else
                     {
-                        <option value="@r.UserId">@r.DisplayName (@r.Count)</option>
+                        <option value="@r.UserId">@r.BurnerName (@r.Count)</option>
                     }
                 }
             </select>
@@ -71,11 +71,11 @@
                     {
                         if (Model.AssignedToFilter == a.Id)
                         {
-                            <option value="@a.Id" selected>@a.DisplayName</option>
+                            <option value="@a.Id" selected>@a.BurnerName</option>
                         }
                         else
                         {
-                            <option value="@a.Id">@a.DisplayName</option>
+                            <option value="@a.Id">@a.BurnerName</option>
                         }
                     }
                 }

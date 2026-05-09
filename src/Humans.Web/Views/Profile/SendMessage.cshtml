@@ -1,17 +1,17 @@
 @model Humans.Web.Models.SendMessageViewModel
 @{
-    ViewData["Title"] = string.Format(Localizer["SendMessage_Title"].Value, Model.RecipientDisplayName);
+    ViewData["Title"] = string.Format(Localizer["SendMessage_Title"].Value, Model.RecipientBurnerName);
 }
 
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a asp-controller="Team" asp-action="Index">@Localizer["Teams_Title"]</a></li>
-        <li class="breadcrumb-item"><a asp-action="ViewProfile" asp-route-id="@Model.RecipientId">@Model.RecipientDisplayName</a></li>
+        <li class="breadcrumb-item"><a asp-action="ViewProfile" asp-route-id="@Model.RecipientId">@Model.RecipientBurnerName</a></li>
         <li class="breadcrumb-item active" aria-current="page">@Localizer["SendMessage_Breadcrumb"]</li>
     </ol>
 </nav>
 
-<h1>@string.Format(Localizer["SendMessage_Heading"].Value, Model.RecipientDisplayName)</h1>
+<h1>@string.Format(Localizer["SendMessage_Heading"].Value, Model.RecipientBurnerName)</h1>
 
 <vc:temp-data-alerts />
 
@@ -20,7 +20,7 @@
         <form asp-action="SendMessage" asp-route-id="@Model.RecipientId" method="post">
             @Html.AntiForgeryToken()
             <input type="hidden" asp-for="RecipientId" />
-            <input type="hidden" asp-for="RecipientDisplayName" />
+            <input type="hidden" asp-for="RecipientBurnerName" />
 
             <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
 

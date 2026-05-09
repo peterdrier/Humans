@@ -78,7 +78,7 @@ public class OnboardingReviewController : HumansControllerBase
         var viewModel = new OnboardingReviewDetailViewModel
         {
             UserId = userId,
-            DisplayName = detailUser?.DisplayName ?? "Unknown",
+            BurnerName = detailUser?.DisplayName ?? "Unknown",
             ProfilePictureUrl = detailUser?.ProfilePictureUrl,
             Email = detailUser?.Email ?? string.Empty,
             FirstName = profile.FirstName,
@@ -250,7 +250,7 @@ public class OnboardingReviewController : HumansControllerBase
                 .Select(m => new BoardVoteMemberViewModel
                 {
                     UserId = m.UserId,
-                    DisplayName = m.DisplayName
+                    BurnerName = m.BurnerName
                 })
                 .ToList(),
             Applications = applications.Select(a =>
@@ -259,7 +259,7 @@ public class OnboardingReviewController : HumansControllerBase
                 {
                     ApplicationId = a.ApplicationId,
                     UserId = a.UserId,
-                    DisplayName = a.UserDisplayName,
+                    BurnerName = a.UserBurnerName,
                     ProfilePictureUrl = a.UserProfilePictureUrl,
                     MembershipTier = a.MembershipTier,
                     ApplicationMotivation = a.ApplicationMotivation,
@@ -300,7 +300,7 @@ public class OnboardingReviewController : HumansControllerBase
         {
             ApplicationId = application.ApplicationId,
             UserId = application.UserId,
-            DisplayName = application.DisplayName,
+            BurnerName = application.BurnerName,
             ProfilePictureUrl = application.ProfilePictureUrl,
             Email = application.Email,
             FirstName = application.FirstName,
@@ -318,12 +318,12 @@ public class OnboardingReviewController : HumansControllerBase
                 .Select(v => new BoardVoteDetailItemViewModel
                 {
                     BoardMemberUserId = v.BoardMemberUserId,
-                    DisplayName = v.BoardMemberDisplayName ?? string.Empty,
+                    BurnerName = v.BoardMemberBurnerName ?? string.Empty,
                     Vote = v.Vote,
                     Note = v.Note,
                     VotedAt = v.VotedAt.ToDateTimeUtc()
                 })
-                .OrderBy(v => v.DisplayName, StringComparer.OrdinalIgnoreCase)
+                .OrderBy(v => v.BurnerName, StringComparer.OrdinalIgnoreCase)
                 .ToList(),
             CurrentUserVote = currentVote?.Vote,
             CurrentUserNote = currentVote?.Note,
@@ -452,7 +452,7 @@ public class OnboardingReviewController : HumansControllerBase
         return new OnboardingReviewItemViewModel
         {
             UserId = profile.UserId,
-            DisplayName = itemUser?.DisplayName ?? "Unknown",
+            BurnerName = itemUser?.DisplayName ?? "Unknown",
             LegalName = profile.FullName,
             ProfilePictureUrl = itemUser?.ProfilePictureUrl,
             Email = itemUser?.Email ?? string.Empty,

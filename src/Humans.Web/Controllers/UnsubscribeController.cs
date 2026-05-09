@@ -37,7 +37,7 @@ public class UnsubscribeController : Controller
         }
 
         // Legacy tokens show the unsubscribe confirmation page
-        ViewData["DisplayName"] = result.DisplayName;
+        ViewData["BurnerName"] = result.BurnerName;
         ViewData["CategoryName"] = MessageCategory.Marketing.ToDisplayName();
         return View();
     }

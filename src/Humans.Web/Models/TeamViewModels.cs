@@ -68,7 +68,7 @@ public class TeamDetailViewModel
     public string? PageContentHtml { get; set; }
     public List<CallToAction>? CallsToAction { get; set; }
     public DateTime? PageContentUpdatedAt { get; set; }
-    public string? PageContentUpdatedByDisplayName { get; set; }
+    public string? PageContentUpdatedByBurnerName { get; set; }
 
     // Viewer context
     public bool IsAuthenticated { get; set; }
@@ -99,7 +99,7 @@ public class TeamDetailViewModel
 public class ChildTeamMemberViewModel
 {
     public Guid UserId { get; set; }
-    public string DisplayName { get; set; } = string.Empty;
+    public string BurnerName { get; set; } = string.Empty;
     public string? ProfilePictureUrl { get; set; }
     public bool HasCustomProfilePicture { get; set; }
     public string? CustomProfilePictureUrl { get; set; }
@@ -116,7 +116,7 @@ public class ChildTeamMemberViewModel
 public class TeamMemberViewModel
 {
     public Guid UserId { get; set; }
-    public string DisplayName { get; set; } = string.Empty;
+    public string BurnerName { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public string? ProfilePictureUrl { get; set; }
     public bool HasCustomProfilePicture { get; set; }
@@ -185,7 +185,7 @@ public class TeamJoinRequestViewModel
     public Guid TeamId { get; set; }
     public string TeamName { get; set; } = string.Empty;
     public Guid UserId { get; set; }
-    public string UserDisplayName { get; set; } = string.Empty;
+    public string UserBurnerName { get; set; } = string.Empty;
     public string UserEmail { get; set; } = string.Empty;
     public string? UserProfilePictureUrl { get; set; }
     public TeamJoinRequestStatus Status { get; set; }
@@ -309,9 +309,9 @@ public class TeamMembersViewModel
     public bool IsSensitive { get; set; }
 
     /// <summary>
-    /// The current actor's display name (for audit preview in sensitive team modal).
+    /// The current actor's BurnerName (for audit preview in sensitive team modal).
     /// </summary>
-    public string? ActorDisplayName { get; set; }
+    public string? ActorBurnerName { get; set; }
 }
 
 public class ResourceAccessViewModel
@@ -333,7 +333,7 @@ public class BirthdayCalendarViewModel
 public class BirthdayEntryViewModel
 {
     public Guid UserId { get; set; }
-    public string DisplayName { get; set; } = string.Empty;
+    public string BurnerName { get; set; } = string.Empty;
     public string? EffectiveProfilePictureUrl { get; set; }
     public int DayOfMonth { get; set; }
     public int Month { get; set; }
@@ -349,7 +349,7 @@ public class MapViewModel
 public class MapMarkerViewModel
 {
     public Guid UserId { get; set; }
-    public string DisplayName { get; set; } = string.Empty;
+    public string BurnerName { get; set; } = string.Empty;
     public string? ProfilePictureUrl { get; set; }
     public double Latitude { get; set; }
     public double Longitude { get; set; }

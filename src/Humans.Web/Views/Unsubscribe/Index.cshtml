@@ -1,14 +1,14 @@
 @{
     ViewData["Title"] = Localizer["Unsub_Title"].Value;
-    var displayName = ViewData["DisplayName"] as string;
+    var burnerName = ViewData["BurnerName"] as string;
     var categoryName = ViewData["CategoryName"] as string ?? "these";
 }
 
 <h1>@Html.Raw(string.Format(Localizer["Unsub_Heading"].Value, Html.Encode(categoryName)))</h1>
 
-@if (!string.IsNullOrEmpty(displayName))
+@if (!string.IsNullOrEmpty(burnerName))
 {
-    <p>@Html.Raw(string.Format(Localizer["Unsub_Greeting"].Value, "<strong>" + Html.Encode(displayName) + "</strong>"))</p>
+    <p>@Html.Raw(string.Format(Localizer["Unsub_Greeting"].Value, "<strong>" + Html.Encode(burnerName) + "</strong>"))</p>
 }
 
 <p>@Html.Raw(string.Format(Localizer["Unsub_ConfirmMessage"].Value, Html.Encode(categoryName)))</p>

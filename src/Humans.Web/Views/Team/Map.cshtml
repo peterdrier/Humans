@@ -69,7 +69,7 @@ else
                 if (m.profilePictureUrl) {
                     return '<img src="' + escapeHtml(m.profilePictureUrl) + '" alt="" style="width:' + s + 'px;height:' + s + 'px;border-radius:50%;object-fit:cover;">';
                 }
-                const initials = (m.displayName || '?').split(' ').map(function(w){return w[0];}).join('').substring(0, 2).toUpperCase();
+                const initials = (m.burnerName || '?').split(' ').map(function(w){return w[0];}).join('').substring(0, 2).toUpperCase();
                 return '<div style="width:' + s + 'px;height:' + s + 'px;border-radius:50%;background:' + clrMutedText + ';color:' + clrTextOnDark + ';display:flex;align-items:center;justify-content:center;font-size:' + Math.round(s * 0.4) + 'px;font-weight:600;">' + escapeHtml(initials) + '</div>';
             }
 
@@ -78,7 +78,7 @@ else
                 return '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;">' +
                     avatarHtml(m, 36) +
                     '<div>' +
-                    '<a href="/Profile/' + m.userId + '" style="font-weight:600;text-decoration:none;">' + escapeHtml(m.displayName) + '</a>' +
+                    '<a href="/Profile/' + m.userId + '" style="font-weight:600;text-decoration:none;">' + escapeHtml(m.burnerName) + '</a>' +
                     (location ? '<br><span style="color:' + clrTextSecondary + ';font-size:0.85em;">' + escapeHtml(location) + '</span>' : '') +
                     '</div></div>';
             }
@@ -129,7 +129,7 @@ else
                     const marker = new AdvancedMarkerElement({
                         position: { lat: first.latitude, lng: first.longitude },
                         map: map,
-                        title: group.length > 1 ? group.length + ' humans' : first.displayName,
+                        title: group.length > 1 ? group.length + ' humans' : first.burnerName,
                         gmpClickable: true,
                         content: pinContent
                     });

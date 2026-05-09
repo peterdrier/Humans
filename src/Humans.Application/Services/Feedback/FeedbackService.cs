@@ -426,7 +426,7 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
         CancellationToken cancellationToken = default) =>
         _repository.GetActionableCountAsync(cancellationToken);
 
-    public async Task<IReadOnlyList<(Guid UserId, string DisplayName, int Count)>> GetDistinctReportersAsync(
+    public async Task<IReadOnlyList<(Guid UserId, string BurnerName, int Count)>> GetDistinctReportersAsync(
         CancellationToken cancellationToken = default)
     {
         var rows = await _repository.GetReporterCountsAsync(cancellationToken);
@@ -440,9 +440,9 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
             .Select(r =>
             {
                 var name = users.TryGetValue(r.UserId, out var u) ? u.DisplayName : r.UserId.ToString();
-                return (r.UserId, name, r.Count);
+                return (r.UserId, BurnerName: name, r.Count);
             })
-            .OrderBy(r => r.name, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(r => r.BurnerName, StringComparer.OrdinalIgnoreCase)
             .ToList();
     }
 

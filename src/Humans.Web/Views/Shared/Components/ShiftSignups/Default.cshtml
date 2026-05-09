@@ -6,8 +6,8 @@
     var es = Model.EventSettings;
     var tz = es != null ? DateTimeZoneProviders.Tzdb[es.TimeZoneId] : null;
     var isAdmin = Model.ViewMode == ShiftSignupsViewMode.Admin;
-    var label = isAdmin && !string.IsNullOrEmpty(Model.DisplayName)
-        ? $"{Model.DisplayName}'s Shifts"
+    var label = isAdmin && !string.IsNullOrEmpty(Model.BurnerName)
+        ? $"{Model.BurnerName}'s Shifts"
         : "Shift Signups";
 }
 

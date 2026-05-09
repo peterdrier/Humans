@@ -9,4 +9,4 @@ public sealed class CampRolesPanelViewModel
     public required bool CanManage { get; init; }
 }
 
-public sealed record CampMemberPickerOption(Guid CampMemberId, Guid UserId, string DisplayName);
+public sealed record CampMemberPickerOption(Guid CampMemberId, Guid UserId, string BurnerName);

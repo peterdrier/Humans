@@ -9,7 +9,7 @@ namespace Humans.Application.Services.AuditLog;
 /// <remarks>
 /// Pure read-side service — wraps <see cref="IAuditLogService"/> for the raw
 /// queries and uses its
-/// <see cref="IAuditLogService.GetUserDisplayNamesAsync"/> /
+/// <see cref="IAuditLogService.GetUserBurnerNamesAsync"/> /
 /// <see cref="IAuditLogService.GetTeamNamesAsync"/> batch lookups for actor,
 /// subject, and target-team name resolution. No DB access, no caching, no
 /// merge-chain logic of its own — those concerns stay in
@@ -68,7 +68,7 @@ public sealed class AuditViewerService : IAuditViewerService
         // never see the raw entry / dictionary pair.
         var raw = await _auditLog.GetAuditLogPageAsync(actionFilter, page, pageSize, ct);
         var events = raw.Items
-            .Select(e => Resolve(e, raw.UserDisplayNames, raw.TeamNames))
+            .Select(e => Resolve(e, raw.UserBurnerNames, raw.TeamNames))
             .ToList();
         return new AuditEventPage(events, raw.TotalCount, raw.AnomalyCount);
     }
@@ -86,7 +86,7 @@ public sealed class AuditViewerService : IAuditViewerService
         var (userIds, teamIds) = CollectIds(entries);
         var users = userIds.Count == 0
             ? new Dictionary<Guid, string>()
-            : await _auditLog.GetUserDisplayNamesAsync(userIds, ct);
+            : await _auditLog.GetUserBurnerNamesAsync(userIds, ct);
         var teams = teamIds.Count == 0
             ? new Dictionary<Guid, (string Name, string Slug)>()
             : await _auditLog.GetTeamNamesAsync(teamIds, ct);
@@ -120,11 +120,11 @@ public sealed class AuditViewerService : IAuditViewerService
             OccurredAt: entry.OccurredAt,
             Action: entry.Action,
             ActorUserId: entry.ActorUserId,
-            ActorDisplayName: actorName,
+            ActorBurnerName: actorName,
             EntityType: entry.EntityType,
             EntityId: entry.EntityId,
             SubjectUserId: subjectId,
-            SubjectDisplayName: subjectName,
+            SubjectBurnerName: subjectName,
             TargetTeamId: targetTeamId,
             TargetTeamName: teamName,
             TargetTeamSlug: teamSlug,

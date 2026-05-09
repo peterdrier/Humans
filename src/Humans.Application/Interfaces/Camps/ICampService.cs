@@ -219,7 +219,7 @@ public record CampMemberListData(
 public record CampMemberRow(
     Guid CampMemberId,
     Guid UserId,
-    string DisplayName,
+    string BurnerName,
     Instant RequestedAt,
     Instant? ConfirmedAt,
     bool IsLead);
@@ -296,7 +296,7 @@ public record CampDetailData(
 public record CampLeadSummary(
     Guid LeadId,
     Guid UserId,
-    string DisplayName);
+    string BurnerName);
 
 public record CampEditData(
     Guid CampId,

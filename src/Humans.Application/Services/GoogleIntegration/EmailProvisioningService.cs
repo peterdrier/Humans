@@ -193,7 +193,7 @@ public sealed class EmailProvisioningService : IEmailProvisioningService
             if (!string.IsNullOrEmpty(recoveryEmail))
             {
                 var fullProfile = await _profileService.GetFullProfileAsync(userId);
-                var recipientName = fullProfile?.DisplayName ?? user.DisplayName;
+                var recipientName = fullProfile?.BurnerName ?? user.DisplayName;
                 await _emailService.SendWorkspaceCredentialsAsync(
                     recoveryEmail, recipientName, fullEmail, tempPassword,
                     user.PreferredLanguage);

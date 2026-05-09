@@ -481,7 +481,7 @@ public sealed class UserRepositoryTests : IDisposable
         var result = await _repo.ApplyExpiredDeletionAnonymizationAsync(user.Id, default);
 
         result.Should().NotBeNull();
-        result!.OriginalDisplayName.Should().Be("Seeded User");
+        result!.OriginalBurnerName.Should().Be("Seeded User");
     }
 
     private void AddLogin(Guid userId, string loginProvider, string providerKey)

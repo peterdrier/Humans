@@ -211,7 +211,7 @@ public class TeamAdminController : HumansTeamControllerBase
             .Select(m => new TeamMemberViewModel
             {
                 UserId = m.UserId,
-                DisplayName = ResolveName(m.UserId, m.User.DisplayName),
+                BurnerName = ResolveName(m.UserId, m.User.DisplayName),
                 Email = m.User.Email ?? "",
                 ProfilePictureUrl = m.User.ProfilePictureUrl,
                 HasCustomProfilePicture = customPictureByUserId.ContainsKey(m.UserId),
@@ -228,7 +228,7 @@ public class TeamAdminController : HumansTeamControllerBase
                 TeamId = r.TeamId,
                 TeamName = team.Name,
                 UserId = r.UserId,
-                UserDisplayName = ResolveName(r.UserId, r.User.DisplayName),
+                UserBurnerName = ResolveName(r.UserId, r.User.DisplayName),
                 UserEmail = r.User.Email ?? "",
                 UserProfilePictureUrl = r.User.ProfilePictureUrl,
                 Status = r.Status,
@@ -298,7 +298,7 @@ public class TeamAdminController : HumansTeamControllerBase
             ParentDepartmentSlug = parentDepartmentSlug,
             IsSensitive = team.IsSensitive,
             // Issue #692: BurnerName-aware actor label.
-            ActorDisplayName = ResolveName(user.Id, user.DisplayName)
+            ActorBurnerName = ResolveName(user.Id, user.DisplayName)
         };
 
         return View(viewModel);
@@ -1124,14 +1124,14 @@ public class TeamAdminController : HumansTeamControllerBase
         IReadOnlyDictionary<Guid, Humans.Domain.Entities.Profile> profiles,
         IReadOnlyDictionary<Guid, string> customPictureByUserId)
     {
-        var displayName = m.User.DisplayName;
+        var burnerName = m.User.DisplayName;
         if (profiles.TryGetValue(m.UserId, out var p) && !string.IsNullOrWhiteSpace(p.BurnerName))
-            displayName = p.BurnerName;
+            burnerName = p.BurnerName;
 
         return new TeamMemberViewModel
         {
             UserId = m.UserId,
-            DisplayName = displayName,
+            BurnerName = burnerName,
             Email = m.User.Email ?? "",
             ProfilePictureUrl = m.User.ProfilePictureUrl,
             HasCustomProfilePicture = customPictureByUserId.ContainsKey(m.UserId),

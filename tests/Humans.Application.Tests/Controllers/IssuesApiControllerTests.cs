@@ -209,13 +209,13 @@ public class IssuesApiControllerTests
                 CommentId: Guid.NewGuid(),
                 At: Instant.FromUtc(2026, 4, 29, 12, 5),
                 ActorUserId: issue.ReporterUserId,
-                ActorDisplayName: "Reporter",
+                ActorBurnerName: "Reporter",
                 ActorIsReporter: true,
                 Content: "Still broken"),
             new IssueAuditEvent(
                 At: Instant.FromUtc(2026, 4, 29, 12, 10),
                 ActorUserId: Guid.NewGuid(),
-                ActorDisplayName: "Admin",
+                ActorBurnerName: "Admin",
                 Action: AuditAction.IssueStatusChanged,
                 Description: "Status: Triage -> Open"),
         };

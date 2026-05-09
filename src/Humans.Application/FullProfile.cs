@@ -28,18 +28,19 @@ public sealed record UserEmailSnapshot(
 /// <c>User.GetEffectiveEmail()</c> reader sites. <see cref="State"/> reflects
 /// the lifecycle marker on Profile (lazily populated).
 ///
-/// Issue #692: <see cref="DisplayName"/> resolves to
+/// Issue #692: <see cref="BurnerName"/> resolves to
 /// <see cref="Profile.BurnerName"/> when present, falling back to
 /// <see cref="User.DisplayName"/> only for pre-onboarding users who have
 /// not saved a Profile yet. This is the single source of truth for
 /// "what name do we show this human as" — UI, email, and notification
 /// surfaces read it instead of <c>User.DisplayName</c> directly. See
-/// <c>memory/architecture/burnername-is-the-display-name.md</c>.
+/// <c>memory/architecture/burnername-is-the-display-name.md</c> and
+/// <c>memory/architecture/no-displayname-for-people.md</c>.
 /// </remarks>
 public record FullProfile(
-    Guid UserId, string DisplayName, string? ProfilePictureUrl,
+    Guid UserId, string BurnerName, string? ProfilePictureUrl,
     bool HasCustomPicture, Guid ProfileId, long UpdatedAtTicks,
-    string? BurnerName, string? Bio, string? Pronouns,
+    string? Bio, string? Pronouns,
     string? ContributionInterests,
     string? City, string? CountryCode, double? Latitude, double? Longitude,
     int? BirthdayDay, int? BirthdayMonth,
@@ -110,12 +111,11 @@ public record FullProfile(
 
         return new FullProfile(
             UserId: user.Id,
-            DisplayName: ResolveDisplayName(profile, user),
+            BurnerName: !string.IsNullOrWhiteSpace(profile.BurnerName) ? profile.BurnerName : user.DisplayName,
             ProfilePictureUrl: user.ProfilePictureUrl,
             HasCustomPicture: profile.ProfilePictureData is not null,
             ProfileId: profile.Id,
             UpdatedAtTicks: profile.UpdatedAt.ToUnixTimeTicks(),
-            BurnerName: profile.BurnerName,
             Bio: profile.Bio,
             Pronouns: profile.Pronouns,
             ContributionInterests: profile.ContributionInterests,
@@ -157,12 +157,11 @@ public record FullProfile(
 
         return new FullProfile(
             UserId: user.Id,
-            DisplayName: ResolveDisplayName(profile, user),
+            BurnerName: !string.IsNullOrWhiteSpace(profile.BurnerName) ? profile.BurnerName : user.DisplayName,
             ProfilePictureUrl: user.ProfilePictureUrl,
             HasCustomPicture: profile.ProfilePictureData is not null,
             ProfileId: profile.Id,
             UpdatedAtTicks: profile.UpdatedAt.ToUnixTimeTicks(),
-            BurnerName: profile.BurnerName,
             Bio: profile.Bio,
             Pronouns: profile.Pronouns,
             ContributionInterests: profile.ContributionInterests,
@@ -189,16 +188,4 @@ public record FullProfile(
 
     public static FullProfile Create(Profile profile, User user, string? notificationEmail = null) =>
         Create(profile, user, profile.VolunteerHistory.ToList(), notificationEmail);
-
-    /// <summary>
-    /// Issue #692: BurnerName-aware display name resolution. Prefers
-    /// <see cref="Profile.BurnerName"/> when populated; falls back to
-    /// <see cref="User.DisplayName"/> only when the profile has no burner
-    /// name yet (Stub-state pre-onboarding rows). Profile save now
-    /// write-through-syncs <see cref="User.DisplayName"/> to BurnerName so
-    /// the two cannot drift on any new write — this fallback exists for
-    /// pre-onboarding users only.
-    /// </summary>
-    private static string ResolveDisplayName(Profile profile, User user) =>
-        !string.IsNullOrWhiteSpace(profile.BurnerName) ? profile.BurnerName : user.DisplayName;
 }

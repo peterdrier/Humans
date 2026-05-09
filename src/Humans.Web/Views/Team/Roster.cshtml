@@ -104,7 +104,7 @@ else
                     <td>
                         @if (slot.IsFilled && slot.AssignedUserId.HasValue)
                         {
-                            <human-link user-id="@slot.AssignedUserId.Value" display-name="@slot.AssignedUserName" show-popover="true" />
+                            <human-link user-id="@slot.AssignedUserId.Value" burner-name="@slot.AssignedUserName" show-popover="true" />
                         }
                         else if (slot.IsFilled)
                         {

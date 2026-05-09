@@ -275,16 +275,16 @@ public sealed class AuditLogService : IAuditLogService, IUserDataContributor
                 teamIds.Add(e.RelatedEntityId.Value);
         }
 
-        var userDisplayNames = await GetUserDisplayNamesAsync(userIds.ToList(), ct);
+        var userDisplayNames = await GetUserBurnerNamesAsync(userIds.ToList(), ct);
         var teamNameLookup = await GetTeamNamesAsync(teamIds.ToList(), ct);
 
         return new AuditLogPageResult(items, totalCount, anomalyCount, userDisplayNames, teamNameLookup);
     }
 
     /// <inheritdoc />
-    public Task<Dictionary<Guid, string>> GetUserDisplayNamesAsync(
+    public Task<Dictionary<Guid, string>> GetUserBurnerNamesAsync(
         IReadOnlyList<Guid> userIds, CancellationToken ct = default) =>
-        _repo.GetUserDisplayNamesAsync(userIds, ct);
+        _repo.GetUserBurnerNamesAsync(userIds, ct);
 
     /// <inheritdoc />
     public Task<Dictionary<Guid, (string Name, string Slug)>> GetTeamNamesAsync(

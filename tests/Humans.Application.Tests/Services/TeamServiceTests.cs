@@ -801,7 +801,7 @@ public class TeamServiceTests : IDisposable
 
         result.Should().NotBeNull();
         result!.IsAuthenticated.Should().BeFalse();
-        result.Members.Select(m => m.DisplayName).Should().BeEquivalentTo(
+        result.Members.Select(m => m.BurnerName).Should().BeEquivalentTo(
             ["Coordinator"],
             cfg => cfg.WithStrictOrdering());
         result.ChildTeams.Select(t => t.Name).Should().BeEquivalentTo(
@@ -837,7 +837,7 @@ public class TeamServiceTests : IDisposable
         result.CanCurrentUserLeave.Should().BeTrue();
         result.PendingRequestCount.Should().Be(1);
         result.CurrentUserPendingRequestId.Should().BeNull();
-        result.Members.Select(m => (m.DisplayName, m.Role)).Should().BeEquivalentTo(
+        result.Members.Select(m => (m.BurnerName, m.Role)).Should().BeEquivalentTo(
             [("Member", TeamMemberRole.Member), ("Coordinator", TeamMemberRole.Coordinator)],
             cfg => cfg.WithStrictOrdering());
         result.RoleDefinitions.Select(d => d.Id).Should().ContainSingle().Which.Should().Be(roleDefinition.Id);

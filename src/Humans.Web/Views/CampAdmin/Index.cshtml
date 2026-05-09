@@ -331,7 +331,7 @@
                             <td>
                                 @foreach (var lead in camp.Leads)
                                 {
-                                    <human-link user-id="@lead.UserId" display-name="@lead.DisplayName" />
+                                    <human-link user-id="@lead.UserId" burner-name="@lead.BurnerName" />
                                     if (lead != camp.Leads.Last())
                                     {
                                         <text>, </text>

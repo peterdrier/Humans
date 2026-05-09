@@ -218,7 +218,7 @@ public sealed class AuditLogRepository : IAuditLogRepository
     // Cross-table display lookups
     // ==========================================================================
 
-    public async Task<Dictionary<Guid, string>> GetUserDisplayNamesAsync(
+    public async Task<Dictionary<Guid, string>> GetUserBurnerNamesAsync(
         IReadOnlyList<Guid> userIds, CancellationToken ct = default)
     {
         if (userIds.Count == 0)

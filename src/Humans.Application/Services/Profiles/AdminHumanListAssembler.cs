@@ -71,10 +71,18 @@ public static class AdminHumanListAssembler
                 ? primary
                 : u.Email ?? string.Empty;
 
+            // Issue #692: BurnerName-aware. Profile save write-through-syncs
+            // User.DisplayName ← Profile.BurnerName so for any post-onboarding
+            // row the two are equal; for pre-onboarding rows we fall through
+            // to User.DisplayName (the legacy auth-provider name).
+            var burnerName = !string.IsNullOrWhiteSpace(profile?.BurnerName)
+                ? profile.BurnerName
+                : u.DisplayName;
+
             return new AdminHumanRow(
                 u.Id,
                 email,
-                u.DisplayName,
+                burnerName,
                 u.ProfilePictureUrl,
                 u.CreatedAt.ToDateTimeUtc(),
                 u.LastLoginAt?.ToDateTimeUtc(),

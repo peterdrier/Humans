@@ -16,7 +16,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// new row.
 /// </para>
 /// <para>
-/// The repository also exposes narrow cross-table lookups (<see cref="GetUserDisplayNamesAsync"/>,
+/// The repository also exposes narrow cross-table lookups (<see cref="GetUserBurnerNamesAsync"/>,
 /// <see cref="GetTeamNamesAsync"/>) used by the audit log UI to resolve
 /// display data for actor/subject ids. These are read-only and flow back
 /// through the service so controllers never query other domains' tables
@@ -135,7 +135,7 @@ public interface IAuditLogRepository
     /// <summary>
     /// Batch-load user display names for a set of user IDs.
     /// </summary>
-    Task<Dictionary<Guid, string>> GetUserDisplayNamesAsync(
+    Task<Dictionary<Guid, string>> GetUserBurnerNamesAsync(
         IReadOnlyList<Guid> userIds, CancellationToken ct = default);
 
     /// <summary>

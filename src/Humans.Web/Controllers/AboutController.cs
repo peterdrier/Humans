@@ -99,10 +99,10 @@ public class AboutController : HumansControllerBase
             .Select(ra => new StaffRoleHolderViewModel
             {
                 UserId = ra.UserId,
-                DisplayName = ResolveStaffName(ra, profiles),
+                BurnerName = ResolveStaffName(ra, profiles),
                 ProfilePictureUrl = effectiveUrls.GetValueOrDefault(ra.UserId)
             })
-            .OrderBy(h => h.DisplayName, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(h => h.BurnerName, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         return new StaffRoleSectionViewModel

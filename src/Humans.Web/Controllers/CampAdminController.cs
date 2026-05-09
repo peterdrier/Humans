@@ -100,7 +100,7 @@ public class CampAdminController : HumansControllerBase
                         {
                             LeadId = l.Id,
                             UserId = l.UserId,
-                            DisplayName = leadUsers.TryGetValue(l.UserId, out var u) ? u.DisplayName : string.Empty
+                            BurnerName = leadUsers.TryGetValue(l.UserId, out var u) ? u.DisplayName : string.Empty
                         }).ToList()
                 };
             }).ToList();

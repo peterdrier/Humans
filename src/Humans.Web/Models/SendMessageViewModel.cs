@@ -5,7 +5,7 @@ namespace Humans.Web.Models;
 public class SendMessageViewModel
 {
     public Guid RecipientId { get; set; }
-    public string RecipientDisplayName { get; set; } = string.Empty;
+    public string RecipientBurnerName { get; set; } = string.Empty;
 
     [Required]
     [StringLength(2000, MinimumLength = 1)]

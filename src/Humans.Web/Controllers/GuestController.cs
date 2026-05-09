@@ -80,7 +80,7 @@ public class GuestController : HumansControllerBase
             _logger.LogError(ex, "Failed to load Guest dashboard for user {UserId}", user.Id);
             // Issue #692: BurnerName-aware fallback view-model.
             var fp = await _profileService.GetFullProfileAsync(user.Id);
-            return View(new GuestDashboardViewModel { DisplayName = fp?.DisplayName ?? user.DisplayName });
+            return View(new GuestDashboardViewModel { BurnerName = fp?.BurnerName ?? user.DisplayName });
         }
     }
 
@@ -281,12 +281,13 @@ public class GuestController : HumansControllerBase
 
     private async Task<GuestDashboardViewModel> BuildDashboardViewModelAsync(User user)
     {
-        // Issue #692: BurnerName-aware. FullProfile.DisplayName resolves to
-        // Profile.BurnerName when present.
+        // Issue #692: BurnerName-aware. FullProfile.BurnerName resolves
+        // through Profile.BurnerName when present, falling back to
+        // User.DisplayName for pre-onboarding rows.
         var fp = await _profileService.GetFullProfileAsync(user.Id);
         var viewModel = new GuestDashboardViewModel
         {
-            DisplayName = fp?.DisplayName ?? user.DisplayName,
+            BurnerName = fp?.BurnerName ?? user.DisplayName,
         };
 
         // Ticket status: check for matched ticket orders and attendees

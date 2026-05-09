@@ -3,7 +3,7 @@ namespace Humans.Application.DTOs;
 public record AdminHumanRow(
     Guid UserId,
     string Email,
-    string DisplayName,
+    string BurnerName,
     string? ProfilePictureUrl,
     DateTime CreatedAt,
     DateTime? LastLoginAt,
