@@ -133,7 +133,7 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
     public async Task<List<string>> GetAvailableTicketTypesAsync()
     {
         var types = await _ticketRepository.GetDistinctTicketTypesAsync();
-        return types.ToList();
+        return types.OrderBy(t => t, StringComparer.Ordinal).ToList();
     }
 
     public async Task<HashSet<Guid>> GetAllMatchedUserIdsAsync()

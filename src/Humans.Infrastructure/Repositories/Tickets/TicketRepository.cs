@@ -414,7 +414,6 @@ public sealed class TicketRepository : ITicketRepository
             .AsNoTracking()
             .Select(a => a.TicketTypeName)
             .Distinct()
-            .OrderBy(t => t)
             .ToListAsync(ct);
     }
 

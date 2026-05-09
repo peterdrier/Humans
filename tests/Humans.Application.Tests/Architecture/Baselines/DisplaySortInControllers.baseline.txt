@@ -123,7 +123,6 @@ src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:ThenBy#1
 src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:ThenBy#2
 src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:ThenBy#3
 src/Humans.Infrastructure/Repositories/Tickets/TicketRepository.cs:OrderBy#1
-src/Humans.Infrastructure/Repositories/Tickets/TicketRepository.cs:OrderBy#10
 src/Humans.Infrastructure/Repositories/Tickets/TicketRepository.cs:OrderBy#2
 src/Humans.Infrastructure/Repositories/Tickets/TicketRepository.cs:OrderBy#3
 src/Humans.Infrastructure/Repositories/Tickets/TicketRepository.cs:OrderBy#4
