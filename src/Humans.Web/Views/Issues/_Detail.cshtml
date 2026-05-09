@@ -20,7 +20,7 @@
                     @Localizer["Issue_OpenedBy"]
                     @if (Model.IsHandler)
                     {
-                        <human-link user-id="@Model.ReporterUserId" display-name="@Model.ReporterName" admin="true" show-popover="true" />
+                        <vc:human user-id="@Model.ReporterUserId" link="Admin" />
                     }
                     else
                     {
@@ -178,7 +178,7 @@
 
                 <dt class="col-5">@Localizer["Issue_Reporter"]</dt>
                 <dd class="col-7">
-                    <human-link user-id="@Model.ReporterUserId" display-name="@Model.ReporterName" admin="@Model.IsHandler" show-popover="true" />
+                    <vc:human user-id="@Model.ReporterUserId" link="@(Model.IsHandler ? Humans.Web.ViewComponents.HumanLink.Admin : Humans.Web.ViewComponents.HumanLink.Public)" />
                 </dd>
 
                 <dt class="col-5">@Localizer["Issue_Assignee"]</dt>
@@ -209,7 +209,7 @@
                     }
                     else
                     {
-                        <human-link user-id="@Model.AssigneeUserId.GetValueOrDefault()" display-name="@Model.AssigneeName" />
+                        <vc:human user-id="@Model.AssigneeUserId.GetValueOrDefault()" />
                     }
                 </dd>
 

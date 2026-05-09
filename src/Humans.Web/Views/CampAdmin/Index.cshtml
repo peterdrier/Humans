@@ -331,7 +331,7 @@
                             <td>
                                 @foreach (var lead in camp.Leads)
                                 {
-                                    <human-link user-id="@lead.UserId" display-name="@lead.DisplayName" />
+                                    <vc:human user-id="@lead.UserId" />
                                     if (lead != camp.Leads.Last())
                                     {
                                         <text>, </text>

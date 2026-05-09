@@ -247,72 +247,41 @@
                 <div class="wg-card">
                     <div class="wg-card-header">
                         <div>
-                            <span class="wg-card-name">&lt;human-link&gt;</span>
-                            <span class="wg-card-kind kind-th">TagHelper</span>
+                            <span class="wg-card-name">&lt;vc:human&gt;</span>
+                            <span class="wg-card-kind kind-vc">ViewComponent</span>
                         </div>
-                        <span class="wg-card-path">src/Humans.Web/TagHelpers/HumanLinkTagHelper.cs</span>
+                        <span class="wg-card-path">src/Humans.Web/ViewComponents/HumanViewComponent.cs</span>
                     </div>
                     <div class="wg-card-note">
-                        Renders a link to a human's profile. Display name and avatar are resolved internally from the
-                        Profile section by human id; <code>profile-picture-url</code> is deprecated and ignored.
+                        One-stop human reference — text link, avatar, avatar+name, or card. Display name and avatar are resolved internally from the Profile section by human id.
                     </div>
                     @ParamsBlock(
                         ("user-id", "<code>Guid</code> — required"),
-                        ("display-name", "<code>string</code> — optional; resolved from profile if omitted"),
-                        ("mode", "<code>HumanLinkMode</code> — Text (default) · Avatar · AvatarName · Card"),
-                        ("size", "<code>int</code> — avatar pixel size (default 40); applies to non-Text modes"),
-                        ("admin", "<code>bool</code> — when true, links to <code>/Profile/AdminDetail</code> instead of the public view"),
-                        ("show-popover", "<code>bool</code> — hover-popover with profile summary (default true)"),
-                        ("avatar-css-class", "<code>string?</code> — extra classes on the avatar element"),
-                        ("avatar-bg-color", "<code>string</code> — background class for the initial fallback (default <code>bg-secondary</code>)")
+                        ("layout", "<code>HumanLayout</code> — Text (default) · Avatar · AvatarName · Card"),
+                        ("link", "<code>HumanLink</code> — Public (default) · Admin · None"),
+                        ("popover", "<code>bool</code> — hover-popover with profile summary (default true)"),
+                        ("size", "<code>int</code> — avatar pixel size (default 40); applies to non-Text layouts"),
+                        ("css-class", "<code>string?</code> — extra classes on the avatar element"),
+                        ("bg-color", "<code>string</code> — background class for the initial fallback (default <code>bg-secondary</code>)")
                     )
                     <div class="wg-variants">
-                        <div class="wg-variant-label">mode="text"<span class="wg-variant-sub">default mode</span></div>
-                        <div class="wg-variant-render"><human-link user-id="@Model.CurrentUserId" /></div>
+                        <div class="wg-variant-label">layout="Text"<span class="wg-variant-sub">default</span></div>
+                        <div class="wg-variant-render"><vc:human user-id="@Model.CurrentUserId" /></div>
 
-                        <div class="wg-variant-label">mode="avatar"<span class="wg-variant-sub">size=48</span></div>
-                        <div class="wg-variant-render"><human-link user-id="@Model.CurrentUserId" mode="@HumanLinkMode.Avatar" size="48" /></div>
+                        <div class="wg-variant-label">layout="Avatar"<span class="wg-variant-sub">size=48</span></div>
+                        <div class="wg-variant-render"><vc:human user-id="@Model.CurrentUserId" layout="Avatar" size="48" /></div>
 
-                        <div class="wg-variant-label">mode="avatar-name"<span class="wg-variant-sub">size=48</span></div>
-                        <div class="wg-variant-render"><human-link user-id="@Model.CurrentUserId" mode="@HumanLinkMode.AvatarName" size="48" /></div>
+                        <div class="wg-variant-label">layout="AvatarName"<span class="wg-variant-sub">size=48</span></div>
+                        <div class="wg-variant-render"><vc:human user-id="@Model.CurrentUserId" layout="AvatarName" size="48" /></div>
 
-                        <div class="wg-variant-label">mode="card"<span class="wg-variant-sub">size=64</span></div>
-                        <div class="wg-variant-render"><div style="max-width: 160px;"><human-link user-id="@Model.CurrentUserId" mode="@HumanLinkMode.Card" size="64" /></div></div>
+                        <div class="wg-variant-label">layout="Card"<span class="wg-variant-sub">size=64</span></div>
+                        <div class="wg-variant-render"><div style="max-width: 160px;"><vc:human user-id="@Model.CurrentUserId" layout="Card" size="64" /></div></div>
 
-                        <div class="wg-variant-label">admin="true"<span class="wg-variant-sub">links to AdminDetail</span></div>
-                        <div class="wg-variant-render"><human-link user-id="@Model.CurrentUserId" admin="true" /></div>
-                    </div>
-                </div>
+                        <div class="wg-variant-label">link="Admin"<span class="wg-variant-sub">links to AdminDetail</span></div>
+                        <div class="wg-variant-render"><vc:human user-id="@Model.CurrentUserId" link="Admin" /></div>
 
-                <div class="wg-card">
-                    <div class="wg-card-header">
-                        <div>
-                            <span class="wg-card-name">&lt;vc:user-avatar&gt;</span>
-                            <span class="wg-card-kind kind-vc">ViewComponent</span>
-                        </div>
-                        <span class="wg-card-path">src/Humans.Web/ViewComponents/UserAvatarViewComponent.cs</span>
-                    </div>
-                    <div class="wg-card-note">
-                        Stand-alone avatar resolved from a human id. Falls back to initial-letter circle when no custom picture.
-                    </div>
-                    @ParamsBlock(
-                        ("userId", "<code>Guid</code> — required"),
-                        ("size", "<code>int</code> — pixel size (default 40)"),
-                        ("cssClass", "<code>string?</code> — extra class(es) on the rendered img/div"),
-                        ("bgColor", "<code>string</code> — background class for the initial fallback (default <code>bg-secondary</code>)")
-                    )
-                    <div class="wg-variants">
-                        <div class="wg-variant-label">size=32<span class="wg-variant-sub">32×32 px</span></div>
-                        <div class="wg-variant-render"><vc:user-avatar user-id="@Model.CurrentUserId" size="32" /></div>
-
-                        <div class="wg-variant-label">size=48<span class="wg-variant-sub">48×48 px</span></div>
-                        <div class="wg-variant-render"><vc:user-avatar user-id="@Model.CurrentUserId" size="48" /></div>
-
-                        <div class="wg-variant-label">size=72<span class="wg-variant-sub">72×72 px</span></div>
-                        <div class="wg-variant-render"><vc:user-avatar user-id="@Model.CurrentUserId" size="72" /></div>
-
-                        <div class="wg-variant-label">size=120<span class="wg-variant-sub">120×120 px</span></div>
-                        <div class="wg-variant-render"><vc:user-avatar user-id="@Model.CurrentUserId" size="120" /></div>
+                        <div class="wg-variant-label">link="None"<span class="wg-variant-sub">no link, no popover</span></div>
+                        <div class="wg-variant-render"><vc:human user-id="@Model.CurrentUserId" layout="Avatar" size="48" link="None" /></div>
                     </div>
                 </div>
 

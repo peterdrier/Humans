@@ -32,7 +32,7 @@ else
                             @foreach (var member in Model.BoardMembers)
                             {
                                 <th class="text-center" style="min-width: 80px;">
-                                    <small><human-link user-id="@member.UserId" display-name="@member.DisplayName" /></small>
+                                    <small><vc:human user-id="@member.UserId" /></small>
                                 </th>
                             }
                             <th></th>
@@ -55,9 +55,7 @@ else
                             }
                             <tr data-href="@Url.Action("BoardVotingDetail", new { applicationId = app.ApplicationId })">
                                 <td>
-                                    <human-link user-id="@app.UserId" display-name="@app.DisplayName"
-                                                mode="AvatarName" size="32"
-                                                profile-picture-url="@app.ProfilePictureUrl" />
+                                    <vc:human user-id="@app.UserId" layout="AvatarName" size="32" />
                                 </td>
                                 <td class="text-center">
                                     <span class="badge @(app.MembershipTier == MembershipTier.Asociado ? "bg-primary" : "bg-info")">

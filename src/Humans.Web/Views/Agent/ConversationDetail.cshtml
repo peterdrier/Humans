@@ -21,7 +21,7 @@
     @if (Model.IsAdminView)
     {
         <dt class="col-sm-3">Human</dt>
-        <dd class="col-sm-9"><human-link user-id="@conv.UserId" display-name="@Model.DisplayName" admin="true" /></dd>
+        <dd class="col-sm-9"><vc:human user-id="@conv.UserId" link="Admin" /></dd>
     }
     <dt class="col-sm-3">Started</dt>
     <dd class="col-sm-9">@conv.StartedAt.ToAuditTimestamp() UTC</dd>
