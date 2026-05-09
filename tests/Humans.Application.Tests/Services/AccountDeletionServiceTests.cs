@@ -157,6 +157,81 @@ public class AccountDeletionServiceTests
             Arg.Any<DateTime>(), user.PreferredLanguage, Arg.Any<CancellationToken>());
     }
 
+    [HumansFact]
+    public async Task RequestDeletionAsync_TicketHolder_SetsEligibleAfterAndIsHeldForTicket()
+    {
+        // Ticket-hold path: deletion is held until after the event so the
+        // ticket stays usable. Drives different UI copy in both Profile and
+        // Guest deletion entry points, so the result must carry the hold date
+        // and the IsHeldForTicket flag verbatim.
+        var userId = Guid.NewGuid();
+        var user = MakeUser(userId);
+        var holdDate = _clock.GetCurrentInstant().Plus(Duration.FromDays(60));
+        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
+        _ticketQueryService.HasCurrentEventTicketAsync(userId, Arg.Any<CancellationToken>()).Returns(true);
+        _ticketQueryService.GetPostEventHoldDateAsync(Arg.Any<CancellationToken>()).Returns(holdDate);
+        _userEmailService.GetNotificationTargetEmailsAsync(
+                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, string>());
+
+        var result = await _service.RequestDeletionAsync(userId);
+
+        result.Success.Should().BeTrue();
+        result.IsHeldForTicket.Should().BeTrue();
+        result.EffectiveDeletionDate.Should().Be(holdDate);
+
+        await _userService.Received(1).SetDeletionPendingAsync(
+            userId,
+            _clock.GetCurrentInstant(),
+            _clock.GetCurrentInstant().Plus(Duration.FromDays(30)),
+            holdDate,
+            Arg.Any<CancellationToken>());
+    }
+
+    // ==========================================================================
+    // CancelDeletionAsync
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task CancelDeletionAsync_PendingDeletion_ClearsViaUserService()
+    {
+        var userId = Guid.NewGuid();
+        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(MakeUser(userId, deletionPending: true));
+
+        var result = await _service.CancelDeletionAsync(userId);
+
+        result.Success.Should().BeTrue();
+        await _userService.Received(1).ClearDeletionAsync(userId, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task CancelDeletionAsync_NoPendingDeletion_ReturnsNoDeletionPending()
+    {
+        var userId = Guid.NewGuid();
+        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(MakeUser(userId));
+
+        var result = await _service.CancelDeletionAsync(userId);
+
+        result.Success.Should().BeFalse();
+        result.ErrorKey.Should().Be("NoDeletionPending");
+        await _userService.DidNotReceiveWithAnyArgs().ClearDeletionAsync(default, default);
+    }
+
+    [HumansFact]
+    public async Task CancelDeletionAsync_UnknownUser_ReturnsNotFound()
+    {
+        var userId = Guid.NewGuid();
+        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns((User?)null);
+
+        var result = await _service.CancelDeletionAsync(userId);
+
+        result.Success.Should().BeFalse();
+        result.ErrorKey.Should().Be("NotFound");
+        await _userService.DidNotReceiveWithAnyArgs().ClearDeletionAsync(default, default);
+    }
+
     // ==========================================================================
     // PurgeAsync (admin-initiated)
     // ==========================================================================
