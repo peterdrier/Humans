@@ -1,12 +1,15 @@
 <!-- freshness:triggers
   src/Humans.Application/Services/CityPlanning/**
+  src/Humans.Application/Interfaces/CitiPlanning/ICityPlanningService.cs
+  src/Humans.Application/Interfaces/Repositories/ICityPlanningRepository.cs
   src/Humans.Domain/Entities/CityPlanningSettings.cs
   src/Humans.Domain/Entities/CampPolygon.cs
   src/Humans.Domain/Entities/CampPolygonHistory.cs
   src/Humans.Infrastructure/Data/Configurations/CityPlanning/**
-  src/Humans.Infrastructure/Repositories/CityPlanningRepository.cs
+  src/Humans.Infrastructure/Repositories/CitiPlanning/CityPlanningRepository.cs
   src/Humans.Web/Controllers/CityPlanningController.cs
   src/Humans.Web/Controllers/CityPlanningApiController.cs
+  src/Humans.Web/Hubs/CityPlanningHub.cs
 -->
 <!-- freshness:flag-on-change
   Polygon edit authorization (lead vs city-planning team vs CampAdmin), placement-open gating, and append-only history rules — review when CityPlanning service/entities/controllers change.
@@ -78,6 +81,40 @@ Append-only per design-rules §12. The repository exposes no `UpdateAsync` / `Re
 
 Cross-domain navs (`CampPolygon.CampSeason`, `CampPolygon.LastModifiedByUser`, `CampPolygonHistory.CampSeason`, `CampPolygonHistory.ModifiedByUser`) remain declared on the entities but are no longer read from this section's code. Stripping them at the entity boundary is a follow-up item consistent with §15i — new code must use `ICampService` / `IUserService` instead.
 
+## Routing
+
+Two controllers serve this section plus a SignalR hub.
+
+**MVC — `CityPlanningController` (`[Route("CityPlanning")]`)**
+
+| Route | Action |
+|-------|--------|
+| `GET /CityPlanning` | Full-screen map page |
+| `GET /CityPlanning/Admin` | Admin settings panel |
+| `POST /CityPlanning/Admin/OpenPlacement` | Open placement phase |
+| `POST /CityPlanning/Admin/ClosePlacement` | Close placement phase |
+| `POST /CityPlanning/Admin/UpdatePlacementDates` | Set informational open/close datetimes |
+| `POST /CityPlanning/Admin/UploadLimitZone` | Upload limit zone GeoJSON |
+| `GET /CityPlanning/Admin/DownloadLimitZone` | Download limit zone GeoJSON |
+| `POST /CityPlanning/Admin/DeleteLimitZone` | Delete limit zone |
+| `POST /CityPlanning/Admin/UploadOfficialZones` | Upload official zones GeoJSON |
+| `GET /CityPlanning/Admin/DownloadOfficialZones` | Download official zones GeoJSON |
+| `POST /CityPlanning/Admin/DeleteOfficialZones` | Delete official zones |
+
+**API — `CityPlanningApiController` (`[Route("api/city-planning")]`)**
+
+| Route | Action |
+|-------|--------|
+| `GET /api/city-planning/state` | Map state: settings + all polygons + unmapped seasons |
+| `PUT /api/city-planning/camp-polygons/{campSeasonId}` | Save or update a polygon |
+| `GET /api/city-planning/camp-polygons/{campSeasonId}/history` | Version history (newest first) |
+| `POST /api/city-planning/camp-polygons/{campSeasonId}/restore/{historyId}` | Restore historical version (map admin only) |
+| `GET /api/city-planning/export.geojson?year={year}` | Export all polygons as GeoJSON (map admin only) |
+
+**SignalR — `CityPlanningHub` (`/hubs/city-planning`)**
+
+Broadcasts `CampPolygonUpdated(campSeasonId, geoJson, areaSqm, soundZone, campName)` after every polygon save. Receives `CursorMoved(lng, lat)` from clients.
+
 ## Actors & Roles
 
 | Actor | Capabilities |
@@ -123,7 +160,7 @@ Cross-domain navs (`CampPolygon.CampSeason`, `CampPolygon.LastModifiedByUser`, `
 **Status:** (A) Migrated (peterdrier/Humans PR #543, 2026-04-22).
 
 - `CityPlanningService` lives in `Humans.Application.Services.CityPlanning` and never imports `Microsoft.EntityFrameworkCore` — enforced structurally by `Humans.Application.csproj`'s reference graph.
-- `ICityPlanningRepository` / `CityPlanningRepository` (`Humans.Infrastructure.Repositories`) is the only code path that touches this section's tables via `DbContext`.
+- `ICityPlanningRepository` (`Humans.Application.Interfaces.Repositories`) / `CityPlanningRepository` (`Humans.Infrastructure.Repositories.CitiPlanning`) is the only code path that touches this section's tables via `DbContext`.
 - **Decorator decision — no caching decorator.** Admin-facing, low-traffic (same rationale as Governance / User / Feedback).
 - **Cross-section reads** route through `ICampService`, `ITeamService`, `IProfileService`, and `IUserService`. The previous cross-domain `.Include(h => h.ModifiedByUser)` on `CampPolygonHistories` is replaced by a batched `IUserService.GetByIdsAsync` lookup at the service layer.
 - **Architecture test** — `tests/Humans.Application.Tests/Architecture/CityPlanningArchitectureTests.cs` pins the non-decorator shape and the append-only repository surface.
