@@ -177,6 +177,24 @@ public class ProfileServiceTests : IDisposable
         await _userService.Received().UpdateDisplayNameAsync(userId, "Phoenix", Arg.Any<CancellationToken>());
     }
 
+    /// <summary>
+    /// Issue #692: even when the request carries an empty BurnerName (Stub-state
+    /// onboarding pre-required-fields), the write-through-sync still fires so
+    /// User.DisplayName tracks the persisted Profile.BurnerName ("") rather than
+    /// retaining a stale auth-provider name from before the user touched the field.
+    /// </summary>
+    [HumansFact]
+    public async Task SaveProfileAsync_WriteThroughSyncs_EmptyBurnerName()
+    {
+        var userId = Guid.NewGuid();
+        await SeedUserWithProfileAsync(userId);
+        var request = MakeRequest(burnerName: "", firstName: "", lastName: "");
+
+        await _service.SaveProfileAsync(userId, request, "en");
+
+        await _userService.Received().UpdateDisplayNameAsync(userId, "", Arg.Any<CancellationToken>());
+    }
+
     [HumansFact]
     public async Task SaveProfileAsync_ParsesBirthday_ValidDate()
     {

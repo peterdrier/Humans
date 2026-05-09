@@ -141,6 +141,83 @@ public class MagicLinkServiceTests : IDisposable
             Arg.Any<CancellationToken>());
     }
 
+    /// <summary>
+    /// Issue #692: when a Profile exists, the magic-link greeting uses
+    /// Profile.BurnerName (resolved via FullProfile.BurnerName), not the legacy
+    /// auth-provider User.DisplayName.
+    /// </summary>
+    [HumansFact]
+    public async Task SendMagicLinkAsync_UsesBurnerName_WhenProfileExists()
+    {
+        var userId = Guid.NewGuid();
+        var user = new User
+        {
+            Id = userId,
+            DisplayName = "Auth Provider Name",
+            CreatedAt = _clock.GetCurrentInstant()
+        };
+
+        _userEmailService
+            .FindVerifiedEmailWithUserAsync("alice@gmail.com", Arg.Any<CancellationToken>())
+            .Returns(new UserEmailWithUser(userId, "alice@gmail.com", null, null));
+        _userManager.FindByIdAsync(userId.ToString()).Returns(user);
+        _userManager.UpdateAsync(Arg.Any<User>()).Returns(IdentityResult.Success);
+
+        var fullProfile = new FullProfile(
+            UserId: userId, BurnerName: "Flame", ProfilePictureUrl: null,
+            HasCustomPicture: false, ProfileId: Guid.NewGuid(), UpdatedAtTicks: 0,
+            Bio: null, Pronouns: null, ContributionInterests: null,
+            City: null, CountryCode: null, Latitude: null, Longitude: null,
+            BirthdayDay: null, BirthdayMonth: null,
+            IsApproved: true, IsSuspended: false,
+            CVEntries: Array.Empty<CVEntry>());
+        _profileService.GetFullProfileAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<FullProfile?>(fullProfile));
+
+        await _service.SendMagicLinkAsync("alice@gmail.com", null);
+
+        await _emailService.Received(1).SendMagicLinkLoginAsync(
+            "alice@gmail.com",
+            "Flame",
+            Arg.Any<string>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    /// <summary>
+    /// Issue #692: when no Profile exists and User.DisplayName is empty
+    /// (fresh-account / contact-import edge), the greeting falls back to the
+    /// email address so the email still has a non-blank salutation.
+    /// </summary>
+    [HumansFact]
+    public async Task SendMagicLinkAsync_FallsBackToEmail_WhenNoProfileAndNoDisplayName()
+    {
+        var userId = Guid.NewGuid();
+        var user = new User
+        {
+            Id = userId,
+            DisplayName = string.Empty,
+            CreatedAt = _clock.GetCurrentInstant()
+        };
+
+        _userEmailService
+            .FindVerifiedEmailWithUserAsync("alice@gmail.com", Arg.Any<CancellationToken>())
+            .Returns(new UserEmailWithUser(userId, "alice@gmail.com", null, null));
+        _userManager.FindByIdAsync(userId.ToString()).Returns(user);
+        _userManager.UpdateAsync(Arg.Any<User>()).Returns(IdentityResult.Success);
+
+        // Default fixture: _profileService.GetFullProfileAsync returns null.
+
+        await _service.SendMagicLinkAsync("alice@gmail.com", null);
+
+        await _emailService.Received(1).SendMagicLinkLoginAsync(
+            "alice@gmail.com",
+            "alice@gmail.com",
+            Arg.Any<string>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+    }
+
     [HumansFact]
     public async Task SendMagicLinkAsync_UnknownEmail_SendsSignupLink()
     {

@@ -855,23 +855,17 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         if (perUser.Count == 0)
             return [];
 
-        var users = await _userService.GetByIdsAsync(
-            perUser.Select(x => x.UserId).ToList(),
-            cancellationToken);
+        var userIds = perUser.Select(x => x.UserId).ToList();
+        var users = await _userService.GetByIdsAsync(userIds, cancellationToken);
 
         // Issue #692: BurnerName-aware label for the admin email-flag report.
-        // Admin path is low-traffic so per-user read is acceptable.
-        var profiles = new Dictionary<Guid, Domain.Entities.Profile>();
-        foreach (var x in perUser)
-        {
-            var p = await _profileRepository.GetByUserIdReadOnlyAsync(x.UserId, cancellationToken);
-            if (p is not null) profiles[x.UserId] = p;
-        }
+        // Bulk-by-ids per design-rules §3a — single repository round-trip.
+        var profilesByUserId = await _profileRepository.GetByUserIdsAsync(userIds, cancellationToken);
 
         return perUser
             .Select(x => new UserEmailFlagViolation(
                 x.UserId,
-                profiles.TryGetValue(x.UserId, out var p) && !string.IsNullOrWhiteSpace(p.BurnerName)
+                profilesByUserId.TryGetValue(x.UserId, out var p) && !string.IsNullOrWhiteSpace(p.BurnerName)
                     ? p.BurnerName
                     : users.TryGetValue(x.UserId, out var user) ? user.DisplayName : null,
                 x.IsGoogleCount,

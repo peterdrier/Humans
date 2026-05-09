@@ -83,9 +83,8 @@ public class GuestController : HumansControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to load Guest dashboard for user {UserId}", user.Id);
-            // Issue #692: BurnerName-aware fallback view-model.
-            var fp = await _profileService.GetFullProfileAsync(user.Id);
-            return View(new GuestDashboardViewModel { BurnerName = fp?.BurnerName ?? user.DisplayName });
+            // Issue #692: post-write-through-sync, user.DisplayName == BurnerName.
+            return View(new GuestDashboardViewModel { BurnerName = user.DisplayName });
         }
     }
 

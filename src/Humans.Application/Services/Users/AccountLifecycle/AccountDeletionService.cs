@@ -139,9 +139,14 @@ public sealed class AccountDeletionService : IAccountDeletionService
         var notificationEmail = notificationEmails.GetValueOrDefault(userId) ?? user.Email;
         if (notificationEmail is not null)
         {
+            // Issue #692: greet by BurnerName (Profile.BurnerName when set,
+            // else User.DisplayName). Falls back to user.DisplayName when
+            // Profile is absent (Stub or no-Profile path).
+            var fullProfile = await _profileService.GetFullProfileAsync(userId, ct);
+            var recipientName = fullProfile?.BurnerName ?? user.DisplayName;
             await _emailService.SendAccountDeletionRequestedAsync(
                 notificationEmail,
-                user.DisplayName,
+                recipientName,
                 deletionDate.ToDateTimeUtc(),
                 user.PreferredLanguage,
                 ct);
