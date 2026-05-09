@@ -268,7 +268,9 @@ public class CityPlanningApiController : ControllerBase
             if (!settings.IsContainerPlacementOpen ||
                 !userSeasonId.HasValue ||
                 container.CampSeasonId != userSeasonId)
+            {
                 return Forbid();
+            }
         }
 
         if (string.IsNullOrWhiteSpace(request.GeoJson) || !IsValidContainerPlacementGeoJson(request.GeoJson))
@@ -297,7 +299,9 @@ public class CityPlanningApiController : ControllerBase
             if (!settings.IsContainerPlacementOpen ||
                 !userSeasonId.HasValue ||
                 container.CampSeasonId != userSeasonId)
+            {
                 return Forbid();
+            }
         }
 
         await _containerService.ClearPlacementAsync(id, cancellationToken);

@@ -106,7 +106,9 @@ public sealed class ContainerService : IContainerService
         else if (data.MainImage is not null)
         {
             if (container.ImageStoragePath is not null)
+            {
                 _imageStorage.DeleteImage(container.ImageStoragePath);
+            }
             container.ImageStoragePath = await _imageStorage.SaveImageAsync(id, data.MainImage.Content, data.MainImage.ContentType, ContainerImageKind.Main, ct);
             container.ImageContentType = data.MainImage.ContentType;
             container.ImageFileName = data.MainImage.FileName;
@@ -122,7 +124,9 @@ public sealed class ContainerService : IContainerService
         else if (data.PlacementImage is not null)
         {
             if (container.PlacementImageStoragePath is not null)
+            {
                 _imageStorage.DeleteImage(container.PlacementImageStoragePath);
+            }
             container.PlacementImageStoragePath = await _imageStorage.SaveImageAsync(id, data.PlacementImage.Content, data.PlacementImage.ContentType, ContainerImageKind.Placement, ct);
             container.PlacementImageContentType = data.PlacementImage.ContentType;
             container.PlacementImageFileName = data.PlacementImage.FileName;
@@ -138,10 +142,14 @@ public sealed class ContainerService : IContainerService
             ?? throw new InvalidOperationException("Container not found.");
 
         if (container.ImageStoragePath is not null)
+        {
             _imageStorage.DeleteImage(container.ImageStoragePath);
+        }
 
         if (container.PlacementImageStoragePath is not null)
+        {
             _imageStorage.DeleteImage(container.PlacementImageStoragePath);
+        }
 
         await _repo.DeleteAsync(id, ct);
     }
@@ -177,13 +185,21 @@ public sealed class ContainerService : IContainerService
     private static void ValidateImages(ContainerImageUpload? mainImage, ContainerImageUpload? placementImage)
     {
         if (mainImage is not null && !AllowedContentTypes.Contains(mainImage.ContentType))
+        {
             throw new InvalidOperationException("Only JPEG, PNG, and WebP images are allowed.");
+        }
         if (mainImage is not null && mainImage.Length > MaxImageBytes)
+        {
             throw new InvalidOperationException("Image must be under 10 MB.");
+        }
         if (placementImage is not null && !AllowedContentTypes.Contains(placementImage.ContentType))
+        {
             throw new InvalidOperationException("Only JPEG, PNG, and WebP images are allowed.");
+        }
         if (placementImage is not null && placementImage.Length > MaxImageBytes)
+        {
             throw new InvalidOperationException("Image must be under 10 MB.");
+        }
     }
 
     private static ContainerDto ToDto(Container c) => new(
