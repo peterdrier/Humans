@@ -148,7 +148,10 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
             UpdatedAt = now
         };
 
-        await _repository.AddAsync(userEmail, cancellationToken);
+        // Issue nobodies-collective/Humans#687: every UserEmail-add path goes
+        // through AddRowWithInvariantsAsync — adds the row, runs the Primary +
+        // Google invariants, and invalidates FullProfile.
+        await AddRowWithInvariantsAsync(userEmail, cancellationToken);
 
         // Generate verification token via Identity
         var token = await _userManager.GenerateUserTokenAsync(
@@ -219,7 +222,12 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         pendingEmail.UpdatedAt = _clock.GetCurrentInstant();
         await _repository.UpdateAsync(pendingEmail, cancellationToken);
 
-        await TryBackfillGoogleEmailAsync(userId, cancellationToken);
+        // Issue nobodies-collective/Humans#687: when an unverified row flips to
+        // verified, the Google identity invariant may now be satisfiable for
+        // the first time (for users whose only verified row is the one just
+        // verified). Run the invariant here in addition to the
+        // creation-time call inside AddRowWithInvariantsAsync.
+        await EnsureGoogleInvariantAsync(userId, cancellationToken);
         await _fullProfileInvalidator.InvalidateAsync(userId, cancellationToken);
 
         return new VerifyEmailResult(pendingEmail.Email, MergeRequestCreated: false);
@@ -270,7 +278,8 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         pendingEmail.UpdatedAt = _clock.GetCurrentInstant();
         await _repository.UpdateAsync(pendingEmail, cancellationToken);
 
-        await TryBackfillGoogleEmailAsync(userId, cancellationToken);
+        // Issue nobodies-collective/Humans#687: see VerifyEmailAsync.
+        await EnsureGoogleInvariantAsync(userId, cancellationToken);
         await _fullProfileInvalidator.InvalidateAsync(userId, cancellationToken);
 
         await _auditLogService.LogAsync(
@@ -402,7 +411,6 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
             return;
 
         var now = _clock.GetCurrentInstant();
-        var isNobodiesTeam = email.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase);
 
         var userEmail = new UserEmail
         {
@@ -410,36 +418,33 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
             UserId = userId,
             Email = email,
             IsVerified = true,
-            // IsPrimary set below by EnsurePrimaryInvariantAsync.
+            // IsPrimary / IsGoogle set below by AddRowWithInvariantsAsync.
             IsPrimary = false,
             Visibility = ContactFieldVisibility.BoardOnly,
             CreatedAt = now,
             UpdatedAt = now
         };
 
-        await _repository.AddAsync(userEmail, cancellationToken);
-
-        await EnsurePrimaryInvariantAsync(userId, cancellationToken);
-
-        // Auto-set GoogleEmail when @nobodies.team email is added (cross-section → IUserService)
-        if (isNobodiesTeam)
-        {
-            await _userService.TrySetGoogleEmailAsync(userId, email, cancellationToken);
-        }
+        // Issue nobodies-collective/Humans#687: every UserEmail-add path goes
+        // through the orchestrator. EnsureGoogleInvariantAsync stamps IsGoogle
+        // on the canonical row (Workspace > existing-IsGoogle > most-recent),
+        // so the @nobodies.team row wins automatically without a separate
+        // _userService.TrySetGoogleEmailAsync write.
+        await AddRowWithInvariantsAsync(userEmail, cancellationToken);
     }
 
-    public async Task<bool> TryBackfillGoogleEmailAsync(
+    [Obsolete("Issue nobodies-collective/Humans#687: User.GoogleEmail is being deprecated. UserEmailService.EnsureGoogleInvariantAsync now stamps IsGoogle on the canonical row whenever a UserEmail is added; no separate backfill is needed. Method body is now a no-op.")]
+    public Task<bool> TryBackfillGoogleEmailAsync(
         Guid userId, CancellationToken cancellationToken = default)
     {
-        // The legacy User.GoogleEmail column is checked by
-        // IUserService.TrySetGoogleEmailAsync (which is a no-op when the
-        // column is non-null), so no read-then-set race exists here.
-        var allNobodies = await _repository.GetAllVerifiedNobodiesTeamEmailsAsync(cancellationToken);
-        var nobodiesEmail = allNobodies.FirstOrDefault(e => e.UserId == userId)?.Email;
-        if (nobodiesEmail is null)
-            return false;
-
-        return await _userService.TrySetGoogleEmailAsync(userId, nobodiesEmail, cancellationToken);
+        // Body intentionally left as a no-op. The Google identity invariant
+        // is now maintained by EnsureGoogleInvariantAsync, which is called from
+        // AddRowWithInvariantsAsync on every UserEmail row creation and from
+        // VerifyEmailAsync / AdminMarkVerifiedAsync on every verification.
+        // See issue nobodies-collective/Humans#687.
+        _ = userId;
+        _ = cancellationToken;
+        return Task.FromResult(false);
     }
 
     public async Task<string?> GetNobodiesTeamEmailAsync(
@@ -726,6 +731,125 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         await _fullProfileInvalidator.InvalidateAsync(userId, cancellationToken);
     }
 
+    /// <summary>
+    /// Issue nobodies-collective/Humans#687: maintains the "at most one
+    /// IsGoogle=true verified row per user" invariant. Mirrors
+    /// <see cref="EnsurePrimaryInvariantAsync"/> — when ≥1 verified row exists
+    /// for the user but none is IsGoogle, picks the canonical winner and stamps
+    /// it. Single source of truth for the Google identity, replacing the
+    /// drift-prone <c>User.GoogleEmail</c> shadow column.
+    ///
+    /// Rules:
+    /// - 0 verified rows → no-op (no candidate to promote).
+    /// - 1+ verified rows but 0 IsGoogle → pick a winner and stamp it.
+    /// - 2+ IsGoogle rows → demote all but the winner.
+    /// - Exactly 1 IsGoogle row that is verified → no-op (stable).
+    ///
+    /// Successor priority (highest to lowest), same as
+    /// <see cref="EnsurePrimaryInvariantAsync"/>:
+    /// 1. Verified @nobodies.team row (Workspace identity wins).
+    /// 2. Existing IsGoogle row (stable — don't flip the Google identity just
+    ///    because a sibling row changed).
+    /// 3. Most-recently-updated verified row, with Id as stable tiebreaker.
+    /// </summary>
+    private async Task EnsureGoogleInvariantAsync(
+        Guid userId, CancellationToken cancellationToken)
+    {
+        var emails = (await _repository.GetByUserIdForMutationAsync(userId, cancellationToken)).ToList();
+        var verified = emails.Where(e => e.IsVerified).ToList();
+        if (verified.Count == 0)
+            return;
+
+        var currentGoogles = verified.Where(e => e.IsGoogle).ToList();
+
+        // Pick the canonical winner from the verified set — same precedence as
+        // EnsurePrimaryInvariantAsync.
+        var winner =
+            verified.FirstOrDefault(e => e.Email.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase))
+            ?? currentGoogles.OrderBy(e => e.Id).FirstOrDefault()
+            ?? verified.OrderByDescending(e => e.UpdatedAt).ThenBy(e => e.Id).First();
+
+        // Already correct: exactly one IsGoogle row, and it's the winner.
+        if (currentGoogles.Count == 1 && currentGoogles[0].Id == winner.Id)
+            return;
+
+        var now = _clock.GetCurrentInstant();
+        var changed = new List<UserEmail>();
+        foreach (var row in verified)
+        {
+            var shouldBeGoogle = row.Id == winner.Id;
+            if (row.IsGoogle != shouldBeGoogle)
+            {
+                row.IsGoogle = shouldBeGoogle;
+                row.UpdatedAt = now;
+                changed.Add(row);
+            }
+        }
+
+        if (changed.Count == 0)
+            return;
+
+        await _repository.UpdateBatchAsync(changed, cancellationToken);
+        await _fullProfileInvalidator.InvalidateAsync(userId, cancellationToken);
+    }
+
+    /// <summary>
+    /// Issue nobodies-collective/Humans#687: single orchestrator for every
+    /// UserEmail-add path. Adds the row, then runs the Primary and Google
+    /// invariants and invalidates the FullProfile cache. The four call sites
+    /// (<see cref="AddEmailAsync"/>, <see cref="AddVerifiedEmailAsync"/>,
+    /// <see cref="LinkAsync"/>, <see cref="AddProvisionedEmailAsync"/>) all
+    /// route through here so no path can silently skip an invariant.
+    /// </summary>
+    private async Task AddRowWithInvariantsAsync(
+        UserEmail row, CancellationToken cancellationToken)
+    {
+        await _repository.AddAsync(row, cancellationToken);
+        await EnsurePrimaryInvariantAsync(row.UserId, cancellationToken);
+        await EnsureGoogleInvariantAsync(row.UserId, cancellationToken);
+        await _fullProfileInvalidator.InvalidateAsync(row.UserId, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task AddProvisionedEmailAsync(
+        Guid userId, string email, CancellationToken cancellationToken = default)
+    {
+        var normalizedEmail = EmailNormalization.NormalizeForComparison(email);
+        var alternateEmail = GetAlternateComparableEmail(normalizedEmail);
+
+        // Idempotent — duplicate provisioning attempts (e.g. retried imports)
+        // must not re-add the row.
+        if (await _repository.ExistsForUserAsync(userId, normalizedEmail, alternateEmail, cancellationToken))
+            return;
+
+        var now = _clock.GetCurrentInstant();
+        var row = new UserEmail
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Email = email,
+            IsVerified = true,
+            // IsPrimary / IsGoogle set by the orchestrator's invariants.
+            IsPrimary = false,
+            Visibility = null,
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+
+        await AddRowWithInvariantsAsync(row, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<Guid?> FindAnyUserIdByEmailAsync(
+        string email, CancellationToken cancellationToken = default)
+    {
+        var normalizedEmail = EmailNormalization.NormalizeForComparison(email);
+        var alternateEmail = GetAlternateComparableEmail(normalizedEmail);
+        var match = await _repository.FindByNormalizedEmailAsync(
+            normalizedEmail, alternateEmail, cancellationToken);
+        return match?.UserId;
+    }
+
     /// <inheritdoc />
     public async Task<bool> SetGoogleAsync(
         Guid userId, Guid userEmailId, Guid actorUserId,
@@ -923,23 +1047,32 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
                 Email = email,
                 IsVerified = true,
                 IsPrimary = false,
-                IsGoogle = false,
+                // IsGoogle is set by EnsureGoogleInvariantAsync inside the
+                // orchestrator. The previous `IsGoogle = false` here was the
+                // root cause of ZeroIsGoogle on OAuth signups (issue
+                // nobodies-collective/Humans#687) — newly-created OAuth rows
+                // never got promoted to IsGoogle.
                 Provider = provider,
                 ProviderKey = providerKey,
                 CreatedAt = now,
                 UpdatedAt = now,
             };
-            await _repository.AddAsync(fresh, cancellationToken);
+            await AddRowWithInvariantsAsync(fresh, cancellationToken);
 
             rowId = fresh.Id;
             description = $"Linked {provider} `{fresh.Email}` to user (new row)";
         }
 
-        // First OAuth sign-in: promote the just-added row to primary so the
-        // User.Email override / FullProfile.PrimaryEmail derivation has a target.
-        await EnsurePrimaryInvariantAsync(userId, cancellationToken);
-
-        await _fullProfileInvalidator.InvalidateAsync(userId, cancellationToken);
+        // For the existing-row branch above (match path), AddRowWithInvariantsAsync
+        // wasn't called — the row was mutated in place. Re-run the Primary
+        // invariant + invalidate to preserve the original LinkAsync behavior
+        // (first OAuth sign-in promotes the row to primary).
+        if (match is not null)
+        {
+            await EnsurePrimaryInvariantAsync(userId, cancellationToken);
+            await EnsureGoogleInvariantAsync(userId, cancellationToken);
+            await _fullProfileInvalidator.InvalidateAsync(userId, cancellationToken);
+        }
 
         await _auditLogService.LogAsync(
             AuditAction.UserEmailLinked,

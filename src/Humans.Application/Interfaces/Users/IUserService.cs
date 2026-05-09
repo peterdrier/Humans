@@ -130,6 +130,7 @@ public interface IUserService
     /// user already has a GoogleEmail set or the user does not exist.
     /// Returns true if the GoogleEmail was set.
     /// </summary>
+    [Obsolete("Issue nobodies-collective/Humans#687: User.GoogleEmail is being deprecated. The Google identity now lives on the UserEmail row (UserEmail.IsGoogle), maintained by UserEmailService.EnsureGoogleInvariantAsync on every row creation. Read FullProfile.GoogleEmail; promote a row with IUserEmailService.SetGoogleAsync.")]
     Task<bool> TrySetGoogleEmailAsync(Guid userId, string email, CancellationToken ct = default);
 
     /// <summary>
@@ -141,6 +142,7 @@ public interface IUserService
     /// true if the user exists and the value was written, false if the user
     /// does not exist.
     /// </summary>
+    [Obsolete("Issue nobodies-collective/Humans#687: User.GoogleEmail is being deprecated. Promote the desired UserEmail row via IUserEmailService.SetGoogleAsync (sets IsGoogle exclusively); read via FullProfile.GoogleEmail.")]
     Task<bool> SetGoogleEmailAsync(Guid userId, string email, CancellationToken ct = default);
 
     /// <summary>
@@ -208,11 +210,10 @@ public interface IUserService
 
     /// <summary>
     /// Returns the id of any user, other than <paramref name="excludeUserId"/>,
-    /// whose <c>GoogleEmail</c> matches <paramref name="email"/> (case-insensitive),
-    /// or null if no such user exists. Used by @nobodies.team provisioning so
-    /// the Application-layer service can detect cross-user conflicts without
-    /// touching the database directly.
+    /// whose legacy <c>User.GoogleEmail</c> shadow column matches <paramref name="email"/>
+    /// (case-insensitive), or null if no such user exists.
     /// </summary>
+    [Obsolete("Issue nobodies-collective/Humans#687: User.GoogleEmail is being deprecated. Use IUserEmailService.GetOtherUserIdHavingEmailAsync — once UserEmail.IsGoogle is sole source of truth a Google identity always has a matching user_emails row, so any other user already owning the address is detected by the user_emails check.")]
     Task<Guid?> GetOtherUserIdHavingGoogleEmailAsync(
         string email,
         Guid excludeUserId,

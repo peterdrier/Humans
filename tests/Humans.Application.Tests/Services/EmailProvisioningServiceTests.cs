@@ -163,32 +163,11 @@ public class EmailProvisioningServiceTests
             Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
-    [HumansFact]
-    public async Task ProvisionNobodiesEmailAsync_RejectsWhenEmailBelongsToAnotherGoogleEmail()
-    {
-        var f = BuildFixture();
-
-        var ownerId = Guid.NewGuid();
-        var targetId = Guid.NewGuid();
-
-        StubTargetUser(f, targetId);
-        f.UserService.GetOtherUserIdHavingGoogleEmailAsync(
-                "alice@nobodies.team", targetId, Arg.Any<CancellationToken>())
-            .Returns(ownerId);
-
-        var result = await f.Service.ProvisionNobodiesEmailAsync(targetId, "alice", targetId);
-
-        result.Success.Should().BeFalse();
-        result.ErrorMessage.Should().Contain("already in use by another human");
-
-        await f.WorkspaceUserService.DidNotReceive().GetAccountAsync(
-            Arg.Any<string>(), Arg.Any<CancellationToken>());
-        await f.WorkspaceUserService.DidNotReceive().ProvisionAccountAsync(
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
-        await f.UserEmailService.DidNotReceive().AddVerifiedEmailAsync(
-            Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
-    }
+    // Issue nobodies-collective/Humans#687: the second cross-user check
+    // (GetOtherUserIdHavingGoogleEmailAsync against the legacy User.GoogleEmail
+    // shadow column) is gone. UserEmail.IsGoogle is sole source of truth, so
+    // any user owning the address as their Google identity also has a matching
+    // user_emails row — caught by the first check above.
 
     [HumansFact]
     public async Task ProvisionNobodiesEmailAsync_RejectsWhenPrefixCollidesWithTeamGoogleGroup()

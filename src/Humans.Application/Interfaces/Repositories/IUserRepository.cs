@@ -80,10 +80,10 @@ public interface IUserRepository
 
     /// <summary>
     /// Returns the id of any user, other than <paramref name="excludeUserId"/>,
-    /// whose <c>GoogleEmail</c> matches the given address (case-insensitive),
-    /// or null if no such user exists. Used by @nobodies.team provisioning to
-    /// block a prefix that is already attached to another human.
+    /// whose legacy <c>GoogleEmail</c> shadow column matches the given address
+    /// (case-insensitive), or null if no such user exists.
     /// </summary>
+    [Obsolete("Issue nobodies-collective/Humans#687: User.GoogleEmail is being deprecated. Use IUserEmailRepository.GetOtherUserIdHavingEmailAsync (matches the user_emails table — the canonical location for Google identity once UserEmail.IsGoogle is sole source of truth).")]
     Task<Guid?> GetOtherUserIdHavingGoogleEmailAsync(
         string email, Guid excludeUserId, CancellationToken ct = default);
 
@@ -110,6 +110,7 @@ public interface IUserRepository
     /// No-op if the user already has a GoogleEmail set or the user does not
     /// exist. Returns true if the GoogleEmail was set.
     /// </summary>
+    [Obsolete("Issue nobodies-collective/Humans#687: User.GoogleEmail is being deprecated. The Google identity now lives on the UserEmail row (UserEmail.IsGoogle); UserEmailService maintains it via EnsureGoogleInvariantAsync on every row creation.")]
     Task<bool> TrySetGoogleEmailAsync(Guid userId, string email, CancellationToken ct = default);
 
     /// <summary>
@@ -118,6 +119,7 @@ public interface IUserRepository
     /// Google account creation. Returns true if the user exists and the
     /// value was written, false if the user does not exist.
     /// </summary>
+    [Obsolete("Issue nobodies-collective/Humans#687: User.GoogleEmail is being deprecated. Promote the desired UserEmail row via IUserEmailService.SetGoogleAsync (sets IsGoogle exclusively) instead.")]
     Task<bool> SetGoogleEmailAsync(Guid userId, string email, CancellationToken ct = default);
 
     /// <summary>

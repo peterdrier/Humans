@@ -86,6 +86,12 @@ public sealed class EmailProvisioningService : IEmailProvisioningService
             // touching _dbContext directly (design-rules §6). Each service filters
             // UserId != userId inside the query so duplicate rows (mixed case or
             // historical drift) can't mask a real cross-user conflict.
+            // Issue nobodies-collective/Humans#687: with UserEmail.IsGoogle as
+            // sole source of truth, any user owning the address as their Google
+            // identity also has a matching user_emails row — so the single
+            // user_emails check below covers both the previous "already linked"
+            // and "already set as GoogleEmail" rejections. The legacy
+            // _userService.GetOtherUserIdHavingGoogleEmailAsync call is gone.
             var conflictingEmailUserId =
                 await _userEmailService.GetOtherUserIdHavingEmailAsync(fullEmail, userId);
             if (conflictingEmailUserId is not null)
@@ -93,17 +99,6 @@ public sealed class EmailProvisioningService : IEmailProvisioningService
                 _logger.LogWarning(
                     "Provisioning rejected: {Email} is already linked to user {ConflictUserId} (requested for {UserId})",
                     fullEmail, conflictingEmailUserId, userId);
-                return new EmailProvisioningResult(false, fullEmail,
-                    ErrorMessage: $"{fullEmail} is already in use by another human.");
-            }
-
-            var conflictingGoogleEmailUserId =
-                await _userService.GetOtherUserIdHavingGoogleEmailAsync(fullEmail, userId);
-            if (conflictingGoogleEmailUserId is not null)
-            {
-                _logger.LogWarning(
-                    "Provisioning rejected: {Email} is already set as GoogleEmail for user {ConflictUserId} (requested for {UserId})",
-                    fullEmail, conflictingGoogleEmailUserId, userId);
                 return new EmailProvisioningResult(false, fullEmail,
                     ErrorMessage: $"{fullEmail} is already in use by another human.");
             }
@@ -167,19 +162,31 @@ public sealed class EmailProvisioningService : IEmailProvisioningService
                 recoveryEmail);
 
             // Step 3: Link the new email — this changes the notification target
-            // to @nobodies.team AND sets User.GoogleEmail (IUserEmailService owns
-            // both mutations internally). Do NOT move this above step 1.
+            // to @nobodies.team and EnsureGoogleInvariantAsync (run by the
+            // UserEmailService orchestrator) stamps IsGoogle on the new row.
+            // Do NOT move this above step 1.
+            //
+            // Issue nobodies-collective/Humans#687: the previous belt-and-suspenders
+            // _userService.SetGoogleEmailAsync write to User.GoogleEmail is gone —
+            // UserEmail.IsGoogle is sole source of truth, and the orchestrator
+            // promotes the @nobodies.team row over any personal Google row
+            // automatically (Workspace > existing-IsGoogle precedence). For the
+            // half-completed-provisioning case (UserEmail row already exists),
+            // call SetGoogleAsync explicitly to flip IsGoogle onto that row.
             await _userEmailService.AddVerifiedEmailAsync(userId, fullEmail);
 
-            // Belt-and-suspenders: if the UserEmail row already existed for this
-            // user (e.g. a prior half-completed provisioning attempt), the call
-            // above short-circuits on its ExistsForUserAsync guard and does NOT
-            // touch User.GoogleEmail. Force-set it here so Google sync targets
-            // the provisioned @nobodies.team address even when the user
-            // previously signed in with a personal Google account
-            // (TrySetGoogleEmailAsync would silently no-op in that case and
-            // leave sync pointing at the wrong mailbox).
-            await _userService.SetGoogleEmailAsync(userId, fullEmail);
+            // Re-check: if AddVerifiedEmailAsync short-circuited on
+            // ExistsForUserAsync (the row predated this provisioning attempt),
+            // the orchestrator did not run on the existing row. Promote it
+            // explicitly — same rationale as the legacy belt-and-suspenders
+            // write but via the new sole-source-of-truth surface.
+            var rows = await _userEmailService.GetUserEmailsAsync(userId);
+            var workspaceRow = rows.FirstOrDefault(r =>
+                string.Equals(r.Email, fullEmail, StringComparison.OrdinalIgnoreCase) && r.IsVerified);
+            if (workspaceRow is not null && !workspaceRow.IsGoogle)
+            {
+                await _userEmailService.SetGoogleAsync(userId, workspaceRow.Id, provisionedByUserId);
+            }
 
             // Audit
             await _auditLogService.LogAsync(

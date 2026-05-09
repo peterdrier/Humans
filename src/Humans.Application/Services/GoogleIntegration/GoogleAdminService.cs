@@ -193,13 +193,15 @@ public sealed class GoogleAdminService : IGoogleAdminService
                 ErrorMessage: $"{fullEmail} is already in use by another human.");
         }
 
-        // Also reject if the address is set as a User.GoogleEmail (or User.Email) — the
-        // user_emails check covers verified/linked rows, this covers the User row itself.
+        // Belt-and-suspenders: GetByEmailOrAlternateAsync also falls back to
+        // the legacy User.GoogleEmail shadow column, catching the ~200
+        // pre-issue-687 users whose IsGoogle is unset on every row but the
+        // legacy column still holds the address.
         var existingUser = await _userService.GetByEmailOrAlternateAsync(fullEmail, ct);
         if (existingUser is not null)
         {
             _logger.LogWarning(
-                "Standalone provisioning rejected: {Email} is already set as GoogleEmail for a human",
+                "Standalone provisioning rejected: {Email} is already linked to a human",
                 fullEmail);
             return new WorkspaceAccountActionResult(false,
                 ErrorMessage: $"{fullEmail} is already in use by another human.");
@@ -546,13 +548,22 @@ public sealed class GoogleAdminService : IGoogleAdminService
                     ErrorMessage: $"{email} is already linked to a human.");
             }
 
-            // Add as verified email (also sets notification target for @nobodies.team).
-            // Self-persists via IUserEmailRepository.
+            // Add as verified email — the UserEmailService orchestrator runs
+            // EnsureGoogleInvariantAsync, which stamps IsGoogle on the
+            // @nobodies.team row (Workspace > existing-IsGoogle precedence).
+            // The earlier IsEmailLinkedToAnyUserAsync check rules out a
+            // pre-existing row for this address, so the orchestrator's
+            // first-row-wins path is the only one we hit. Self-persists via
+            // IUserEmailRepository.
+            //
+            // Issue nobodies-collective/Humans#687: User.GoogleEmail is no
+            // longer the source of truth, so the legacy
+            // _userService.SetGoogleEmailAsync write is gone. Reset
+            // GoogleEmailStatus explicitly so reconciliation resumes against
+            // the newly-linked address.
             await _userEmailService.AddVerifiedEmailAsync(userId, email, ct);
-
-            // Auto-set as Google service email and reset sync state (also invalidates
-            // FullProfile). Self-persists via IUserRepository.
-            await _userService.SetGoogleEmailAsync(userId, email, ct);
+            await _userService.TrySetGoogleEmailStatusFromSyncAsync(
+                userId, GoogleEmailStatus.Unknown, ct);
 
             // Enqueue re-sync for all current team memberships — delegated to the
             // Teams-owning service so google_sync_outbox_events writes stay
@@ -843,16 +854,13 @@ public sealed class GoogleAdminService : IGoogleAdminService
                     ErrorMessage: "Human does not have a GoogleEmail set.");
             }
 
-            // Update User.GoogleEmail and reset sync status so reconciliation resumes
-            var updated = await _userService.SetGoogleEmailAsync(userId, newEmail, ct);
-            if (!updated)
-            {
-                return new EmailRenameFixResult(false,
-                    ErrorMessage: "Human not found during update.");
-            }
-
-            // Update the corresponding UserEmail row if one exists for the old email —
-            // delegated to the owning section so no user_emails writes happen here.
+            // Update the corresponding UserEmail row if one exists for the old
+            // email — delegated to the owning section so no user_emails writes
+            // happen here. Issue nobodies-collective/Humans#687: rewriting the
+            // user_emails row IS the canonical Google-identity update; the
+            // legacy User.GoogleEmail shadow column is no longer the source
+            // of truth. RewriteEmailAddressAsync invalidates the FullProfile
+            // cache, so FullProfile.GoogleEmail surfaces the renamed address.
             // Self-persists via IUserEmailRepository.
             var rewriteOutcome = await _userEmailService.RewriteEmailAddressAsync(
                 userId, oldEmail, newEmail, ct);
@@ -881,6 +889,13 @@ public sealed class GoogleAdminService : IGoogleAdminService
                 return new EmailRenameFixResult(false,
                     ErrorMessage: $"No UserEmail row found for '{oldEmail}'.");
             }
+
+            // Reset GoogleEmailStatus so reconciliation resumes against the
+            // renamed address. Issue nobodies-collective/Humans#687: was
+            // previously folded into the legacy _userService.SetGoogleEmailAsync
+            // write; now explicit and only runs on a successful rewrite.
+            await _userService.TrySetGoogleEmailStatusFromSyncAsync(
+                userId, GoogleEmailStatus.Unknown, ct);
 
             _logger.LogInformation(
                 "Admin {AdminId} fixing email rename for user {UserId}: '{OldEmail}' -> '{NewEmail}'",

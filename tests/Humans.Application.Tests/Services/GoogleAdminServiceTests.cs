@@ -713,15 +713,13 @@ public class GoogleAdminServiceTests
     // --- LinkAccountAsync ---
 
     [HumansFact]
-    public async Task LinkAccountAsync_LinksEmailAndSetsGoogleEmail()
+    public async Task LinkAccountAsync_LinksEmailAndStampsIsGoogle()
     {
         var userId = Guid.NewGuid();
         _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new User { Id = userId, DisplayName = "Test User" });
         _userEmailService.IsEmailLinkedToAnyUserAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(false);
-        _userService.SetGoogleEmailAsync(userId, "alice@nobodies.team", Arg.Any<CancellationToken>())
-            .Returns(true);
 
         var result = await _service.LinkAccountAsync(
             "alice@nobodies.team", userId, _actorUserId);
@@ -729,10 +727,16 @@ public class GoogleAdminServiceTests
         result.Success.Should().BeTrue();
         result.Message.Should().Contain("Linked");
 
+        // Issue nobodies-collective/Humans#687: AddVerifiedEmailAsync creates the
+        // row and the UserEmailService orchestrator stamps IsGoogle via
+        // EnsureGoogleInvariantAsync — no separate SetGoogleEmailAsync call to
+        // User.GoogleEmail. GoogleEmailStatus is reset explicitly so
+        // reconciliation resumes.
         await _userEmailService.Received(1)
             .AddVerifiedEmailAsync(userId, "alice@nobodies.team", Arg.Any<CancellationToken>());
         await _userService.Received(1)
-            .SetGoogleEmailAsync(userId, "alice@nobodies.team", Arg.Any<CancellationToken>());
+            .TrySetGoogleEmailStatusFromSyncAsync(
+                userId, GoogleEmailStatus.Unknown, Arg.Any<CancellationToken>());
         await _teamService.Received(1)
             .EnqueueGoogleResyncForUserTeamsAsync(userId, Arg.Any<CancellationToken>());
         await _auditLogService.Received(1).LogAsync(

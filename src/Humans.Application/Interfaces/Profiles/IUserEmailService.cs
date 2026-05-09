@@ -126,9 +126,41 @@ public interface IUserEmailService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// If the user has a verified @nobodies.team email but GoogleEmail is null, sets it.
-    /// Returns true if GoogleEmail was updated.
+    /// Idempotent verified-email add for the import-flow account-creation path
+    /// (<c>AccountProvisioningService</c>): on a freshly created User the row
+    /// is added through <see cref="UserEmailService"/> rather than the
+    /// repository directly so it goes through the same orchestrator
+    /// (Primary + Google invariants, FullProfile invalidation) as every
+    /// other UserEmail-add path. Issue nobodies-collective/Humans#687.
+    /// Skips if the email already exists for this user (idempotent).
     /// </summary>
+    Task AddProvisionedEmailAsync(
+        Guid userId,
+        string email,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Looks up the owning userId for any UserEmail row matching the given
+    /// address (case-insensitive normalized, including the gmail/googlemail
+    /// alternate). Returns the userId of any matching row regardless of
+    /// verification state — used by import-flow account provisioning to
+    /// detect existing accounts before creating a new one. Returns null when
+    /// no row matches. Logs a warning when the matched row points at a
+    /// missing user (orphan UserEmail).
+    /// </summary>
+    Task<Guid?> FindAnyUserIdByEmailAsync(
+        string email,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Legacy backfill that wrote the verified @nobodies.team email into the
+    /// <c>User.GoogleEmail</c> shadow column. With the column deprecated and
+    /// the new <c>EnsureGoogleInvariantAsync</c> running on every UserEmail
+    /// row creation, the shadow column no longer participates in the Google
+    /// identity invariant. Method body is now a no-op kept temporarily so
+    /// tests and callers compile through the obsolete transition.
+    /// </summary>
+    [Obsolete("Issue nobodies-collective/Humans#687: User.GoogleEmail is being deprecated. UserEmailService.EnsureGoogleInvariantAsync now stamps IsGoogle on the canonical row whenever a UserEmail is added; no separate backfill is needed.")]
     Task<bool> TryBackfillGoogleEmailAsync(
         Guid userId,
         CancellationToken cancellationToken = default);

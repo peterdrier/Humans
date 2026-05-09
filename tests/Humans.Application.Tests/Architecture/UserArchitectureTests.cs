@@ -178,13 +178,20 @@ public class UserArchitectureTests
     }
 
     [HumansFact]
-    public void AccountProvisioningService_TakesRepositoryAndUserEmailRepository()
+    public void AccountProvisioningService_TakesRepositoryAndUserEmailService()
     {
+        // Issue nobodies-collective/Humans#687: AccountProvisioningService no
+        // longer references IUserEmailRepository. UserEmail row creation goes
+        // through IUserEmailService.AddProvisionedEmailAsync so the same
+        // orchestrator (Primary + Google invariants, FullProfile invalidation)
+        // runs for the import-flow account-creation path as for every other
+        // UserEmail-add path.
         var ctor = typeof(AccountProvisioningService).GetConstructors().Single();
         var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
 
         paramTypes.Should().Contain(typeof(IUserRepository));
-        paramTypes.Should().Contain(typeof(IUserEmailRepository));
+        paramTypes.Should().Contain(typeof(IUserEmailService));
+        paramTypes.Should().NotContain(typeof(IUserEmailRepository));
     }
 
     // ── UnsubscribeService ───────────────────────────────────────────────────
