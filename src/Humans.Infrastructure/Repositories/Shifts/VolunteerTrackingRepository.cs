@@ -56,7 +56,6 @@ public sealed class VolunteerTrackingRepository : IVolunteerTrackingRepository
                 Notes = notes,
                 SetByUserId = setByUserId,
                 SetAt = setAt,
-                BlockedDayOffsets = new(),
             };
             _db.VolunteerBuildStatuses.Add(row);
             await _db.SaveChangesAsync(ct);
@@ -69,77 +68,6 @@ public sealed class VolunteerTrackingRepository : IVolunteerTrackingRepository
         existing.SetAt = setAt;
         await _db.SaveChangesAsync(ct);
         return existing;
-    }
-
-    public async Task<IReadOnlyList<int>> ReplaceBlockedDaysAsync(
-        Guid userId, Guid eventSettingsId, IReadOnlyList<int> dayOffsets,
-        CancellationToken ct = default)
-    {
-        var existing = await _db.VolunteerBuildStatuses
-            .FirstOrDefaultAsync(
-                x => x.UserId == userId && x.EventSettingsId == eventSettingsId,
-                ct);
-
-        // arch:db-sort-ok normalization for canonical jsonb storage (sorted+deduped), not a display sort
-        var normalized = dayOffsets.Distinct().OrderBy(x => x).ToList();
-
-        if (existing is null)
-        {
-            var row = new VolunteerBuildStatus
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                EventSettingsId = eventSettingsId,
-                BlockedDayOffsets = normalized,
-            };
-            _db.VolunteerBuildStatuses.Add(row);
-            await _db.SaveChangesAsync(ct);
-            return Array.Empty<int>();
-        }
-
-        var prior = existing.BlockedDayOffsets.ToList();
-        existing.BlockedDayOffsets = normalized;
-        await _db.SaveChangesAsync(ct);
-        return prior;
-    }
-
-    public async Task<bool> SetBlockAsync(
-        Guid userId, Guid eventSettingsId, int dayOffset, bool block,
-        CancellationToken ct = default)
-    {
-        var existing = await _db.VolunteerBuildStatuses
-            .FirstOrDefaultAsync(
-                x => x.UserId == userId && x.EventSettingsId == eventSettingsId,
-                ct);
-
-        if (existing is null)
-        {
-            if (!block) return false;
-            _db.VolunteerBuildStatuses.Add(new VolunteerBuildStatus
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                EventSettingsId = eventSettingsId,
-                BlockedDayOffsets = new() { dayOffset },
-            });
-            await _db.SaveChangesAsync(ct);
-            return true;
-        }
-
-        var contained = existing.BlockedDayOffsets.Contains(dayOffset);
-        if (block == contained) return false;
-
-        if (block)
-        {
-            existing.BlockedDayOffsets.Add(dayOffset);
-            existing.BlockedDayOffsets.Sort();
-        }
-        else
-        {
-            existing.BlockedDayOffsets.Remove(dayOffset);
-        }
-        await _db.SaveChangesAsync(ct);
-        return true;
     }
 
     public async Task<IReadOnlyList<EligibleBuildSignup>> GetEligibleBuildSignupsAsync(

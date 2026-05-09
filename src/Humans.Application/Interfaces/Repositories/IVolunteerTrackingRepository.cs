@@ -21,8 +21,8 @@ public interface IVolunteerTrackingRepository
 
     /// <summary>
     /// Upsert (UserId, EventSettingsId): mutate or insert the row's camp set-up
-    /// fields. Does NOT touch BlockedDayOffsets. The caller has already
-    /// validated barrioSetupStartDate (or null to clear).
+    /// fields. The caller has already validated barrioSetupStartDate (or null
+    /// to clear).
     /// </summary>
     Task<VolunteerBuildStatus> UpsertCampSetupAsync(
         Guid userId,
@@ -31,28 +31,6 @@ public interface IVolunteerTrackingRepository
         string? notes,
         Guid? setByUserId,
         Instant? setAt,
-        CancellationToken ct = default);
-
-    /// <summary>
-    /// Replace the entire BlockedDayOffsets list for (userId, eventSettingsId).
-    /// Caller has already validated/sorted/deduped.
-    /// Returns the prior list for diffing.
-    /// </summary>
-    Task<IReadOnlyList<int>> ReplaceBlockedDaysAsync(
-        Guid userId,
-        Guid eventSettingsId,
-        IReadOnlyList<int> dayOffsets,
-        CancellationToken ct = default);
-
-    /// <summary>
-    /// Add or remove a single offset on the user's list. Idempotent.
-    /// Returns whether the list actually changed.
-    /// </summary>
-    Task<bool> SetBlockAsync(
-        Guid userId,
-        Guid eventSettingsId,
-        int dayOffset,
-        bool block,
         CancellationToken ct = default);
 
     /// <summary>

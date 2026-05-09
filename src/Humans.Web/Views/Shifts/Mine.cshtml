@@ -270,42 +270,6 @@
             </div>
         </div>
 
-        @* Volunteer self-service: "Days you can't volunteer" — only rendered
-           when the active event has a build period. The form posts the full
-           desired list (binding only dayOffsets) so UserId is structurally
-           never accepted from the form. *@
-        @if (Model.HasActiveBuildPeriod)
-        {
-            <div class="card mt-4">
-                <div class="card-body">
-                    <h5 class="card-title">
-                        <i class="fa-solid fa-ban"></i>
-                        @Localizer["VolTrack_Mine_BlockedTitle"]
-                    </h5>
-                    <p class="text-muted small">@Localizer["VolTrack_Mine_BlockedHelp"]</p>
-
-                    <form method="post" asp-action="SaveBlockedDays" asp-controller="Shifts">
-                        @Html.AntiForgeryToken()
-                        <div class="d-flex flex-wrap gap-1">
-                            @for (int d = Model.BuildStartOffset; d < 0; d++)
-                            {
-                                bool isBlocked = Model.BlockedDayOffsets.Contains(d);
-                                var date = Model.GateOpeningDate.PlusDays(d);
-                                <label class="btn btn-sm @(isBlocked ? "btn-warning" : "btn-outline-secondary")">
-                                    <input type="checkbox" name="dayOffsets" value="@d" autocomplete="off"
-                                           @(isBlocked ? "checked" : "") class="d-none" />
-                                    @date.ToDisplayDate()
-                                </label>
-                            }
-                        </div>
-                        <button type="submit" class="btn btn-primary mt-2">
-                            @Localizer["VolTrack_Mine_BlockedSave"]
-                        </button>
-                    </form>
-                </div>
-            </div>
-        }
-
         @* TODO: Re-enable iCal feed widget when the /ICal/{token}.ics endpoint is implemented.
         @if (Model.ICalUrl != null)
         {

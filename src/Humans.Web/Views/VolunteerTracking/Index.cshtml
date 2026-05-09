@@ -57,6 +57,18 @@
                     <div class="fs-4 fw-bold text-warning">@unbookedTotal</div>
                 </div>
             </div>
+            <div class="mb-3">
+                <div class="input-group input-group-sm" style="max-width: 380px;">
+                    <span class="input-group-text" id="vt-search-icon"><i class="fa-solid fa-magnifying-glass"></i></span>
+                    <input type="search"
+                           id="vt-search"
+                           class="form-control"
+                           placeholder="@Localizer["VolTrack_Search_Placeholder"]"
+                           aria-label="@Localizer["VolTrack_Search_Placeholder"]"
+                           aria-describedby="vt-search-icon"
+                           autocomplete="off" />
+                </div>
+            </div>
             <form method="get" asp-action="Index" class="d-flex flex-wrap gap-3 align-items-center">
                 <div class="form-check">
                     <input class="form-check-input" type="checkbox" name="hideNoGaps" value="true" id="vt-hide-no-gaps"
@@ -110,9 +122,7 @@
                 <span><span class="legend-swatch bg-success"></span> @Localizer["VolTrack_Legend_Confirmed"]</span>
                 <span><span class="legend-swatch bg-success-subtle border"></span> @Localizer["VolTrack_Legend_Pending"]</span>
                 <span><span class="legend-swatch bg-danger"></span> @Localizer["VolTrack_Legend_Gap"]</span>
-                <span><span class="legend-swatch bg-warning-subtle border"></span> @Localizer["VolTrack_Legend_Blocked"]</span>
                 <span><span class="legend-swatch bg-warning"></span> @Localizer["VolTrack_Legend_AvailableUnbooked"]</span>
-                <span><span class="legend-swatch bg-warning-subtle vt-striped border"></span> @Localizer["VolTrack_Legend_BlockedUnbooked"]</span>
                 <span><span class="legend-swatch bg-primary"></span> @Localizer["VolTrack_Legend_CampSetup"]</span>
                 <span><span class="legend-swatch bg-secondary-subtle border"></span> @Localizer["VolTrack_Legend_OutsideOrExpected"]</span>
             </div>
@@ -129,17 +139,6 @@
         vertical-align: middle;
         margin-right: 0.25rem;
         border-radius: 0.2rem;
-    }
-    /* Diagonal-stripe overlay used by the unbooked-cohort `Blocked` cells to
-       visually distinguish them from `AvailableExpected` (both share
-       bg-warning-subtle base). */
-    .vt-striped {
-        background-image: repeating-linear-gradient(
-            45deg,
-            rgba(0, 0, 0, 0.18) 0,
-            rgba(0, 0, 0, 0.18) 2px,
-            transparent 2px,
-            transparent 6px);
     }
     .vt-heatmap-table { table-layout: fixed; }
     .vt-heatmap-table th.vt-sticky-head,
@@ -173,6 +172,42 @@
 
 @section Scripts {
 <script>
+// Live row filter for the volunteer-tracking heatmaps. Matches case-insensitively
+// against the row's data-vt-search-name (display/playa name lowercased server-side).
+// Pure client-side: rows are already in the DOM, no round-trip needed.
+(function () {
+    var input = document.getElementById('vt-search');
+    if (!input) return;
+
+    function applyFilter() {
+        var q = (input.value || '').trim().toLowerCase();
+        document.querySelectorAll('tr[data-vt-search-name]').forEach(function (tr) {
+            var name = tr.getAttribute('data-vt-search-name') || '';
+            tr.style.display = (q === '' || name.indexOf(q) !== -1) ? '' : 'none';
+        });
+    }
+
+    input.addEventListener('input', applyFilter);
+})();
+
+// Wire `<` `>` arrows in each heatmap card-header to scroll the table
+// horizontally. The scroll target is the card's .vt-heatmap-scroll element;
+// step size is one sticky-cell width (~220px) so each click pages by roughly
+// 6-7 day cells.
+(function () {
+    var STEP = 220;
+    document.querySelectorAll('[data-vt-scroll]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var card = btn.closest('.card');
+            if (!card) return;
+            var scroller = card.querySelector('.vt-heatmap-scroll');
+            if (!scroller) return;
+            var dir = btn.getAttribute('data-vt-scroll') === 'left' ? -1 : 1;
+            scroller.scrollBy({ left: dir * STEP, behavior: 'smooth' });
+        });
+    });
+})();
+
 // Initialize Bootstrap popovers for every cell trigger inside the volunteer
 // tracking heatmaps. The popover content is sourced from the sibling
 // .vt-popover-content element each cell renders inline. sanitize:false keeps

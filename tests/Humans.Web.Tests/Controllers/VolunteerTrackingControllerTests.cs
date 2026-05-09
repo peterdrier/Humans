@@ -118,7 +118,6 @@ public class VolunteerTrackingControllerTests
     [HumansTheory]
     [InlineData(nameof(VolunteerTrackingController.SetCampSetup))]
     [InlineData(nameof(VolunteerTrackingController.ClearCampSetup))]
-    [InlineData(nameof(VolunteerTrackingController.SetBlock))]
     public void WriteActions_Require_VolunteerTrackingWrite_Policy(string actionName)
     {
         var method = typeof(VolunteerTrackingController)
@@ -132,7 +131,6 @@ public class VolunteerTrackingControllerTests
     [HumansTheory]
     [InlineData(nameof(VolunteerTrackingController.SetCampSetup))]
     [InlineData(nameof(VolunteerTrackingController.ClearCampSetup))]
-    [InlineData(nameof(VolunteerTrackingController.SetBlock))]
     public void WriteActions_Have_AntiForgery_Validation(string actionName)
     {
         var method = typeof(VolunteerTrackingController)
@@ -452,99 +450,4 @@ public class VolunteerTrackingControllerTests
         ctrl.TempData[TempDataKeys.ErrorMessage].Should().Be("VolTrack_Err_BadRequest");
     }
 
-    // ---------------------------------------------------------------------
-    // SetBlock
-    // ---------------------------------------------------------------------
-
-    [HumansFact]
-    public async Task SetBlock_ServiceRejects_ReturnsBadRequestWithErrorTempData_NoAudit()
-    {
-        var current = new User { Id = Guid.NewGuid() };
-        var target = Guid.NewGuid();
-        _service.SetBlockAsync(target, 99, true, current.Id, Arg.Any<CancellationToken>())
-            .Returns(new SetBlockResult(Ok: false, Changed: false,
-                ErrorMessageKey: "VolTrack_Err_OffsetOutOfRange"));
-        var ctrl = BuildSut(current);
-        var form = new SetBlockForm { UserId = target, DayOffset = 99, Block = true };
-
-        var result = await ctrl.SetBlock(form, CancellationToken.None);
-
-        Assert.IsType<BadRequestResult>(result);
-        ctrl.TempData[TempDataKeys.ErrorMessage].Should().Be("VolTrack_Err_OffsetOutOfRange");
-        await _auditLog.DidNotReceive().LogAsync(
-            Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
-            Arg.Any<string>(), Arg.Any<Guid>(),
-            Arg.Any<Guid?>(), Arg.Any<string?>());
-    }
-
-    [HumansFact]
-    public async Task SetBlock_HappyPath_RedirectsAndAuditsBlockedAction()
-    {
-        var current = new User { Id = Guid.NewGuid() };
-        var target = Guid.NewGuid();
-        _service.SetBlockAsync(target, -3, true, current.Id, Arg.Any<CancellationToken>())
-            .Returns(new SetBlockResult(Ok: true, Changed: true, ErrorMessageKey: null));
-        var ctrl = BuildSut(current);
-        var form = new SetBlockForm { UserId = target, DayOffset = -3, Block = true };
-
-        var result = await ctrl.SetBlock(form, CancellationToken.None);
-
-        var redirect = Assert.IsType<RedirectToActionResult>(result);
-        redirect.ActionName.Should().Be(nameof(VolunteerTrackingController.Index));
-        await _auditLog.Received(1).LogAsync(
-            AuditAction.VolunteerDayBlocked,
-            nameof(VolunteerBuildStatus),
-            target,
-            Arg.Any<string>(),
-            current.Id,
-            Arg.Any<Guid?>(),
-            Arg.Any<string?>());
-        ctrl.TempData[TempDataKeys.SuccessMessage].Should().Be("VolTrack_Msg_DayBlocked");
-    }
-
-    [HumansFact]
-    public async Task SetBlock_HappyPath_Unblock_AuditsUnblockedAction()
-    {
-        var current = new User { Id = Guid.NewGuid() };
-        var target = Guid.NewGuid();
-        _service.SetBlockAsync(target, -3, false, current.Id, Arg.Any<CancellationToken>())
-            .Returns(new SetBlockResult(Ok: true, Changed: true, ErrorMessageKey: null));
-        var ctrl = BuildSut(current);
-        var form = new SetBlockForm { UserId = target, DayOffset = -3, Block = false };
-
-        var result = await ctrl.SetBlock(form, CancellationToken.None);
-
-        Assert.IsType<RedirectToActionResult>(result);
-        await _auditLog.Received(1).LogAsync(
-            AuditAction.VolunteerDayUnblocked,
-            nameof(VolunteerBuildStatus),
-            target,
-            Arg.Any<string>(),
-            current.Id,
-            Arg.Any<Guid?>(),
-            Arg.Any<string?>());
-        ctrl.TempData[TempDataKeys.SuccessMessage].Should().Be("VolTrack_Msg_DayUnblocked");
-    }
-
-    [HumansFact]
-    public async Task SetBlock_OkButNotChanged_RedirectsWithoutAudit()
-    {
-        // Idempotent re-block: service ran, decided nothing changed; the
-        // user lands back on Index with success TempData but no audit row
-        // is written.
-        var current = new User { Id = Guid.NewGuid() };
-        var target = Guid.NewGuid();
-        _service.SetBlockAsync(target, -3, true, current.Id, Arg.Any<CancellationToken>())
-            .Returns(new SetBlockResult(Ok: true, Changed: false, ErrorMessageKey: null));
-        var ctrl = BuildSut(current);
-        var form = new SetBlockForm { UserId = target, DayOffset = -3, Block = true };
-
-        var result = await ctrl.SetBlock(form, CancellationToken.None);
-
-        Assert.IsType<RedirectToActionResult>(result);
-        await _auditLog.DidNotReceive().LogAsync(
-            Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
-            Arg.Any<string>(), Arg.Any<Guid>(),
-            Arg.Any<Guid?>(), Arg.Any<string?>());
-    }
 }

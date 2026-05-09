@@ -9,7 +9,7 @@
   src/Humans.Web/Views/VolunteerTracking/_VolunteerUnbookedHeatmap.cshtml
 -->
 <!-- freshness:flag-on-change
-  Volunteer Tracking heatmap algorithm, the two cohorts (signups-with-gaps vs declared-but-unbooked), the camp set-up date semantics, and the self-service blocked-day surface — review when these change.
+  Volunteer Tracking heatmap algorithm, the two cohorts (signups-with-gaps vs declared-but-unbooked), and the camp set-up date semantics — review when these change.
 -->
 
 # Volunteer Tracking
@@ -24,14 +24,15 @@ Building the camp before gates open is a multi-week effort with rolling crew tur
 - **Who declared participation and gave availability but never signed up for anything?** (the unbooked cohort)
 - **Who left scheduled shifts to help with camp set-up?** (so coverage isn't flagged as a real gap)
 
-Before this feature the VC was reconstructing this state by hand from the rota grid and the participation list — error-prone and didn't scale. Volunteers also had no way to mark "I'm out for a doctor's appointment Tuesday" without bailing the whole signup, which produced false-positive gaps.
+Before this feature the VC was reconstructing this state by hand from the rota grid and the participation list — error-prone and didn't scale.
 
 This feature adds:
 
-1. A heatmap view (one row per volunteer, one column per day in the build period) showing signup state, gaps, blocks, and camp-set-up days at a glance.
+1. A heatmap view (one row per volunteer, one column per day in the build period) showing signup state, gaps, and camp-set-up days at a glance.
 2. A second heatmap below it for the declared-but-unbooked cohort, pulled from `EventParticipation` + `GeneralAvailability`.
-3. Coordinator write actions: mark "went to camp set-up" from a given day; block / unblock individual days on a volunteer's schedule.
-4. A self-service "Days you can't volunteer" panel on `/Shifts/Mine` so volunteers can block their own days without bailing signups.
+3. Coordinator write actions: mark "went to camp set-up" from a given day.
+
+> **Note (May 2026):** an earlier iteration also shipped a "day off / blocked day" surface (coordinator single-day toggle + volunteer self-service multi-select on `/Shifts/Mine`). That feature was removed pending redesign; the underlying coordination need ("volunteer is unavailable for specific days but otherwise still on") is still open.
 
 ## User Stories
 
@@ -42,26 +43,13 @@ This feature adds:
 
 **Acceptance Criteria:**
 - `/ShiftDashboard/VolunteerTracking` lists every volunteer with at least one build-period signup, sorted by gap count (descending), then last name.
-- Each row shows one cell per day from the volunteer's first build signup through gate-open day. Cell colours: green = confirmed signup, light green = pending signup, red = gap, yellow = blocked, blue = on camp set-up, grey = outside their active window.
+- Each row shows one cell per day from the volunteer's first build signup through gate-open day. Cell colours: green = confirmed signup, light green = pending signup, red = gap, blue = on camp set-up, grey = outside their active window.
 - A red badge on the row shows the gap count (`{0} gaps`).
 - A header card shows aggregate counts: total tracked, total with gaps, total on camp set-up, total declared-but-unbooked.
 - Filter toggles let the VC hide rows with no gaps, hide rows already on camp set-up, and hide the unbooked section.
 - An empty state ("Everyone is on track.") renders when no row has gaps after filtering.
 
-### US-47.2: Volunteer self-blocks a day
-**As a** volunteer with a build-period signup
-**I want to** mark days I can't volunteer (doctor visit, rest day, etc.)
-**So that** the VC sees those days as blocked rather than as a missing-coverage gap, and I don't have to bail my whole date-range signup
-
-**Acceptance Criteria:**
-- `/Shifts/Mine` renders a "Days you can't volunteer" panel listing every day from the active event's build period with a checkbox.
-- Days the volunteer has already blocked are pre-checked. Days outside the build period don't appear.
-- Submitting persists the new set of blocked offsets (full diff vs prior state — additions and removals both audited).
-- A success TempData message confirms the save; reloading the page shows the same checked state.
-- The blocked days appear yellow on the VC's tracking heatmap for that volunteer.
-- The volunteer cannot block dates outside the build period (server-side validated).
-
-### US-47.3: VC marks a volunteer as gone to camp set-up
+### US-47.2: VC marks a volunteer as gone to camp set-up
 **As a** Volunteer Coordinator
 **I want to** record that a volunteer left scheduled rotas to join camp set-up from a specific day
 **So that** the gap detection stops flagging their (now-irrelevant) build-period coverage as missing
@@ -72,7 +60,6 @@ This feature adds:
 - A "Clear set-up date" action on the popover reverts the row.
 - The set-up date must be inside the build period (before gate-open) and on or after the volunteer's first build signup — server-side validated; invalid submissions show a TempData error.
 - An audit row is written (`VolunteerCampSetupSet` / `VolunteerCampSetupCleared`) recording the actor.
-- The "Block this day" / "Unblock this day" actions on the same popover toggle a single offset in `BlockedDayOffsets`; the cell turns yellow on block and reverts on unblock; the gap count adjusts accordingly.
 
 ## Data Model
 
@@ -86,13 +73,13 @@ Summary:
 | `UserId` | `Guid` | Bare cross-section FK to `users.id` (no nav property) |
 | `EventSettingsId` | `Guid` | Same-section FK to `event_settings.id` (cascade delete) |
 | `BarrioSetupStartDate` | `LocalDate?` | Day the volunteer joined camp set-up; nullable |
-| `BarrioSetupSetByUserId` | `Guid?` | Actor who set the camp-set-up marker |
-| `BarrioSetupSetAt` | `Instant?` | When the marker was set |
-| `BlockedDayOffsets` | `IList<int>` (jsonb) | Negative day offsets relative to `EventSettings.GateOpeningDate` |
+| `SetByUserId` | `Guid?` | Actor who set the camp-set-up marker |
+| `SetAt` | `Instant?` | When the marker was set |
+| `Notes` | `string?` | Free-text from the coordinator who set/cleared the date |
 
 **Table:** `volunteer_build_statuses`. **Unique:** `(UserId, EventSettingsId)`.
 
-New `AuditAction` values: `VolunteerCampSetupSet`, `VolunteerCampSetupCleared`, `VolunteerDayBlocked`, `VolunteerDayUnblocked`, `VolunteerOwnBlockedDaysSaved`. `EntityType = nameof(VolunteerBuildStatus)`.
+`AuditAction` values: `VolunteerCampSetupSet`, `VolunteerCampSetupCleared`. `EntityType = nameof(VolunteerBuildStatus)`. (Three additional values — `VolunteerDayBlocked`, `VolunteerDayUnblocked`, `VolunteerOwnBlockedDaysSaved` — exist as positional reservations from the removed day-off feature.)
 
 ## Workflows
 
@@ -106,25 +93,23 @@ For the active event the service builds a `VolunteerTrackingViewModel` containin
 2. For each user, the heatmap window starts at `min(firstBuildSignupDate, BarrioSetupStartDate ?? +∞)` and ends at `GateOpeningDate - 1`.
 3. For each day in the window, compute the cell state in this priority order:
    - `BarrioSetupStartDate` set and day ≥ that date → `CampSetup` (blue).
-   - Day in `BlockedDayOffsets` → `Blocked` (yellow).
+   - Day before the user's first build signup → `Outside` (grey).
    - User has at least one Confirmed signup that covers the day → `Confirmed` (green).
    - User has at least one Pending signup that covers the day → `Pending` (light green).
-   - User had a Confirmed signup on a previous day (i.e. they were "active") and there's no signup today → `Gap` (red).
-   - Otherwise → `Outside` (grey, day before they started) or `Expected` (grey, day after a gap with no further signup).
+   - Otherwise → `Gap` (red). Gaps are not capped by "today" — any unfilled day in the window counts so coordinators can plan ahead for future events, not just react during build.
 4. `GapCount` = number of `Gap` cells. Rows with `GapCount = 0` may still show (the filter toggle hides them).
 
 **Cohort B — declared-but-unbooked:**
 
 1. Collect every user where `EventParticipation.Status = Attending` for the active event AND `GeneralAvailability.AvailableDayOffsets` is non-empty AND they have **zero** Confirmed/Pending signups on any Build rota.
-2. Each cell renders `AvailableUnbooked` (yellow), `AvailableExpected` (light yellow), `Blocked` (striped yellow), or `NotAvailable` (grey) per `AvailableDayOffsets ∩ build window` minus `BlockedDayOffsets`.
+2. Each cell renders `AvailableUnbooked` (yellow), `AvailableExpected` (light yellow), `CampSetup` (blue), or `NotAvailable` (grey) per `AvailableDayOffsets ∩ build window`.
 3. As soon as a user from this cohort confirms a signup, they migrate to Cohort A on the next page load.
 
 ### Write paths
 
-- `VolunteerTrackingController.SetCampSetup` / `ClearCampSetup` / `SetBlock` — gated by the `VolunteerTrackingWrite` policy (Admin or VolunteerCoordinator).
-- `ShiftsController.SaveBlockedDays` — current user only; UserId from `ClaimsPrincipal`. Writes only the volunteer's own row.
+- `VolunteerTrackingController.SetCampSetup` / `ClearCampSetup` — gated by the `VolunteerTrackingWrite` policy (Admin or VolunteerCoordinator).
 
-All write paths route through `IVolunteerTrackingService` → `IVolunteerTrackingRepository` and emit audit rows. Validation lives in the service: set-up date must be inside the build window and on/after the user's first build signup; blocked offsets must be inside the build window.
+All write paths route through `IVolunteerTrackingService` → `IVolunteerTrackingRepository` and emit audit rows. Validation lives in the service: set-up date must be inside the build window and on/after the user's first build signup.
 
 ## Routes
 
@@ -133,8 +118,6 @@ All write paths route through `IVolunteerTrackingService` → `IVolunteerTrackin
 | `/ShiftDashboard/VolunteerTracking` | GET | `VolunteerTrackingWrite` (read on the same gate) | Heatmap page |
 | `/ShiftDashboard/VolunteerTracking/SetCampSetup` | POST | `VolunteerTrackingWrite` | Set `BarrioSetupStartDate` for a volunteer |
 | `/ShiftDashboard/VolunteerTracking/ClearCampSetup` | POST | `VolunteerTrackingWrite` | Null `BarrioSetupStartDate` |
-| `/ShiftDashboard/VolunteerTracking/SetBlock` | POST | `VolunteerTrackingWrite` | Toggle a single offset in another volunteer's `BlockedDayOffsets` |
-| `/Shifts/Mine/BlockedDays` | POST | authenticated (self only) | Save current user's full `BlockedDayOffsets` set |
 
 ## Related
 

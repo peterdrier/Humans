@@ -22,7 +22,6 @@
     {
         VolunteerCellState.AvailableUnbooked => "bg-warning",
         VolunteerCellState.AvailableExpected => "bg-warning-subtle",
-        VolunteerCellState.Blocked => "bg-warning-subtle vt-striped",
         VolunteerCellState.CampSetup => "bg-primary",
         VolunteerCellState.NotAvailable => "bg-secondary-subtle",
         _ => "bg-light",
@@ -32,7 +31,6 @@
     {
         VolunteerCellState.AvailableUnbooked => Localizer["VolTrack_State_AvailableUnbooked"].Value,
         VolunteerCellState.AvailableExpected => Localizer["VolTrack_State_AvailableExpected"].Value,
-        VolunteerCellState.Blocked => Localizer["VolTrack_State_Blocked"].Value,
         VolunteerCellState.CampSetup => Localizer["VolTrack_State_CampSetup"].Value,
         VolunteerCellState.NotAvailable => Localizer["VolTrack_State_NotAvailable"].Value,
         _ => "",
@@ -43,11 +41,15 @@
 }
 
 <div class="card mb-3">
-    <div class="card-header">
+    <div class="card-header d-flex align-items-center">
         <strong><i class="fa-solid fa-table-cells me-2"></i>@Localizer["VolTrack_Unbooked_Title"]</strong>
         <span class="text-muted small ms-2">@string.Format(Localizer["VolTrack_Unbooked_Subtitle_Count"].Value, Model.Rows.Count)</span>
+        <div class="btn-group btn-group-sm ms-auto" role="group" aria-label="Heatmap horizontal scroll">
+            <button type="button" class="btn btn-outline-secondary" data-vt-scroll="left" aria-label="@Localizer["VolTrack_Scroll_Left"]"><i class="fa-solid fa-chevron-left"></i></button>
+            <button type="button" class="btn btn-outline-secondary" data-vt-scroll="right" aria-label="@Localizer["VolTrack_Scroll_Right"]"><i class="fa-solid fa-chevron-right"></i></button>
+        </div>
     </div>
-    <div class="table-responsive">
+    <div class="table-responsive vt-heatmap-scroll">
         <table class="table table-sm table-bordered align-middle mb-0 vt-heatmap-table">
             <thead class="table-light">
                 <tr>
@@ -69,37 +71,32 @@
                     var displayName = user?.DisplayName ?? Localizer["VolTrack_UnknownUser"].Value;
                     var availableDays = row.Cells.Count(c => IsAvailable(c.State));
 
-                    <tr>
+                    <tr data-vt-search-name="@displayName.ToLowerInvariant()">
                         <td class="vt-sticky-cell">
-                            <div class="d-flex align-items-center gap-2">
-                                <vc:user-avatar user-id="@row.UserId" size="32" />
-                                <div class="flex-grow-1 min-w-0">
-                                    <div class="fw-semibold text-truncate" title="@displayName">@displayName</div>
-                                    <div class="small">
-                                        <span class="badge bg-secondary me-1" title="@Localizer["VolTrack_AvailableDaysTooltip"]">
-                                            <i class="fa-solid fa-calendar-check me-1"></i>@string.Format(Localizer["VolTrack_AvailableDaysBadge"].Value, availableDays)
+                            <human-link user-id="@row.UserId" display-name="@displayName" mode="AvatarName" size="32" avatar-css-class="flex-shrink-0">
+                                <div class="small">
+                                    <span class="badge bg-secondary me-1" title="@Localizer["VolTrack_AvailableDaysTooltip"]">
+                                        <i class="fa-solid fa-calendar-check me-1"></i>@string.Format(Localizer["VolTrack_AvailableDaysBadge"].Value, availableDays)
+                                    </span>
+                                    @if (row.UnbookedCount > 0)
+                                    {
+                                        <span class="badge bg-warning text-dark" title="@Localizer["VolTrack_UnbookedTooltip"]">
+                                            @string.Format(Localizer["VolTrack_UnbookedBadge"].Value, row.UnbookedCount)
                                         </span>
-                                        @if (row.UnbookedCount > 0)
-                                        {
-                                            <span class="badge bg-warning text-dark" title="@Localizer["VolTrack_UnbookedTooltip"]">
-                                                @string.Format(Localizer["VolTrack_UnbookedBadge"].Value, row.UnbookedCount)
-                                            </span>
-                                        }
-                                        @if (row.BarrioSetupStartDate.HasValue)
-                                        {
-                                            <span class="badge bg-primary ms-1">
-                                                <i class="fa-solid fa-campground me-1"></i>@row.BarrioSetupStartDate.Value.ToDisplayDate()
-                                            </span>
-                                        }
-                                    </div>
+                                    }
+                                    @if (row.BarrioSetupStartDate.HasValue)
+                                    {
+                                        <span class="badge bg-primary ms-1">
+                                            <i class="fa-solid fa-campground me-1"></i>@row.BarrioSetupStartDate.Value.ToDisplayDate()
+                                        </span>
+                                    }
                                 </div>
-                            </div>
+                            </human-link>
                         </td>
                         @foreach (var cell in row.Cells)
                         {
                             var date = Model.GateOpeningDate.PlusDays(cell.DayOffset);
                             var cellId = $"vt-pop-u-{row.UserId:N}-{cell.DayOffset}";
-                            var isBlocked = cell.State == VolunteerCellState.Blocked;
                             <td class="vt-cell @CellClass(cell.State)" aria-label="@CellAria(cell.State)">
                                 <button type="button"
                                         data-vt-popover
@@ -121,6 +118,11 @@
                                     <div class="small text-muted mb-2">
                                         <span class="badge @CellClass(cell.State)">@CellAria(cell.State)</span>
                                     </div>
+                                    <a href="/Shifts/Dashboard?startDate=@date.ToString("yyyy-MM-dd", null)&endDate=@date.ToString("yyyy-MM-dd", null)#urgencyAccordion"
+                                       target="_blank" rel="noopener"
+                                       class="btn btn-sm btn-outline-success w-100 mb-2">
+                                        <i class="fa-solid fa-up-right-from-square me-1"></i>@Localizer["VolTrack_Popover_OpenDashboard"]
+                                    </a>
                                     @if (canWrite)
                                     {
                                         <hr class="my-2" />
@@ -131,24 +133,6 @@
                                             <button type="submit" class="btn btn-sm btn-primary w-100">
                                                 <i class="fa-solid fa-campground me-1"></i>@Localizer["VolTrack_Popover_MarkCampSetup"]
                                             </button>
-                                        </form>
-                                        <form method="post" asp-action="SetBlock">
-                                            @Html.AntiForgeryToken()
-                                            <input type="hidden" name="UserId" value="@row.UserId" />
-                                            <input type="hidden" name="DayOffset" value="@cell.DayOffset" />
-                                            <input type="hidden" name="Block" value="@(!isBlocked)" />
-                                            @if (isBlocked)
-                                            {
-                                                <button type="submit" class="btn btn-sm btn-outline-warning w-100">
-                                                    <i class="fa-solid fa-lock-open me-1"></i>@Localizer["VolTrack_Popover_Unblock"]
-                                                </button>
-                                            }
-                                            else
-                                            {
-                                                <button type="submit" class="btn btn-sm btn-outline-secondary w-100">
-                                                    <i class="fa-solid fa-ban me-1"></i>@Localizer["VolTrack_Popover_Block"]
-                                                </button>
-                                            }
                                         </form>
                                     }
                                 </div>

@@ -137,6 +137,9 @@ public enum AuditAction
     CampSettingsEeStartDateChanged,
     VolunteerCampSetupSet,
     VolunteerCampSetupCleared,
+    // Reserved — was wired during the volunteer-tracking day-off feature; the
+    // feature was removed before merge to upstream. Historical audit rows may
+    // still exist on dev DBs. Do not remove (audit enum is positional).
     VolunteerDayBlocked,
     VolunteerDayUnblocked,
     VolunteerOwnBlockedDaysSaved,

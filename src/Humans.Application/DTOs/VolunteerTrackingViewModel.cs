@@ -9,7 +9,6 @@ public enum VolunteerCellState
     Pending,        // light green
     Gap,            // red — main heatmap only
     Expected,       // grey, future inside active window
-    Blocked,        // yellow
     CampSetup,      // blue
     AvailableUnbooked,    // orange — unbooked cohort only
     AvailableExpected,    // light orange — unbooked cohort only

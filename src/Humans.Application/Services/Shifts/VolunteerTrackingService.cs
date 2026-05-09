@@ -86,10 +86,7 @@ public sealed class VolunteerTrackingService : IVolunteerTrackingService
             int? setupOffset = bs?.BarrioSetupStartDate is { } d
                 ? Period.Between(es.GateOpeningDate, d, PeriodUnits.Days).Days
                 : null;
-            var blockedSet = bs?.BlockedDayOffsets.ToHashSet() ?? new HashSet<int>();
-            var lastExpectedDay = Math.Min(
-                Math.Min(setupOffset ?? int.MaxValue, 0),
-                todayOffset + 1);
+            var lastExpectedDay = Math.Min(setupOffset ?? int.MaxValue, 0);
 
             var cells = new List<VolunteerCell>(-es.BuildStartOffset);
             int gapCount = 0;
@@ -105,10 +102,6 @@ public sealed class VolunteerTrackingService : IVolunteerTrackingService
                 {
                     s = VolunteerCellState.Outside;
                 }
-                else if (blockedSet.Contains(d2))
-                {
-                    s = VolunteerCellState.Blocked;
-                }
                 else if (daySignups.TryGetValue(d2, out var info))
                 {
                     s = info.Status == SignupStatus.Confirmed
@@ -116,14 +109,10 @@ public sealed class VolunteerTrackingService : IVolunteerTrackingService
                         : VolunteerCellState.Pending;
                     rotaNames = info.RotaNames;
                 }
-                else if (d2 < todayOffset)
+                else
                 {
                     s = VolunteerCellState.Gap;
                     gapCount++;
-                }
-                else
-                {
-                    s = VolunteerCellState.Expected;
                 }
 
                 cells.Add(new VolunteerCell(d2, s, rotaNames));
@@ -173,7 +162,6 @@ public sealed class VolunteerTrackingService : IVolunteerTrackingService
             int? setupOffset = bs?.BarrioSetupStartDate is { } d2
                 ? Period.Between(es.GateOpeningDate, d2, PeriodUnits.Days).Days
                 : null;
-            var blockedSet = bs?.BlockedDayOffsets.ToHashSet() ?? new HashSet<int>();
 
             var cells = new List<VolunteerCell>(-es.BuildStartOffset);
             int unbookedCount = 0;
@@ -183,10 +171,6 @@ public sealed class VolunteerTrackingService : IVolunteerTrackingService
                 if (setupOffset.HasValue && d3 >= setupOffset.Value)
                 {
                     s = VolunteerCellState.CampSetup;
-                }
-                else if (blockedSet.Contains(d3))
-                {
-                    s = VolunteerCellState.Blocked;
                 }
                 else if (inBuild.Contains(d3) && d3 < todayOffset)
                 {
@@ -269,66 +253,5 @@ public sealed class VolunteerTrackingService : IVolunteerTrackingService
             setByUserId: null,
             setAt: null,
             ct).ConfigureAwait(false);
-    }
-
-    public async Task<SetBlockResult> SetBlockAsync(
-        Guid targetUserId, int dayOffset, bool block,
-        Guid coordinatorUserId, CancellationToken ct = default)
-    {
-        var es = await _shiftManagement.GetActiveEventSettingsAsync(ct).ConfigureAwait(false)
-            ?? throw new InvalidOperationException("No active event");
-        if (dayOffset < es.BuildStartOffset || dayOffset >= 0)
-        {
-            return new SetBlockResult(false, false, "VolTrack_Err_DayOffsetOutsideBuild");
-        }
-
-        var changed = await _trackingRepo
-            .SetBlockAsync(targetUserId, es.Id, dayOffset, block, ct)
-            .ConfigureAwait(false);
-        return new SetBlockResult(true, changed, null);
-    }
-
-    public async Task<SaveOwnBlockedDaysResult> SaveOwnBlockedDaysAsync(
-        Guid ownerUserId, IReadOnlyList<int> dayOffsets, CancellationToken ct = default)
-    {
-        var es = await _shiftManagement.GetActiveEventSettingsAsync(ct).ConfigureAwait(false)
-            ?? throw new InvalidOperationException("No active event");
-
-        var normalized = dayOffsets.Distinct().OrderBy(x => x).ToList();
-        if (normalized.Any(d => d < es.BuildStartOffset || d >= 0))
-        {
-            return new SaveOwnBlockedDaysResult(
-                false,
-                Array.Empty<int>(),
-                Array.Empty<int>(),
-                Array.Empty<int>(),
-                "VolTrack_Err_DayOffsetOutsideBuild");
-        }
-
-        var prior = await _trackingRepo
-            .ReplaceBlockedDaysAsync(ownerUserId, es.Id, normalized, ct)
-            .ConfigureAwait(false);
-        var priorSet = prior.ToHashSet();
-        var newSet = normalized.ToHashSet();
-        var added = normalized.Where(d => !priorSet.Contains(d)).ToList();
-        var removed = prior.Where(d => !newSet.Contains(d)).ToList();
-        return new SaveOwnBlockedDaysResult(true, added, removed, normalized, null);
-    }
-
-    public async Task<MineBlockedDaysSummary> GetMineBlockedDaysSummaryAsync(
-        Guid userId, CancellationToken ct = default)
-    {
-        var es = await _shiftManagement.GetActiveEventSettingsAsync(ct).ConfigureAwait(false);
-        if (es is null || es.BuildStartOffset >= 0)
-        {
-            return new MineBlockedDaysSummary(false, 0, default, Array.Empty<int>());
-        }
-
-        var row = await _trackingRepo.GetAsync(userId, es.Id, ct).ConfigureAwait(false);
-        return new MineBlockedDaysSummary(
-            true,
-            es.BuildStartOffset,
-            es.GateOpeningDate,
-            row?.BlockedDayOffsets ?? new List<int>());
     }
 }

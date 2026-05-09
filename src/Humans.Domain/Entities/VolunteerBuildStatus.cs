@@ -4,11 +4,10 @@ namespace Humans.Domain.Entities;
 
 /// <summary>
 /// Per-user, per-event Shifts-owned coordination state used by the Volunteer
-/// Tracking page: optional camp-set-up start date plus a list of day offsets
-/// the volunteer is blocked out (doctor visit, rest day, etc.).
+/// Tracking page: optional camp-set-up start date.
 ///
 /// One row per (UserId, EventSettingsId). A row with BarrioSetupStartDate=null
-/// and empty BlockedDayOffsets is functionally equivalent to no row.
+/// is functionally equivalent to no row.
 /// </summary>
 public class VolunteerBuildStatus
 {
@@ -31,21 +30,13 @@ public class VolunteerBuildStatus
     public LocalDate? BarrioSetupStartDate { get; set; }
 
     /// <summary>
-    /// Day offsets the volunteer is blocked out (doctor, rest day, etc.).
-    /// Stored sorted, deduped. Always inside [BuildStartOffset, 0).
-    /// jsonb column; pattern matches GeneralAvailability.AvailableDayOffsets.
-    /// </summary>
-    public List<int> BlockedDayOffsets { get; set; } = new();
-
-    /// <summary>
-    /// Optional free-text from the coordinator who set/cleared the
-    /// camp set-up date. Block edits do NOT touch this field.
+    /// Optional free-text from the coordinator who set/cleared the camp
+    /// set-up date.
     /// </summary>
     public string? Notes { get; set; }
 
     /// <summary>
-    /// Coordinator who last modified BarrioSetupStartDate. Block edits do
-    /// NOT touch this field — block audit trail lives in audit_log.
+    /// Coordinator who last modified BarrioSetupStartDate.
     /// </summary>
     public Guid? SetByUserId { get; set; }
 

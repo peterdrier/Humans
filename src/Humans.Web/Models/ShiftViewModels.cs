@@ -287,15 +287,6 @@ public class MyShiftsViewModel
     public List<MySignupItem> Past { get; set; } = [];
     public string? ICalUrl { get; set; }
     public List<int> AvailableDayOffsets { get; set; } = [];
-
-    // Volunteer self-service: "Days you can't volunteer" panel data.
-    // Populated via IVolunteerTrackingService.GetMineBlockedDaysSummaryAsync;
-    // when no active event / no row yet, HasActiveBuildPeriod is false and
-    // the panel is not rendered.
-    public bool HasActiveBuildPeriod { get; set; }
-    public int BuildStartOffset { get; set; }
-    public LocalDate GateOpeningDate { get; set; }
-    public IReadOnlyList<int> BlockedDayOffsets { get; set; } = Array.Empty<int>();
 }
 
 public class MySignupItem

@@ -43,6 +43,7 @@ public class VolunteerTrackingServiceTests
             new(userId, -4, SignupStatus.Confirmed, "Cleanup"),
             new(userId, -3, SignupStatus.Confirmed, "Cleanup"),
             new(userId, -2, SignupStatus.Confirmed, "Cleanup"),
+            new(userId, -1, SignupStatus.Confirmed, "Cleanup"),
         };
         var participations = new[] { Participation(userId, ParticipationStatus.Ticketed, es.Year) };
 
@@ -56,14 +57,13 @@ public class VolunteerTrackingServiceTests
         row.UserId.Should().Be(userId);
         row.GapCount.Should().Be(0);
         row.FirstSignupDay.Should().Be(-5);
-        row.LastEligibleSignupOffset.Should().Be(-2);
+        row.LastEligibleSignupOffset.Should().Be(-1);
         row.Cells.Should().HaveCount(5);
-        // Cells -5..-2 are Confirmed; cell -1 is Expected (today inside active window).
         row.Cells.Single(c => c.DayOffset == -5).State.Should().Be(VolunteerCellState.Confirmed);
         row.Cells.Single(c => c.DayOffset == -4).State.Should().Be(VolunteerCellState.Confirmed);
         row.Cells.Single(c => c.DayOffset == -3).State.Should().Be(VolunteerCellState.Confirmed);
         row.Cells.Single(c => c.DayOffset == -2).State.Should().Be(VolunteerCellState.Confirmed);
-        row.Cells.Single(c => c.DayOffset == -1).State.Should().BeOneOf(VolunteerCellState.Expected, VolunteerCellState.Outside);
+        row.Cells.Single(c => c.DayOffset == -1).State.Should().Be(VolunteerCellState.Confirmed);
     }
 
     [HumansFact]
@@ -71,12 +71,13 @@ public class VolunteerTrackingServiceTests
     {
         var es = MakeEvent(buildStartOffset: -5);
         var userId = Guid.NewGuid();
-        // Signups at -5, -4, -2: missing -3. Today is offset -1.
+        // Signups at -5, -4, -2, -1: missing -3.
         var signups = new List<EligibleBuildSignup>
         {
             new(userId, -5, SignupStatus.Confirmed, "Cleanup"),
             new(userId, -4, SignupStatus.Confirmed, "Cleanup"),
             new(userId, -2, SignupStatus.Confirmed, "Cleanup"),
+            new(userId, -1, SignupStatus.Confirmed, "Cleanup"),
         };
         var participations = new[] { Participation(userId, ParticipationStatus.Ticketed, es.Year) };
 
@@ -90,6 +91,7 @@ public class VolunteerTrackingServiceTests
         row.Cells.Single(c => c.DayOffset == -5).State.Should().Be(VolunteerCellState.Confirmed);
         row.Cells.Single(c => c.DayOffset == -4).State.Should().Be(VolunteerCellState.Confirmed);
         row.Cells.Single(c => c.DayOffset == -2).State.Should().Be(VolunteerCellState.Confirmed);
+        row.Cells.Single(c => c.DayOffset == -1).State.Should().Be(VolunteerCellState.Confirmed);
     }
 
     [HumansFact]
@@ -121,6 +123,7 @@ public class VolunteerTrackingServiceTests
             new(userId, -4, SignupStatus.Confirmed, "Cleanup"),
             new(userId, -3, SignupStatus.Pending, "Cleanup"),
             new(userId, -2, SignupStatus.Confirmed, "Cleanup"),
+            new(userId, -1, SignupStatus.Confirmed, "Cleanup"),
         };
         var participations = new[] { Participation(userId, ParticipationStatus.Ticketed, es.Year) };
 
@@ -166,37 +169,13 @@ public class VolunteerTrackingServiceTests
     }
 
     [HumansFact]
-    public async Task MainCohort_block_on_empty_day_suppresses_gap()
+    public async Task MainCohort_future_unfilled_day_renders_as_gap_for_planning()
     {
-        var es = MakeEvent(buildStartOffset: -5);
-        var userId = Guid.NewGuid();
-        var signups = new List<EligibleBuildSignup>
-        {
-            new(userId, -5, SignupStatus.Confirmed, "Cleanup"),
-            new(userId, -4, SignupStatus.Confirmed, "Cleanup"),
-            new(userId, -2, SignupStatus.Confirmed, "Cleanup"),
-        };
-        var participations = new[] { Participation(userId, ParticipationStatus.Ticketed, es.Year) };
-        var bs = new VolunteerBuildStatus
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            EventSettingsId = es.Id,
-            BlockedDayOffsets = new List<int> { -3 },
-        };
-
-        var sut = BuildSut(es, signups: signups, participations: participations, buildStatuses: new[] { bs });
-
-        var result = await sut.GetTrackingDataAsync();
-
-        var row = result.MainCohort.Single();
-        row.GapCount.Should().Be(0);
-        row.Cells.Single(c => c.DayOffset == -3).State.Should().Be(VolunteerCellState.Blocked);
-    }
-
-    [HumansFact]
-    public async Task MainCohort_camp_setup_wins_over_block_on_overlap()
-    {
+        // Today (offset -1 in this fixture) is one day before gate-open. Volunteer
+        // has confirmed -5 only; -4..-1 are all unfilled. The cap on lastExpectedDay
+        // used to render -1 as "Expected" (today is not in the past), but coordinators
+        // need to see future unfilled commitments as gaps so they can voluntell
+        // ahead of time. Locks in spec docs/features/47-volunteer-tracking.md step 3.
         var es = MakeEvent(buildStartOffset: -5);
         var userId = Guid.NewGuid();
         var signups = new List<EligibleBuildSignup>
@@ -204,21 +183,15 @@ public class VolunteerTrackingServiceTests
             new(userId, -5, SignupStatus.Confirmed, "Cleanup"),
         };
         var participations = new[] { Participation(userId, ParticipationStatus.Ticketed, es.Year) };
-        var bs = new VolunteerBuildStatus
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            EventSettingsId = es.Id,
-            BarrioSetupStartDate = es.GateOpeningDate.PlusDays(-3),
-            BlockedDayOffsets = new List<int> { -3 },
-        };
 
-        var sut = BuildSut(es, signups: signups, participations: participations, buildStatuses: new[] { bs });
+        var sut = BuildSut(es, signups: signups, participations: participations);
 
         var result = await sut.GetTrackingDataAsync();
 
         var row = result.MainCohort.Single();
-        row.Cells.Single(c => c.DayOffset == -3).State.Should().Be(VolunteerCellState.CampSetup);
+        row.GapCount.Should().Be(4); // -4, -3, -2, -1 are all gaps now.
+        row.Cells.Single(c => c.DayOffset == -1).State.Should().Be(VolunteerCellState.Gap);
+        row.Cells.Single(c => c.DayOffset == -4).State.Should().Be(VolunteerCellState.Gap);
     }
 
     [HumansFact]
@@ -282,30 +255,6 @@ public class VolunteerTrackingServiceTests
 
         result.MainCohort.Should().BeEmpty();
         result.UnbookedCohort.Should().BeEmpty();
-    }
-
-    [HumansFact]
-    public async Task UnbookedCohort_blocked_day_renders_blocked_not_available()
-    {
-        var es = MakeEvent(buildStartOffset: -5);
-        var userId = Guid.NewGuid();
-        var participations = new[] { Participation(userId, ParticipationStatus.Ticketed, es.Year) };
-        var availability = new[] { Availability(userId, es.Id, new[] { -5, -4 }) };
-        var bs = new VolunteerBuildStatus
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            EventSettingsId = es.Id,
-            BlockedDayOffsets = new List<int> { -5 },
-        };
-
-        var sut = BuildSut(es, participations: participations, availabilities: availability, buildStatuses: new[] { bs });
-
-        var result = await sut.GetTrackingDataAsync();
-
-        var row = result.UnbookedCohort.Single();
-        row.Cells.Single(c => c.DayOffset == -5).State.Should().Be(VolunteerCellState.Blocked);
-        row.Cells.Single(c => c.DayOffset == -4).State.Should().Be(VolunteerCellState.AvailableUnbooked);
     }
 
     [HumansFact]
@@ -385,7 +334,6 @@ public class VolunteerTrackingServiceTests
             Notes = "left",
             SetByUserId = Guid.NewGuid(),
             SetAt = TestNow,
-            BlockedDayOffsets = new List<int> { -2 },
         };
         var trackingRepo = new FakeVolunteerTrackingRepository(
             Array.Empty<EligibleBuildSignup>(), new[] { bs });
@@ -404,142 +352,6 @@ public class VolunteerTrackingServiceTests
         stored.Notes.Should().BeNull();
         stored.SetByUserId.Should().BeNull();
         stored.SetAt.Should().BeNull();
-        // BlockedDayOffsets untouched.
-        stored.BlockedDayOffsets.Should().BeEquivalentTo(new[] { -2 });
-    }
-
-    [HumansFact]
-    public async Task SetBlockAsync_rejects_offset_outside_build_window()
-    {
-        var es = MakeEvent(buildStartOffset: -5);
-        var sut = BuildSut(es);
-
-        var below = await sut.SetBlockAsync(Guid.NewGuid(), -6, block: true, Guid.NewGuid());
-        var above = await sut.SetBlockAsync(Guid.NewGuid(), 0, block: true, Guid.NewGuid());
-
-        below.Ok.Should().BeFalse();
-        below.ErrorMessageKey.Should().Be("VolTrack_Err_DayOffsetOutsideBuild");
-        above.Ok.Should().BeFalse();
-        above.ErrorMessageKey.Should().Be("VolTrack_Err_DayOffsetOutsideBuild");
-    }
-
-    [HumansFact]
-    public async Task SetBlockAsync_first_block_returns_changed_true_second_returns_false()
-    {
-        var es = MakeEvent(buildStartOffset: -5);
-        var userId = Guid.NewGuid();
-        var trackingRepo = new FakeVolunteerTrackingRepository(
-            Array.Empty<EligibleBuildSignup>(), Array.Empty<VolunteerBuildStatus>());
-        var sut = BuildSut(es, trackingRepo: trackingRepo);
-
-        var first = await sut.SetBlockAsync(userId, -3, block: true, Guid.NewGuid());
-        var second = await sut.SetBlockAsync(userId, -3, block: true, Guid.NewGuid());
-
-        first.Ok.Should().BeTrue();
-        first.Changed.Should().BeTrue();
-        second.Ok.Should().BeTrue();
-        second.Changed.Should().BeFalse();
-    }
-
-    [HumansFact]
-    public async Task SaveOwnBlockedDaysAsync_rejects_offset_outside_build_window()
-    {
-        var es = MakeEvent(buildStartOffset: -5);
-        var sut = BuildSut(es);
-
-        var result = await sut.SaveOwnBlockedDaysAsync(Guid.NewGuid(), new[] { -3, 0 });
-
-        result.Ok.Should().BeFalse();
-        result.ErrorMessageKey.Should().Be("VolTrack_Err_DayOffsetOutsideBuild");
-    }
-
-    [HumansFact]
-    public async Task SaveOwnBlockedDaysAsync_diff_returns_added_removed_resulting()
-    {
-        var es = MakeEvent(buildStartOffset: -5);
-        var userId = Guid.NewGuid();
-        var bs = new VolunteerBuildStatus
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            EventSettingsId = es.Id,
-            BlockedDayOffsets = new List<int> { -5 },
-        };
-        var trackingRepo = new FakeVolunteerTrackingRepository(
-            Array.Empty<EligibleBuildSignup>(), new[] { bs });
-        var sut = BuildSut(es, buildStatuses: new[] { bs }, trackingRepo: trackingRepo);
-
-        var result = await sut.SaveOwnBlockedDaysAsync(userId, new[] { -4, -3 });
-
-        result.Ok.Should().BeTrue();
-        result.Added.Should().BeEquivalentTo(new[] { -4, -3 });
-        result.Removed.Should().BeEquivalentTo(new[] { -5 });
-        result.ResultingList.Should().Equal(new[] { -4, -3 });
-    }
-
-    [HumansFact]
-    public async Task SaveOwnBlockedDaysAsync_normalizes_input_dedupe_and_sort()
-    {
-        var es = MakeEvent(buildStartOffset: -5);
-        var userId = Guid.NewGuid();
-        var trackingRepo = new FakeVolunteerTrackingRepository(
-            Array.Empty<EligibleBuildSignup>(), Array.Empty<VolunteerBuildStatus>());
-        var sut = BuildSut(es, trackingRepo: trackingRepo);
-
-        var result = await sut.SaveOwnBlockedDaysAsync(userId, new[] { -3, -5, -3, -4 });
-
-        result.Ok.Should().BeTrue();
-        result.ResultingList.Should().Equal(new[] { -5, -4, -3 });
-        trackingRepo.ReplaceCalls.Should().HaveCount(1);
-        trackingRepo.ReplaceCalls[0].Offsets.Should().Equal(new[] { -5, -4, -3 });
-    }
-
-    [HumansFact]
-    public async Task GetMineBlockedDaysSummaryAsync_no_active_event_returns_inactive()
-    {
-        var sut = BuildSut(activeEvent: null);
-
-        var result = await sut.GetMineBlockedDaysSummaryAsync(Guid.NewGuid());
-
-        result.HasActiveBuildPeriod.Should().BeFalse();
-        result.BuildStartOffset.Should().Be(0);
-        result.BlockedDayOffsets.Should().BeEmpty();
-    }
-
-    [HumansFact]
-    public async Task GetMineBlockedDaysSummaryAsync_no_row_yet_returns_empty_list_with_bounds()
-    {
-        var es = MakeEvent(buildStartOffset: -7);
-        var sut = BuildSut(es);
-
-        var result = await sut.GetMineBlockedDaysSummaryAsync(Guid.NewGuid());
-
-        result.HasActiveBuildPeriod.Should().BeTrue();
-        result.BuildStartOffset.Should().Be(-7);
-        result.GateOpeningDate.Should().Be(es.GateOpeningDate);
-        result.BlockedDayOffsets.Should().BeEmpty();
-    }
-
-    [HumansFact]
-    public async Task GetMineBlockedDaysSummaryAsync_returns_existing_row_blocks()
-    {
-        var es = MakeEvent(buildStartOffset: -7);
-        var userId = Guid.NewGuid();
-        var bs = new VolunteerBuildStatus
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            EventSettingsId = es.Id,
-            BlockedDayOffsets = new List<int> { -3, -1 },
-        };
-        var sut = BuildSut(es, buildStatuses: new[] { bs });
-
-        var result = await sut.GetMineBlockedDaysSummaryAsync(userId);
-
-        result.HasActiveBuildPeriod.Should().BeTrue();
-        result.BuildStartOffset.Should().Be(-7);
-        result.GateOpeningDate.Should().Be(es.GateOpeningDate);
-        result.BlockedDayOffsets.Should().Equal(new[] { -3, -1 });
     }
 
     private static GeneralAvailability Availability(Guid userId, Guid eventSettingsId, IReadOnlyList<int> days)
@@ -637,8 +449,6 @@ public class VolunteerTrackingServiceTests
         public List<VolunteerBuildStatus> BuildStatuses { get; }
 
         public List<(Guid UserId, Guid EventSettingsId, LocalDate? Date, string? Notes, Guid? SetByUserId, Instant? SetAt)> UpsertCalls { get; } = new();
-        public List<(Guid UserId, Guid EventSettingsId, IReadOnlyList<int> Offsets)> ReplaceCalls { get; } = new();
-        public List<(Guid UserId, Guid EventSettingsId, int DayOffset, bool Block)> SetBlockCalls { get; } = new();
 
         public FakeVolunteerTrackingRepository(
             IReadOnlyList<EligibleBuildSignup> signups,
@@ -676,62 +486,6 @@ public class VolunteerTrackingServiceTests
             existing.SetByUserId = setByUserId;
             existing.SetAt = setAt;
             return Task.FromResult(existing);
-        }
-
-        public Task<IReadOnlyList<int>> ReplaceBlockedDaysAsync(
-            Guid userId, Guid eventSettingsId, IReadOnlyList<int> dayOffsets, CancellationToken ct = default)
-        {
-            ReplaceCalls.Add((userId, eventSettingsId, dayOffsets));
-            var existing = BuildStatuses.FirstOrDefault(b => b.UserId == userId && b.EventSettingsId == eventSettingsId);
-            IReadOnlyList<int> prior;
-            if (existing is null)
-            {
-                prior = Array.Empty<int>();
-                existing = new VolunteerBuildStatus
-                {
-                    Id = Guid.NewGuid(),
-                    UserId = userId,
-                    EventSettingsId = eventSettingsId,
-                };
-                BuildStatuses.Add(existing);
-            }
-            else
-            {
-                prior = existing.BlockedDayOffsets.ToList();
-            }
-            existing.BlockedDayOffsets = dayOffsets.ToList();
-            return Task.FromResult(prior);
-        }
-
-        public Task<bool> SetBlockAsync(
-            Guid userId, Guid eventSettingsId, int dayOffset, bool block, CancellationToken ct = default)
-        {
-            SetBlockCalls.Add((userId, eventSettingsId, dayOffset, block));
-            var existing = BuildStatuses.FirstOrDefault(b => b.UserId == userId && b.EventSettingsId == eventSettingsId);
-            if (existing is null)
-            {
-                if (!block) return Task.FromResult(false);
-                existing = new VolunteerBuildStatus
-                {
-                    Id = Guid.NewGuid(),
-                    UserId = userId,
-                    EventSettingsId = eventSettingsId,
-                };
-                BuildStatuses.Add(existing);
-            }
-            var has = existing.BlockedDayOffsets.Contains(dayOffset);
-            if (block && !has)
-            {
-                existing.BlockedDayOffsets.Add(dayOffset);
-                existing.BlockedDayOffsets.Sort();
-                return Task.FromResult(true);
-            }
-            if (!block && has)
-            {
-                existing.BlockedDayOffsets.Remove(dayOffset);
-                return Task.FromResult(true);
-            }
-            return Task.FromResult(false);
         }
 
         public Task<IReadOnlyList<EligibleBuildSignup>> GetEligibleBuildSignupsAsync(

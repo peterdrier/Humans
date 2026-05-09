@@ -28,7 +28,6 @@ public class ShiftsController : HumansControllerBase
     private readonly IGeneralAvailabilityService _availabilityService;
     private readonly ITeamService _teamService;
     private readonly IAuditLogService _auditLogService;
-    private readonly IVolunteerTrackingService _trackingService;
     private readonly IStringLocalizer<SharedResource> _localizer;
     private readonly IClock _clock;
     private readonly ILogger<ShiftsController> _logger;
@@ -39,7 +38,6 @@ public class ShiftsController : HumansControllerBase
         IGeneralAvailabilityService availabilityService,
         ITeamService teamService,
         IAuditLogService auditLogService,
-        IVolunteerTrackingService trackingService,
         IStringLocalizer<SharedResource> localizer,
         UserManager<User> userManager,
         IClock clock,
@@ -51,7 +49,6 @@ public class ShiftsController : HumansControllerBase
         _availabilityService = availabilityService;
         _teamService = teamService;
         _auditLogService = auditLogService;
-        _trackingService = trackingService;
         _localizer = localizer;
         _clock = clock;
         _logger = logger;
@@ -433,55 +430,7 @@ public class ShiftsController : HumansControllerBase
         }
         model.ICalUrl = $"{Request.Scheme}://{Request.Host}/ICal/{user.ICalToken}.ics";
 
-        // Volunteer self-service "Days you can't volunteer" — service resolves
-        // active-event / no-row-yet itself; controller only consumes the DTO.
-        var blockedSummary = await _trackingService.GetMineBlockedDaysSummaryAsync(user.Id);
-        model.HasActiveBuildPeriod = blockedSummary.HasActiveBuildPeriod;
-        model.BuildStartOffset = blockedSummary.BuildStartOffset;
-        model.GateOpeningDate = blockedSummary.GateOpeningDate;
-        model.BlockedDayOffsets = blockedSummary.BlockedDayOffsets;
-
         return View(model);
-    }
-
-    [HttpPost("Mine/BlockedDays")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> SaveBlockedDays([FromForm] List<int>? dayOffsets, CancellationToken ct)
-    {
-        // UserId MUST come from ClaimsPrincipal — never from the form.
-        // The form has no UserId field; even if a malicious client injects
-        // one, model binding ignores it. Self-service authorization story
-        // is "you can only edit your own row, period."
-        var current = await GetCurrentUserAsync();
-        if (current is null) return Challenge();
-
-        var result = await _trackingService.SaveOwnBlockedDaysAsync(current.Id, dayOffsets ?? new(), ct);
-        if (!result.Ok)
-        {
-            SetError(_localizer[result.ErrorMessageKey ?? "VolTrack_Err_Unknown"]);
-            return RedirectToAction(nameof(Mine));
-        }
-
-        await EmitSelfBlockedDaysAuditAsync(current.Id, result);
-        SetSuccess(_localizer["VolTrack_Msg_BlockedDaysSaved"]);
-        return RedirectToAction(nameof(Mine));
-    }
-
-    private async Task EmitSelfBlockedDaysAuditAsync(Guid userId, SaveOwnBlockedDaysResult result)
-    {
-        foreach (var d in result.Added)
-        {
-            await _auditLogService.LogAsync(AuditAction.VolunteerDayBlocked,
-                nameof(VolunteerBuildStatus), userId, $"DayOffset={d}; self", userId);
-        }
-        foreach (var d in result.Removed)
-        {
-            await _auditLogService.LogAsync(AuditAction.VolunteerDayUnblocked,
-                nameof(VolunteerBuildStatus), userId, $"DayOffset={d}; self", userId);
-        }
-        await _auditLogService.LogAsync(AuditAction.VolunteerOwnBlockedDaysSaved,
-            nameof(VolunteerBuildStatus), userId,
-            $"Resulting list: [{string.Join(",", result.ResultingList)}]", userId);
     }
 
     [HttpPost("Mine/Availability")]

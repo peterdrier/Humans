@@ -163,39 +163,6 @@ public sealed class VolunteerTrackingController : HumansControllerBase
         return RedirectToAction(nameof(Index));
     }
 
-    [HttpPost("SetBlock")]
-    [Authorize(Policy = PolicyNames.VolunteerTrackingWrite)]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> SetBlock(SetBlockForm form, CancellationToken ct)
-    {
-        var current = await GetCurrentUserAsync();
-        if (current is null) return Forbid();
-
-        var result = await _service.SetBlockAsync(form.UserId, form.DayOffset, form.Block, current.Id, ct);
-        if (!result.Ok) return SetBlockError(result.ErrorMessageKey);
-        if (result.Changed) await EmitSetBlockAuditAsync(form, current.Id);
-
-        SetSuccess(_localizer[SetBlockSuccessKey(form.Block)]);
-        return RedirectToAction(nameof(Index));
-    }
-
-    private IActionResult SetBlockError(string? errorMessageKey)
-    {
-        SetError(_localizer[errorMessageKey ?? "VolTrack_Err_Unknown"]);
-        return BadRequest();
-    }
-
-    private Task EmitSetBlockAuditAsync(SetBlockForm form, Guid actorUserId) =>
-        _auditLogService.LogAsync(
-            form.Block ? AuditAction.VolunteerDayBlocked : AuditAction.VolunteerDayUnblocked,
-            nameof(VolunteerBuildStatus),
-            form.UserId,
-            $"DayOffset={form.DayOffset}; by coordinator",
-            actorUserId);
-
-    private static string SetBlockSuccessKey(bool block) =>
-        block ? "VolTrack_Msg_DayBlocked" : "VolTrack_Msg_DayUnblocked";
-
     private static string DisplayName(IReadOnlyDictionary<Guid, User> users, Guid id)
         => users.TryGetValue(id, out var u) ? (u.DisplayName ?? "") : "";
 }
