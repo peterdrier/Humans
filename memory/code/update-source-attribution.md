@@ -5,7 +5,7 @@ description: When writing CommunicationPreference (or any audited preference wri
 
 When a controller writes a `CommunicationPreference` via `ICommunicationPreferenceService.UpdatePreferenceAsync`, the `source` parameter must reflect both the **actor** (signed-in vs. anonymous) and the **channel** (which UI/endpoint). Don't use one label for two channels.
 
-**The current vocabulary** (also documented in [`docs/sections/Profiles.md`](../../docs/sections/Profiles.md) and [`docs/features/communication-preferences.md`](../../docs/features/communication-preferences.md)):
+**The current vocabulary** (also documented in [`docs/sections/Profiles.md`](../../docs/sections/Profiles.md) and [`docs/features/profiles/communication-preferences.md`](../../docs/features/profiles/communication-preferences.md)):
 
 | Source | Actor | Channel |
 |---|---|---|
@@ -26,4 +26,4 @@ The token-driven `"MagicLink"` value also matters because it's the only path tha
 - Adding a new endpoint that writes preferences? Pick a new source label that names the channel, OR reuse an existing one only if the actor + channel are identical to that label's owner.
 - Tests that assert `UpdateSource` must POST values that **differ from the seeded default** for the chosen category — the service early-returns on idempotent updates and the row stays at `"Default"`. `MessageCategory.VolunteerUpdates` (default `OptedOut=false`) flipped via `emailEnabled=false` is the canonical assertion shape; see `tests/Humans.Integration.Tests/Controllers/UnsubscribeFlowTests.cs`.
 
-**Related:** [`docs/sections/Profiles.md`](../../docs/sections/Profiles.md) (CommunicationPreference table), [`docs/features/communication-preferences.md`](../../docs/features/communication-preferences.md).
+**Related:** [`docs/sections/Profiles.md`](../../docs/sections/Profiles.md) (CommunicationPreference table), [`docs/features/profiles/communication-preferences.md`](../../docs/features/profiles/communication-preferences.md).
