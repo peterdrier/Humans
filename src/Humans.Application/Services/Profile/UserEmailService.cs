@@ -947,9 +947,13 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
             {
                 var verified = g.Where(e => e.IsVerified).ToList();
                 var isGoogleCount = g.Count(e => e.IsGoogle);
+                var verifiedIsGoogleCount = verified.Count(e => e.IsGoogle);
                 var verifiedPrimaryCount = verified.Count(e => e.IsPrimary);
                 var hasMultipleGoogle = isGoogleCount > 1;
-                var hasZeroGoogle = verified.Count > 0 && isGoogleCount == 0;
+                // EnsureGoogleInvariantAsync only stamps IsGoogle on verified rows,
+                // so the "zero" check must mirror that — an unverified IsGoogle row
+                // is itself a violation, not a satisfier of the invariant.
+                var hasZeroGoogle = verified.Count > 0 && verifiedIsGoogleCount == 0;
                 var hasPrimaryProblem = verified.Count > 0 && verifiedPrimaryCount != 1;
                 return (
                     UserId: g.Key,

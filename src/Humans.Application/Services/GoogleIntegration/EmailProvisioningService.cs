@@ -180,9 +180,30 @@ public sealed class EmailProvisioningService : IEmailProvisioningService
             // the orchestrator did not run on the existing row. Promote it
             // explicitly — same rationale as the legacy belt-and-suspenders
             // write but via the new sole-source-of-truth surface.
+            //
+            // Half-completed-prior-provisioning case: the user (or a previous
+            // failed provisioning attempt) may have added the @nobodies.team
+            // address as an UNVERIFIED row. Workspace is now the authority for
+            // this address, so the row must be verified before we stamp
+            // IsGoogle on it (SetGoogleAsync rejects unverified rows).
+            // AdminMarkVerifiedAsync verifies the row and runs
+            // EnsureGoogleInvariantAsync, which typically stamps IsGoogle
+            // automatically; SetGoogleAsync below is the belt-and-suspenders
+            // catch for the rare case where the invariant tie-broke against us.
             var rows = await _userEmailService.GetUserEmailsAsync(userId);
             var workspaceRow = rows.FirstOrDefault(r =>
-                string.Equals(r.Email, fullEmail, StringComparison.OrdinalIgnoreCase) && r.IsVerified);
+                string.Equals(r.Email, fullEmail, StringComparison.OrdinalIgnoreCase));
+            if (workspaceRow is not null && !workspaceRow.IsVerified)
+            {
+                await _userEmailService.AdminMarkVerifiedAsync(
+                    userId, workspaceRow.Id, provisionedByUserId);
+
+                // Re-read: AdminMarkVerifiedAsync may have stamped IsGoogle via
+                // EnsureGoogleInvariantAsync.
+                rows = await _userEmailService.GetUserEmailsAsync(userId);
+                workspaceRow = rows.FirstOrDefault(r =>
+                    string.Equals(r.Email, fullEmail, StringComparison.OrdinalIgnoreCase));
+            }
             if (workspaceRow is not null && !workspaceRow.IsGoogle)
             {
                 await _userEmailService.SetGoogleAsync(userId, workspaceRow.Id, provisionedByUserId);

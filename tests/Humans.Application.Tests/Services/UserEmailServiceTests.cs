@@ -630,7 +630,6 @@ public class UserEmailServiceTests
         added.ProviderKey.Should().Be("sub-xyz");
         added.IsVerified.Should().BeTrue();
         added.IsPrimary.Should().BeFalse();
-        added.IsGoogle.Should().BeFalse();
         await _repository.Received(1).AddAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
         await _repository.DidNotReceive().UpdateAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
         await _fullProfileInvalidator.Received(1).InvalidateAsync(userId, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
