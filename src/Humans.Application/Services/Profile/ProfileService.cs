@@ -8,11 +8,7 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using MemberApplication = Humans.Domain.Entities.Application;
 using Humans.Application.Interfaces.AuditLog;
-using Humans.Application.Interfaces.Campaigns;
-using Humans.Application.Interfaces.Consent;
-using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces;
@@ -37,12 +33,6 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
     private readonly IOnboardingEligibilityQuery _onboardingEligibilityQuery;
     private readonly IAuditLogService _auditLogService;
     private readonly IMembershipCalculator _membershipCalculator;
-    private readonly IConsentService _consentService;
-    private readonly ITicketQueryService _ticketQueryService;
-    private readonly IApplicationDecisionService _applicationDecisionService;
-    private readonly ICampaignService _campaignService;
-    private readonly IRoleAssignmentService _roleAssignmentService;
-    private readonly IAccountDeletionService _accountDeletionService;
     private readonly IFileStorage _fileStorage;
     private readonly IClock _clock;
     private readonly ILogger<ProfileService> _logger;
@@ -70,12 +60,6 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         IOnboardingEligibilityQuery onboardingEligibilityQuery,
         IAuditLogService auditLogService,
         IMembershipCalculator membershipCalculator,
-        IConsentService consentService,
-        ITicketQueryService ticketQueryService,
-        IApplicationDecisionService applicationDecisionService,
-        ICampaignService campaignService,
-        IRoleAssignmentService roleAssignmentService,
-        IAccountDeletionService accountDeletionService,
         IFileStorage fileStorage,
         IClock clock,
         ILogger<ProfileService> logger)
@@ -88,12 +72,6 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         _onboardingEligibilityQuery = onboardingEligibilityQuery;
         _auditLogService = auditLogService;
         _membershipCalculator = membershipCalculator;
-        _consentService = consentService;
-        _ticketQueryService = ticketQueryService;
-        _applicationDecisionService = applicationDecisionService;
-        _campaignService = campaignService;
-        _roleAssignmentService = roleAssignmentService;
-        _accountDeletionService = accountDeletionService;
         _fileStorage = fileStorage;
         _clock = clock;
         _logger = logger;
@@ -217,40 +195,6 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         }
 
         // FullProfile cache invalidation handled by CachingProfileService decorator.
-    }
-
-    public async Task<(Domain.Entities.Profile? Profile, MemberApplication? LatestApplication, int PendingConsentCount)>
-        GetProfileIndexDataAsync(Guid userId, CancellationToken ct = default)
-    {
-        var profile = await _profileRepository.GetByUserIdReadOnlyAsync(userId, ct);
-        var snapshot = await _membershipCalculator.GetMembershipSnapshotAsync(userId, ct);
-
-        // Cross-section → IApplicationDecisionService for latest application
-        var applications = await _applicationDecisionService.GetUserApplicationsAsync(userId, ct);
-        var latestApplication = applications.Count > 0 ? applications[0] : null;
-
-        return (profile, latestApplication, snapshot.PendingConsentCount);
-    }
-
-    public async Task<(Domain.Entities.Profile? Profile, bool IsTierLocked, MemberApplication? PendingApplication)>
-        GetProfileEditDataAsync(Guid userId, CancellationToken ct = default)
-    {
-        var profile = await _profileRepository.GetByUserIdAsync(userId, ct);
-
-        // Cross-section → IApplicationDecisionService for application status checks
-        var applications = await _applicationDecisionService.GetUserApplicationsAsync(userId, ct);
-        var isTierLocked = profile is not null && applications.Any(a =>
-            a.Status == ApplicationStatus.Submitted || a.Status == ApplicationStatus.Approved);
-
-        MemberApplication? pendingApplication = null;
-        var isInitialSetup = profile is null || !profile.IsApproved;
-        if (isInitialSetup)
-        {
-            pendingApplication = applications.FirstOrDefault(a =>
-                a.Status == ApplicationStatus.Submitted);
-        }
-
-        return (profile, isTierLocked, pendingApplication);
     }
 
     public async Task<(byte[] Data, string ContentType)?> GetProfilePictureAsync(
@@ -430,51 +374,6 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
             }
         }
 
-        // Handle tier application during initial setup
-        // Cross-section → IApplicationDecisionService for application management
-        var isInitialSetup = !profile.IsApproved;
-        if (isInitialSetup && request.SelectedTier.HasValue)
-        {
-            var selectedTier = request.SelectedTier.Value;
-
-            var applications = await _applicationDecisionService.GetUserApplicationsAsync(userId, ct);
-            var hasPendingOrApprovedApp = applications.Any(a =>
-                a.Status == ApplicationStatus.Submitted || a.Status == ApplicationStatus.Approved);
-            if (hasPendingOrApprovedApp)
-            {
-                selectedTier = profile.MembershipTier;
-            }
-
-            if (selectedTier != MembershipTier.Volunteer)
-            {
-                var existingApp = applications.FirstOrDefault(a =>
-                    a.Status == ApplicationStatus.Submitted);
-
-                if (existingApp is not null)
-                {
-                    // Route update through IApplicationDecisionService (cross-section write)
-                    await _applicationDecisionService.UpdateDraftApplicationAsync(
-                        existingApp.Id,
-                        selectedTier,
-                        request.ApplicationMotivation!,
-                        request.ApplicationAdditionalInfo,
-                        selectedTier == MembershipTier.Asociado ? request.ApplicationSignificantContribution : null,
-                        selectedTier == MembershipTier.Asociado ? request.ApplicationRoleUnderstanding : null,
-                        ct);
-                }
-                else if (!hasPendingOrApprovedApp)
-                {
-                    await _applicationDecisionService.SubmitAsync(
-                        userId, selectedTier,
-                        request.ApplicationMotivation!,
-                        request.ApplicationAdditionalInfo,
-                        selectedTier == MembershipTier.Asociado ? request.ApplicationSignificantContribution : null,
-                        selectedTier == MembershipTier.Asociado ? request.ApplicationRoleUnderstanding : null,
-                        language, ct);
-                }
-            }
-        }
-
         // Issue #635 (§15i): Stub → Active transition. When all required
         // identity fields are populated and the profile is not Suspended,
         // promote the lifecycle marker. Predicate lives on the Profile
@@ -500,46 +399,6 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         _logger.LogInformation("User {UserId} updated their profile", userId);
 
         return profile.Id;
-    }
-
-    public Task<OnboardingResult> RequestDeletionAsync(Guid userId, CancellationToken ct = default)
-    {
-        // Delegates to IAccountDeletionService — the single orchestrator for
-        // user-initiated / admin / expiry deletion paths. See issue nobodies-collective/Humans#582:
-        // ProfileService keeps only own-data mutations; cross-section cascade
-        // (team memberships, role assignments, deletion-pending fields, audit,
-        // email) belongs to the orchestrator. CachingProfileService's
-        // RequestDeletionAsync wrapper still fires its post-success cache
-        // refresh + ShiftAuthorization invalidation.
-        return _accountDeletionService.RequestDeletionAsync(userId, ct);
-    }
-
-    public async Task<OnboardingResult> CancelDeletionAsync(Guid userId, CancellationToken ct = default)
-    {
-        var user = await _userService.GetByIdAsync(userId, ct);
-        if (user is null)
-            return new OnboardingResult(false, "NotFound");
-
-        if (!user.IsDeletionPending)
-            return new OnboardingResult(false, "NoDeletionPending");
-
-        // Persist clearing of deletion fields (tracked write via IUserService)
-        await _userService.ClearDeletionAsync(userId, ct);
-
-        _logger.LogInformation("User {UserId} cancelled account deletion request", userId);
-
-        // Store update and cache invalidation handled by CachingProfileService decorator
-        return new OnboardingResult(true);
-    }
-
-    public async Task<Instant?> GetEventHoldDateAsync(Guid userId, CancellationToken ct = default)
-    {
-        // Ticket check is cross-section → ITicketQueryService
-        var hasTickets = await _ticketQueryService.HasCurrentEventTicketAsync(userId, ct);
-        if (!hasTickets)
-            return null;
-
-        return await _ticketQueryService.GetPostEventHoldDateAsync(ct);
     }
 
     public Task<(int ColaboradorCount, int AsociadoCount)> GetTierCountsAsync(CancellationToken ct = default) =>
@@ -641,42 +500,6 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
                 p.UserId, p.DisplayName, p.ProfilePictureUrl,
                 p.Latitude!.Value, p.Longitude!.Value, p.City, p.CountryCode))
             .ToList();
-    }
-
-    public async Task<AdminHumanDetailData?> GetAdminHumanDetailAsync(Guid userId, CancellationToken ct = default)
-    {
-        var user = await _userService.GetByIdAsync(userId, ct);
-        if (user is null)
-            return null;
-
-        var profile = await _profileRepository.GetByUserIdReadOnlyAsync(userId, ct);
-
-        // Applications (cross-section → IApplicationDecisionService)
-        var applications = await _applicationDecisionService.GetUserApplicationsAsync(userId, ct);
-
-        // UserEmails (within-section → IUserEmailRepository)
-        var userEmails = await _userEmailRepository.GetByUserIdReadOnlyAsync(userId, ct);
-
-        var consentCount = await _consentService.GetConsentRecordCountAsync(userId, ct);
-
-        // RoleAssignments (cross-section → IRoleAssignmentService)
-        var roleAssignments = await _roleAssignmentService.GetByUserIdAsync(userId, ct);
-
-        string? rejectedByName = null;
-        if (profile?.RejectedByUserId is not null)
-        {
-            var rejectedByUser = await _userService.GetByIdAsync(profile.RejectedByUserId.Value, ct);
-            rejectedByName = rejectedByUser?.DisplayName;
-        }
-
-        return new AdminHumanDetailData(
-            user,
-            profile,
-            applications.OrderByDescending(a => a.SubmittedAt).ToList(),
-            consentCount,
-            roleAssignments,
-            rejectedByName,
-            userEmails);
     }
 
     public async Task<(bool CanAdd, int MinutesUntilResend, Guid? PendingEmailId)>

@@ -8,7 +8,6 @@ using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using MemberApplication = Humans.Domain.Entities.Application;
 using ProfilesProfileService = Humans.Application.Services.Profile.ProfileService;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Interfaces.Onboarding;
@@ -282,35 +281,12 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
         return await inner.GetByUserIdsAsync(userIds, ct);
     }
 
-    public async Task<(Profile? Profile, MemberApplication? LatestApplication, int PendingConsentCount)>
-        GetProfileIndexDataAsync(Guid userId, CancellationToken ct = default)
-    {
-        await using var scope = _scopeFactory.CreateAsyncScope();
-        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
-        return await inner.GetProfileIndexDataAsync(userId, ct);
-    }
-
-    public async Task<(Profile? Profile, bool IsTierLocked, MemberApplication? PendingApplication)>
-        GetProfileEditDataAsync(Guid userId, CancellationToken ct = default)
-    {
-        await using var scope = _scopeFactory.CreateAsyncScope();
-        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
-        return await inner.GetProfileEditDataAsync(userId, ct);
-    }
-
     public async Task<(byte[] Data, string ContentType)?> GetProfilePictureAsync(
         Guid profileId, CancellationToken ct = default)
     {
         await using var scope = _scopeFactory.CreateAsyncScope();
         var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
         return await inner.GetProfilePictureAsync(profileId, ct);
-    }
-
-    public async Task<Instant?> GetEventHoldDateAsync(Guid userId, CancellationToken ct = default)
-    {
-        await using var scope = _scopeFactory.CreateAsyncScope();
-        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
-        return await inner.GetEventHoldDateAsync(userId, ct);
     }
 
     public async Task<(int ColaboradorCount, int AsociadoCount)> GetTierCountsAsync(CancellationToken ct = default)
@@ -361,14 +337,6 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
     {
         return Task.FromResult(
             ProfilesProfileService.GetApprovedProfilesWithLocationFromSnapshot(_byUserId.Values));
-    }
-
-    public async Task<Application.DTOs.AdminHumanDetailData?> GetAdminHumanDetailAsync(
-        Guid userId, CancellationToken ct = default)
-    {
-        await using var scope = _scopeFactory.CreateAsyncScope();
-        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
-        return await inner.GetAdminHumanDetailAsync(userId, ct);
     }
 
     public async Task<(bool CanAdd, int MinutesUntilResend, Guid? PendingEmailId)>
@@ -541,31 +509,6 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
         notificationMeter.Invalidate();
         await RefreshEntryAsync(userId, ct);
 
-        return result;
-    }
-
-    // Shift-authorization cache invalidation lives on
-    // AccountDeletionService.RequestDeletionAsync (peterdrier/Humans#314 review)
-    // — keeps eviction co-located with the orchestrating mutation, so direct
-    // callers of IAccountDeletionService don't need this decorator for
-    // correctness. The decorator's job here is just the FullProfile refresh.
-    public async Task<OnboardingResult> RequestDeletionAsync(Guid userId, CancellationToken ct = default)
-    {
-        await using var scope = _scopeFactory.CreateAsyncScope();
-        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
-        var result = await inner.RequestDeletionAsync(userId, ct);
-        if (result.Success)
-            await RefreshEntryAsync(userId, ct);
-        return result;
-    }
-
-    public async Task<OnboardingResult> CancelDeletionAsync(Guid userId, CancellationToken ct = default)
-    {
-        await using var scope = _scopeFactory.CreateAsyncScope();
-        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
-        var result = await inner.CancelDeletionAsync(userId, ct);
-        if (result.Success)
-            await RefreshEntryAsync(userId, ct);
         return result;
     }
 

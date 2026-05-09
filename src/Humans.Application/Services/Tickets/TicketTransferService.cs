@@ -1,4 +1,3 @@
-using Humans.Application.Configuration;
 using Humans.Application.DTOs;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.AuditLog;
@@ -11,7 +10,6 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using NodaTime;
 
 namespace Humans.Application.Services.Tickets;
@@ -30,7 +28,6 @@ public sealed class TicketTransferService : ITicketTransferService
     private readonly IUserEmailService _userEmailService;
     private readonly IProfileService _profileService;
     private readonly IAuditLogService _auditLog;
-    private readonly TicketVendorSettings _settings;
     private readonly IClock _clock;
     private readonly IMemoryCache _cache;
     private readonly ILogger<TicketTransferService> _logger;
@@ -43,7 +40,6 @@ public sealed class TicketTransferService : ITicketTransferService
         IUserEmailService userEmailService,
         IProfileService profileService,
         IAuditLogService auditLog,
-        IOptions<TicketVendorSettings> settings,
         IClock clock,
         IMemoryCache cache,
         ILogger<TicketTransferService> logger)
@@ -55,7 +51,6 @@ public sealed class TicketTransferService : ITicketTransferService
         _userEmailService = userEmailService;
         _profileService = profileService;
         _auditLog = auditLog;
-        _settings = settings.Value;
         _clock = clock;
         _cache = cache;
         _logger = logger;

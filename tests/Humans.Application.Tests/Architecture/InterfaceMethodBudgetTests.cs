@@ -133,7 +133,12 @@ public class InterfaceMethodBudgetTests
         // controller-driven composition; FeedbackController/IssuesController
         // use GetActiveApprovedUserIdsAsync + IUserService.GetByIdsAsync for
         // population dropdowns. Net -3.
-        [typeof(IProfileService)] = 36,
+        // 36→30: issue nobodies-collective/Humans#685 — removed RequestDeletionAsync,
+        // CancelDeletionAsync, GetEventHoldDateAsync (deletion orchestration
+        // moved to IAccountDeletionService), and GetProfileIndexDataAsync,
+        // GetProfileEditDataAsync, GetAdminHumanDetailAsync (Profile-section
+        // bundling moved to ProfileController composition).
+        [typeof(IProfileService)] = 30,
         // -1 for GetContactUsersAsync removal (/Contacts surface deleted in PR 2 of
         // email-identity-decoupling — only ContactService called it).
         // 31→31: account-merge fold redesign Phase 3.4. Added 3 fold primitives

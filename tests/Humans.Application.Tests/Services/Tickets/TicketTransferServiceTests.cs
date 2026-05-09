@@ -13,7 +13,6 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
@@ -52,8 +51,6 @@ public sealed class TicketTransferServiceTests
 
     public TicketTransferServiceTests()
     {
-        var settings = Options.Create(new TicketVendorSettings { EventId = "ev_test", ApiKey = "key" });
-
         _service = new TicketTransferService(
             _transferRepo,
             _ticketRepo,
@@ -62,7 +59,6 @@ public sealed class TicketTransferServiceTests
             _userEmailService,
             _profileService,
             _auditLog,
-            settings,
             _clock,
             new MemoryCache(new MemoryCacheOptions()),
             NullLogger<TicketTransferService>.Instance);
