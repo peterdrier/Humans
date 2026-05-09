@@ -349,8 +349,6 @@ public sealed class TeamRepository : ITeamRepository
         return await db.TeamMembers
             .AsNoTracking()
             .Where(tm => tm.TeamId == teamId && tm.LeftAt == null)
-            .OrderBy(tm => tm.Role)
-            .ThenBy(tm => tm.JoinedAt)
             .ToListAsync(ct);
     }
 
