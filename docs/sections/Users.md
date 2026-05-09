@@ -1,6 +1,7 @@
 <!-- freshness:triggers
   src/Humans.Application/Services/Users/**
   src/Humans.Domain/Entities/User.cs
+  src/Humans.Domain/Entities/UserEmail.cs
   src/Humans.Domain/Entities/EventParticipation.cs
   src/Humans.Infrastructure/Data/Configurations/Users/**
   src/Humans.Web/Controllers/AccountController.cs
@@ -29,29 +30,34 @@ The User aggregate and its identity surface. Profile-adjacent User properties (G
 
 **Table:** `users` (ASP.NET Identity table, renamed from `AspNetUsers` in `HumansDbContext.OnModelCreating`).
 
-Extends `IdentityUser<Guid>` with project-specific columns. The full field table is split across two files:
-
-- [Profiles.md → User (Identity extension)](Profiles.md#user-identity-extension) — Google email preference (`GoogleEmail`, `GoogleEmailStatus`), contact-import properties (`ContactSource`, `ExternalSourceId`), campaign unsubscribe flag (`UnsubscribedFromCampaigns`). These are profile-adjacent fields that Profile's `CachingProfileService` stitches into `FullProfile`.
-- Below — identity / activity / magic-link / deletion fields owned by this section directly.
+Extends `IdentityUser<Guid>` with project-specific columns.
 
 | Property | Type | Purpose |
 |----------|------|---------|
 | Id | Guid | PK |
-| Email | string | Primary identity / OAuth or signup email |
+| Email | string | Computed from `UserEmails` (first verified, primary-preferred); falls back to `base.Email` when collection is not loaded. Override — not a plain column. |
 | DisplayName | string | User-provided display name (max 256, required) |
 | PreferredLanguage | string | UI / email locale, default `"en"` (max 10) |
 | ProfilePictureUrl | string? | Google profile picture URL (max 2048) |
 | CreatedAt | Instant | Set on insert; immutable (`init`) |
-| LastLoginAt | Instant? | Most recent login timestamp — distinguishes imported contacts (null) from active users |
+| LastLoginAt | Instant? | Most recent login timestamp — distinguishes imported contacts (`null`) from active users |
 | MagicLinkSentAt | Instant? | Rate-limit anchor for magic-link sends (see Auth invariants) |
 | LastConsentReminderSentAt | Instant? | Rate-limit anchor for the re-consent reminder email |
 | ICalToken | Guid? | Token in the user's personal iCal feed URL; regeneratable |
 | SuppressScheduleChangeEmails | bool | Per-user opt-out for schedule-change notifications |
+| UnsubscribedFromCampaigns | bool | Legacy campaign opt-out flag. **Not** flipped by the current unsubscribe flow — the per-category `CommunicationPreference` table is the live source of truth. |
+| GoogleEmailStatus | GoogleEmailStatus | Sync status for the user's Google Workspace identity. Stored as string; default `Unknown`. Set to `Rejected` on permanent Google API error; reset to `Unknown` on email change. |
+| ContactSource | ContactSource? | Where imported from (`Manual`, `MailerLite`, `TicketTailor`); null for self-registered users. |
+| ExternalSourceId | string? (256) | ID in the external source system (e.g., MailerLite subscriber ID). |
 | DeletionRequestedAt | Instant? | When the user requested account deletion |
 | DeletionScheduledFor | Instant? | `DeletionRequestedAt + 30 days`; the earliest the job will anonymize |
 | DeletionEligibleAfter | Instant? | Optional event-hold floor for ticket holders; the job waits past this date too |
 | MergedToUserId | Guid? | Self-referential FK → User. Set on this row when `AccountMergeService.AcceptAsync` folds it into the target. Source rows are tombstones — they outlive their target's lifecycle (`OnDelete: Restrict`) so append-only history (audit log, consent records, budget audit log) stays attributable. Filtered index `IX_users_MergedToUserId` (WHERE NOT NULL) backs the chain-follow lookup. |
 | MergedAt | Instant? | When the merge tombstone was applied. Null while live. |
+
+**Deleted C# properties (shadow columns only):** `GoogleEmail` — C# property removed (issue #635 §15i / email-identity-decoupling PR 3). Column kept on disk as EF shadow property (`UserConfiguration.cs:27`) pending deferred column-drop PR per `memory/architecture/no-drops-until-prod-verified.md`. Canonical read path is `FullProfile.GoogleEmail` (derived from `UserEmail.IsGoogle`). Similarly `UserEmail.IsOAuth` and `UserEmail.DisplayOrder` are shadow-only columns. `UserEmailLegacyFieldRestrictionsTests` enforces that Application + Web code never references these deleted properties.
+
+**Profile-adjacent fields documented in `Profiles.md#user-identity-extension`:** `GoogleEmail` (shadow/deleted), `GoogleEmailStatus`, `ContactSource`, `ExternalSourceId`, `UnsubscribedFromCampaigns` are also described there because `CachingProfileService` stitches them into `FullProfile`. The canonical field table is here; `Profiles.md` describes FullProfile projection semantics.
 
 Computed: `IsDeletionPending => DeletionRequestedAt.HasValue`.
 
@@ -97,6 +103,26 @@ Per-user, per-year record of event involvement. Derived from ticket sync, user s
 
 These are managed by `UserManager<User>` / `SignInManager<User>` / `RoleManager<IdentityRole<Guid>>` from `Microsoft.AspNetCore.Identity`. Do not write a custom repository over them.
 
+## Routing
+
+Two controllers serve this section:
+
+**`AccountController`** (`/Account/*`) — authentication and user creation:
+- `GET /Account/Login` — login page
+- `POST /Account/ExternalLogin` — initiates Google OAuth
+- `GET /Account/ExternalLoginCallback` — OAuth callback; creates/links/signs-in user
+- `POST /Account/MagicLinkRequest` — sends magic link to email
+- `GET /Account/MagicLinkConfirm` — landing page (prevents scanner token consumption)
+- `POST /Account/MagicLink` — verifies token and signs in
+- `GET /Account/MagicLinkSignup` — displays signup form after token verification
+- `POST /Account/CompleteSignup` — creates new user via magic link
+- `POST /Account/Logout`
+- `GET /Account/AccessDenied`
+
+**`UnsubscribeController`** (`/Unsubscribe/*`) — unauthenticated email opt-out:
+- `GET /Unsubscribe/{token}` — confirms unsubscribe (legacy campaign or new category-aware token)
+- `POST /Unsubscribe/OneClick` — RFC 8058 one-click unsubscribe (no anti-forgery token by design)
+
 ## Actors & Roles
 
 | Actor | Capabilities |
@@ -115,7 +141,7 @@ These are managed by `UserManager<User>` / `SignInManager<User>` / `RoleManager<
 - `UndoNotAttendingAsync` only succeeds when the existing record is `(Status = NotAttending, Source = UserDeclared)`; an admin backfill or ticket-sync row cannot be undone via the user surface.
 - `User.GoogleEmailStatus = Rejected` is terminal for sync-driven writes: `TrySetGoogleEmailStatusFromSyncAsync` refuses to flip a `Rejected` user back to `Valid`. The unconditional override (`SetGoogleEmailStatusAsync`) was removed from the public surface as of the account-merge fold redesign — all external callers are sync-driven and go through the Try variant.
 - `/Unsubscribe/{token}` is unauthenticated; new-format tokens are validated by Profile's `CommunicationPreferenceService` (signed via ASP.NET Data Protection with the `CommunicationPreferences` purpose), legacy tokens by the `CampaignUnsubscribe` time-limited protector. Token tampering returns `NotFound`; no account enumeration. The RFC 8058 `/Unsubscribe/OneClick` POST is also unauthenticated and skips the anti-forgery token by design.
-- `UserService` implements `IUserDataContributor` (design-rules §8) and contributes the User-account slice (Id, Email, DisplayName, PreferredLanguage, GoogleEmail, UnsubscribedFromCampaigns, SuppressScheduleChangeEmails, ContactSource, deletion / created / last-login timestamps) under `GdprExportSections.Account` plus an array of `{ Year, Status, Source, DeclaredAt }` rows under `GdprExportSections.EventParticipations` (every `EventParticipation` row owned by the user) to the GDPR export.
+- `UserService` implements `IUserDataContributor` (design-rules §8) and contributes the User-account slice (Id, Email, DisplayName, PreferredLanguage, GoogleEmailStatus, UnsubscribedFromCampaigns, SuppressScheduleChangeEmails, ContactSource, deletion / created / last-login timestamps) under `GdprExportSections.Account` plus an array of `{ Year, Status, Source, DeclaredAt }` rows under `GdprExportSections.EventParticipations` (every `EventParticipation` row owned by the user) to the GDPR export.
 - A `User` row whose `MergedToUserId` is non-null is a **merge tombstone**: its identity fields are anonymized, its OAuth logins have been re-FK'd to the target, `LockoutEnd` is far-future, but the row itself persists indefinitely so append-only history written under the source id stays resolvable. The self-referential FK is `OnDelete(Restrict)` — deleting a target cannot cascade-delete its source tombstones.
 
 ## Negative Access Rules
@@ -130,7 +156,7 @@ These are managed by `UserManager<User>` / `SignInManager<User>` / `RoleManager<
 
 ## Triggers
 
-- **On first OAuth login (no matching account):** `AccountController.ExternalLoginCallback` creates the `User` via `UserManager.CreateAsync`, attaches the external login, persists an OAuth `UserEmail` row via `IUserEmailService.AddOAuthEmailAsync`, and signs the user in. Profile creation happens lazily in the Profile section (see [Profiles.md](Profiles.md)).
+- **On first OAuth login (no matching account):** `AccountController.ExternalLoginCallback` creates the `User` via `UserManager.CreateAsync`, attaches the external login, persists a provider-tagged `UserEmail` row via `IUserEmailService.LinkAsync` (provider-parameterized, replaces the removed `AddOAuthEmailAsync`), and signs the user in. Profile creation happens lazily in the Profile section (see [Profiles.md](Profiles.md)).
 - **On import (Tickets / MailerLite contact upsert):** `AccountProvisioningService.FindOrCreateUserByEmailAsync` looks up an existing user by `UserEmail` and `User.Email` (with gmail/googlemail equivalence), creates a contact-only `User` + `UserEmail` if no match, layers `User.ContactSource` onto an existing self-registered user when null, and writes an `AuditAction.ContactCreated` audit entry on creation.
 - **On magic-link send:** `MagicLinkService` (Auth) stamps `User.MagicLinkSentAt` for rate-limiting (see [Auth.md](Auth.md)).
 - **On unsubscribe click / RFC 8058 one-click:** `UnsubscribeService.ConfirmUnsubscribeAsync` calls Profile's `ICommunicationPreferenceService.UpdatePreferenceAsync` to opt the user out of the message category (`Marketing` for legacy tokens, the token's category otherwise). The `User.UnsubscribedFromCampaigns` flag exists but is **not** flipped here — the per-category `CommunicationPreference` table is the source of truth for opt-out.
@@ -144,12 +170,16 @@ These are managed by `UserManager<User>` / `SignInManager<User>` / `RoleManager<
 
 ## Cross-Section Dependencies
 
-Outbound (Users → other sections), per the foundational-section rule (Users sits at the bottom of the stack; the only outbound calls are during the multi-section anonymization orchestration in `AnonymizeExpiredAccountAsync`):
+Outbound (Users → other sections), split between the foundational `UserService` (no higher-section edges, enforced by `UserArchitectureTests.UserService_HasNoOutboundEdgeToHigherLevelSections`) and `AccountDeletionService` (the deletion cascade orchestrator that explicitly bridges higher-level sections):
 
-- **Profiles:** `IProfileService.AnonymizeExpiredProfileAsync` (lazy-resolved via `IServiceProvider` to avoid construction-time cycles), `ICommunicationPreferenceService.UpdatePreferenceAsync` (called from `UnsubscribeService`), `IFullProfileInvalidator.InvalidateAsync` (called on writes that change FullProfile-visible fields: `DisplayName`, `GoogleEmail`, `GoogleEmailStatus`, purge / anonymize).
-- **Auth:** `IRoleAssignmentService.RevokeAllActiveAsync` (lazy-resolved) and `IRoleAssignmentClaimsCacheInvalidator.Invalidate` — called during `AnonymizeExpiredAccountAsync`.
-- **Teams:** `ITeamService.RevokeAllMembershipsAsync`, `InvalidateActiveTeamsCache`, `RemoveMemberFromAllTeamsCache` — called during purge / anonymize.
-- **Shifts:** `IShiftSignupService.CancelActiveSignupsForUserAsync` (lazy), `IShiftManagementService.DeleteShiftProfilesForUserAsync` (lazy), `IShiftAuthorizationInvalidator.Invalidate` — called during anonymization.
+**From `UserService` / `UnsubscribeService`:**
+- **Profiles:** `ICommunicationPreferenceService.UpdatePreferenceAsync` (called from `UnsubscribeService`), `IFullProfileInvalidator.InvalidateAsync` (called on writes that change FullProfile-visible fields: `DisplayName`, `GoogleEmailStatus`, purge / anonymize).
+
+**From `AccountDeletionService` (cascade orchestrator — `Humans.Application.Services.Users.AccountLifecycle/`):**
+- **Profiles:** `IProfileService.AnonymizeExpiredProfileAsync` (lazy-resolved via `IServiceProvider` to avoid construction-time DI cycles), `IFullProfileInvalidator.InvalidateAsync`.
+- **Auth:** `IRoleAssignmentService.RevokeAllActiveAsync` (lazy-resolved), `IRoleAssignmentClaimsCacheInvalidator.Invalidate`.
+- **Teams:** `ITeamService.RevokeAllMembershipsAsync`, `InvalidateActiveTeamsCache`, `RemoveMemberFromAllTeamsCache`.
+- **Shifts:** `IShiftSignupService.CancelActiveSignupsForUserAsync` (lazy), `IShiftManagementService.DeleteShiftProfilesForUserAsync` (lazy), `IShiftAuthorizationInvalidator.Invalidate`.
 
 Inbound (other sections → Users) — the typical direction:
 
@@ -161,16 +191,21 @@ Inbound (other sections → Users) — the typical direction:
 
 ## Architecture
 
-**Owning services:** `UserService`, `AccountProvisioningService`, `UnsubscribeService`, `AccountDeletionService` (all in `Humans.Application.Services.Users/`).
+**Owning services:** `UserService`, `AccountProvisioningService`, `UnsubscribeService` (all in `Humans.Application.Services.Users/`); `AccountDeletionService` (in `Humans.Application.Services.Users/AccountLifecycle/`); `UserEmailProviderBackfillService` (in `Humans.Application.Services.Users/` — one-shot backfill utility for Provider/IsGoogle fields on `UserEmail` rows, reads `user_emails` via `IUserEmailRepository`).
 **Owned tables:** `users`, `user_claims`, `user_logins`, `user_tokens`, `roles` (legacy), `user_roles` (legacy), `role_claims` (legacy), `event_participations`.
 **Status:** (A) Migrated (peterdrier/Humans PR #243 for issue nobodies-collective/Humans#511, 2026-04-21). Account merge fold support added 2026-05-01 (User.MergedToUserId / MergedAt; Reassign + AnonymizeForMerge methods).
 
 - `UserService`, `AccountProvisioningService`, `UnsubscribeService` live in `Humans.Application.Services.Users/` and never import `Microsoft.EntityFrameworkCore`. `AccountProvisioningService` does inject `UserManager<User>` per the §2a exception (Identity owns the password hash / security stamp surface).
 - `IUserRepository` (impl `Humans.Infrastructure/Repositories/Users/UserRepository.cs`) owns the SQL surface for `users` plus `event_participations` (the natural key is User). `IUserEmailRepository` is the parallel surface for `UserEmail` (owned by Profiles but read/written from Users for lookup + OAuth-email lock-step).
-- **Decorator decision — no caching decorator.** User is ~500 rows with no hot bulk-read path. Same rationale as Governance / Feedback / Auth. Writes that change FullProfile-visible fields (`DisplayName`, `GoogleEmail`, `GoogleEmailStatus`) invalidate via `IFullProfileInvalidator`. Writes to deletion state and event-participation do not invalidate — those fields are not part of the FullProfile projection.
+- **Decorator decision — no caching decorator.** User is ~500 rows with no hot bulk-read path. Same rationale as Governance / Feedback / Auth. Writes that change FullProfile-visible fields (`DisplayName`, `GoogleEmailStatus`) invalidate via `IFullProfileInvalidator`. Writes to deletion state and event-participation do not invalidate — those fields are not part of the FullProfile projection.
 - **Cross-domain navs (post-§15i strip):** only `User.UserEmails` (kept for the `User.Email` override) and `User.EventParticipations` (owned by Users) remain declared. The other six (`Profile`, `RoleAssignments`, `ConsentRecords`, `Applications`, `TeamMemberships`, `CommunicationPreferences`) and `GetEffectiveEmail()` were deleted in issue #635 (2026-05-04). Inverse-side EF configurations on each owning entity now own the schema-level FK constraints. Arch test `User_HasNoCrossDomainNavigationProperties` enforces.
 - **Identity framework surface** — `AccountController` and `DevLoginController` (the only two controllers in this section) inject `UserManager<User>` / `SignInManager<User>` directly per the §2a exception. There is no `AuthController` or `ManageController` class — magic-link orchestration lives in `IMagicLinkService` (Auth section) and account self-management lives across `AccountController` and Profile views. Non-controller code routes through `IUserService`.
 - **GDPR:** `UserService` implements `IUserDataContributor` and contributes the `GdprExportSections.Account` slice; `ExpectedContributorTypes` in `GdprExportDependencyInjectionTests` enforces registration (design-rules §8).
+- **Architecture tests:**
+  - `tests/Humans.Application.Tests/Architecture/UserArchitectureTests.cs` — pins UserService/AccountProvisioningService/UnsubscribeService to Application, no DbContext, IUserRepository required, no outbound edges to higher sections, nav-strip enforcement (`User_HasNoCrossDomainNavigationProperties`).
+  - `tests/Humans.Application.Tests/Architecture/AccountDeletionArchitectureTests.cs` — pins AccountDeletionService namespace and ensures it owns no tables (no DbContext, no IDbContextFactory).
+  - `tests/Humans.Application.Tests/Architecture/UserEmailLegacyFieldRestrictionsTests.cs` — IL scan ensuring no Application/Web code references the deleted shadow properties (`User.GoogleEmail`, `UserEmail.IsOAuth`, `UserEmail.DisplayOrder`).
+  - `tests/Humans.Application.Tests/Architecture/IdentityFindByEmailRestrictionsTests.cs` — enforces that application code routes through `IUserEmailService.FindVerifiedEmailWithUserAsync` rather than `UserManager.FindByEmailAsync` / `FindByNameAsync`.
 - **Option A (no decorator)** is documented in `docs/superpowers/specs/2026-04-21-issue-511-user-migration.md`.
 
 ### Touch-and-clean guidance
