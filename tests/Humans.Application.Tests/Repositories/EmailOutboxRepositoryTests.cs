@@ -94,7 +94,7 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task GetRecentAsync_ReturnsNewestFirstAndRespectsLimit()
+    public async Task GetAllAsync_ReturnsAllMessages()
     {
         // Older to newer
         var msg1 = BuildMessage(createdAt: _clock.GetCurrentInstant() - Duration.FromMinutes(30));
@@ -105,12 +105,12 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
         await _repo.AddAsync(msg2);
         await _repo.AddAsync(msg3);
 
-        var recent = await _repo.GetRecentAsync(take: 2);
-        recent.Select(m => m.Id).Should().Equal(msg3.Id, msg2.Id);
+        var all = await _repo.GetAllAsync();
+        all.Select(m => m.Id).Should().BeEquivalentTo([msg1.Id, msg2.Id, msg3.Id]);
     }
 
     [HumansFact]
-    public async Task GetForUserAsync_ReturnsUserMessagesInDescendingCreatedAtOrder()
+    public async Task GetForUserAsync_ReturnsUserMessages()
     {
         var userId = Guid.NewGuid();
         var otherId = Guid.NewGuid();
@@ -124,7 +124,7 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
         await _repo.AddAsync(other);
 
         var forUser = await _repo.GetForUserAsync(userId);
-        forUser.Select(m => m.Id).Should().Equal(newer.Id, older.Id);
+        forUser.Select(m => m.Id).Should().BeEquivalentTo([newer.Id, older.Id]);
     }
 
     [HumansFact]

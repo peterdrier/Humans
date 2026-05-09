@@ -39,15 +39,13 @@ public interface IEmailOutboxRepository
     Task<int> GetSentCountSinceAsync(Instant since, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns the most recent messages (by <c>CreatedAt</c> descending),
-    /// read-only. <paramref name="take"/> is clamped by the caller.
+    /// Returns all outbox messages, read-only. Display ordering and windows
+    /// are owned by the service/controller boundary.
     /// </summary>
-    Task<IReadOnlyList<EmailOutboxMessage>> GetRecentAsync(
-        int take, CancellationToken ct = default);
+    Task<IReadOnlyList<EmailOutboxMessage>> GetAllAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// Returns all outbox messages for a user, read-only, ordered by
-    /// <c>CreatedAt</c> descending.
+    /// Returns all outbox messages for a user, read-only.
     /// </summary>
     Task<IReadOnlyList<EmailOutboxMessage>> GetForUserAsync(
         Guid userId, CancellationToken ct = default);
