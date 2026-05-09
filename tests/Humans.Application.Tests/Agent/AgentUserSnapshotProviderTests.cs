@@ -83,21 +83,23 @@ public class AgentUserSnapshotProviderTests
     }
 
     [HumansFact]
-    public async Task LoadAsync_sorts_entries_by_start_date_ascending()
+    public async Task LoadAsync_excludes_inactive_signup_states()
     {
+        // Pending and Confirmed are surfaced; Refused, Bailed, Cancelled are not.
         var userId = Guid.NewGuid();
         var ev = MakeEventSettings();
-        var rotaA = new Rota { Id = Guid.NewGuid(), Name = "Later" };
-        var rotaB = new Rota { Id = Guid.NewGuid(), Name = "Earlier" };
-        var later = MakeSignup(userId, null, MakeShift(rotaA, dayOffset: 5, isAllDay: true), SignupStatus.Confirmed);
-        var earlier = MakeSignup(userId, null, MakeShift(rotaB, dayOffset: 1, isAllDay: true), SignupStatus.Confirmed);
+        var rota = new Rota { Id = Guid.NewGuid(), Name = "R" };
+        var pending = MakeSignup(userId, null, MakeShift(rota, dayOffset: 1, isAllDay: true), SignupStatus.Pending);
+        var confirmed = MakeSignup(userId, null, MakeShift(rota, dayOffset: 2, isAllDay: true), SignupStatus.Confirmed);
+        var refused = MakeSignup(userId, null, MakeShift(rota, dayOffset: 3, isAllDay: true), SignupStatus.Refused);
+        var bailed = MakeSignup(userId, null, MakeShift(rota, dayOffset: 4, isAllDay: true), SignupStatus.Bailed);
+        var cancelled = MakeSignup(userId, null, MakeShift(rota, dayOffset: 5, isAllDay: true), SignupStatus.Cancelled);
 
-        var provider = MakeProvider(userId, ev, new[] { later, earlier });
+        var provider = MakeProvider(userId, ev, new[] { pending, confirmed, refused, bailed, cancelled });
         var snapshot = await provider.LoadAsync(userId, CancellationToken.None);
 
         snapshot.UpcomingShifts.Should().HaveCount(2);
-        snapshot.UpcomingShifts[0].Label.Should().Be("Earlier");
-        snapshot.UpcomingShifts[1].Label.Should().Be("Later");
+        snapshot.UpcomingShifts.Select(e => e.Status).Should().BeEquivalentTo(new[] { SignupStatus.Pending, SignupStatus.Confirmed });
     }
 
     [HumansFact]

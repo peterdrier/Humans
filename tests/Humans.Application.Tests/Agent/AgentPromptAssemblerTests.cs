@@ -114,6 +114,62 @@ public class AgentPromptAssemblerTests
     }
 
     [HumansFact]
+    public void BuildUserContextTail_sorts_upcoming_shifts_by_start_date_at_render_time()
+    {
+        // Service layer returns unsorted; the rendering layer is responsible for display order.
+        var snapshot = MakeSnapshot(
+            new UpcomingShiftEntry(Guid.NewGuid(), "Later", new LocalDate(2026, 7, 15), new LocalDate(2026, 7, 15), 1, SignupStatus.Confirmed),
+            new UpcomingShiftEntry(Guid.NewGuid(), "Earlier", new LocalDate(2026, 7, 1), new LocalDate(2026, 7, 1), 1, SignupStatus.Confirmed));
+
+        var tail = new AgentPromptAssembler().BuildUserContextTail(snapshot);
+
+        var earlierIdx = tail.IndexOf("Earlier", StringComparison.Ordinal);
+        var laterIdx = tail.IndexOf("Later", StringComparison.Ordinal);
+        earlierIdx.Should().BeGreaterThan(0);
+        laterIdx.Should().BeGreaterThan(earlierIdx);
+    }
+
+    [HumansFact]
+    public void BuildUserContextTail_sorts_teams_alphabetically_at_render_time()
+    {
+        var snapshot = new AgentUserSnapshot(
+            UserId: Guid.NewGuid(),
+            DisplayName: "Test",
+            PreferredLocale: "es",
+            Tier: "Volunteer",
+            IsApproved: true,
+            RoleAssignments: Array.Empty<(string, string)>(),
+            Teams: new[]
+            {
+                new TeamMembership("Zebra", TeamMemberRole.Member),
+                new TeamMembership("Apple", TeamMemberRole.Coordinator),
+            },
+            PendingConsentDocs: Array.Empty<string>(),
+            OpenTicketIds: Array.Empty<Guid>(),
+            OpenFeedbackIds: Array.Empty<Guid>(),
+            UpcomingShifts: Array.Empty<UpcomingShiftEntry>());
+
+        var tail = new AgentPromptAssembler().BuildUserContextTail(snapshot);
+
+        var appleIdx = tail.IndexOf("Apple", StringComparison.Ordinal);
+        var zebraIdx = tail.IndexOf("Zebra", StringComparison.Ordinal);
+        appleIdx.Should().BeGreaterThan(0);
+        zebraIdx.Should().BeGreaterThan(appleIdx);
+    }
+
+    [HumansFact]
+    public void BuildUserContextTail_renders_shift_key_so_agent_can_call_get_shift_details()
+    {
+        var key = Guid.NewGuid();
+        var snapshot = MakeSnapshot(
+            new UpcomingShiftEntry(key, "Setup crew", new LocalDate(2026, 7, 15), new LocalDate(2026, 7, 15), 1, SignupStatus.Pending));
+
+        var tail = new AgentPromptAssembler().BuildUserContextTail(snapshot);
+
+        tail.Should().Contain($"[{key}]");
+    }
+
+    [HumansFact]
     public void BuildUserContextTail_caps_upcoming_shifts_with_overflow_marker()
     {
         var entries = Enumerable.Range(0, 12)

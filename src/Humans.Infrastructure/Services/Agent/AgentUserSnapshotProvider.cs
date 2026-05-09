@@ -9,6 +9,7 @@ using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Models;
+using Humans.Domain.Enums;
 using NodaTime;
 
 namespace Humans.Infrastructure.Services.Agent;
@@ -92,7 +93,9 @@ public sealed class AgentUserSnapshotProvider : IAgentUserSnapshotProvider
 
         var now = _clock.GetCurrentInstant();
         var upcoming = signups
-            .Where(s => s.Shift is not null && s.Shift.GetAbsoluteEnd(activeEvent) > now)
+            .Where(s => s.Shift is not null
+                && s.Shift.GetAbsoluteEnd(activeEvent) > now
+                && s.Status is SignupStatus.Pending or SignupStatus.Confirmed)
             .ToList();
         if (upcoming.Count == 0)
             return Array.Empty<UpcomingShiftEntry>();
@@ -136,8 +139,8 @@ public sealed class AgentUserSnapshotProvider : IAgentUserSnapshotProvider
                 Status: status));
         }
 
-        return entries
-            .OrderBy(e => e.StartDate)
-            .ToList();
+        // No display sort here — AgentPromptAssembler.BuildUserContextTail
+        // sorts by StartDate at the rendering layer (memory/architecture/display-sort-in-controllers.md).
+        return entries;
     }
 }

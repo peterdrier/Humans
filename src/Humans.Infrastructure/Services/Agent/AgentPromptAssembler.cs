@@ -61,7 +61,7 @@ public sealed class AgentPromptAssembler : IAgentPromptAssembler
         if (snapshot.Teams.Count > 0)
         {
             sb.AppendLine("Teams:");
-            foreach (var membership in snapshot.Teams)
+            foreach (var membership in snapshot.Teams.OrderBy(m => m.TeamName, StringComparer.OrdinalIgnoreCase))
                 sb.AppendLine(string.Create(CultureInfo.InvariantCulture,
                     $"  - {membership.TeamName} ({membership.Role})"));
         }
@@ -79,7 +79,7 @@ public sealed class AgentPromptAssembler : IAgentPromptAssembler
         {
             sb.AppendLine("UpcomingShifts:");
             var rendered = 0;
-            foreach (var entry in snapshot.UpcomingShifts)
+            foreach (var entry in snapshot.UpcomingShifts.OrderBy(e => e.StartDate))
             {
                 if (rendered >= MaxRenderedUpcomingShifts)
                     break;
@@ -98,17 +98,18 @@ public sealed class AgentPromptAssembler : IAgentPromptAssembler
 
     private static string RenderShiftEntry(UpcomingShiftEntry entry)
     {
-        // Block: "  - 2026-07-01 to 2026-07-07 — Cantina build (Voluntold, 7 days)"
-        // Singleton: "  - 2026-07-15 — Setup crew (Confirmed)"
+        // Block: "  - [<key>] 2026-07-01 to 2026-07-07 — Cantina build (Voluntold, 7 days)"
+        // Singleton: "  - [<key>] 2026-07-15 — Setup crew (Confirmed)"
+        // Key is the value the agent passes to get_shift_details(shiftId=...).
         var startIso = entry.StartDate.ToString("uuuu-MM-dd", CultureInfo.InvariantCulture);
         if (entry.DayCount > 1)
         {
             var endIso = entry.EndDate.ToString("uuuu-MM-dd", CultureInfo.InvariantCulture);
             return string.Create(CultureInfo.InvariantCulture,
-                $"  - {startIso} to {endIso} — {entry.Label} ({entry.Status}, {entry.DayCount} days)");
+                $"  - [{entry.Key}] {startIso} to {endIso} — {entry.Label} ({entry.Status}, {entry.DayCount} days)");
         }
         return string.Create(CultureInfo.InvariantCulture,
-            $"  - {startIso} — {entry.Label} ({entry.Status})");
+            $"  - [{entry.Key}] {startIso} — {entry.Label} ({entry.Status})");
     }
 
     public IReadOnlyList<AnthropicToolDefinition> BuildToolDefinitions() =>

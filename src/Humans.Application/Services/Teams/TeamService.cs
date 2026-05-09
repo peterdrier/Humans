@@ -1654,18 +1654,6 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
         CancellationToken cancellationToken = default) =>
         _repo.GetCoordinatorUserIdsAsync(teamId, cancellationToken);
 
-    public async Task<IReadOnlyList<string>> GetActiveTeamNamesForUserAsync(
-        Guid userId, CancellationToken cancellationToken = default)
-    {
-        var cached = await GetCachedTeamsAsync(cancellationToken);
-        return cached.Values
-            .Where(t => t.SystemTeamType != SystemTeamType.Volunteers
-                && t.Members.Any(m => m.UserId == userId))
-            .Select(t => t.Name)
-            .OrderBy(n => n, StringComparer.OrdinalIgnoreCase)
-            .ToList();
-    }
-
     public async Task<IReadOnlyList<Humans.Application.Models.TeamMembership>> GetActiveTeamMembershipsForUserAsync(
         Guid userId, CancellationToken cancellationToken = default)
     {
@@ -1680,9 +1668,9 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
                 continue;
             rows.Add(new Humans.Application.Models.TeamMembership(team.Name, membership.Role));
         }
-        return rows
-            .OrderBy(m => m.TeamName, StringComparer.OrdinalIgnoreCase)
-            .ToList();
+        // No display sort here — callers sort at the rendering layer
+        // (memory/architecture/display-sort-in-controllers.md).
+        return rows;
     }
 
     public async Task EnqueueGoogleResyncForUserTeamsAsync(

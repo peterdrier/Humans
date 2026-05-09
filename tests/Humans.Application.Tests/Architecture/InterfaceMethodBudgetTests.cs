@@ -50,11 +50,12 @@ public class InterfaceMethodBudgetTests
         // from ITeamService (moved to IUserMerge.ReassignAsync, implemented
         // by TeamService and dispatched by AccountMergeService via
         // IEnumerable<IUserMerge> fan-out).
-        // 70→71: issue-634 — added GetActiveTeamMembershipsForUserAsync so the
-        // agent snapshot can render team name + role-in-team without loading
-        // full TeamMember graphs. Could not reuse GetActiveTeamNamesForUserAsync
-        // because it discards roles.
-        [typeof(ITeamService)] = 71,
+        // 70→70: issue-634 — added GetActiveTeamMembershipsForUserAsync (name +
+        // role-in-team for the agent snapshot) and removed
+        // GetActiveTeamNamesForUserAsync, since the new method is strictly more
+        // capable; the one production caller (ProfileController popover)
+        // projects to names via .Select(m => m.TeamName).
+        [typeof(ITeamService)] = 70,
         // ICampService raised 53→57 for per-camp roles feature (peterdrier#489):
         // AddCampMemberAsLeadAsync, GetSeasonMembersAsync, GetCampMemberStatusAsync,
         // GetCampSeasonsForComplianceAsync — all needed by ICampRoleService and the
