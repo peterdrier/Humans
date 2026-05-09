@@ -51,7 +51,6 @@ public sealed class FeedbackRepository : IFeedbackRepository
         Guid? assignedToUserId,
         Guid? assignedToTeamId,
         bool? unassignedOnly,
-        int limit,
         CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
@@ -78,10 +77,7 @@ public sealed class FeedbackRepository : IFeedbackRepository
         if (unassignedOnly == true)
             query = query.Where(f => f.AssignedToUserId == null && f.AssignedToTeamId == null);
 
-        return await query
-            .OrderByDescending(f => f.CreatedAt)
-            .Take(limit)
-            .ToListAsync(ct);
+        return await query.ToListAsync(ct);
     }
 
     public async Task<IReadOnlyList<FeedbackMessage>> GetMessagesAsync(

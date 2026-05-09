@@ -74,7 +74,6 @@ src/Humans.Infrastructure/Repositories/Email/EmailOutboxRepository.cs:OrderByDes
 src/Humans.Infrastructure/Repositories/Feedback/FeedbackRepository.cs:OrderBy#1
 src/Humans.Infrastructure/Repositories/Feedback/FeedbackRepository.cs:OrderBy#2
 src/Humans.Infrastructure/Repositories/Feedback/FeedbackRepository.cs:OrderByDescending#1
-src/Humans.Infrastructure/Repositories/Feedback/FeedbackRepository.cs:OrderByDescending#2
 src/Humans.Infrastructure/Repositories/GoogleIntegration/GoogleResourceRepository.cs:OrderBy#1
 src/Humans.Infrastructure/Repositories/GoogleIntegration/GoogleResourceRepository.cs:OrderBy#2
 src/Humans.Infrastructure/Repositories/GoogleIntegration/GoogleSyncOutboxRepository.cs:OrderBy#1

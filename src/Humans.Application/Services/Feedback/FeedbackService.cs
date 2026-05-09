@@ -165,10 +165,13 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
     {
         var reports = await _repository.GetListAsync(
             status, category, reporterUserId, assignedToUserId, assignedToTeamId,
-            unassignedOnly, limit, cancellationToken);
+            unassignedOnly, cancellationToken);
 
         await StitchCrossDomainNavsAsync(reports, cancellationToken);
-        return reports;
+        return reports
+            .OrderByDescending(r => r.CreatedAt)
+            .Take(limit)
+            .ToList();
     }
 
     public async Task UpdateStatusAsync(
@@ -460,7 +463,6 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
             assignedToUserId: null,
             assignedToTeamId: null,
             unassignedOnly: null,
-            limit: int.MaxValue,
             ct: cancellationToken);
         return reports.Select(r => r.Id).ToList();
     }

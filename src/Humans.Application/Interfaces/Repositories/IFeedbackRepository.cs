@@ -45,7 +45,6 @@ public interface IFeedbackRepository
     /// <summary>
     /// Filtered list of feedback reports, with their aggregate-local
     /// <c>Messages</c> collection (callers use <c>Messages.Count</c> only).
-    /// Ordered by CreatedAt descending, limited to <paramref name="limit"/>.
     /// Read-only (AsNoTracking).
     /// </summary>
     Task<IReadOnlyList<FeedbackReport>> GetListAsync(
@@ -55,7 +54,6 @@ public interface IFeedbackRepository
         Guid? assignedToUserId,
         Guid? assignedToTeamId,
         bool? unassignedOnly,
-        int limit,
         CancellationToken ct = default);
 
     /// <summary>
