@@ -98,7 +98,7 @@ public sealed class AgentPromptAssembler : IAgentPromptAssembler
 
     private static string RenderShiftEntry(UpcomingShiftEntry entry)
     {
-        // Block: "  - [<key>] 2026-07-01 to 2026-07-07 — Cantina build (Voluntold, 7 days)"
+        // Block: "  - [<key>] 2026-07-01 to 2026-07-07 — Cantina build (Confirmed, 7 days)"
         // Singleton: "  - [<key>] 2026-07-15 — Setup crew (Confirmed)"
         // Key is the value the agent passes to get_shift_details(shiftId=...).
         var startIso = entry.StartDate.ToString("uuuu-MM-dd", CultureInfo.InvariantCulture);

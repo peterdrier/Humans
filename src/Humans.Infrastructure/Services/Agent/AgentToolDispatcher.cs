@@ -154,9 +154,14 @@ public sealed class AgentToolDispatcher : IAgentToolDispatcher
 
         var signups = await _shiftSignups.GetByUserAsync(userId, activeEvent.Id);
 
-        // Try block first.
+        // Try block first. Filter to active states so RenderShiftDetails
+        // reports a status consistent with the snapshot tail (which also
+        // filters to Pending/Confirmed). Without this, a block where day 1
+        // was individually bailed but days 2–7 stayed Confirmed would render
+        // "Status: Bailed" here while the snapshot showed "Confirmed".
         var blockMatches = signups
-            .Where(s => s.SignupBlockId == shiftKey)
+            .Where(s => s.SignupBlockId == shiftKey
+                && s.Status is SignupStatus.Pending or SignupStatus.Confirmed)
             .ToList();
         if (blockMatches.Count > 0)
             return new AnthropicToolResult(callId,
