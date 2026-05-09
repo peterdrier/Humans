@@ -164,8 +164,14 @@ public sealed class AuditLogService : IAuditLogService, IUserDataContributor
     // ==========================================================================
 
     /// <inheritdoc />
-    public Task<IReadOnlyList<AuditLogEntry>> GetByResourceAsync(Guid resourceId) =>
-        _repo.GetByResourceAsync(resourceId);
+    public async Task<IReadOnlyList<AuditLogEntry>> GetByResourceAsync(Guid resourceId)
+    {
+        var entries = await _repo.GetByResourceAsync(resourceId);
+        return entries
+            .OrderByDescending(e => e.OccurredAt)
+            .Take(200)
+            .ToList();
+    }
 
     /// <inheritdoc />
     public async Task<IReadOnlyList<AuditLogEntry>> GetGoogleSyncByUserAsync(Guid userId)

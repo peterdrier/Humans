@@ -12,7 +12,6 @@ src/Humans.Infrastructure/Repositories/AgentRepository.cs:OrderByDescending#1
 src/Humans.Infrastructure/Repositories/AgentRepository.cs:OrderByDescending#2
 src/Humans.Infrastructure/Repositories/AgentRepository.cs:OrderByDescending#3
 src/Humans.Infrastructure/Repositories/AuditLog/AuditLogRepository.cs:OrderByDescending#1
-src/Humans.Infrastructure/Repositories/AuditLog/AuditLogRepository.cs:OrderByDescending#10
 src/Humans.Infrastructure/Repositories/AuditLog/AuditLogRepository.cs:OrderByDescending#2
 src/Humans.Infrastructure/Repositories/AuditLog/AuditLogRepository.cs:OrderByDescending#3
 src/Humans.Infrastructure/Repositories/AuditLog/AuditLogRepository.cs:OrderByDescending#4
