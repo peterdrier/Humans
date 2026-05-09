@@ -7,6 +7,7 @@
     var isContainerPlacementOpen = ViewBag.IsContainerPlacementOpen == true;
     var showBarrioMapLink = isMapAdmin || (isBarrioLead && isPlacementOpen);
     var showContainerMapLink = isMapAdmin || (isBarrioLead && isContainerPlacementOpen);
+    var clearMeasurementsLabel = Localizer["CityPlanning_ClearMeasurementsButton"];
 }
 
 @section Styles {
@@ -33,7 +34,7 @@
                     <button type="button" id="measure-btn" class="btn btn-outline-secondary btn-sm flex-grow-1" aria-pressed="false">
                         <i class="fa-solid fa-ruler me-1"></i> @Localizer["CityPlanning_MeasureButton"]
                     </button>
-                    <button id="clear-measurements-btn" type="button" class="btn btn-sm btn-outline-danger d-none" title="@Localizer["CityPlanning_ClearMeasurementsButton"]" aria-label="@Localizer["CityPlanning_ClearMeasurementsButton"]">
+                    <button id="clear-measurements-btn" type="button" class="btn btn-sm btn-outline-danger d-none" title="@clearMeasurementsLabel" aria-label="@clearMeasurementsLabel">
                         <i class="fa-solid fa-trash"></i>
                     </button>
                 </div>
@@ -74,6 +75,6 @@
 
 @section Scripts {
     <script src="https://unpkg.com/maplibre-gl@5.20.1/dist/maplibre-gl.js"></script>
-    <script src="https://unpkg.com/@@turf/turf@7.1.0/turf.min.js"></script>
+    <script src="https://unpkg.com/&#64;turf/turf@7.1.0/turf.min.js"></script>
     <script type="module" src="~/js/city-planning/main.js"></script>
 }
