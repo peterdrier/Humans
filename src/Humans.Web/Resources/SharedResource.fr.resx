@@ -1019,6 +1019,10 @@
   <data name="OnboardingReview_FlagConfirm" xml:space="preserve"><value>Ce human sera signal&#xE9; pour examen compl&#xE9;mentaire. Continuer ?</value></data>
   <data name="OnboardingReview_AlreadyCleared" xml:space="preserve"><value>Ce human a d&#xE9;j&#xE0; &#xE9;t&#xE9; valid&#xE9;.</value></data>
   <data name="OnboardingReview_Cleared" xml:space="preserve"><value>R&#xE9;vision du profil valid&#xE9;e.</value></data>
+  <data name="OnboardingReview_BulkClearedNone" xml:space="preserve"><value>Aucun human s&#xE9;lectionn&#xE9; n'a &#xE9;t&#xE9; valid&#xE9;.</value></data>
+  <data name="OnboardingReview_BulkCleared" xml:space="preserve"><value>{0} humans s&#xE9;lectionn&#xE9;s valid&#xE9;s.</value></data>
+  <data name="OnboardingReview_BulkClearedPartial" xml:space="preserve"><value>{0} sur {1} s&#xE9;lectionn&#xE9;s valid&#xE9;s — les autres ne sont plus &#xE9;ligibles.</value></data>
+  <data name="OnboardingReview_BulkClearButton" xml:space="preserve"><value>Valider tous les s&#xE9;lectionn&#xE9;s</value></data>
   <data name="OnboardingReview_Flagged" xml:space="preserve"><value>Human signal&#xE9; pour examen compl&#xE9;mentaire.</value></data>
   <data name="OnboardingReview_RejectButton" xml:space="preserve"><value>Refuser l'inscription</value></data>
   <data name="OnboardingReview_RejectReasonPlaceholder" xml:space="preserve"><value>Motif du refus...</value></data>
@@ -1719,6 +1723,17 @@
   <data name="Shifts_SaveAvailability" xml:space="preserve"><value>Enregistrer la disponibilité</value></data>
   <data name="Shifts_DaysSelected" xml:space="preserve"><value>jours sélectionnés</value></data>
   <data name="Shifts_SlotsFull" xml:space="preserve"><value>Certains jours ont encore besoin d'aide, mais tous les créneaux disponibles sont complets. Reviens plus tard au cas où des places se libèrent.</value></data>
+  <data name="Shifts_ConfirmSignup_Title" xml:space="preserve"><value>Confirmez votre inscription au {0}</value></data>
+  <data name="Shifts_ConfirmSignup_Phase" xml:space="preserve"><value>Vous vous inscrivez à {0} (phase de {1}).</value></data>
+  <data name="Shifts_ConfirmSignup_Range" xml:space="preserve"><value>Du {0} au {1} ({2} jours).</value></data>
+  <data name="Shifts_ConfirmSignup_Range_Single" xml:space="preserve"><value>Pour le {0} (1 jour).</value></data>
+  <data name="Shifts_ConfirmSignup_ArriveBy" xml:space="preserve"><value>Vous êtes attendu·e sur place au plus tard le {0}.</value></data>
+  <data name="Shifts_ConfirmSignup_Prompt" xml:space="preserve"><value>Est-ce bien la période pour laquelle vous souhaitiez vous inscrire ?</value></data>
+  <data name="Shifts_ConfirmSignup_Confirm" xml:space="preserve"><value>Confirmer l'inscription</value></data>
+  <data name="Shifts_ConfirmSignup_Conflicts_Heading" xml:space="preserve"><value>Certains jours de cette plage chevauchent des créneaux pour lesquels vous êtes déjà inscrit·e :</value></data>
+  <data name="Shifts_ConfirmSignup_Conflicts_Row" xml:space="preserve"><value>{0} — déjà inscrit·e à {1} ({2}–{3})</value></data>
+  <data name="Shifts_ConfirmSignup_Conflicts_PartialNote" xml:space="preserve"><value>Tu es déjà inscrit·e à certains de ces jours, donc on n'ajoutera que ceux qui sont libres.</value></data>
+  <data name="Shifts_ConfirmSignup_Conflicts_AllBlocked" xml:space="preserve"><value>On dirait que tu es déjà inscrit·e à un créneau chaque jour de cette plage, donc on ne peut en ajouter aucun.</value></data>
 
   <data name="ShiftDash_Title" xml:space="preserve"><value>Tableau de bord des quarts</value></data>
   <data name="ShiftDash_ShiftsCount" xml:space="preserve"><value>{0} quarts</value><comment>{0} = count</comment></data>
@@ -1820,6 +1835,16 @@
   <data name="Privacy_ComplaintBody" xml:space="preserve"><value>Si vous n'êtes pas satisfait de notre réponse, vous avez le droit de déposer une plainte auprès de l'Agence Espagnole de Protection des Données (AEPD) à {0}.</value><comment>{0} = AEPD URL</comment></data>
 
   <!-- Agent Widget -->
+  <data name="Agent_ConversationBackToHistory" xml:space="preserve"><value>Retour à l'historique</value></data>
+  <data name="Agent_ConversationEmpty" xml:space="preserve"><value>Aucun message dans cette conversation.</value></data>
+  <data name="Agent_ConversationHandedOffToFeedback" xml:space="preserve"><value>Transféré vers un rapport de retour</value></data>
+  <data name="Agent_ConversationRefusedLabel" xml:space="preserve"><value>L'assistant a refusé de répondre à ce tour.</value></data>
+  <data name="Agent_ConversationTitle" xml:space="preserve"><value>Conversation avec l'assistant</value></data>
+  <data name="Agent_ConversationToolCallsSummary" xml:space="preserve"><value>{0} appel(s) d'outil</value></data>
+  <data name="Agent_ConversationTranscript" xml:space="preserve"><value>Transcription</value></data>
+  <data name="Agent_ContextCardCaveat" xml:space="preserve"><value>Ceci est votre contexte actuel. Si vos rôles ou équipes ont changé depuis cette conversation, l'assistant a vu une version différente à ce moment-là.</value></data>
+  <data name="Agent_ContextCardEmpty" xml:space="preserve"><value>Aucun contexte personnel n'est actuellement envoyé à l'assistant.</value></data>
+  <data name="Agent_ContextCardSummary" xml:space="preserve"><value>Votre contexte (tel que l'assistant vous voit maintenant)</value></data>
   <data name="Agent_HistoryEmpty" xml:space="preserve"><value>Aucune conversation.</value></data>
   <data name="Agent_HistoryLastMessage" xml:space="preserve"><value>Dernier message</value></data>
   <data name="Agent_HistoryMessages" xml:space="preserve"><value>Messages</value></data>

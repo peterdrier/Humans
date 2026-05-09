@@ -1,7 +1,9 @@
+using System.Globalization;
 using System.Text.Json;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -65,6 +67,8 @@ public class ShiftsController : HumansControllerBase
 
         var userSignups = await _signupService.GetByUserAsync(user.Id, es.Id);
         var hasSignups = userSignups.Count > 0;
+
+        var userActiveSignupsForUi = await LoadUserActiveSignupsForUiAsync(user.Id);
 
         if (!es.IsShiftBrowsingOpen && !isPrivileged && !hasSignups)
             return View("BrowsingClosed");
@@ -218,7 +222,8 @@ public class ShiftsController : HumansControllerBase
             AllTags = allTags.ToList(),
             FilterTagIds = activeTagFilter,
             UserPreferredTagIds = userPreferredTags.Select(t => t.Id).ToHashSet(),
-            MySignupCount = userSignups.Count(s => s.Status is SignupStatus.Confirmed or SignupStatus.Pending)
+            MySignupCount = userSignups.Count(s => s.Status is SignupStatus.Confirmed or SignupStatus.Pending),
+            UserActiveSignups = userActiveSignupsForUi
         };
 
         return View(model);
@@ -261,7 +266,7 @@ public class ShiftsController : HumansControllerBase
         }
 
         var privileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User);
-        var result = await _signupService.SignUpRangeAsync(user.Id, rotaId, startDayOffset, endDayOffset, isPrivileged: privileged);
+        var result = await _signupService.SignUpRangeAsync(user.Id, rotaId, startDayOffset, endDayOffset, isPrivileged: privileged, skipConflicts: true);
 
         if (!result.Success)
         {
@@ -607,6 +612,30 @@ public class ShiftsController : HumansControllerBase
         return RedirectToAction(nameof(Settings));
     }
 
+    private async Task<IReadOnlyList<UserSignupConflictItem>> LoadUserActiveSignupsForUiAsync(Guid userId)
+    {
+        var allActiveSignups = await _signupService.GetActiveSignupsForUserAsync(userId);
+        return allActiveSignups
+            .Where(s => s.Shift?.Rota?.EventSettings is not null)
+            .Select(s =>
+            {
+                var sEs = s.Shift!.Rota!.EventSettings!;
+                var absStart = s.Shift.GetAbsoluteStart(sEs);
+                var absEnd = s.Shift.GetAbsoluteEnd(sEs);
+                var tz = DateTimeZoneProviders.Tzdb[sEs.TimeZoneId];
+                var localStart = absStart.InZone(tz).LocalDateTime;
+                var localEnd = absEnd.InZone(tz).LocalDateTime;
+                return new UserSignupConflictItem(
+                    Date: localStart.Date,
+                    RotaName: s.Shift.Rota.Name,
+                    AbsoluteStart: absStart,
+                    AbsoluteEnd: absEnd,
+                    DisplayStart: localStart.TimeOfDay.ToString("HH:mm", CultureInfo.InvariantCulture),
+                    DisplayEnd: localEnd.TimeOfDay.ToString("HH:mm", CultureInfo.InvariantCulture));
+            })
+            .ToList();
+    }
+
     private static (LocalDate From, LocalDate To) GetPeriodDateRange(EventSettings es, ShiftPeriod period)
     {
         return period switch
@@ -646,60 +675,68 @@ public class ShiftsController : HumansControllerBase
 
     [HttpGet("OrphanSignups")]
     [Authorize(Policy = PolicyNames.AdminOnly)]
-    public async Task<IActionResult> OrphanSignups(CancellationToken ct)
+    public async Task<IActionResult> OrphanSignups(
+        [FromServices] IUserService userService,
+        CancellationToken ct)
     {
         var allSignups = await _signupService.GetAllForOrphanScanAsync(ct);
         var auditedIds = await _auditLogService.GetEntityIdsForEntityTypeActionsAsync(
             nameof(ShiftSignup),
-            [
-                AuditAction.ShiftSignupCreated,
-                AuditAction.ShiftSignupVoluntold,
-                AuditAction.ShiftSignupConfirmed,
-            ],
+            [AuditAction.ShiftSignupCreated, AuditAction.ShiftSignupVoluntold, AuditAction.ShiftSignupConfirmed],
             ct);
 
-        var orphans = allSignups
-            .Where(s => !auditedIds.Contains(s.Id))
-            .ToList();
+        var orphans = allSignups.Where(s => !auditedIds.Contains(s.Id)).ToList();
+        var users = await ResolveOrphanActorsAsync(orphans, userService, ct);
+        var rows = BuildOrphanRows(orphans, users);
 
+        return View(new OrphanSignupsViewModel(
+            TotalSignups: allSignups.Count,
+            OrphanCount: rows.Count,
+            UniqueUsers: rows.Select(r => r.UserId).Distinct().Count(),
+            Rows: rows));
+    }
+
+    private static async Task<IReadOnlyDictionary<Guid, User>> ResolveOrphanActorsAsync(
+        IReadOnlyList<ShiftSignup> orphans, IUserService userService, CancellationToken ct)
+    {
+        // Display-name resolution goes through the Users section directly —
+        // OrphanSignups is a §2c cross-section consumer of audit-log
+        // entity-ids, not a render-the-audit-log view, so the names belong
+        // to IUserService rather than IAuditViewerService.
         var userIds = orphans
             .SelectMany(s => new[] { s.UserId, s.ReviewedByUserId, s.EnrolledByUserId })
             .Where(id => id.HasValue)
             .Select(id => id!.Value)
             .Distinct()
             .ToList();
+        return userIds.Count == 0
+            ? new Dictionary<Guid, User>()
+            : await userService.GetByIdsAsync(userIds, ct);
+    }
 
-        var userDisplayNames = await _auditLogService.GetUserDisplayNamesAsync(userIds, ct);
+    private static List<OrphanSignupRow> BuildOrphanRows(
+        IReadOnlyList<ShiftSignup> orphans,
+        IReadOnlyDictionary<Guid, User> users)
+    {
+        string? GetName(Guid? id) => id.HasValue && users.TryGetValue(id.Value, out var u) ? u.DisplayName : null;
 
-        var rows = orphans
+        return orphans
             .Select(s => new OrphanSignupRow(
                 SignupId: s.Id,
                 UserId: s.UserId,
-                UserDisplayName: userDisplayNames.GetValueOrDefault(s.UserId) ?? s.UserId.ToString(),
+                UserDisplayName: GetName(s.UserId) ?? s.UserId.ToString(),
                 RotaName: s.Shift.Rota.Name,
                 ShiftDate: s.Shift.Rota.EventSettings.GateOpeningDate.PlusDays(s.Shift.DayOffset),
                 Status: s.Status,
                 CreatedAt: s.CreatedAt,
                 ReviewedByUserId: s.ReviewedByUserId,
-                ReviewedByDisplayName: s.ReviewedByUserId.HasValue
-                    ? userDisplayNames.GetValueOrDefault(s.ReviewedByUserId.Value)
-                    : null,
+                ReviewedByDisplayName: GetName(s.ReviewedByUserId),
                 EnrolledByUserId: s.EnrolledByUserId,
-                EnrolledByDisplayName: s.EnrolledByUserId.HasValue
-                    ? userDisplayNames.GetValueOrDefault(s.EnrolledByUserId.Value)
-                    : null,
+                EnrolledByDisplayName: GetName(s.EnrolledByUserId),
                 SignupBlockId: s.SignupBlockId))
             .OrderBy(r => r.UserDisplayName, StringComparer.OrdinalIgnoreCase)
             .ThenBy(r => r.CreatedAt)
             .ToList();
-
-        var vm = new OrphanSignupsViewModel(
-            TotalSignups: allSignups.Count,
-            OrphanCount: rows.Count,
-            UniqueUsers: rows.Select(r => r.UserId).Distinct().Count(),
-            Rows: rows);
-
-        return View(vm);
     }
 }
 

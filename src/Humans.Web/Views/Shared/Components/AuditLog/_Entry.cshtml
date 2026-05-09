@@ -1,51 +1,20 @@
-@model Humans.Domain.Entities.AuditLogEntry
+@model Humans.Application.Services.AuditLog.AuditEvent
 
 @{
-    var userNames = (Dictionary<Guid, string>?)ViewData["UserDisplayNames"] ?? new();
-    var teamNames = (Dictionary<Guid, (string Name, string Slug)>?)ViewData["TeamNames"] ?? new();
-    string GetName(Guid id) => userNames.TryGetValue(id, out var n) ? n : "Unknown";
-
-    var verb = AuditLogViewComponent.GetActionVerb(Model.Action);
-    var selfVerb = AuditLogViewComponent.GetActionSelfVerb(Model.Action);
-
-    // Trims a dangling " for"/" to" preposition. Used when we can't render a
-    // subject (old rows pre-RelatedEntityId fix, or unmapped subject-less actions).
-    string TrimDanglingPreposition(string v)
-        => v.EndsWith(" for", StringComparison.Ordinal) ? v[..^4]
-         : v.EndsWith(" to", StringComparison.Ordinal) ? v[..^3]
-         : v;
-
-    // Subject: the user being acted upon. Guid.Empty means "no linked human"
-    // (e.g. WorkspaceAccount audits where the address isn't matched to a User);
-    // treat it as null so the view falls back to a verb-trimmed, subject-less render
-    // instead of resolving Guid.Empty against the user-name dict and showing "Unknown".
-    Guid? subjectId = Model.EntityType is "User" or "Profile" or "WorkspaceAccount"
-        ? Model.EntityId
-        : string.Equals(Model.RelatedEntityType, "User", StringComparison.Ordinal)
-            ? Model.RelatedEntityId
-            : null;
-    if (subjectId == Guid.Empty) subjectId = null;
-
-    // Target team
-    Guid? targetTeamId = string.Equals(Model.EntityType, "Team", StringComparison.Ordinal)
-        ? Model.EntityId
-        : string.Equals(Model.RelatedEntityType, "Team", StringComparison.Ordinal)
-            ? Model.RelatedEntityId
-            : null;
-
-    // When actor == subject, don't repeat (e.g. "Peter left Geeks" not "Peter left Peter in Geeks")
-    var actorIsSubject = Model.ActorUserId.HasValue && subjectId.HasValue && Model.ActorUserId.Value == subjectId.Value;
+    var render = Model.RenderStructured();
+    var actorIsSubject = Model.ActorUserId.HasValue && Model.SubjectUserId.HasValue
+        && Model.ActorUserId.Value == Model.SubjectUserId.Value;
 }
 
 <div class="d-flex align-items-baseline gap-1 small flex-wrap">
     <span class="text-muted text-nowrap">@Model.OccurredAt.ToAuditTimestamp()</span>
     <span class="text-muted">—</span>
-    @if (verb != null)
+    @if (render.Verb != null)
     {
         @* Actor *@
         @if (Model.ActorUserId.HasValue)
         {
-            <human-link user-id="@Model.ActorUserId.Value" display-name="@GetName(Model.ActorUserId.Value)" mode="Text" />
+            <human-link user-id="@Model.ActorUserId.Value" display-name="@(Model.ActorDisplayName ?? "Unknown")" mode="Text" />
         }
         else
         {
@@ -54,28 +23,28 @@
 
         @* When the view will not render a subject (actor==subject or subject unknown),
            use selfVerb if defined, else trim a trailing preposition from the transitive verb. *@
-        var noVisibleSubject = actorIsSubject || !subjectId.HasValue;
-        var displayVerb = noVisibleSubject && selfVerb != null ? selfVerb
-                        : noVisibleSubject ? TrimDanglingPreposition(verb)
-                        : verb;
+        var noVisibleSubject = actorIsSubject || !Model.SubjectUserId.HasValue;
+        var displayVerb = noVisibleSubject && render.SelfVerb != null ? render.SelfVerb
+                        : noVisibleSubject ? render.TrimmedVerb
+                        : render.Verb;
         <span>@displayVerb</span>
 
         @* Subject (skip if same as actor) *@
-        @if (subjectId.HasValue && !actorIsSubject)
+        @if (Model.SubjectUserId.HasValue && !actorIsSubject)
         {
-            <human-link user-id="@subjectId.Value" display-name="@GetName(subjectId.Value)" mode="Text" />
+            <human-link user-id="@Model.SubjectUserId.Value" display-name="@(Model.SubjectDisplayName ?? "Unknown")" mode="Text" />
         }
 
         @* Target team *@
-        @if (targetTeamId.HasValue && teamNames.TryGetValue(targetTeamId.Value, out var team))
+        @if (Model.TargetTeamId.HasValue && !string.IsNullOrEmpty(Model.TargetTeamName))
         {
             <span class="text-muted">in</span>
-            <a asp-controller="Team" asp-action="Details" asp-route-slug="@team.Slug" class="text-decoration-none">@team.Name</a>
+            <a asp-controller="Team" asp-action="Details" asp-route-slug="@Model.TargetTeamSlug" class="text-decoration-none">@Model.TargetTeamName</a>
         }
 
         @* Description tail — only for actions whose descriptions are written as tails (e.g. ShiftSignup*).
            Sentence-style descriptions (Team*, Role*, Member*) would render redundantly here. *@
-        @if (!string.IsNullOrWhiteSpace(Model.Description) && AuditLogViewComponent.ShouldRenderDescriptionTail(Model.Action))
+        @if (render.ShouldRenderDescriptionTail)
         {
             <span class="text-muted">— @Model.Description</span>
         }
@@ -85,7 +54,7 @@
         @* Unmapped action — render rough but fully attributed: actor · ActionName · subject · in team · "description" *@
         @if (Model.ActorUserId.HasValue)
         {
-            <human-link user-id="@Model.ActorUserId.Value" display-name="@GetName(Model.ActorUserId.Value)" mode="Text" />
+            <human-link user-id="@Model.ActorUserId.Value" display-name="@(Model.ActorDisplayName ?? "Unknown")" mode="Text" />
         }
         else
         {
@@ -93,15 +62,15 @@
         }
         <span class="text-muted">·</span>
         <span>@Model.Action.ToString()</span>
-        @if (subjectId.HasValue && !actorIsSubject)
+        @if (Model.SubjectUserId.HasValue && !actorIsSubject)
         {
             <span class="text-muted">·</span>
-            <human-link user-id="@subjectId.Value" display-name="@GetName(subjectId.Value)" mode="Text" />
+            <human-link user-id="@Model.SubjectUserId.Value" display-name="@(Model.SubjectDisplayName ?? "Unknown")" mode="Text" />
         }
-        @if (targetTeamId.HasValue && teamNames.TryGetValue(targetTeamId.Value, out var fallbackTeam))
+        @if (Model.TargetTeamId.HasValue && !string.IsNullOrEmpty(Model.TargetTeamName))
         {
             <span class="text-muted">in</span>
-            <a asp-controller="Team" asp-action="Details" asp-route-slug="@fallbackTeam.Slug" class="text-decoration-none">@fallbackTeam.Name</a>
+            <a asp-controller="Team" asp-action="Details" asp-route-slug="@Model.TargetTeamSlug" class="text-decoration-none">@Model.TargetTeamName</a>
         }
         @if (!string.IsNullOrWhiteSpace(Model.Description))
         {

@@ -1654,16 +1654,23 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
         CancellationToken cancellationToken = default) =>
         _repo.GetCoordinatorUserIdsAsync(teamId, cancellationToken);
 
-    public async Task<IReadOnlyList<string>> GetActiveTeamNamesForUserAsync(
+    public async Task<IReadOnlyList<Humans.Application.Models.TeamMembership>> GetActiveTeamMembershipsForUserAsync(
         Guid userId, CancellationToken cancellationToken = default)
     {
         var cached = await GetCachedTeamsAsync(cancellationToken);
-        return cached.Values
-            .Where(t => t.SystemTeamType != SystemTeamType.Volunteers
-                && t.Members.Any(m => m.UserId == userId))
-            .Select(t => t.Name)
-            .OrderBy(n => n, StringComparer.OrdinalIgnoreCase)
-            .ToList();
+        var rows = new List<Humans.Application.Models.TeamMembership>();
+        foreach (var team in cached.Values)
+        {
+            if (team.SystemTeamType == SystemTeamType.Volunteers)
+                continue;
+            var membership = team.Members.FirstOrDefault(m => m.UserId == userId);
+            if (membership is null)
+                continue;
+            rows.Add(new Humans.Application.Models.TeamMembership(team.Name, membership.Role));
+        }
+        // No display sort here — callers sort at the rendering layer
+        // (memory/architecture/display-sort-in-controllers.md).
+        return rows;
     }
 
     public async Task EnqueueGoogleResyncForUserTeamsAsync(

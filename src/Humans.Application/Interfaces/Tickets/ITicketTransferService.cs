@@ -58,6 +58,15 @@ public interface ITicketTransferService
         Guid userId, CancellationToken ct = default);
 
     /// <summary>
+    /// Pending-only subset of <see cref="GetByRequesterAsync"/>. Lets the
+    /// homepage card build its outgoing-transfer dictionary without a
+    /// post-fetch status filter (per
+    /// <c>memory/architecture/no-business-logic-in-controllers</c>).
+    /// </summary>
+    Task<IReadOnlyList<TicketTransferRowDto>> GetPendingByRequesterAsync(
+        Guid userId, CancellationToken ct = default);
+
+    /// <summary>
     /// Read-side composition for the admin Detail review screen: the row plus
     /// profile cards for requester and recipient. Returns null if no transfer
     /// exists with that id.

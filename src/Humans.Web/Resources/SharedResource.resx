@@ -1046,6 +1046,10 @@
   <data name="OnboardingReview_FlagConfirm" xml:space="preserve"><value>This will flag this human for further review. Continue?</value></data>
   <data name="OnboardingReview_AlreadyCleared" xml:space="preserve"><value>This human has already been cleared.</value></data>
   <data name="OnboardingReview_Cleared" xml:space="preserve"><value>Profile review cleared.</value></data>
+  <data name="OnboardingReview_BulkClearedNone" xml:space="preserve"><value>No selected humans were approved.</value></data>
+  <data name="OnboardingReview_BulkCleared" xml:space="preserve"><value>Approved {0} selected humans.</value></data>
+  <data name="OnboardingReview_BulkClearedPartial" xml:space="preserve"><value>Approved {0} of {1} selected — the others are no longer eligible.</value></data>
+  <data name="OnboardingReview_BulkClearButton" xml:space="preserve"><value>Approve all selected</value></data>
   <data name="OnboardingReview_Flagged" xml:space="preserve"><value>Human flagged for further review.</value></data>
   <data name="OnboardingReview_RejectButton" xml:space="preserve"><value>Reject Signup</value></data>
   <data name="OnboardingReview_RejectReasonPlaceholder" xml:space="preserve"><value>Reason for rejection...</value></data>
@@ -1366,6 +1370,16 @@
   <data name="Feedback_Error" xml:space="preserve"><value>Something went wrong submitting your feedback. Please try again.</value></data>
 
   <!-- Agent Widget -->
+  <data name="Agent_ConversationBackToHistory" xml:space="preserve"><value>Back to history</value></data>
+  <data name="Agent_ConversationEmpty" xml:space="preserve"><value>No messages in this conversation.</value></data>
+  <data name="Agent_ConversationHandedOffToFeedback" xml:space="preserve"><value>Handed off to feedback report</value></data>
+  <data name="Agent_ConversationRefusedLabel" xml:space="preserve"><value>The agent declined to answer this turn.</value></data>
+  <data name="Agent_ConversationTitle" xml:space="preserve"><value>Agent conversation</value></data>
+  <data name="Agent_ConversationToolCallsSummary" xml:space="preserve"><value>{0} tool call(s)</value></data>
+  <data name="Agent_ConversationTranscript" xml:space="preserve"><value>Transcript</value></data>
+  <data name="Agent_ContextCardCaveat" xml:space="preserve"><value>This is your current context. If your roles or teams have changed since this conversation, the agent saw a different version at the time.</value></data>
+  <data name="Agent_ContextCardEmpty" xml:space="preserve"><value>No personal context is currently being sent to the agent.</value></data>
+  <data name="Agent_ContextCardSummary" xml:space="preserve"><value>Your context (as the agent sees you now)</value></data>
   <data name="Agent_HistoryEmpty" xml:space="preserve"><value>No conversations yet.</value></data>
   <data name="Agent_HistoryLastMessage" xml:space="preserve"><value>Last message</value></data>
   <data name="Agent_HistoryMessages" xml:space="preserve"><value>Messages</value></data>
@@ -1759,6 +1773,17 @@
   <data name="Shifts_SaveAvailability" xml:space="preserve"><value>Save Availability</value></data>
   <data name="Shifts_DaysSelected" xml:space="preserve"><value>days selected</value></data>
   <data name="Shifts_SlotsFull" xml:space="preserve"><value>Some days still need help but all available slots are currently full. Check back later in case spots open up.</value></data>
+  <data name="Shifts_ConfirmSignup_Title" xml:space="preserve"><value>Confirm your {0} sign-up</value></data>
+  <data name="Shifts_ConfirmSignup_Phase" xml:space="preserve"><value>You're signing up for {0} ({1} phase).</value></data>
+  <data name="Shifts_ConfirmSignup_Range" xml:space="preserve"><value>From {0} to {1} ({2} days).</value></data>
+  <data name="Shifts_ConfirmSignup_Range_Single" xml:space="preserve"><value>For {0} (1 day).</value></data>
+  <data name="Shifts_ConfirmSignup_ArriveBy" xml:space="preserve"><value>You'll be expected on site by {0}.</value></data>
+  <data name="Shifts_ConfirmSignup_Prompt" xml:space="preserve"><value>Is this the period you intended to sign up for?</value></data>
+  <data name="Shifts_ConfirmSignup_Confirm" xml:space="preserve"><value>Confirm sign-up</value></data>
+  <data name="Shifts_ConfirmSignup_Conflicts_Heading" xml:space="preserve"><value>Some days in this range conflict with shifts you're already signed up for:</value></data>
+  <data name="Shifts_ConfirmSignup_Conflicts_Row" xml:space="preserve"><value>{0} — already signed up for {1} ({2}–{3})</value></data>
+  <data name="Shifts_ConfirmSignup_Conflicts_PartialNote" xml:space="preserve"><value>You're already signed up on a few of these days, so we'll only add the ones that are free.</value></data>
+  <data name="Shifts_ConfirmSignup_Conflicts_AllBlocked" xml:space="preserve"><value>Looks like you already have a shift booked on every day in this range, so we can't add any of these.</value></data>
 
   <data name="ShiftDash_Title" xml:space="preserve"><value>Shift Dashboard</value></data>
   <data name="ShiftDash_ShiftsCount" xml:space="preserve"><value>{0} shifts</value><comment>{0} = count</comment></data>

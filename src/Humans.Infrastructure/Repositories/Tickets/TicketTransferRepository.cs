@@ -71,4 +71,15 @@ public sealed class TicketTransferRepository : ITicketTransferRepository
         ctx.TicketTransferRequests.Update(request);
         await ctx.SaveChangesAsync(ct);
     }
+
+    public async Task ReassignUserAsync(Guid sourceUserId, Guid targetUserId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await ctx.TicketTransferRequests
+            .Where(r => r.RequesterUserId == sourceUserId)
+            .ExecuteUpdateAsync(s => s.SetProperty(r => r.RequesterUserId, targetUserId), ct);
+        await ctx.TicketTransferRequests
+            .Where(r => r.RecipientUserId == sourceUserId)
+            .ExecuteUpdateAsync(s => s.SetProperty(r => r.RecipientUserId, targetUserId), ct);
+    }
 }

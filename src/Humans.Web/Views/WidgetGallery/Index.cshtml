@@ -863,6 +863,23 @@
                 <div class="wg-card">
                     <div class="wg-card-header">
                         <div>
+                            <span class="wg-card-name">_HumanSearchResults.cshtml</span>
+                            <span class="wg-card-kind kind-pa">Partial</span>
+                        </div>
+                        <span class="wg-card-path">src/Humans.Web/Views/Shared/_HumanSearchResults.cshtml</span>
+                    </div>
+                    <div class="wg-card-note">Page-style result cards for person search. Shared by <code>/Profile/Search</code> (public bits) and <code>/Profile/Admin</code> (admin bits — adds email, status badge, joined/last-login meta, detail link). Optional admin fields render only when present.</div>
+                    @ParamsBlock(
+                        ("@@model", "<code>IReadOnlyList&lt;HumanSearchResultViewModel&gt;</code> — projected match rows; admin metadata fields are nullable and self-gate")
+                    )
+                    <div class="wg-card-example">
+                        @await Html.PartialAsync("_HumanSearchResults", Model.SampleHumanSearchResults)
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
                             <span class="wg-card-name">_LanguageChooser.cshtml</span>
                             <span class="wg-card-kind kind-pa">Partial</span>
                         </div>
@@ -1001,7 +1018,7 @@
                     <li><strong>Coordinator dashboard</strong> — <code>_DashboardActivity</code>, <code>_DashboardStats</code>, <code>_DashboardStaffing</code>: take an <code>AdminDashboardViewModel</code> built by the dashboard controller. See <a href="/Admin/Dashboard">/Admin/Dashboard</a>.</li>
                     <li><strong>Form fragments</strong> — <code>_LegalDocumentFormFields</code>, <code>_TabbedMarkdownDocuments</code>, <code>_TeamDescriptionAndApprovalFields</code>, <code>_TeamGoogleAndParentFields</code>: form sub-views inside parent forms; see Team admin and Legal pages.</li>
                     <li><strong>Audit/list partials</strong> — <code>_AuditLogContent</code>, <code>_AuditLogScripts</code>, <code>_RolesListContent</code>, <code>_ApplicationHistory</code>, <code>_ApplicationsListContent</code>, <code>_ApplicationResponseSections</code>: pieces of larger pages, exercised via the <code>vc:audit-log</code> entry above and the Applications/Roles admin pages.</li>
-                    <li><strong>Script-only partials</strong> — <code>_RequestVerificationTokenScript</code>, <code>_EscapeHtmlScript</code>, <code>_GitHubFolderPathScript</code>, <code>_MemberSearchScript</code>, <code>_VolunteerSearchScript</code>, <code>_ValidationScriptsPartial</code>: emit JS only.</li>
+                    <li><strong>Script-only partials</strong> — <code>_RequestVerificationTokenScript</code>, <code>_EscapeHtmlScript</code>, <code>_GitHubFolderPathScript</code>, <code>_VolunteerSearchScript</code>, <code>_ValidationScriptsPartial</code>: emit JS only.</li>
                     <li><strong>Infrastructure tag helper</strong> — <code>NonceTagHelper</code>: applies CSP nonces to <code>&lt;script&gt;</code>/<code>&lt;style&gt;</code>; nothing visible to render.</li>
                 </ul>
             </section>

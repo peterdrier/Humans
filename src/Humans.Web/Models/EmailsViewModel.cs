@@ -65,6 +65,16 @@ public class EmailsViewModel
     public bool IsAdminContext { get; set; }
 
     /// <summary>
+    /// Raw legacy AspNetIdentity <c>Email</c> column value for the target user.
+    /// Populated only when a full Admin views another user via the admin route —
+    /// the column is the silent fallback behind the
+    /// <c>User.Email</c>-from-<c>UserEmails</c> override and is otherwise
+    /// invisible. Diagnostic surface for the email-identity-decoupling
+    /// rollout. Null in self contexts and for non-Admin actors.
+    /// </summary>
+    public string? LegacyIdentityEmailColumn { get; set; }
+
+    /// <summary>
     /// When non-null, identifies the email row that is the user's Workspace
     /// canonical identity (Provider=Google + email on the configured Workspace
     /// domain). While set, the view locks Primary and Google radios across the

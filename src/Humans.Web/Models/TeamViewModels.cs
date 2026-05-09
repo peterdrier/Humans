@@ -271,6 +271,14 @@ public class TeamMembersViewModel
     public string TeamSlug { get; set; } = string.Empty;
     public bool IsSystemTeam { get; set; }
     public List<TeamMemberViewModel> Members { get; set; } = [];
+
+    /// <summary>
+    /// Every active member's UserId across all pages. Used by the add-member
+    /// picker to exclude already-members from typeahead — Members is paginated,
+    /// so it can't be the source of truth for exclusion.
+    /// </summary>
+    public List<Guid> AllMemberUserIds { get; set; } = [];
+
     public List<TeamJoinRequestViewModel> PendingRequests { get; set; } = [];
     public bool CanManageRoles { get; set; }
     public bool CanProvisionEmails { get; set; }
@@ -513,14 +521,27 @@ public class HumanSearchViewModel
 public class HumanSearchResultViewModel
 {
     public Guid UserId { get; set; }
-    public string DisplayName { get; set; } = string.Empty;
-    public string? BurnerName { get; set; }
-    public string? City { get; set; }
-    public string? Bio { get; set; }
-    public string? ContributionInterests { get; set; }
-    public string? EffectiveProfilePictureUrl { get; set; }
+    public string BurnerName { get; set; } = string.Empty;
+    public string? ProfilePictureUrl { get; set; }
     public string? MatchField { get; set; }
     public string? MatchSnippet { get; set; }
+
+    /// <summary>
+    /// Verified email address that matched, when the controller passed the
+    /// <c>PersonSearchFields.Admin</c> bit. Always null on public surfaces.
+    /// </summary>
+    public string? MatchedEmail { get; set; }
+
+    // ── Optional admin-list metadata ────────────────────────────────────────
+    // Set by the AdminList controller to surface partition status, primary
+    // email, and admin-detail deep-link in the canonical _HumanSearchResults
+    // partial. Always null on the public Profile/Search page.
+
+    public string? AdminEmail { get; set; }
+    public string? MembershipStatus { get; set; }
+    public DateTime? CreatedAt { get; set; }
+    public DateTime? LastLoginAt { get; set; }
+    public string? AdminDetailUrl { get; set; }
 }
 
 public class AdminTeamListViewModel

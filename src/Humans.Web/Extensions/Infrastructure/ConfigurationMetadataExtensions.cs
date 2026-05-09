@@ -64,6 +64,7 @@ internal static class ConfigurationMetadataExtensions
             configRegistry.RegisterEnvironmentVariable("TICKET_VENDOR_API_KEY", "Ticket Vendor", isSensitive: true,
                 importance: ConfigurationImportance.Recommended);
             configRegistry.RegisterEnvironmentVariable("LOG_API_KEY", "Log API", isSensitive: true);
+            configRegistry.RegisterEnvironmentVariable("AGENT_API_KEY", "Agent API", isSensitive: true);
             // Stripe — one key per account/purpose; production keys must be Restricted API Keys (rk_*).
             configRegistry.RegisterEnvironmentVariable("STRIPE_TICKETS_KEY", "Stripe (Tickets)", isSensitive: true);
             configRegistry.RegisterEnvironmentVariable("STRIPE_STORE_KEY", "Stripe (Store)", isSensitive: true,

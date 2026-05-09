@@ -373,7 +373,14 @@
                                 FilterPeriod = Model.FilterPeriod,
                                 FilterPeriods = Model.FilterPeriods,
                                 FilterTagIds = Model.FilterTagIds,
-                                Sort = Model.Sort
+                                Sort = Model.Sort,
+                                UserActiveSignups = Model.UserActiveSignups,
+                                RotaWindowsByDayOffset = rotaGroup.Shifts
+                                    .Where(s => s.Shift.IsAllDay)
+                                    .GroupBy(s => s.Shift.DayOffset)
+                                    .ToDictionary(
+                                        g => g.Key,
+                                        g => new ShiftWindow(g.First().AbsoluteStart, g.First().AbsoluteEnd))
                             })
                         }
                         @if (!isBuildStrike || hasTimedShifts)
@@ -522,7 +529,14 @@
                                                     FilterPeriod = Model.FilterPeriod,
                                                     FilterPeriods = Model.FilterPeriods,
                                                     FilterTagIds = Model.FilterTagIds,
-                                                    Sort = Model.Sort
+                                                    Sort = Model.Sort,
+                                                    UserActiveSignups = Model.UserActiveSignups,
+                                                    RotaWindowsByDayOffset = rotaGroup.Shifts
+                                                        .Where(s => s.Shift.IsAllDay)
+                                                        .GroupBy(s => s.Shift.DayOffset)
+                                                        .ToDictionary(
+                                                            g => g.Key,
+                                                            g => new ShiftWindow(g.First().AbsoluteStart, g.First().AbsoluteEnd))
                                                 })
                                             }
                                             @if (!isBuildStrike || hasTimedShifts)

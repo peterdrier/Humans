@@ -7,6 +7,7 @@ using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
+using Humans.Application.Services.Profiles;
 using Humans.Application.Services.Tickets;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -83,7 +84,8 @@ public sealed class TicketTransferServiceTests
             .Returns("alice@example.com");
 
         // Default: name/burner search returns empty
-        _profileService.SearchProfilesAsync(Arg.Any<Func<FullProfile, bool>>(), Arg.Any<CancellationToken>())
+        _profileService.SearchProfilesAsync(
+                Arg.Any<string>(), Arg.Any<PersonSearchFields>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(Array.Empty<HumanSearchResult>());
     }
 
@@ -144,7 +146,8 @@ public sealed class TicketTransferServiceTests
     public async Task LookupRecipientsAsync_BurnerName_SingleMatch_ReturnsOne()
     {
         var userId = Guid.NewGuid();
-        _profileService.SearchProfilesAsync(Arg.Any<Func<FullProfile, bool>>(), Arg.Any<CancellationToken>())
+        _profileService.SearchProfilesAsync(
+                Arg.Any<string>(), Arg.Any<PersonSearchFields>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(new[] { MakeSearchResult(userId, "Sparkle Person") });
         _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>())
             .Returns(MakeUser(userId, "Sparkle Person"));
@@ -164,7 +167,8 @@ public sealed class TicketTransferServiceTests
     {
         var aId = Guid.NewGuid();
         var bId = Guid.NewGuid();
-        _profileService.SearchProfilesAsync(Arg.Any<Func<FullProfile, bool>>(), Arg.Any<CancellationToken>())
+        _profileService.SearchProfilesAsync(
+                Arg.Any<string>(), Arg.Any<PersonSearchFields>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(new[]
             {
                 MakeSearchResult(aId, "A"),
@@ -186,7 +190,8 @@ public sealed class TicketTransferServiceTests
     [HumansFact]
     public async Task LookupRecipientsAsync_BurnerName_ExcludesRequester()
     {
-        _profileService.SearchProfilesAsync(Arg.Any<Func<FullProfile, bool>>(), Arg.Any<CancellationToken>())
+        _profileService.SearchProfilesAsync(
+                Arg.Any<string>(), Arg.Any<PersonSearchFields>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(new[] { MakeSearchResult(_requesterId, "Me") });
 
         var result = await _service.LookupRecipientsAsync("me", _requesterId);
@@ -667,17 +672,11 @@ public sealed class TicketTransferServiceTests
     private static HumanSearchResult MakeSearchResult(Guid userId, string displayName) =>
         new(
             UserId: userId,
-            DisplayName: displayName,
-            BurnerName: null,
-            City: null,
-            Bio: null,
-            ContributionInterests: null,
+            BurnerName: displayName,
             ProfilePictureUrl: null,
-            HasCustomPicture: false,
-            ProfileId: Guid.NewGuid(),
-            UpdatedAtTicks: 0L,
-            MatchField: "Burner Name",
-            MatchSnippet: null);
+            MatchField: "Name",
+            MatchSnippet: null,
+            MatchedEmail: null);
 
     /// <summary>
     /// Wires up GetByIdAsync for requester and attendee so BuildRowDtoAsync

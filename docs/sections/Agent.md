@@ -59,8 +59,8 @@ Per-user message and token counters live in the Singleton `IAgentRateLimitStore`
 
 | Actor | Capability |
 |---|---|
-| Authenticated human | Send messages, read own history at `/Agent/Conversations` |
-| Admin | Configure settings, view all conversations at `/Agent/Conversations` (Human column + filters), disable globally |
+| Authenticated human | Send messages, read own history at `/Agent/Conversations`, drill into a single transcript at `/Agent/Conversation/{id}` (issue #632 — own conversations only; cross-user → 404) |
+| Admin | Configure settings, view all conversations at `/Agent/Conversations` (Human column + filters), drill into the diagnostic view at `/Agent/Conversations/{id}` (token counts, tool-call args, prompt preview), disable globally |
 | Anyone else (anonymous) | Widget not rendered; endpoints return 401 |
 
 ## Invariants
@@ -68,7 +68,7 @@ Per-user message and token counters live in the Singleton `IAgentRateLimitStore`
 1. **Terms link, not gate.** The Assistant panel shows a persistent "AI Terms" link below the composer that opens `/Legal/agent-chat` (the rendered Agent Chat Terms from `nobodies-collective/legal`). There is no explicit consent step — opening the panel and sending a message constitutes use; the terms describe what's sent, retention, and rights. The team-required-doc consent flow (`IConsentService.GetPendingDocumentNamesAsync`) is intentionally NOT used here; agent use is opt-in, not a membership precondition.
 2. **Enabled gate.** If `AgentSettings.Enabled = false`, widget is hidden and `POST /Agent/Ask` returns `503 ServiceUnavailable`.
 3. **Rate limit.** Per-user daily and hourly caps from `AgentSettings`. Over-cap requests return `429 TooManyRequests` without hitting the provider.
-4. **Tool whitelist.** Only `fetch_feature_spec`, `fetch_section_guide`, `route_to_issue` are valid tool names. Unknown names return a tool error; filesystem is never touched outside `docs/sections/` and `docs/features/`.
+4. **Tool whitelist.** Only `fetch_feature_spec`, `fetch_section_guide`, `route_to_issue`, `get_audit_history`, `get_shift_details` are valid tool names. Unknown names return a tool error; filesystem is never touched outside `docs/sections/` and `docs/features/`.
 5. **Tool loop bound.** At most `AnthropicOptions.MaxToolCallsPerTurn` (default 3) tool calls per turn, enforced server-side.
 6. **Refusal logging.** Every refused turn writes an `AgentMessage` with `RefusalReason != null`.
 7. **Append-only conversations per user.** A user can only post to conversations they own. `AgentController` rejects cross-user access with 404.
@@ -82,6 +82,18 @@ Per-user message and token counters live in the Singleton `IAgentRateLimitStore`
 - Withdrawal of use: there is no in-app revoke button; users who want their conversation history deleted contact the Board via the email in the Terms.
 - Admin CANNOT see a conversation that belongs to a user who has deleted it.
 
+## Tooling API — `/api/agent`
+
+Read-only HTTP surface for QA/prod chat-history review by dev tooling and a dev-side Claude (issue #631). Mounted at `AgentApiController`, gated by `AgentApiKeyAuthFilter` against header `X-Api-Key` matching env var `AGENT_API_KEY`. Bound to its own config key so a leaked `FEEDBACK_API_KEY` or `LOG_API_KEY` cannot read agent transcripts.
+
+| Endpoint | Purpose |
+|----------|---------|
+| `GET /api/agent/conversations?refusalsOnly&handoffsOnly&userId&take&skip` | Conversation summaries. `take` clamped 1–200 (default 50). Each row includes `RefusalCount`, `HandoffCount`, `LastUserMessagePreview` (200 char cap), `UserDisplayName` resolved via `IUserService.GetByIdsAsync`. |
+| `GET /api/agent/conversations/{id}` | Full conversation envelope + ordered messages (Role, Content, CreatedAt, Model, RefusalReason, HandedOffToFeedbackId, FetchedDocs). |
+| `GET /api/agent/conversations/{id}/messages` | Messages-only view (same per-message shape). |
+
+Missing or wrong key → 401 (503 if the key is not configured). Unknown id → 404. Mutations (deletion, settings) stay on the admin web UI. Anything purged by `AgentConversationRetentionJob` is gone from this API too — there is no separate archive.
+
 ## Triggers
 
 - On `route_to_issue` tool call: no server-side write. `AgentService` yields an `AgentIssueProposal` token; the client opens the Issues modal pre-filled. The user submits (or doesn't) via `/Issues/Submit` — admin triage filtering hooks into the Issues section, not Agent.
@@ -93,7 +105,7 @@ Per-user message and token counters live in the Singleton `IAgentRateLimitStore`
 - **Issues** — agent handoff produces a client-side issue proposal (title/category/description) that pre-fills `/Issues/Submit`. The agent does not write Issue rows itself.
 - **Feedback (legacy)** — historical `FeedbackReport.Source = AgentUnresolved` rows from before this PR are still readable via the Feedback admin queue. Agent no longer creates new ones.
 - **Legal** — `LegalDocumentService` resolves the `agent-chat` slug to the `AgentChat/` folder in the legal repo and renders content at `/Legal/agent-chat`. The Assistant panel links there from the composer footer. No `IConsentService` involvement.
-- **Profiles / Users / Auth / Teams** — `IAgentUserSnapshotProvider` composes the per-turn user context from `IProfileService`, `IUserService`, `IRoleAssignmentService.GetActiveForUserAsync`, `ITeamService.GetActiveTeamNamesForUserAsync`.
+- **Profiles / Users / Auth / Teams / Tickets / Shifts** — `IAgentUserSnapshotProvider` composes the per-turn user context from `IProfileService`, `IUserService`, `IRoleAssignmentService.GetActiveForUserAsync`, `ITeamService.GetActiveTeamMembershipsForUserAsync`, `ITicketQueryService.GetOpenTicketIdsForUserAsync`, `IShiftSignupService.GetByUserAsync`, and `IShiftManagementService.GetActiveAsync`.
 - **GDPR** — `AgentService` implements `IUserDataContributor` so per-user export pulls conversation history. User deletion does not cascade into Agent; orphan rows expire via the retention job.
 
 ## Architecture

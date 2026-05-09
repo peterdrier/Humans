@@ -50,6 +50,11 @@ public class InterfaceMethodBudgetTests
         // from ITeamService (moved to IUserMerge.ReassignAsync, implemented
         // by TeamService and dispatched by AccountMergeService via
         // IEnumerable<IUserMerge> fan-out).
+        // 70→70: issue-634 — added GetActiveTeamMembershipsForUserAsync (name +
+        // role-in-team for the agent snapshot) and removed
+        // GetActiveTeamNamesForUserAsync, since the new method is strictly more
+        // capable; the one production caller (ProfileController popover)
+        // projects to names via .Select(m => m.TeamName).
         [typeof(ITeamService)] = 70,
         // ICampService raised 53→57 for per-camp roles feature (peterdrier#489):
         // AddCampMemberAsLeadAsync, GetSeasonMembersAsync, GetCampMemberStatusAsync,
@@ -119,14 +124,16 @@ public class InterfaceMethodBudgetTests
         // method's own interface comment said "At ~500-user scale this can
         // be a simple Count query — no caching required" — i.e. it never
         // earned its dedicated surface area).
-        // 39→40: ticket-transfer recipient lookup (PR #421). Added
-        // SearchProfilesAsync(Func<FullProfile,bool>) — predicate-based
-        // search introduced for the burner-name-only filter.
-        // Followup tracked in nobodies-collective/Humans#665: migrate the
-        // existing SearchHumansAsync / SearchHumansByNameAsync /
-        // SearchApprovedUsersAsync callers onto the predicate variant and
-        // delete the narrow methods, bringing the budget back down.
-        [typeof(IProfileService)] = 40,
+        // 39→36: peterdrier#673 person-search consolidation. Removed
+        // SearchHumansAsync, SearchHumansByNameAsync, SearchApprovedUsersAsync,
+        // GetFilteredHumansAsync (4 surfaces accreted across past PRs — each
+        // tiny variant). Added SearchProfilesAsync(query, PersonSearchFields,
+        // limit) — single bit-flag API. AdminList orchestration moved to
+        // AdminHumanListAssembler (Application layer static helper) and
+        // controller-driven composition; FeedbackController/IssuesController
+        // use GetActiveApprovedUserIdsAsync + IUserService.GetByIdsAsync for
+        // population dropdowns. Net -3.
+        [typeof(IProfileService)] = 36,
         // -1 for GetContactUsersAsync removal (/Contacts surface deleted in PR 2 of
         // email-identity-decoupling — only ContactService called it).
         // 31→31: account-merge fold redesign Phase 3.4. Added 3 fold primitives
@@ -161,7 +168,15 @@ public class InterfaceMethodBudgetTests
         // both happen through IUserMerge.ReassignAsync on UserService;
         // DuplicateAccountService routes the logins move directly via
         // IUserRepository (it doesn't run the full IUserMerge fan-out).
-        [typeof(IUserService)] = 29,
+        // 29→30: issue-660 EmailProblems case 8. Added GetUsersWithLoginsButNoEmailsAsync
+        // to surface ghost AspNetUserLogins rows (auth artifacts left behind by old
+        // account flows). Authorized by repo owner — no expiable substitute exists
+        // at the service surface (UserLogins is auth-internal).
+        // 30→31: issue-660 EmailProblems case 8 cleanup. Added
+        // DeleteAllExternalLoginsForUserAsync — service surface for the admin
+        // "Delete ghost logins" action. Auth-table cleanup; no expiable substitute
+        // (only the User section can write to AspNetUserLogins).
+        [typeof(IUserService)] = 31,
     };
 
     [HumansTheory]

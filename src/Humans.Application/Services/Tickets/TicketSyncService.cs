@@ -47,6 +47,7 @@ namespace Humans.Application.Services.Tickets;
 public sealed class TicketSyncService : ITicketSyncService, IUserMerge
 {
     private readonly ITicketRepository _ticketRepository;
+    private readonly ITicketTransferRepository _transferRepository;
     private readonly ITicketVendorService _vendorService;
     private readonly IStripeService _stripeService;
     private readonly IClock _clock;
@@ -59,6 +60,7 @@ public sealed class TicketSyncService : ITicketSyncService, IUserMerge
 
     public TicketSyncService(
         ITicketRepository ticketRepository,
+        ITicketTransferRepository transferRepository,
         ITicketVendorService vendorService,
         IStripeService stripeService,
         IClock clock,
@@ -70,6 +72,7 @@ public sealed class TicketSyncService : ITicketSyncService, IUserMerge
         IShiftManagementService shiftManagementService)
     {
         _ticketRepository = ticketRepository;
+        _transferRepository = transferRepository;
         _vendorService = vendorService;
         _stripeService = stripeService;
         _clock = clock;
@@ -244,6 +247,7 @@ public sealed class TicketSyncService : ITicketSyncService, IUserMerge
         CancellationToken ct)
     {
         await _ticketRepository.ReassignToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
+        await _transferRepository.ReassignUserAsync(sourceUserId, targetUserId, ct);
 
         // Per-user ticket coverage / dashboard / who-hasn't-bought derive from
         // MatchedUserId on orders + attendees, so all of them must refresh.

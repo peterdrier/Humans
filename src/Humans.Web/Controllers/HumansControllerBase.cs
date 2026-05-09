@@ -1,3 +1,4 @@
+using Humans.Application.Services.AuditLog;
 using Humans.Domain.Entities;
 using Humans.Web.Constants;
 using Humans.Web.Models;
@@ -74,35 +75,35 @@ public abstract class HumansControllerBase : Controller
         string title,
         string? backUrl,
         string? backLabel,
-        IEnumerable<AuditLogEntry> entries)
+        IEnumerable<AuditEvent> events)
     {
-        return View("GoogleSyncAudit", BuildGoogleSyncAuditViewModel(title, backUrl, backLabel, entries));
+        return View("GoogleSyncAudit", BuildGoogleSyncAuditViewModel(title, backUrl, backLabel, events));
     }
 
     protected static GoogleSyncAuditListViewModel BuildGoogleSyncAuditViewModel(
         string title,
         string? backUrl,
         string? backLabel,
-        IEnumerable<AuditLogEntry> entries)
+        IEnumerable<AuditEvent> events)
     {
         return new GoogleSyncAuditListViewModel
         {
             Title = title,
             BackUrl = backUrl,
             BackLabel = backLabel,
-            Entries = entries.Select(static entry => new GoogleSyncAuditEntryViewModel
+            Entries = events.Select(static ev => new GoogleSyncAuditEntryViewModel
             {
-                Action = entry.Action,
-                Description = entry.Description,
-                UserEmail = entry.UserEmail,
-                Role = entry.Role,
-                SyncSource = entry.SyncSource,
-                OccurredAt = entry.OccurredAt.ToDateTimeUtc(),
-                Success = entry.Success,
-                ErrorMessage = entry.ErrorMessage,
-                ResourceName = entry.Resource?.Name,
-                ResourceId = entry.ResourceId,
-                RelatedEntityId = entry.RelatedEntityId
+                Action = ev.Action,
+                Description = ev.Description,
+                UserEmail = ev.UserEmail,
+                Role = ev.Role,
+                SyncSource = ev.SyncSource,
+                OccurredAt = ev.OccurredAt.ToDateTimeUtc(),
+                Success = ev.Success,
+                ErrorMessage = ev.ErrorMessage,
+                ResourceName = ev.ResourceName,
+                ResourceId = ev.ResourceId,
+                RelatedEntityId = ev.RelatedEntityId
             }).ToList()
         };
     }

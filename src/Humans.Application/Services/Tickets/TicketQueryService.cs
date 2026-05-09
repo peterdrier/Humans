@@ -761,6 +761,9 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
             o.Currency)).ToList();
     }
 
+    public Task<IReadOnlyList<Guid>> GetOpenTicketIdsForUserAsync(Guid userId, CancellationToken ct = default) =>
+        _ticketRepository.GetOpenOrderIdsMatchedToUserAsync(userId, ct);
+
     public async Task<Instant?> GetPostEventHoldDateAsync(CancellationToken ct = default)
     {
         var activeEvent = await _shiftManagementService.GetActiveAsync();
@@ -876,8 +879,6 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
         Guid userId, CancellationToken ct = default)
     {
         var rows = await _ticketRepository.GetAttendeesVisibleToUserAsync(userId, ct);
-        return rows
-            .OrderBy(a => a.AttendeeName, StringComparer.OrdinalIgnoreCase)
-            .ToList();
+        return rows.ToList();
     }
 }

@@ -163,10 +163,11 @@ public class HomeController : HumansControllerBase
             PendingCount = data.PendingSignupCount,
         };
 
-        var visibleAttendees = await _ticketQueryService.GetAttendeesVisibleToUserAsync(user.Id, cancellationToken);
+        var visibleAttendees = (await _ticketQueryService.GetAttendeesVisibleToUserAsync(user.Id, cancellationToken))
+            .OrderBy(a => a.AttendeeName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
 
-        var pendingTransfers = (await _ticketTransferService.GetByRequesterAsync(user.Id, cancellationToken))
-            .Where(t => t.Status == TicketTransferStatus.Pending)
+        var pendingTransfers = (await _ticketTransferService.GetPendingByRequesterAsync(user.Id, cancellationToken))
             .ToDictionary(t => t.OriginalAttendeeId, t => t.Id);
 
         viewModel.MyAttendees = visibleAttendees

@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using NodaTime.Testing;
@@ -417,5 +418,80 @@ public sealed class UserRepositoryTests : IDisposable
         var result = await _repo.GetMergedSourceIdsAsync(c.Id, default);
 
         result.Should().BeEquivalentTo(new[] { b.Id });
+    }
+
+    // ==========================================================================
+    // PurgeAsync — deletes AspNetUserLogins (issue #661)
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task PurgeAsync_RemovesAspNetUserLoginsForUser()
+    {
+        var user = await SeedUserAsync();
+        var other = await SeedUserAsync();
+        AddLogin(user.Id, "Google", "fred-google-sub");
+        AddLogin(other.Id, "Google", "other-google-sub");
+        await _dbContext.SaveChangesAsync();
+
+        var displayName = await _repo.PurgeAsync(user.Id, default);
+
+        displayName.Should().NotBeNull();
+        var remaining = await _dbContext.Set<IdentityUserLogin<Guid>>().ToListAsync();
+        remaining.Should().ContainSingle()
+            .Which.UserId.Should().Be(other.Id);
+    }
+
+    [HumansFact]
+    public async Task PurgeAsync_NoLogins_StillPurgesUser()
+    {
+        var user = await SeedUserAsync();
+
+        var displayName = await _repo.PurgeAsync(user.Id, default);
+
+        displayName.Should().Be("Seeded User");
+    }
+
+    // ==========================================================================
+    // ApplyExpiredDeletionAnonymizationAsync — deletes AspNetUserLogins (issue #661)
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task ApplyExpiredDeletionAnonymizationAsync_RemovesAspNetUserLoginsForUser()
+    {
+        var user = await SeedUserAsync();
+        var other = await SeedUserAsync();
+        AddLogin(user.Id, "Google", "fred-google-sub");
+        AddLogin(user.Id, "Microsoft", "fred-ms-sub");
+        AddLogin(other.Id, "Google", "other-google-sub");
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _repo.ApplyExpiredDeletionAnonymizationAsync(user.Id, default);
+
+        result.Should().NotBeNull();
+        var remaining = await _dbContext.Set<IdentityUserLogin<Guid>>().ToListAsync();
+        remaining.Should().ContainSingle()
+            .Which.UserId.Should().Be(other.Id);
+    }
+
+    [HumansFact]
+    public async Task ApplyExpiredDeletionAnonymizationAsync_NoLogins_StillAnonymizesUser()
+    {
+        var user = await SeedUserAsync();
+
+        var result = await _repo.ApplyExpiredDeletionAnonymizationAsync(user.Id, default);
+
+        result.Should().NotBeNull();
+        result!.OriginalDisplayName.Should().Be("Seeded User");
+    }
+
+    private void AddLogin(Guid userId, string loginProvider, string providerKey)
+    {
+        _dbContext.Set<IdentityUserLogin<Guid>>().Add(new IdentityUserLogin<Guid>
+        {
+            UserId = userId,
+            LoginProvider = loginProvider,
+            ProviderKey = providerKey,
+            ProviderDisplayName = loginProvider,
+        });
     }
 }

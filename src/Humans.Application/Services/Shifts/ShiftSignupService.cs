@@ -541,7 +541,7 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
         return SignupResult.Ok(signup);
     }
 
-    public async Task<SignupResult> SignUpRangeAsync(Guid userId, Guid rotaId, int startDayOffset, int endDayOffset, Guid? actorUserId = null, bool isPrivileged = false)
+    public async Task<SignupResult> SignUpRangeAsync(Guid userId, Guid rotaId, int startDayOffset, int endDayOffset, Guid? actorUserId = null, bool isPrivileged = false, bool skipConflicts = false)
     {
         var rota = await _repo.GetRotaWithShiftsAsync(rotaId);
         if (rota is null) return SignupResult.Fail("Rota not found.");
@@ -564,21 +564,37 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
             .OrderBy(s => s.DayOffset)
             .ToList();
 
-        if (shiftsInRange.Count == 0)
-            return SignupResult.Fail("No shifts found in the specified date range.");
-
         // AdminOnly check (Fix #2)
         if (!isPrivileged && shiftsInRange.Any(s => s.AdminOnly))
             return SignupResult.Fail("One or more shifts in this range are restricted to coordinators and admins.");
 
-        // Duplicate signup check — reject if user already has Pending/Confirmed on any shift in range (Fix #1)
+        // Fetch all active signups upfront — used for both duplicate-check and time-overlap check
         var shiftIdsInRange = shiftsInRange.Select(s => s.Id).ToHashSet();
-        var activeShiftIds = await _repo.GetActiveShiftIdsForUserAsync(userId, shiftIdsInRange);
+        var existingSignups = await _repo.GetActiveSignupsForUserAsync(userId);
+        var activeShiftIds = existingSignups
+            .Where(s => shiftIdsInRange.Contains(s.ShiftId))
+            .Select(s => s.ShiftId)
+            .ToHashSet();
+
+        // Duplicate signup check — reject (or filter, if skipConflicts) if user already has Pending/Confirmed
+        var skipMessages = new List<string>();
         if (activeShiftIds.Count > 0)
-            return SignupResult.Fail("Already signed up for one or more shifts in this range.");
+        {
+            if (!skipConflicts)
+                return SignupResult.Fail("Already signed up for one or more shifts in this range.");
+
+            var alreadySignedUpDays = shiftsInRange
+                .Where(s => activeShiftIds.Contains(s.Id))
+                .Select(s => s.DayOffset)
+                .ToList();
+            var dayList = string.Join(", ", alreadySignedUpDays.Select(offset =>
+                FormatShiftDate(es.GateOpeningDate.PlusDays(offset))));
+            skipMessages.Add($"Already signed up for day(s): {dayList}.");
+
+            shiftsInRange = shiftsInRange.Where(s => !activeShiftIds.Contains(s.Id)).ToList();
+        }
 
         // Check overlap for each day (include Pending signups too)
-        var existingSignups = await _repo.GetActiveSignupsForUserAsync(userId);
 
         var conflictingDays = new List<int>();
         foreach (var shift in shiftsInRange)
@@ -604,11 +620,27 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
         {
             var dayList = string.Join(", ", conflictingDays.Select(offset =>
                 FormatShiftDate(es.GateOpeningDate.PlusDays(offset))));
-            return SignupResult.Fail($"Time conflict on day(s): {dayList}.");
+
+            if (!skipConflicts)
+                return SignupResult.Fail($"Time conflict on day(s): {dayList}.");
+
+            skipMessages.Add($"Time conflict on day(s): {dayList}.");
+            shiftsInRange = shiftsInRange.Where(s => !conflictingDays.Contains(s.DayOffset)).ToList();
         }
 
+        // Empty-range guard — covers both "filtered everything out" and "range was always empty"
+        if (shiftsInRange.Count == 0)
+        {
+            return skipMessages.Count > 0
+                ? SignupResult.Fail(string.Join(" ", skipMessages) + " Nothing to add.")
+                : SignupResult.Fail("No shifts found in the specified date range.");
+        }
+
+        // Rebuild shiftIdsInRange after conflict filters so capacity check only queries relevant shifts
+        shiftIdsInRange = shiftsInRange.Select(s => s.Id).ToHashSet();
+
         // Capacity check — hard block: exclude full shifts from the range
-        string? warning = null;
+        string? warning = skipMessages.Count > 0 ? string.Join(" ", skipMessages) : null;
         var signupCounts = await _repo.GetConfirmedCountsByShiftAsync(shiftIdsInRange);
         var fullDays = shiftsInRange
             .Where(s => signupCounts.GetValueOrDefault(s.Id) >= s.MaxVolunteers)
@@ -626,7 +658,8 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
         {
             var dayList = string.Join(", ", fullDays.Select(offset =>
                 FormatShiftDate(es.GateOpeningDate.PlusDays(offset))));
-            warning = $"Day(s) {dayList} are at capacity.";
+            var capacityWarning = $"Day(s) {dayList} are at capacity.";
+            warning = warning is null ? capacityWarning : $"{warning} {capacityWarning}";
         }
 
         // EE cap check for build shifts
@@ -891,6 +924,9 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
 
     public Task<IReadOnlyList<ShiftSignup>> GetByUserAsync(Guid userId, Guid? eventSettingsId = null) =>
         _repo.GetByUserAsync(userId, eventSettingsId);
+
+    public Task<IReadOnlyList<ShiftSignup>> GetActiveSignupsForUserAsync(Guid userId, CancellationToken ct = default) =>
+        _repo.GetActiveSignupsForUserAsync(userId, ct);
 
     public Task<ShiftSignup?> GetByIdAsync(Guid signupId) =>
         _repo.GetByIdAsync(signupId);

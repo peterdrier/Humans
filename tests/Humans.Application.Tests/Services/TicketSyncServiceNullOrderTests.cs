@@ -73,6 +73,7 @@ public class TicketSyncServiceNullOrderTests : IDisposable
 
         _service = new TicketSyncService(
             _ticketRepository,
+            new TicketTransferRepository(_factory),
             _vendorService,
             _stripeService,
             _clock,

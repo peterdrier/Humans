@@ -27,7 +27,6 @@ src/Humans.Web/Controllers/CampController.cs:AssignRole/4
 src/Humans.Web/Controllers/CampController.cs:AssignRoleByUser/4
 src/Humans.Web/Controllers/CampController.cs:Contact/2
 src/Humans.Web/Controllers/CampController.cs:Edit/2
-src/Humans.Web/Controllers/CampController.cs:Edit/3
 src/Humans.Web/Controllers/CampController.cs:LeaveMembership/2
 src/Humans.Web/Controllers/CampController.cs:Register/1
 src/Humans.Web/Controllers/CampController.cs:RequestMembership/1
@@ -138,3 +137,4 @@ src/Humans.Web/Controllers/TeamController.cs:Join/2
 src/Humans.Web/Controllers/TeamController.cs:Leave/1
 src/Humans.Web/Controllers/TicketController.cs:Index/0
 src/Humans.Web/Controllers/TicketController.cs:ParticipationBackfill/1
+src/Humans.Web/Controllers/WidgetGalleryController.cs:Index/0

@@ -128,4 +128,7 @@ public enum AuditAction
     TicketTransferApproved,
     TicketTransferRejected,
     TicketTransferCancelled,
+    OrphanUserEmailDeleted,
+    GhostExternalLoginsDeleted,
+    LegacyIdentityEmailBackfilled,
 }

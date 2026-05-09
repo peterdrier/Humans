@@ -34,7 +34,7 @@ Tracked in: peterdrier/Humans#382.
 
 **Acceptance Criteria:**
 - Dashboard shows each of the buyer's attendee rows with a "Transfer" button when no transfer is in flight (single-ticket and multi-ticket holders both see the button)
-- Recipient lookup accepts a full email address (case-insensitive, exact match) or a burner name (case-insensitive substring); ambiguous matches surface a "no unique match" error rather than picking arbitrarily
+- Recipient lookup accepts a full email address (case-insensitive, exact match) or a burner name (case-insensitive substring). Email queries return at most one candidate (no fuzzy leak); name queries return up to 10 candidates so the buyer picks the right one from a list when more than one matches
 - A baseball-card preview of the recipient (display name, picture, burner name, optional preferred email) renders inline before submission so the buyer confirms identity before committing
 - Submit attaches a free-text reason (≤1000 chars) visible to admin
 - Successful submit shows the row with a "Pending review" badge and a Cancel button on the dashboard
@@ -113,7 +113,7 @@ Triggers: `Submit` (buyer), `Cancel` (buyer, only on Pending owned), `Reject` (a
 
 ## Recipient Lookup Contract
 
-`ITicketTransferService.LookupRecipientAsync` is **case-insensitive** and **exact-match-on-email** (no fuzzy / partial / wildcard semantics) to avoid accidental cross-matches between similar email addresses. Burner names use case-insensitive `Contains` match; ambiguous results return null with a "no unique match" hint. Suspended or unapproved profiles are filtered out at the search layer (security-adjacent — no transferring to suspended users).
+`ITicketTransferService.LookupRecipientsAsync` is **case-insensitive** and **exact-match-on-email** (no fuzzy / partial / wildcard semantics) to avoid accidental cross-matches between similar email addresses. Email queries return zero or one candidate (the verified-email row, if any). Burner-name queries use case-insensitive `Contains` matching against the consolidated `PersonSearchFields.Name` bucket (covers `BurnerName` + the underlying `User.DisplayName`) and return up to 10 candidates ordered by display name — the buyer flow surfaces the list and lets the user pick. The picker resolves a chosen `UserId` back to a single baseball card via `GetRecipientCardAsync`. Suspended or unapproved profiles are filtered out at the search layer (security-adjacent — no transferring to suspended users).
 
 The four recipient fields surfaced in the baseball card (display name, picture, burner name, optional preferred email) are fixed by spec; the buyer flow does not re-invoke `ProfileCardViewComponent` because that would leak unrelated profile fields (teams, CV, bio) into the transfer surface.
 
@@ -136,7 +136,10 @@ A partial-state path also exists: if the vendor write succeeds but the local `Up
 Buyer dashboard (Home/Index → Dashboard.cshtml)
   ├─ Transfer button → TicketTransferController.Request (GET)
   │     → Request.cshtml (lookup form)
-  │        → Lookup (POST) → Request.cshtml with baseball-card
+  │        → Lookup (POST) → 0 results: same form with "no match" hint
+  │                          1 result : Request.cshtml with baseball-card
+  │                          >1 result: Request.cshtml with picker list,
+  │                                     PickRecipient (POST) → baseball-card
   │           → Submit (POST)
   │              → TicketTransferService.CreateRequestAsync
   │              → audit log, redirect to Home/Index with SetSuccess

@@ -132,6 +132,50 @@ public class OnboardingReviewController : HumansControllerBase
         return RedirectToAction(nameof(Index));
     }
 
+    [HttpPost("BulkClear")]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = PolicyNames.ConsentCoordinatorBoardOrAdmin)]
+    public async Task<IActionResult> BulkClear([FromForm] List<Guid> selectedUserIds, CancellationToken ct)
+    {
+        var currentUser = await GetCurrentUserAsync();
+        if (currentUser is null)
+            return NotFound();
+
+        try
+        {
+            var result = await _onboardingService.BulkClearConsentChecksAsync(
+                selectedUserIds, currentUser.Id, ct);
+            SetBulkClearResultMessage(result, selectedUserIds.Count);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Failed to bulk clear consent checks for {Count} users: {UserIds}",
+                selectedUserIds.Count,
+                selectedUserIds);
+            SetError(_localizer["Common_Error"].Value);
+        }
+
+        return RedirectToAction(nameof(Index));
+    }
+
+    private void SetBulkClearResultMessage(BulkOnboardingResult result, int selectedCount)
+    {
+        if (result.ApprovedCount == 0)
+        {
+            SetInfo(_localizer["OnboardingReview_BulkClearedNone"].Value);
+        }
+        else if (result.ApprovedCount < selectedCount)
+        {
+            SetSuccess(_localizer["OnboardingReview_BulkClearedPartial", result.ApprovedCount, selectedCount].Value);
+        }
+        else
+        {
+            SetSuccess(_localizer["OnboardingReview_BulkCleared", result.ApprovedCount].Value);
+        }
+    }
+
     [HttpPost("{userId:guid}/Flag")]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = PolicyNames.ConsentCoordinatorBoardOrAdmin)]
@@ -198,7 +242,7 @@ public class OnboardingReviewController : HumansControllerBase
     [Authorize(Policy = PolicyNames.BoardOrAdmin)]
     public async Task<IActionResult> BoardVoting(CancellationToken ct)
     {
-        var (applications, boardMembers) = await _onboardingService.GetBoardVotingDashboardAsync(ct);
+        var (applications, boardMembers) = await _applicationDecisionService.GetBoardVotingDashboardAsync(ct);
 
         var viewModel = new BoardVotingDashboardViewModel
         {
@@ -241,7 +285,7 @@ public class OnboardingReviewController : HumansControllerBase
     [Authorize(Policy = PolicyNames.BoardOrAdmin)]
     public async Task<IActionResult> BoardVotingDetail(Guid applicationId, CancellationToken ct)
     {
-        var application = await _onboardingService.GetBoardVotingDetailAsync(applicationId, ct);
+        var application = await _applicationDecisionService.GetBoardVotingDetailAsync(applicationId, ct);
         if (application is null)
             return NotFound();
 
@@ -300,7 +344,7 @@ public class OnboardingReviewController : HumansControllerBase
 
         try
         {
-            var result = await _onboardingService.CastBoardVoteAsync(
+            var result = await _applicationDecisionService.CastBoardVoteAsync(
                 applicationId, currentUser.Id, vote, note);
 
             if (!result.Success)
@@ -351,7 +395,7 @@ public class OnboardingReviewController : HumansControllerBase
         }
 
         // Require at least one board vote before finalization
-        var hasVotes = await _onboardingService.HasBoardVotesAsync(model.ApplicationId);
+        var hasVotes = await _applicationDecisionService.HasBoardVotesAsync(model.ApplicationId);
         if (!hasVotes)
         {
             SetError(_localizer["BoardVoting_NoVotes"].Value);
@@ -409,6 +453,7 @@ public class OnboardingReviewController : HumansControllerBase
         {
             UserId = profile.UserId,
             DisplayName = itemUser?.DisplayName ?? "Unknown",
+            LegalName = profile.FullName,
             ProfilePictureUrl = itemUser?.ProfilePictureUrl,
             Email = itemUser?.Email ?? string.Empty,
             ConsentCheckStatus = profile.ConsentCheckStatus,

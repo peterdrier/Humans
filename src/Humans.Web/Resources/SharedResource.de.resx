@@ -1019,6 +1019,10 @@
   <data name="OnboardingReview_FlagConfirm" xml:space="preserve"><value>Dieser Human wird zur weiteren Pr&#xFC;fung markiert. Fortfahren?</value></data>
   <data name="OnboardingReview_AlreadyCleared" xml:space="preserve"><value>Dieser Human wurde bereits freigegeben.</value></data>
   <data name="OnboardingReview_Cleared" xml:space="preserve"><value>Profil&#xFC;berpr&#xFC;fung freigegeben.</value></data>
+  <data name="OnboardingReview_BulkClearedNone" xml:space="preserve"><value>Keine ausgew&#xE4;hlten Humans wurden freigegeben.</value></data>
+  <data name="OnboardingReview_BulkCleared" xml:space="preserve"><value>{0} ausgew&#xE4;hlte Humans freigegeben.</value></data>
+  <data name="OnboardingReview_BulkClearedPartial" xml:space="preserve"><value>{0} von {1} ausgew&#xE4;hlten freigegeben — die anderen sind nicht mehr berechtigt.</value></data>
+  <data name="OnboardingReview_BulkClearButton" xml:space="preserve"><value>Alle ausgew&#xE4;hlten freigeben</value></data>
   <data name="OnboardingReview_Flagged" xml:space="preserve"><value>Human zur weiteren Pr&#xFC;fung markiert.</value></data>
   <data name="OnboardingReview_RejectButton" xml:space="preserve"><value>Anmeldung ablehnen</value></data>
   <data name="OnboardingReview_RejectReasonPlaceholder" xml:space="preserve"><value>Ablehnungsgrund...</value></data>
@@ -1719,6 +1723,17 @@
   <data name="Shifts_SaveAvailability" xml:space="preserve"><value>Verfügbarkeit speichern</value></data>
   <data name="Shifts_DaysSelected" xml:space="preserve"><value>Tage ausgewählt</value></data>
   <data name="Shifts_SlotsFull" xml:space="preserve"><value>Einige Tage brauchen noch Hilfe, aber alle verfügbaren Plätze sind derzeit belegt. Schau später noch einmal vorbei, falls Plätze frei werden.</value></data>
+  <data name="Shifts_ConfirmSignup_Title" xml:space="preserve"><value>Bestätige deine Anmeldung zum {0}</value></data>
+  <data name="Shifts_ConfirmSignup_Phase" xml:space="preserve"><value>Du meldest dich für {0} an ({1}-Phase).</value></data>
+  <data name="Shifts_ConfirmSignup_Range" xml:space="preserve"><value>Vom {0} bis zum {1} ({2} Tage).</value></data>
+  <data name="Shifts_ConfirmSignup_Range_Single" xml:space="preserve"><value>Für den {0} (1 Tag).</value></data>
+  <data name="Shifts_ConfirmSignup_ArriveBy" xml:space="preserve"><value>Du wirst erwartet, vor Ort zu sein bis {0}.</value></data>
+  <data name="Shifts_ConfirmSignup_Prompt" xml:space="preserve"><value>Ist das der Zeitraum, für den du dich anmelden wolltest?</value></data>
+  <data name="Shifts_ConfirmSignup_Confirm" xml:space="preserve"><value>Anmeldung bestätigen</value></data>
+  <data name="Shifts_ConfirmSignup_Conflicts_Heading" xml:space="preserve"><value>Einige Tage in diesem Zeitraum kollidieren mit Schichten, für die du bereits angemeldet bist:</value></data>
+  <data name="Shifts_ConfirmSignup_Conflicts_Row" xml:space="preserve"><value>{0} — bereits angemeldet bei {1} ({2}–{3})</value></data>
+  <data name="Shifts_ConfirmSignup_Conflicts_PartialNote" xml:space="preserve"><value>Du bist an einigen dieser Tage schon angemeldet, deshalb fügen wir nur die freien Tage hinzu.</value></data>
+  <data name="Shifts_ConfirmSignup_Conflicts_AllBlocked" xml:space="preserve"><value>Sieht so aus, als wärst du an jedem Tag in diesem Zeitraum bereits für eine Schicht angemeldet — wir können keine davon hinzufügen.</value></data>
 
   <data name="ShiftDash_Title" xml:space="preserve"><value>Schicht-Dashboard</value></data>
   <data name="ShiftDash_ShiftsCount" xml:space="preserve"><value>{0} Schichten</value><comment>{0} = count</comment></data>
@@ -1820,6 +1835,16 @@
   <data name="Privacy_ComplaintBody" xml:space="preserve"><value>Wenn du mit unserer Antwort nicht zufrieden bist, hast du das Recht, eine Beschwerde bei der Spanischen Datenschutzbehörde (AEPD) unter {0} einzureichen.</value><comment>{0} = AEPD URL</comment></data>
 
   <!-- Agent Widget -->
+  <data name="Agent_ConversationBackToHistory" xml:space="preserve"><value>Zurück zum Verlauf</value></data>
+  <data name="Agent_ConversationEmpty" xml:space="preserve"><value>Keine Nachrichten in diesem Gespräch.</value></data>
+  <data name="Agent_ConversationHandedOffToFeedback" xml:space="preserve"><value>An Feedback-Bericht weitergeleitet</value></data>
+  <data name="Agent_ConversationRefusedLabel" xml:space="preserve"><value>Der Assistent hat es abgelehnt, in dieser Runde zu antworten.</value></data>
+  <data name="Agent_ConversationTitle" xml:space="preserve"><value>Assistenten-Gespräch</value></data>
+  <data name="Agent_ConversationToolCallsSummary" xml:space="preserve"><value>{0} Werkzeugaufruf(e)</value></data>
+  <data name="Agent_ConversationTranscript" xml:space="preserve"><value>Transkript</value></data>
+  <data name="Agent_ContextCardCaveat" xml:space="preserve"><value>Dies ist dein aktueller Kontext. Wenn sich deine Rollen oder Teams seit diesem Gespräch geändert haben, sah der Assistent damals eine andere Version.</value></data>
+  <data name="Agent_ContextCardEmpty" xml:space="preserve"><value>Derzeit wird kein persönlicher Kontext an den Assistenten gesendet.</value></data>
+  <data name="Agent_ContextCardSummary" xml:space="preserve"><value>Dein Kontext (wie der Assistent dich jetzt sieht)</value></data>
   <data name="Agent_HistoryEmpty" xml:space="preserve"><value>Noch keine Gespräche.</value></data>
   <data name="Agent_HistoryLastMessage" xml:space="preserve"><value>Letzte Nachricht</value></data>
   <data name="Agent_HistoryMessages" xml:space="preserve"><value>Nachrichten</value></data>

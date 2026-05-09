@@ -1,3 +1,4 @@
+using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -29,7 +30,9 @@ public sealed class TicketTransferAdminController : HumansControllerBase
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken ct)
     {
-        var pending = await _service.GetByStatusAsync(TicketTransferStatus.Pending, ct);
+        var pending = (await _service.GetByStatusAsync(TicketTransferStatus.Pending, ct))
+            .OrderBy(r => r.RequestedAt) // FIFO admin queue
+            .ToList();
         return View(pending);
     }
 
@@ -54,8 +57,8 @@ public sealed class TicketTransferAdminController : HumansControllerBase
 
         try
         {
-            await DispatchDecisionAsync(id, approve, user.Id, adminNotes, ct);
-            SetSuccess(approve ? "Transfer approved." : "Transfer rejected.");
+            var result = await DispatchDecisionAsync(id, approve, user.Id, adminNotes, ct);
+            ApplyDecisionFeedback(approve, result);
         }
         catch (InvalidOperationException ex)
         {
@@ -66,7 +69,25 @@ public sealed class TicketTransferAdminController : HumansControllerBase
         return RedirectToAction(nameof(Index));
     }
 
-    private Task DispatchDecisionAsync(Guid id, bool approve, Guid userId, string? notes, CancellationToken ct) =>
+    private void ApplyDecisionFeedback(bool approve, TicketTransferRowDto result)
+    {
+        if (!approve)
+        {
+            SetSuccess("Transfer rejected.");
+            return;
+        }
+        if (result.VendorResult == TicketTransferVendorResult.Succeeded)
+        {
+            SetSuccess("Transfer approved.");
+            return;
+        }
+        // Approval recorded, but TT writeback didn't fully succeed — admin
+        // must finish the transfer manually in the TicketTailor dashboard.
+        SetError($"Transfer approved, but vendor writeback {result.VendorResult}. " +
+            "Complete the transfer in the TicketTailor dashboard.");
+    }
+
+    private Task<TicketTransferRowDto> DispatchDecisionAsync(Guid id, bool approve, Guid userId, string? notes, CancellationToken ct) =>
         approve
             ? _service.ApproveAsync(id, userId, notes, ct)
             : _service.RejectAsync(id, userId, notes, ct);

@@ -91,6 +91,17 @@ public class User : IdentityUser<Guid>
         set => base.Email = value;
     }
 
+    /// <summary>
+    /// Raw legacy AspNetIdentity <c>Email</c> column value, bypassing the
+    /// computed-from-<see cref="UserEmails"/> override. Diagnostic only —
+    /// used by EmailProblems case-9 detection (legacy column populated but
+    /// no matching <see cref="UserEmail"/> row) and by the admin Manage
+    /// Emails page when a full Admin views another user. Application code
+    /// should read <see cref="Email"/>, not this property.
+    /// </summary>
+    [System.ComponentModel.DataAnnotations.Schema.NotMapped]
+    public string? IdentityEmailColumn => base.Email;
+
     /// <inheritdoc />
     /// <remarks>
     /// Issue #635 (§15i): NormalizedEmail is shadow-populated by Identity but

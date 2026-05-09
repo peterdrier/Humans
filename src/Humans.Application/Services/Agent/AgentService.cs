@@ -265,10 +265,33 @@ public sealed class AgentService : IAgentService, IUserDataContributor
         return conv is not null && conv.UserId == userId ? conv : null;
     }
 
+    public async Task<AgentMyConversationView?> GetMyConversationAsync(
+        Guid userId, Guid conversationId, CancellationToken ct)
+    {
+        var conv = await _repo.GetConversationByIdAsync(conversationId, ct);
+        // Mismatched ownership and "doesn't exist" must look the same to the
+        // caller (Agent.md invariant 7) — both return null so the controller
+        // can 404 without leaking existence of someone else's conversation.
+        if (conv is null || conv.UserId != userId) return null;
+
+        // Tail is regenerated from the live snapshot. It may differ from what
+        // the model actually saw at the time of any historical turn — the
+        // view surfaces this caveat to the user. Persisting per-turn snapshots
+        // is tracked in Agent.md "Open question".
+        var snapshot = await _snapshots.LoadAsync(userId, ct);
+        var tail = _assembler.BuildUserContextTail(snapshot);
+        return new AgentMyConversationView(conv, tail);
+    }
+
     public Task<IReadOnlyList<AgentConversation>> ListAllConversationsForAdminAsync(
+        bool refusalsOnly, Guid? userId, int take, int skip,
+        CancellationToken ct) =>
+        _repo.ListAllConversationsAsync(refusalsOnly, userId, take, skip, ct);
+
+    public Task<IReadOnlyList<AgentConversation>> ListAllConversationsForAdminWithMessagesAsync(
         bool refusalsOnly, bool handoffsOnly, Guid? userId, int take, int skip,
         CancellationToken ct) =>
-        _repo.ListAllConversationsAsync(refusalsOnly, handoffsOnly, userId, take, skip, ct);
+        _repo.ListAllConversationsWithMessagesAsync(refusalsOnly, handoffsOnly, userId, take, skip, ct);
 
     public Task<AgentConversation?> GetConversationForAdminAsync(Guid id, CancellationToken ct) =>
         _repo.GetConversationByIdAsync(id, ct);

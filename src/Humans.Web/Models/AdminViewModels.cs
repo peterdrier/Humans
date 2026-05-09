@@ -45,36 +45,20 @@ public class AdminHumanListViewModel : PagedListViewModel
     {
     }
 
-    public List<AdminHumanViewModel> Humans { get; set; } = [];
+    /// <summary>
+    /// Page of admin humans to render via the canonical
+    /// <c>_HumanSearchResults</c> partial. Admin-specific fields
+    /// (<c>AdminEmail</c>, <c>MembershipStatus</c>, <c>CreatedAt</c>,
+    /// <c>LastLoginAt</c>, <c>AdminDetailUrl</c>) are pre-populated by the
+    /// controller so the partial can render them inline.
+    /// </summary>
+    public List<HumanSearchResultViewModel> Humans { get; set; } = [];
     public string? SearchTerm { get; set; }
     public string? StatusFilter { get; set; }
     public string SortBy { get; set; } = "name";
     public string SortDir { get; set; } = "asc";
 }
 
-public class AdminHumanViewModel
-{
-    public Guid Id { get; set; }
-    public string Email { get; set; } = string.Empty;
-    public string DisplayName { get; set; } = string.Empty;
-    public string? ProfilePictureUrl { get; set; }
-    public DateTime CreatedAt { get; set; }
-    public DateTime? LastLoginAt { get; set; }
-    public string MembershipStatus { get; set; } = "None";
-    public bool HasProfile { get; set; }
-    public bool IsApproved { get; set; }
-
-    /// <summary>
-    /// Whether this human has a verified @nobodies.team email.
-    /// </summary>
-    public bool HasNobodiesTeamEmail { get; set; }
-
-    /// <summary>
-    /// Whether the @nobodies.team email is used as their notification target.
-    /// Only meaningful when HasNobodiesTeamEmail is true.
-    /// </summary>
-    public bool NobodiesTeamEmailIsPrimary { get; set; }
-}
 
 public class AdminHumanDetailViewModel
 {
@@ -224,46 +208,15 @@ public class EndRoleAssignmentViewModel
     public string? Notes { get; set; }
 }
 
-public class AuditLogEntryViewModel
-{
-    public AuditAction Action { get; set; }
-    public string Description { get; set; } = string.Empty;
-    public DateTime OccurredAt { get; set; }
-    public Guid? ActorUserId { get; set; }
-    public bool IsSystemAction { get; set; }
-    public string EntityType { get; set; } = string.Empty;
-    public Guid EntityId { get; set; }
-    public string? RelatedEntityType { get; set; }
-    public Guid? RelatedEntityId { get; set; }
-
-    /// <summary>
-    /// Returns the subject user ID (the person acted upon), based on entity type patterns.
-    /// </summary>
-    public Guid? SubjectUserId =>
-        EntityType is "User" or "Profile" or "WorkspaceAccount" ? EntityId :
-        string.Equals(RelatedEntityType, "User", StringComparison.Ordinal) ? RelatedEntityId :
-        null;
-
-    /// <summary>
-    /// Returns the target entity ID (team, resource, etc.), if applicable.
-    /// </summary>
-    public Guid? TargetTeamId =>
-        string.Equals(EntityType, "Team", StringComparison.Ordinal) ? EntityId :
-        string.Equals(RelatedEntityType, "Team", StringComparison.Ordinal) ? RelatedEntityId :
-        null;
-}
-
 public class AuditLogListViewModel : PagedListViewModel
 {
     public AuditLogListViewModel() : base(50)
     {
     }
 
-    public List<AuditLogEntryViewModel> Entries { get; set; } = [];
+    public IReadOnlyList<Humans.Application.Services.AuditLog.AuditEvent> Events { get; set; } = [];
     public string? ActionFilter { get; set; }
     public int AnomalyCount { get; set; }
-    public Dictionary<Guid, string> UserDisplayNames { get; set; } = new();
-    public Dictionary<Guid, (string Name, string Slug)> TeamNames { get; set; } = new();
 }
 
 public class GoogleSyncAuditEntryViewModel

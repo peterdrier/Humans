@@ -245,7 +245,7 @@ Each section's service owns these tables. Cross-service access goes through the 
 | **Auth** | `RoleAssignmentService`, `MagicLinkService` | `role_assignments` |
 | **Governance** | `ApplicationDecisionService` | `applications`, `application_state_histories`, `board_votes` |
 | **Legal & Consent** | `LegalDocumentService`, `AdminLegalDocumentService`, `LegalDocumentSyncService`, `ConsentService` | `legal_documents`, `document_versions`, `consent_records` |
-| **Onboarding** | `OnboardingService` | *(no owned tables — orchestrates Profiles, Legal, Teams, Governance)* |
+| **Onboarding** | `OnboardingService` (intake funnel), `HumanLifecycleService` (suspend/unsuspend state-machine) | *(no owned tables — orchestrator pair over Profiles, Legal & Consent, Teams, Governance)* |
 | **Camps** | `CampService`, `CampContactService` | `camps`, `camp_seasons`, `camp_leads`, `camp_images`, `camp_historical_names`, `camp_settings` |
 | **City Planning** | `CityPlanningService` | `city_planning_settings`, `camp_polygons`, `camp_polygon_histories` |
 | **Calendar** | `CalendarService` | `calendar_events`, `calendar_event_exceptions` |
@@ -535,9 +535,9 @@ var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(Inner
 
 **Writes:** delegate to the inner service, then call `RefreshEntryAsync(userId, ct)`. `RefreshEntryAsync` reloads directly from repositories, re-stitches the `FullProfile`, and upserts the dict. If the profile or user no longer exists, the dict entry is removed.
 
-**Warming:** eager at startup. `FullProfileWarmupHostedService` (registered via `AddHostedService`) calls `CachingProfileService.WarmAllAsync` during host start, enumerating all users and populating `_byUserId` before the app takes traffic. Bulk reads (`GetBirthdayProfilesAsync`, `GetApprovedProfilesWithLocationAsync`, `GetFilteredHumansAsync`, `SearchApprovedUsersAsync`) then read the warm dict directly — no runtime gate, no fully-warm flag. If warmup fails (e.g., DB unreachable at startup) the hosted service logs at Error and the host continues to start; individual per-user reads will lazy-populate the dict via `GetFullProfileAsync`. Warmup is an optimization, not a correctness requirement.
+**Warming:** eager at startup. `FullProfileWarmupHostedService` (registered via `AddHostedService`) calls `CachingProfileService.WarmAllAsync` during host start, enumerating all users and populating `_byUserId` before the app takes traffic. Bulk reads (`GetBirthdayProfilesAsync`, `GetApprovedProfilesWithLocationAsync`, `SearchProfilesAsync`) then read the warm dict directly — no runtime gate, no fully-warm flag. If warmup fails (e.g., DB unreachable at startup) the hosted service logs at Error and the host continues to start; individual per-user reads will lazy-populate the dict via `GetFullProfileAsync`. Warmup is an optimization, not a correctness requirement.
 
-**Static helpers:** methods like `GetBirthdayProfilesAsync` and `SearchApprovedUsersAsync` are served synchronously from `_byUserId.Values` via `ProfileService.GetBirthdayProfilesFromSnapshot` / `ProfileService.SearchApprovedUsersFromSnapshot` — no inner call, no scope.
+**Static helpers:** methods like `GetBirthdayProfilesAsync` are served synchronously from `_byUserId.Values` via `ProfileService.GetBirthdayProfilesFromSnapshot` / `ProfileService.GetApprovedProfilesWithLocationFromSnapshot` — no inner call, no scope. The person-search bit-flag matcher (`PersonSearchMatcher`) follows the same pattern: shared static called from both base service and decorator.
 
 DI registration for the decorator:
 

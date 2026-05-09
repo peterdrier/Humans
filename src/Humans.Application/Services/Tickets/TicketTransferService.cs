@@ -6,6 +6,7 @@ using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
+using Humans.Application.Services.Profiles;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Caching.Memory;
@@ -80,15 +81,12 @@ public sealed class TicketTransferService : ITicketTransferService
                 : new[] { card };
         }
 
-        // Burner-name queries: case-insensitive contains, return up to N
-        // candidates so the user can pick the right one.
+        // Name queries: case-insensitive contains over BurnerName + DisplayName
+        // (the consolidated PersonSearchFields.Name bucket).
         var hits = await _profileService.SearchProfilesAsync(
-            p => !string.IsNullOrEmpty(p.BurnerName) &&
-                 p.BurnerName.Contains(trimmed, StringComparison.OrdinalIgnoreCase),
-            ct);
+            trimmed, PersonSearchFields.Name, MaxBurnerNameMatches, ct);
         var candidates = hits
             .Where(h => h.UserId != requesterUserId)
-            .Take(MaxBurnerNameMatches)
             .ToList();
 
         var cards = new List<RecipientLookupResultDto>(candidates.Count);
@@ -287,7 +285,6 @@ public sealed class TicketTransferService : ITicketTransferService
         TicketTransferStatus status, CancellationToken ct = default)
     {
         var rows = (await _transferRepo.GetByStatusAsync(status, ct))
-            .OrderBy(r => r.RequestedAt) // FIFO admin queue
             .ToList();
         return await BuildRowDtosAsync(rows, ct);
     }
@@ -296,7 +293,15 @@ public sealed class TicketTransferService : ITicketTransferService
         Guid userId, CancellationToken ct = default)
     {
         var rows = (await _transferRepo.GetByRequesterAsync(userId, ct))
-            .OrderByDescending(r => r.RequestedAt) // newest-first history
+            .ToList();
+        return await BuildRowDtosAsync(rows, ct);
+    }
+
+    public async Task<IReadOnlyList<TicketTransferRowDto>> GetPendingByRequesterAsync(
+        Guid userId, CancellationToken ct = default)
+    {
+        var rows = (await _transferRepo.GetByRequesterAsync(userId, ct))
+            .Where(r => r.Status == TicketTransferStatus.Pending)
             .ToList();
         return await BuildRowDtosAsync(rows, ct);
     }
@@ -372,6 +377,15 @@ public sealed class TicketTransferService : ITicketTransferService
             _logger.LogError(ex,
                 "TT issue failed for transfer {TransferId} after successful void; hold {HoldId} retained",
                 request.Id, voidResult.HoldId);
+
+            // Vendor confirmed the void; mirror that locally so the requester's
+            // homepage card flips immediately. The reissue half failed — the
+            // recipient does not gain a new ticket here, but the original is
+            // dead at the vendor and must read dead locally too.
+            attendee.Status = TicketAttendeeStatus.Void;
+            await _ticketRepo.UpsertAttendeeAsync(attendee, ct);
+            _cache.InvalidateTicketCaches();
+            _cache.InvalidateUserTicketCount(request.RequesterUserId);
             return;
         }
 

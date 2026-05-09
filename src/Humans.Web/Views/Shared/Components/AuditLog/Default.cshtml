@@ -1,8 +1,7 @@
 @model Humans.Web.ViewComponents.AuditLogComponentViewModel
 
 @{
-    var entries = Model.Entries;
-    var hasEntries = entries.Count > 0;
+    var hasEntries = Model.Events.Count > 0;
 }
 
 @if (Model.ShowCard)

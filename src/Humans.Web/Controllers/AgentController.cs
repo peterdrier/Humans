@@ -88,7 +88,7 @@ public class AgentController : HumansControllerBase
 
     [HttpGet("Conversations")]
     public async Task<IActionResult> Conversations(
-        bool refusalsOnly = false, bool handoffsOnly = false, Guid? userId = null,
+        bool refusalsOnly = false, Guid? userId = null,
         int page = 0, CancellationToken cancellationToken = default)
     {
         var (missing, currentUser) = await RequireCurrentUserAsync();
@@ -96,9 +96,24 @@ public class AgentController : HumansControllerBase
 
         var isAdmin = User.IsInRole(RoleNames.Admin);
         var rows = await LoadConversationsAsync(
-            isAdmin, currentUser.Id, refusalsOnly, handoffsOnly, userId, page, cancellationToken);
+            isAdmin, currentUser.Id, refusalsOnly, userId, page, cancellationToken);
         var listRows = await StitchListRowsAsync(rows, isAdmin, cancellationToken);
         return View(new AgentConversationsViewModel(listRows, IsAdminView: isAdmin));
+    }
+
+    [HttpGet("Conversation/{id:guid}")]
+    public async Task<IActionResult> Conversation(Guid id, CancellationToken cancellationToken)
+    {
+        var (missing, currentUser) = await RequireCurrentUserAsync();
+        if (missing is not null) return missing;
+
+        // Ownership mismatch returns 404 (not 403) per Agent.md invariant 7
+        // and the issue #632 spec — the existence of someone else's
+        // conversation must not be inferable from the response code.
+        var view = await _agent.GetMyConversationAsync(currentUser.Id, id, cancellationToken);
+        if (view is null) return NotFound();
+
+        return View(new AgentMyConversationViewModel(view.Conversation, view.CurrentUserContextTail));
     }
 
     [HttpGet("Conversations/{id:guid}")]
@@ -117,13 +132,16 @@ public class AgentController : HumansControllerBase
 
     private Task<IReadOnlyList<AgentConversation>> LoadConversationsAsync(
         bool isAdmin, Guid currentUserId,
-        bool refusalsOnly, bool handoffsOnly, Guid? userId, int page,
+        bool refusalsOnly, Guid? userId, int page,
         CancellationToken ct)
     {
         const int adminPageSize = 25;
+        // Clamp negative page values from the URL — a negative offset would
+        // otherwise crash the EF paging call with a 500.
+        var safePage = page < 0 ? 0 : page;
         return isAdmin
             ? _agent.ListAllConversationsForAdminAsync(
-                refusalsOnly, handoffsOnly, userId, adminPageSize, page * adminPageSize, ct)
+                refusalsOnly, userId, adminPageSize, safePage * adminPageSize, ct)
             : _agent.GetHistoryAsync(currentUserId, take: 50, ct);
     }
 
@@ -172,7 +190,7 @@ public class AgentController : HumansControllerBase
 }
 
 /// <summary>List of conversations + an admin flag the view uses to decide whether
-/// to surface admin-only chrome (Human column, refusal/handoff filters).</summary>
+/// to surface admin-only chrome (Human column, refusal filters).</summary>
 public sealed record AgentConversationsViewModel(
     IReadOnlyList<AgentConversationRow> Rows,
     bool IsAdminView);

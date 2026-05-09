@@ -186,17 +186,32 @@
 
 @if (Model.CanManageRoles)
 {
+    @*
+        Canonical inline picker — _HumanSearchInput posts the chosen UserId
+        into a hidden input the parent form submits to AddMember. Replaces
+        the bespoke _MemberSearchScript that had its own JSON+form hybrid.
+        Scope=name keeps the picker tight (no bio / city / interests).
+    *@
     <div class="card mb-4 position-relative" style="z-index: 2;">
         <div class="card-header">@Localizer["TeamAdmin_AddMember"]</div>
         <div class="card-body">
-            @Html.AntiForgeryToken()
-            <div class="row align-items-end">
-                <div class="col-md-8 position-relative">
-                    <label for="memberSearch" class="form-label">@Localizer["TeamAdmin_SearchHumans"]</label>
-                    <input type="text" class="form-control" id="memberSearch" placeholder="@Localizer["TeamAdmin_SearchPlaceholder"]" autocomplete="off" />
-                    <div id="searchResults" class="list-group mt-1 position-absolute w-100 shadow" style="z-index: 1050; display: none;"></div>
+            <form asp-action="AddMember" asp-route-slug="@Model.TeamSlug" method="post" class="row g-2 align-items-end">
+                @Html.AntiForgeryToken()
+                <div class="col-md-8">
+                    <label class="form-label">@Localizer["TeamAdmin_SearchHumans"]</label>
+                    @await Html.PartialAsync("_HumanSearchInput", (object?)null, new ViewDataDictionary(ViewData)
+                    {
+                        ["FieldName"] = "UserId",
+                        ["InstanceKey"] = "team-add-member",
+                        ["Placeholder"] = Localizer["TeamAdmin_SearchPlaceholder"].Value,
+                        ["Scope"] = "name",
+                        ["ExcludeUserIds"] = Model.AllMemberUserIds,
+                    })
                 </div>
-            </div>
+                <div class="col-md-4">
+                    <button type="submit" class="btn btn-success">@Localizer["TeamAdmin_Add"]</button>
+                </div>
+            </form>
         </div>
     </div>
 }
@@ -353,22 +368,6 @@ else
     </div>
 }
 
-@if (Model.CanManageRoles)
-{
-    <script nonce="@Context.Items["CspNonce"]">
-        @await Html.PartialAsync("~/Views/Shared/_EscapeHtmlScript.cshtml")
-        @await Html.PartialAsync("~/Views/Shared/_RequestVerificationTokenScript.cshtml")
-        @await Html.PartialAsync("~/Views/Shared/_MemberSearchScript.cshtml", new ViewDataDictionary(ViewData)
-        {
-            ["SearchInputSelector"] = "#memberSearch",
-            ["ResultsSelector"] = "#searchResults",
-            ["SearchUrl"] = Url.Action(nameof(TeamAdminController.SearchUsers), "TeamAdmin", new { slug = Model.TeamSlug }),
-            ["AddUrl"] = Url.Action(nameof(TeamAdminController.AddMember), "TeamAdmin", new { slug = Model.TeamSlug }),
-            ["NoResultsText"] = Localizer["TeamAdmin_NoResults"].Value,
-            ["AddText"] = Localizer["TeamAdmin_Add"].Value
-        })
-    </script>
-}
 
 @if (Model.IsSensitive)
 {
