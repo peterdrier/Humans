@@ -337,8 +337,8 @@
                         <span class="wg-card-path">src/Humans.Web/Views/Shared/_HumanPopover.cshtml</span>
                     </div>
                     <div class="wg-card-note">
-                        Hover popover content rendered into the page by JS when a <code>&lt;human-link&gt;</code> with
-                        <code>show-popover=true</code> is hovered. Shown here directly for layout reference — in production
+                        Hover popover content rendered by JS when a <code>&lt;vc:human&gt;</code> element with
+                        <code>popover=true</code> and a link mode is hovered. Shown here directly for layout reference — in production
                         it's served by <code>/api/profiles/{id}/popover</code>.
                     </div>
                     @ParamsBlock(
@@ -1063,7 +1063,7 @@
                             </tr>
                             <tr>
                                 <th>Examples in this gallery</th>
-                                <td><code>&lt;human-link&gt;</code>, <code>authorize-policy="…"</code></td>
+                                <td><code>authorize-policy="…"</code></td>
                                 <td><code>&lt;vc:profile-card&gt;</code>, <code>&lt;vc:audit-log&gt;</code>, <code>&lt;vc:nav-badges&gt;</code>, <code>&lt;vc:notification-bell&gt;</code></td>
                                 <td><code>_ProfileCard</code>, <code>_RoleBadge</code>, <code>_Pager</code>, <code>_ShiftsSummaryCard</code>, <code>_EventRotaTable</code></td>
                             </tr>
@@ -1079,7 +1079,7 @@
                     </li>
                     <li>
                         <strong>Otherwise — does it want to feel native to HTML?</strong>
-                        i.e. add behavior to an element via an attribute (<code>authorize-policy</code>) or introduce a small custom element (<code>&lt;human-link&gt;</code>).
+                        i.e. add behavior to an element via an attribute (<code>authorize-policy</code>).
                         Yes → <span class="wg-card-kind kind-th">TagHelper</span>. Best when the caller would otherwise hand-write the same HTML repeatedly with small variations.
                     </li>
                     <li>
