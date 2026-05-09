@@ -24,7 +24,7 @@ External ticket vendor sync (orders + attendees), Stripe-fee enrichment, auto-ma
 - A **Ticket Attendee** represents an individual ticket holder (one per issued ticket, multiple per order). Tickets above `TicketConstants.VipThresholdEuros` (315 EUR) are treated as VIP — the portion above the threshold is a VAT-free donation, the portion at-or-below is taxable at `TicketConstants.VatRate` (10%) inclusive.
 - **Auto-matching** links orders to humans by buyer email and attendees to humans by attendee email. The lookup runs only against **verified** `UserEmails` rows under `NormalizingEmailComparer` so gmail/googlemail aliases collapse. A normalized verified email is supposed to be owned by exactly one user — if a normalized email maps to multiple verified users (data-integrity error, should not happen), the email is left unmatched and a `LogError` is emitted. Unverified emails never participate in matching.
 - **Ticket Sync** is a background Hangfire job (`TicketSyncJob`, every 15 min by default, configurable via `TicketVendor:SyncIntervalMinutes`) that pulls order and attendee data from the vendor through `ITicketVendorService`.
-- **TicketTransferRequest** is a buyer-initiated request to transfer an issued ticket to another Humans user. Lifecycle: `Pending → Approved | Rejected | Cancelled`. On approval, attempts a TicketTailor void+reissue (Option B). On vendor failure, falls back to Option C (Humans-only record; admin manually edits TT dashboard). The request still ends in `Approved` state under Option C; `VendorResult` records the failure.
+- **TicketTransferRequest** is a Sender-initiated request to send an issued ticket to another Humans user (the Receiver). Lifecycle: `Pending → Approved | Rejected | Cancelled`. On approval, attempts a TicketTailor void+reissue (Option B). On vendor failure, falls back to Option C (Humans-only record; admin manually edits TT dashboard). The request still ends in `Approved` state under Option C; `VendorResult` records the failure.
 - **Vendor connector** is a thin Infrastructure adapter behind `ITicketVendorService`. Production binds `TicketTailorService` (HTTP client against `https://api.tickettailor.com/v1`); non-production binds `StubTicketVendorService` (deterministic in-memory fixture with ~450 orders / ~600 tickets).
 
 ## Data Model
@@ -57,11 +57,11 @@ Singleton (`Id` always 1) tracking ticket sync operational state. `VendorEventId
 
 **Table:** `ticket_transfer_requests`
 
-Buyer-initiated transfer request. `OriginalTicketAttendeeId` FK → `ticket_attendees`. `RequesterUserId` / `RecipientUserId` FK → users. `RecipientDisplayName` and `RecipientEmail` are snapshotted at request time. `Status` is `TicketTransferStatus` (`Pending` / `Approved` / `Rejected` / `Cancelled`). `VendorResult` is `TicketTransferVendorResult` (`NotAttempted` / `Succeeded` / `VoidSucceededIssueFailed` / `Failed`); `VendorMessage` carries the raw vendor error on failure. `NewVendorTicketId` is populated on successful vendor reissue. `DecidedByUserId` FK → users (the admin who approved/rejected). `AdminNotes` is free-text admin comment. `RequestedAt` / `DecidedAt` are UTC timestamps.
+Sender-initiated transfer request. `OriginalTicketAttendeeId` FK → `ticket_attendees`. `SenderUserId` / `ReceiverUserId` FK → users. `ReceiverLegalName` (snapshot of `Profile.FullName`) and `ReceiverEmail` (snapshot of primary email) are captured at request time. `Status` is `TicketTransferStatus` (`Pending` / `Approved` / `Rejected` / `Cancelled`). `VendorResult` is `TicketTransferVendorResult` (`NotAttempted` / `Succeeded` / `VoidSucceededIssueFailed` / `Failed`); `VendorMessage` carries the raw vendor error on failure. `NewVendorTicketId` is populated on successful vendor reissue. `DecidedByUserId` FK → users (the admin who approved/rejected). `AdminNotes` is free-text admin comment. `RequestedAt` / `DecidedAt` are UTC timestamps.
 
-**Indexes / constraints:** Partial unique index on `OriginalTicketAttendeeId` where `Status = Pending` — enforces one pending request per attendee at a time.
+**Indexes:** `(SenderUserId, Status)` for the homepage card; `Status` for the admin queue. No uniqueness constraints — multiple Pending transfers per attendee are allowed.
 
-**Cross-section FKs:** `RequesterUserId`, `RecipientUserId`, `DecidedByUserId` → Users (FK only, no nav).
+**Cross-section FKs:** `SenderUserId`, `ReceiverUserId`, `DecidedByUserId` → Users (FK only, no nav).
 
 ### EventParticipation (derived, not owned)
 
@@ -72,7 +72,7 @@ Buyer-initiated transfer request. `OriginalTicketAttendeeId` FK → `ticket_atte
 
 | Actor | Capabilities |
 |-------|--------------|
-| Any authenticated user with attendees on their orders (Buyer) | Request a transfer for their own `Valid` attendee; cancel a `Pending` transfer request they created |
+| Any authenticated user with attendees on their orders (Sender) | Send any `Valid` attendee from their own order to another Humans user; cancel a `Pending` transfer they created |
 | TicketAdmin, Board, Admin | View the ticket dashboard, orders, attendees, codes, gate list, sales aggregates, and the "Who Hasn't Bought" report (controller-wide policy `TicketAdminBoardOrAdmin`) |
 | TicketAdmin, Admin | Trigger an incremental ticket sync. Export attendee/order CSV. Generate discount codes for campaigns (Campaign section, policy `TicketAdminOrAdmin`). Approve or reject pending transfer requests from `/Tickets/Admin/Transfers` (policy `TicketAdminOrAdmin`) |
 | Admin | Trigger a full re-sync (clears the `LastSyncAt` cursor). Open and submit the participation backfill page (`/Tickets/Participation/Backfill`) |
@@ -85,11 +85,10 @@ Buyer-initiated transfer request. `OriginalTicketAttendeeId` FK → `ticket_atte
 - All `/Tickets` dashboard aggregate metrics (`TicketsSold`, `Revenue`, `NetRevenue`, fee totals, `UnmatchedOrderCount`, the daily-sales chart, the per-payment-method fee breakdown) are computed only over orders with `PaymentStatus == Paid`; ticket counts within those are further restricted to attendees with `Status` in (`Valid`, `CheckedIn`). Refunded/Cancelled/Pending orders are still synced and visible on `/Tickets/Orders` (with the new Status column on Recent Orders) but never contribute to dashboard totals. The "unmatched orders" badge links to `/Tickets/Orders?filterMatched=false&filterPaymentStatus=Paid` so the count and the drill-down agree.
 - Auto-matching uses normalized email comparison (`NormalizingEmailComparer`) against verified UserEmails rows only. Collisions among verified rows (a data-integrity error, should not happen) leave the email unmatched and emit `LogError`; nobody gets the ticket match. Buyer match writes `TicketOrder.MatchedUserId`; attendee match writes `TicketAttendee.MatchedUserId` independently.
 - A user "has a ticket" iff at least one `Valid` or `CheckedIn` `TicketAttendee` is matched to their `UserId`. Buyer-only matches do not count — purchasing tickets for others does not give the buyer ticket coverage.
-- Only `Valid` attendees can be the subject of a transfer request.
-- Recipient must be a resolved Humans user — looked up by exact email (`IUserEmailService.GetUserIdByExactEmailAsync`) or unique burner name (`IProfileService.SearchHumansByNameAsync` filtered to `MatchField == "Burner Name"`). Free-text email that does not resolve to a user is rejected.
-- Recipient cannot already hold a `Valid` or `CheckedIn` attendee for the same vendor event.
-- At most one `Pending` `TicketTransferRequest` per attendee at a time (partial unique index on `OriginalTicketAttendeeId` where `Status = Pending`).
-- On approval + vendor success: original `TicketAttendee.Status` flips to `Void` locally; a new `TicketAttendee` is created with `VendorTicketId` from the TT issue response and `MatchedUserId` = recipient, attached to the original `TicketOrderId`. `VendorResult` = `Succeeded`.
+- Only `Valid` attendees can be sent.
+- Receiver must be a resolved Humans user — looked up by exact email (`IUserEmailService.GetUserIdByExactEmailAsync`) or burner-name search (`IProfileService.SearchProfilesAsync` over `PersonSearchFields.Name`). Free-text email that does not resolve to a user is rejected. Receivers may already hold other tickets — that is allowed; users can hold multiple tickets.
+- Sender cannot send to themselves.
+- On approval + vendor success: original `TicketAttendee.Status` flips to `Void` locally; a new `TicketAttendee` is created with `VendorTicketId` from the TT issue response and `MatchedUserId` = Receiver, attached to the original `TicketOrderId`. `VendorResult` = `Succeeded`.
 - On approval + void-then-issue half-failure: original is voided locally and at the vendor; new attendee is **not** created; `VendorResult` = `VoidSucceededIssueFailed`; admin can retry just the issue half. The request ends in `Approved` state for admin follow-up.
 - On approval + vendor failure (neither leg succeeded): no local attendee status changes; `VendorResult` = `Failed`; `VendorMessage` records the error; the request ends in `Approved` state for admin follow-up (Option C). Admin must manually void/reissue in the TT dashboard.
 - `TicketSyncState` is a singleton row (Id = 1). `LastSyncAt` is the resume cursor passed back to the vendor as `updated_at.gte` on the next run. A sync stuck in `Running` for >30 minutes is auto-reset to `Error` by `GetDashboardStatsAsync` (crash recovery).
@@ -101,7 +100,7 @@ Buyer-initiated transfer request. `OriginalTicketAttendeeId` FK → `ticket_atte
 - TicketAdmin **cannot** trigger a Full Re-sync or open the participation backfill page (both `AdminOnly`).
 - Nobody can edit ticket configuration (vendor `EventId`, API key, sync interval) from inside the app — those values come from `appsettings`'s `TicketVendor` section and the `TICKET_VENDOR_API_KEY` environment variable, set at deploy time.
 - Regular humans have no access to `/Tickets/*` (dashboard, orders, attendees, codes, gate list, who-hasn't-bought, sales aggregates) — the controller-wide policy is `TicketAdminBoardOrAdmin`.
-- A user **cannot** request a transfer for an attendee they do not own (ownership validated in `TicketTransferService.CreateRequestAsync`).
+- A user **cannot** send an attendee they do not own (the order's `MatchedUserId` must equal the Sender's user id; validated in `TicketTransferService.CreateRequestAsync`).
 
 ## Triggers
 
@@ -113,9 +112,9 @@ Buyer-initiated transfer request. `OriginalTicketAttendeeId` FK → `ticket_atte
 - "Who Hasn't Bought" lists active Volunteers-team members (via `ITeamService.GetActiveMemberUserIdsAsync(SystemTeamIds.Volunteers)`) minus those whose current-year `EventParticipation.Status` is `NotAttending`. `HasTicket` is true when the user appears in the union of matched attendee user-ids and matched order user-ids (see `GetAllMatchedUserIdsAsync`).
 - The Volunteer Ticket Coverage card on `/Tickets` divides matched-attendee Volunteers (`UserIdsWithTickets`) by total active Volunteers — buyer-only matches are excluded by construction.
 - Code redemption: vendor discount codes attached to orders are pushed back to Campaigns via `ICampaignService.MarkGrantsRedeemedAsync` so each `CampaignGrant.RedeemedAt` reflects the order's `PurchasedAt`.
-- When an account merge accepts, `ITicketSyncService.ReassignAsync` re-FKs `TicketOrder.MatchedUserId`, `TicketAttendee.MatchedUserId`, and the new `TicketTransferRequest.RequesterUserId` / `TicketTransferRequest.RecipientUserId` columns from source to target. Called only by `IAccountMergeService.AcceptAsync` (Profiles section).
+- When an account merge accepts, `ITicketSyncService.ReassignAsync` re-FKs `TicketOrder.MatchedUserId`, `TicketAttendee.MatchedUserId`, and the new `TicketTransferRequest.SenderUserId` / `TicketTransferRequest.ReceiverUserId` columns from source to target. Called only by `IAccountMergeService.AcceptAsync` (Profiles section).
 - Audit actions written by ticket transfer: `TicketTransferRequested` (on `CreateRequestAsync`), `TicketTransferCancelled` (on `CancelAsync`), `TicketTransferApproved` (on `ApproveAsync` — includes vendor outcome in metadata), `TicketTransferRejected` (on `RejectAsync`).
-- On transfer approve + vendor success: `TicketAttendee.Status` → `Void`; new `TicketAttendee` created with `VendorTicketId` from TT issue response, `MatchedUserId` = recipient, `TicketOrderId` = original order.
+- On transfer approve + vendor success: `TicketAttendee.Status` → `Void`; new `TicketAttendee` created with `VendorTicketId` from TT issue response, `MatchedUserId` = Receiver, `TicketOrderId` = original order.
 - On transfer approve + vendor failure: no local attendee changes; `TicketTransferRequest.VendorResult` = `Failed` (or `VoidSucceededIssueFailed` if only the issue half failed); audit row includes `"optionC": true` metadata flag for admin visibility.
 
 ### TicketDashboardStats cache (ghost cache key)
@@ -163,7 +162,7 @@ Buyer-initiated transfer request. `OriginalTicketAttendeeId` FK → `ticket_atte
 ### Touch-and-clean guidance
 
 - New cross-section data needs always go through the owning section's interface — `ICampaignService`, `IUserService`, `IProfileService`, `IUserEmailService`, `ITeamService`, `IShiftManagementService`, `IBudgetService`. Do not add `Include`-chains off `MatchedUser` to `ITicketRepository` even though the navs still exist; project in memory by `MatchedUserId`.
-- Cache calls (`TicketCount`, `UserIdsWithTickets`, `ValidAttendeeEmails`, plus the invalidation seam `InvalidateTicketCaches()`) stay inside `TicketQueryService` / `TicketSyncService` / `TicketTransferService` — three Application-layer Tickets services may invoke the invalidation seam. `TicketTransferService` is permitted because an admin-approved transfer mutates two `TicketAttendee` rows (the voided original and the freshly issued recipient row) outside the sync flow, and the recipient's homepage card must reflect the new ticket without waiting for the next 5-min `LastSyncAt` cycle. Do not push `IMemoryCache` into controllers or view components. Prefer adding to `MemoryCacheExtensions.InvalidateTicketCaches` over sprinkling `_cache.Remove` calls so the eventual caching wrapper has a single seam.
+- `IMemoryCache` is injected only into `TicketQueryService` and `TicketSyncService` — the two services that read or refresh the cached projections. Other Tickets-section services (e.g. `TicketTransferService`) that need to invalidate after a write call `ITicketQueryService.InvalidateAfterTransfer(senderUserId, receiverUserId)` instead of touching `IMemoryCache` directly. Do not push `IMemoryCache` into controllers, view components, or other domain services. Prefer extending `ITicketQueryService` with intent-named eviction methods over sprinkling `_cache.Remove` calls so the eventual caching wrapper has a single seam.
 - The `TicketDashboardStats` cache key is invalidator-only (see *TicketDashboardStats cache* under Triggers). Don't flip `GetDashboardStatsAsync` to `GetOrCreateAsync` without weighing the staleness trade-off — invalidation already runs on every successful sync, but on-demand staleness on the dashboard during sync windows is currently acceptable.
 - When extending the Tickets→Budget bridge, add new read methods to `ITicketingBudgetRepository` (Tickets-owned). Projection/line-item writes remain Budget-owned and must route through `IBudgetService`.
 - The vendor split is doctrinal: business code talks to `ITicketVendorService` and never to "Ticket Tailor" directly. Any new vendor capability needs an interface method first, then a `TicketTailorService` impl plus a deterministic `StubTicketVendorService` impl so dev/preview environments still exercise the call.

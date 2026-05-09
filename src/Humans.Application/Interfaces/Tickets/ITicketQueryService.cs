@@ -169,13 +169,16 @@ public interface ITicketQueryService
         CancellationToken ct = default);
 
     /// <summary>
-    /// Returns all <see cref="TicketAttendee"/>s the user is attached to: as the
-    /// buyer (TicketOrder.MatchedUserId == userId) or as the matched recipient
-    /// (TicketAttendee.MatchedUserId == userId). Used by the homepage ticket
-    /// card to enumerate visible attendees, including ones transferred in.
+    /// Cache eviction seam invoked by <c>TicketTransferService</c> after an
+    /// approved transfer has mutated local <see cref="TicketAttendee"/> rows
+    /// (the voided original and, on full success, the newly issued row for the
+    /// Receiver). Drops <c>UserIdsWithTickets</c>, <c>ValidAttendeeEmails</c>,
+    /// and per-user ticket counts for both parties so the homepage card
+    /// reflects the new state without waiting for the 5-min TTL or the next
+    /// vendor sync. Pass <c>null</c> for <paramref name="receiverUserId"/>
+    /// when the Receiver did not gain a local row (vendor reissue half-failed).
     /// </summary>
-    Task<IReadOnlyList<TicketAttendee>> GetAttendeesVisibleToUserAsync(
-        Guid userId, CancellationToken ct = default);
+    void InvalidateAfterTransfer(Guid senderUserId, Guid? receiverUserId);
 }
 
 /// <summary>

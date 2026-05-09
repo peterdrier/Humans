@@ -201,12 +201,12 @@
                                                 </form>
                                             }
                                         }
-                                        else if (att.CanRequestTransfer)
+                                        else if (att.CanSendTransfer)
                                         {
                                             <a class="btn btn-sm btn-outline-secondary"
-                                               asp-controller="TicketTransfer" asp-action="RequestTransfer"
+                                               asp-controller="TicketTransfer" asp-action="Send"
                                                asp-route-attendeeId="@att.AttendeeId">
-                                                @Localizer["TicketTransfer_RequestButton"]
+                                                @Localizer["TicketTransfer_SendButton"]
                                             </a>
                                         }
                                     </div>

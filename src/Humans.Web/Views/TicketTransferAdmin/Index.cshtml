@@ -29,10 +29,10 @@ else
             {
                 <tr>
                     <td>@r.RequestedAt.ToDisplayDateTime()</td>
-                    <td>@r.RequesterDisplayName</td>
-                    <td>@r.RecipientDisplayName<br/><small class="text-muted">@r.RecipientEmail</small></td>
+                    <td>@r.SenderDisplayName</td>
+                    <td>@r.ReceiverLegalName<br/><small class="text-muted">@r.ReceiverEmail</small></td>
                     <td>@r.OriginalAttendeeName<br/><small class="text-muted">@r.TicketTypeName</small></td>
-                    <td>@r.RequesterReason</td>
+                    <td>@r.SenderReason</td>
                     <td><a class="btn btn-sm btn-primary" asp-action="Detail" asp-route-id="@r.Id">Review</a></td>
                 </tr>
             }

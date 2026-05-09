@@ -3,8 +3,8 @@ using Humans.Domain.Enums;
 
 namespace Humans.Application.DTOs;
 
-/// <summary>Single match returned by recipient lookup. Null result means "no match".</summary>
-public sealed record RecipientLookupResultDto(
+/// <summary>Single match returned by Receiver lookup. Empty list means "no match".</summary>
+public sealed record ReceiverLookupResultDto(
     Guid UserId,
     string DisplayName,
     string? BurnerName,
@@ -12,13 +12,13 @@ public sealed record RecipientLookupResultDto(
     bool HasCustomProfilePicture,
     string? ProfilePictureUrl);
 
-/// <summary>Submitted by the buyer's recipient-lookup form.</summary>
-public sealed record RecipientLookupRequest(string Query);
+/// <summary>Submitted by the Sender's Receiver-lookup form.</summary>
+public sealed record ReceiverLookupRequest(string Query);
 
-/// <summary>Submitted by the buyer when confirming the recipient.</summary>
+/// <summary>Submitted by the Sender when confirming the Receiver.</summary>
 public sealed record TicketTransferRequestDto(
     Guid OriginalAttendeeId,
-    Guid RecipientUserId,
+    Guid ReceiverUserId,
     string Reason);
 
 /// <summary>Admin decision payload.</summary>
@@ -34,12 +34,12 @@ public sealed record TicketTransferRowDto(
     string OriginalAttendeeName,
     string TicketTypeName,
     TicketAttendeeStatus OriginalAttendeeStatus,
-    Guid RequesterUserId,
-    string RequesterDisplayName,
-    Guid RecipientUserId,
-    string RecipientDisplayName,
-    string RecipientEmail,
-    string RequesterReason,
+    Guid SenderUserId,
+    string SenderDisplayName,
+    Guid ReceiverUserId,
+    string ReceiverLegalName,
+    string ReceiverEmail,
+    string SenderReason,
     TicketTransferStatus Status,
     TicketTransferVendorResult VendorResult,
     string? VendorMessage,
@@ -56,8 +56,20 @@ public sealed record TicketTransferRowDto(
 /// </summary>
 public sealed record TicketTransferDetailDto(
     TicketTransferRowDto Row,
-    RecipientLookupResultDto RequesterCard,
-    RecipientLookupResultDto RecipientCard);
+    ReceiverLookupResultDto SenderCard,
+    ReceiverLookupResultDto ReceiverCard);
+
+/// <summary>
+/// One row in the homepage "My tickets" attendee list, with eligibility flags
+/// for sending and any pending outgoing transfer pre-computed in the service.
+/// </summary>
+public sealed record MyAttendeeRowDto(
+    Guid AttendeeId,
+    string AttendeeName,
+    string TicketTypeName,
+    bool CanSendTransfer,
+    bool HasPendingOutgoingTransfer,
+    Guid? PendingTransferRequestId);
 
 /// <summary>Outcome of a TT void call.</summary>
 public sealed record VoidIssuedTicketResult(string VendorTicketId, string? HoldId);

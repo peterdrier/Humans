@@ -12,12 +12,18 @@ public sealed class TicketTransferRequestPageViewModel
     /// return 0..10. View renders accordingly: 0 → not-found message, 1 →
     /// confirm + reason form, &gt;1 → picker with "Choose" buttons.
     /// </summary>
-    public List<RecipientCardViewModel> Recipients { get; set; } = new();
+    public List<ReceiverCardViewModel> Receivers { get; set; } = new();
 
     public string? LookupError { get; set; }
+
+    /// <summary>
+    /// Reason text re-rendered into the confirm form's textarea after a Submit
+    /// validation failure so the Sender doesn't lose their typing.
+    /// </summary>
+    public string? PrefilledReason { get; set; }
 }
 
-public sealed class RecipientCardViewModel
+public sealed class ReceiverCardViewModel
 {
     public Guid UserId { get; set; }
     public string DisplayName { get; set; } = string.Empty;
@@ -30,6 +36,6 @@ public sealed class RecipientCardViewModel
 public sealed class TicketTransferConfirmFormViewModel
 {
     public Guid AttendeeId { get; set; }
-    public Guid RecipientUserId { get; set; }
+    public Guid ReceiverUserId { get; set; }
     public string Reason { get; set; } = string.Empty;
 }

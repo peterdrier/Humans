@@ -8,14 +8,13 @@ using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Profiles;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 
 namespace Humans.Application.Services.Tickets;
 
 /// <summary>
-/// Owns the TicketTransferRequest aggregate's lifecycle. Buyer initiates,
+/// Owns the TicketTransferRequest aggregate's lifecycle. Sender initiates,
 /// admin decides; on approval, attempts a TicketTailor void+reissue and falls
 /// back to Option-C (Humans-only, admin must edit dashboard) on vendor failure.
 /// </summary>
@@ -24,55 +23,55 @@ public sealed class TicketTransferService : ITicketTransferService
     private readonly ITicketTransferRepository _transferRepo;
     private readonly ITicketRepository _ticketRepo;
     private readonly ITicketVendorService _vendor;
+    private readonly ITicketQueryService _ticketQueryService;
     private readonly IUserService _userService;
     private readonly IUserEmailService _userEmailService;
     private readonly IProfileService _profileService;
     private readonly IAuditLogService _auditLog;
     private readonly IClock _clock;
-    private readonly IMemoryCache _cache;
     private readonly ILogger<TicketTransferService> _logger;
 
     public TicketTransferService(
         ITicketTransferRepository transferRepo,
         ITicketRepository ticketRepo,
         ITicketVendorService vendor,
+        ITicketQueryService ticketQueryService,
         IUserService userService,
         IUserEmailService userEmailService,
         IProfileService profileService,
         IAuditLogService auditLog,
         IClock clock,
-        IMemoryCache cache,
         ILogger<TicketTransferService> logger)
     {
         _transferRepo = transferRepo;
         _ticketRepo = ticketRepo;
         _vendor = vendor;
+        _ticketQueryService = ticketQueryService;
         _userService = userService;
         _userEmailService = userEmailService;
         _profileService = profileService;
         _auditLog = auditLog;
         _clock = clock;
-        _cache = cache;
         _logger = logger;
     }
 
     private const int MaxBurnerNameMatches = 10;
 
-    public async Task<IReadOnlyList<RecipientLookupResultDto>> LookupRecipientsAsync(
-        string query, Guid requesterUserId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<ReceiverLookupResultDto>> LookupReceiversAsync(
+        string query, Guid senderUserId, CancellationToken ct = default)
     {
-        if (string.IsNullOrWhiteSpace(query)) return Array.Empty<RecipientLookupResultDto>();
+        if (string.IsNullOrWhiteSpace(query)) return Array.Empty<ReceiverLookupResultDto>();
         var trimmed = query.Trim();
 
         // Email queries: exact match only, never fuzzy — don't leak addresses.
         if (trimmed.Contains('@'))
         {
             var userId = await _userEmailService.GetUserIdByExactEmailAsync(trimmed, ct);
-            if (userId is null || userId == requesterUserId)
-                return Array.Empty<RecipientLookupResultDto>();
-            var card = await BuildRecipientCardAsync(userId.Value, ct);
+            if (userId is null || userId == senderUserId)
+                return Array.Empty<ReceiverLookupResultDto>();
+            var card = await BuildReceiverCardAsync(userId.Value, ct);
             return card is null
-                ? Array.Empty<RecipientLookupResultDto>()
+                ? Array.Empty<ReceiverLookupResultDto>()
                 : new[] { card };
         }
 
@@ -81,69 +80,86 @@ public sealed class TicketTransferService : ITicketTransferService
         var hits = await _profileService.SearchProfilesAsync(
             trimmed, PersonSearchFields.Name, MaxBurnerNameMatches, ct);
         var candidates = hits
-            .Where(h => h.UserId != requesterUserId)
+            .Where(h => h.UserId != senderUserId)
             .ToList();
 
-        var cards = new List<RecipientLookupResultDto>(candidates.Count);
+        var cards = new List<ReceiverLookupResultDto>(candidates.Count);
         foreach (var h in candidates)
         {
-            var card = await BuildRecipientCardAsync(h.UserId, ct);
+            var card = await BuildReceiverCardAsync(h.UserId, ct);
             if (card is not null) cards.Add(card);
         }
         return cards;
     }
 
-    public async Task<RecipientLookupResultDto?> GetRecipientCardAsync(
-        Guid recipientUserId, Guid requesterUserId, CancellationToken ct = default)
+    public async Task<ReceiverLookupResultDto?> GetReceiverCardAsync(
+        Guid receiverUserId, Guid senderUserId, CancellationToken ct = default)
     {
-        if (recipientUserId == requesterUserId) return null;
-        return await BuildRecipientCardAsync(recipientUserId, ct);
+        if (receiverUserId == senderUserId) return null;
+        return await BuildReceiverCardAsync(receiverUserId, ct);
+    }
+
+    public async Task<IReadOnlyList<MyAttendeeRowDto>> GetMyAttendeesAsync(
+        Guid userId, CancellationToken ct = default)
+    {
+        var visible = await _ticketRepo.GetAttendeesVisibleToUserAsync(userId, ct);
+        var pendingByAttendee = (await _transferRepo.GetBySenderAsync(userId, ct))
+            .Where(r => r.Status == TicketTransferStatus.Pending)
+            .ToDictionary(r => r.OriginalTicketAttendeeId, r => r.Id);
+
+        return visible
+            .OrderBy(a => a.AttendeeName, StringComparer.OrdinalIgnoreCase)
+            .Select(a =>
+            {
+                var pending = pendingByAttendee.TryGetValue(a.Id, out var transferId);
+                return new MyAttendeeRowDto(
+                    AttendeeId: a.Id,
+                    AttendeeName: a.AttendeeName,
+                    TicketTypeName: a.TicketTypeName,
+                    CanSendTransfer: a.Status == TicketAttendeeStatus.Valid
+                        && a.TicketOrder.MatchedUserId == userId
+                        && !pending,
+                    HasPendingOutgoingTransfer: pending,
+                    PendingTransferRequestId: pending ? transferId : null);
+            })
+            .ToList();
     }
 
     public async Task<TicketTransferRowDto> CreateRequestAsync(
-        TicketTransferRequestDto dto, Guid requesterUserId, CancellationToken ct = default)
+        TicketTransferRequestDto dto, Guid senderUserId, CancellationToken ct = default)
     {
-        if (dto.RecipientUserId == requesterUserId)
+        if (dto.ReceiverUserId == senderUserId)
             throw new InvalidOperationException("Cannot transfer a ticket to yourself.");
 
         var attendee = await _ticketRepo.GetAttendeeByIdAsync(dto.OriginalAttendeeId, ct)
             ?? throw new InvalidOperationException("Attendee not found.");
 
-        // Requester must own the parent order's MatchedUserId
-        if (attendee.TicketOrder.MatchedUserId != requesterUserId)
+        // Sender must own the parent order's MatchedUserId
+        if (attendee.TicketOrder.MatchedUserId != senderUserId)
             throw new InvalidOperationException("You can only transfer tickets from your own orders.");
 
         if (attendee.Status != TicketAttendeeStatus.Valid)
             throw new InvalidOperationException("Only Valid tickets can be transferred.");
 
-        var existingPending = await _transferRepo.GetPendingForAttendeeAsync(dto.OriginalAttendeeId, ct);
-        if (existingPending is not null)
-            throw new InvalidOperationException("A pending transfer already exists for this ticket.");
-
-        // Recipient must not already hold a Valid/CheckedIn ticket for this event.
-        var recipientAttendees = await _ticketRepo
-            .GetMatchedAttendeesForEventAsync(attendee.VendorEventId, ct);
-        if (recipientAttendees.Any(a => a.MatchedUserId == dto.RecipientUserId &&
-            (a.Status == TicketAttendeeStatus.Valid || a.Status == TicketAttendeeStatus.CheckedIn)))
-        {
-            throw new InvalidOperationException("Recipient already holds a ticket for this event.");
-        }
-
-        var recipientUser = await _userService.GetByIdAsync(dto.RecipientUserId, ct)
-            ?? throw new InvalidOperationException("Recipient user not found.");
-        var recipientEmail = await _userEmailService.GetPrimaryEmailAsync(dto.RecipientUserId, ct)
-            ?? throw new InvalidOperationException("Recipient has no primary email on file.");
+        var receiverUser = await _userService.GetByIdAsync(dto.ReceiverUserId, ct)
+            ?? throw new InvalidOperationException("Receiver user not found.");
+        var receiverProfile = await _profileService.GetProfileAsync(dto.ReceiverUserId, ct);
+        var receiverLegalName = receiverProfile?.FullName is { Length: > 0 } legal
+            ? legal
+            : receiverUser.DisplayName;
+        var receiverEmail = await _userEmailService.GetPrimaryEmailAsync(dto.ReceiverUserId, ct)
+            ?? throw new InvalidOperationException("Receiver has no primary email on file.");
 
         var now = _clock.GetCurrentInstant();
         var request = new TicketTransferRequest
         {
             Id = Guid.NewGuid(),
             OriginalTicketAttendeeId = dto.OriginalAttendeeId,
-            RequesterUserId = requesterUserId,
-            RecipientUserId = dto.RecipientUserId,
-            RecipientDisplayName = recipientUser.DisplayName,
-            RecipientEmail = recipientEmail,
-            RequesterReason = dto.Reason ?? string.Empty,
+            SenderUserId = senderUserId,
+            ReceiverUserId = dto.ReceiverUserId,
+            ReceiverLegalName = receiverLegalName,
+            ReceiverEmail = receiverEmail,
+            SenderReason = dto.Reason ?? string.Empty,
             Status = TicketTransferStatus.Pending,
             VendorResult = TicketTransferVendorResult.NotAttempted,
             RequestedAt = now,
@@ -155,22 +171,22 @@ public sealed class TicketTransferService : ITicketTransferService
             AuditAction.TicketTransferRequested,
             nameof(TicketTransferRequest),
             request.Id,
-            $"Transfer requested: ticket {attendee.VendorTicketId} → {recipientUser.DisplayName}",
-            requesterUserId,
-            dto.RecipientUserId,
+            $"Transfer requested: ticket {attendee.VendorTicketId} → {receiverLegalName}",
+            senderUserId,
+            dto.ReceiverUserId,
             nameof(User));
 
         return await BuildRowDtoAsync(request, ct);
     }
 
-    public async Task CancelAsync(Guid transferRequestId, Guid requesterUserId, CancellationToken ct = default)
+    public async Task CancelAsync(Guid transferRequestId, Guid senderUserId, CancellationToken ct = default)
     {
         var request = await _transferRepo.GetByIdAsync(transferRequestId, ct)
             ?? throw new InvalidOperationException("Transfer not found.");
         if (request.Status != TicketTransferStatus.Pending)
             throw new InvalidOperationException("Only Pending transfers can be cancelled.");
-        if (request.RequesterUserId != requesterUserId)
-            throw new InvalidOperationException("Only the requester can cancel.");
+        if (request.SenderUserId != senderUserId)
+            throw new InvalidOperationException("Only the Sender can cancel.");
 
         var now = _clock.GetCurrentInstant();
         request.Status = TicketTransferStatus.Cancelled;
@@ -181,8 +197,8 @@ public sealed class TicketTransferService : ITicketTransferService
             AuditAction.TicketTransferCancelled,
             nameof(TicketTransferRequest),
             request.Id,
-            "Transfer cancelled by requester",
-            requesterUserId);
+            "Transfer cancelled by Sender",
+            senderUserId);
     }
 
     public async Task<TicketTransferRowDto> RejectAsync(
@@ -206,7 +222,7 @@ public sealed class TicketTransferService : ITicketTransferService
             request.Id,
             $"Transfer rejected{(string.IsNullOrEmpty(adminNotes) ? "" : ": " + adminNotes)}",
             adminUserId,
-            request.RequesterUserId,
+            request.SenderUserId,
             nameof(User));
 
         return await BuildRowDtoAsync(request, ct);
@@ -250,7 +266,7 @@ public sealed class TicketTransferService : ITicketTransferService
                 request.Id,
                 $"PARTIAL STATE: vendor writeback {request.VendorResult} but request commit failed: {ex.Message}",
                 adminUserId,
-                request.RequesterUserId,
+                request.SenderUserId,
                 nameof(User));
             throw;
         }
@@ -270,7 +286,7 @@ public sealed class TicketTransferService : ITicketTransferService
                 _ => "Transfer approved"
             },
             adminUserId,
-            request.RequesterUserId,
+            request.SenderUserId,
             nameof(User));
 
         return await BuildRowDtoAsync(request, ct);
@@ -279,25 +295,14 @@ public sealed class TicketTransferService : ITicketTransferService
     public async Task<IReadOnlyList<TicketTransferRowDto>> GetByStatusAsync(
         TicketTransferStatus status, CancellationToken ct = default)
     {
-        var rows = (await _transferRepo.GetByStatusAsync(status, ct))
-            .ToList();
+        var rows = (await _transferRepo.GetByStatusAsync(status, ct)).ToList();
         return await BuildRowDtosAsync(rows, ct);
     }
 
-    public async Task<IReadOnlyList<TicketTransferRowDto>> GetByRequesterAsync(
+    public async Task<IReadOnlyList<TicketTransferRowDto>> GetBySenderAsync(
         Guid userId, CancellationToken ct = default)
     {
-        var rows = (await _transferRepo.GetByRequesterAsync(userId, ct))
-            .ToList();
-        return await BuildRowDtosAsync(rows, ct);
-    }
-
-    public async Task<IReadOnlyList<TicketTransferRowDto>> GetPendingByRequesterAsync(
-        Guid userId, CancellationToken ct = default)
-    {
-        var rows = (await _transferRepo.GetByRequesterAsync(userId, ct))
-            .Where(r => r.Status == TicketTransferStatus.Pending)
-            .ToList();
+        var rows = (await _transferRepo.GetBySenderAsync(userId, ct)).ToList();
         return await BuildRowDtosAsync(rows, ct);
     }
 
@@ -308,19 +313,19 @@ public sealed class TicketTransferService : ITicketTransferService
         if (request is null) return null;
 
         var row = await BuildRowDtoAsync(request, ct);
-        var requesterCard = await BuildRecipientCardAsync(request.RequesterUserId, ct);
-        var recipientCard = await BuildRecipientCardAsync(request.RecipientUserId, ct);
+        var senderCard = await BuildReceiverCardAsync(request.SenderUserId, ct);
+        var receiverCard = await BuildReceiverCardAsync(request.ReceiverUserId, ct);
 
         // Cards fall back to a minimal stub if a profile somehow can't be built
         // (e.g. user soft-deleted between request and admin review). The row's
         // snapshot fields still carry the names we need.
         return new TicketTransferDetailDto(
             Row: row,
-            RequesterCard: requesterCard ?? StubCard(request.RequesterUserId, row.RequesterDisplayName),
-            RecipientCard: recipientCard ?? StubCard(request.RecipientUserId, row.RecipientDisplayName));
+            SenderCard: senderCard ?? StubCard(request.SenderUserId, row.SenderDisplayName),
+            ReceiverCard: receiverCard ?? StubCard(request.ReceiverUserId, row.ReceiverLegalName));
     }
 
-    private static RecipientLookupResultDto StubCard(Guid userId, string displayName) =>
+    private static ReceiverLookupResultDto StubCard(Guid userId, string displayName) =>
         new(userId, displayName, BurnerName: null, PreferredEmail: null,
             HasCustomProfilePicture: false, ProfilePictureUrl: null);
 
@@ -360,8 +365,8 @@ public sealed class TicketTransferService : ITicketTransferService
                 EventId: null,
                 TicketTypeId: null,
                 HoldId: voidResult.HoldId,
-                FullName: request.RecipientDisplayName,
-                Email: request.RecipientEmail,
+                FullName: request.ReceiverLegalName,
+                Email: request.ReceiverEmail,
                 SendEmail: true,
                 ExternalReference: request.Id.ToString("N")), ct);
         }
@@ -373,36 +378,35 @@ public sealed class TicketTransferService : ITicketTransferService
                 "TT issue failed for transfer {TransferId} after successful void; hold {HoldId} retained",
                 request.Id, voidResult.HoldId);
 
-            // Vendor confirmed the void; mirror that locally so the requester's
+            // Vendor confirmed the void; mirror that locally so the Sender's
             // homepage card flips immediately. The reissue half failed — the
-            // recipient does not gain a new ticket here, but the original is
+            // Receiver does not gain a new ticket here, but the original is
             // dead at the vendor and must read dead locally too.
             attendee.Status = TicketAttendeeStatus.Void;
             await _ticketRepo.UpsertAttendeeAsync(attendee, ct);
-            _cache.InvalidateTicketCaches();
-            _cache.InvalidateUserTicketCount(request.RequesterUserId);
+            _ticketQueryService.InvalidateAfterTransfer(request.SenderUserId, receiverUserId: null);
             return;
         }
 
         // Sub-step 3: pre-populate the new TicketAttendee row so the homepage card
-        // updates immediately for the recipient. The next sync will upsert by VendorTicketId.
+        // updates immediately for the Receiver. The next sync will upsert by VendorTicketId.
         var now = _clock.GetCurrentInstant();
         await _ticketRepo.UpsertAttendeeAsync(new TicketAttendee
         {
             Id = Guid.NewGuid(),
             VendorTicketId = issued.VendorTicketId,
             TicketOrderId = attendee.TicketOrderId, // attach to the original order locally
-            AttendeeName = request.RecipientDisplayName,
-            AttendeeEmail = request.RecipientEmail,
+            AttendeeName = request.ReceiverLegalName,
+            AttendeeEmail = request.ReceiverEmail,
             TicketTypeName = attendee.TicketTypeName,
             Price = attendee.Price, // local snapshot — TT may rebill differently, see probe Open Questions
             Status = TicketAttendeeStatus.Valid,
             VendorEventId = attendee.VendorEventId,
             SyncedAt = now,
-            MatchedUserId = request.RecipientUserId,
+            MatchedUserId = request.ReceiverUserId,
         }, ct);
 
-        // Pre-populate locally that the original is now Void so the requester's card flips immediately.
+        // Pre-populate locally that the original is now Void so the Sender's card flips immediately.
         attendee.Status = TicketAttendeeStatus.Void;
         await _ticketRepo.UpsertAttendeeAsync(attendee, ct);
 
@@ -410,21 +414,16 @@ public sealed class TicketTransferService : ITicketTransferService
         request.NewVendorTicketId = issued.VendorTicketId;
         request.VendorMessage = voidResult.HoldId is null ? null : $"hold {voidResult.HoldId}";
 
-        // Two TicketAttendee rows just changed (new recipient row + voided original).
-        // Invalidate ticket caches so the homepage card and ticket-coverage views
-        // see the new state without waiting for the 5-min TTL.
-        _cache.InvalidateTicketCaches();
-        _cache.InvalidateUserTicketCount(request.RequesterUserId);
-        _cache.InvalidateUserTicketCount(request.RecipientUserId);
+        _ticketQueryService.InvalidateAfterTransfer(request.SenderUserId, request.ReceiverUserId);
     }
 
-    private async Task<RecipientLookupResultDto?> BuildRecipientCardAsync(Guid userId, CancellationToken ct)
+    private async Task<ReceiverLookupResultDto?> BuildReceiverCardAsync(Guid userId, CancellationToken ct)
     {
         var user = await _userService.GetByIdAsync(userId, ct);
         if (user is null) return null;
         var profile = await _profileService.GetProfileAsync(userId, ct);
         var primary = await _userEmailService.GetPrimaryEmailAsync(userId, ct);
-        return new RecipientLookupResultDto(
+        return new ReceiverLookupResultDto(
             UserId: userId,
             DisplayName: user.DisplayName,
             BurnerName: profile?.BurnerName,
@@ -437,8 +436,8 @@ public sealed class TicketTransferService : ITicketTransferService
     {
         var users = await _userService.GetByIdsAsync(
             r.DecidedByUserId is null
-                ? new[] { r.RequesterUserId }
-                : new[] { r.RequesterUserId, r.DecidedByUserId.Value },
+                ? new[] { r.SenderUserId }
+                : new[] { r.SenderUserId, r.DecidedByUserId.Value },
             ct);
         return BuildRowDto(r, users, await ResolveAttendeeAsync(r, ct));
     }
@@ -451,7 +450,7 @@ public sealed class TicketTransferService : ITicketTransferService
         var userIds = new HashSet<Guid>();
         foreach (var r in rows)
         {
-            userIds.Add(r.RequesterUserId);
+            userIds.Add(r.SenderUserId);
             if (r.DecidedByUserId is { } decider) userIds.Add(decider);
         }
         var users = await _userService.GetByIdsAsync(userIds, ct);
@@ -473,7 +472,7 @@ public sealed class TicketTransferService : ITicketTransferService
         IReadOnlyDictionary<Guid, User> users,
         TicketAttendee attendee)
     {
-        users.TryGetValue(r.RequesterUserId, out var requester);
+        users.TryGetValue(r.SenderUserId, out var sender);
         User? decider = null;
         if (r.DecidedByUserId is { } deciderId) users.TryGetValue(deciderId, out decider);
 
@@ -483,12 +482,12 @@ public sealed class TicketTransferService : ITicketTransferService
             OriginalAttendeeName: attendee.AttendeeName,
             TicketTypeName: attendee.TicketTypeName,
             OriginalAttendeeStatus: attendee.Status,
-            RequesterUserId: r.RequesterUserId,
-            RequesterDisplayName: requester?.DisplayName ?? "(unknown)",
-            RecipientUserId: r.RecipientUserId,
-            RecipientDisplayName: r.RecipientDisplayName,
-            RecipientEmail: r.RecipientEmail,
-            RequesterReason: r.RequesterReason,
+            SenderUserId: r.SenderUserId,
+            SenderDisplayName: sender?.DisplayName ?? "(unknown)",
+            ReceiverUserId: r.ReceiverUserId,
+            ReceiverLegalName: r.ReceiverLegalName,
+            ReceiverEmail: r.ReceiverEmail,
+            SenderReason: r.SenderReason,
             Status: r.Status,
             VendorResult: r.VendorResult,
             VendorMessage: r.VendorMessage,

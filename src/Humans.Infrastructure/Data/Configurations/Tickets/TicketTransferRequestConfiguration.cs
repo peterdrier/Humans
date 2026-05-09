@@ -20,18 +20,18 @@ public sealed class TicketTransferRequestConfiguration : IEntityTypeConfiguratio
             .HasForeignKey(x => x.OriginalTicketAttendeeId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.Property(x => x.RequesterUserId).IsRequired();
-        builder.Property(x => x.RecipientUserId).IsRequired();
+        builder.Property(x => x.SenderUserId).IsRequired();
+        builder.Property(x => x.ReceiverUserId).IsRequired();
 
-        builder.Property(x => x.RecipientDisplayName)
+        builder.Property(x => x.ReceiverLegalName)
             .IsRequired()
             .HasMaxLength(256);
 
-        builder.Property(x => x.RecipientEmail)
+        builder.Property(x => x.ReceiverEmail)
             .IsRequired()
             .HasMaxLength(320);
 
-        builder.Property(x => x.RequesterReason)
+        builder.Property(x => x.SenderReason)
             .IsRequired()
             .HasMaxLength(1000);
 
@@ -51,16 +51,8 @@ public sealed class TicketTransferRequestConfiguration : IEntityTypeConfiguratio
 
         builder.Property(x => x.RequestedAt).IsRequired();
 
-        // Indexes:
-        // - one Pending row per original attendee (enforces "only one Pending request per ticket")
-        builder.HasIndex(x => x.OriginalTicketAttendeeId)
-            .IsUnique()
-            .HasFilter("\"Status\" = 'Pending'");
-
-        // - by requester (homepage card)
-        builder.HasIndex(x => new { x.RequesterUserId, x.Status });
-
-        // - by status (admin queue)
+        // Indexes for the homepage card lookup and the admin queue.
+        builder.HasIndex(x => new { x.SenderUserId, x.Status });
         builder.HasIndex(x => x.Status);
     }
 }

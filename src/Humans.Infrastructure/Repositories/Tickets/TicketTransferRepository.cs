@@ -26,19 +26,11 @@ public sealed class TicketTransferRepository : ITicketTransferRepository
             .FirstOrDefaultAsync(r => r.Id == id, ct);
     }
 
-    public async Task<TicketTransferRequest?> GetPendingForAttendeeAsync(Guid attendeeId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<TicketTransferRequest>> GetBySenderAsync(Guid userId, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.TicketTransferRequests
-            .FirstOrDefaultAsync(r => r.OriginalTicketAttendeeId == attendeeId &&
-                                       r.Status == TicketTransferStatus.Pending, ct);
-    }
-
-    public async Task<IReadOnlyList<TicketTransferRequest>> GetByRequesterAsync(Guid userId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.TicketTransferRequests
-            .Where(r => r.RequesterUserId == userId)
+            .Where(r => r.SenderUserId == userId)
             .ToListAsync(ct);
     }
 
@@ -68,7 +60,11 @@ public sealed class TicketTransferRepository : ITicketTransferRepository
     public async Task UpdateAsync(TicketTransferRequest request, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        ctx.TicketTransferRequests.Update(request);
+        // Attach as Unchanged then mark only the root as Modified — `Update()` would
+        // mark the whole reachable graph (OriginalTicketAttendee + TicketOrder)
+        // as Modified, emitting spurious UPDATE statements against three tables
+        // and double-writing the attendee in the Approve+Succeeded path.
+        ctx.TicketTransferRequests.Attach(request).State = EntityState.Modified;
         await ctx.SaveChangesAsync(ct);
     }
 
@@ -76,10 +72,10 @@ public sealed class TicketTransferRepository : ITicketTransferRepository
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         await ctx.TicketTransferRequests
-            .Where(r => r.RequesterUserId == sourceUserId)
-            .ExecuteUpdateAsync(s => s.SetProperty(r => r.RequesterUserId, targetUserId), ct);
+            .Where(r => r.SenderUserId == sourceUserId)
+            .ExecuteUpdateAsync(s => s.SetProperty(r => r.SenderUserId, targetUserId), ct);
         await ctx.TicketTransferRequests
-            .Where(r => r.RecipientUserId == sourceUserId)
-            .ExecuteUpdateAsync(s => s.SetProperty(r => r.RecipientUserId, targetUserId), ct);
+            .Where(r => r.ReceiverUserId == sourceUserId)
+            .ExecuteUpdateAsync(s => s.SetProperty(r => r.ReceiverUserId, targetUserId), ct);
     }
 }

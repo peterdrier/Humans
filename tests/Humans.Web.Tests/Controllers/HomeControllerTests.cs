@@ -37,7 +37,6 @@ public class HomeControllerTests
     private readonly IOnboardingWidgetState _widgetState = Substitute.For<IOnboardingWidgetState>();
     private readonly IConfiguration _configuration = Substitute.For<IConfiguration>();
     private readonly ConfigurationRegistry _configRegistry = new();
-    private readonly ITicketQueryService _ticketQueryService = Substitute.For<ITicketQueryService>();
     private readonly ITicketTransferService _ticketTransferService = Substitute.For<ITicketTransferService>();
 
     public HomeControllerTests()
@@ -60,7 +59,6 @@ public class HomeControllerTests
             _configuration,
             _configRegistry,
             NullLogger<HomeController>.Instance,
-            _ticketQueryService,
             _ticketTransferService);
 
         var claims = new List<Claim>

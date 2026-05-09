@@ -18,11 +18,11 @@ namespace Humans.Infrastructure.Migrations
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     OriginalTicketAttendeeId = table.Column<Guid>(type: "uuid", nullable: false),
-                    RequesterUserId = table.Column<Guid>(type: "uuid", nullable: false),
-                    RecipientUserId = table.Column<Guid>(type: "uuid", nullable: false),
-                    RecipientDisplayName = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: false),
-                    RecipientEmail = table.Column<string>(type: "character varying(320)", maxLength: 320, nullable: false),
-                    RequesterReason = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: false),
+                    SenderUserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    ReceiverUserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    ReceiverLegalName = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: false),
+                    ReceiverEmail = table.Column<string>(type: "character varying(320)", maxLength: 320, nullable: false),
+                    SenderReason = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: false),
                     Status = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
                     VendorResult = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
                     VendorMessage = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
@@ -46,14 +46,12 @@ namespace Humans.Infrastructure.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_ticket_transfer_requests_OriginalTicketAttendeeId",
                 table: "ticket_transfer_requests",
-                column: "OriginalTicketAttendeeId",
-                unique: true,
-                filter: "\"Status\" = 'Pending'");
+                column: "OriginalTicketAttendeeId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_ticket_transfer_requests_RequesterUserId_Status",
+                name: "IX_ticket_transfer_requests_SenderUserId_Status",
                 table: "ticket_transfer_requests",
-                columns: new[] { "RequesterUserId", "Status" });
+                columns: new[] { "SenderUserId", "Status" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_ticket_transfer_requests_Status",

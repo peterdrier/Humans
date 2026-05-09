@@ -70,6 +70,6 @@ public sealed record MyAttendeeRowVm(
     Guid AttendeeId,
     string AttendeeName,
     string TicketTypeName,
-    bool CanRequestTransfer,
+    bool CanSendTransfer,
     bool HasPendingOutgoingTransfer,
     Guid? PendingTransferRequestId);

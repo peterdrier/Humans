@@ -26,11 +26,11 @@ public sealed class TicketTransferController : HumansControllerBase
         _logger = logger;
     }
 
-    [HttpGet("Request")]
-    public IActionResult RequestTransfer(Guid attendeeId)
+    [HttpGet("Send")]
+    public IActionResult Send(Guid attendeeId)
     {
         var vm = new TicketTransferRequestPageViewModel { AttendeeId = attendeeId };
-        return View("Request", vm);
+        return View("Send", vm);
     }
 
     [HttpPost("Lookup")]
@@ -46,37 +46,24 @@ public sealed class TicketTransferController : HumansControllerBase
         //  2. selectedUserId set → user picked one from a multi-match list,
         //     resolve that single id directly so we render a single card
         //     (skips re-running the search).
-        IReadOnlyList<RecipientLookupResultDto> matches;
+        IReadOnlyList<ReceiverLookupResultDto> matches;
         if (selectedUserId is { } pickedId)
         {
-            var card = await _service.GetRecipientCardAsync(pickedId, user.Id, ct);
+            var card = await _service.GetReceiverCardAsync(pickedId, user.Id, ct);
             matches = card is null
-                ? Array.Empty<RecipientLookupResultDto>()
+                ? Array.Empty<ReceiverLookupResultDto>()
                 : new[] { card };
         }
         else
         {
-            matches = await _service.LookupRecipientsAsync(query, user.Id, ct);
+            matches = await _service.LookupReceiversAsync(query, user.Id, ct);
         }
 
-        var vm = new TicketTransferRequestPageViewModel
-        {
-            AttendeeId = attendeeId,
-            Query = query,
-            Recipients = matches.Select(m => new RecipientCardViewModel
-            {
-                UserId = m.UserId,
-                DisplayName = m.DisplayName,
-                BurnerName = m.BurnerName,
-                PreferredEmail = m.PreferredEmail,
-                HasCustomProfilePicture = m.HasCustomProfilePicture,
-                ProfilePictureUrl = m.ProfilePictureUrl,
-            }).ToList(),
-            LookupError = matches.Count == 0
-                ? "No match. Try a full email address or a different burner name."
-                : null,
-        };
-        return View("Request", vm);
+        var vm = BuildPageViewModel(attendeeId, query, matches);
+        vm.LookupError = matches.Count == 0
+            ? "No match. Try a full email address or a different burner name."
+            : null;
+        return View("Send", vm);
     }
 
     [HttpPost("Submit")]
@@ -90,7 +77,7 @@ public sealed class TicketTransferController : HumansControllerBase
         try
         {
             await _service.CreateRequestAsync(
-                new TicketTransferRequestDto(form.AttendeeId, form.RecipientUserId, form.Reason),
+                new TicketTransferRequestDto(form.AttendeeId, form.ReceiverUserId, form.Reason),
                 user.Id, ct);
             SetSuccess("Transfer requested. A ticket admin will review it shortly.");
             return RedirectToAction(nameof(HomeController.Index), "Home");
@@ -100,7 +87,16 @@ public sealed class TicketTransferController : HumansControllerBase
             _logger.LogWarning("Ticket transfer Submit rejected for attendee {AttendeeId}: {Message}",
                 form.AttendeeId, ex.Message);
             SetError(ex.Message);
-            return RedirectToAction(nameof(RequestTransfer), new { attendeeId = form.AttendeeId });
+
+            // Re-render the confirm form with the Receiver pick + reason intact
+            // so the Sender doesn't have to redo the lookup or retype.
+            var card = await _service.GetReceiverCardAsync(form.ReceiverUserId, user.Id, ct);
+            var matches = card is null
+                ? Array.Empty<ReceiverLookupResultDto>()
+                : new[] { card };
+            var vm = BuildPageViewModel(form.AttendeeId, query: null, matches);
+            vm.PrefilledReason = form.Reason;
+            return View("Send", vm);
         }
     }
 
@@ -124,4 +120,21 @@ public sealed class TicketTransferController : HumansControllerBase
         }
         return RedirectToAction(nameof(HomeController.Index), "Home");
     }
+
+    private static TicketTransferRequestPageViewModel BuildPageViewModel(
+        Guid attendeeId, string? query, IReadOnlyList<ReceiverLookupResultDto> matches) =>
+        new()
+        {
+            AttendeeId = attendeeId,
+            Query = query,
+            Receivers = matches.Select(m => new ReceiverCardViewModel
+            {
+                UserId = m.UserId,
+                DisplayName = m.DisplayName,
+                BurnerName = m.BurnerName,
+                PreferredEmail = m.PreferredEmail,
+                HasCustomProfilePicture = m.HasCustomProfilePicture,
+                ProfilePictureUrl = m.ProfilePictureUrl,
+            }).ToList(),
+        };
 }

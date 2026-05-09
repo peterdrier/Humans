@@ -11,7 +11,6 @@ using Humans.Application.Services.Profiles;
 using Humans.Application.Services.Tickets;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
@@ -32,8 +31,8 @@ public sealed class TicketTransferServiceTests
     private readonly FakeClock _clock = new(_now);
 
     // ── IDs used across tests ─────────────────────────────────────────────────
-    private static readonly Guid _requesterId = Guid.NewGuid();
-    private static readonly Guid _recipientId = Guid.NewGuid();
+    private static readonly Guid _senderId = Guid.NewGuid();
+    private static readonly Guid _receiverId = Guid.NewGuid();
     private static readonly Guid _adminId = Guid.NewGuid();
     private static readonly Guid _attendeeId = Guid.NewGuid();
     private static readonly Guid _orderId = Guid.NewGuid();
@@ -42,6 +41,7 @@ public sealed class TicketTransferServiceTests
     private readonly ITicketTransferRepository _transferRepo = Substitute.For<ITicketTransferRepository>();
     private readonly ITicketRepository _ticketRepo = Substitute.For<ITicketRepository>();
     private readonly ITicketVendorService _vendor = Substitute.For<ITicketVendorService>();
+    private readonly ITicketQueryService _ticketQueryService = Substitute.For<ITicketQueryService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly IProfileService _profileService = Substitute.For<IProfileService>();
@@ -55,28 +55,20 @@ public sealed class TicketTransferServiceTests
             _transferRepo,
             _ticketRepo,
             _vendor,
+            _ticketQueryService,
             _userService,
             _userEmailService,
             _profileService,
             _auditLog,
             _clock,
-            new MemoryCache(new MemoryCacheOptions()),
             NullLogger<TicketTransferService>.Instance);
 
-        // Default: no pending transfer for any attendee
-        _transferRepo.GetPendingForAttendeeAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns((TicketTransferRequest?)null);
+        // Default: Receiver user exists
+        _userService.GetByIdAsync(_receiverId, Arg.Any<CancellationToken>())
+            .Returns(MakeUser(_receiverId, "Alice"));
 
-        // Default: no matched attendees for any event (recipient conflict check passes)
-        _ticketRepo.GetMatchedAttendeesForEventAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<MatchedAttendeeRow>());
-
-        // Default: recipient user exists
-        _userService.GetByIdAsync(_recipientId, Arg.Any<CancellationToken>())
-            .Returns(MakeUser(_recipientId, "Alice"));
-
-        // Default: recipient has primary email
-        _userEmailService.GetPrimaryEmailAsync(_recipientId, Arg.Any<CancellationToken>())
+        // Default: Receiver has primary email
+        _userEmailService.GetPrimaryEmailAsync(_receiverId, Arg.Any<CancellationToken>())
             .Returns("alice@example.com");
 
         // Default: name/burner search returns empty
@@ -86,18 +78,18 @@ public sealed class TicketTransferServiceTests
     }
 
     // ============================================================================
-    // LookupRecipientsAsync
+    // LookupReceiversAsync
     // ============================================================================
 
     [HumansFact]
-    public async Task LookupRecipientsAsync_EmptyOnWhitespace()
+    public async Task LookupReceiversAsync_EmptyOnWhitespace()
     {
-        var result = await _service.LookupRecipientsAsync("   ", _requesterId);
+        var result = await _service.LookupReceiversAsync("   ", _senderId);
         result.Should().BeEmpty();
     }
 
     [HumansFact]
-    public async Task LookupRecipientsAsync_EmailHeuristic_ReturnsSingleCard()
+    public async Task LookupReceiversAsync_EmailHeuristic_ReturnsSingleCard()
     {
         var userId = Guid.NewGuid();
         _userEmailService.GetUserIdByExactEmailAsync("alice@example.com", Arg.Any<CancellationToken>())
@@ -109,7 +101,7 @@ public sealed class TicketTransferServiceTests
         _profileService.GetProfileAsync(userId, Arg.Any<CancellationToken>())
             .Returns((Profile?)null);
 
-        var result = await _service.LookupRecipientsAsync("alice@example.com", _requesterId);
+        var result = await _service.LookupReceiversAsync("alice@example.com", _senderId);
 
         result.Should().HaveCount(1);
         result[0].UserId.Should().Be(userId);
@@ -117,29 +109,29 @@ public sealed class TicketTransferServiceTests
     }
 
     [HumansFact]
-    public async Task LookupRecipientsAsync_EmailHeuristic_EmptyWhenMatchIsRequester()
+    public async Task LookupReceiversAsync_EmailHeuristic_EmptyWhenMatchIsSender()
     {
         _userEmailService.GetUserIdByExactEmailAsync("self@example.com", Arg.Any<CancellationToken>())
-            .Returns(_requesterId);
+            .Returns(_senderId);
 
-        var result = await _service.LookupRecipientsAsync("self@example.com", _requesterId);
+        var result = await _service.LookupReceiversAsync("self@example.com", _senderId);
 
         result.Should().BeEmpty();
     }
 
     [HumansFact]
-    public async Task LookupRecipientsAsync_EmailHeuristic_EmptyWhenNoMatch()
+    public async Task LookupReceiversAsync_EmailHeuristic_EmptyWhenNoMatch()
     {
         _userEmailService.GetUserIdByExactEmailAsync("nobody@example.com", Arg.Any<CancellationToken>())
             .Returns((Guid?)null);
 
-        var result = await _service.LookupRecipientsAsync("nobody@example.com", _requesterId);
+        var result = await _service.LookupReceiversAsync("nobody@example.com", _senderId);
 
         result.Should().BeEmpty();
     }
 
     [HumansFact]
-    public async Task LookupRecipientsAsync_BurnerName_SingleMatch_ReturnsOne()
+    public async Task LookupReceiversAsync_BurnerName_SingleMatch_ReturnsOne()
     {
         var userId = Guid.NewGuid();
         _profileService.SearchProfilesAsync(
@@ -152,14 +144,14 @@ public sealed class TicketTransferServiceTests
         _profileService.GetProfileAsync(userId, Arg.Any<CancellationToken>())
             .Returns((Profile?)null);
 
-        var result = await _service.LookupRecipientsAsync("sparkle", _requesterId);
+        var result = await _service.LookupReceiversAsync("sparkle", _senderId);
 
         result.Should().HaveCount(1);
         result[0].UserId.Should().Be(userId);
     }
 
     [HumansFact]
-    public async Task LookupRecipientsAsync_BurnerName_AmbiguousMatch_ReturnsAll()
+    public async Task LookupReceiversAsync_BurnerName_AmbiguousMatch_ReturnsAll()
     {
         var aId = Guid.NewGuid();
         var bId = Guid.NewGuid();
@@ -177,20 +169,20 @@ public sealed class TicketTransferServiceTests
         _profileService.GetProfileAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns((Profile?)null);
 
-        var result = await _service.LookupRecipientsAsync("popular", _requesterId);
+        var result = await _service.LookupReceiversAsync("popular", _senderId);
 
         result.Should().HaveCount(2);
         result.Select(r => r.UserId).Should().BeEquivalentTo(new[] { aId, bId });
     }
 
     [HumansFact]
-    public async Task LookupRecipientsAsync_BurnerName_ExcludesRequester()
+    public async Task LookupReceiversAsync_BurnerName_ExcludesSender()
     {
         _profileService.SearchProfilesAsync(
                 Arg.Any<string>(), Arg.Any<PersonSearchFields>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(new[] { MakeSearchResult(_requesterId, "Me") });
+            .Returns(new[] { MakeSearchResult(_senderId, "Me") });
 
-        var result = await _service.LookupRecipientsAsync("me", _requesterId);
+        var result = await _service.LookupReceiversAsync("me", _senderId);
 
         result.Should().BeEmpty();
     }
@@ -202,19 +194,19 @@ public sealed class TicketTransferServiceTests
     [HumansFact]
     public async Task CreateRequestAsync_HappyPath_ReturnsPendingRow()
     {
-        var attendee = MakeAttendee(_attendeeId, _orderId, _requesterId, TicketAttendeeStatus.Valid);
+        var attendee = MakeAttendee(_attendeeId, _orderId, _senderId, TicketAttendeeStatus.Valid);
         _ticketRepo.GetAttendeeByIdAsync(_attendeeId, Arg.Any<CancellationToken>())
             .Returns(attendee);
-        _userService.GetByIdAsync(_requesterId, Arg.Any<CancellationToken>())
-            .Returns(MakeUser(_requesterId, "Bob"));
+        _userService.GetByIdAsync(_senderId, Arg.Any<CancellationToken>())
+            .Returns(MakeUser(_senderId, "Bob"));
 
-        var dto = new TicketTransferRequestDto(_attendeeId, _recipientId, "Going abroad");
+        var dto = new TicketTransferRequestDto(_attendeeId, _receiverId, "Going abroad");
 
-        var row = await _service.CreateRequestAsync(dto, _requesterId);
+        var row = await _service.CreateRequestAsync(dto, _senderId);
 
         row.Status.Should().Be(TicketTransferStatus.Pending);
-        row.RecipientUserId.Should().Be(_recipientId);
-        row.RecipientDisplayName.Should().Be("Alice");
+        row.ReceiverUserId.Should().Be(_receiverId);
+        row.ReceiverLegalName.Should().Be("Alice");
         await _transferRepo.Received(1).AddAsync(
             Arg.Is<TicketTransferRequest>(r => r.Status == TicketTransferStatus.Pending),
             Arg.Any<CancellationToken>());
@@ -223,17 +215,17 @@ public sealed class TicketTransferServiceTests
             nameof(TicketTransferRequest),
             Arg.Any<Guid>(),
             Arg.Any<string>(),
-            _requesterId,
-            _recipientId,
+            _senderId,
+            _receiverId,
             nameof(User));
     }
 
     [HumansFact]
-    public async Task CreateRequestAsync_ThrowsWhenRecipientEqualsRequester()
+    public async Task CreateRequestAsync_ThrowsWhenReceiverEqualsSender()
     {
-        var dto = new TicketTransferRequestDto(_attendeeId, _requesterId, "test");
+        var dto = new TicketTransferRequestDto(_attendeeId, _senderId, "test");
 
-        var act = () => _service.CreateRequestAsync(dto, _requesterId);
+        var act = () => _service.CreateRequestAsync(dto, _senderId);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*yourself*");
@@ -245,25 +237,25 @@ public sealed class TicketTransferServiceTests
         _ticketRepo.GetAttendeeByIdAsync(_attendeeId, Arg.Any<CancellationToken>())
             .Returns((TicketAttendee?)null);
 
-        var dto = new TicketTransferRequestDto(_attendeeId, _recipientId, "test");
+        var dto = new TicketTransferRequestDto(_attendeeId, _receiverId, "test");
 
-        var act = () => _service.CreateRequestAsync(dto, _requesterId);
+        var act = () => _service.CreateRequestAsync(dto, _senderId);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*Attendee not found*");
     }
 
     [HumansFact]
-    public async Task CreateRequestAsync_ThrowsWhenRequesterDoesNotOwnOrder()
+    public async Task CreateRequestAsync_ThrowsWhenSenderDoesNotOwnOrder()
     {
         var otherId = Guid.NewGuid();
         var attendee = MakeAttendee(_attendeeId, _orderId, otherId, TicketAttendeeStatus.Valid);
         _ticketRepo.GetAttendeeByIdAsync(_attendeeId, Arg.Any<CancellationToken>())
             .Returns(attendee);
 
-        var dto = new TicketTransferRequestDto(_attendeeId, _recipientId, "test");
+        var dto = new TicketTransferRequestDto(_attendeeId, _receiverId, "test");
 
-        var act = () => _service.CreateRequestAsync(dto, _requesterId);
+        var act = () => _service.CreateRequestAsync(dto, _senderId);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*your own orders*");
@@ -272,101 +264,71 @@ public sealed class TicketTransferServiceTests
     [HumansFact]
     public async Task CreateRequestAsync_ThrowsWhenAttendeeStatusNotValid()
     {
-        var attendee = MakeAttendee(_attendeeId, _orderId, _requesterId, TicketAttendeeStatus.Void);
+        var attendee = MakeAttendee(_attendeeId, _orderId, _senderId, TicketAttendeeStatus.Void);
         _ticketRepo.GetAttendeeByIdAsync(_attendeeId, Arg.Any<CancellationToken>())
             .Returns(attendee);
 
-        var dto = new TicketTransferRequestDto(_attendeeId, _recipientId, "test");
+        var dto = new TicketTransferRequestDto(_attendeeId, _receiverId, "test");
 
-        var act = () => _service.CreateRequestAsync(dto, _requesterId);
+        var act = () => _service.CreateRequestAsync(dto, _senderId);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*Valid tickets*");
     }
 
     [HumansFact]
-    public async Task CreateRequestAsync_ThrowsWhenPendingTransferAlreadyExists()
+    public async Task CreateRequestAsync_ThrowsWhenReceiverUserNotFound()
     {
-        var attendee = MakeAttendee(_attendeeId, _orderId, _requesterId, TicketAttendeeStatus.Valid);
+        var attendee = MakeAttendee(_attendeeId, _orderId, _senderId, TicketAttendeeStatus.Valid);
         _ticketRepo.GetAttendeeByIdAsync(_attendeeId, Arg.Any<CancellationToken>())
             .Returns(attendee);
-        _transferRepo.GetPendingForAttendeeAsync(_attendeeId, Arg.Any<CancellationToken>())
-            .Returns(new TicketTransferRequest { Id = Guid.NewGuid() });
-
-        var dto = new TicketTransferRequestDto(_attendeeId, _recipientId, "test");
-
-        var act = () => _service.CreateRequestAsync(dto, _requesterId);
-
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*pending transfer already exists*");
-    }
-
-    [HumansFact]
-    public async Task CreateRequestAsync_ThrowsWhenRecipientAlreadyHoldsValidTicket()
-    {
-        var attendee = MakeAttendee(_attendeeId, _orderId, _requesterId, TicketAttendeeStatus.Valid);
-        _ticketRepo.GetAttendeeByIdAsync(_attendeeId, Arg.Any<CancellationToken>())
-            .Returns(attendee);
-        _ticketRepo.GetMatchedAttendeesForEventAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(new[] { new MatchedAttendeeRow(_recipientId, TicketAttendeeStatus.Valid) });
-
-        var dto = new TicketTransferRequestDto(_attendeeId, _recipientId, "test");
-
-        var act = () => _service.CreateRequestAsync(dto, _requesterId);
-
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*already holds a ticket*");
-    }
-
-    [HumansFact]
-    public async Task CreateRequestAsync_ThrowsWhenRecipientAlreadyCheckedIn()
-    {
-        var attendee = MakeAttendee(_attendeeId, _orderId, _requesterId, TicketAttendeeStatus.Valid);
-        _ticketRepo.GetAttendeeByIdAsync(_attendeeId, Arg.Any<CancellationToken>())
-            .Returns(attendee);
-        _ticketRepo.GetMatchedAttendeesForEventAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(new[] { new MatchedAttendeeRow(_recipientId, TicketAttendeeStatus.CheckedIn) });
-
-        var dto = new TicketTransferRequestDto(_attendeeId, _recipientId, "test");
-
-        var act = () => _service.CreateRequestAsync(dto, _requesterId);
-
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*already holds a ticket*");
-    }
-
-    [HumansFact]
-    public async Task CreateRequestAsync_ThrowsWhenRecipientUserNotFound()
-    {
-        var attendee = MakeAttendee(_attendeeId, _orderId, _requesterId, TicketAttendeeStatus.Valid);
-        _ticketRepo.GetAttendeeByIdAsync(_attendeeId, Arg.Any<CancellationToken>())
-            .Returns(attendee);
-        _userService.GetByIdAsync(_recipientId, Arg.Any<CancellationToken>())
+        _userService.GetByIdAsync(_receiverId, Arg.Any<CancellationToken>())
             .Returns((User?)null);
 
-        var dto = new TicketTransferRequestDto(_attendeeId, _recipientId, "test");
+        var dto = new TicketTransferRequestDto(_attendeeId, _receiverId, "test");
 
-        var act = () => _service.CreateRequestAsync(dto, _requesterId);
+        var act = () => _service.CreateRequestAsync(dto, _senderId);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*Recipient user not found*");
+            .WithMessage("*Receiver user not found*");
     }
 
     [HumansFact]
-    public async Task CreateRequestAsync_ThrowsWhenRecipientHasNoPrimaryEmail()
+    public async Task CreateRequestAsync_ThrowsWhenReceiverHasNoPrimaryEmail()
     {
-        var attendee = MakeAttendee(_attendeeId, _orderId, _requesterId, TicketAttendeeStatus.Valid);
+        var attendee = MakeAttendee(_attendeeId, _orderId, _senderId, TicketAttendeeStatus.Valid);
         _ticketRepo.GetAttendeeByIdAsync(_attendeeId, Arg.Any<CancellationToken>())
             .Returns(attendee);
-        _userEmailService.GetPrimaryEmailAsync(_recipientId, Arg.Any<CancellationToken>())
+        _userEmailService.GetPrimaryEmailAsync(_receiverId, Arg.Any<CancellationToken>())
             .Returns((string?)null);
 
-        var dto = new TicketTransferRequestDto(_attendeeId, _recipientId, "test");
+        var dto = new TicketTransferRequestDto(_attendeeId, _receiverId, "test");
 
-        var act = () => _service.CreateRequestAsync(dto, _requesterId);
+        var act = () => _service.CreateRequestAsync(dto, _senderId);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*no primary email*");
+    }
+
+    [HumansFact]
+    public async Task CreateRequestAsync_SnapshotsReceiverLegalNameFromProfileFullName()
+    {
+        var attendee = MakeAttendee(_attendeeId, _orderId, _senderId, TicketAttendeeStatus.Valid);
+        _ticketRepo.GetAttendeeByIdAsync(_attendeeId, Arg.Any<CancellationToken>())
+            .Returns(attendee);
+        _userService.GetByIdAsync(_senderId, Arg.Any<CancellationToken>())
+            .Returns(MakeUser(_senderId, "Bob"));
+        _profileService.GetProfileAsync(_receiverId, Arg.Any<CancellationToken>())
+            .Returns(new Profile { FirstName = "Alice", LastName = "Smith" });
+
+        var dto = new TicketTransferRequestDto(_attendeeId, _receiverId, "Going abroad");
+
+        var row = await _service.CreateRequestAsync(dto, _senderId);
+
+        row.ReceiverLegalName.Should().Be("Alice Smith");
+        await _transferRepo.Received(1).AddAsync(
+            Arg.Is<TicketTransferRequest>(r => r.ReceiverLegalName == "Alice Smith"),
+            Arg.Any<CancellationToken>());
     }
 
     // ============================================================================
@@ -377,11 +339,11 @@ public sealed class TicketTransferServiceTests
     public async Task CancelAsync_HappyPath_SetsCancelledAndAudit()
     {
         var transferId = Guid.NewGuid();
-        var request = MakePendingRequest(transferId, _requesterId, _recipientId);
+        var request = MakePendingRequest(transferId, _senderId, _receiverId);
         _transferRepo.GetByIdAsync(transferId, Arg.Any<CancellationToken>())
             .Returns(request);
 
-        await _service.CancelAsync(transferId, _requesterId);
+        await _service.CancelAsync(transferId, _senderId);
 
         request.Status.Should().Be(TicketTransferStatus.Cancelled);
         request.DecidedAt.Should().Be(_now);
@@ -391,36 +353,36 @@ public sealed class TicketTransferServiceTests
             nameof(TicketTransferRequest),
             transferId,
             Arg.Any<string>(),
-            _requesterId);
+            _senderId);
     }
 
     [HumansFact]
     public async Task CancelAsync_ThrowsWhenNotPending()
     {
         var transferId = Guid.NewGuid();
-        var request = MakePendingRequest(transferId, _requesterId, _recipientId);
+        var request = MakePendingRequest(transferId, _senderId, _receiverId);
         request.Status = TicketTransferStatus.Approved;
         _transferRepo.GetByIdAsync(transferId, Arg.Any<CancellationToken>())
             .Returns(request);
 
-        var act = () => _service.CancelAsync(transferId, _requesterId);
+        var act = () => _service.CancelAsync(transferId, _senderId);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*Pending transfers can be cancelled*");
     }
 
     [HumansFact]
-    public async Task CancelAsync_ThrowsWhenCallerIsNotRequester()
+    public async Task CancelAsync_ThrowsWhenCallerIsNotSender()
     {
         var transferId = Guid.NewGuid();
-        var request = MakePendingRequest(transferId, _requesterId, _recipientId);
+        var request = MakePendingRequest(transferId, _senderId, _receiverId);
         _transferRepo.GetByIdAsync(transferId, Arg.Any<CancellationToken>())
             .Returns(request);
 
         var act = () => _service.CancelAsync(transferId, Guid.NewGuid() /* different caller */);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*requester can cancel*");
+            .WithMessage("*Sender can cancel*");
     }
 
     // ============================================================================
@@ -431,10 +393,10 @@ public sealed class TicketTransferServiceTests
     public async Task RejectAsync_HappyPath_SetsRejectedFieldsAndAudit()
     {
         var transferId = Guid.NewGuid();
-        var request = MakePendingRequest(transferId, _requesterId, _recipientId);
+        var request = MakePendingRequest(transferId, _senderId, _receiverId);
         _transferRepo.GetByIdAsync(transferId, Arg.Any<CancellationToken>())
             .Returns(request);
-        WireRequesterAndAttendeeForRow(request);
+        WireSenderAndAttendeeForRow(request);
 
         var row = await _service.RejectAsync(transferId, _adminId, "Not eligible");
 
@@ -449,7 +411,7 @@ public sealed class TicketTransferServiceTests
             transferId,
             Arg.Is<string>(s => s.Contains("Not eligible")),
             _adminId,
-            _requesterId,
+            _senderId,
             nameof(User));
     }
 
@@ -457,7 +419,7 @@ public sealed class TicketTransferServiceTests
     public async Task RejectAsync_ThrowsWhenNotPending()
     {
         var transferId = Guid.NewGuid();
-        var request = MakePendingRequest(transferId, _requesterId, _recipientId);
+        var request = MakePendingRequest(transferId, _senderId, _receiverId);
         request.Status = TicketTransferStatus.Rejected;
         _transferRepo.GetByIdAsync(transferId, Arg.Any<CancellationToken>())
             .Returns(request);
@@ -473,14 +435,14 @@ public sealed class TicketTransferServiceTests
     // ============================================================================
 
     [HumansFact]
-    public async Task ApproveAsync_HappyPath_VendorSucceeds_SetsSucceededAndUpsertsTwice()
+    public async Task ApproveAsync_HappyPath_VendorSucceeds_SetsSucceededAndUpsertsTwiceAndInvalidates()
     {
         var transferId = Guid.NewGuid();
-        var request = MakePendingRequest(transferId, _requesterId, _recipientId);
+        var request = MakePendingRequest(transferId, _senderId, _receiverId);
         _transferRepo.GetByIdAsync(transferId, Arg.Any<CancellationToken>())
             .Returns(request);
 
-        var attendee = MakeAttendee(_attendeeId, _orderId, _requesterId, TicketAttendeeStatus.Valid);
+        var attendee = MakeAttendee(_attendeeId, _orderId, _senderId, TicketAttendeeStatus.Valid);
         request.OriginalTicketAttendee = attendee;
 
         _vendor.VoidIssuedTicketAsync("tkt_original", true, Arg.Any<CancellationToken>())
@@ -497,7 +459,7 @@ public sealed class TicketTransferServiceTests
                 Price: 200m,
                 Status: "valid"));
 
-        WireRequesterAndAttendeeForRow(request);
+        WireSenderAndAttendeeForRow(request);
 
         var row = await _service.ApproveAsync(transferId, _adminId, null);
 
@@ -505,13 +467,14 @@ public sealed class TicketTransferServiceTests
         request.VendorResult.Should().Be(TicketTransferVendorResult.Succeeded);
         request.NewVendorTicketId.Should().Be("tkt_new");
         await _ticketRepo.Received(2).UpsertAttendeeAsync(Arg.Any<TicketAttendee>(), Arg.Any<CancellationToken>());
+        _ticketQueryService.Received(1).InvalidateAfterTransfer(_senderId, _receiverId);
         await _auditLog.Received(1).LogAsync(
             AuditAction.TicketTransferApproved,
             nameof(TicketTransferRequest),
             transferId,
             Arg.Is<string>(s => s.Contains("TT void+reissue OK")),
             _adminId,
-            _requesterId,
+            _senderId,
             nameof(User));
     }
 
@@ -520,14 +483,14 @@ public sealed class TicketTransferServiceTests
     // ============================================================================
 
     [HumansFact]
-    public async Task ApproveAsync_VoidOk_IssueFails_SetsVoidSucceededIssueFailed()
+    public async Task ApproveAsync_VoidOk_IssueFails_VoidsLocallyAndInvalidatesSenderOnly()
     {
         var transferId = Guid.NewGuid();
-        var request = MakePendingRequest(transferId, _requesterId, _recipientId);
+        var request = MakePendingRequest(transferId, _senderId, _receiverId);
         _transferRepo.GetByIdAsync(transferId, Arg.Any<CancellationToken>())
             .Returns(request);
 
-        var attendee = MakeAttendee(_attendeeId, _orderId, _requesterId, TicketAttendeeStatus.Valid);
+        var attendee = MakeAttendee(_attendeeId, _orderId, _senderId, TicketAttendeeStatus.Valid);
         request.OriginalTicketAttendee = attendee;
 
         _vendor.VoidIssuedTicketAsync("tkt_original", true, Arg.Any<CancellationToken>())
@@ -535,20 +498,23 @@ public sealed class TicketTransferServiceTests
         _vendor.IssueTicketAsync(Arg.Any<IssueTicketRequest>(), Arg.Any<CancellationToken>())
             .Throws(new TicketVendorWriteException("Sold out", TicketVendorFailureKind.Validation));
 
-        WireRequesterAndAttendeeForRow(request);
+        WireSenderAndAttendeeForRow(request);
 
         var row = await _service.ApproveAsync(transferId, _adminId, null);
 
         row.Status.Should().Be(TicketTransferStatus.Approved);
         request.VendorResult.Should().Be(TicketTransferVendorResult.VoidSucceededIssueFailed);
         request.VendorMessage.Should().StartWith("Issue failed");
+        attendee.Status.Should().Be(TicketAttendeeStatus.Void);
+        await _ticketRepo.Received(1).UpsertAttendeeAsync(Arg.Any<TicketAttendee>(), Arg.Any<CancellationToken>());
+        _ticketQueryService.Received(1).InvalidateAfterTransfer(_senderId, null);
         await _auditLog.Received(1).LogAsync(
             AuditAction.TicketTransferApproved,
             nameof(TicketTransferRequest),
             transferId,
             Arg.Is<string>(s => s.Contains("manual reissue needed")),
             _adminId,
-            _requesterId,
+            _senderId,
             nameof(User));
     }
 
@@ -557,20 +523,20 @@ public sealed class TicketTransferServiceTests
     // ============================================================================
 
     [HumansFact]
-    public async Task ApproveAsync_VoidFails_SetsFailed_OptionCFallback()
+    public async Task ApproveAsync_VoidFails_SetsFailed_OptionCFallback_NoLocalMutation()
     {
         var transferId = Guid.NewGuid();
-        var request = MakePendingRequest(transferId, _requesterId, _recipientId);
+        var request = MakePendingRequest(transferId, _senderId, _receiverId);
         _transferRepo.GetByIdAsync(transferId, Arg.Any<CancellationToken>())
             .Returns(request);
 
-        var attendee = MakeAttendee(_attendeeId, _orderId, _requesterId, TicketAttendeeStatus.Valid);
+        var attendee = MakeAttendee(_attendeeId, _orderId, _senderId, TicketAttendeeStatus.Valid);
         request.OriginalTicketAttendee = attendee;
 
         _vendor.VoidIssuedTicketAsync("tkt_original", true, Arg.Any<CancellationToken>())
             .Throws(new TicketVendorWriteException("TT 500", TicketVendorFailureKind.Transient));
 
-        WireRequesterAndAttendeeForRow(request);
+        WireSenderAndAttendeeForRow(request);
 
         var row = await _service.ApproveAsync(transferId, _adminId, null);
 
@@ -578,13 +544,14 @@ public sealed class TicketTransferServiceTests
         request.VendorResult.Should().Be(TicketTransferVendorResult.Failed);
         request.VendorMessage.Should().StartWith("Void failed");
         await _ticketRepo.DidNotReceive().UpsertAttendeeAsync(Arg.Any<TicketAttendee>(), Arg.Any<CancellationToken>());
+        _ticketQueryService.DidNotReceive().InvalidateAfterTransfer(Arg.Any<Guid>(), Arg.Any<Guid?>());
         await _auditLog.Received(1).LogAsync(
             AuditAction.TicketTransferApproved,
             nameof(TicketTransferRequest),
             transferId,
             Arg.Is<string>(s => s.Contains("Option-C fallback")),
             _adminId,
-            _requesterId,
+            _senderId,
             nameof(User));
     }
 
@@ -592,7 +559,7 @@ public sealed class TicketTransferServiceTests
     public async Task ApproveAsync_ThrowsWhenNotPending()
     {
         var transferId = Guid.NewGuid();
-        var request = MakePendingRequest(transferId, _requesterId, _recipientId);
+        var request = MakePendingRequest(transferId, _senderId, _receiverId);
         request.Status = TicketTransferStatus.Cancelled;
         _transferRepo.GetByIdAsync(transferId, Arg.Any<CancellationToken>())
             .Returns(request);
@@ -601,6 +568,65 @@ public sealed class TicketTransferServiceTests
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*Pending transfers can be decided*");
+    }
+
+    // ============================================================================
+    // GetMyAttendeesAsync
+    // ============================================================================
+
+    [HumansFact]
+    public async Task GetMyAttendeesAsync_ComposesFlagsFromAttendeesAndPendingTransfers()
+    {
+        var ownAttendeeId = Guid.NewGuid();
+        var pendingTransferAttendeeId = Guid.NewGuid();
+        var transferredInAttendeeId = Guid.NewGuid();
+        var pendingTransferId = Guid.NewGuid();
+
+        var ownAttendee = MakeAttendee(ownAttendeeId, _orderId, _senderId, TicketAttendeeStatus.Valid);
+        ownAttendee.AttendeeName = "Bob";
+        var pendingAttendee = MakeAttendee(pendingTransferAttendeeId, _orderId, _senderId, TicketAttendeeStatus.Valid);
+        pendingAttendee.AttendeeName = "Carol";
+        var transferredInAttendee = MakeAttendee(transferredInAttendeeId, Guid.NewGuid(), Guid.NewGuid(), TicketAttendeeStatus.Valid);
+        transferredInAttendee.AttendeeName = "Alice";
+        transferredInAttendee.MatchedUserId = _senderId; // received via prior transfer
+
+        _ticketRepo.GetAttendeesVisibleToUserAsync(_senderId, Arg.Any<CancellationToken>())
+            .Returns(new[] { ownAttendee, pendingAttendee, transferredInAttendee });
+
+        _transferRepo.GetBySenderAsync(_senderId, Arg.Any<CancellationToken>())
+            .Returns(new[]
+            {
+                new TicketTransferRequest
+                {
+                    Id = pendingTransferId,
+                    OriginalTicketAttendeeId = pendingTransferAttendeeId,
+                    SenderUserId = _senderId,
+                    ReceiverUserId = _receiverId,
+                    Status = TicketTransferStatus.Pending,
+                    RequestedAt = _now,
+                },
+            });
+
+        var rows = await _service.GetMyAttendeesAsync(_senderId);
+
+        rows.Should().HaveCount(3);
+        // Alphabetical by attendee name
+        rows[0].AttendeeName.Should().Be("Alice");
+        rows[1].AttendeeName.Should().Be("Bob");
+        rows[2].AttendeeName.Should().Be("Carol");
+
+        // Own valid attendee with no pending transfer → can send
+        rows.Single(r => r.AttendeeId == ownAttendeeId).CanSendTransfer.Should().BeTrue();
+        rows.Single(r => r.AttendeeId == ownAttendeeId).HasPendingOutgoingTransfer.Should().BeFalse();
+
+        // Own valid attendee with a pending outgoing transfer → cannot send (already pending)
+        var pendingRow = rows.Single(r => r.AttendeeId == pendingTransferAttendeeId);
+        pendingRow.CanSendTransfer.Should().BeFalse();
+        pendingRow.HasPendingOutgoingTransfer.Should().BeTrue();
+        pendingRow.PendingTransferRequestId.Should().Be(pendingTransferId);
+
+        // Transferred-in attendee (we're the matched recipient, not the order owner) → cannot send
+        rows.Single(r => r.AttendeeId == transferredInAttendeeId).CanSendTransfer.Should().BeFalse();
     }
 
     // ============================================================================
@@ -650,16 +676,16 @@ public sealed class TicketTransferServiceTests
         };
     }
 
-    private static TicketTransferRequest MakePendingRequest(Guid id, Guid requesterId, Guid recipientId) =>
+    private static TicketTransferRequest MakePendingRequest(Guid id, Guid senderId, Guid receiverId) =>
         new()
         {
             Id = id,
             OriginalTicketAttendeeId = _attendeeId,
-            RequesterUserId = requesterId,
-            RecipientUserId = recipientId,
-            RecipientDisplayName = "Alice",
-            RecipientEmail = "alice@example.com",
-            RequesterReason = "Going abroad",
+            SenderUserId = senderId,
+            ReceiverUserId = receiverId,
+            ReceiverLegalName = "Alice",
+            ReceiverEmail = "alice@example.com",
+            SenderReason = "Going abroad",
             Status = TicketTransferStatus.Pending,
             VendorResult = TicketTransferVendorResult.NotAttempted,
             RequestedAt = _now,
@@ -675,20 +701,20 @@ public sealed class TicketTransferServiceTests
             MatchedEmail: null);
 
     /// <summary>
-    /// Wires up GetByIdAsync for requester and attendee so BuildRowDtoAsync
+    /// Wires up GetByIdAsync for Sender + attendee so BuildRowDtoAsync
     /// (called at the end of create/reject/approve) can complete without null-ref.
     /// </summary>
-    private void WireRequesterAndAttendeeForRow(TicketTransferRequest request)
+    private void WireSenderAndAttendeeForRow(TicketTransferRequest request)
     {
-        _userService.GetByIdAsync(request.RequesterUserId, Arg.Any<CancellationToken>())
-            .Returns(MakeUser(request.RequesterUserId, "Bob"));
+        _userService.GetByIdAsync(request.SenderUserId, Arg.Any<CancellationToken>())
+            .Returns(MakeUser(request.SenderUserId, "Bob"));
 
         if (request.OriginalTicketAttendee is null)
         {
             var attendee = MakeAttendee(
                 request.OriginalTicketAttendeeId,
                 _orderId,
-                request.RequesterUserId,
+                request.SenderUserId,
                 TicketAttendeeStatus.Valid);
             _ticketRepo.GetAttendeeByIdAsync(request.OriginalTicketAttendeeId, Arg.Any<CancellationToken>())
                 .Returns(attendee);

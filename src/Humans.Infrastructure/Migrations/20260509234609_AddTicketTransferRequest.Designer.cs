@@ -13,7 +13,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Humans.Infrastructure.Migrations
 {
     [DbContext(typeof(HumansDbContext))]
-    [Migration("20260505201134_AddTicketTransferRequest")]
+    [Migration("20260509234609_AddTicketTransferRequest")]
     partial class AddTicketTransferRequest
     {
         /// <inheritdoc />
@@ -3850,28 +3850,28 @@ namespace Humans.Infrastructure.Migrations
                     b.Property<Guid>("OriginalTicketAttendeeId")
                         .HasColumnType("uuid");
 
-                    b.Property<string>("RecipientDisplayName")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
-
-                    b.Property<string>("RecipientEmail")
+                    b.Property<string>("ReceiverEmail")
                         .IsRequired()
                         .HasMaxLength(320)
                         .HasColumnType("character varying(320)");
 
-                    b.Property<Guid>("RecipientUserId")
+                    b.Property<string>("ReceiverLegalName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<Guid>("ReceiverUserId")
                         .HasColumnType("uuid");
 
                     b.Property<Instant>("RequestedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("RequesterReason")
+                    b.Property<string>("SenderReason")
                         .IsRequired()
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
 
-                    b.Property<Guid>("RequesterUserId")
+                    b.Property<Guid>("SenderUserId")
                         .HasColumnType("uuid");
 
                     b.Property<string>("Status")
@@ -3890,13 +3890,11 @@ namespace Humans.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("OriginalTicketAttendeeId")
-                        .IsUnique()
-                        .HasFilter("\"Status\" = 'Pending'");
+                    b.HasIndex("OriginalTicketAttendeeId");
 
                     b.HasIndex("Status");
 
-                    b.HasIndex("RequesterUserId", "Status");
+                    b.HasIndex("SenderUserId", "Status");
 
                     b.ToTable("ticket_transfer_requests", (string)null);
                 });

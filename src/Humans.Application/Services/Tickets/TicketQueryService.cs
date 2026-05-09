@@ -875,10 +875,13 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
     private static bool ContainsIgnoreCase(string? source, string value) =>
         source?.Contains(value, StringComparison.OrdinalIgnoreCase) == true;
 
-    public async Task<IReadOnlyList<TicketAttendee>> GetAttendeesVisibleToUserAsync(
-        Guid userId, CancellationToken ct = default)
+    public void InvalidateAfterTransfer(Guid senderUserId, Guid? receiverUserId)
     {
-        var rows = await _ticketRepository.GetAttendeesVisibleToUserAsync(userId, ct);
-        return rows.ToList();
+        _cache.InvalidateTicketCaches();
+        _cache.InvalidateUserTicketCount(senderUserId);
+        if (receiverUserId is { } receiver)
+        {
+            _cache.InvalidateUserTicketCount(receiver);
+        }
     }
 }

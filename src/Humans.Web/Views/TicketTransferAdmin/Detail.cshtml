@@ -26,7 +26,7 @@
         @if (row.OriginalAttendeeStatus == TicketAttendeeStatus.CheckedIn)
         {
             <div class="alert alert-warning mt-2 mb-0">
-                This ticket has already been checked in. Approving will void it at the vendor and reissue to the recipient — confirm with the requester before proceeding.
+                This ticket has already been checked in. Approving will void it at the vendor and reissue to the Receiver — confirm with the Sender before proceeding.
             </div>
         }
     </div>
@@ -36,8 +36,8 @@
     @{
         var cards = new[]
         {
-            (Title: "From", Card: Model.RequesterCard),
-            (Title: "To", Card: Model.RecipientCard),
+            (Title: "Sender", Card: Model.SenderCard),
+            (Title: "Receiver", Card: Model.ReceiverCard),
         };
     }
     @foreach (var c in cards)
@@ -70,7 +70,7 @@
 </div>
 
 <dl class="row">
-    <dt class="col-sm-3">Reason</dt><dd class="col-sm-9">@row.RequesterReason</dd>
+    <dt class="col-sm-3">Reason</dt><dd class="col-sm-9">@row.SenderReason</dd>
     <dt class="col-sm-3">Requested</dt><dd class="col-sm-9">@row.RequestedAt.ToDisplayDateTime()</dd>
 </dl>
 

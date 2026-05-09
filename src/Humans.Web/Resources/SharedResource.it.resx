@@ -201,7 +201,7 @@
   <data name="Dashboard_DifferentEmail" xml:space="preserve"><value>Comprato con un'altra email?</value></data>
   <data name="Dashboard_DeclareNotAttending" xml:space="preserve"><value>Non vengo quest'anno</value></data>
   <data name="TicketTransfer_Pending" xml:space="preserve"><value>In attesa di revisione</value></data>
-  <data name="TicketTransfer_RequestButton" xml:space="preserve"><value>Trasferisci</value></data>
+  <data name="TicketTransfer_SendButton" xml:space="preserve"><value>Invia</value></data>
   <data name="TicketTransfer_CancelButton" xml:space="preserve"><value>Annulla</value></data>
 
   <!-- Guest Dashboard -->
