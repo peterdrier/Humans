@@ -1834,10 +1834,36 @@ public class ProfileController : HumansControllerBase
     {
         try
         {
-            var profile = await _profileService.GetProfileAsync(id, ct);
-            if (profile is null) return NotFound();
-
             var popoverUser = await _userService.GetByIdAsync(id, ct);
+            if (popoverUser is null) return NotFound();
+
+            var profile = await _profileService.GetProfileAsync(id, ct);
+            if (profile is null)
+            {
+                // Profile-less user (e.g. mailing-list / ticketing import) —
+                // render a sparse popover from User + UserEmail data instead
+                // of returning 404. See issue #690.
+                var fallbackEmail = popoverUser.Email;
+                if (string.IsNullOrEmpty(fallbackEmail))
+                {
+                    var userEmails = await _userEmailService.GetUserEmailsAsync(id, ct);
+                    fallbackEmail = userEmails.FirstOrDefault(e => e.IsVerified && e.IsPrimary)?.Email
+                        ?? userEmails.FirstOrDefault(e => e.IsVerified)?.Email;
+                }
+
+                var fallbackVm = new ProfileSummaryViewModel
+                {
+                    UserId = id,
+                    DisplayName = popoverUser.DisplayName,
+                    Email = fallbackEmail,
+                    ProfilePictureUrl = popoverUser.ProfilePictureUrl,
+                    PreferredLanguage = popoverUser.PreferredLanguage,
+                    HasProfile = false,
+                };
+
+                return PartialView("_HumanPopover", fallbackVm);
+            }
+
             var teams = (await _teamService.GetActiveTeamMembershipsForUserAsync(id, ct))
                 .OrderBy(m => m.TeamName, StringComparer.OrdinalIgnoreCase)
                 .Select(m => m.TeamName)
@@ -1847,15 +1873,15 @@ public class ProfileController : HumansControllerBase
             var effectivePictureUrl = profile.HasCustomProfilePicture
                 ? Url.Action(nameof(Picture), "Profile",
                     new { id = profile.Id, v = profile.UpdatedAt.ToUnixTimeTicks() })
-                : popoverUser?.ProfilePictureUrl;
+                : popoverUser.ProfilePictureUrl;
 
             var vm = new ProfileSummaryViewModel
             {
                 UserId = id,
-                DisplayName = popoverUser?.DisplayName ?? "Unknown",
-                Email = popoverUser?.Email,
+                DisplayName = popoverUser.DisplayName,
+                Email = popoverUser.Email,
                 ProfilePictureUrl = effectivePictureUrl,
-                PreferredLanguage = popoverUser?.PreferredLanguage,
+                PreferredLanguage = popoverUser.PreferredLanguage,
                 MembershipTier = profile.MembershipTier.ToString(),
                 MembershipStatus = profile.IsSuspended ? "Suspended"
                     : profile.IsApproved ? "Active" : "Pending",

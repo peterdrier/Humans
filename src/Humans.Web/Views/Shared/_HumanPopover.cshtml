@@ -14,7 +14,11 @@
                 <span class="@Model.PreferredLanguage.ToFlagClass() ms-1" title="@Model.PreferredLanguage.ToDisplayLanguageName()"></span>
             }
         </div>
-        @if (Model.IsSuspended)
+        @if (!Model.HasProfile)
+        {
+            <span class="badge bg-secondary" style="font-size: 0.7rem;" title="This human exists in the system but has not completed a profile (e.g. imported from a mailing list or ticketing).">Imported · no profile yet</span>
+        }
+        else if (Model.IsSuspended)
         {
             <span class="badge bg-danger" style="font-size: 0.7rem;">Suspended</span>
         }
@@ -22,6 +26,12 @@
             && !string.Equals(Model.MembershipTier, "Volunteer", StringComparison.OrdinalIgnoreCase))
         {
             <span class="badge bg-success" style="font-size: 0.7rem;">@Model.MembershipTier</span>
+        }
+        @if (!Model.HasProfile && !string.IsNullOrEmpty(Model.Email))
+        {
+            <div class="text-muted small text-break">
+                <i class="fa-solid fa-envelope me-1"></i>@Model.Email
+            </div>
         }
         @if (!string.IsNullOrEmpty(Model.City) || !string.IsNullOrEmpty(Model.CountryCode))
         {
