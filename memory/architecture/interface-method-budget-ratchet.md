@@ -17,3 +17,7 @@ The `tests/Humans.Application.Tests/Architecture/InterfaceMethodBudgetTests.cs` 
 - **Hit a wall? STOP and ask Peter.** If a feature genuinely can't be expressed without growth, present the case and let him decide. Don't raise, split, or work around in the meantime.
 
 **Scope:** all currently-budgeted interfaces (ITeamService, ICampService, IShiftManagementService, IProfileService, IUserService — verify the test file for the current set). The list of budgeted interfaces can grow (bringing more under the ratchet); no number on an existing entry goes up.
+
+**Authorized exceptions log:**
+
+- 2026-05-09 (issue #682): +1 each on `ITeamService`, `ICampService`, `IShiftManagementService` for `SearchAsync`. Queries against the owning section's tables must live in that section's service per design-rules §6 — moving them in is the consolidation goal, not a workaround.
