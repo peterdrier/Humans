@@ -19,9 +19,11 @@ namespace Humans.Application.Interfaces.Search;
 /// </para>
 ///
 /// <para>
-/// Authorization is the controller's job. The <see cref="SearchScope"/>
-/// argument is set by the controller after role verification; services
-/// are auth-free per design-rules §11.
+/// Every viewer sees the public-visibility surface: hidden teams,
+/// non-public camp seasons, admin-only rotas, and admin-only profile
+/// fields are excluded for everyone, regardless of role. Privileged
+/// search across those surfaces is out of scope for this iteration —
+/// admins use the existing per-section admin pages.
 /// </para>
 /// </summary>
 public interface ISearchService
@@ -33,11 +35,6 @@ public interface ISearchService
     /// </summary>
     /// <param name="query">User-entered text. Trimmed and matched
     /// case-insensitively per <c>memory/feedback_ef_ilike_not_toupper.md</c>.</param>
-    /// <param name="scope">Public viewer or admin viewer. Drives the
-    /// hidden-team filter, the camp public-status filter, the rota
-    /// volunteer-visibility filter, and the
-    /// <c>PersonSearchFields.PublicAll</c> vs <c>AdminAll</c> bit-flag
-    /// handed to <c>IProfileService</c>.</param>
     /// <param name="onlyType">When set, skip the other three section
     /// queries entirely and return all matches for the chosen type up to
     /// <paramref name="perTypeLimit"/>. Used by the per-type filter chips
@@ -46,7 +43,6 @@ public interface ISearchService
     /// <param name="ct">Cancellation token.</param>
     Task<GlobalSearchResults> SearchAsync(
         string query,
-        SearchScope scope = SearchScope.Public,
         SearchResultType? onlyType = null,
         int perTypeLimit = 10,
         CancellationToken ct = default);

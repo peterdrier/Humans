@@ -5,10 +5,9 @@
   src/Humans.Web/Views/Search/**
   src/Humans.Application/DTOs/GlobalSearchResults.cs
   src/Humans.Application/DTOs/SectionSearchHits.cs
-  src/Humans.Application/DTOs/SearchScope.cs
 -->
 <!-- freshness:flag-on-change
-  Search scope (which fields are searched per section), authorization model (SearchScope enum vs PersonSearchFields bit-flag), and per-section SearchAsync contracts — review when search code, the auth-conventions atom, or the person-search atom change.
+  Search scope (which fields are searched per section), the public-only authorization model, and per-section SearchAsync contracts — review when search code, the auth-conventions atom, or the person-search atom change.
 -->
 
 # Global Search (`/Search`)
@@ -53,50 +52,33 @@ The feature is deliberately scoped to **name-only matching**. Earlier drafts pro
 **So that** I find what I'm looking for without typing exactly the right field
 
 **Acceptance Criteria:**
-- **Humans** match via `IProfileService.SearchProfilesAsync` with `PersonSearchFields.PublicAll` for non-admins and `PersonSearchFields.AdminAll` for admins (per `memory/architecture/person-search.md`). The bit-flag's existing fields are unchanged — humans intentionally inherit the same scope as `/Profile/Search`. Emergency-contact data is never searchable.
+- **Humans** match via `IProfileService.SearchProfilesAsync` with `PersonSearchFields.PublicAll` (per `memory/architecture/person-search.md`). The bit-flag's existing fields are unchanged — humans inherit the same scope as `/Profile/Search` for non-admin viewers. Emergency-contact data is never searchable.
 - **Teams** match on `Team.Name` only.
 - **Camps** match on the public-year `CampSeason.Name` only.
 - **Shifts** (rotas) match on `Rota.Name` only.
 - All matchers run case-insensitive Postgres `EF.Functions.ILike` at the DB layer per `memory/feedback_ef_ilike_not_toupper.md`.
 
-### US-GS.4: Search respects existing visibility
-**As a** non-admin viewer
-**I want** search to surface only what I'd already see from list pages
-**So that** the search affordance can't be a privilege escalation
+### US-GS.4: Search surfaces the public-visibility set, never more
+**As an** authenticated viewer (any role)
+**I want** search to surface only what a regular volunteer would see from list pages
+**So that** the search affordance can't be a privilege escalation, and admins never see surprise data through this path
 
 **Acceptance Criteria:**
-- Hidden teams (`Team.IsHidden = true`) are excluded for non-admins.
+- Hidden teams (`Team.IsHidden = true`) are excluded for everyone.
 - Camps are filtered to the public-status set (`CampSeasonStatus.Active` or `Full`) for the public year — same gate as the public camp directory.
-- Rotas are filtered to `IsVisibleToVolunteers = true` for non-admins.
-- Admin-only profile fields (verified emails, non-public ContactFields) are returned only when the controller has verified an admin-shaped role (`Admin` / `HumanAdmin` / `Board`).
-
-### US-GS.5: Admins see what they'd see elsewhere
-**As an** admin viewer
-**I want** search to surface the admin-visible set
-**So that** I can find hidden teams, draft camps, and admin-only rotas without leaving the search page
-
-**Acceptance Criteria:**
-- Admins see hidden teams in team results.
-- Admins see camps with any season status (pending / rejected / withdrawn included) for the public year.
-- Admins see rotas regardless of `IsVisibleToVolunteers`.
-- Admins see human results that include the `Admin` profile-field bit (verified emails, non-public ContactFields).
+- Rotas are filtered to `IsVisibleToVolunteers = true` for everyone.
+- Admin-only profile fields (verified emails, non-public ContactFields) are never returned through `/Search`, regardless of role. Admins use the existing per-section admin pages (`/Teams` admin, `/Camps` admin, `/Profile/Admin`) for privileged views.
 
 ## Authorization Model
 
-The auth boundary is the controller. Services are auth-free per design-rules §11.
+`/Search` is gated by `[Authorize]` — anonymous viewers can't reach it. Beyond that, **every authenticated viewer sees the same public-visibility surface**, regardless of role. There is no scope parameter on `ISearchService` and no role check in `SearchController`.
 
-`SearchController.Index` resolves the viewer's role to a single `SearchScope` value:
+This is a deliberate descope. An earlier draft had a `SearchScope { Public, Admin }` parameter threaded through every search service that promoted `Admin` / `HumanAdmin` / `Board` callers to a wider surface (hidden teams, non-public camp seasons, admin-only profile fields). It was removed because:
 
-```csharp
-private static readonly string[] AdminViewerRoles = { Admin, HumanAdmin, Board };
-var scope = AdminViewerRoles.Any(role => User.IsInRole(role))
-    ? SearchScope.Admin
-    : SearchScope.Public;
-```
+- A single global scope can't honor the admin-superset rule (`memory/code/admin-role-superset.md`) for `TeamsAdmin` / `CampAdmin` / `TicketAdmin` without leaking admin profile fields cross-domain — see the discussion in nobodies-collective/Humans#693.
+- Privileged search isn't a basic-feature requirement. The basics are "find a person/team/camp/rota by name from any page." Admins still have section-specific admin pages for the privileged view.
 
-The `SearchScope` enum (`Public` / `Admin`) is then threaded through `ISearchService` and to each section's `SearchAsync`. Every call site reads `SearchScope.X` literally and is auditable at a glance — same auditability as the `PersonSearchFields.X` bit-flag in `memory/architecture/person-search.md`. There are no privilege booleans (`isAdmin`, `includeHidden`, `includeNonPublic`) on any service interface; those are an explicitly prohibited pattern (`memory/code/authorization-conventions.md`).
-
-For humans specifically, the orchestrator translates `SearchScope` to the existing `PersonSearchFields` bit-flag — `Public` → `PublicAll`, `Admin` → `AdminAll` — preserving the canonical person-search contract.
+If privileged search is added later, the right shape is per-bucket scope (TeamsAdmin gets the admin Teams surface but the public Humans surface), not a single global enum. Tracked at #693.
 
 ## Architecture
 
@@ -104,11 +86,11 @@ For humans specifically, the orchestrator translates `SearchScope` to the existi
 
 ```
 SearchController
-   └── ISearchService.SearchAsync(query, scope, onlyType, limit)
-         ├── IProfileService.SearchProfilesAsync(query, PersonSearchFields, limit) → IReadOnlyList<HumanSearchResult>
-         ├── ITeamService.SearchAsync(query, SearchScope, max)                      → IReadOnlyList<TeamSearchHit>
-         ├── ICampService.SearchAsync(query, SearchScope, max)                      → IReadOnlyList<CampSearchHit>
-         └── IShiftManagementService.SearchAsync(query, SearchScope, max)           → IReadOnlyList<RotaSearchHit>
+   └── ISearchService.SearchAsync(query, onlyType, limit)
+         ├── IProfileService.SearchProfilesAsync(query, PersonSearchFields.PublicAll, limit) → IReadOnlyList<HumanSearchResult>
+         ├── ITeamService.SearchAsync(query, max)                                             → IReadOnlyList<TeamSearchHit>
+         ├── ICampService.SearchAsync(query, max)                                             → IReadOnlyList<CampSearchHit>
+         └── IShiftManagementService.SearchAsync(query, max)                                  → IReadOnlyList<RotaSearchHit>
 ```
 
 Each section's repository runs the case-insensitive Postgres `ILike` filter against the entity's name field at the DB layer with `EscapeLikePattern` to defang `%` / `_` / `\` in user input. Section services map their domain entities to type-specific search-hit DTOs (`TeamSearchHit`, `CampSearchHit`, `RotaSearchHit`) so the orchestrator never has to traverse cross-domain navigation properties to render a row.
@@ -135,7 +117,6 @@ Counts are post-cap by design — they reflect what the user actually sees in th
 | `RotaSearchHit (Name, TeamId, TeamName)` | `IShiftManagementService.SearchAsync` | Orchestrator scores → `GlobalSearchResult` |
 | `GlobalSearchResult (Type, Title, Subtitle, Url, Score)` | Orchestrator | View renders simple list rows for Teams / Camps / Shifts |
 | `GlobalSearchResults (Query, Humans, Teams, Camps, Shifts)` | `ISearchService` | View-model / view |
-| `SearchScope { Public, Admin }` | enum | Controller → service → section services |
 
 ## UI
 

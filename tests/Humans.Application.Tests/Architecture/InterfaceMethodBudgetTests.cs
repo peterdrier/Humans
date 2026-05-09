@@ -55,12 +55,11 @@ public class InterfaceMethodBudgetTests
         // GetActiveTeamNamesForUserAsync, since the new method is strictly more
         // capable; the one production caller (ProfileController popover)
         // projects to names via .Select(m => m.TeamName).
-        // 70→71: issue-682 global search — added SearchAsync(query,
-        // SearchScope, max). Authorized exception (Peter, 2026-05-09):
-        // queries against teams must live in the owning section per
-        // design-rules §6, and the ratchet's "remove one to add one" rule
-        // doesn't apply when the addition is a moved-in query rather than
-        // a new feature surface.
+        // 70→71: issue-682 global search — added SearchAsync(query, max).
+        // Authorized exception (Peter, 2026-05-09): queries against teams
+        // must live in the owning section per design-rules §6, and the
+        // ratchet's "remove one to add one" rule doesn't apply when the
+        // addition is a moved-in query rather than a new feature surface.
         [typeof(ITeamService)] = 71,
         // ICampService raised 53→57 for per-camp roles feature (peterdrier#489):
         // AddCampMemberAsLeadAsync, GetSeasonMembersAsync, GetCampMemberStatusAsync,

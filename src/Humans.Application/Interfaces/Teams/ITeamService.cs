@@ -177,16 +177,15 @@ public interface ITeamService
     Task<IReadOnlyList<Team>> GetAllTeamsAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Active teams whose <c>Name</c> contains <paramref name="query"/>
-    /// (case-insensitive). Hidden teams are filtered at the DB layer when
-    /// <paramref name="scope"/> is <see cref="SearchScope.Public"/>; admin
-    /// callers pass <see cref="SearchScope.Admin"/> to surface them.
-    /// Capped at <paramref name="max"/>; returned in unspecified order —
-    /// the global search orchestrator scores and ranks. Used by the
-    /// global /Search page (<c>SearchService</c>).
+    /// Active, non-hidden teams whose <c>Name</c> contains
+    /// <paramref name="query"/> (case-insensitive). Capped at
+    /// <paramref name="max"/>; returned in unspecified order — the global
+    /// search orchestrator scores and ranks. Used by the global /Search
+    /// page (<c>SearchService</c>); every caller sees the public surface
+    /// regardless of role.
     /// </summary>
     Task<IReadOnlyList<TeamSearchHit>> SearchAsync(
-        string query, SearchScope scope, int max,
+        string query, int max,
         CancellationToken cancellationToken = default);
 
     /// <summary>

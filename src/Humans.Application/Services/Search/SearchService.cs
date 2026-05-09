@@ -50,7 +50,6 @@ public sealed class SearchService : ISearchService
 
     public async Task<GlobalSearchResults> SearchAsync(
         string query,
-        SearchScope scope = SearchScope.Public,
         SearchResultType? onlyType = null,
         int perTypeLimit = 10,
         CancellationToken ct = default)
@@ -67,39 +66,35 @@ public sealed class SearchService : ISearchService
         }
 
         var humans = onlyType is null or SearchResultType.Human
-            ? await SearchHumansAsync(trimmed, scope, perTypeLimit, ct)
+            ? await SearchHumansAsync(trimmed, perTypeLimit, ct)
             : Array.Empty<HumanSearchResult>();
         var teams = onlyType is null or SearchResultType.Team
-            ? await SearchTeamsAsync(trimmed, scope, perTypeLimit, ct)
+            ? await SearchTeamsAsync(trimmed, perTypeLimit, ct)
             : Array.Empty<GlobalSearchResult>();
         var camps = onlyType is null or SearchResultType.Camp
-            ? await SearchCampsAsync(trimmed, scope, perTypeLimit, ct)
+            ? await SearchCampsAsync(trimmed, perTypeLimit, ct)
             : Array.Empty<GlobalSearchResult>();
         var shifts = onlyType is null or SearchResultType.Shift
-            ? await SearchShiftsAsync(trimmed, scope, perTypeLimit, ct)
+            ? await SearchShiftsAsync(trimmed, perTypeLimit, ct)
             : Array.Empty<GlobalSearchResult>();
 
         return new GlobalSearchResults(trimmed, humans, teams, camps, shifts);
     }
 
     private async Task<IReadOnlyList<HumanSearchResult>> SearchHumansAsync(
-        string query, SearchScope scope, int limit, CancellationToken ct)
+        string query, int limit, CancellationToken ct)
     {
-        // PersonSearchFields enum carries the public/admin split for humans
-        // per memory/architecture/person-search.md; SearchScope translates
-        // to it here. The matcher's own scoring is preserved; the
-        // controller renders the bucket via the canonical _HumanSearchResults
-        // partial after a BurnerName sort.
-        var fields = scope == SearchScope.Admin
-            ? PersonSearchFields.AdminAll
-            : PersonSearchFields.PublicAll;
-        return await _profileService.SearchProfilesAsync(query, fields, limit, ct);
+        // Every viewer sees the public surface — admin profile fields
+        // (verified emails, non-public ContactFields) never surface from
+        // /Search regardless of role.
+        return await _profileService.SearchProfilesAsync(
+            query, PersonSearchFields.PublicAll, limit, ct);
     }
 
     private async Task<IReadOnlyList<GlobalSearchResult>> SearchTeamsAsync(
-        string query, SearchScope scope, int limit, CancellationToken ct)
+        string query, int limit, CancellationToken ct)
     {
-        var hits = await _teamService.SearchAsync(query, scope, limit, ct);
+        var hits = await _teamService.SearchAsync(query, limit, ct);
         return hits
             .Select(t => new GlobalSearchResult(
                 Type: SearchResultType.Team,
@@ -112,9 +107,9 @@ public sealed class SearchService : ISearchService
     }
 
     private async Task<IReadOnlyList<GlobalSearchResult>> SearchCampsAsync(
-        string query, SearchScope scope, int limit, CancellationToken ct)
+        string query, int limit, CancellationToken ct)
     {
-        var hits = await _campService.SearchAsync(query, scope, limit, ct);
+        var hits = await _campService.SearchAsync(query, limit, ct);
         return hits
             .Select(c => new GlobalSearchResult(
                 Type: SearchResultType.Camp,
@@ -127,12 +122,12 @@ public sealed class SearchService : ISearchService
     }
 
     private async Task<IReadOnlyList<GlobalSearchResult>> SearchShiftsAsync(
-        string query, SearchScope scope, int limit, CancellationToken ct)
+        string query, int limit, CancellationToken ct)
     {
         // The "shift" search hit is a Rota (named, role-shaped grouping of
         // shifts) — an individual Shift row is a date+time slot with no
         // human-readable title to match against.
-        var hits = await _shiftService.SearchAsync(query, scope, limit, ct);
+        var hits = await _shiftService.SearchAsync(query, limit, ct);
         return hits
             .Select(r => new GlobalSearchResult(
                 Type: SearchResultType.Shift,

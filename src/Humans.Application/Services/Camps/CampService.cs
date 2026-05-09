@@ -387,14 +387,13 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
     }
 
     public async Task<IReadOnlyList<CampSearchHit>> SearchAsync(
-        string query, SearchScope scope, int max,
+        string query, int max,
         CancellationToken cancellationToken = default)
     {
         var settings = await GetSettingsAsync(cancellationToken);
         var year = settings.PublicYear;
         var camps = await _repo.SearchForYearAsync(
-            query, year, onlyPublicStatus: scope == SearchScope.Public,
-            max, cancellationToken);
+            query, year, onlyPublicStatus: true, max, cancellationToken);
 
         var hits = new List<CampSearchHit>(camps.Count);
         foreach (var camp in camps)

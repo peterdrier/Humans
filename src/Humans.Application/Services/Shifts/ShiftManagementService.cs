@@ -302,7 +302,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         _repo.GetRotasByDepartmentAsync(teamId, eventSettingsId);
 
     public async Task<IReadOnlyList<RotaSearchHit>> SearchAsync(
-        string query, SearchScope scope, int max,
+        string query, int max,
         CancellationToken cancellationToken = default)
     {
         var settings = await _repo.GetActiveEventSettingsAsync(cancellationToken);
@@ -310,7 +310,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
 
         var rotas = await _repo.SearchRotasAsync(
             query, settings.Id,
-            onlyVolunteerVisible: scope == SearchScope.Public,
+            onlyVolunteerVisible: true,
             max, cancellationToken);
         if (rotas.Count == 0) return Array.Empty<RotaSearchHit>();
 

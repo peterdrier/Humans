@@ -54,17 +54,16 @@ public interface ICampService
     /// Camps participating in the current public-year whose
     /// <c>CampSeason.Name</c> contains <paramref name="query"/>
     /// (case-insensitive). The public year is resolved from
-    /// <c>CampSettings.PublicYear</c>. When <paramref name="scope"/> is
-    /// <see cref="SearchScope.Public"/>, only camps with a public-status
+    /// <c>CampSettings.PublicYear</c>. Only camps with a public-status
     /// season (<c>Active</c> / <c>Full</c>) for the year are surfaced —
-    /// the same filter the public camp directory uses.
-    /// <see cref="SearchScope.Admin"/> includes pending / rejected /
-    /// withdrawn statuses too. Capped at <paramref name="max"/>; returned
-    /// in unspecified order — the global search orchestrator scores and
-    /// ranks. Used by the global /Search page (<c>SearchService</c>).
+    /// the same filter the public camp directory uses. Capped at
+    /// <paramref name="max"/>; returned in unspecified order — the global
+    /// search orchestrator scores and ranks. Used by the global /Search
+    /// page (<c>SearchService</c>); every caller sees the public surface
+    /// regardless of role.
     /// </summary>
     Task<IReadOnlyList<CampSearchHit>> SearchAsync(
-        string query, SearchScope scope, int max,
+        string query, int max,
         CancellationToken cancellationToken = default);
 
     // Season management
