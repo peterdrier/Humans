@@ -82,7 +82,6 @@ public sealed class TeamRepository : ITeamRepository
         return await db.Teams
             .AsNoTracking()
             .Where(t => t.IsActive)
-            .OrderBy(t => t.Name)
             .Include(t => t.Members.Where(m => m.LeftAt == null))
             .Include(t => t.ChildTeams)
             .ToListAsync(ct);

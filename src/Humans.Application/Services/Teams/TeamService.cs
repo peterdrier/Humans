@@ -217,8 +217,13 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
         CancellationToken cancellationToken = default) =>
         _repo.GetNamesByIdsAsync(teamIds, cancellationToken);
 
-    public Task<IReadOnlyList<Team>> GetAllTeamsAsync(CancellationToken cancellationToken = default) =>
-        _repo.GetAllActiveAsync(cancellationToken);
+    public async Task<IReadOnlyList<Team>> GetAllTeamsAsync(CancellationToken cancellationToken = default)
+    {
+        var teams = await _repo.GetAllActiveAsync(cancellationToken);
+        return teams
+            .OrderBy(t => t.Name, StringComparer.Ordinal)
+            .ToList();
+    }
 
     public async Task<IReadOnlyList<TeamSearchHit>> SearchAsync(
         string query, int max,

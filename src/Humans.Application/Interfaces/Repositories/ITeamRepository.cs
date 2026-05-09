@@ -58,7 +58,7 @@ public interface ITeamRepository
     /// </summary>
     Task<bool> SlugExistsAsync(string slug, Guid? excludingTeamId, CancellationToken ct = default);
 
-    /// <summary>All active teams ordered by name, with active members and children.</summary>
+    /// <summary>All active teams with active members and children.</summary>
     Task<IReadOnlyList<Team>> GetAllActiveAsync(CancellationToken ct = default);
 
     /// <summary>
