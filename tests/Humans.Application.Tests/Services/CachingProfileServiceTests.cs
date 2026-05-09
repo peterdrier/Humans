@@ -341,9 +341,7 @@ public class CachingProfileServiceTests
         BirthdayMonth: null, BirthdayDay: null,
         EmergencyContactName: null, EmergencyContactPhone: null, EmergencyContactRelationship: null,
         NoPriorBurnExperience: false,
-        ProfilePictureData: null, ProfilePictureContentType: null, RemoveProfilePicture: false,
-        SelectedTier: null, ApplicationMotivation: null, ApplicationAdditionalInfo: null,
-        ApplicationSignificantContribution: null, ApplicationRoleUnderstanding: null);
+        ProfilePictureData: null, ProfilePictureContentType: null, RemoveProfilePicture: false);
 
     private static FullProfile SampleFullProfile(Guid userId) => new(
         UserId: userId, BurnerName: "Name", ProfilePictureUrl: null,

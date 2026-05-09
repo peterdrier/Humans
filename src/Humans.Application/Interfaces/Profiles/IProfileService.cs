@@ -5,7 +5,6 @@ using Humans.Application.Services.Profiles;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
-using MemberApplication = Humans.Domain.Entities.Application;
 
 namespace Humans.Application.Interfaces.Profiles;
 
@@ -54,10 +53,6 @@ public interface IProfileService : IUserMerge
         MembershipTier tier,
         CancellationToken ct = default);
 
-    Task<(Profile? Profile, MemberApplication? LatestApplication, int PendingConsentCount)>
-        GetProfileIndexDataAsync(Guid userId, CancellationToken ct = default);
-    Task<(Profile? Profile, bool IsTierLocked, MemberApplication? PendingApplication)>
-        GetProfileEditDataAsync(Guid userId, CancellationToken ct = default);
     /// <summary>
     /// Returns the profile picture for the given profile, reading from the
     /// filesystem store first and falling back to the DB column. On a
@@ -86,14 +81,6 @@ public interface IProfileService : IUserMerge
     /// <c>memory/architecture/burnername-is-the-display-name.md</c>.
     /// </summary>
     Task<Guid> SaveProfileAsync(Guid userId, ProfileSaveRequest request, string language, CancellationToken ct = default);
-    Task<OnboardingResult> RequestDeletionAsync(Guid userId, CancellationToken ct = default);
-    Task<OnboardingResult> CancelDeletionAsync(Guid userId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns a post-event hold date if the user has tickets for the active event,
-    /// or null if no hold applies.
-    /// </summary>
-    Task<Instant?> GetEventHoldDateAsync(Guid userId, CancellationToken ct = default);
     Task<(bool CanAdd, int MinutesUntilResend, Guid? PendingEmailId)>
         GetEmailCooldownInfoAsync(Guid pendingEmailId, CancellationToken ct = default);
 
@@ -131,8 +118,6 @@ public interface IProfileService : IUserMerge
 
     Task<IReadOnlyList<LocationProfileInfo>>
         GetApprovedProfilesWithLocationAsync(CancellationToken ct = default);
-
-    Task<AdminHumanDetailData?> GetAdminHumanDetailAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
     /// Single canonical person-search method. Matches <paramref name="query"/>

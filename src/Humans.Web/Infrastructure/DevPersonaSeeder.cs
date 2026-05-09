@@ -157,12 +157,7 @@ public sealed class DevPersonaSeeder
             NoPriorBurnExperience: false,
             ProfilePictureData: null,
             ProfilePictureContentType: null,
-            RemoveProfilePicture: false,
-            SelectedTier: null,
-            ApplicationMotivation: null,
-            ApplicationAdditionalInfo: null,
-            ApplicationSignificantContribution: null,
-            ApplicationRoleUnderstanding: null);
+            RemoveProfilePicture: false);
 
         var profileId = await _profileService.SaveProfileAsync(id, saveRequest, "en");
 

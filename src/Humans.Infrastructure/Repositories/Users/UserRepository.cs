@@ -289,7 +289,8 @@ public sealed class UserRepository : IUserRepository
     }
 
     public async Task<bool> SetDeletionPendingAsync(
-        Guid userId, Instant requestedAt, Instant scheduledFor, CancellationToken ct = default)
+        Guid userId, Instant requestedAt, Instant scheduledFor, Instant? eligibleAfter,
+        CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         var user = await ctx.Users.FindAsync([userId], ct);
@@ -298,6 +299,7 @@ public sealed class UserRepository : IUserRepository
 
         user.DeletionRequestedAt = requestedAt;
         user.DeletionScheduledFor = scheduledFor;
+        user.DeletionEligibleAfter = eligibleAfter;
         await ctx.SaveChangesAsync(ct);
         return true;
     }
