@@ -103,7 +103,6 @@ public sealed class TeamRepository : ITeamRepository
         return await db.Teams
             .AsNoTracking()
             .Where(t => t.IsActive)
-            .OrderBy(t => t.Name)
             .Select(t => new TeamOptionDto(t.Id, t.Name))
             .ToListAsync(ct);
     }
@@ -114,7 +113,6 @@ public sealed class TeamRepository : ITeamRepository
         return await db.Teams
             .AsNoTracking()
             .Where(t => t.HasBudget && t.IsActive)
-            .OrderBy(t => t.Name)
             .Select(t => new TeamOptionDto(t.Id, t.Name))
             .ToListAsync(ct);
     }

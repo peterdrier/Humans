@@ -67,7 +67,7 @@ public interface ITeamRepository
     /// </summary>
     Task<IReadOnlyList<Team>> GetAllActiveWithMembersAsync(CancellationToken ct = default);
 
-    /// <summary>Active teams projected to id/name for dropdowns.</summary>
+    /// <summary>Active teams projected to id/name.</summary>
     Task<IReadOnlyList<TeamOptionDto>> GetActiveOptionsAsync(CancellationToken ct = default);
 
     /// <summary>Active teams with <c>HasBudget=true</c> projected to id/name.</summary>

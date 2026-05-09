@@ -236,12 +236,23 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
             .ToList();
     }
 
-    public Task<IReadOnlyList<TeamOptionDto>> GetActiveTeamOptionsAsync(CancellationToken cancellationToken = default) =>
-        _repo.GetActiveOptionsAsync(cancellationToken);
+    public async Task<IReadOnlyList<TeamOptionDto>> GetActiveTeamOptionsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var teams = await _repo.GetActiveOptionsAsync(cancellationToken);
+        return teams
+            .OrderBy(t => t.Name, StringComparer.Ordinal)
+            .ToList();
+    }
 
-    public Task<IReadOnlyList<TeamOptionDto>> GetBudgetableTeamsAsync(
-        CancellationToken cancellationToken = default) =>
-        _repo.GetBudgetableOptionsAsync(cancellationToken);
+    public async Task<IReadOnlyList<TeamOptionDto>> GetBudgetableTeamsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var teams = await _repo.GetBudgetableOptionsAsync(cancellationToken);
+        return teams
+            .OrderBy(t => t.Name, StringComparer.Ordinal)
+            .ToList();
+    }
 
     public async Task<IReadOnlyCollection<Guid>> GetEffectiveBudgetCoordinatorTeamIdsAsync(
         Guid userId, CancellationToken cancellationToken = default)
