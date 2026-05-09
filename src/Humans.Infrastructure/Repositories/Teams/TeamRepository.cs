@@ -155,6 +155,30 @@ public sealed class TeamRepository : ITeamRepository
             .Replace("%", "\\%")
             .Replace("_", "\\_");
 
+    public async Task<IReadOnlyList<Team>> SearchAsync(
+        string query, bool includeHidden, int max, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(query) || max <= 0)
+            return Array.Empty<Team>();
+
+        var pattern = "%" + EscapeLikePattern(query.Trim()) + "%";
+
+        await using var db = await _factory.CreateDbContextAsync(ct);
+        var q = db.Teams
+            .AsNoTracking()
+            .Where(t => t.IsActive);
+
+        if (!includeHidden)
+            q = q.Where(t => !t.IsHidden);
+
+        return await q
+            .Where(t => EF.Functions.ILike(t.Name, pattern, "\\"))
+            // Deterministic Take(max) for global search; controller re-ranks by score before display.
+            .OrderBy(t => t.Name) // arch:db-sort-ok
+            .Take(max)
+            .ToListAsync(ct);
+    }
+
     public async Task<(IReadOnlyList<Team> Items, int TotalCount)> GetAllForAdminAsync(
         int page, int pageSize, CancellationToken ct = default)
     {

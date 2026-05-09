@@ -63,7 +63,7 @@
                                 @foreach (var slot in role.FilledSlots)
                                 {
                                     <div class="d-flex justify-content-between align-items-center gap-2 mb-1">
-                                        <human-link user-id="@slot.UserId" burner-name="@slot.BurnerName" show-popover="true" />
+                                        <vc:human user-id="@slot.UserId" />
                                         @if (Model.RolesPanel.CanManage)
                                         {
                                             <form asp-action="UnassignRole" asp-route-slug="@Model.Slug" asp-route-assignmentId="@slot.AssignmentId" method="post" class="d-inline">
@@ -124,7 +124,7 @@
                         @foreach (var pending in Model.PendingMembers)
                         {
                             <li class="list-group-item d-flex justify-content-between align-items-center gap-2">
-                                <human-link user-id="@pending.UserId" burner-name="@pending.BurnerName" show-popover="true" />
+                                <vc:human user-id="@pending.UserId" />
                                 <div class="d-flex gap-2">
                                     <form asp-action="ApproveMembership" asp-route-slug="@Model.Slug" asp-route-campMemberId="@pending.CampMemberId" method="post" class="d-inline">
                                         @Html.AntiForgeryToken()
@@ -158,7 +158,7 @@
                         {
                             <li class="list-group-item d-flex justify-content-between align-items-center gap-2">
                                 <div class="d-flex align-items-center gap-2">
-                                    <human-link user-id="@active.UserId" burner-name="@active.BurnerName" show-popover="true" />
+                                    <vc:human user-id="@active.UserId" />
                                     @if (active.IsLead)
                                     {
                                         <span class="badge bg-info text-dark" title="Camp lead">Lead</span>
@@ -219,7 +219,7 @@
                 @foreach (var lead in Model.Leads)
                 {
                     <li class="list-group-item d-flex justify-content-between align-items-center">
-                        <human-link user-id="@lead.UserId" burner-name="@lead.BurnerName" />
+                        <vc:human user-id="@lead.UserId" />
                         @if (Model.Leads.Count > 1)
                         {
                             <form asp-action="RemoveLead" asp-route-slug="@Model.Slug" asp-route-leadId="@lead.LeadId" method="post" class="d-inline">

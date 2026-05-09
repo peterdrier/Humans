@@ -681,7 +681,7 @@ public class ProfileServiceTests : IDisposable
     // --- SearchProfilesAsync (PersonSearchFields bit-flag) ---
 
     [HumansFact]
-    public async Task SearchProfilesAsync_PublicAll_MatchesByDisplayName()
+    public async Task SearchProfilesAsync_PublicAll_MatchesByBurnerName()
     {
         // Issue #692: post-write-through-sync, User.DisplayName equals
         // Profile.BurnerName for any post-onboarding row, and
@@ -691,13 +691,13 @@ public class ProfileServiceTests : IDisposable
         var userId = Guid.NewGuid();
         var user = await SeedUserAsync(userId, displayName: "Sparkle Phoenix");
         var profile = MakeProfile(userId, isApproved: true);
-        profile.BurnerName = "Sparkle Phoenix";
+        profile.BurnerName = "Burner Bob";
         _dbContext.Profiles.Add(profile);
         await _dbContext.SaveChangesAsync();
         _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, User> { [userId] = user });
 
-        var results = await _service.SearchProfilesAsync("Sparkle", PersonSearchFields.PublicAll);
+        var results = await _service.SearchProfilesAsync("Burner", PersonSearchFields.PublicAll);
 
         results.Should().HaveCount(1);
         results[0].UserId.Should().Be(userId);

@@ -172,7 +172,7 @@
                             <td>
                                 @if (account.MatchedUserId.HasValue)
                                 {
-                                    <human-link user-id="@account.MatchedUserId.Value" burner-name="@account.MatchedBurnerName" show-popover="true" />
+                                    <vc:human user-id="@account.MatchedUserId.Value" />
                                 }
                                 else
                                 {

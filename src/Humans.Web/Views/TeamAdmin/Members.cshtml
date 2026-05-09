@@ -119,11 +119,7 @@
                     {
                         <tr>
                             <td>
-                                <human-link user-id="@request.UserId" burner-name="@request.UserBurnerName"
-                                           mode="AvatarName" size="32" show-popover="true"
-                                           profile-picture-url="@request.UserProfilePictureUrl">
-                                    <small class="text-muted">@request.UserEmail</small>
-                                </human-link>
+                                <vc:human user-id="@request.UserId" layout="AvatarName" size="32" />
                             </td>
                             <td>
                                 @if (!string.IsNullOrEmpty(request.Message))
@@ -241,11 +237,7 @@
                     {
                         <tr>
                             <td>
-                                <human-link user-id="@member.UserId" burner-name="@member.BurnerName"
-                                           mode="AvatarName" size="40" show-popover="true"
-                                           profile-picture-url="@member.EffectiveProfilePictureUrl">
-                                    <small class="text-muted">@member.Email</small>
-                                </human-link>
+                                <vc:human user-id="@member.UserId" layout="AvatarName" size="40" />
                             </td>
                             <td>
                                 @await Html.PartialAsync("_RoleBadge", member.IsCoordinator ? TeamMemberRole.Coordinator : TeamMemberRole.Member)
@@ -253,7 +245,7 @@
                             @if (Model.CanProvisionEmails)
                             {
                                 <td>
-                                    @await Component.InvokeAsync("NobodiesEmailBadge", new { userId = member.UserId, mode = "provision", teamSlug = Model.TeamSlug, burnerName = member.BurnerName })
+                                    @await Component.InvokeAsync("NobodiesEmailBadge", new { userId = member.UserId, mode = "provision", teamSlug = Model.TeamSlug, displayName = member.BurnerName })
                                 </td>
                             }
                             <td>@member.JoinedAt.ToDisplayCompactDate()</td>

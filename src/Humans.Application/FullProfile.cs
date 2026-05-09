@@ -111,7 +111,7 @@ public record FullProfile(
 
         return new FullProfile(
             UserId: user.Id,
-            BurnerName: !string.IsNullOrWhiteSpace(profile.BurnerName) ? profile.BurnerName : user.DisplayName,
+            BurnerName: ResolveBurnerName(profile, user),
             ProfilePictureUrl: user.ProfilePictureUrl,
             HasCustomPicture: profile.ProfilePictureData is not null,
             ProfileId: profile.Id,
@@ -139,6 +139,9 @@ public record FullProfile(
             IsRejected: profile.RejectedAt is not null);
     }
 
+    private static string ResolveBurnerName(Profile profile, User user)
+        => !string.IsNullOrWhiteSpace(profile.BurnerName) ? profile.BurnerName : user.DisplayName;
+
     /// <summary>
     /// Legacy overload: creates a FullProfile with only the primary email
     /// known. <see cref="AllVerifiedEmails"/> and <see cref="GoogleEmail"/>
@@ -157,7 +160,7 @@ public record FullProfile(
 
         return new FullProfile(
             UserId: user.Id,
-            BurnerName: !string.IsNullOrWhiteSpace(profile.BurnerName) ? profile.BurnerName : user.DisplayName,
+            BurnerName: ResolveBurnerName(profile, user),
             ProfilePictureUrl: user.ProfilePictureUrl,
             HasCustomPicture: profile.ProfilePictureData is not null,
             ProfileId: profile.Id,

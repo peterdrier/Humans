@@ -130,6 +130,53 @@ public sealed class CampRepository : ICampRepository
         return await ctx.Camps.AnyAsync(b => b.Slug == slug, ct);
     }
 
+    // Public camp-directory statuses, applied as a Contains() filter so EF
+    // translates to an IN clause. CampSeasonStatus is stored via
+    // HasConversion<string>(), so ||-chained == comparisons would violate
+    // memory/code/no-enum-compare-in-ef.md.
+    private static readonly CampSeasonStatus[] PublicCampSeasonStatuses =
+        { CampSeasonStatus.Active, CampSeasonStatus.Full };
+
+    public async Task<IReadOnlyList<Camp>> SearchForYearAsync(
+        string query, int year, bool onlyPublicStatus, int max,
+        CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(query) || max <= 0)
+            return Array.Empty<Camp>();
+
+        var pattern = "%" + EscapeLikePattern(query.Trim()) + "%";
+
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var baseQuery = ctx.Camps
+            .AsNoTracking()
+            .Include(c => c.Seasons.Where(s => s.Year == year));
+
+        // Name-match and public-status gate must bind to the SAME season
+        // row — splitting them across two .Where(c => c.Seasons.Any(...))
+        // calls would emit independent correlated subqueries and let two
+        // different seasons satisfy each predicate. Public-status mirrors
+        // Camp.HasPublicSeasonForYear, the same gate the public camp
+        // directory uses.
+        IQueryable<Camp> q = onlyPublicStatus
+            ? baseQuery.Where(c => c.Seasons.Any(s => s.Year == year
+                && EF.Functions.ILike(s.Name, pattern, "\\")
+                && PublicCampSeasonStatuses.Contains(s.Status)))
+            : baseQuery.Where(c => c.Seasons.Any(s => s.Year == year
+                && EF.Functions.ILike(s.Name, pattern, "\\")));
+
+        return await q
+            // Deterministic Take(max) for global search; orchestrator re-ranks by score before display.
+            .OrderBy(c => c.Slug) // arch:db-sort-ok
+            .Take(max)
+            .ToListAsync(ct);
+    }
+
+    private static string EscapeLikePattern(string value)
+        => value
+            .Replace("\\", "\\\\")
+            .Replace("%", "\\%")
+            .Replace("_", "\\_");
+
     // ==========================================================================
     // Writes — Camp (aggregate)
     // ==========================================================================

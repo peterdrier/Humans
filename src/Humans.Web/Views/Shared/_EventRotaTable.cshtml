@@ -73,11 +73,8 @@
                             <div class="d-flex flex-wrap gap-1">
                                 @foreach (var signup in item.Signups)
                                 {
-                                    <human-link user-id="@signup.UserId" burner-name="@signup.BurnerName" mode="Avatar" size="26"
-                                               profile-picture-url="@signup.ProfilePictureUrl" show-popover="true"
-                                               title="@signup.BurnerName@(signup.Status == SignupStatus.Pending ? $" {Localizer["Shifts_Pending"]}" : "")"
-                                               class="@(signup.Status == SignupStatus.Pending ? "opacity-50" : "")"
-                                               style="@(signup.Status == SignupStatus.Pending ? "border: 1px dashed var(--h-muted-text); border-radius: 50%;" : "")" />
+                                    <span title="@signup.BurnerName@(signup.Status == SignupStatus.Pending ? $" {Localizer["Shifts_Pending"]}" : "")"
+                                          style="@(signup.Status == SignupStatus.Pending ? "border: 1px dashed var(--h-muted-text); border-radius: 50%;" : "")"><vc:human user-id="@signup.UserId" layout="Avatar" size="26" css-class="@(signup.Status == SignupStatus.Pending ? "opacity-50" : "")" /></span>
                                 }
                             </div>
                         </td>

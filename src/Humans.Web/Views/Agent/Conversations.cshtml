@@ -58,7 +58,7 @@ else
                 <tr>
                     @if (Model.IsAdminView)
                     {
-                        <td><human-link user-id="@conv.UserId" burner-name="@row.BurnerName" admin="true" /></td>
+                        <td><vc:human user-id="@conv.UserId" link="Admin" /></td>
                     }
                     <td class="text-nowrap">@conv.StartedAt.ToAuditMinuteTimestamp()</td>
                     @if (Model.IsAdminView)

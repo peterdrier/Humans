@@ -96,7 +96,7 @@
                                     _ => "bg-secondary"
                                 };
                                 <tr>
-                                    <td><human-link user-id="@v.BoardMemberUserId" burner-name="@v.BurnerName" /></td>
+                                    <td><vc:human user-id="@v.BoardMemberUserId" /></td>
                                     <td><span class="badge @badgeClass">@v.Vote</span></td>
                                 <td><small>@v.VotedAt.ToDisplayDate()</small></td>
                                     <td><small class="text-muted">@v.Note</small></td>

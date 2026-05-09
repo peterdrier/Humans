@@ -86,7 +86,7 @@ else
                                 }
                                 else if (!string.IsNullOrEmpty(ev.ActorBurnerName))
                                 {
-                                    <human-link user-id="@ev.ActorUserId.Value" burner-name="@ev.ActorBurnerName" mode="Text" />
+                                    <vc:human user-id="@ev.ActorUserId.Value" />
                                 }
                                 else
                                 {
@@ -99,7 +99,7 @@ else
                             <td>
                                 @if (ev.SubjectUserId.HasValue && !string.IsNullOrEmpty(ev.SubjectBurnerName))
                                 {
-                                    <human-link user-id="@ev.SubjectUserId.Value" burner-name="@ev.SubjectBurnerName" mode="Text" />
+                                    <vc:human user-id="@ev.SubjectUserId.Value" />
                                 }
                                 else if (ev.SubjectUserId.HasValue)
                                 {
