@@ -378,6 +378,11 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         // verified row (Workspace > most-recently-updated).
         await EnsurePrimaryInvariantAsync(userId, cancellationToken);
 
+        // If the removed row was the IsGoogle row, restamp the canonical
+        // remaining @nobodies.team row so the user doesn't drift into the
+        // zero-IsGoogle state.
+        await EnsureGoogleInvariantAsync(userId, cancellationToken);
+
         // FullProfile.NotificationEmail derives from user_emails; drop the stale entry so
         // admin/search/profile surfaces stop showing the removed address.
         await _fullProfileInvalidator.InvalidateAsync(userId, cancellationToken);
@@ -944,6 +949,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
                 var isGoogleCount = g.Count(e => e.IsGoogle);
                 var verifiedPrimaryCount = verified.Count(e => e.IsPrimary);
                 var hasMultipleGoogle = isGoogleCount > 1;
+                var hasZeroGoogle = verified.Count > 0 && isGoogleCount == 0;
                 var hasPrimaryProblem = verified.Count > 0 && verifiedPrimaryCount != 1;
                 return (
                     UserId: g.Key,
@@ -951,9 +957,10 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
                     VerifiedCount: verified.Count,
                     VerifiedPrimaryCount: verifiedPrimaryCount,
                     HasMultipleGoogle: hasMultipleGoogle,
+                    HasZeroGoogle: hasZeroGoogle,
                     HasPrimaryProblem: hasPrimaryProblem);
             })
-            .Where(x => x.HasMultipleGoogle || x.HasPrimaryProblem)
+            .Where(x => x.HasMultipleGoogle || x.HasZeroGoogle || x.HasPrimaryProblem)
             .ToList();
 
         if (perUser.Count == 0)
@@ -971,6 +978,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
                 x.VerifiedCount,
                 x.VerifiedPrimaryCount,
                 x.HasMultipleGoogle,
+                x.HasZeroGoogle,
                 x.HasPrimaryProblem))
             .ToList();
     }
@@ -1124,6 +1132,11 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         // If the unlinked row was primary, promote the highest-priority
         // remaining verified row.
         await EnsurePrimaryInvariantAsync(userId, cancellationToken);
+
+        // If the unlinked row was the IsGoogle row, restamp the canonical
+        // remaining @nobodies.team row so the user doesn't drift into the
+        // zero-IsGoogle state.
+        await EnsureGoogleInvariantAsync(userId, cancellationToken);
 
         await _fullProfileInvalidator.InvalidateAsync(userId, cancellationToken);
 

@@ -115,6 +115,9 @@ public class UserEmailServiceTests
             Email = "secondary@example.com",
             IsVerified = true,
             IsPrimary = false,
+            // IsGoogle on the row being deleted so EnsureGoogleInvariantAsync
+            // has work to do after the delete (re-stamping the surviving row).
+            IsGoogle = false,
         };
         var keeping = new UserEmail
         {
@@ -123,6 +126,9 @@ public class UserEmailServiceTests
             Email = "primary@example.com",
             IsVerified = true,
             IsPrimary = true,
+            // Already-stamped IsGoogle so the post-delete EnsureGoogleInvariantAsync
+            // is a no-op and only DeleteEmailAsync's own invalidation runs.
+            IsGoogle = true,
         };
         _repository.GetByIdAndUserIdAsync(deletingId, userId, Arg.Any<CancellationToken>())
             .Returns(deleting);

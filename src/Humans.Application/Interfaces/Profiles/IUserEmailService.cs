@@ -145,8 +145,9 @@ public interface IUserEmailService
     /// alternate). Returns the userId of any matching row regardless of
     /// verification state — used by import-flow account provisioning to
     /// detect existing accounts before creating a new one. Returns null when
-    /// no row matches. Logs a warning when the matched row points at a
-    /// missing user (orphan UserEmail).
+    /// no row matches. Orphan detection (matched row pointing at a missing
+    /// user) is the caller's responsibility — see
+    /// <see cref="Humans.Application.Services.Users.AccountProvisioningService"/>.
     /// </summary>
     Task<Guid?> FindAnyUserIdByEmailAsync(
         string email,
@@ -485,13 +486,16 @@ public record UserEmailMatch(
 /// <param name="DisplayName">Display name (for the admin grid). May be null
 /// if the User row is missing or has no display name.</param>
 /// <param name="IsGoogleCount">How many rows have <c>IsGoogle = true</c>.
-/// A healthy value is 0 or 1; values &gt; 1 are violations.</param>
+/// A healthy value is 1 (when verified rows exist); 0 with verified rows is
+/// a violation, as are values &gt; 1.</param>
 /// <param name="VerifiedCount">How many rows are verified.</param>
 /// <param name="VerifiedPrimaryCount">How many verified rows have
 /// <c>IsPrimary = true</c>. A healthy value is 1 (when verified rows exist)
 /// or 0 (when no verified rows exist).</param>
 /// <param name="HasMultipleGoogle">Convenience flag — true when
 /// <see cref="IsGoogleCount"/> &gt; 1.</param>
+/// <param name="HasZeroGoogle">Convenience flag — true when verified rows
+/// exist and <see cref="IsGoogleCount"/> is 0.</param>
 /// <param name="HasPrimaryProblem">Convenience flag — true when verified
 /// rows exist and <see cref="VerifiedPrimaryCount"/> is not exactly 1.</param>
 public record UserEmailFlagViolation(
@@ -501,4 +505,5 @@ public record UserEmailFlagViolation(
     int VerifiedCount,
     int VerifiedPrimaryCount,
     bool HasMultipleGoogle,
+    bool HasZeroGoogle,
     bool HasPrimaryProblem);
