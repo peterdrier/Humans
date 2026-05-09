@@ -61,6 +61,12 @@ public sealed class SearchController : HumansControllerBase
                 trimmed, filter, PerTypeLimit(filter), ct);
             return BuildViewModel(results, filter);
         }
+        catch (OperationCanceledException)
+        {
+            // Request cancellation (user navigated away mid-search) — let
+            // ASP.NET handle it normally instead of returning a 200 shell.
+            throw;
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Global search failed for query {Query}", trimmed);
