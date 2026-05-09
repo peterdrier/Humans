@@ -534,6 +534,16 @@ public interface ITeamService
         Guid userId, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Returns the active (non-Volunteers) teams the user belongs to with the
+    /// user's role on each team, ordered alphabetically by team name. Used by
+    /// the agent snapshot tail so the model can distinguish a coordinator
+    /// from a regular member without loading full <see cref="TeamMember"/>
+    /// graphs.
+    /// </summary>
+    Task<IReadOnlyList<Humans.Application.Models.TeamMembership>> GetActiveTeamMembershipsForUserAsync(
+        Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Enqueues AddUserToTeamResources sync events for all active team
     /// memberships of a user. Used when the user's Google service email changes.
     /// </summary>

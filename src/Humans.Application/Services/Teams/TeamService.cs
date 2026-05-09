@@ -1666,6 +1666,25 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
             .ToList();
     }
 
+    public async Task<IReadOnlyList<Humans.Application.Models.TeamMembership>> GetActiveTeamMembershipsForUserAsync(
+        Guid userId, CancellationToken cancellationToken = default)
+    {
+        var cached = await GetCachedTeamsAsync(cancellationToken);
+        var rows = new List<Humans.Application.Models.TeamMembership>();
+        foreach (var team in cached.Values)
+        {
+            if (team.SystemTeamType == SystemTeamType.Volunteers)
+                continue;
+            var membership = team.Members.FirstOrDefault(m => m.UserId == userId);
+            if (membership is null)
+                continue;
+            rows.Add(new Humans.Application.Models.TeamMembership(team.Name, membership.Role));
+        }
+        return rows
+            .OrderBy(m => m.TeamName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
     public async Task EnqueueGoogleResyncForUserTeamsAsync(
         Guid userId, CancellationToken cancellationToken = default)
     {

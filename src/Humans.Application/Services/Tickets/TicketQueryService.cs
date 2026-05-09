@@ -760,6 +760,9 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
             o.Currency)).ToList();
     }
 
+    public Task<IReadOnlyList<Guid>> GetOpenTicketIdsForUserAsync(Guid userId, CancellationToken ct = default) =>
+        _ticketRepository.GetOpenOrderIdsMatchedToUserAsync(userId, ct);
+
     public async Task<Instant?> GetPostEventHoldDateAsync(CancellationToken ct = default)
     {
         var activeEvent = await _shiftManagementService.GetActiveAsync();
