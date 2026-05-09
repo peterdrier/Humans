@@ -7,6 +7,7 @@ using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Users.AccountLifecycle;
 using Humans.Domain.Entities;
@@ -35,7 +36,7 @@ public class AccountDeletionServiceTests
     private readonly IShiftSignupService _shiftSignupService = Substitute.For<IShiftSignupService>();
     private readonly IShiftManagementService _shiftManagementService = Substitute.For<IShiftManagementService>();
     private readonly IProfileService _profileService = Substitute.For<IProfileService>();
-    private readonly IServiceProvider _serviceProvider = Substitute.For<IServiceProvider>();
+    private readonly ITicketQueryService _ticketQueryService = Substitute.For<ITicketQueryService>();
     private readonly IRoleAssignmentClaimsCacheInvalidator _roleAssignmentClaimsInvalidator =
         Substitute.For<IRoleAssignmentClaimsCacheInvalidator>();
     private readonly IShiftAuthorizationInvalidator _shiftAuthorizationInvalidator =
@@ -47,8 +48,6 @@ public class AccountDeletionServiceTests
 
     public AccountDeletionServiceTests()
     {
-        _serviceProvider.GetService(typeof(IProfileService)).Returns(_profileService);
-
         _service = new AccountDeletionService(
             _userService,
             _userEmailService,
@@ -56,7 +55,8 @@ public class AccountDeletionServiceTests
             _roleAssignmentService,
             _shiftSignupService,
             _shiftManagementService,
-            _serviceProvider,
+            _profileService,
+            _ticketQueryService,
             _roleAssignmentClaimsInvalidator,
             _shiftAuthorizationInvalidator,
             _auditLogService,
@@ -117,7 +117,8 @@ public class AccountDeletionServiceTests
 
         var expectedScheduledFor = _clock.GetCurrentInstant().Plus(Duration.FromDays(30));
         await _userService.Received(1).SetDeletionPendingAsync(
-            userId, _clock.GetCurrentInstant(), expectedScheduledFor, Arg.Any<CancellationToken>());
+            userId, _clock.GetCurrentInstant(), expectedScheduledFor,
+            Arg.Any<Instant?>(), Arg.Any<CancellationToken>());
 
         await _teamService.Received(1).RevokeAllMembershipsAsync(userId, Arg.Any<CancellationToken>());
         await _roleAssignmentService.Received(1).RevokeAllActiveAsync(userId, Arg.Any<CancellationToken>());
@@ -154,6 +155,81 @@ public class AccountDeletionServiceTests
         await _emailService.Received(1).SendAccountDeletionRequestedAsync(
             "notif@example.com", user.DisplayName,
             Arg.Any<DateTime>(), user.PreferredLanguage, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task RequestDeletionAsync_TicketHolder_SetsEligibleAfterAndIsHeldForTicket()
+    {
+        // Ticket-hold path: deletion is held until after the event so the
+        // ticket stays usable. Drives different UI copy in both Profile and
+        // Guest deletion entry points, so the result must carry the hold date
+        // and the IsHeldForTicket flag verbatim.
+        var userId = Guid.NewGuid();
+        var user = MakeUser(userId);
+        var holdDate = _clock.GetCurrentInstant().Plus(Duration.FromDays(60));
+        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
+        _ticketQueryService.HasCurrentEventTicketAsync(userId, Arg.Any<CancellationToken>()).Returns(true);
+        _ticketQueryService.GetPostEventHoldDateAsync(Arg.Any<CancellationToken>()).Returns(holdDate);
+        _userEmailService.GetNotificationTargetEmailsAsync(
+                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, string>());
+
+        var result = await _service.RequestDeletionAsync(userId);
+
+        result.Success.Should().BeTrue();
+        result.IsHeldForTicket.Should().BeTrue();
+        result.EffectiveDeletionDate.Should().Be(holdDate);
+
+        await _userService.Received(1).SetDeletionPendingAsync(
+            userId,
+            _clock.GetCurrentInstant(),
+            _clock.GetCurrentInstant().Plus(Duration.FromDays(30)),
+            holdDate,
+            Arg.Any<CancellationToken>());
+    }
+
+    // ==========================================================================
+    // CancelDeletionAsync
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task CancelDeletionAsync_PendingDeletion_ClearsViaUserService()
+    {
+        var userId = Guid.NewGuid();
+        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(MakeUser(userId, deletionPending: true));
+
+        var result = await _service.CancelDeletionAsync(userId);
+
+        result.Success.Should().BeTrue();
+        await _userService.Received(1).ClearDeletionAsync(userId, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task CancelDeletionAsync_NoPendingDeletion_ReturnsNoDeletionPending()
+    {
+        var userId = Guid.NewGuid();
+        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(MakeUser(userId));
+
+        var result = await _service.CancelDeletionAsync(userId);
+
+        result.Success.Should().BeFalse();
+        result.ErrorKey.Should().Be("NoDeletionPending");
+        await _userService.DidNotReceiveWithAnyArgs().ClearDeletionAsync(default, default);
+    }
+
+    [HumansFact]
+    public async Task CancelDeletionAsync_UnknownUser_ReturnsNotFound()
+    {
+        var userId = Guid.NewGuid();
+        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns((User?)null);
+
+        var result = await _service.CancelDeletionAsync(userId);
+
+        result.Success.Should().BeFalse();
+        result.ErrorKey.Should().Be("NotFound");
+        await _userService.DidNotReceiveWithAnyArgs().ClearDeletionAsync(default, default);
     }
 
     // ==========================================================================

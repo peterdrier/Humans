@@ -175,9 +175,14 @@ public interface IUserService
 
     /// <summary>
     /// Sets the deletion-pending fields on a user (<c>DeletionRequestedAt</c>,
-    /// <c>DeletionScheduledFor</c>). Returns false if the user does not exist.
+    /// <c>DeletionScheduledFor</c>, optional <c>DeletionEligibleAfter</c>).
+    /// <paramref name="eligibleAfter"/> is the post-event hold date when the
+    /// user is on a current event ticket, otherwise null. Returns false if
+    /// the user does not exist.
     /// </summary>
-    Task<bool> SetDeletionPendingAsync(Guid userId, Instant requestedAt, Instant scheduledFor, CancellationToken ct = default);
+    Task<bool> SetDeletionPendingAsync(
+        Guid userId, Instant requestedAt, Instant scheduledFor, Instant? eligibleAfter,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Clears deletion-pending fields (<c>DeletionRequestedAt</c>,

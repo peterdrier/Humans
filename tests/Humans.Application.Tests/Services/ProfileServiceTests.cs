@@ -11,12 +11,8 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Xunit;
-using MemberApplication = Humans.Domain.Entities.Application;
 using ProfileService = Humans.Application.Services.Profile.ProfileService;
 using Humans.Application.Interfaces.AuditLog;
-using Humans.Application.Interfaces.Campaigns;
-using Humans.Application.Interfaces.Consent;
-using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Auth;
@@ -41,12 +37,6 @@ public class ProfileServiceTests : IDisposable
     private readonly IOnboardingService _onboardingService = Substitute.For<IOnboardingService>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
     private readonly IMembershipCalculator _membershipCalculator = Substitute.For<IMembershipCalculator>();
-    private readonly IConsentService _consentService = Substitute.For<IConsentService>();
-    private readonly ITicketQueryService _ticketQueryService = Substitute.For<ITicketQueryService>();
-    private readonly IApplicationDecisionService _applicationDecisionService = Substitute.For<IApplicationDecisionService>();
-    private readonly ICampaignService _campaignService = Substitute.For<ICampaignService>();
-    private readonly IRoleAssignmentService _roleAssignmentService = Substitute.For<IRoleAssignmentService>();
-    private readonly IAccountDeletionService _accountDeletionService = Substitute.For<IAccountDeletionService>();
     private readonly InMemoryFileStorage _fileStorage = new();
 
     // Delegate to the production helper (made internal for test access)
@@ -74,19 +64,10 @@ public class ProfileServiceTests : IDisposable
             _userEmailRepository,
             _contactFieldRepository, _communicationPreferenceRepository,
             _onboardingService, _auditLogService,
-            _membershipCalculator, _consentService, _ticketQueryService,
-            _applicationDecisionService, _campaignService,
-            _roleAssignmentService, _accountDeletionService,
+            _membershipCalculator,
             _fileStorage,
             _clock,
             NullLogger<ProfileService>.Instance);
-
-        _ticketQueryService.GetUserTicketExportDataAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(new UserTicketExportData([], []));
-
-        // Default: no pending applications
-        _applicationDecisionService.GetUserApplicationsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(new List<MemberApplication>());
 
         // Default: return all input IDs as Active (sufficient for most tests that don't filter by status)
         _membershipCalculator
@@ -286,152 +267,9 @@ public class ProfileServiceTests : IDisposable
 
     // --- Profile save flow: tier application during initial setup ---
 
-    [HumansFact]
-    public async Task SaveProfileAsync_InitialSetup_Colaborador_CreatesApplication()
-    {
-        var userId = Guid.NewGuid();
-        await SeedUserWithProfileAsync(userId, isApproved: false);
-        var request = MakeRequest(
-            selectedTier: MembershipTier.Colaborador,
-            applicationMotivation: "I want to help");
-
-        await _service.SaveProfileAsync(userId, "Test", request, "en");
-
-        await _applicationDecisionService.Received().SubmitAsync(
-            userId, MembershipTier.Colaborador,
-            "I want to help",
-            Arg.Any<string?>(),
-            Arg.Any<string?>(),
-            Arg.Any<string?>(),
-            "en",
-            Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task SaveProfileAsync_InitialSetup_Volunteer_NoApplication()
-    {
-        var userId = Guid.NewGuid();
-        await SeedUserWithProfileAsync(userId, isApproved: false);
-        var request = MakeRequest(selectedTier: MembershipTier.Volunteer);
-
-        await _service.SaveProfileAsync(userId, "Test", request, "en");
-
-        await _applicationDecisionService.DidNotReceive().SubmitAsync(
-            Arg.Any<Guid>(), Arg.Any<MembershipTier>(),
-            Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
-            Arg.Any<string>(), Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task SaveProfileAsync_InitialSetup_ExistingPendingApp_DoesNotDuplicate()
-    {
-        var userId = Guid.NewGuid();
-        await SeedUserWithProfileAsync(userId, isApproved: false);
-        var existingApp = new MemberApplication
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            MembershipTier = MembershipTier.Colaborador,
-            Motivation = "Original motivation",
-            SubmittedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
-        };
-
-        _applicationDecisionService.GetUserApplicationsAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new List<MemberApplication> { existingApp });
-
-        var request = MakeRequest(
-            selectedTier: MembershipTier.Colaborador,
-            applicationMotivation: "New motivation");
-
-        await _service.SaveProfileAsync(userId, "Test", request, "en");
-
-        // Server-side enforcement: existing pending app forces selectedTier to profile.MembershipTier (Volunteer),
-        // so SubmitAsync should NOT be called (it was already submitted)
-        await _applicationDecisionService.DidNotReceive().SubmitAsync(
-            Arg.Any<Guid>(), Arg.Any<MembershipTier>(),
-            Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
-            Arg.Any<string>(), Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task SaveProfileAsync_ApprovedProfile_IgnoresTierSelection()
-    {
-        var userId = Guid.NewGuid();
-        await SeedUserWithProfileAsync(userId, isApproved: true);
-        var request = MakeRequest(
-            selectedTier: MembershipTier.Colaborador,
-            applicationMotivation: "Motivation");
-
-        await _service.SaveProfileAsync(userId, "Test", request, "en");
-
-        await _applicationDecisionService.DidNotReceive().SubmitAsync(
-            Arg.Any<Guid>(), Arg.Any<MembershipTier>(),
-            Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
-            Arg.Any<string>(), Arg.Any<CancellationToken>());
-    }
-
-    // --- Deletion request flow ---
-    // NB: the actual RequestDeletionAsync cascade lives in IAccountDeletionService
-    // (issue nobodies-collective/Humans#582). ProfileService simply delegates; see AccountDeletionServiceTests
-    // for the full team/role/audit/email coverage.
-
-    [HumansFact]
-    public async Task RequestDeletionAsync_DelegatesToAccountDeletionService()
-    {
-        var userId = Guid.NewGuid();
-        _accountDeletionService.RequestDeletionAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new OnboardingResult(true));
-
-        var result = await _service.RequestDeletionAsync(userId);
-
-        result.Success.Should().BeTrue();
-        await _accountDeletionService.Received(1)
-            .RequestDeletionAsync(userId, Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task RequestDeletionAsync_PropagatesErrorFromAccountDeletionService()
-    {
-        var userId = Guid.NewGuid();
-        _accountDeletionService.RequestDeletionAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new OnboardingResult(false, "AlreadyPending"));
-
-        var result = await _service.RequestDeletionAsync(userId);
-
-        result.Success.Should().BeFalse();
-        result.ErrorKey.Should().Be("AlreadyPending");
-    }
-
-    // --- Cancel deletion flow ---
-
-    [HumansFact]
-    public async Task CancelDeletionAsync_PendingDeletion_ClearsDates()
-    {
-        var userId = Guid.NewGuid();
-        var user = await SeedUserAsync(userId);
-        user.DeletionRequestedAt = _clock.GetCurrentInstant();
-        user.DeletionScheduledFor = _clock.GetCurrentInstant().Plus(Duration.FromDays(30));
-        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
-
-        var result = await _service.CancelDeletionAsync(userId);
-
-        result.Success.Should().BeTrue();
-        await _userService.Received().ClearDeletionAsync(userId, Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task CancelDeletionAsync_NoDeletion_ReturnsError()
-    {
-        var userId = Guid.NewGuid();
-        var user = await SeedUserAsync(userId);
-        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
-
-        var result = await _service.CancelDeletionAsync(userId);
-
-        result.Success.Should().BeFalse();
-        result.ErrorKey.Should().Be("NoDeletionPending");
-    }
+    // Tier-application orchestration moved to ProfileController.Edit POST in
+    // issue nobodies-collective/Humans#685. Deletion request/cancel moved to
+    // IAccountDeletionService (covered by AccountDeletionServiceTests).
 
     // --- Simple lookups ---
 
@@ -589,129 +427,10 @@ public class ProfileServiceTests : IDisposable
         asociadoCount.Should().Be(1);
     }
 
-    // --- Index/edit data ---
-
-    [HumansFact]
-    public async Task GetProfileIndexDataAsync_ReturnsProfileAndLatestApp()
-    {
-        var userId = Guid.NewGuid();
-        await SeedUserWithProfileAsync(userId);
-
-        var newerApp = new MemberApplication
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            MembershipTier = MembershipTier.Asociado,
-            Motivation = "second",
-            SubmittedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
-        };
-
-        _applicationDecisionService.GetUserApplicationsAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new List<MemberApplication> { newerApp });
-
-        _membershipCalculator.GetMembershipSnapshotAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new MembershipSnapshot(MembershipStatus.Active, true, 3, 2, new List<Guid>()));
-
-        var (profile, latestApp, pendingConsentCount) = await _service.GetProfileIndexDataAsync(userId);
-
-        profile.Should().NotBeNull();
-        latestApp.Should().NotBeNull();
-        latestApp!.Id.Should().Be(newerApp.Id);
-        pendingConsentCount.Should().Be(2);
-    }
-
-    [HumansFact]
-    public async Task GetProfileIndexDataAsync_NoProfile_ReturnsNulls()
-    {
-        var userId = Guid.NewGuid();
-        await SeedUserAsync(userId);
-
-        _membershipCalculator.GetMembershipSnapshotAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new MembershipSnapshot(MembershipStatus.Pending, false, 0, 0, new List<Guid>()));
-
-        var (profile, latestApp, _) = await _service.GetProfileIndexDataAsync(userId);
-
-        profile.Should().BeNull();
-        latestApp.Should().BeNull();
-    }
-
-    [HumansFact]
-    public async Task GetProfileEditDataAsync_SubmittedApp_IsTierLocked()
-    {
-        var userId = Guid.NewGuid();
-        await SeedUserWithProfileAsync(userId, isApproved: false);
-        var existingApp = new MemberApplication
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            MembershipTier = MembershipTier.Colaborador,
-            Motivation = "test",
-            SubmittedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
-        };
-
-        _applicationDecisionService.GetUserApplicationsAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new List<MemberApplication> { existingApp });
-
-        var (profile, isTierLocked, pendingApp) = await _service.GetProfileEditDataAsync(userId);
-
-        profile.Should().NotBeNull();
-        isTierLocked.Should().BeTrue();
-        pendingApp.Should().NotBeNull();
-    }
-
-    [HumansFact]
-    public async Task GetProfileEditDataAsync_ApprovedApp_IsTierLocked()
-    {
-        var userId = Guid.NewGuid();
-        await SeedUserWithProfileAsync(userId, isApproved: true);
-        var app = new MemberApplication
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            MembershipTier = MembershipTier.Colaborador,
-            Motivation = "test",
-            SubmittedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
-        };
-        app.Approve(userId, null, _clock);
-
-        _applicationDecisionService.GetUserApplicationsAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new List<MemberApplication> { app });
-
-        var (_, isTierLocked, pendingApp) = await _service.GetProfileEditDataAsync(userId);
-
-        isTierLocked.Should().BeTrue();
-        // Profile is approved, so PendingApplication is null even though app exists
-        pendingApp.Should().BeNull();
-    }
-
-    [HumansFact]
-    public async Task GetProfileEditDataAsync_NoApps_NotLocked()
-    {
-        var userId = Guid.NewGuid();
-        await SeedUserWithProfileAsync(userId);
-
-        var (profile, isTierLocked, pendingApp) = await _service.GetProfileEditDataAsync(userId);
-
-        profile.Should().NotBeNull();
-        isTierLocked.Should().BeFalse();
-        pendingApp.Should().BeNull();
-    }
-
-    [HumansFact]
-    public async Task GetProfileEditDataAsync_NoProfile_ReturnsNulls()
-    {
-        var userId = Guid.NewGuid();
-        await SeedUserAsync(userId);
-
-        var (profile, isTierLocked, pendingApp) = await _service.GetProfileEditDataAsync(userId);
-
-        profile.Should().BeNull();
-        isTierLocked.Should().BeFalse();
-        pendingApp.Should().BeNull();
-    }
+    // Profile-index/edit/admin-detail bundling moved to ProfileController in
+    // issue nobodies-collective/Humans#685 — composition is now controller
+    // concern (Profile + Application data are fetched separately and assembled
+    // for the view). No ProfileService methods to test here.
 
     // --- Batch/filtered queries ---
 
@@ -864,62 +583,9 @@ public class ProfileServiceTests : IDisposable
         result.Should().BeEmpty();
     }
 
-    // --- Admin queries ---
-
-    [HumansFact]
-    public async Task GetAdminHumanDetailAsync_ReturnsFullDetail()
-    {
-        var userId = Guid.NewGuid();
-        await SeedUserWithProfileAsync(userId, isApproved: true);
-        var user = await _dbContext.Users.FirstAsync(u => u.Id == userId);
-        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
-
-        var existingApp = new MemberApplication
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            MembershipTier = MembershipTier.Colaborador,
-            Motivation = "test",
-            SubmittedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
-        };
-        _applicationDecisionService.GetUserApplicationsAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new List<MemberApplication> { existingApp });
-
-        var roleAssignment = new RoleAssignment
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            RoleName = "Board",
-            ValidFrom = _clock.GetCurrentInstant() - Duration.FromDays(10),
-            CreatedAt = _clock.GetCurrentInstant(),
-            CreatedByUserId = userId
-        };
-        _roleAssignmentService.GetByUserIdAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new List<RoleAssignment> { roleAssignment });
-
-        _consentService.GetConsentRecordCountAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(1);
-
-        var result = await _service.GetAdminHumanDetailAsync(userId);
-
-        result.Should().NotBeNull();
-        result!.User.Id.Should().Be(userId);
-        result.Profile.Should().NotBeNull();
-        result.Applications.Should().HaveCount(1);
-        result.RoleAssignments.Should().HaveCount(1);
-    }
-
-    [HumansFact]
-    public async Task GetAdminHumanDetailAsync_NonExistent_ReturnsNull()
-    {
-        _userService.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns((User?)null);
-
-        var result = await _service.GetAdminHumanDetailAsync(Guid.NewGuid());
-
-        result.Should().BeNull();
-    }
+    // GetAdminHumanDetailAsync moved to ProfileController.AdminDetail in
+    // issue nobodies-collective/Humans#685 — composition is now controller
+    // concern.
 
     // --- Cooldown and export ---
 
@@ -1446,9 +1112,7 @@ public class ProfileServiceTests : IDisposable
         _userEmailRepository,
         _contactFieldRepository, _communicationPreferenceRepository,
         _onboardingService, _auditLogService,
-        _membershipCalculator, _consentService, _ticketQueryService,
-        _applicationDecisionService, _campaignService,
-        _roleAssignmentService, _accountDeletionService,
+        _membershipCalculator,
         _fileStorage,
         _clock,
         NullLogger<ProfileService>.Instance);
@@ -1529,7 +1193,6 @@ public class ProfileServiceTests : IDisposable
         int? birthdayMonth = null, int? birthdayDay = null,
         bool removeProfilePicture = false,
         byte[]? pictureData = null, string? pictureContentType = null,
-        MembershipTier? selectedTier = null, string? applicationMotivation = null,
         string? city = null)
     {
         return new ProfileSaveRequest(
@@ -1540,10 +1203,7 @@ public class ProfileServiceTests : IDisposable
             EmergencyContactName: null, EmergencyContactPhone: null, EmergencyContactRelationship: null,
             NoPriorBurnExperience: false,
             ProfilePictureData: pictureData, ProfilePictureContentType: pictureContentType,
-            RemoveProfilePicture: removeProfilePicture,
-            SelectedTier: selectedTier, ApplicationMotivation: applicationMotivation,
-            ApplicationAdditionalInfo: null,
-            ApplicationSignificantContribution: null, ApplicationRoleUnderstanding: null);
+            RemoveProfilePicture: removeProfilePicture);
     }
 
     private Profile MakeProfile(Guid userId, MembershipTier tier = MembershipTier.Volunteer,
@@ -1626,9 +1286,7 @@ public class ProfileServiceTests : IDisposable
             _userEmailRepository,
             _contactFieldRepository, _communicationPreferenceRepository,
             _onboardingService, _auditLogService,
-            _membershipCalculator, _consentService, _ticketQueryService,
-            _applicationDecisionService, _campaignService,
-            _roleAssignmentService, _accountDeletionService,
+            _membershipCalculator,
             _fileStorage,
             _clock,
             NullLogger<ProfileService>.Instance);

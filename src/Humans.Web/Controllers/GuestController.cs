@@ -2,8 +2,10 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Application.Extensions;
+using Humans.Web.Extensions;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Onboarding;
+using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Models;
@@ -25,6 +27,7 @@ public class GuestController : HumansControllerBase
     private readonly ITicketQueryService _ticketQueryService;
     private readonly IGdprExportService _gdprExportService;
     private readonly IOnboardingWidgetState _widgetState;
+    private readonly IAccountDeletionService _accountDeletionService;
     private readonly IClock _clock;
     private readonly ILogger<GuestController> _logger;
 
@@ -42,6 +45,7 @@ public class GuestController : HumansControllerBase
         ITicketQueryService ticketQueryService,
         IGdprExportService gdprExportService,
         IOnboardingWidgetState widgetState,
+        IAccountDeletionService accountDeletionService,
         IClock clock,
         ILogger<GuestController> logger)
         : base(userManager)
@@ -51,6 +55,7 @@ public class GuestController : HumansControllerBase
         _ticketQueryService = ticketQueryService;
         _gdprExportService = gdprExportService;
         _widgetState = widgetState;
+        _accountDeletionService = accountDeletionService;
         _clock = clock;
         _logger = logger;
     }
@@ -195,40 +200,23 @@ public class GuestController : HumansControllerBase
 
         try
         {
-            if (user.IsDeletionPending)
+            // Single orchestrator for both profile and profileless deletion
+            // requests (issue nobodies-collective/Humans#685). Ticket-hold,
+            // membership/role revoke, audit, email, and shift-authorization
+            // invalidation all live in AccountDeletionService.
+            var result = await _accountDeletionService.RequestDeletionAsync(user.Id);
+            if (!result.Success)
             {
-                SetError("A deletion request is already pending.");
+                SetError(string.Equals(result.ErrorKey, "AlreadyPending", StringComparison.Ordinal)
+                    ? "A deletion request is already pending."
+                    : "Failed to process deletion request. Please try again.");
                 return RedirectToAction(nameof(Index));
             }
 
-            var now = _clock.GetCurrentInstant();
-            var gracePeriod = Duration.FromDays(30);
-
-            // Check for upcoming event tickets — if ticket holder, set EligibleAfter to post-event
-            var eventHoldDate = await _profileService.GetEventHoldDateAsync(user.Id);
-
-            user.DeletionRequestedAt = now;
-            user.DeletionScheduledFor = now.Plus(gracePeriod);
-            user.DeletionEligibleAfter = eventHoldDate;
-
-            await UpdateCurrentUserAsync(user);
-
-            if (eventHoldDate.HasValue)
-            {
-                SetSuccess(
-                    $"Deletion request recorded. Because you have tickets for an upcoming event, " +
-                    $"your account will be deleted after {eventHoldDate.Value.ToDateTimeUtc():d MMM yyyy}.");
-            }
-            else
-            {
-                SetSuccess(
-                    $"Deletion request recorded. Your account will be permanently deleted on " +
-                    $"{user.DeletionScheduledFor.Value.ToDateTimeUtc():d MMM yyyy}.");
-            }
-
-            _logger.LogWarning(
-                "Profileless user {UserId} requested account deletion. Scheduled: {ScheduledFor}, EligibleAfter: {EligibleAfter}",
-                user.Id, user.DeletionScheduledFor, eventHoldDate);
+            var effective = result.EffectiveDeletionDate.ToDisplayDate();
+            SetSuccess(result.IsHeldForTicket
+                ? $"Deletion request recorded. Because you have tickets for an upcoming event, your account will be deleted after {effective}."
+                : $"Deletion request recorded. Your account will be permanently deleted on {effective}.");
 
             return RedirectToAction(nameof(Index));
         }
@@ -248,31 +236,17 @@ public class GuestController : HumansControllerBase
         if (user is null)
             return Challenge();
 
-        try
+        var result = await _accountDeletionService.CancelDeletionAsync(user.Id);
+        if (!result.Success)
         {
-            if (!user.IsDeletionPending)
-            {
-                SetError("No deletion request is pending.");
-                return RedirectToAction(nameof(Index));
-            }
-
-            user.DeletionRequestedAt = null;
-            user.DeletionScheduledFor = null;
-            user.DeletionEligibleAfter = null;
-
-            await UpdateCurrentUserAsync(user);
-
-            SetSuccess("Deletion request cancelled.");
-            _logger.LogInformation("Profileless user {UserId} cancelled deletion request", user.Id);
-
+            SetError(string.Equals(result.ErrorKey, "NoDeletionPending", StringComparison.Ordinal)
+                ? "No deletion request is pending."
+                : "Failed to cancel deletion request. Please try again.");
             return RedirectToAction(nameof(Index));
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to cancel deletion request for user {UserId}", user.Id);
-            SetError("Failed to cancel deletion request. Please try again.");
-            return RedirectToAction(nameof(Index));
-        }
+
+        SetSuccess("Deletion request cancelled.");
+        return RedirectToAction(nameof(Index));
     }
 
     // ─── Private Helpers ─────────────────────────────────────────────
