@@ -8,17 +8,17 @@ argument-hint: "(no args)"
 
 Opens a single batched PR from `peterdrier/Humans:main` (peter's fork, QA-deployed) to `nobodies-collective/Humans:main` (production). Per `CLAUDE.md`, the upstream merge strategy is **rebase merge** — individual PRs were already squashed on the fork.
 
-## The ref-qualification trap (read this first)
+## The ref-qualification rule (read this first)
 
-GitHub resolves bare `#NNN` against the repo where the comment lives. The PR body lives on **nobodies-collective/Humans**, so:
+The repo has two GitHub remotes with overlapping issue/PR numbers — `peterdrier/Humans` (fork, where QA PRs land) and `nobodies-collective/Humans` (upstream, where issues are tracked and production lives). `memory/process/issue-refs-qualified.md` requires **every** ref to be qualified with its repo. Bare `#NNN` is banned everywhere — PR bodies, commit messages, comments, chat. The reason is human disambiguation, not GitHub auto-linking: a reader (or a future agent) seeing `#673` in any context cannot tell which tracker it points at, and historical mixups have closed wrong issues and linked wrong PRs.
 
-| Ref kind | What it means | How to write it in the PR body |
+| Ref kind in commit subject | What it means | How to write it |
 |---|---|---|
-| Trailing `(#NNN)` in commit subject | peter-fork squash-merge PR number | **`peterdrier/Humans#NNN`** (cross-repo, qualified) |
-| `issue-NNN:` prefix in commit subject | nobodies-collective issue number | `#NNN` (bare — resolves against nobodies) |
-| Inline `#NNN` in commit body | Almost always a nobodies-collective issue | `#NNN` (bare) |
+| Trailing `(#NNN)` | peter-fork squash-merge PR number | `peterdrier/Humans#NNN` |
+| `issue-NNN:` prefix | nobodies-collective issue number | `nobodies-collective/Humans#NNN` |
+| Inline `#NNN` in commit body/subject | Almost always a nobodies-collective issue (verify) | `nobodies-collective/Humans#NNN` |
 
-Getting this wrong cross-links to whatever PR/issue happens to share that number on nobodies-collective — silently wrong, hard to spot. The repo's `memory/process/issue-refs-qualified.md` rule applies here.
+Short forms `peterdrier#NNN` and `nobodies-collective#NNN` are also accepted by the rule, but the full `owner/repo#NNN` form is unambiguous and is what this skill emits.
 
 ## Steps
 
@@ -53,8 +53,8 @@ If empty: nothing to promote. Tell the user and stop.
 For each commit, transform the subject as follows:
 
 - Strip the trailing `(#NNN)` peter-fork PR ref and re-emit at the end as `(peterdrier/Humans#NNN)`.
-- Convert `issue-NNN:` prefix to `issue #NNN:` (the bare `#NNN` auto-links to the nobodies issue).
-- Inline `#NNN` references in the subject (e.g. "codex findings on #667") stay bare.
+- Convert `issue-NNN:` prefix to `nobodies-collective/Humans#NNN:`.
+- Inline `#NNN` references in the subject (e.g. "codex findings on #667") become `nobodies-collective/Humans#NNN` after verifying it's a nobodies issue. If unsure, check both repos with `gh pr view NNN --repo peterdrier/Humans` and `gh issue view NNN --repo nobodies-collective/Humans` (the rule applies regardless: don't emit bare `#NNN`).
 - Commits without a peter-fork PR ref (direct-to-main commits, rare) just get listed without the trailing parenthetical.
 
 **Worked example** — given this commit:
@@ -66,7 +66,7 @@ For each commit, transform the subject as follows:
 emit this bullet:
 
 ```
-- `8508e353` issue #673: consolidate person-search with PersonSearchFields bit-flag API (peterdrier/Humans#455)
+- `8508e353` nobodies-collective/Humans#673: consolidate person-search with PersonSearchFields bit-flag API (peterdrier/Humans#455)
 ```
 
 ### 5. Write the PR
@@ -82,7 +82,7 @@ gh pr create --repo nobodies-collective/Humans \
 
 Batched promotion of QA-tested changes from `peterdrier/Humans:main` to production.
 
-PR refs are qualified to `peterdrier/Humans` (peter-fork PR numbers); bare `#NNN` refs are nobodies-collective issues.
+All issue/PR refs are qualified per `memory/process/issue-refs-qualified.md` — `peterdrier/Humans#NNN` for peter-fork PRs, `nobodies-collective/Humans#NNN` for upstream issues.
 
 ## Commits
 
@@ -107,8 +107,8 @@ Substitute `N` with the actual commit count.
 ## Sanity checks before submitting
 
 - [ ] Every `(#NNN)` from a commit subject is rewritten as `(peterdrier/Humans#NNN)` in the body.
-- [ ] Every `issue-NNN:` prefix is rewritten as `issue #NNN:`.
-- [ ] No bare `#NNN` in the body refers to a peter-fork PR. (If unsure about a number, check `gh pr view NNN --repo peterdrier/Humans` vs `gh issue view NNN --repo nobodies-collective/Humans`.)
+- [ ] Every `issue-NNN:` prefix is rewritten as `nobodies-collective/Humans#NNN:`.
+- [ ] Every inline `#NNN` reference is qualified (`peterdrier/Humans#NNN` or `nobodies-collective/Humans#NNN`) — no bare refs anywhere in the body.
 - [ ] Title is `Promote QA → production (<N> commits)` with the correct count.
 - [ ] No existing open PR was overlooked (step 2).
 
