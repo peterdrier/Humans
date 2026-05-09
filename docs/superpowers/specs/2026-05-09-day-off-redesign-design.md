@@ -70,19 +70,22 @@ Enforced in the service layer (not the database):
 |---|---|
 | `BuildStartOffset ≤ DayOffset < 0` | `VolTrack_Err_DayOffOutsideBuild` |
 | Volunteer has no Confirmed/Pending Build signup on that day | `VolTrack_Err_DayOffWithSignups` |
-| Day does not fall within the volunteer's camp-setup span (`d ≥ setupOffset`) | `VolTrack_Err_DayOffDuringCampSetup` |
 | At most one entry per `DayOffset` per `(UserId, EventSettingsId)` row | (repository normalizes; replaces existing entry for same day) |
 | Reason: trimmed; whitespace-only → null; longer than 200 chars → truncated to 200 | (no error; silent normalization) |
 
-The signup-overlap rule means the coord must bail any pre-existing signups on the day before they can ack it as off. The camp-setup-overlap rule means a day inside camp-setup can't be a day off (the volunteer is already on-site for build; chasing isn't a coverage problem).
+The signup-overlap rule means the coord must bail any pre-existing signups on the day before they can ack it as off. **Camp-setup overlap is NOT validated** — see §"Camp-setup interaction" below for why and how the UI prevents it instead.
 
 The unique-per-day invariant ensures the cell-state computation only ever sees one entry per cell.
 
-### Camp-setup interaction (one-directional invariant)
+### Camp-setup interaction
 
-The day-off ↔ camp-setup constraint is enforced **only** when adding a day-off. `SetCampSetupAsync` is unchanged by this spec — the coord can set, change, or clear `BarrioSetupStartDate` at any time, regardless of which day-off entries exist on the row. The pre-existing camp-setup validations (`setupOffset < 0`, `setupOffset ≥ firstSignup`) are the only gates.
+Day-off and camp-setup are **kept separate by the UI, not by service-side validation.** Concretely:
 
-When `SetCampSetupAsync` results in a span that newly covers existing day-off entries (entries where `DayOffset ≥ newSetupOffset`), those entries are **silently auto-cleared** as part of the same transaction. They no longer represent useful state — the volunteer is on-site for camp-setup that day, so the "don't chase me" annotation is redundant. Each cleared entry emits a `VolunteerDayOffCleared` audit row alongside the `VolunteerCampSetupSet` row, so the trail is reconstructable.
+- **Day-off side**: the popover's day-off section is **not rendered at all** when the cell's state is CampSetup. The coord doesn't see a "Mark day off" button, and there's no muted note explaining why — the cell is already visibly blue (camp-setup), and that conveys "this volunteer is accounted for; nothing to do." The service does **not** reject day-off writes that fall inside camp-setup span (i.e., no `VolTrack_Err_DayOffDuringCampSetup` error key, no validation branch). Defense-in-depth is provided by the UI never offering the action; a hypothetical hand-crafted POST that bypasses the UI would write the entry, but it would render as CampSetup anyway (precedence) and get auto-cleared the next time camp-setup is moved (see below).
+
+- **Camp-setup side**: `SetCampSetupAsync` is unchanged in its acceptance — the coord can set, change, or clear `BarrioSetupStartDate` at any time, regardless of which day-off entries exist. The pre-existing camp-setup validations (`setupOffset < 0`, `setupOffset ≥ firstSignup`) are the only gates.
+
+  When `SetCampSetupAsync` results in a span that newly covers existing day-off entries (entries where `DayOffset ≥ newSetupOffset`), those entries are **silently auto-cleared** as part of the same transaction. They no longer represent useful state — the volunteer is on-site for camp-setup that day, so the "don't chase me" annotation is redundant. Each cleared entry emits a `VolunteerDayOffCleared` audit row alongside the `VolunteerCampSetupSet` row, so the trail is reconstructable.
 
 `ClearCampSetupAsync` does **not** auto-resurrect anything — it just nulls the camp-setup fields. Day-offs that were valid (offset before the now-cleared setup span) are untouched and remain valid.
 
@@ -114,7 +117,7 @@ Service implementation:
 
 - Loads active event via the existing `GetActiveEventSettingsAsync`. Throws if absent (matches existing camp-setup behaviour).
 - Validates `dayOffset` against `BuildStartOffset` and 0.
-- For `SetDayOffAsync`: queries `GetEligibleBuildSignupsAsync(es.Id)` and rejects if `(userId, dayOffset)` has a Confirmed or Pending signup. Loads the existing build-status row and rejects if `BarrioSetupStartDate` is set with `setupOffset ≤ dayOffset`.
+- For `SetDayOffAsync`: queries `GetEligibleBuildSignupsAsync(es.Id)` and rejects if `(userId, dayOffset)` has a Confirmed or Pending signup. Camp-setup overlap is **not** checked — the UI prevents it by hiding the day-off section on CampSetup cells (see §"Camp-setup interaction").
 - Trims `reason`, coerces blank → `null`, caps at 200 chars.
 - Delegates the write to the repository, passing a fully-constructed `DayOffEntry` (timestamp from `IClock`). Service owns the clock concern; repo persists what it's given.
 
@@ -245,10 +248,10 @@ The cell popover gains a Day-off section below the camp-setup section. It is **s
 |---|---|
 | DayOff (entry exists for this day) | A small caption showing the reason (or "no reason given"), then a `Cancel day off` button posting `ClearDayOff`. |
 | Confirmed or Pending | A muted note from `VolTrack_Popover_DayOffBlockedBySignups` (no button). |
-| CampSetup | A muted note from `VolTrack_Popover_DayOffBlockedByCampSetup` (no button). |
+| CampSetup | **No day-off section rendered.** The cell is already visibly blue; no action is available, and surfacing a "you can't do this" message would be noise. |
 | Gap | A small `<input name="Reason" placeholder="Reason (optional)">` plus a `Mark day off` button posting `SetDayOff`. |
 
-The Outside cell case never reaches a markable state in practice: the validation rule `BuildStartOffset ≤ DayOffset < 0` is identical to the active-window range, so an Outside-cell day-off is impossible by validation; the popover renders no day-off section there.
+The Outside cell case is structurally identical to CampSetup at the popover level — no day-off section is rendered (the validation rule `BuildStartOffset ≤ DayOffset < 0` matches the active-window range, so an Outside cell can't accept a day-off entry).
 
 The conditional rendering means the coord visually sees what's possible before clicking. The server-side validation is the source of truth (defence in depth) but the user only hits its error path if the page state went stale between render and click — acceptable for a coord-only flow with low concurrency.
 
@@ -304,7 +307,7 @@ Add one swatch on the footer legend in `Index.cshtml`, between Gap and Available
 
 ## Localization
 
-15 new keys, added to all six locale resx files (English values shown; non-English files ship with `TODO: translate` comments as the codebase convention):
+13 new keys, added to all six locale resx files (English values shown; non-English files ship with `TODO: translate` comments as the codebase convention):
 
 | Key | EN |
 |---|---|
@@ -314,17 +317,15 @@ Add one swatch on the footer legend in `Index.cshtml`, between Gap and Available
 | `VolTrack_Popover_CancelDayOff` | `Cancel day off` |
 | `VolTrack_Popover_ReasonLabel` | `Reason (optional)` |
 | `VolTrack_Popover_DayOffBlockedBySignups` | `Bail this signup before marking a day off` |
-| `VolTrack_Popover_DayOffBlockedByCampSetup` | `Camp set-up is already covering this day` |
 | `VolTrack_Msg_DayOffMarked` | `Day off marked.` |
 | `VolTrack_Msg_DayOffCleared` | `Day off cleared.` |
 | `VolTrack_DayOffBadge` | `{0} day off` |
 | `VolTrack_Err_DayOffWithSignups` | `Volunteer has signups on that day — bail them first.` |
-| `VolTrack_Err_DayOffDuringCampSetup` | `Camp set-up already covers that day.` |
 | `VolTrack_Err_DayOffOutsideBuild` | `Day off must be inside the build period.` |
 | `VolTrack_AuditAction_DayOffMarked` | `Day off marked` |
 | `VolTrack_AuditAction_DayOffCleared` | `Day off cleared` |
 
-(Same count as the keys removed in the previous teardown, so the resx files stay roughly the same size.)
+(No `VolTrack_Popover_DayOffBlockedByCampSetup` or `VolTrack_Err_DayOffDuringCampSetup` — the camp-setup case is silent in the UI and not validated server-side; see §"Camp-setup interaction".)
 
 ## Migration
 
@@ -356,8 +357,8 @@ Adds a column with a default — existing rows get `[]` automatically; no backfi
 - `SetDayOffAsync_rejects_offset_outside_build_window` (above and below the window).
 - `SetDayOffAsync_rejects_when_user_has_confirmed_signup_that_day`.
 - `SetDayOffAsync_rejects_when_user_has_pending_signup_that_day`.
-- `SetDayOffAsync_rejects_when_day_falls_inside_camp_setup`.
 - `SetDayOffAsync_succeeds_when_day_is_a_gap` (asserts repo receives a fully-populated `DayOffEntry` with `MarkedByUserId` and `MarkedAt` from the clock).
+- `SetDayOffAsync_does_not_validate_camp_setup_overlap` (regression guard — proves the service-side rejection that earlier drafts of this spec contemplated is intentionally absent).
 - `SetDayOffAsync_replaces_reason_when_called_twice_on_same_day`.
 - `SetDayOffAsync_trims_reason_and_truncates_at_200_chars`.
 - `ClearDayOffAsync_removes_entry_when_present`.
