@@ -129,14 +129,12 @@ src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:OrderBy#5
 src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:OrderBy#6
 src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:OrderBy#7
 src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:OrderBy#8
-src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:OrderBy#9
 src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:OrderByDescending#1
 src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:OrderByDescending#2
 src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:ThenBy#1
 src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:ThenBy#2
 src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:ThenBy#3
 src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:ThenBy#4
-src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:ThenBy#5
 src/Humans.Infrastructure/Repositories/Tickets/TicketRepository.cs:OrderBy#1
 src/Humans.Infrastructure/Repositories/Tickets/TicketRepository.cs:OrderBy#10
 src/Humans.Infrastructure/Repositories/Tickets/TicketRepository.cs:OrderBy#2

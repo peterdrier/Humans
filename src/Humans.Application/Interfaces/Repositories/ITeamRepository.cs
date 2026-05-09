@@ -88,11 +88,10 @@ public interface ITeamRepository
     Task<string?> GetNameByGoogleGroupPrefixAsync(string prefix, CancellationToken ct = default);
 
     /// <summary>
-    /// Paged list of teams (all active/inactive) with members, pending join
-    /// requests, and role definitions eagerly loaded for the admin table.
+    /// All teams (active/inactive) with active members, pending join requests,
+    /// and role definitions eagerly loaded.
     /// </summary>
-    Task<(IReadOnlyList<Team> Items, int TotalCount)> GetAllForAdminAsync(
-        int page, int pageSize, CancellationToken ct = default);
+    Task<IReadOnlyList<Team>> GetAllForAdminAsync(CancellationToken ct = default);
 
     /// <summary>
     /// Active teams whose <c>Name</c> contains <paramref name="query"/>

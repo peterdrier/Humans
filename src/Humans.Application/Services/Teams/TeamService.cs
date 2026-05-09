@@ -1849,16 +1849,30 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
         return result;
     }
 
-    public Task<(IReadOnlyList<Team> Items, int TotalCount)> GetAllTeamsForAdminAsync(
-        int page, int pageSize, CancellationToken cancellationToken = default) =>
-        _repo.GetAllForAdminAsync(page, pageSize, cancellationToken);
+    public async Task<(IReadOnlyList<Team> Items, int TotalCount)> GetAllTeamsForAdminAsync(
+        int page, int pageSize, CancellationToken cancellationToken = default)
+    {
+        var teams = await _repo.GetAllForAdminAsync(cancellationToken);
+        var totalCount = teams.Count;
+        var items = OrderTeamsForAdmin(teams)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToList();
+
+        return (items, totalCount);
+    }
 
     public async Task<AdminTeamListResult> GetAdminTeamListAsync(
         int page,
         int pageSize,
         CancellationToken cancellationToken = default)
     {
-        var (items, totalCount) = await _repo.GetAllForAdminAsync(page, pageSize, cancellationToken);
+        var teams = await _repo.GetAllForAdminAsync(cancellationToken);
+        var totalCount = teams.Count;
+        var items = OrderTeamsForAdmin(teams)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToList();
 
         var activeEvent = await _shiftManagementService.GetActiveAsync();
         var activeEventId = activeEvent?.Id ?? Guid.Empty;
@@ -1876,6 +1890,11 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
             BuildAdminTeamSummaries(items, pendingShiftCounts, resourceSummaries),
             totalCount);
     }
+
+    private static IOrderedEnumerable<Team> OrderTeamsForAdmin(IEnumerable<Team> teams) =>
+        teams
+            .OrderBy(t => t.SystemTeamType)
+            .ThenBy(t => t.Name, StringComparer.Ordinal);
 
     // ==========================================================================
     // Cache helpers — public surface
