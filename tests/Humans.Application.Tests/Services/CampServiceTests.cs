@@ -66,10 +66,20 @@ public class CampServiceTests : IDisposable
         _campRoleService.RemoveAllForMemberAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(0));
 
+        var profileServiceForCamp = Substitute.For<Humans.Application.Interfaces.Profiles.IProfileService>();
+        profileServiceForCamp
+            .GetByUserIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                var dict = new Dictionary<Guid, Profile>();
+                return (IReadOnlyDictionary<Guid, Profile>)dict;
+            });
+
         _service = new CampService(
             repo,
             roleRepo,
             _userService,
+            profileServiceForCamp,
             _auditLog,
             Substitute.For<ISystemTeamSync>(),
             _fileStorage,

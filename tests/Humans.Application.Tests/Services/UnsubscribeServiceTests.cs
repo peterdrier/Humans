@@ -21,14 +21,18 @@ namespace Humans.Application.Tests.Services;
 public class UnsubscribeServiceTests
 {
     private readonly IUserRepository _userRepo = Substitute.For<IUserRepository>();
+    private readonly IProfileService _profileService = Substitute.For<IProfileService>();
     private readonly ICommunicationPreferenceService _preferenceService = Substitute.For<ICommunicationPreferenceService>();
     private readonly IDataProtectionProvider _dataProtection = new EphemeralDataProtectionProvider();
     private readonly UnsubscribeService _service;
 
     public UnsubscribeServiceTests()
     {
+        _profileService.GetFullProfileAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<Humans.Application.FullProfile?>((Humans.Application.FullProfile?)null));
         _service = new UnsubscribeService(
             _userRepo,
+            _profileService,
             _preferenceService,
             _dataProtection,
             NullLogger<UnsubscribeService>.Instance);

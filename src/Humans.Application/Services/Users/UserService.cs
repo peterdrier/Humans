@@ -317,6 +317,10 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
         var legacyGoogleEmails = await _repo.GetLegacyGoogleEmailsAsync([userId], ct);
         legacyGoogleEmails.TryGetValue(userId, out var legacyGoogleEmail);
 
+        // Issue #692: GDPR data export — User.DisplayName is the stored
+        // identity-system field by definition. Users see exactly what is
+        // stored on the User row for transparency, separate from the
+        // BurnerName they chose (which is exported under the Profile slice).
         var shaped = new
         {
             user.Id,

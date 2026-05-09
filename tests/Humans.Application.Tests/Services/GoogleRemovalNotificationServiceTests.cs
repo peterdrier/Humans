@@ -22,14 +22,18 @@ public sealed class GoogleRemovalNotificationServiceTests
 {
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
+    private readonly IProfileService _profileService = Substitute.For<IProfileService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly GoogleRemovalNotificationService _service;
 
     public GoogleRemovalNotificationServiceTests()
     {
+        _profileService.GetFullProfileAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<Humans.Application.FullProfile?>((Humans.Application.FullProfile?)null));
         _service = new GoogleRemovalNotificationService(
             _userEmailService,
             _userService,
+            _profileService,
             _emailService,
             NullLogger<GoogleRemovalNotificationService>.Instance);
     }

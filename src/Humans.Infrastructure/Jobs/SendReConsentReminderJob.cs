@@ -8,6 +8,7 @@ using Humans.Infrastructure.Configuration;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Legal;
 using Humans.Application.Interfaces.Governance;
+using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
 
 namespace Humans.Infrastructure.Jobs;
@@ -28,6 +29,7 @@ public class SendReConsentReminderJob : IRecurringJob
     private readonly IMembershipCalculator _membershipCalculator;
     private readonly ILegalDocumentSyncService _legalDocService;
     private readonly IUserService _userService;
+    private readonly IProfileService _profileService;
     private readonly IEmailService _emailService;
     private readonly EmailSettings _emailSettings;
     private readonly IHumansMetrics _metrics;
@@ -38,6 +40,7 @@ public class SendReConsentReminderJob : IRecurringJob
         IMembershipCalculator membershipCalculator,
         ILegalDocumentSyncService legalDocService,
         IUserService userService,
+        IProfileService profileService,
         IEmailService emailService,
         IOptions<EmailSettings> emailSettings,
         IHumansMetrics metrics,
@@ -47,6 +50,7 @@ public class SendReConsentReminderJob : IRecurringJob
         _membershipCalculator = membershipCalculator;
         _legalDocService = legalDocService;
         _userService = userService;
+        _profileService = profileService;
         _emailService = emailService;
         _emailSettings = emailSettings.Value;
         _metrics = metrics;
@@ -103,9 +107,12 @@ public class SendReConsentReminderJob : IRecurringJob
                 var effectiveEmail = user.Email;
                 if (effectiveEmail is not null)
                 {
+                    // Issue #692: BurnerName-aware recipient label.
+                    var fp = await _profileService.GetFullProfileAsync(userId, cancellationToken);
+                    var recipientName = fp?.DisplayName ?? user.DisplayName;
                     await _emailService.SendReConsentReminderAsync(
                         effectiveEmail,
-                        user.DisplayName,
+                        recipientName,
                         requiredDocNames,
                         daysBeforeSuspension,
                         user.PreferredLanguage,

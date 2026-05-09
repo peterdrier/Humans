@@ -119,7 +119,7 @@ public class ProfileServiceTests : IDisposable
         await SeedUserAsync(userId);
         var request = MakeRequest(burnerName: "Flame", firstName: "Jane", lastName: "Doe");
 
-        var profileId = await _service.SaveProfileAsync(userId, "Jane Doe", request, "en");
+        var profileId = await _service.SaveProfileAsync(userId, request, "en");
 
         profileId.Should().NotBe(Guid.Empty);
         var profile = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
@@ -141,7 +141,7 @@ public class ProfileServiceTests : IDisposable
         await SeedUserAsync(userId);
         var request = MakeRequest(burnerName: "Flame", firstName: "Jane", lastName: "Doe");
 
-        await _service.SaveProfileAsync(userId, "Jane Doe", request, "en");
+        await _service.SaveProfileAsync(userId, request, "en");
 
         var profile = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
         profile.State.Should().Be(ProfileState.Active);
@@ -158,7 +158,7 @@ public class ProfileServiceTests : IDisposable
         // BurnerName/FirstName/LastName all empty — Stub state.
         var request = MakeRequest(burnerName: "", firstName: "", lastName: "");
 
-        await _service.SaveProfileAsync(userId, "Stub", request, "en");
+        await _service.SaveProfileAsync(userId, request, "en");
 
         var profile = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
         profile.State.Should().Be(ProfileState.Stub);
@@ -171,7 +171,7 @@ public class ProfileServiceTests : IDisposable
         await SeedUserWithProfileAsync(userId);
         var request = MakeRequest(burnerName: "NewName", firstName: "Updated", lastName: "Person");
 
-        await _service.SaveProfileAsync(userId, "Updated Person", request, "en");
+        await _service.SaveProfileAsync(userId, request, "en");
 
         var profile = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
         profile.BurnerName.Should().Be("NewName");
@@ -179,16 +179,21 @@ public class ProfileServiceTests : IDisposable
         profile.UpdatedAt.Should().Be(_clock.GetCurrentInstant());
     }
 
+    /// <summary>
+    /// Write-through sync (issue #692): User.DisplayName always tracks
+    /// Profile.BurnerName so the legacy auth-provider name cannot leak into
+    /// any UI / email / notification surface.
+    /// </summary>
     [HumansFact]
-    public async Task SaveProfileAsync_UpdatesUserDisplayName()
+    public async Task SaveProfileAsync_WriteThroughSyncs_UserDisplayNameToBurnerName()
     {
         var userId = Guid.NewGuid();
         await SeedUserWithProfileAsync(userId);
-        var request = MakeRequest();
+        var request = MakeRequest(burnerName: "Phoenix");
 
-        await _service.SaveProfileAsync(userId, "New Display Name", request, "en");
+        await _service.SaveProfileAsync(userId, request, "en");
 
-        await _userService.Received().UpdateDisplayNameAsync(userId, "New Display Name", Arg.Any<CancellationToken>());
+        await _userService.Received().UpdateDisplayNameAsync(userId, "Phoenix", Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -198,7 +203,7 @@ public class ProfileServiceTests : IDisposable
         await SeedUserWithProfileAsync(userId);
         var request = MakeRequest(birthdayMonth: 2, birthdayDay: 14);
 
-        await _service.SaveProfileAsync(userId, "Test", request, "en");
+        await _service.SaveProfileAsync(userId, request, "en");
 
         var profile = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
         profile.DateOfBirth.Should().Be(new LocalDate(4, 2, 14));
@@ -211,7 +216,7 @@ public class ProfileServiceTests : IDisposable
         await SeedUserWithProfileAsync(userId);
         var request = MakeRequest(birthdayMonth: 2, birthdayDay: 30);
 
-        await _service.SaveProfileAsync(userId, "Test", request, "en");
+        await _service.SaveProfileAsync(userId, request, "en");
 
         var profile = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
         profile.DateOfBirth.Should().BeNull();
@@ -224,7 +229,7 @@ public class ProfileServiceTests : IDisposable
         await SeedUserWithProfileAsync(userId, withPicture: true);
         var request = MakeRequest(removeProfilePicture: true);
 
-        await _service.SaveProfileAsync(userId, "Test", request, "en");
+        await _service.SaveProfileAsync(userId, request, "en");
 
         var profile = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
         profile.ProfilePictureData.Should().BeNull();
@@ -241,7 +246,7 @@ public class ProfileServiceTests : IDisposable
         var payload = new byte[] { 0x10, 0x20, 0x30 };
         var request = MakeRequest(pictureData: payload, pictureContentType: "image/jpeg");
 
-        await _service.SaveProfileAsync(userId, "Test", request, "en");
+        await _service.SaveProfileAsync(userId, request, "en");
 
         var profile = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
         // DB was written
@@ -264,7 +269,7 @@ public class ProfileServiceTests : IDisposable
         await _fileStorage.SaveAsync(PicKey(profileId, "image/png"), new byte[] { 1 });
 
         var request = MakeRequest(removeProfilePicture: true);
-        await _service.SaveProfileAsync(userId, "Test", request, "en");
+        await _service.SaveProfileAsync(userId, request, "en");
 
         var profile = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
         profile.ProfilePictureData.Should().BeNull();
@@ -279,7 +284,7 @@ public class ProfileServiceTests : IDisposable
         await SeedUserWithProfileAsync(userId);
         var request = MakeRequest();
 
-        await _service.SaveProfileAsync(userId, "Test", request, "en");
+        await _service.SaveProfileAsync(userId, request, "en");
 
         await _onboardingService.Received().SetConsentCheckPendingIfEligibleAsync(userId, Arg.Any<CancellationToken>());
     }
@@ -295,7 +300,7 @@ public class ProfileServiceTests : IDisposable
             selectedTier: MembershipTier.Colaborador,
             applicationMotivation: "I want to help");
 
-        await _service.SaveProfileAsync(userId, "Test", request, "en");
+        await _service.SaveProfileAsync(userId, request, "en");
 
         await _applicationDecisionService.Received().SubmitAsync(
             userId, MembershipTier.Colaborador,
@@ -314,7 +319,7 @@ public class ProfileServiceTests : IDisposable
         await SeedUserWithProfileAsync(userId, isApproved: false);
         var request = MakeRequest(selectedTier: MembershipTier.Volunteer);
 
-        await _service.SaveProfileAsync(userId, "Test", request, "en");
+        await _service.SaveProfileAsync(userId, request, "en");
 
         await _applicationDecisionService.DidNotReceive().SubmitAsync(
             Arg.Any<Guid>(), Arg.Any<MembershipTier>(),
@@ -344,7 +349,7 @@ public class ProfileServiceTests : IDisposable
             selectedTier: MembershipTier.Colaborador,
             applicationMotivation: "New motivation");
 
-        await _service.SaveProfileAsync(userId, "Test", request, "en");
+        await _service.SaveProfileAsync(userId, request, "en");
 
         // Server-side enforcement: existing pending app forces selectedTier to profile.MembershipTier (Volunteer),
         // so SubmitAsync should NOT be called (it was already submitted)
@@ -363,7 +368,7 @@ public class ProfileServiceTests : IDisposable
             selectedTier: MembershipTier.Colaborador,
             applicationMotivation: "Motivation");
 
-        await _service.SaveProfileAsync(userId, "Test", request, "en");
+        await _service.SaveProfileAsync(userId, request, "en");
 
         await _applicationDecisionService.DidNotReceive().SubmitAsync(
             Arg.Any<Guid>(), Arg.Any<MembershipTier>(),
@@ -994,9 +999,15 @@ public class ProfileServiceTests : IDisposable
     [HumansFact]
     public async Task SearchProfilesAsync_PublicAll_MatchesByDisplayName()
     {
+        // Issue #692: post-write-through-sync, User.DisplayName equals
+        // Profile.BurnerName for any post-onboarding row, and
+        // FullProfile.DisplayName resolves through BurnerName. The matcher
+        // checks BurnerName, so seed a profile whose BurnerName is the search
+        // term and verify the Name-bucket hit.
         var userId = Guid.NewGuid();
         var user = await SeedUserAsync(userId, displayName: "Sparkle Phoenix");
         var profile = MakeProfile(userId, isApproved: true);
+        profile.BurnerName = "Sparkle Phoenix";
         _dbContext.Profiles.Add(profile);
         await _dbContext.SaveChangesAsync();
         _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
@@ -1312,7 +1323,9 @@ public class ProfileServiceTests : IDisposable
 
         result.Should().NotBeNull();
         result!.UserId.Should().Be(userId);
-        result.DisplayName.Should().Be("Real Name");
+        // Issue #692: BurnerName-aware DisplayName — when a Profile has a
+        // BurnerName, FullProfile.DisplayName resolves to it.
+        result.DisplayName.Should().Be("Burner");
         result.ProfilePictureUrl.Should().Be("https://img");
         result.ProfileId.Should().Be(profileId);
         result.BurnerName.Should().Be("Burner");

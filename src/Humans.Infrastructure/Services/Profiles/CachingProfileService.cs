@@ -528,14 +528,14 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
     }
 
     public async Task<Guid> SaveProfileAsync(
-        Guid userId, string displayName, ProfileSaveRequest request, string language,
+        Guid userId, ProfileSaveRequest request, string language,
         CancellationToken ct = default)
     {
         await using var scope = _scopeFactory.CreateAsyncScope();
         var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
         var navBadge = scope.ServiceProvider.GetRequiredService<INavBadgeCacheInvalidator>();
         var notificationMeter = scope.ServiceProvider.GetRequiredService<INotificationMeterCacheInvalidator>();
-        var result = await inner.SaveProfileAsync(userId, displayName, request, language, ct);
+        var result = await inner.SaveProfileAsync(userId, request, language, ct);
 
         navBadge.Invalidate();
         notificationMeter.Invalidate();

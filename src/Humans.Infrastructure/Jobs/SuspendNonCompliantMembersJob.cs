@@ -134,7 +134,10 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
                     continue;
                 }
 
-                // 1. Send email notification
+                // 1. Send email notification.
+                // Issue #692: BurnerName-aware recipient label.
+                var fp = await _profileService.GetFullProfileAsync(user.Id, cancellationToken);
+                var recipientName = fp?.DisplayName ?? user.DisplayName;
                 var effectiveEmail = user.Email;
                 if (effectiveEmail is not null)
                 {
@@ -142,7 +145,7 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
                     {
                         await _emailService.SendAccessSuspendedAsync(
                             effectiveEmail,
-                            user.DisplayName,
+                            recipientName,
                             "Missing required document consent (grace period expired)",
                             user.PreferredLanguage,
                             cancellationToken);
@@ -197,9 +200,10 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
                 _metrics.RecordMemberSuspended("job");
 
                 // 4. Audit log + cross-cutting cache invalidation.
+                // Issue #692: BurnerName-aware audit subject.
                 await _auditLogService.LogAsync(
                     AuditAction.MemberSuspended, nameof(User), user.Id,
-                    $"{user.DisplayName} suspended for missing required document consent (grace period expired)",
+                    $"{recipientName} suspended for missing required document consent (grace period expired)",
                     nameof(SuspendNonCompliantMembersJob));
 
                 await _fullProfileInvalidator.InvalidateAsync(user.Id, cancellationToken);

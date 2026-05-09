@@ -6,6 +6,7 @@ using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Legal;
+using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 
@@ -28,6 +29,7 @@ public class SyncLegalDocumentsJob : IRecurringJob
     private readonly IEmailService _emailService;
     private readonly ITeamService _teamService;
     private readonly IUserService _userService;
+    private readonly IProfileService _profileService;
     private readonly IConsentRepository _consentRepository;
     private readonly IHumansMetrics _metrics;
     private readonly ILogger<SyncLegalDocumentsJob> _logger;
@@ -38,6 +40,7 @@ public class SyncLegalDocumentsJob : IRecurringJob
         IEmailService emailService,
         ITeamService teamService,
         IUserService userService,
+        IProfileService profileService,
         IConsentRepository consentRepository,
         IHumansMetrics metrics,
         ILogger<SyncLegalDocumentsJob> logger,
@@ -47,6 +50,7 @@ public class SyncLegalDocumentsJob : IRecurringJob
         _emailService = emailService;
         _teamService = teamService;
         _userService = userService;
+        _profileService = profileService;
         _consentRepository = consentRepository;
         _metrics = metrics;
         _logger = logger;
@@ -146,6 +150,8 @@ public class SyncLegalDocumentsJob : IRecurringJob
         // IUserService. Use the -WithEmails variant so GetEffectiveEmail
         // picks the verified notification-target address.
         var users = await _userService.GetByIdsWithEmailsAsync(usersToNotify, cancellationToken);
+        // Issue #692: BurnerName-aware recipient labels.
+        var profiles = await _profileService.GetByUserIdsAsync(usersToNotify, cancellationToken);
 
         var documentNames = updatedDocs.Where(d => d.IsRequired).Select(d => d.Name).ToList();
         var notificationCount = 0;
@@ -163,9 +169,12 @@ public class SyncLegalDocumentsJob : IRecurringJob
                 continue;
             }
 
+            var recipientName = profiles.TryGetValue(userId, out var p) && !string.IsNullOrWhiteSpace(p.BurnerName)
+                ? p.BurnerName
+                : user.DisplayName;
             await _emailService.SendReConsentsRequiredAsync(
                 effectiveEmail,
-                user.DisplayName,
+                recipientName,
                 documentNames,
                 user.PreferredLanguage,
                 cancellationToken);

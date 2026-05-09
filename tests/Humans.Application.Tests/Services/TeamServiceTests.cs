@@ -70,6 +70,16 @@ public class TeamServiceTests : IDisposable
         serviceProvider.GetService(typeof(IRoleAssignmentService)).Returns(_roleAssignmentService);
         serviceProvider.GetService(typeof(IEmailService)).Returns(emailService);
         serviceProvider.GetService(typeof(ISystemTeamSync)).Returns(systemTeamSync);
+        // Issue #692: TeamService resolves IProfileService for BurnerName-aware
+        // cached-member labels.
+        var teamProfileService = Substitute.For<Humans.Application.Interfaces.Profiles.IProfileService>();
+        teamProfileService
+            .GetFullProfileAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<Humans.Application.FullProfile?>((Humans.Application.FullProfile?)null));
+        teamProfileService
+            .GetByUserIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyDictionary<Guid, Profile>)new Dictionary<Guid, Profile>());
+        serviceProvider.GetService(typeof(Humans.Application.Interfaces.Profiles.IProfileService)).Returns(teamProfileService);
         _teamResourceService = Substitute.For<ITeamResourceService>();
         _teamResourceService
             .GetTeamResourceSummariesAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())

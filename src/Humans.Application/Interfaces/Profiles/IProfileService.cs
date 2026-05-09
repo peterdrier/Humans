@@ -77,7 +77,15 @@ public interface IProfileService : IUserMerge
     /// resizing the image before calling.
     /// </summary>
     Task SetProfilePictureAsync(Guid userId, byte[] pictureData, string contentType, CancellationToken ct = default);
-    Task<Guid> SaveProfileAsync(Guid userId, string displayName, ProfileSaveRequest request, string language, CancellationToken ct = default);
+    /// <summary>
+    /// Persists the profile (creating it on first save) and write-through-syncs
+    /// <see cref="User.DisplayName"/> to <see cref="Profile.BurnerName"/> in the
+    /// same operator action. After this returns the two fields cannot drift on
+    /// any new write, so direct reads of <c>User.DisplayName</c> in
+    /// non-rendering surfaces resolve to the BurnerName the human chose. See
+    /// <c>memory/architecture/burnername-is-the-display-name.md</c>.
+    /// </summary>
+    Task<Guid> SaveProfileAsync(Guid userId, ProfileSaveRequest request, string language, CancellationToken ct = default);
     Task<OnboardingResult> RequestDeletionAsync(Guid userId, CancellationToken ct = default);
     Task<OnboardingResult> CancelDeletionAsync(Guid userId, CancellationToken ct = default);
 

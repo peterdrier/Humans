@@ -21,6 +21,9 @@
                             </tr>
                         </thead>
                         <tbody>
+                            @* Issue #692: User.DisplayName is BurnerName post-write-through-sync.
+                               This is a dev-only chooser; the legacy auth-provider name only
+                               appears for accounts that never saved a Profile. *@
                             @foreach (var user in Model)
                             {
                                 <tr>

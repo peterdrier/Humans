@@ -92,6 +92,21 @@ public class GovernanceController : HumansControllerBase
         var (assignments, totalCount) = await _roleAssignmentService.GetFilteredAsync(
             role, activeOnly: !showInactive, page, pageSize, now);
 
+        // Issue #692: BurnerName-aware names — batch-fetch profiles for the
+        // role-holder + creator user-ids in scope.
+        var nameUserIds = assignments
+            .SelectMany(ra => new[] { ra.UserId, ra.CreatedByUserId })
+            .Where(id => id != Guid.Empty)
+            .Distinct()
+            .ToList();
+        var nameProfiles = nameUserIds.Count > 0
+            ? await _profileService.GetByUserIdsAsync(nameUserIds)
+            : (IReadOnlyDictionary<Guid, Humans.Domain.Entities.Profile>)new Dictionary<Guid, Humans.Domain.Entities.Profile>();
+        string ResolveName(Guid id, string fallback) =>
+            nameProfiles.TryGetValue(id, out var p) && !string.IsNullOrWhiteSpace(p.BurnerName)
+                ? p.BurnerName
+                : fallback;
+
         var viewModel = new AdminRoleAssignmentListViewModel
         {
             RoleAssignments = assignments.Select(ra => new AdminRoleAssignmentViewModel
@@ -99,13 +114,13 @@ public class GovernanceController : HumansControllerBase
                 Id = ra.Id,
                 UserId = ra.UserId,
                 UserEmail = ra.User.Email ?? string.Empty,
-                UserDisplayName = ra.User.DisplayName,
+                UserDisplayName = ResolveName(ra.UserId, ra.User.DisplayName),
                 RoleName = ra.RoleName,
                 ValidFrom = ra.ValidFrom.ToDateTimeUtc(),
                 ValidTo = ra.ValidTo?.ToDateTimeUtc(),
                 Notes = ra.Notes,
                 IsActive = ra.IsActive(now),
-                CreatedByName = ra.CreatedByUser?.DisplayName,
+                CreatedByName = ResolveName(ra.CreatedByUserId, ra.CreatedByUser?.DisplayName ?? string.Empty),
                 CreatedAt = ra.CreatedAt.ToDateTimeUtc()
             }).ToList(),
             RoleFilter = role,

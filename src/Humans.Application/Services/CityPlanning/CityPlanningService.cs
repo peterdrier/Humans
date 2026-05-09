@@ -137,12 +137,18 @@ public sealed class CityPlanningService : ICityPlanningService
         // Resolve display names through IUserService — no cross-domain .Include().
         var userIds = rows.Select(r => r.ModifiedByUserId).Distinct().ToList();
         var users = await _userService.GetByIdsAsync(userIds, cancellationToken);
+        // Issue #692: BurnerName-aware history attribution.
+        var profiles = await _profileService.GetByUserIdsAsync(userIds, cancellationToken);
 
         return rows.Select(h =>
         {
-            var displayName = users.TryGetValue(h.ModifiedByUserId, out var user) && !string.IsNullOrEmpty(user.DisplayName)
-                ? user.DisplayName
-                : h.ModifiedByUserId.ToString();
+            string displayName;
+            if (profiles.TryGetValue(h.ModifiedByUserId, out var p) && !string.IsNullOrWhiteSpace(p.BurnerName))
+                displayName = p.BurnerName;
+            else if (users.TryGetValue(h.ModifiedByUserId, out var user) && !string.IsNullOrEmpty(user.DisplayName))
+                displayName = user.DisplayName;
+            else
+                displayName = h.ModifiedByUserId.ToString();
 
             return new CampPolygonHistoryEntryDto(
                 h.Id,

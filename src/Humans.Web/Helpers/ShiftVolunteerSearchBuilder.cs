@@ -22,6 +22,12 @@ public static class ShiftVolunteerSearchBuilder
         var shiftStart = shift.GetAbsoluteStart(eventSettings);
         var shiftEnd = shift.GetAbsoluteEnd(eventSettings);
 
+        // Issue #692: Shift volunteer search is exempt from the unified
+        // person-search rule (memory/architecture/person-search.md). After
+        // Profile save's write-through sync, User.DisplayName equals
+        // Profile.BurnerName for any post-onboarding user, so searching /
+        // labelling on User.DisplayName here yields BurnerName matches by
+        // construction.
         var users = await userManager.Users
             .Where(u => EF.Functions.ILike(u.DisplayName, "%" + query + "%"))
             .OrderBy(u => u.DisplayName)

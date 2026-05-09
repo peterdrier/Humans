@@ -65,9 +65,13 @@ public sealed class GoogleSyncRemovalNotificationIntegrationTests
         // Real GoogleRemovalNotificationService — the integration boundary
         // we are exercising. Its IUserEmailService / IUserService / IEmailService
         // dependencies are fakes.
+        var profileService = Substitute.For<Humans.Application.Interfaces.Profiles.IProfileService>();
+        profileService.GetFullProfileAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<Humans.Application.FullProfile?>((Humans.Application.FullProfile?)null));
         var notifications = new GoogleRemovalNotificationService(
             _userEmailService,
             _userService,
+            profileService,
             _emailService,
             NullLogger<GoogleRemovalNotificationService>.Instance);
 

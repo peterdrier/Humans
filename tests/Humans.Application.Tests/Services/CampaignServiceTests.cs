@@ -28,6 +28,7 @@ public class CampaignServiceTests : IDisposable
     private readonly ITeamService _teamService;
     private readonly IUserService _userService;
     private readonly IUserEmailService _userEmailService;
+    private readonly IProfileService _profileService;
 
     public CampaignServiceTests()
     {
@@ -42,6 +43,20 @@ public class CampaignServiceTests : IDisposable
         _teamService = Substitute.For<ITeamService>();
         _userService = Substitute.For<IUserService>();
         _userEmailService = Substitute.For<IUserEmailService>();
+        _profileService = Substitute.For<IProfileService>();
+        _profileService
+            .GetByUserIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(async call =>
+            {
+                var ids = call.ArgAt<IReadOnlyCollection<Guid>>(0);
+                var list = await _dbContext.Profiles
+                    .Where(p => ids.Contains(p.UserId))
+                    .ToListAsync();
+                return (IReadOnlyDictionary<Guid, Profile>)list.ToDictionary(p => p.UserId);
+            });
+        _profileService
+            .GetFullProfileAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<FullProfile?>((FullProfile?)null));
 
         // Default stubs: fetch data from the in-memory DbContext so the existing
         // seed helpers still drive the scenarios end-to-end.
@@ -110,6 +125,7 @@ public class CampaignServiceTests : IDisposable
             _teamService,
             _userEmailService,
             _userService,
+            _profileService,
             Substitute.For<INotificationService>(),
             commPrefService,
             _emailService,

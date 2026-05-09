@@ -195,6 +195,19 @@ public class TeamController : HumansControllerBase
             var allChildMembers = await _teamService.GetActiveMembersForTeamsAsync(childTeamIds);
             var childMembersByTeam = allChildMembers.GroupBy(m => m.TeamId).ToDictionary(g => g.Key, g => g.ToList());
 
+            // Issue #692: BurnerName-aware display names for child-team rollup
+            // view models. Profile save write-through-syncs User.DisplayName to
+            // BurnerName, but we resolve via Profile.BurnerName explicitly so
+            // the read path is structurally aware of the rule.
+            var childUserIds = allChildMembers.Select(m => m.UserId).Distinct().ToList();
+            var childProfiles = childUserIds.Count > 0
+                ? await _profileService.GetByUserIdsAsync(childUserIds)
+                : (IReadOnlyDictionary<Guid, Humans.Domain.Entities.Profile>)new Dictionary<Guid, Humans.Domain.Entities.Profile>();
+            string ResolveChildName(TeamMember tm) =>
+                childProfiles.TryGetValue(tm.UserId, out var p) && !string.IsNullOrWhiteSpace(p.BurnerName)
+                    ? p.BurnerName
+                    : tm.User.DisplayName;
+
             foreach (var child in teamPage.ChildTeams)
             {
                 if (!childMembersByTeam.TryGetValue(child.Id, out var childMembers))
@@ -211,7 +224,7 @@ public class TeamController : HumansControllerBase
                         viewModel.SubteamLeads.Add(new ChildTeamMemberViewModel
                         {
                             UserId = cm.UserId,
-                            DisplayName = cm.User.DisplayName,
+                            DisplayName = ResolveChildName(cm),
                             // Populated below via ProfilePictureUrlHelper (custom uploads only).
                             ProfilePictureUrl = null,
                             ChildTeamName = child.Name,
@@ -227,7 +240,7 @@ public class TeamController : HumansControllerBase
                     viewModel.ChildTeamMembers.Add(new ChildTeamMemberViewModel
                     {
                         UserId = cm.UserId,
-                        DisplayName = cm.User.DisplayName,
+                        DisplayName = ResolveChildName(cm),
                         // Populated below via ProfilePictureUrlHelper (custom uploads only).
                         ProfilePictureUrl = null,
                         ChildTeamName = child.Name,
@@ -541,6 +554,12 @@ public class TeamController : HumansControllerBase
             .Select(m => m.UserId)
             .ToList();
 
+        // Issue #692: BurnerName-aware actor name for notification bodies sent
+        // to OTHER users (the team coordinators). Never the legacy
+        // auth-provider name.
+        var actorProfile = await _profileService.GetFullProfileAsync(user.Id);
+        var actorName = actorProfile?.DisplayName ?? user.DisplayName;
+
         try
         {
             if (team.RequiresApproval)
@@ -558,7 +577,7 @@ public class TeamController : HumansControllerBase
                             NotificationPriority.Normal,
                             $"New join request for {team.Name}",
                             coordinatorUserIds,
-                            body: $"{user.DisplayName} has requested to join {team.Name}.",
+                            body: $"{actorName} has requested to join {team.Name}.",
                             actionUrl: $"/Teams/{slug}/Members",
                             actionLabel: "Review request");
                     }
@@ -581,9 +600,9 @@ public class TeamController : HumansControllerBase
                             NotificationSource.TeamMemberAdded,
                             NotificationClass.Informational,
                             NotificationPriority.Normal,
-                            $"{user.DisplayName} joined {team.Name}",
+                            $"{actorName} joined {team.Name}",
                             coordinatorUserIds,
-                            body: $"{user.DisplayName} has joined {team.Name}.",
+                            body: $"{actorName} has joined {team.Name}.",
                             actionUrl: $"/Teams/{slug}/Members",
                             actionLabel: "View members");
                     }

@@ -25,6 +25,7 @@ public class GoogleController : HumansControllerBase
     private readonly ITeamResourceService _teamResourceService;
     private readonly IEmailProvisioningService _emailProvisioningService;
     private readonly IGoogleAdminService _googleAdminService;
+    private readonly IProfileService _profileService;
     private readonly IMemoryCache _cache;
     private readonly ILogger<GoogleController> _logger;
 
@@ -35,6 +36,7 @@ public class GoogleController : HumansControllerBase
         ITeamResourceService teamResourceService,
         IEmailProvisioningService emailProvisioningService,
         IGoogleAdminService googleAdminService,
+        IProfileService profileService,
         IMemoryCache cache,
         ILogger<GoogleController> logger)
         : base(userManager)
@@ -44,6 +46,7 @@ public class GoogleController : HumansControllerBase
         _teamResourceService = teamResourceService;
         _emailProvisioningService = emailProvisioningService;
         _googleAdminService = googleAdminService;
+        _profileService = profileService;
         _cache = cache;
         _logger = logger;
     }
@@ -68,21 +71,47 @@ public class GoogleController : HumansControllerBase
         var updatedByUsers = updatedByUserIds.Count > 0
             ? await userService.GetByIdsAsync(updatedByUserIds)
             : new Dictionary<Guid, User>();
+        // Issue #692: BurnerName-aware names for the audit subject.
+        var updatedByProfiles = updatedByUserIds.Count > 0
+            ? await _profileService.GetByUserIdsAsync(updatedByUserIds)
+            : (IReadOnlyDictionary<Guid, Humans.Domain.Entities.Profile>)new Dictionary<Guid, Humans.Domain.Entities.Profile>();
 
         var viewModel = new SyncSettingsViewModel
         {
-            Settings = settings.Select(s => new SyncServiceSettingViewModel
-            {
-                ServiceType = s.ServiceType,
-                ServiceName = FormatServiceName(s.ServiceType),
-                CurrentMode = s.SyncMode,
-                UpdatedAt = s.UpdatedAt.ToDateTimeUtc(),
-                UpdatedByName = s.UpdatedByUserId is { } uid && updatedByUsers.TryGetValue(uid, out var u)
-                    ? u.DisplayName
-                    : null
-            }).ToList()
+            Settings = settings
+                .Select(s => MapSyncSetting(s, updatedByProfiles, updatedByUsers))
+                .ToList()
         };
         return View(viewModel);
+    }
+
+    /// <summary>
+    /// Issue #692: BurnerName-aware UpdatedByName resolution. Extracted into a
+    /// helper so the action method's cyclomatic complexity stays under the
+    /// no-business-logic-in-controllers ratchet threshold.
+    /// </summary>
+    private SyncServiceSettingViewModel MapSyncSetting(
+        Humans.Domain.Entities.SyncServiceSettings s,
+        IReadOnlyDictionary<Guid, Humans.Domain.Entities.Profile> updatedByProfiles,
+        IReadOnlyDictionary<Guid, User> updatedByUsers)
+    {
+        string? updatedByName = null;
+        if (s.UpdatedByUserId is { } uid)
+        {
+            if (updatedByProfiles.TryGetValue(uid, out var p) && !string.IsNullOrWhiteSpace(p.BurnerName))
+                updatedByName = p.BurnerName;
+            else if (updatedByUsers.TryGetValue(uid, out var u))
+                updatedByName = u.DisplayName;
+        }
+
+        return new SyncServiceSettingViewModel
+        {
+            ServiceType = s.ServiceType,
+            ServiceName = FormatServiceName(s.ServiceType),
+            CurrentMode = s.SyncMode,
+            UpdatedAt = s.UpdatedAt.ToDateTimeUtc(),
+            UpdatedByName = updatedByName
+        };
     }
 
     [HttpPost("SyncSettings")]
@@ -513,9 +542,13 @@ public class GoogleController : HumansControllerBase
             return NotFound();
         }
 
+        // Issue #692: BurnerName-aware audit page header.
+        var fullProfile = await _profileService.GetFullProfileAsync(id);
+        var displayName = fullProfile?.DisplayName ?? user.DisplayName;
+
         var events = await _auditViewer.GetGoogleSyncForUserAsync(id);
         return GoogleSyncAuditView(
-            $"Google Sync Audit: {user.DisplayName}",
+            $"Google Sync Audit: {displayName}",
             Url.Action("AdminDetail", "Profile", new { id }),
             "Back to Human Detail",
             events);

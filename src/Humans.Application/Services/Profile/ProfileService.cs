@@ -301,7 +301,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
     }
 
     public async Task<Guid> SaveProfileAsync(
-        Guid userId, string displayName, ProfileSaveRequest request, string language,
+        Guid userId, ProfileSaveRequest request, string language,
         CancellationToken ct = default)
     {
         // Serialize per-user so two concurrent first-time saves can't both pass
@@ -311,7 +311,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         await gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            return await SaveProfileCoreAsync(userId, displayName, request, language, ct);
+            return await SaveProfileCoreAsync(userId, request, language, ct);
         }
         finally
         {
@@ -320,7 +320,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
     }
 
     private async Task<Guid> SaveProfileCoreAsync(
-        Guid userId, string displayName, ProfileSaveRequest request, string language,
+        Guid userId, ProfileSaveRequest request, string language,
         CancellationToken ct)
     {
         var now = _clock.GetCurrentInstant();
@@ -489,8 +489,13 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
 
         await _profileRepository.UpdateAsync(profile, ct);
 
-        // Update display name on user (cross-section → IUserService)
-        await _userService.UpdateDisplayNameAsync(userId, displayName, ct);
+        // Write-through sync: User.DisplayName always tracks Profile.BurnerName
+        // so the legacy auth-provider name (which is PII the human did not
+        // choose to expose) cannot drift back into UI / email / notification
+        // surfaces. After this assignment the two fields cannot diverge on any
+        // new write. See memory/architecture/burnername-is-the-display-name.md.
+        // Cross-section → IUserService (design-rules §6).
+        await _userService.UpdateDisplayNameAsync(userId, profile.BurnerName ?? string.Empty, ct);
 
         // Cache invalidation and store update handled by CachingProfileService decorator
 

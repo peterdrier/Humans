@@ -61,6 +61,12 @@ public class TeamRoleServiceTests : IDisposable
         serviceProvider.GetService(typeof(IRoleAssignmentService)).Returns(roleAssignmentService);
         serviceProvider.GetService(typeof(IEmailService)).Returns(emailService);
         serviceProvider.GetService(typeof(ISystemTeamSync)).Returns(systemTeamSync);
+        // Issue #692: TeamService now needs IProfileService for BurnerName-aware labels.
+        var teamProfileService = Substitute.For<Humans.Application.Interfaces.Profiles.IProfileService>();
+        teamProfileService
+            .GetFullProfileAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<Humans.Application.FullProfile?>((Humans.Application.FullProfile?)null));
+        serviceProvider.GetService(typeof(Humans.Application.Interfaces.Profiles.IProfileService)).Returns(teamProfileService);
         var teamResourceService = Substitute.For<ITeamResourceService>();
         teamResourceService
             .GetTeamResourceSummariesAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())

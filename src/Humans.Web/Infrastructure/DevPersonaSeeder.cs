@@ -164,7 +164,7 @@ public sealed class DevPersonaSeeder
             ApplicationSignificantContribution: null,
             ApplicationRoleUnderstanding: null);
 
-        var profileId = await _profileService.SaveProfileAsync(id, displayName, saveRequest, "en");
+        var profileId = await _profileService.SaveProfileAsync(id, saveRequest, "en");
 
         // Mark approved + cleared so the dev persona skips the consent gate
         // and lands on the dashboard. Routes through ProfileService so the

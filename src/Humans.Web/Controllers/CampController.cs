@@ -12,6 +12,7 @@ using NodaTime;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.CitiPlanning;
 using Humans.Application.Interfaces.Notifications;
+using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Camps;
 using Humans.Web.Models.Camp;
@@ -28,6 +29,7 @@ public class CampController : HumansCampControllerBase
     private readonly ICityPlanningService _cityPlanningService;
     private readonly INotificationService _notificationService;
     private readonly IUserService _userService;
+    private readonly IProfileService _profileService;
     private readonly IClock _clock;
     private readonly ILogger<CampController> _logger;
     private readonly IStringLocalizer<SharedResource> _localizer;
@@ -39,6 +41,7 @@ public class CampController : HumansCampControllerBase
         ICityPlanningService cityPlanningService,
         INotificationService notificationService,
         IUserService userService,
+        IProfileService profileService,
         UserManager<User> userManager,
         IAuthorizationService authorizationService,
         IClock clock,
@@ -52,6 +55,7 @@ public class CampController : HumansCampControllerBase
         _cityPlanningService = cityPlanningService;
         _notificationService = notificationService;
         _userService = userService;
+        _profileService = profileService;
         _clock = clock;
         _logger = logger;
         _localizer = localizer;
@@ -227,6 +231,10 @@ public class CampController : HumansCampControllerBase
             .FirstOrDefault()?.Name ?? slug;
         var senderEmail = currentUser.Email!;
 
+        // Issue #692: BurnerName-aware sender label.
+        var senderProfile = await _profileService.GetFullProfileAsync(currentUser.Id);
+        var senderName = senderProfile?.DisplayName ?? currentUser.DisplayName;
+
         try
         {
             var result = await _campContactService.SendFacilitatedMessageAsync(
@@ -234,7 +242,7 @@ public class CampController : HumansCampControllerBase
                 camp.ContactEmail,
                 campDisplayName,
                 currentUser.Id,
-                currentUser.DisplayName,
+                senderName,
                 senderEmail,
                 model.Message,
                 model.IncludeContactInfo);

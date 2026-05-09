@@ -123,13 +123,14 @@ public static class PersonSearchMatcher
         // ── Name bucket ─────────────────────────────────────────────
         if (includeName)
         {
-            // BurnerName is the primary public name; DisplayName is the
-            // legal/registered name on the underlying User row.
+            // Issue #692: BurnerName is the only public name we search.
+            // FullProfile.DisplayName resolves to BurnerName when present, so
+            // matching it duplicates the BurnerName check; for Stub-state
+            // pre-onboarding rows DisplayName falls through to
+            // User.DisplayName (the legacy auth-provider name) — those
+            // rows are pre-public and not in the search corpus by intent.
             if (!string.IsNullOrEmpty(p.BurnerName) &&
                 p.BurnerName.Contains(query, StringComparison.OrdinalIgnoreCase))
-                return ("Name", null, null);
-
-            if (p.DisplayName.Contains(query, StringComparison.OrdinalIgnoreCase))
                 return ("Name", null, null);
         }
 

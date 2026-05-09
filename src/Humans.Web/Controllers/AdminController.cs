@@ -90,7 +90,7 @@ public class AdminController : HumansControllerBase
     [HttpPost("Humans/{id}/Purge")]
     [Authorize(Policy = PolicyNames.AdminOnly)]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> PurgeHuman(Guid id)
+    public async Task<IActionResult> PurgeHuman(Guid id, [FromServices] IProfileService profileService)
     {
         if (_environment.IsProduction())
         {
@@ -111,7 +111,9 @@ public class AdminController : HumansControllerBase
             return RedirectToAction(nameof(ProfileController.AdminDetail), "Profile", new { id });
         }
 
-        var displayName = user.DisplayName;
+        // Issue #692: BurnerName-aware audit/log label.
+        var fullProfile = await profileService.GetFullProfileAsync(id);
+        var displayName = fullProfile?.DisplayName ?? user.DisplayName;
 
         _logger.LogWarning(
             "Admin {AdminId} purging human {HumanId} ({DisplayName}) in {Environment}",

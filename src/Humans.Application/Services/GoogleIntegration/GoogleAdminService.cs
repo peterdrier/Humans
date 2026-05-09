@@ -29,6 +29,7 @@ public sealed class GoogleAdminService : IGoogleAdminService
     private readonly ITeamResourceService _teamResourceService;
     private readonly IUserService _userService;
     private readonly IUserEmailService _userEmailService;
+    private readonly IProfileService _profileService;
     private readonly IAuditLogService _auditLogService;
     private readonly ILogger<GoogleAdminService> _logger;
 
@@ -41,6 +42,7 @@ public sealed class GoogleAdminService : IGoogleAdminService
         ITeamResourceService teamResourceService,
         IUserService userService,
         IUserEmailService userEmailService,
+        IProfileService profileService,
         IAuditLogService auditLogService,
         ILogger<GoogleAdminService> logger)
     {
@@ -50,8 +52,16 @@ public sealed class GoogleAdminService : IGoogleAdminService
         _teamResourceService = teamResourceService;
         _userService = userService;
         _userEmailService = userEmailService;
+        _profileService = profileService;
         _auditLogService = auditLogService;
         _logger = logger;
+    }
+
+    private async Task<string> ResolveDisplayNameAsync(Guid userId, string fallback, CancellationToken ct)
+    {
+        // Issue #692: BurnerName-aware display label.
+        var fp = await _profileService.GetFullProfileAsync(userId, ct);
+        return fp?.DisplayName ?? fallback;
     }
 
     // Resolve a single Workspace email to the linked human's UserId for audit
@@ -567,8 +577,9 @@ public sealed class GoogleAdminService : IGoogleAdminService
                 $"Linked @{NobodiesTeamDomain} account {email}",
                 actorUserId);
 
+            var resolvedName = await ResolveDisplayNameAsync(userId, user.DisplayName, ct);
             return new WorkspaceAccountActionResult(true,
-                Message: $"Linked {email} to {user.DisplayName}.");
+                Message: $"Linked {email} to {resolvedName}.");
         }
         catch (Exception ex)
         {
@@ -754,6 +765,11 @@ public sealed class GoogleAdminService : IGoogleAdminService
                     .ToList();
             }
 
+            // Issue #692: BurnerName-aware display labels for the rename list.
+            var nameProfiles = nobodiesUsers.Count > 0
+                ? await _profileService.GetByUserIdsAsync(nobodiesUsers.Select(u => u.Id).ToList(), ct)
+                : (IReadOnlyDictionary<Guid, Domain.Entities.Profile>)new Dictionary<Guid, Domain.Entities.Profile>();
+
             var renames = new List<EmailRenameInfo>();
 
             foreach (var user in nobodiesUsers)
@@ -778,10 +794,13 @@ public sealed class GoogleAdminService : IGoogleAdminService
                                 teamResourceCounts.TryGetValue(tid, out var count) ? count : 0);
                         }
 
+                        var displayName = nameProfiles.TryGetValue(user.Id, out var p) && !string.IsNullOrWhiteSpace(p.BurnerName)
+                            ? p.BurnerName
+                            : user.DisplayName ?? "Unknown";
                         renames.Add(new EmailRenameInfo
                         {
                             UserId = user.Id,
-                            DisplayName = user.DisplayName ?? "Unknown",
+                            DisplayName = displayName,
                             OldEmail = user.GoogleEmail!,
                             NewEmail = account.PrimaryEmail,
                             AffectedResourceCount = affectedResources
@@ -894,8 +913,9 @@ public sealed class GoogleAdminService : IGoogleAdminService
                 $"Fixed email rename: {oldEmail} -> {newEmail}",
                 actorUserId);
 
+            var resolvedName = await ResolveDisplayNameAsync(userId, user.DisplayName, ct);
             return new EmailRenameFixResult(true,
-                Message: $"Updated email for {user.DisplayName}: {oldEmail} -> {newEmail}");
+                Message: $"Updated email for {resolvedName}: {oldEmail} -> {newEmail}");
         }
         catch (Exception ex)
         {

@@ -35,6 +35,7 @@ public sealed class MagicLinkService : IMagicLinkService
     private readonly IEmailService _emailService;
     private readonly IMagicLinkUrlBuilder _urlBuilder;
     private readonly IMagicLinkRateLimiter _rateLimiter;
+    private readonly IProfileService _profileService;
     private readonly IClock _clock;
     private readonly ILogger<MagicLinkService> _logger;
 
@@ -44,6 +45,7 @@ public sealed class MagicLinkService : IMagicLinkService
         IEmailService emailService,
         IMagicLinkUrlBuilder urlBuilder,
         IMagicLinkRateLimiter rateLimiter,
+        IProfileService profileService,
         IClock clock,
         ILogger<MagicLinkService> logger)
     {
@@ -52,6 +54,7 @@ public sealed class MagicLinkService : IMagicLinkService
         _emailService = emailService;
         _urlBuilder = urlBuilder;
         _rateLimiter = rateLimiter;
+        _profileService = profileService;
         _clock = clock;
         _logger = logger;
     }
@@ -140,7 +143,17 @@ public sealed class MagicLinkService : IMagicLinkService
 
         var magicLinkUrl = _urlBuilder.BuildLoginUrl(user.Id, returnUrl);
 
-        var displayName = string.IsNullOrWhiteSpace(user.DisplayName) ? sendToEmail : user.DisplayName;
+        // Issue #692: BurnerName-aware recipient label. FullProfile.DisplayName
+        // resolves to BurnerName when a Profile exists; we fall back through
+        // user.DisplayName (acceptable pre-onboarding fallback per the
+        // burnername-is-the-display-name rule) and ultimately the email
+        // address so the greeting is never blank.
+        var fullProfile = await _profileService.GetFullProfileAsync(user.Id, ct);
+        var displayName = !string.IsNullOrWhiteSpace(fullProfile?.DisplayName)
+            ? fullProfile!.DisplayName
+            : !string.IsNullOrWhiteSpace(user.DisplayName)
+                ? user.DisplayName
+                : sendToEmail;
 
         await _emailService.SendMagicLinkLoginAsync(
             sendToEmail, displayName, magicLinkUrl, ct: ct);

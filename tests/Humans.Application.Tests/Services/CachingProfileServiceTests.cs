@@ -108,7 +108,7 @@ public class CachingProfileServiceTests
         await sut.GetFullProfileAsync(userId);
 
         // Perform the write — RefreshEntryAsync should reload from repositories.
-        await sut.SaveProfileAsync(userId, "Name", SampleSaveRequest(), "en");
+        await sut.SaveProfileAsync(userId, SampleSaveRequest(), "en");
 
         // The next read should return the fresh value synchronously from the dict
         // (not delegate to _inner — _inner.GetFullProfileAsync was only called

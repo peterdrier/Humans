@@ -19,20 +19,30 @@ namespace Humans.Application.Services.Users;
 public sealed class UnsubscribeService : IUnsubscribeService
 {
     private readonly IUserRepository _userRepository;
+    private readonly IProfileService _profileService;
     private readonly ICommunicationPreferenceService _preferenceService;
     private readonly IDataProtectionProvider _dataProtection;
     private readonly ILogger<UnsubscribeService> _logger;
 
     public UnsubscribeService(
         IUserRepository userRepository,
+        IProfileService profileService,
         ICommunicationPreferenceService preferenceService,
         IDataProtectionProvider dataProtection,
         ILogger<UnsubscribeService> logger)
     {
         _userRepository = userRepository;
+        _profileService = profileService;
         _preferenceService = preferenceService;
         _dataProtection = dataProtection;
         _logger = logger;
+    }
+
+    private async Task<string> ResolveDisplayNameAsync(Guid userId, string fallback, CancellationToken ct)
+    {
+        // Issue #692: BurnerName-aware label for the unsubscribe page.
+        var fp = await _profileService.GetFullProfileAsync(userId, ct);
+        return fp?.DisplayName ?? fallback;
     }
 
     public async Task<UnsubscribeTokenResult> ValidateTokenAsync(string token, CancellationToken ct = default)
@@ -45,7 +55,8 @@ public sealed class UnsubscribeService : IUnsubscribeService
             if (user is null)
                 return UnsubscribeTokenResult.Invalid();
 
-            return UnsubscribeTokenResult.Valid(result.UserId, user.DisplayName, result.Category);
+            var displayName = await ResolveDisplayNameAsync(result.UserId, user.DisplayName, ct);
+            return UnsubscribeTokenResult.Valid(result.UserId, displayName, result.Category);
         }
 
         // Expired new-format token — don't fall through to legacy
@@ -95,6 +106,7 @@ public sealed class UnsubscribeService : IUnsubscribeService
         if (user is null)
             return UnsubscribeTokenResult.Invalid();
 
-        return UnsubscribeTokenResult.Valid(userId, user.DisplayName, MessageCategory.Marketing, isLegacy: true);
+        var legacyDisplayName = await ResolveDisplayNameAsync(userId, user.DisplayName, ct);
+        return UnsubscribeTokenResult.Valid(userId, legacyDisplayName, MessageCategory.Marketing, isLegacy: true);
     }
 }

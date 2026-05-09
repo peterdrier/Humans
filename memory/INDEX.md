@@ -9,6 +9,7 @@ Atomic rules. Fetch the body when the description's trigger matches your task. S
 ## architecture/
 
 - [`audit-log-as-concurrency-safety-net`](architecture/audit-log-as-concurrency-safety-net.md) — audit log catches admin-clobbers-admin races at this scale; don't reach for `IsConcurrencyToken` / row versioning
+- [`burnername-is-the-display-name`](architecture/burnername-is-the-display-name.md) — HARD RULE. When a Profile exists, `Profile.BurnerName` is the displayed name. Profile save write-through-syncs `User.DisplayName` to BurnerName; reads route through `FullProfile.DisplayName` (BurnerName-aware) outside four legitimate `User.DisplayName` categories.
 - [`caching-transparent`](architecture/caching-transparent.md) — no `Cached*` types in domain surface; `Full<Section>` is the §15 stitched-DTO pattern
 - [`consent-record-immutable`](architecture/consent-record-immutable.md) — `consent_records` table: DB triggers block UPDATE/DELETE, INSERT only
 - [`db-enforcement-minimal`](architecture/db-enforcement-minimal.md) — service is the contract, not the DB; only audit-log immutability is doctrinal

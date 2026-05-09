@@ -499,10 +499,15 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
             return rows.ToList();
 
         var users = await _userService.GetByIdsAsync(matchedIds);
+        // Issue #692: BurnerName-aware matched-user labels.
+        var profiles = await _profileService.GetByUserIdsAsync(matchedIds);
         return rows.Select(r =>
         {
             if (r.MatchedUserId is { } uid && users.TryGetValue(uid, out var user))
             {
+                var displayName = profiles.TryGetValue(uid, out var p) && !string.IsNullOrWhiteSpace(p.BurnerName)
+                    ? p.BurnerName
+                    : user.DisplayName;
                 return new OrderRow
                 {
                     Id = r.Id,
@@ -524,7 +529,7 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
                     PaymentStatus = r.PaymentStatus,
                     VendorDashboardUrl = r.VendorDashboardUrl,
                     MatchedUserId = r.MatchedUserId,
-                    MatchedUserName = user.DisplayName,
+                    MatchedUserName = displayName,
                 };
             }
             return r;
@@ -542,10 +547,15 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
             return rows.ToList();
 
         var users = await _userService.GetByIdsAsync(matchedIds);
+        // Issue #692: BurnerName-aware matched-user labels.
+        var profiles = await _profileService.GetByUserIdsAsync(matchedIds);
         return rows.Select(r =>
         {
             if (r.MatchedUserId is { } uid && users.TryGetValue(uid, out var user))
             {
+                var displayName = profiles.TryGetValue(uid, out var p) && !string.IsNullOrWhiteSpace(p.BurnerName)
+                    ? p.BurnerName
+                    : user.DisplayName;
                 return new AttendeeRow
                 {
                     Id = r.Id,
@@ -555,7 +565,7 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
                     Price = r.Price,
                     Status = r.Status,
                     MatchedUserId = r.MatchedUserId,
-                    MatchedUserName = user.DisplayName,
+                    MatchedUserName = displayName,
                     VendorOrderId = r.VendorOrderId,
                 };
             }
@@ -626,7 +636,8 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
                 {
                     UserId = id,
                     HasTicket = matchedUserIds.Contains(id),
-                    Name = user.DisplayName,
+                    // Issue #692: BurnerName-aware label.
+                    Name = !string.IsNullOrWhiteSpace(profile.BurnerName) ? profile.BurnerName : user.DisplayName,
                     Email = email ?? string.Empty,
                     TeamNames = teamNames ?? [],
                     Tier = profile.MembershipTier,

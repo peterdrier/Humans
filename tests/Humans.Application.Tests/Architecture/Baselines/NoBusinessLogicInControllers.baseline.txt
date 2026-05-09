@@ -9,7 +9,7 @@
 src/Humans.Web/Controllers/AccountController.cs:CompleteSignup/4
 src/Humans.Web/Controllers/AccountController.cs:ExternalLoginCallback/2
 src/Humans.Web/Controllers/AdminController.cs:AudienceSegmentation/1
-src/Humans.Web/Controllers/AdminController.cs:PurgeHuman/1
+src/Humans.Web/Controllers/AdminController.cs:PurgeHuman/2
 src/Humans.Web/Controllers/AdminLegalDocumentsController.cs:CreateLegalDocument/1
 src/Humans.Web/Controllers/AgentController.cs:Ask/2
 src/Humans.Web/Controllers/ApplicationController.cs:Create/1

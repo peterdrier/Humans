@@ -173,9 +173,14 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
             {
                 try
                 {
+                    // Issue #692: BurnerName-aware recipient label — never the
+                    // legacy auth-provider name. FullProfile.DisplayName resolves
+                    // to BurnerName when a Profile exists.
+                    var fullProfile = await _profileService.GetFullProfileAsync(application.UserId, cancellationToken);
+                    var recipientName = fullProfile?.DisplayName ?? user.DisplayName;
                     await _emailService.SendApplicationApprovedAsync(
                         recipientEmail,
-                        user.DisplayName,
+                        recipientName,
                         application.MembershipTier,
                         user.PreferredLanguage);
                 }
@@ -266,9 +271,13 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
             {
                 try
                 {
+                    // Issue #692: BurnerName-aware recipient label — never the
+                    // legacy auth-provider name.
+                    var fullProfile = await _profileService.GetFullProfileAsync(application.UserId, cancellationToken);
+                    var recipientName = fullProfile?.DisplayName ?? user.DisplayName;
                     await _emailService.SendApplicationRejectedAsync(
                         recipientEmail,
-                        user.DisplayName,
+                        recipientName,
                         application.MembershipTier,
                         reason,
                         user.PreferredLanguage);

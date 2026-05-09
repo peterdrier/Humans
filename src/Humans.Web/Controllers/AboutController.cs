@@ -50,53 +50,7 @@ public class AboutController : HumansControllerBase
     {
         try
         {
-            var now = _clock.GetCurrentInstant();
-
-            // Load all active role assignments with user data — ~500 users, fits in memory
-            var (assignments, _) = await _roleAssignmentService.GetFilteredAsync(
-                roleFilter: null, activeOnly: true, page: 1, pageSize: 500, now);
-
-            // Resolve effective profile picture URLs (custom uploads only — see issue #532).
-            var effectiveUrls = await ProfilePictureUrlHelper.BuildEffectiveUrlsAsync(
-                _profileService, Url,
-                assignments.Select(ra => ra.UserId));
-
-            // Define role display order and metadata
-            var roleDefinitions = StaffViewModel.GetRoleDefinitions();
-
-            var roleSections = new List<StaffRoleSectionViewModel>();
-
-            foreach (var roleDef in roleDefinitions)
-            {
-                var holders = assignments
-                    .Where(ra => string.Equals(ra.RoleName, roleDef.RoleName, StringComparison.Ordinal))
-                    .Select(ra => new StaffRoleHolderViewModel
-                    {
-                        UserId = ra.UserId,
-                        DisplayName = ra.User.DisplayName,
-                        ProfilePictureUrl = effectiveUrls.GetValueOrDefault(ra.UserId)
-                    })
-                    .OrderBy(h => h.DisplayName, StringComparer.OrdinalIgnoreCase)
-                    .ToList();
-
-                if (holders.Count > 0)
-                {
-                    roleSections.Add(new StaffRoleSectionViewModel
-                    {
-                        RoleName = roleDef.RoleName,
-                        DisplayTitle = roleDef.DisplayTitle,
-                        Blurb = roleDef.Blurb,
-                        Icon = roleDef.Icon,
-                        Holders = holders
-                    });
-                }
-            }
-
-            var viewModel = new StaffViewModel
-            {
-                RoleSections = roleSections
-            };
-
+            var viewModel = await BuildStaffViewModelAsync();
             return View(viewModel);
         }
         catch (Exception ex)
@@ -104,5 +58,72 @@ public class AboutController : HumansControllerBase
             _logger.LogError(ex, "Failed to load staff page");
             return View(new StaffViewModel { RoleSections = [] });
         }
+    }
+
+    private async Task<StaffViewModel> BuildStaffViewModelAsync()
+    {
+        var now = _clock.GetCurrentInstant();
+
+        // Load all active role assignments with user data — ~500 users, fits in memory
+        var (assignments, _) = await _roleAssignmentService.GetFilteredAsync(
+            roleFilter: null, activeOnly: true, page: 1, pageSize: 500, now);
+
+        // Resolve effective profile picture URLs (custom uploads only — see issue #532).
+        var effectiveUrls = await ProfilePictureUrlHelper.BuildEffectiveUrlsAsync(
+            _profileService, Url,
+            assignments.Select(ra => ra.UserId));
+
+        // Issue #692: BurnerName-aware names — batch-fetch profiles for
+        // every role-holder so the public Staff page uses BurnerName.
+        var assignmentUserIds = assignments.Select(ra => ra.UserId).Distinct().ToList();
+        var assignmentProfiles = assignmentUserIds.Count > 0
+            ? await _profileService.GetByUserIdsAsync(assignmentUserIds)
+            : (IReadOnlyDictionary<Guid, Humans.Domain.Entities.Profile>)new Dictionary<Guid, Humans.Domain.Entities.Profile>();
+
+        var roleSections = StaffViewModel.GetRoleDefinitions()
+            .Select(def => BuildRoleSection(def, assignments, assignmentProfiles, effectiveUrls))
+            .Where(s => s.Holders.Count > 0)
+            .ToList();
+
+        return new StaffViewModel { RoleSections = roleSections };
+    }
+
+    private static StaffRoleSectionViewModel BuildRoleSection(
+        StaffRoleDefinition roleDef,
+        IEnumerable<Humans.Domain.Entities.RoleAssignment> assignments,
+        IReadOnlyDictionary<Guid, Humans.Domain.Entities.Profile> profiles,
+        IReadOnlyDictionary<Guid, string?> effectiveUrls)
+    {
+        var holders = assignments
+            .Where(ra => string.Equals(ra.RoleName, roleDef.RoleName, StringComparison.Ordinal))
+            .Select(ra => new StaffRoleHolderViewModel
+            {
+                UserId = ra.UserId,
+                DisplayName = ResolveStaffName(ra, profiles),
+                ProfilePictureUrl = effectiveUrls.GetValueOrDefault(ra.UserId)
+            })
+            .OrderBy(h => h.DisplayName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        return new StaffRoleSectionViewModel
+        {
+            RoleName = roleDef.RoleName,
+            DisplayTitle = roleDef.DisplayTitle,
+            Blurb = roleDef.Blurb,
+            Icon = roleDef.Icon,
+            Holders = holders
+        };
+    }
+
+    /// <summary>
+    /// Issue #692: BurnerName-aware staff label.
+    /// </summary>
+    private static string ResolveStaffName(
+        Humans.Domain.Entities.RoleAssignment ra,
+        IReadOnlyDictionary<Guid, Humans.Domain.Entities.Profile> profiles)
+    {
+        if (profiles.TryGetValue(ra.UserId, out var p) && !string.IsNullOrWhiteSpace(p.BurnerName))
+            return p.BurnerName;
+        return ra.User.DisplayName;
     }
 }

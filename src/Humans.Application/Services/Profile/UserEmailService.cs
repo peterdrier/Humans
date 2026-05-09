@@ -23,6 +23,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
 {
     private readonly IUserEmailRepository _repository;
     private readonly IUserService _userService;
+    private readonly IProfileRepository _profileRepository;
     private readonly UserManager<User> _userManager;
     private readonly IClock _clock;
     private readonly IFullProfileInvalidator _fullProfileInvalidator;
@@ -35,6 +36,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
     public UserEmailService(
         IUserEmailRepository repository,
         IUserService userService,
+        IProfileRepository profileRepository,
         UserManager<User> userManager,
         IClock clock,
         IFullProfileInvalidator fullProfileInvalidator,
@@ -44,6 +46,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
     {
         _repository = repository;
         _userService = userService;
+        _profileRepository = profileRepository;
         _userManager = userManager;
         _clock = clock;
         _fullProfileInvalidator = fullProfileInvalidator;
@@ -856,10 +859,21 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
             perUser.Select(x => x.UserId).ToList(),
             cancellationToken);
 
+        // Issue #692: BurnerName-aware label for the admin email-flag report.
+        // Admin path is low-traffic so per-user read is acceptable.
+        var profiles = new Dictionary<Guid, Domain.Entities.Profile>();
+        foreach (var x in perUser)
+        {
+            var p = await _profileRepository.GetByUserIdReadOnlyAsync(x.UserId, cancellationToken);
+            if (p is not null) profiles[x.UserId] = p;
+        }
+
         return perUser
             .Select(x => new UserEmailFlagViolation(
                 x.UserId,
-                users.TryGetValue(x.UserId, out var user) ? user.DisplayName : null,
+                profiles.TryGetValue(x.UserId, out var p) && !string.IsNullOrWhiteSpace(p.BurnerName)
+                    ? p.BurnerName
+                    : users.TryGetValue(x.UserId, out var user) ? user.DisplayName : null,
                 x.IsGoogleCount,
                 x.VerifiedCount,
                 x.VerifiedPrimaryCount,

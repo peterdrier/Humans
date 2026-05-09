@@ -34,6 +34,7 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
     private readonly ITeamService _teamService;
     private readonly IUserEmailService _userEmailService;
     private readonly IUserService _userService;
+    private readonly IProfileService _profileService;
     private readonly INotificationService _notificationService;
     private readonly ICommunicationPreferenceService _commPrefService;
     private readonly IEmailService _emailService;
@@ -45,6 +46,7 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
         ITeamService teamService,
         IUserEmailService userEmailService,
         IUserService userService,
+        IProfileService profileService,
         INotificationService notificationService,
         ICommunicationPreferenceService commPrefService,
         IEmailService emailService,
@@ -55,11 +57,32 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
         _teamService = teamService;
         _userEmailService = userEmailService;
         _userService = userService;
+        _profileService = profileService;
         _notificationService = notificationService;
         _commPrefService = commPrefService;
         _emailService = emailService;
         _clock = clock;
         _logger = logger;
+    }
+
+    /// <summary>
+    /// Issue #692: BurnerName-aware display-name resolution for the
+    /// recipient label on outbound campaign emails / view models. Profile
+    /// save write-through-syncs <see cref="User.DisplayName"/> to
+    /// <see cref="Profile.BurnerName"/>, so this is the canonical "what
+    /// name does the human want shown" lookup. Falls back to
+    /// <see cref="User.DisplayName"/> only for Stub-state pre-onboarding
+    /// rows that have no BurnerName yet.
+    /// </summary>
+    private static string ResolveDisplayName(
+        Guid userId,
+        IReadOnlyDictionary<Guid, User> users,
+        IReadOnlyDictionary<Guid, Humans.Domain.Entities.Profile> profiles)
+    {
+        if (profiles.TryGetValue(userId, out var profile)
+            && !string.IsNullOrWhiteSpace(profile.BurnerName))
+            return profile.BurnerName;
+        return users.TryGetValue(userId, out var user) ? user.DisplayName : string.Empty;
     }
 
     public async Task<Campaign> CreateAsync(string title, string? description,
@@ -351,8 +374,11 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
         if (eligibleUserIds.Count == 0)
             return 0;
 
-        // Cross-section fetch: users (for DisplayName) and notification emails.
+        // Cross-section fetch: users (User row carries the email/locale fields the
+        // outbox needs), profiles (for the BurnerName-aware recipient label —
+        // issue #692), and notification emails.
         var users = await _userService.GetByIdsAsync(eligibleUserIds, ct);
+        var profiles = await _profileService.GetByUserIdsAsync(eligibleUserIds, ct);
         var notificationEmails = await _userEmailService.GetNotificationTargetEmailsAsync(eligibleUserIds, ct);
 
         // Get available codes ordered by ImportedAt, Id.
@@ -406,8 +432,9 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
 
             try
             {
+                var recipientName = ResolveDisplayName(userId, users, profiles);
                 await _emailService.SendCampaignCodeAsync(
-                    BuildCampaignCodeRequest(campaign, user, recipientEmail, code.Code, grant.Id),
+                    BuildCampaignCodeRequest(campaign, user, recipientName, recipientEmail, code.Code, grant.Id),
                     ct);
             }
             catch (Exception ex)
@@ -463,13 +490,17 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
             throw new InvalidOperationException(
                 $"No notification email resolved for user {grant.UserId} when resending grant {grantId}.");
 
+        // Issue #692: BurnerName-aware recipient label.
+        var fullProfile = await _profileService.GetFullProfileAsync(grant.UserId, ct);
+        var recipientName = fullProfile?.DisplayName ?? user.DisplayName;
+
         await _emailService.SendCampaignCodeAsync(
             BuildCampaignCodeRequest(
                 grant.CampaignTitle,
                 grant.CampaignEmailSubject,
                 grant.CampaignEmailBodyTemplate,
                 grant.CampaignReplyToAddress,
-                user, recipientEmail, grant.CodeString, grant.GrantId),
+                user, recipientName, recipientEmail, grant.CodeString, grant.GrantId),
             ct);
 
         _logger.LogInformation("Resent campaign email for grant {GrantId}", grantId);
@@ -494,13 +525,17 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
         var users = userIds.Count > 0
             ? await _userService.GetByIdsAsync(userIds, ct)
             : new Dictionary<Guid, User>();
+        // Issue #692: BurnerName-aware names — resolve via Profile.BurnerName
+        // when present (Profile save write-through-syncs User.DisplayName, so
+        // the user fallback is for Stub-only pre-onboarding rows).
+        var profiles = userIds.Count > 0
+            ? await _profileService.GetByUserIdsAsync(userIds, ct)
+            : (IReadOnlyDictionary<Guid, Humans.Domain.Entities.Profile>)new Dictionary<Guid, Humans.Domain.Entities.Profile>();
 
         var grantRows = new List<CampaignCodeTrackingGrant>(grantRowsRaw.Count);
         foreach (var row in grantRowsRaw)
         {
-            var recipientName = users.TryGetValue(row.UserId, out var user)
-                ? user.DisplayName
-                : string.Empty;
+            var recipientName = ResolveDisplayName(row.UserId, users, profiles);
 
             grantRows.Add(new CampaignCodeTrackingGrant(
                 GrantId: row.GrantId,
@@ -539,6 +574,8 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
 
         var userIds = failedGrants.Select(g => g.UserId).Distinct().ToList();
         var users = await _userService.GetByIdsAsync(userIds, ct);
+        // Issue #692: BurnerName-aware recipient labels for retry emails.
+        var profiles = await _profileService.GetByUserIdsAsync(userIds, ct);
         var emails = await _userEmailService.GetNotificationTargetEmailsAsync(userIds, ct);
 
         var now = _clock.GetCurrentInstant();
@@ -573,13 +610,14 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
 
             try
             {
+                var recipientName = ResolveDisplayName(grant.UserId, users, profiles);
                 await _emailService.SendCampaignCodeAsync(
                     BuildCampaignCodeRequest(
                         grant.CampaignTitle,
                         grant.CampaignEmailSubject,
                         grant.CampaignEmailBodyTemplate,
                         grant.CampaignReplyToAddress,
-                        user, recipientEmail, grant.CodeString, grant.GrantId),
+                        user, recipientName, recipientEmail, grant.CodeString, grant.GrantId),
                     ct);
             }
             catch (Exception ex)
@@ -613,13 +651,13 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
     /// email_outbox_messages ownership in a single place.
     /// </summary>
     private static CampaignCodeEmailRequest BuildCampaignCodeRequest(
-        Campaign campaign, User user, string recipientEmail, string code, Guid grantId)
+        Campaign campaign, User user, string recipientName, string recipientEmail, string code, Guid grantId)
     {
         return new CampaignCodeEmailRequest(
             UserId: user.Id,
             CampaignGrantId: grantId,
             RecipientEmail: recipientEmail,
-            RecipientName: user.DisplayName,
+            RecipientName: recipientName,
             Subject: campaign.EmailSubject,
             MarkdownBody: campaign.EmailBodyTemplate,
             Code: code,
@@ -628,14 +666,14 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
 
     private static CampaignCodeEmailRequest BuildCampaignCodeRequest(
         string campaignTitle, string emailSubject, string emailBody, string? replyToAddress,
-        User user, string recipientEmail, string code, Guid grantId)
+        User user, string recipientName, string recipientEmail, string code, Guid grantId)
     {
         _ = campaignTitle; // kept for future rendering-context parameters; no-op today.
         return new CampaignCodeEmailRequest(
             UserId: user.Id,
             CampaignGrantId: grantId,
             RecipientEmail: recipientEmail,
-            RecipientName: user.DisplayName,
+            RecipientName: recipientName,
             Subject: emailSubject,
             MarkdownBody: emailBody,
             Code: code,

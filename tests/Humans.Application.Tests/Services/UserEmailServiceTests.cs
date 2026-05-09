@@ -23,6 +23,7 @@ public class UserEmailServiceTests
     private readonly IUserEmailRepository _repository = Substitute.For<IUserEmailRepository>();
     private readonly IAccountMergeService _mergeService = Substitute.For<IAccountMergeService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
+    private readonly IProfileRepository _profileRepository = Substitute.For<IProfileRepository>();
     private readonly UserManager<User> _userManager;
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 4, 21, 12, 0));
     private readonly IFullProfileInvalidator _fullProfileInvalidator = Substitute.For<IFullProfileInvalidator>();
@@ -40,6 +41,7 @@ public class UserEmailServiceTests
         _service = new UserEmailService(
             _repository,
             _userService,
+            _profileRepository,
             _userManager,
             _clock,
             _fullProfileInvalidator,

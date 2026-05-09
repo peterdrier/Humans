@@ -189,10 +189,13 @@ public sealed class EmailProvisioningService : IEmailProvisioningService
                 provisionedByUserId);
 
             // Step 4: Send credentials to the PERSONAL email captured in step 1.
+            // Issue #692: BurnerName-aware recipient label.
             if (!string.IsNullOrEmpty(recoveryEmail))
             {
+                var fullProfile = await _profileService.GetFullProfileAsync(userId);
+                var recipientName = fullProfile?.DisplayName ?? user.DisplayName;
                 await _emailService.SendWorkspaceCredentialsAsync(
-                    recoveryEmail, user.DisplayName, fullEmail, tempPassword,
+                    recoveryEmail, recipientName, fullEmail, tempPassword,
                     user.PreferredLanguage);
             }
 

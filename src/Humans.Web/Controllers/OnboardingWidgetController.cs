@@ -111,7 +111,7 @@ public class OnboardingWidgetController : HumansControllerBase
             SelectedTier: null, ApplicationMotivation: null, ApplicationAdditionalInfo: null,
             ApplicationSignificantContribution: null, ApplicationRoleUnderstanding: null);
 
-        await _profileService.SaveProfileAsync(userId, vm.BurnerName, request, language, ct);
+        await _profileService.SaveProfileAsync(userId, request, language, ct);
 
         return RedirectToAction(nameof(Shifts));
     }

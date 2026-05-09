@@ -60,7 +60,6 @@ public class OnboardingWidgetControllerNamesTests
         var userId = Guid.NewGuid();
         _profile.SaveProfileAsync(
                 userId,
-                "Burner1",
                 Arg.Any<ProfileSaveRequest>(),
                 Arg.Any<string>(),
                 Arg.Any<CancellationToken>())
@@ -76,7 +75,6 @@ public class OnboardingWidgetControllerNamesTests
 
         await _profile.Received(1).SaveProfileAsync(
             userId,
-            "Burner1",
             Arg.Is<ProfileSaveRequest>(r =>
                 r.FirstName == "First" &&
                 r.LastName == "Last" &&
@@ -102,7 +100,7 @@ public class OnboardingWidgetControllerNamesTests
         Assert.Equal(nameof(OnboardingWidgetController.Index), redirect.ActionName);
 
         await _profile.DidNotReceiveWithAnyArgs().SaveProfileAsync(
-            default, default!, default!, default!, default);
+            default, default!, default!, default);
     }
 
     [HumansFact]
@@ -117,6 +115,6 @@ public class OnboardingWidgetControllerNamesTests
         Assert.Equal(nameof(OnboardingWidgetController.Names), view.ViewName ?? nameof(OnboardingWidgetController.Names));
 
         await _profile.DidNotReceiveWithAnyArgs().SaveProfileAsync(
-            default, default!, default!, default!, default);
+            default, default!, default!, default);
     }
 }

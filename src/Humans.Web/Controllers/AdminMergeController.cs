@@ -38,16 +38,29 @@ public class AdminMergeController : HumansControllerBase
     {
         var requests = await _mergeService.GetPendingRequestsAsync();
 
+        // Issue #692: BurnerName-aware names for the merge admin list.
+        var nameUserIds = requests
+            .SelectMany(r => new[] { r.TargetUserId, r.SourceUserId })
+            .Distinct()
+            .ToList();
+        var nameProfiles = nameUserIds.Count > 0
+            ? await _profileService.GetByUserIdsAsync(nameUserIds)
+            : (IReadOnlyDictionary<Guid, Humans.Domain.Entities.Profile>)new Dictionary<Guid, Humans.Domain.Entities.Profile>();
+        string ResolveName(Guid id, string fallback) =>
+            nameProfiles.TryGetValue(id, out var p) && !string.IsNullOrWhiteSpace(p.BurnerName)
+                ? p.BurnerName
+                : fallback;
+
         var viewModel = new AccountMergeListViewModel
         {
             Requests = requests.Select(r => new AccountMergeRequestViewModel
             {
                 Id = r.Id,
                 Email = r.Email,
-                PrimaryUserDisplayName = r.TargetUser.DisplayName,
+                PrimaryUserDisplayName = ResolveName(r.TargetUserId, r.TargetUser.DisplayName),
                 PrimaryUserEmail = r.TargetUser.Email,
                 PrimaryUserId = r.TargetUserId,
-                DuplicateUserDisplayName = r.SourceUser.DisplayName,
+                DuplicateUserDisplayName = ResolveName(r.SourceUserId, r.SourceUser.DisplayName),
                 DuplicateUserEmail = r.SourceUser.Email,
                 DuplicateUserId = r.SourceUserId,
                 CreatedAt = r.CreatedAt.ToDateTimeUtc()
@@ -96,7 +109,8 @@ public class AdminMergeController : HumansControllerBase
         return new ProfileSummaryViewModel
         {
             UserId = user.Id,
-            DisplayName = user.DisplayName,
+            // Issue #692: BurnerName-aware label.
+            DisplayName = profile?.BurnerName ?? user.DisplayName,
             Email = user.Email,
             ProfilePictureUrl = user.ProfilePictureUrl,
             PreferredLanguage = user.PreferredLanguage,

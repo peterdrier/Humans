@@ -136,7 +136,8 @@ public class ProfileCardViewComponent : ViewComponent
         var model = new ProfileCardViewModel
         {
             UserId = userId,
-            DisplayName = user.DisplayName,
+            // Issue #692: BurnerName-aware. profile is loaded above.
+            DisplayName = profile?.BurnerName ?? user.DisplayName,
             ProfilePictureUrl = user.ProfilePictureUrl,
             HasCustomProfilePicture = hasCustomPicture,
             CustomProfilePictureUrl = pictureUrl,

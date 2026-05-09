@@ -574,9 +574,12 @@ public class SystemTeamSyncJob : ISystemTeamSync
             if (!backfilled)
                 continue;
 
-            step.Fixed(user.Id, user.DisplayName, $"Set GoogleEmail to {nobodiesEmail}");
+            // Issue #692: BurnerName-aware audit/log label.
+            var fp = await ProfileService.GetFullProfileAsync(user.Id, cancellationToken);
+            var displayName = fp?.DisplayName ?? user.DisplayName;
+            step.Fixed(user.Id, displayName, $"Set GoogleEmail to {nobodiesEmail}");
             _logger.LogInformation(
-                "Backfilled GoogleEmail for {User} to {Email}", user.DisplayName, nobodiesEmail);
+                "Backfilled GoogleEmail for {User} to {Email}", displayName, nobodiesEmail);
         }
 
         report?.Steps.Add(step);
@@ -678,6 +681,8 @@ public class SystemTeamSyncJob : ISystemTeamSync
 
             var addedUsersWithEmails = await _userService
                 .GetByIdsWithEmailsAsync(toAdd, cancellationToken);
+            // Issue #692: BurnerName-aware recipient labels.
+            var addedProfiles = await ProfileService.GetByUserIdsAsync(toAdd, cancellationToken);
 
             foreach (var userId in toAdd)
             {
@@ -687,8 +692,12 @@ public class SystemTeamSyncJob : ISystemTeamSync
                 try
                 {
                     var email = user.Email!;
+                    var recipientName = addedProfiles.TryGetValue(userId, out var p)
+                        && !string.IsNullOrWhiteSpace(p.BurnerName)
+                            ? p.BurnerName
+                            : user.DisplayName;
                     await _emailService.SendAddedToTeamAsync(
-                        email, user.DisplayName, team.Name, team.Slug,
+                        email, recipientName, team.Name, team.Slug,
                         resourceTuples, user.PreferredLanguage, cancellationToken);
                 }
                 catch (Exception ex)

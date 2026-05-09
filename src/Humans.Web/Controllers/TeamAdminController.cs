@@ -190,12 +190,28 @@ public class TeamAdminController : HumansTeamControllerBase
             p => p.UserId,
             p => Url.Action(nameof(ProfileController.Picture), "Profile", new { id = p.ProfileId, v = p.UpdatedAtTicks })!);
 
+        var pendingRequests = await _teamService.GetPendingRequestsForTeamAsync(team.Id);
+
+        // Issue #692: BurnerName-aware names — batch-fetch profiles for every
+        // member + pending-request user so we resolve through Profile.BurnerName.
+        var nameUserIds = memberUserIds
+            .Concat(pendingRequests.Select(r => r.UserId))
+            .Distinct()
+            .ToList();
+        var nameProfiles = nameUserIds.Count > 0
+            ? await _profileService.GetByUserIdsAsync(nameUserIds)
+            : (IReadOnlyDictionary<Guid, Humans.Domain.Entities.Profile>)new Dictionary<Guid, Humans.Domain.Entities.Profile>();
+        string ResolveName(Guid id, string fallback) =>
+            nameProfiles.TryGetValue(id, out var p) && !string.IsNullOrWhiteSpace(p.BurnerName)
+                ? p.BurnerName
+                : fallback;
+
         // nobodies.team email is now resolved by NobodiesEmailBadgeViewComponent in the view
         var members = pagedMembers
             .Select(m => new TeamMemberViewModel
             {
                 UserId = m.UserId,
-                DisplayName = m.User.DisplayName,
+                DisplayName = ResolveName(m.UserId, m.User.DisplayName),
                 Email = m.User.Email ?? "",
                 ProfilePictureUrl = m.User.ProfilePictureUrl,
                 HasCustomProfilePicture = customPictureByUserId.ContainsKey(m.UserId),
@@ -205,7 +221,6 @@ public class TeamAdminController : HumansTeamControllerBase
                 IsCoordinator = m.Role == TeamMemberRole.Coordinator
             }).ToList();
 
-        var pendingRequests = await _teamService.GetPendingRequestsForTeamAsync(team.Id);
         var pendingRequestViewModels = pendingRequests
             .Select(r => new TeamJoinRequestViewModel
             {
@@ -213,7 +228,7 @@ public class TeamAdminController : HumansTeamControllerBase
                 TeamId = r.TeamId,
                 TeamName = team.Name,
                 UserId = r.UserId,
-                UserDisplayName = r.User.DisplayName,
+                UserDisplayName = ResolveName(r.UserId, r.User.DisplayName),
                 UserEmail = r.User.Email ?? "",
                 UserProfilePictureUrl = r.User.ProfilePictureUrl,
                 Status = r.Status,
@@ -282,7 +297,8 @@ public class TeamAdminController : HumansTeamControllerBase
             ParentDepartmentName = parentDepartmentName,
             ParentDepartmentSlug = parentDepartmentSlug,
             IsSensitive = team.IsSensitive,
-            ActorDisplayName = user.DisplayName
+            // Issue #692: BurnerName-aware actor label.
+            ActorDisplayName = ResolveName(user.Id, user.DisplayName)
         };
 
         return View(viewModel);
@@ -725,6 +741,11 @@ public class TeamAdminController : HumansTeamControllerBase
             p => p.UserId,
             p => Url.Action(nameof(ProfileController.Picture), "Profile", new { id = p.ProfileId, v = p.UpdatedAtTicks })!);
 
+        // Issue #692: BurnerName-aware names for the role-management page.
+        var roleNameProfiles = memberUserIds.Count > 0
+            ? await _profileService.GetByUserIdsAsync(memberUserIds)
+            : (IReadOnlyDictionary<Guid, Humans.Domain.Entities.Profile>)new Dictionary<Guid, Humans.Domain.Entities.Profile>();
+
         var canToggleManagement = RoleChecks.IsTeamsAdmin(User) || RoleChecks.IsAdmin(User);
 
         var viewModel = new RoleManagementViewModel
@@ -737,18 +758,7 @@ public class TeamAdminController : HumansTeamControllerBase
             CanManage = true,
             CanToggleManagement = canToggleManagement,
             RoleDefinitions = definitions.Select(TeamRoleDefinitionViewModel.FromEntity).ToList(),
-            TeamMembers = members.Select(m => new TeamMemberViewModel
-            {
-                UserId = m.UserId,
-                DisplayName = m.User.DisplayName,
-                Email = m.User.Email ?? "",
-                ProfilePictureUrl = m.User.ProfilePictureUrl,
-                HasCustomProfilePicture = customPictureByUserId.ContainsKey(m.UserId),
-                CustomProfilePictureUrl = customPictureByUserId.GetValueOrDefault(m.UserId),
-                Role = m.Role,
-                JoinedAt = m.JoinedAt.ToDateTimeUtc(),
-                IsCoordinator = m.Role == TeamMemberRole.Coordinator
-            }).ToList()
+            TeamMembers = members.Select(m => MapTeamMember(m, roleNameProfiles, customPictureByUserId)).ToList()
         };
 
         return View(viewModel);
@@ -1053,13 +1063,28 @@ public class TeamAdminController : HumansTeamControllerBase
             .Select(m => m.UserId)
             .ToHashSet();
 
-        // Search team members first by name match
+        // Issue #692: BurnerName-aware match + label. Profile save
+        // write-through-syncs User.DisplayName, so post-onboarding members
+        // already match on burner; we look at BurnerName explicitly to make
+        // the read structurally aware and to cover the (rare) Stub-row case.
+        var teamMemberProfileMap = teamMemberUserIds.Count > 0
+            ? await _profileService.GetByUserIdsAsync(teamMemberUserIds)
+            : (IReadOnlyDictionary<Guid, Humans.Domain.Entities.Profile>)new Dictionary<Guid, Humans.Domain.Entities.Profile>();
+        string TeamMemberName(TeamMember tm) =>
+            teamMemberProfileMap.TryGetValue(tm.UserId, out var p) && !string.IsNullOrWhiteSpace(p.BurnerName)
+                ? p.BurnerName
+                : tm.User.DisplayName;
+
         var matchingTeamMembers = teamMembers
-            .Where(m => m.LeftAt is null &&
-                        (m.User.DisplayName.ContainsOrdinalIgnoreCase(q) ||
-                         m.User.Email.ContainsOrdinalIgnoreCase(q)))
+            .Where(m => m.LeftAt is null)
+            .Where(m =>
+            {
+                var name = TeamMemberName(m);
+                return name.ContainsOrdinalIgnoreCase(q) ||
+                       (m.User.Email ?? string.Empty).ContainsOrdinalIgnoreCase(q);
+            })
             .Take(10)
-            .Select(m => new RoleAssignmentSearchResult(m.UserId, m.User.DisplayName, m.User.Email ?? "", true))
+            .Select(m => new RoleAssignmentSearchResult(m.UserId, TeamMemberName(m), m.User.Email ?? "", true))
             .ToList();
 
         // Also search all approved humans for non-members. Name-only is the
@@ -1087,5 +1112,33 @@ public class TeamAdminController : HumansTeamControllerBase
         // Sub-team managers cannot manage Google resources — check at department level
         var checkTeamId = team.ParentTeamId ?? team.Id;
         return await _teamResourceService.CanManageTeamResourcesAsync(checkTeamId, userId);
+    }
+
+    /// <summary>
+    /// Issue #692: BurnerName-aware <see cref="TeamMemberViewModel"/>
+    /// projection. Extracted so action methods stay under the
+    /// no-business-logic-in-controllers cyclomatic threshold.
+    /// </summary>
+    private static TeamMemberViewModel MapTeamMember(
+        TeamMember m,
+        IReadOnlyDictionary<Guid, Humans.Domain.Entities.Profile> profiles,
+        IReadOnlyDictionary<Guid, string> customPictureByUserId)
+    {
+        var displayName = m.User.DisplayName;
+        if (profiles.TryGetValue(m.UserId, out var p) && !string.IsNullOrWhiteSpace(p.BurnerName))
+            displayName = p.BurnerName;
+
+        return new TeamMemberViewModel
+        {
+            UserId = m.UserId,
+            DisplayName = displayName,
+            Email = m.User.Email ?? "",
+            ProfilePictureUrl = m.User.ProfilePictureUrl,
+            HasCustomProfilePicture = customPictureByUserId.ContainsKey(m.UserId),
+            CustomProfilePictureUrl = customPictureByUserId.GetValueOrDefault(m.UserId),
+            Role = m.Role,
+            JoinedAt = m.JoinedAt.ToDateTimeUtc(),
+            IsCoordinator = m.Role == TeamMemberRole.Coordinator
+        };
     }
 }

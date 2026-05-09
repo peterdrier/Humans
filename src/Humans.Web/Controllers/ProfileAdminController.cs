@@ -93,8 +93,9 @@ public class ProfileAdminController : HumansControllerBase
                        StringComparer.OrdinalIgnoreCase)
             .FirstOrDefault() ?? "(no exact match — see normalized)";
 
+        // Issue #692: BurnerName-aware label.
         CompareSide BuildSide(User user, FullProfile? profile, int teamCount, int roleCount) =>
-            new(user.Id, user.DisplayName, user.ProfilePictureUrl,
+            new(user.Id, profile?.DisplayName ?? user.DisplayName, user.ProfilePictureUrl,
                 profile?.AllUserEmails ?? Array.Empty<UserEmailSnapshot>(),
                 teamCount, roleCount,
                 user.LastLoginAt,

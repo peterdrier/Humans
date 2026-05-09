@@ -1806,6 +1806,8 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
 
             if (!string.Equals(dbUser.Email, matchedGoogleEmail, StringComparison.Ordinal))
             {
+                // Issue #692: dbUser.DisplayName equals Profile.BurnerName
+                // post-write-through-sync (memory/architecture/burnername-is-the-display-name).
                 mismatches.Add(new EmailMismatch
                 {
                     UserId = dbUser.Id,
@@ -2284,6 +2286,8 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         {
             if (usersById.TryGetValue(match.UserId, out var user))
             {
+                // Issue #692: User.DisplayName equals Profile.BurnerName
+                // post-write-through-sync (memory/architecture/burnername-is-the-display-name).
                 result.TryAdd(match.Email, (user.DisplayName, match.UserId, user.ProfilePictureUrl));
             }
         }

@@ -34,6 +34,7 @@ public class GoogleAdminServiceTests
     private readonly ITeamResourceService _teamResourceService;
     private readonly IUserService _userService;
     private readonly IUserEmailService _userEmailService;
+    private readonly Humans.Application.Interfaces.Profiles.IProfileService _profileService;
     private readonly IAuditLogService _auditLogService;
     private readonly GoogleAdminService _service;
 
@@ -65,6 +66,12 @@ public class GoogleAdminServiceTests
                 LastLoginTime: null,
                 IsEnrolledIn2Sv: false));
 
+        _profileService = Substitute.For<Humans.Application.Interfaces.Profiles.IProfileService>();
+        _profileService.GetFullProfileAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<Humans.Application.FullProfile?>((Humans.Application.FullProfile?)null));
+        _profileService.GetByUserIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyDictionary<Guid, Profile>)new Dictionary<Guid, Profile>());
+
         _service = new GoogleAdminService(
             _workspaceUserService,
             _googleSyncService,
@@ -72,6 +79,7 @@ public class GoogleAdminServiceTests
             _teamResourceService,
             _userService,
             _userEmailService,
+            _profileService,
             _auditLogService,
             NullLogger<GoogleAdminService>.Instance);
     }

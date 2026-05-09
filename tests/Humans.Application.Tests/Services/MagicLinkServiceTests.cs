@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Email;
@@ -25,6 +26,7 @@ public class MagicLinkServiceTests : IDisposable
     private readonly IEmailService _emailService;
     private readonly IMagicLinkUrlBuilder _urlBuilder;
     private readonly IMagicLinkRateLimiter _rateLimiter;
+    private readonly IProfileService _profileService;
     private readonly MagicLinkService _service;
 
     public MagicLinkServiceTests()
@@ -59,12 +61,17 @@ public class MagicLinkServiceTests : IDisposable
         _rateLimiter.TryConsumeLoginTokenAsync(Arg.Any<string>(), Arg.Any<TimeSpan>()).Returns(true);
         _rateLimiter.TryReserveSignupSendAsync(Arg.Any<string>(), Arg.Any<TimeSpan>()).Returns(true);
 
+        _profileService = Substitute.For<IProfileService>();
+        _profileService.GetFullProfileAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<FullProfile?>((FullProfile?)null));
+
         _service = new MagicLinkService(
             _userManager,
             _userEmailService,
             _emailService,
             _urlBuilder,
             _rateLimiter,
+            _profileService,
             _clock,
             NullLogger<MagicLinkService>.Instance);
     }

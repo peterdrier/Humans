@@ -48,6 +48,10 @@ public sealed class WidgetGalleryController : HumansControllerBase
         var sampleVolunteerProfile = await TryGetVolunteerProfileAsync(currentUser.Id);
         var shifts = await ResolveShiftsSamplesAsync(currentUser.Id);
 
+        // Issue #692: User.DisplayName is BurnerName post-sync — see
+        // memory/architecture/burnername-is-the-display-name.md. WidgetGallery
+        // is a dev-only page; the legacy fallback through UserName covers the
+        // pre-onboarding state for accounts that never saved a Profile.
         var displayName = string.IsNullOrEmpty(currentUser.DisplayName)
             ? currentUser.UserName ?? "Current user"
             : currentUser.DisplayName;

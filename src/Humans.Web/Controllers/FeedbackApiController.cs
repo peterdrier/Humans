@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Humans.Application.Interfaces.Profiles;
 using Humans.Domain.Enums;
 using Humans.Web.Filters;
 using Humans.Web.Models;
@@ -18,15 +19,32 @@ namespace Humans.Web.Controllers;
 public class FeedbackApiController : ControllerBase
 {
     private readonly IFeedbackService _feedbackService;
+    private readonly IProfileService _profileService;
     private readonly ILogger<FeedbackApiController> _logger;
 
     public FeedbackApiController(
         IFeedbackService feedbackService,
+        IProfileService profileService,
         ILogger<FeedbackApiController> logger)
     {
         _feedbackService = feedbackService;
+        _profileService = profileService;
         _logger = logger;
     }
+
+    /// <summary>
+    /// Issue #692: BurnerName-aware display-name resolution for feedback API
+    /// payloads. Profile save write-through-syncs <c>User.DisplayName</c> to
+    /// <c>Profile.BurnerName</c>, so this is the canonical "what name does
+    /// the human want shown" path.
+    /// </summary>
+    private static string ResolveName(
+        Guid id,
+        string fallback,
+        IReadOnlyDictionary<Guid, Humans.Domain.Entities.Profile> profiles) =>
+        profiles.TryGetValue(id, out var p) && !string.IsNullOrWhiteSpace(p.BurnerName)
+            ? p.BurnerName
+            : fallback;
 
     [HttpGet]
     public async Task<IActionResult> List(
@@ -35,6 +53,15 @@ public class FeedbackApiController : ControllerBase
         [FromQuery] int limit = 50)
     {
         var reports = await _feedbackService.GetFeedbackListAsync(status, category, limit: limit);
+
+        var nameUserIds = reports
+            .SelectMany(r => new[] { r.UserId, r.AssignedToUserId ?? Guid.Empty, r.ResolvedByUserId ?? Guid.Empty })
+            .Where(id => id != Guid.Empty)
+            .Distinct()
+            .ToList();
+        var profiles = nameUserIds.Count > 0
+            ? await _profileService.GetByUserIdsAsync(nameUserIds)
+            : (IReadOnlyDictionary<Guid, Humans.Domain.Entities.Profile>)new Dictionary<Guid, Humans.Domain.Entities.Profile>();
 
         var result = reports.Select(r => new
         {
@@ -45,7 +72,7 @@ public class FeedbackApiController : ControllerBase
             r.PageUrl,
             r.UserAgent,
             r.AdditionalContext,
-            ReporterName = r.User.DisplayName,
+            ReporterName = ResolveName(r.UserId, r.User.DisplayName, profiles),
             ReporterEmail = r.User.Email,
             ReporterUserId = r.UserId,
             ReporterLanguage = r.User.PreferredLanguage,
@@ -56,10 +83,14 @@ public class FeedbackApiController : ControllerBase
             LastReporterMessageAt = r.LastReporterMessageAt?.ToDateTimeUtc(),
             LastAdminMessageAt = r.LastAdminMessageAt?.ToDateTimeUtc(),
             ResolvedAt = r.ResolvedAt?.ToDateTimeUtc(),
-            ResolvedByName = r.ResolvedByUser?.DisplayName,
+            ResolvedByName = r.ResolvedByUserId.HasValue
+                ? ResolveName(r.ResolvedByUserId.Value, r.ResolvedByUser?.DisplayName ?? string.Empty, profiles)
+                : null,
             MessageCount = r.Messages.Count,
             AssignedToUserId = r.AssignedToUserId,
-            AssignedToName = r.AssignedToUser?.DisplayName,
+            AssignedToName = r.AssignedToUserId.HasValue
+                ? ResolveName(r.AssignedToUserId.Value, r.AssignedToUser?.DisplayName ?? string.Empty, profiles)
+                : null,
             AssignedToTeamId = r.AssignedToTeamId,
             AssignedToTeamName = r.AssignedToTeam?.Name
         });
@@ -73,7 +104,32 @@ public class FeedbackApiController : ControllerBase
         var r = await _feedbackService.GetFeedbackByIdAsync(id);
         if (r is null) return NotFound();
 
-        return Ok(new
+        var profiles = await LoadFeedbackProfilesAsync(r);
+        return Ok(BuildFeedbackDetailPayload(r, profiles));
+    }
+
+    private async Task<IReadOnlyDictionary<Guid, Humans.Domain.Entities.Profile>> LoadFeedbackProfilesAsync(
+        Humans.Domain.Entities.FeedbackReport r)
+    {
+        var userIds = new[]
+            {
+                r.UserId,
+                r.AssignedToUserId ?? Guid.Empty,
+                r.ResolvedByUserId ?? Guid.Empty
+            }
+            .Concat(r.Messages.Select(m => m.SenderUserId ?? Guid.Empty))
+            .Where(uid => uid != Guid.Empty)
+            .Distinct()
+            .ToList();
+        return userIds.Count > 0
+            ? await _profileService.GetByUserIdsAsync(userIds)
+            : new Dictionary<Guid, Humans.Domain.Entities.Profile>();
+    }
+
+    private static object BuildFeedbackDetailPayload(
+        Humans.Domain.Entities.FeedbackReport r,
+        IReadOnlyDictionary<Guid, Humans.Domain.Entities.Profile> profiles) =>
+        new
         {
             r.Id,
             Category = r.Category.ToString(),
@@ -82,7 +138,7 @@ public class FeedbackApiController : ControllerBase
             r.PageUrl,
             r.UserAgent,
             r.AdditionalContext,
-            ReporterName = r.User.DisplayName,
+            ReporterName = ResolveName(r.UserId, r.User.DisplayName, profiles),
             ReporterEmail = r.User.Email,
             ReporterUserId = r.UserId,
             ReporterLanguage = r.User.PreferredLanguage,
@@ -93,22 +149,33 @@ public class FeedbackApiController : ControllerBase
             LastReporterMessageAt = r.LastReporterMessageAt?.ToDateTimeUtc(),
             LastAdminMessageAt = r.LastAdminMessageAt?.ToDateTimeUtc(),
             ResolvedAt = r.ResolvedAt?.ToDateTimeUtc(),
-            ResolvedByName = r.ResolvedByUser?.DisplayName,
+            ResolvedByName = ResolveOptionalName(r.ResolvedByUserId, r.ResolvedByUser?.DisplayName, profiles),
             AssignedToUserId = r.AssignedToUserId,
-            AssignedToName = r.AssignedToUser?.DisplayName,
+            AssignedToName = ResolveOptionalName(r.AssignedToUserId, r.AssignedToUser?.DisplayName, profiles),
             AssignedToTeamId = r.AssignedToTeamId,
             AssignedToTeamName = r.AssignedToTeam?.Name,
-            Messages = r.Messages.Select(m => new
-            {
-                m.Id,
-                SenderName = m.SenderUser?.DisplayName ?? "Unknown",
-                m.SenderUserId,
-                m.Content,
-                CreatedAt = m.CreatedAt.ToDateTimeUtc(),
-                IsReporter = m.SenderUserId.HasValue && m.SenderUserId == r.UserId
-            })
-        });
-    }
+            Messages = r.Messages.Select(m => MapMessage(m, profiles, r.UserId))
+        };
+
+    private static object MapMessage(
+        Humans.Domain.Entities.FeedbackMessage m,
+        IReadOnlyDictionary<Guid, Humans.Domain.Entities.Profile> profiles,
+        Guid reporterUserId) =>
+        new
+        {
+            m.Id,
+            SenderName = ResolveOptionalName(m.SenderUserId, m.SenderUser?.DisplayName, profiles) ?? "Unknown",
+            m.SenderUserId,
+            m.Content,
+            CreatedAt = m.CreatedAt.ToDateTimeUtc(),
+            IsReporter = m.SenderUserId.HasValue && m.SenderUserId == reporterUserId
+        };
+
+    private static string? ResolveOptionalName(
+        Guid? userId,
+        string? fallback,
+        IReadOnlyDictionary<Guid, Humans.Domain.Entities.Profile> profiles) =>
+        userId.HasValue ? ResolveName(userId.Value, fallback ?? string.Empty, profiles) : null;
 
     [HttpGet("{id}/messages")]
     public async Task<IActionResult> GetMessages(Guid id)

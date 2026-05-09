@@ -8,6 +8,7 @@ using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Notifications;
+using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
@@ -48,6 +49,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
     private readonly ICampRepository _repo;
     private readonly ICampRoleRepository _roleRepo;
     private readonly IUserService _userService;
+    private readonly IProfileService _profileService;
     private readonly IAuditLogService _auditLog;
     private readonly ISystemTeamSync _systemTeamSync;
     private readonly IFileStorage _fileStorage;
@@ -70,6 +72,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         ICampRepository repo,
         ICampRoleRepository roleRepo,
         IUserService userService,
+        IProfileService profileService,
         IAuditLogService auditLog,
         ISystemTeamSync systemTeamSync,
         IFileStorage fileStorage,
@@ -83,6 +86,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         _repo = repo;
         _roleRepo = roleRepo;
         _userService = userService;
+        _profileService = profileService;
         _auditLog = auditLog;
         _systemTeamSync = systemTeamSync;
         _fileStorage = fileStorage;
@@ -462,12 +466,16 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
 
         var userIds = activeLeads.Select(l => l.UserId).Distinct().ToList();
         var users = await _userService.GetByIdsAsync(userIds, cancellationToken);
+        // Issue #692: BurnerName-aware lead summaries.
+        var profiles = await _profileService.GetByUserIdsAsync(userIds, cancellationToken);
 
         return activeLeads
             .Select(l => new CampLeadSummary(
                 l.Id,
                 l.UserId,
-                users.TryGetValue(l.UserId, out var user) ? user.DisplayName : string.Empty))
+                profiles.TryGetValue(l.UserId, out var p) && !string.IsNullOrWhiteSpace(p.BurnerName)
+                    ? p.BurnerName
+                    : users.TryGetValue(l.UserId, out var user) ? user.DisplayName : string.Empty))
             .ToList();
     }
 

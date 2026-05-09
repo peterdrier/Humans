@@ -108,6 +108,22 @@ public class FeedbackController : HumansControllerBase
             }).ToList();
         }
 
+        // Issue #692: BurnerName-aware names — batch-fetch profiles for every
+        // user referenced in this list (reporters and assignees) so we can
+        // resolve through Profile.BurnerName instead of User.DisplayName.
+        var nameUserIds = reports
+            .SelectMany(r => new[] { r.UserId, r.AssignedToUserId ?? Guid.Empty })
+            .Where(id => id != Guid.Empty)
+            .Distinct()
+            .ToList();
+        var nameProfiles = nameUserIds.Count > 0
+            ? await _profileService.GetByUserIdsAsync(nameUserIds)
+            : (IReadOnlyDictionary<Guid, Humans.Domain.Entities.Profile>)new Dictionary<Guid, Humans.Domain.Entities.Profile>();
+        string ResolveName(Guid id, string fallback) =>
+            nameProfiles.TryGetValue(id, out var p) && !string.IsNullOrWhiteSpace(p.BurnerName)
+                ? p.BurnerName
+                : fallback;
+
         var viewModel = new FeedbackPageViewModel
         {
             StatusFilter = status,
@@ -128,7 +144,7 @@ public class FeedbackController : HumansControllerBase
                 Category = r.Category,
                 Status = r.Status,
                 Description = r.Description.Length > 100 ? r.Description[..100] + "..." : r.Description,
-                ReporterName = r.User.DisplayName,
+                ReporterName = ResolveName(r.UserId, r.User.DisplayName),
                 ReporterUserId = r.UserId,
                 PageUrl = r.PageUrl,
                 CreatedAt = r.CreatedAt.ToDateTimeUtc(),
@@ -138,7 +154,9 @@ public class FeedbackController : HumansControllerBase
                 NeedsReply = (r.LastReporterMessageAt.HasValue &&
                     (!r.LastAdminMessageAt.HasValue || r.LastReporterMessageAt > r.LastAdminMessageAt)) ||
                     (r.Status == FeedbackStatus.Open && !r.LastAdminMessageAt.HasValue),
-                AssignedToName = r.AssignedToUser?.DisplayName,
+                AssignedToName = r.AssignedToUserId.HasValue
+                    ? ResolveName(r.AssignedToUserId.Value, r.AssignedToUser?.DisplayName ?? string.Empty)
+                    : null,
                 AssignedToUserId = r.AssignedToUserId,
                 AssignedToTeamName = r.AssignedToTeam?.Name,
                 AssignedToTeamId = r.AssignedToTeamId
@@ -160,7 +178,7 @@ public class FeedbackController : HumansControllerBase
         var isAdmin = RoleChecks.IsFeedbackAdmin(User);
         if (!isAdmin && report.UserId != user.Id) return NotFound();
 
-        var viewModel = MapDetailViewModel(report, isAdmin);
+        var viewModel = await MapDetailViewModelAsync(report, isAdmin);
 
         if (isAdmin)
         {
@@ -332,8 +350,29 @@ public class FeedbackController : HumansControllerBase
         return RedirectToAction(nameof(Index), new { selected = id });
     }
 
-    private static FeedbackDetailViewModel MapDetailViewModel(FeedbackReport report, bool isAdmin)
+    private async Task<FeedbackDetailViewModel> MapDetailViewModelAsync(FeedbackReport report, bool isAdmin)
     {
+        // Issue #692: BurnerName-aware names — batch-fetch profiles for every
+        // user referenced in the report (reporter, assignee, resolver, message
+        // senders).
+        var userIds = new[]
+            {
+                report.UserId,
+                report.AssignedToUserId ?? Guid.Empty,
+                report.ResolvedByUserId ?? Guid.Empty
+            }
+            .Concat(report.Messages.Select(m => m.SenderUserId ?? Guid.Empty))
+            .Where(id => id != Guid.Empty)
+            .Distinct()
+            .ToList();
+        var nameProfiles = userIds.Count > 0
+            ? await _profileService.GetByUserIdsAsync(userIds)
+            : (IReadOnlyDictionary<Guid, Humans.Domain.Entities.Profile>)new Dictionary<Guid, Humans.Domain.Entities.Profile>();
+        string ResolveName(Guid id, string fallback) =>
+            nameProfiles.TryGetValue(id, out var p) && !string.IsNullOrWhiteSpace(p.BurnerName)
+                ? p.BurnerName
+                : fallback;
+
         return new FeedbackDetailViewModel
         {
             Id = report.Id,
@@ -345,22 +384,28 @@ public class FeedbackController : HumansControllerBase
             AdditionalContext = report.AdditionalContext,
             ScreenshotUrl = report.ScreenshotStoragePath is not null
                 ? $"/{report.ScreenshotStoragePath}" : null,
-            ReporterName = report.User.DisplayName,
+            ReporterName = ResolveName(report.UserId, report.User.DisplayName),
             ReporterUserId = report.UserId,
             GitHubIssueNumber = report.GitHubIssueNumber,
             CreatedAt = report.CreatedAt.ToDateTimeUtc(),
             UpdatedAt = report.UpdatedAt.ToDateTimeUtc(),
             ResolvedAt = report.ResolvedAt?.ToDateTimeUtc(),
-            ResolvedByName = report.ResolvedByUser?.DisplayName,
+            ResolvedByName = report.ResolvedByUserId.HasValue
+                ? ResolveName(report.ResolvedByUserId.Value, report.ResolvedByUser?.DisplayName ?? string.Empty)
+                : null,
             IsAdmin = isAdmin,
             AssignedToUserId = report.AssignedToUserId,
-            AssignedToName = report.AssignedToUser?.DisplayName,
+            AssignedToName = report.AssignedToUserId.HasValue
+                ? ResolveName(report.AssignedToUserId.Value, report.AssignedToUser?.DisplayName ?? string.Empty)
+                : null,
             AssignedToTeamId = report.AssignedToTeamId,
             AssignedToTeamName = report.AssignedToTeam?.Name,
             Messages = report.Messages.Select(m => new FeedbackMessageViewModel
             {
                 Id = m.Id,
-                SenderName = m.SenderUser?.DisplayName ?? "Unknown",
+                SenderName = m.SenderUserId.HasValue
+                    ? ResolveName(m.SenderUserId.Value, m.SenderUser?.DisplayName ?? "Unknown")
+                    : "Unknown",
                 SenderUserId = m.SenderUserId,
                 Content = m.Content,
                 CreatedAt = m.CreatedAt.ToDateTimeUtc(),

@@ -39,17 +39,20 @@ public sealed class GoogleRemovalNotificationService : IGoogleRemovalNotificatio
 {
     private readonly IUserEmailService _userEmailService;
     private readonly IUserService _userService;
+    private readonly IProfileService _profileService;
     private readonly IEmailService _emailService;
     private readonly ILogger<GoogleRemovalNotificationService> _logger;
 
     public GoogleRemovalNotificationService(
         IUserEmailService userEmailService,
         IUserService userService,
+        IProfileService profileService,
         IEmailService emailService,
         ILogger<GoogleRemovalNotificationService> logger)
     {
         _userEmailService = userEmailService;
         _userService = userService;
+        _profileService = profileService;
         _emailService = emailService;
         _logger = logger;
     }
@@ -94,9 +97,13 @@ public sealed class GoogleRemovalNotificationService : IGoogleRemovalNotificatio
             return;
         }
 
-        var userName = !string.IsNullOrWhiteSpace(user.DisplayName)
-            ? user.DisplayName
-            : removedEmail;
+        // Issue #692: BurnerName-aware recipient label.
+        var fullProfile = await _profileService.GetFullProfileAsync(user.Id, cancellationToken);
+        var userName = !string.IsNullOrWhiteSpace(fullProfile?.DisplayName)
+            ? fullProfile!.DisplayName
+            : !string.IsNullOrWhiteSpace(user.DisplayName)
+                ? user.DisplayName
+                : removedEmail;
         var culture = string.IsNullOrWhiteSpace(user.PreferredLanguage) ? "en" : user.PreferredLanguage;
 
         // Variant selector: does the user retain another verified IsGoogle
