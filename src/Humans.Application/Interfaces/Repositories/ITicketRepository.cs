@@ -199,6 +199,14 @@ public interface ITicketRepository
 
     Task<IReadOnlyList<TicketOrder>> GetOrdersMatchedToUserAsync(Guid userId, CancellationToken ct = default);
 
+    /// <summary>
+    /// Returns the ids of every order matched to <paramref name="userId"/> whose
+    /// <c>PaymentStatus</c> is <see cref="TicketPaymentStatus.Paid"/> or
+    /// <see cref="TicketPaymentStatus.Pending"/>. Refunded and Cancelled rows are
+    /// excluded so the agent snapshot only surfaces actionable tickets.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetOpenOrderIdsMatchedToUserAsync(Guid userId, CancellationToken ct = default);
+
     Task<IReadOnlyList<TicketAttendee>> GetAttendeesMatchedToUserAsync(Guid userId, CancellationToken ct = default);
 
     Task<IReadOnlyList<Instant>> GetPaidOrderDatesInWindowAsync(

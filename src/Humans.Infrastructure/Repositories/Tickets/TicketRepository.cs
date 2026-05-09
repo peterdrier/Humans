@@ -443,6 +443,19 @@ public sealed class TicketRepository : ITicketRepository
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<Guid>> GetOpenOrderIdsMatchedToUserAsync(
+        Guid userId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.TicketOrders
+            .AsNoTracking()
+            .Where(o => o.MatchedUserId == userId
+                && (o.PaymentStatus == TicketPaymentStatus.Paid
+                    || o.PaymentStatus == TicketPaymentStatus.Pending))
+            .Select(o => o.Id)
+            .ToListAsync(ct);
+    }
+
     public async Task<IReadOnlyList<TicketAttendee>> GetAttendeesMatchedToUserAsync(
         Guid userId, CancellationToken ct = default)
     {

@@ -120,6 +120,14 @@ public interface ITicketQueryService
     Task<List<UserTicketOrderSummary>> GetUserTicketOrderSummariesAsync(Guid userId);
 
     /// <summary>
+    /// Returns the order ids of every <see cref="TicketPaymentStatus.Paid"/> or
+    /// <see cref="TicketPaymentStatus.Pending"/> ticket order matched to the user
+    /// (i.e. <c>MatchedUserId == userId</c>). Refunded and Cancelled orders are
+    /// excluded — the agent snapshot only counts orders the user can still act on.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetOpenTicketIdsForUserAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
     /// Returns the post-event hold date (GateOpeningDate + StrikeEndOffset + 1 day, start of day
     /// in the event's timezone) if there is an active event and the date is in the future.
     /// Returns null if no active event or the hold date has already passed.

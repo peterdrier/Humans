@@ -26,8 +26,8 @@ else
             {
                 <tr>
                     <td><code>@row.Email</code></td>
-                    <td>@row.User1DisplayName</td>
-                    <td>@row.User2DisplayName</td>
+                    <td><human-link user-id="@row.User1Id" display-name="@row.User1DisplayName" admin /></td>
+                    <td><human-link user-id="@row.User2Id" display-name="@row.User2DisplayName" admin /></td>
                     <td>
                         <a class="btn btn-sm btn-primary"
                            asp-action="EmailProblemsCompare"
@@ -53,7 +53,7 @@ else
             @foreach (var row in Model.SingleUserIssues)
             {
                 <tr>
-                    <td>@row.DisplayName</td>
+                    <td><human-link user-id="@row.UserId" display-name="@row.DisplayName" admin /></td>
                     <td>@string.Join(", ", row.ProblemSummaries)</td>
                     <td>
                         <a class="btn btn-sm btn-secondary"
@@ -90,7 +90,7 @@ else
             @foreach (var row in Model.LegacyEmailRows)
             {
                 <tr>
-                    <td>@row.DisplayName</td>
+                    <td><human-link user-id="@row.UserId" display-name="@row.DisplayName" admin /></td>
                     <td><code>@row.LegacyEmail</code></td>
                 </tr>
             }

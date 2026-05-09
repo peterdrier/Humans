@@ -1838,7 +1838,10 @@ public class ProfileController : HumansControllerBase
             if (profile is null) return NotFound();
 
             var popoverUser = await _userService.GetByIdAsync(id, ct);
-            var teams = await _teamService.GetActiveTeamNamesForUserAsync(id, ct);
+            var teams = (await _teamService.GetActiveTeamMembershipsForUserAsync(id, ct))
+                .OrderBy(m => m.TeamName, StringComparer.OrdinalIgnoreCase)
+                .Select(m => m.TeamName)
+                .ToList();
             var profileLanguages = await _profileService.GetProfileLanguagesAsync(profile.Id, ct);
 
             var effectivePictureUrl = profile.HasCustomProfilePicture
