@@ -17,32 +17,8 @@
             ? "btn btn-primary btn-sm"
             : "btn btn-outline-primary btn-sm";
 
-    string TypeBadge(SearchResultType type) => type switch
-    {
-        SearchResultType.Human => "bg-info text-dark",
-        SearchResultType.Team => "bg-success",
-        SearchResultType.Camp => "bg-warning text-dark",
-        SearchResultType.Shift => "bg-secondary",
-        _ => "bg-light text-dark",
-    };
-
-    string TypeIcon(SearchResultType type) => type switch
-    {
-        SearchResultType.Human => "fa-solid fa-user",
-        SearchResultType.Team => "fa-solid fa-users",
-        SearchResultType.Camp => "fa-solid fa-campground",
-        SearchResultType.Shift => "fa-solid fa-clock",
-        _ => "fa-solid fa-circle",
-    };
-
-    string TypeLabel(SearchResultType type) => type switch
-    {
-        SearchResultType.Human => "Human",
-        SearchResultType.Team => "Team",
-        SearchResultType.Camp => "Camp",
-        SearchResultType.Shift => "Shift",
-        _ => "Result",
-    };
+    bool ShowSection(SearchResultType type, int count) =>
+        count > 0 && (!Model.Filter.HasValue || Model.Filter == type);
 }
 
 <h2><i class="fa-solid fa-magnifying-glass me-2"></i>Search</h2>
@@ -80,7 +56,7 @@ else
 {
     <div class="d-flex flex-wrap gap-2 mb-3" role="group" aria-label="Filter results by type">
         <a href="@ChipUrl(null)" class="@ChipClass(null)">
-            All (@(Model.HumanCount + Model.TeamCount + Model.CampCount + Model.ShiftCount))
+            All (@Model.TotalCount)
         </a>
         <a href="@ChipUrl(SearchResultType.Human)" class="@ChipClass(SearchResultType.Human)">
             <i class="fa-solid fa-user me-1"></i>Humans (@Model.HumanCount)
@@ -99,50 +75,33 @@ else
     @if (!Model.HasResults)
     {
         <div class="alert alert-light">
-            No results for <strong>@Model.Query</strong>@(Model.Filter.HasValue ? $" in {TypeLabel(Model.Filter.Value)}s" : "").
+            No results for <strong>@Model.Query</strong>.
         </div>
     }
     else
     {
-        <div class="list-group">
-            @foreach (var result in Model.Results)
-            {
-                <a href="@result.Url" class="list-group-item list-group-item-action">
-                    <div class="d-flex align-items-start gap-3">
-                        @if (result.Type == SearchResultType.Human && result.UserId.HasValue)
-                        {
-                            <vc:user-avatar user-id="@result.UserId.Value" size="40" />
-                        }
-                        else
-                        {
-                            <div class="d-flex align-items-center justify-content-center rounded bg-light"
-                                 style="width: 40px; height: 40px; flex-shrink: 0;">
-                                <i class="@TypeIcon(result.Type) text-muted"></i>
-                            </div>
-                        }
-                        <div class="flex-grow-1">
-                            <div class="d-flex align-items-center gap-2 flex-wrap">
-                                <span class="badge @TypeBadge(result.Type)">
-                                    <i class="@TypeIcon(result.Type) me-1"></i>@TypeLabel(result.Type)
-                                </span>
-                                <strong>@result.Title</strong>
-                                @if (!string.IsNullOrEmpty(result.MatchField))
-                                {
-                                    <small class="text-muted">matched @result.MatchField</small>
-                                }
-                            </div>
-                            @if (!string.IsNullOrEmpty(result.Subtitle))
-                            {
-                                <div class="small text-muted">@result.Subtitle</div>
-                            }
-                            @if (!string.IsNullOrEmpty(result.RelationContext))
-                            {
-                                <div class="small fst-italic text-muted">@result.RelationContext</div>
-                            }
-                        </div>
-                    </div>
-                </a>
-            }
-        </div>
+        @if (ShowSection(SearchResultType.Human, Model.HumanCount))
+        {
+            <h3 class="h5 mt-4 mb-2"><i class="fa-solid fa-user me-2"></i>Humans</h3>
+            @await Html.PartialAsync("_HumanSearchResults", Model.HumanResults)
+        }
+
+        @if (ShowSection(SearchResultType.Team, Model.TeamCount))
+        {
+            <h3 class="h5 mt-4 mb-2"><i class="fa-solid fa-users me-2"></i>Teams</h3>
+            <partial name="_GlobalSearchSection" model="Model.TeamResults" view-data="@(new ViewDataDictionary(ViewData) { { "Icon", "fa-solid fa-users" } })" />
+        }
+
+        @if (ShowSection(SearchResultType.Camp, Model.CampCount))
+        {
+            <h3 class="h5 mt-4 mb-2"><i class="fa-solid fa-campground me-2"></i>Camps</h3>
+            <partial name="_GlobalSearchSection" model="Model.CampResults" view-data="@(new ViewDataDictionary(ViewData) { { "Icon", "fa-solid fa-campground" } })" />
+        }
+
+        @if (ShowSection(SearchResultType.Shift, Model.ShiftCount))
+        {
+            <h3 class="h5 mt-4 mb-2"><i class="fa-solid fa-clock me-2"></i>Shifts</h3>
+            <partial name="_GlobalSearchSection" model="Model.ShiftResults" view-data="@(new ViewDataDictionary(ViewData) { { "Icon", "fa-solid fa-clock" } })" />
+        }
     }
 }

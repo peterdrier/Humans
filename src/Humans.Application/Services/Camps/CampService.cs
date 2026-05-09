@@ -387,11 +387,14 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
     }
 
     public async Task<IReadOnlyList<CampSearchHit>> SearchAsync(
-        string query, int max, CancellationToken cancellationToken = default)
+        string query, SearchScope scope, int max,
+        CancellationToken cancellationToken = default)
     {
         var settings = await GetSettingsAsync(cancellationToken);
         var year = settings.PublicYear;
-        var camps = await _repo.SearchForYearAsync(query, year, max, cancellationToken);
+        var camps = await _repo.SearchForYearAsync(
+            query, year, onlyPublicStatus: scope == SearchScope.Public,
+            max, cancellationToken);
 
         var hits = new List<CampSearchHit>(camps.Count);
         foreach (var camp in camps)
@@ -399,7 +402,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             var season = camp.Seasons.FirstOrDefault(s => s.Year == year);
             var name = season?.Name ?? camp.Slug;
             var blurb = season?.BlurbShort;
-            hits.Add(new CampSearchHit(camp.Id, camp.Slug, name, blurb));
+            hits.Add(new CampSearchHit(camp.Slug, name, blurb));
         }
         return hits;
     }

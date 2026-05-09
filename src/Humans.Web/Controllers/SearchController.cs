@@ -2,6 +2,7 @@ using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Search;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
+using Humans.Web.Extensions;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -10,10 +11,10 @@ using Microsoft.AspNetCore.Mvc;
 namespace Humans.Web.Controllers;
 
 /// <summary>
-/// Top-level "search the whole app" page. Aggregates ranked, type-grouped
-/// hits across humans, teams, camps, and shifts (rotas). The auth boundary
-/// for admin-only profile fields lives here, not in
-/// <see cref="ISearchService"/> — services are auth-free per design-rules
+/// Top-level "search the whole app" page. Aggregates name-only hits across
+/// humans, teams, camps, and shifts (rotas) into four type-grouped sections.
+/// The auth boundary lives here, not in <see cref="ISearchService"/>;
+/// services receive a resolved <see cref="SearchScope"/> per design-rules
 /// §11.
 /// </summary>
 [Authorize]
@@ -24,11 +25,11 @@ public sealed class SearchController : HumansControllerBase
     private readonly ILogger<SearchController> _logger;
 
     /// <summary>
-    /// Roles that unlock <see cref="PersonSearchFields.AdminAll"/> on the
-    /// human search bucket. These are the same roles that have a route to
-    /// see admin-only profile data (verified emails, non-public ContactFields)
-    /// from elsewhere in the app, so the global search must not be a path
-    /// to additional disclosure.
+    /// Roles that unlock <see cref="SearchScope.Admin"/>. These are the
+    /// same roles that have a route to see admin-only profile data, hidden
+    /// teams, non-public camp seasons, and admin-only rotas elsewhere in
+    /// the app, so the global search must not be a path to additional
+    /// disclosure.
     /// </summary>
     private static readonly string[] AdminViewerRoles =
     {
@@ -50,7 +51,7 @@ public sealed class SearchController : HumansControllerBase
     /// <summary>
     /// Render the global search page. Empty/short query renders the
     /// instructional placeholder; a real query fans out through the
-    /// orchestrator and renders ranked, type-grouped results.
+    /// orchestrator and renders type-grouped results.
     /// </summary>
     [HttpGet("")]
     public async Task<IActionResult> Index(
@@ -58,45 +59,57 @@ public sealed class SearchController : HumansControllerBase
         SearchResultType? filter,
         CancellationToken ct)
     {
-        var viewModel = new GlobalSearchViewModel { Query = q, Filter = filter };
-
         var trimmed = (q ?? string.Empty).Trim();
         if (trimmed.Length < 2)
-        {
-            // Empty / single-character query: render the instructional
-            // placeholder. Returning the bare view-model keeps the URL
-            // stable so users can refine without losing the chip selection.
-            return View(viewModel);
-        }
+            return View(new GlobalSearchViewModel { Query = q, Filter = filter });
 
+        return View(await RunSearchAsync(trimmed, filter, ct));
+    }
+
+    private async Task<GlobalSearchViewModel> RunSearchAsync(
+        string trimmed, SearchResultType? filter, CancellationToken ct)
+    {
         try
         {
-            var includeAdmin = AdminViewerRoles.Any(role => User.IsInRole(role));
             var results = await _searchService.SearchAsync(
-                trimmed,
-                filter,
-                includeAdmin,
-                perTypeLimit: 10,
-                ct);
-
-            return View(new GlobalSearchViewModel
-            {
-                Query = results.Query,
-                Filter = filter,
-                Results = results.Results,
-                HumanCount = results.HumanCount,
-                TeamCount = results.TeamCount,
-                CampCount = results.CampCount,
-                ShiftCount = results.ShiftCount,
-            });
+                trimmed, ResolveScope(), filter, PerTypeLimit(filter), ct);
+            return BuildViewModel(results, filter);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Global search failed for query {Query}", trimmed);
-            // Return the empty view-model so the user sees the search page
-            // shell instead of a 500. The query input is preserved so they
-            // can retry / refine.
-            return View(viewModel);
+            // Render the page shell instead of a 500; preserve the query so
+            // the user can refine it.
+            return new GlobalSearchViewModel { Query = trimmed, Filter = filter };
         }
     }
+
+    private SearchScope ResolveScope() =>
+        AdminViewerRoles.Any(role => User.IsInRole(role))
+            ? SearchScope.Admin
+            : SearchScope.Public;
+
+    // When a filter chip is active we want a deeper bucket for that type;
+    // the unified view stays at perTypeLimit=10 across all four.
+    private static int PerTypeLimit(SearchResultType? filter) =>
+        filter.HasValue ? 50 : 10;
+
+    private static GlobalSearchViewModel BuildViewModel(
+        GlobalSearchResults results, SearchResultType? filter) =>
+        new()
+        {
+            Query = results.Query,
+            Filter = filter,
+            // Display ordering for humans matches /Profile/Search
+            // (BurnerName asc) per
+            // memory/architecture/display-sort-in-controllers.md.
+            // Other buckets are already score-desc sorted by the service.
+            HumanResults = results.Humans
+                .OrderBy(r => r.BurnerName, StringComparer.OrdinalIgnoreCase)
+                .Select(r => r.ToHumanSearchViewModel())
+                .ToList(),
+            TeamResults = results.Teams,
+            CampResults = results.Camps,
+            ShiftResults = results.Shifts,
+        };
 }

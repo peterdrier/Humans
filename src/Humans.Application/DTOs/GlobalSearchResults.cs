@@ -1,9 +1,9 @@
 namespace Humans.Application.DTOs;
 
 /// <summary>
-/// Top-level result type for the global /Search page. Drives both the
-/// per-type group filter chips ("All | Humans | Teams | Camps | Shifts")
-/// and the badge rendered next to each result row.
+/// Top-level result type for the global /Search page. Drives the per-type
+/// group filter chips ("All | Humans | Teams | Camps | Shifts") and the
+/// type-grouped section headers in the results view.
 /// </summary>
 public enum SearchResultType
 {
@@ -14,37 +14,44 @@ public enum SearchResultType
 }
 
 /// <summary>
-/// One row in the global search result page. Each entry knows its type,
-/// canonical detail URL, a short subtitle, and a score that the orchestrator
-/// uses to rank the merged list. Cross-modal "relational" hits (e.g. teams a
-/// matched person belongs to) reuse this same shape with a non-null
-/// <see cref="RelationContext"/>.
+/// One non-human row in a global search result group (Team, Camp, or
+/// Shift). Humans use <see cref="HumanSearchResult"/> directly so the
+/// canonical <c>_HumanSearchResults</c> partial can render them.
 /// </summary>
-/// <param name="Type">Whether this is a Human, Team, Camp, or Shift hit.</param>
-/// <param name="Title">Primary display label (BurnerName, team name, camp
-/// name, rota name).</param>
-/// <param name="Subtitle">Optional secondary line — typically the matched
-/// snippet, slug, or for Shifts the owning team name.</param>
+/// <param name="Type">Whether this is a Team, Camp, or Shift hit.</param>
+/// <param name="Title">Primary display label (team name, camp name,
+/// rota name).</param>
+/// <param name="Subtitle">Optional secondary line (matched snippet, slug,
+/// or owning-team name for shifts).</param>
 /// <param name="Url">Canonical detail-page URL for the entity.</param>
-/// <param name="Score">Higher = better match. Composed by the orchestrator
-/// from match-strength + multi-field boost. Display ordering is descending
-/// Score, then Title.</param>
-/// <param name="UserId">Owning user id when <see cref="Type"/> is
-/// <see cref="SearchResultType.Human"/>; otherwise null. Drives the
-/// avatar / popover render path.</param>
+/// <param name="Score">Higher = better match. Composed from match-strength
+/// + multi-field boost. Display ordering within each type group is
+/// descending Score, then Title.</param>
 /// <param name="MatchField">Short label for which field matched
-/// ("Name", "Bio", "Slug", "Description", etc.). Null when the row is a
-/// pure relational pull-in.</param>
-/// <param name="RelationContext">Optional explanation when the row was
-/// surfaced as a relational hit ("Lead at <em>Foo Camp</em>",
-/// "Coordinator of <em>Bar Team</em>", "Shift in <em>Baz Team</em>").
-/// Null on direct hits.</param>
+/// ("Name", "Slug", "Description"). Null when the matcher returned no
+/// per-field detail.</param>
 public record GlobalSearchResult(
     SearchResultType Type,
     string Title,
     string? Subtitle,
     string Url,
     int Score,
-    Guid? UserId = null,
-    string? MatchField = null,
-    string? RelationContext = null);
+    string? MatchField = null);
+
+/// <summary>
+/// Aggregated output of a single global-search call. Each type bucket is
+/// already ranked within itself; the view renders them as separate sections.
+/// </summary>
+/// <param name="Query">Echo of the trimmed input.</param>
+/// <param name="Humans">Human hits, ordered by the profile-search matcher.
+/// The view projects these to <c>HumanSearchResultViewModel</c> for the
+/// canonical <c>_HumanSearchResults</c> partial.</param>
+/// <param name="Teams">Team hits, score-desc then name-asc.</param>
+/// <param name="Camps">Camp hits, score-desc then name-asc.</param>
+/// <param name="Shifts">Rota (shift) hits, score-desc then name-asc.</param>
+public record GlobalSearchResults(
+    string Query,
+    IReadOnlyList<HumanSearchResult> Humans,
+    IReadOnlyList<GlobalSearchResult> Teams,
+    IReadOnlyList<GlobalSearchResult> Camps,
+    IReadOnlyList<GlobalSearchResult> Shifts);

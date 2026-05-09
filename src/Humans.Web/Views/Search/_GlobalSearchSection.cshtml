@@ -1,0 +1,40 @@
+@*
+    Renders one type-grouped section (teams / camps / shifts) of the global
+    search results page. Humans use the canonical _HumanSearchResults
+    partial directly; this partial is for the simpler list-row types only.
+
+    ViewData["Icon"] is the FontAwesome class for the placeholder tile.
+*@
+@using Humans.Application.DTOs
+@model IReadOnlyList<GlobalSearchResult>
+
+@{
+    var icon = ViewData["Icon"] as string ?? "fa-solid fa-circle";
+}
+
+<div class="list-group">
+    @foreach (var result in Model)
+    {
+        <a href="@result.Url" class="list-group-item list-group-item-action">
+            <div class="d-flex align-items-start gap-3">
+                <div class="d-flex align-items-center justify-content-center rounded bg-light"
+                     style="width: 40px; height: 40px; flex-shrink: 0;">
+                    <i class="@icon text-muted"></i>
+                </div>
+                <div class="flex-grow-1">
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <strong>@result.Title</strong>
+                        @if (!string.IsNullOrEmpty(result.MatchField))
+                        {
+                            <small class="text-muted">matched @result.MatchField</small>
+                        }
+                    </div>
+                    @if (!string.IsNullOrEmpty(result.Subtitle))
+                    {
+                        <div class="small text-muted">@result.Subtitle</div>
+                    }
+                </div>
+            </div>
+        </a>
+    }
+</div>

@@ -13,25 +13,34 @@ public sealed class GlobalSearchViewModel
     public string? Query { get; init; }
 
     /// <summary>
-    /// When set, only results of this type are shown. Drives the active
+    /// When set, only this type's results are shown. Drives the active
     /// filter chip in the view.
     /// </summary>
     public SearchResultType? Filter { get; init; }
 
-    public IReadOnlyList<GlobalSearchResult> Results { get; init; } =
+    /// <summary>
+    /// Human hits already projected for the canonical
+    /// <c>_HumanSearchResults</c> partial.
+    /// </summary>
+    public IReadOnlyList<HumanSearchResultViewModel> HumanResults { get; init; } =
+        Array.Empty<HumanSearchResultViewModel>();
+
+    public IReadOnlyList<GlobalSearchResult> TeamResults { get; init; } =
         Array.Empty<GlobalSearchResult>();
 
-    /// <summary>
-    /// Total counts per type from the unfiltered result set. Used to
-    /// render the "Humans (N)" / "Teams (N)" / etc. counts on the chips
-    /// regardless of which filter is currently active.
-    /// </summary>
-    public int HumanCount { get; init; }
-    public int TeamCount { get; init; }
-    public int CampCount { get; init; }
-    public int ShiftCount { get; init; }
+    public IReadOnlyList<GlobalSearchResult> CampResults { get; init; } =
+        Array.Empty<GlobalSearchResult>();
+
+    public IReadOnlyList<GlobalSearchResult> ShiftResults { get; init; } =
+        Array.Empty<GlobalSearchResult>();
+
+    public int HumanCount => HumanResults.Count;
+    public int TeamCount => TeamResults.Count;
+    public int CampCount => CampResults.Count;
+    public int ShiftCount => ShiftResults.Count;
+    public int TotalCount => HumanCount + TeamCount + CampCount + ShiftCount;
 
     public bool HasQuery => !string.IsNullOrWhiteSpace(Query);
     public bool QueryIsTooShort => HasQuery && (Query?.Trim().Length ?? 0) < 2;
-    public bool HasResults => Results.Count > 0;
+    public bool HasResults => TotalCount > 0;
 }

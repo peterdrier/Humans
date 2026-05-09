@@ -188,7 +188,8 @@ public sealed class ShiftManagementRepository : IShiftManagementRepository
     }
 
     public async Task<IReadOnlyList<Rota>> SearchRotasAsync(
-        string query, Guid eventSettingsId, int max, CancellationToken ct = default)
+        string query, Guid eventSettingsId, bool onlyVolunteerVisible,
+        int max, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(query) || max <= 0)
             return Array.Empty<Rota>();
@@ -196,12 +197,16 @@ public sealed class ShiftManagementRepository : IShiftManagementRepository
         var pattern = "%" + EscapeLikePattern(query.Trim()) + "%";
 
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.Rotas
+        var q = ctx.Rotas
             .AsNoTracking()
             .Where(r => r.EventSettingsId == eventSettingsId
-                && r.IsVisibleToVolunteers
                 && (EF.Functions.ILike(r.Name, pattern, "\\")
-                    || (r.Description != null && EF.Functions.ILike(r.Description, pattern, "\\"))))
+                    || (r.Description != null && EF.Functions.ILike(r.Description, pattern, "\\"))));
+
+        if (onlyVolunteerVisible)
+            q = q.Where(r => r.IsVisibleToVolunteers);
+
+        return await q
             // Deterministic Take(max) for global search; orchestrator re-ranks by score before display.
             .OrderBy(r => r.Name) // arch:db-sort-ok
             .Take(max)

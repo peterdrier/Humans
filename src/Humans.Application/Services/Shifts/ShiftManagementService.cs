@@ -302,12 +302,16 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         _repo.GetRotasByDepartmentAsync(teamId, eventSettingsId);
 
     public async Task<IReadOnlyList<RotaSearchHit>> SearchAsync(
-        string query, int max, CancellationToken cancellationToken = default)
+        string query, SearchScope scope, int max,
+        CancellationToken cancellationToken = default)
     {
         var settings = await _repo.GetActiveEventSettingsAsync(cancellationToken);
         if (settings is null) return Array.Empty<RotaSearchHit>();
 
-        var rotas = await _repo.SearchRotasAsync(query, settings.Id, max, cancellationToken);
+        var rotas = await _repo.SearchRotasAsync(
+            query, settings.Id,
+            onlyVolunteerVisible: scope == SearchScope.Public,
+            max, cancellationToken);
         if (rotas.Count == 0) return Array.Empty<RotaSearchHit>();
 
         // Stitch owning team names via ITeamService — the rota's team
@@ -318,7 +322,6 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
 
         return rotas
             .Select(r => new RotaSearchHit(
-                r.Id,
                 r.Name,
                 r.Description,
                 r.TeamId,

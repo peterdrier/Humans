@@ -221,12 +221,13 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
         _repo.GetAllActiveAsync(cancellationToken);
 
     public async Task<IReadOnlyList<TeamSearchHit>> SearchAsync(
-        string query, bool includeHidden, int max,
+        string query, SearchScope scope, int max,
         CancellationToken cancellationToken = default)
     {
-        var teams = await _repo.SearchAsync(query, includeHidden, max, cancellationToken);
+        var teams = await _repo.SearchAsync(
+            query, includeHidden: scope == SearchScope.Admin, max, cancellationToken);
         return teams
-            .Select(t => new TeamSearchHit(t.Id, t.Name, t.Slug, t.Description))
+            .Select(t => new TeamSearchHit(t.Name, t.Slug, t.Description))
             .ToList();
     }
 

@@ -51,7 +51,7 @@ public class InterfaceMethodBudgetTests
         // by TeamService and dispatched by AccountMergeService via
         // IEnumerable<IUserMerge> fan-out).
         // 70→71: issue-682 global search — added SearchAsync(query,
-        // includeHidden, max). Authorized exception (Peter, 2026-05-09):
+        // SearchScope, max). Authorized exception (Peter, 2026-05-09):
         // queries against teams must live in the owning section per
         // design-rules §6, and the ratchet's "remove one to add one" rule
         // doesn't apply when the addition is a moved-in query rather than

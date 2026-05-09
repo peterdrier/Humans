@@ -6,21 +6,22 @@ namespace Humans.Application.Interfaces.Search;
 /// Top-level search orchestrator for the global <c>/Search</c> page. Fans
 /// out to per-section service interfaces (<c>IProfileService</c>,
 /// <c>ITeamService</c>, <c>ICampService</c>, <c>IShiftManagementService</c>),
-/// merges and ranks results, and adds cross-modal "relational" hits (a
-/// matched person's teams/camps; a matched team's rotas).
+/// each of which runs its own case-insensitive Postgres ILike query at the
+/// DB layer (<c>memory/feedback_ef_ilike_not_toupper.md</c>). The
+/// orchestrator scores and ranks within each type and returns four
+/// independently-ranked buckets — there is no cross-modal / relational
+/// expansion (see <c>docs/features/global-search.md</c>).
 ///
 /// <para>
 /// Per design-rules §6, this service NEVER queries another section's
 /// tables directly — it only calls the public service interface for each
-/// section. Each section owns the search shape (which fields match, how
-/// to score) for its own data; this orchestrator only merges and ranks.
+/// section.
 /// </para>
 ///
 /// <para>
-/// Authorization is the controller's job. Non-admin endpoints pass
-/// <c>includeAdmin=false</c>; admin-bit profile fields (verified emails,
-/// non-public ContactFields) are then never reached. The auth boundary is
-/// in the controller, never in the service.
+/// Authorization is the controller's job. The <see cref="SearchScope"/>
+/// argument is set by the controller after role verification; services
+/// are auth-free per design-rules §11.
 /// </para>
 /// </summary>
 public interface ISearchService
@@ -32,40 +33,21 @@ public interface ISearchService
     /// </summary>
     /// <param name="query">User-entered text. Trimmed and matched
     /// case-insensitively per <c>memory/feedback_ef_ilike_not_toupper.md</c>.</param>
-    /// <param name="filter">When set, scope the merged list to a single
-    /// type (cross-modal relational hits are still pulled and listed only
-    /// if they match the filter).</param>
-    /// <param name="includeAdmin">Pass true only from controllers that
-    /// have already authorized admin access. Forwards
-    /// <c>PersonSearchFields.AdminAll</c> to <c>IProfileService</c>.</param>
-    /// <param name="perTypeLimit">Maximum number of direct hits per
-    /// section in the unified view. Used as a presentation cap; per-type
-    /// pages can request a larger limit.</param>
+    /// <param name="scope">Public viewer or admin viewer. Drives the
+    /// hidden-team filter, the camp public-status filter, the rota
+    /// volunteer-visibility filter, and the
+    /// <c>PersonSearchFields.PublicAll</c> vs <c>AdminAll</c> bit-flag
+    /// handed to <c>IProfileService</c>.</param>
+    /// <param name="onlyType">When set, skip the other three section
+    /// queries entirely and return all matches for the chosen type up to
+    /// <paramref name="perTypeLimit"/>. Used by the per-type filter chips
+    /// on /Search.</param>
+    /// <param name="perTypeLimit">Maximum hits per type bucket.</param>
     /// <param name="ct">Cancellation token.</param>
     Task<GlobalSearchResults> SearchAsync(
         string query,
-        SearchResultType? filter = null,
-        bool includeAdmin = false,
+        SearchScope scope = SearchScope.Public,
+        SearchResultType? onlyType = null,
         int perTypeLimit = 10,
         CancellationToken ct = default);
 }
-
-/// <summary>
-/// Aggregated output of a single global-search call. Counts are post-
-/// dedup so the "See all 47 humans" link can use them verbatim.
-/// </summary>
-/// <param name="Query">Echo of the trimmed input.</param>
-/// <param name="Results">Merged list, already ordered by Score desc then
-/// Title asc.</param>
-/// <param name="HumanCount">Total humans matched (direct + relational),
-/// pre-cap.</param>
-/// <param name="TeamCount">Total teams matched, pre-cap.</param>
-/// <param name="CampCount">Total camps matched, pre-cap.</param>
-/// <param name="ShiftCount">Total rotas (shifts) matched, pre-cap.</param>
-public record GlobalSearchResults(
-    string Query,
-    IReadOnlyList<GlobalSearchResult> Results,
-    int HumanCount,
-    int TeamCount,
-    int CampCount,
-    int ShiftCount);

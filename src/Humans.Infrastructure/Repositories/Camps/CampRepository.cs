@@ -131,7 +131,8 @@ public sealed class CampRepository : ICampRepository
     }
 
     public async Task<IReadOnlyList<Camp>> SearchForYearAsync(
-        string query, int year, int max, CancellationToken ct = default)
+        string query, int year, bool onlyPublicStatus, int max,
+        CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(query) || max <= 0)
             return Array.Empty<Camp>();
@@ -139,14 +140,26 @@ public sealed class CampRepository : ICampRepository
         var pattern = "%" + EscapeLikePattern(query.Trim()) + "%";
 
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.Camps
+        var q = ctx.Camps
             .AsNoTracking()
             .Include(c => c.Seasons.Where(s => s.Year == year))
             .Where(c => c.Seasons.Any(s => s.Year == year)
                 && (EF.Functions.ILike(c.Slug, pattern, "\\")
                     || c.Seasons.Any(s => s.Year == year
                         && (EF.Functions.ILike(s.Name, pattern, "\\")
-                            || EF.Functions.ILike(s.BlurbShort, pattern, "\\")))))
+                            || EF.Functions.ILike(s.BlurbShort, pattern, "\\")))));
+
+        if (onlyPublicStatus)
+        {
+            // Mirrors Camp.HasPublicSeasonForYear — same gate the public
+            // camp directory uses. Without this, draft / pending / rejected
+            // / withdrawn camps would leak to non-admin viewers via search.
+            q = q.Where(c => c.Seasons.Any(s => s.Year == year
+                && (s.Status == CampSeasonStatus.Active
+                    || s.Status == CampSeasonStatus.Full)));
+        }
+
+        return await q
             // Deterministic Take(max) for global search; orchestrator re-ranks by score before display.
             .OrderBy(c => c.Slug) // arch:db-sort-ok
             .Take(max)
