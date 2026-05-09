@@ -25,12 +25,22 @@ public sealed class SearchController : HumansControllerBase
     private readonly ILogger<SearchController> _logger;
 
     /// <summary>
-    /// Roles that unlock <see cref="SearchScope.Admin"/>. These are the
-    /// same roles that have a route to see admin-only profile data, hidden
-    /// teams, non-public camp seasons, and admin-only rotas elsewhere in
-    /// the app, so the global search must not be a path to additional
-    /// disclosure.
+    /// Roles that unlock <see cref="SearchScope.Admin"/> across ALL four
+    /// buckets (humans, teams, camps, shifts).
     /// </summary>
+    /// <remarks>
+    /// Known limitation re: <c>memory/code/admin-role-superset.md</c> —
+    /// <c>TeamsAdmin</c> / <c>CampAdmin</c> / <c>TicketAdmin</c> are
+    /// intentionally excluded here even though each can see hidden teams /
+    /// non-public camp seasons / admin-only rotas in their own admin
+    /// pages. A single <see cref="SearchScope"/> value drives all four
+    /// buckets at once, so promoting a TeamsAdmin to <c>Admin</c> would
+    /// also expose admin-only profile fields (verified emails, non-public
+    /// ContactFields) in the human bucket — a real privilege concern. The
+    /// proper fix is per-bucket scope resolution
+    /// (nobodies-collective/Humans#693). Until then, domain admins use the
+    /// volunteer-visible search surface.
+    /// </remarks>
     private static readonly string[] AdminViewerRoles =
     {
         RoleNames.Admin,

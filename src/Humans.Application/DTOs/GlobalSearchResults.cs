@@ -39,12 +39,17 @@ public record GlobalSearchResult(
 /// already ranked within itself; the view renders them as separate sections.
 /// </summary>
 /// <param name="Query">Echo of the trimmed input.</param>
-/// <param name="Humans">Human hits, ordered by the profile-search matcher.
-/// The view projects these to <c>HumanSearchResultViewModel</c> for the
-/// canonical <c>_HumanSearchResults</c> partial.</param>
-/// <param name="Teams">Team hits, score-desc then name-asc.</param>
-/// <param name="Camps">Camp hits, score-desc then name-asc.</param>
-/// <param name="Shifts">Rota (shift) hits, score-desc then name-asc.</param>
+/// <param name="Humans">Human hits in the order returned by the
+/// profile-search matcher. The view projects these to
+/// <c>HumanSearchResultViewModel</c> for the canonical
+/// <c>_HumanSearchResults</c> partial; the controller sorts by
+/// <c>BurnerName</c> asc before rendering.</param>
+/// <param name="Teams">Team hits, scored but in unspecified order — the
+/// controller sorts by score desc then title asc before rendering.</param>
+/// <param name="Camps">Camp hits, scored but in unspecified order — the
+/// controller sorts by score desc then title asc before rendering.</param>
+/// <param name="Shifts">Rota (shift) hits, scored but in unspecified order
+/// — the controller sorts by score desc then title asc before rendering.</param>
 public record GlobalSearchResults(
     string Query,
     IReadOnlyList<HumanSearchResult> Humans,

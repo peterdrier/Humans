@@ -80,8 +80,7 @@ public interface ICampRepository
 
     /// <summary>
     /// Returns camps that have a season for <paramref name="year"/> whose
-    /// <c>Camp.Slug</c> OR the year's <c>CampSeason.Name</c> /
-    /// <c>CampSeason.BlurbShort</c> contain <paramref name="query"/>
+    /// <c>CampSeason.Name</c> contains <paramref name="query"/>
     /// (case-insensitive, Postgres ILike). When
     /// <paramref name="onlyPublicStatus"/> is true, the year's season must
     /// also be in <c>CampSeasonStatus.Active</c> or <c>Full</c> — same gate

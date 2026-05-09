@@ -95,11 +95,11 @@ public interface ITeamRepository
         int page, int pageSize, CancellationToken ct = default);
 
     /// <summary>
-    /// Active teams whose <c>Name</c>, <c>Slug</c>, or <c>Description</c>
-    /// contains <paramref name="query"/> (case-insensitive, Postgres ILike).
-    /// When <paramref name="includeHidden"/> is false, hidden teams are filtered
-    /// at the DB layer. Capped at <paramref name="max"/>; ordering is
-    /// unspecified (caller ranks). Read-only, no navs.
+    /// Active teams whose <c>Name</c> contains <paramref name="query"/>
+    /// (case-insensitive, Postgres ILike). When
+    /// <paramref name="includeHidden"/> is false, hidden teams are
+    /// filtered at the DB layer. Capped at <paramref name="max"/>;
+    /// ordering is unspecified (caller ranks). Read-only, no navs.
     /// </summary>
     Task<IReadOnlyList<Team>> SearchAsync(
         string query, bool includeHidden, int max, CancellationToken ct = default);

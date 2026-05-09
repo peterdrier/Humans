@@ -92,8 +92,8 @@ public interface IShiftManagementService
     Task<IReadOnlyList<Rota>> GetRotasByDepartmentAsync(Guid teamId, Guid eventSettingsId);
 
     /// <summary>
-    /// Rotas in the active event whose <c>Name</c> or <c>Description</c>
-    /// contains <paramref name="query"/> (case-insensitive). When
+    /// Rotas in the active event whose <c>Name</c> contains
+    /// <paramref name="query"/> (case-insensitive). When
     /// <paramref name="scope"/> is <see cref="SearchScope.Public"/>, only
     /// volunteer-visible rotas are surfaced; <see cref="SearchScope.Admin"/>
     /// includes hidden ones too. The owning team's display name is stitched
