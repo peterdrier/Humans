@@ -29,6 +29,7 @@ Atomic rules. Fetch the body when the description's trigger matches your task. S
 - [`refunds-manual-via-dashboard`](architecture/refunds-manual-via-dashboard.md) — HARD RULE. Humans never calls Stripe refund/payout APIs. Money-out is dashboard-manual; Humans only does bookkeeping (negative `StorePayment` rows).
 - [`repository-required-for-db-access`](architecture/repository-required-for-db-access.md) — HARD RULE. Every DB-accessing service goes through a repository interface; no service injects `HumansDbContext` directly, even for singleton-row tables.
 - [`shared-drives-only`](architecture/shared-drives-only.md) — Drive resources on Shared Drives only; API calls need `SupportsAllDrives` + `permissionDetails`
+- [`tier-derived-from-applications`](architecture/tier-derived-from-applications.md) — tier is derived from approved Application state; no `tier-locking` domain rule, no foundational query interface for it. Form may still host tier radios for onboarding efficiency.
 - [`user-profile-foundational`](architecture/user-profile-foundational.md) — UserService/ProfileService are bottom of the stack; no outbound calls to higher-level sections
 - [Widget Pending → Confirmed promotion](architecture/widget-pending-promotion.md) — how mid-onboarding signups stay Pending until consents land
 

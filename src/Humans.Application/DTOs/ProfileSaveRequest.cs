@@ -1,5 +1,3 @@
-using Humans.Domain.Enums;
-
 namespace Humans.Application.DTOs;
 
 public record ProfileSaveRequest(
@@ -9,6 +7,4 @@ public record ProfileSaveRequest(
     int? BirthdayMonth, int? BirthdayDay,
     string? EmergencyContactName, string? EmergencyContactPhone, string? EmergencyContactRelationship,
     bool NoPriorBurnExperience,
-    byte[]? ProfilePictureData, string? ProfilePictureContentType, bool RemoveProfilePicture,
-    MembershipTier? SelectedTier, string? ApplicationMotivation, string? ApplicationAdditionalInfo,
-    string? ApplicationSignificantContribution, string? ApplicationRoleUnderstanding);
+    byte[]? ProfilePictureData, string? ProfilePictureContentType, bool RemoveProfilePicture);

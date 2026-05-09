@@ -23,14 +23,25 @@ public interface IAccountDeletionService
 {
     /// <summary>
     /// User-initiated account-deletion request. Sets the 30-day scheduled
-    /// deletion fields on the user, immediately revokes active team memberships
-    /// and governance role assignments (so the user loses access without
-    /// waiting for the grace period to expire), writes an audit entry, and
-    /// sends the deletion-scheduled confirmation email. No-op with
-    /// <c>NotFound</c> if the user does not exist; <c>AlreadyPending</c> if
-    /// a deletion request is already open.
+    /// deletion fields on the user (including <c>DeletionEligibleAfter</c>
+    /// when the user holds a current event ticket — deletion is held until
+    /// after the event), immediately revokes active team memberships and
+    /// governance role assignments (so the user loses access without waiting
+    /// for the grace period to expire), writes an audit entry, sends the
+    /// deletion-scheduled confirmation email, and invalidates the
+    /// shift-authorization cache. No-op with <c>NotFound</c> if the user
+    /// does not exist; <c>AlreadyPending</c> if a deletion request is
+    /// already open.
     /// </summary>
     Task<OnboardingResult> RequestDeletionAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Cancels a pending user-initiated deletion request by clearing the
+    /// deletion fields on the user. Returns <c>NotFound</c> if the user
+    /// does not exist; <c>NoDeletionPending</c> if no request is open.
+    /// FullProfile cache is refreshed via <see cref="IUserService.ClearDeletionAsync"/>.
+    /// </summary>
+    Task<OnboardingResult> CancelDeletionAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
     /// Admin-initiated purge: anonymizes the identity on the <c>User</c> row

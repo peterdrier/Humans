@@ -1004,7 +1004,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         public Task<bool> TrySetGoogleEmailStatusFromSyncAsync(Guid userId, GoogleEmailStatus status, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<(bool Updated, string? OldEmail)> ApplyEmailBackfillAsync(Guid userId, string newEmail, CancellationToken ct = default) => throw new NotSupportedException();
         public Task UpdateDisplayNameAsync(Guid userId, string displayName, CancellationToken ct = default) => throw new NotSupportedException();
-        public Task<bool> SetDeletionPendingAsync(Guid userId, Instant requestedAt, Instant scheduledFor, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<bool> SetDeletionPendingAsync(Guid userId, Instant requestedAt, Instant scheduledFor, Instant? eligibleAfter, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<bool> ClearDeletionAsync(Guid userId, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<User?> GetByEmailOrAlternateAsync(string email, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<IReadOnlyList<User>> GetContactUsersAsync(string? search, CancellationToken ct = default) => throw new NotSupportedException();

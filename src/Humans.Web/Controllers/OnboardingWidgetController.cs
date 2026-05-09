@@ -107,9 +107,7 @@ public class OnboardingWidgetController : HumansControllerBase
             BirthdayMonth: null, BirthdayDay: null,
             EmergencyContactName: null, EmergencyContactPhone: null, EmergencyContactRelationship: null,
             NoPriorBurnExperience: false,
-            ProfilePictureData: null, ProfilePictureContentType: null, RemoveProfilePicture: false,
-            SelectedTier: null, ApplicationMotivation: null, ApplicationAdditionalInfo: null,
-            ApplicationSignificantContribution: null, ApplicationRoleUnderstanding: null);
+            ProfilePictureData: null, ProfilePictureContentType: null, RemoveProfilePicture: false);
 
         await _profileService.SaveProfileAsync(userId, vm.BurnerName, request, language, ct);
 

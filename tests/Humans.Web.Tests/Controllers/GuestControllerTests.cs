@@ -3,6 +3,7 @@ using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Tickets;
+using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Testing;
 using Humans.Web.Controllers;
@@ -30,6 +31,8 @@ public class GuestControllerTests
     private readonly ITicketQueryService _ticketQueryService = Substitute.For<ITicketQueryService>();
     private readonly IGdprExportService _gdprExportService = Substitute.For<IGdprExportService>();
     private readonly IOnboardingWidgetState _widgetState = Substitute.For<IOnboardingWidgetState>();
+    private readonly IAccountDeletionService _accountDeletionService = Substitute.For<IAccountDeletionService>();
+    private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IClock _clock = Substitute.For<IClock>();
 
     public GuestControllerTests()
@@ -50,6 +53,8 @@ public class GuestControllerTests
             _ticketQueryService,
             _gdprExportService,
             _widgetState,
+            _accountDeletionService,
+            _userService,
             _clock,
             NullLogger<GuestController>.Instance);
 

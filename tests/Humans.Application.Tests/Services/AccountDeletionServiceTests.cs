@@ -7,6 +7,7 @@ using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Users.AccountLifecycle;
 using Humans.Domain.Entities;
@@ -35,7 +36,7 @@ public class AccountDeletionServiceTests
     private readonly IShiftSignupService _shiftSignupService = Substitute.For<IShiftSignupService>();
     private readonly IShiftManagementService _shiftManagementService = Substitute.For<IShiftManagementService>();
     private readonly IProfileService _profileService = Substitute.For<IProfileService>();
-    private readonly IServiceProvider _serviceProvider = Substitute.For<IServiceProvider>();
+    private readonly ITicketQueryService _ticketQueryService = Substitute.For<ITicketQueryService>();
     private readonly IRoleAssignmentClaimsCacheInvalidator _roleAssignmentClaimsInvalidator =
         Substitute.For<IRoleAssignmentClaimsCacheInvalidator>();
     private readonly IShiftAuthorizationInvalidator _shiftAuthorizationInvalidator =
@@ -47,8 +48,6 @@ public class AccountDeletionServiceTests
 
     public AccountDeletionServiceTests()
     {
-        _serviceProvider.GetService(typeof(IProfileService)).Returns(_profileService);
-
         _service = new AccountDeletionService(
             _userService,
             _userEmailService,
@@ -56,7 +55,8 @@ public class AccountDeletionServiceTests
             _roleAssignmentService,
             _shiftSignupService,
             _shiftManagementService,
-            _serviceProvider,
+            _profileService,
+            _ticketQueryService,
             _roleAssignmentClaimsInvalidator,
             _shiftAuthorizationInvalidator,
             _auditLogService,
@@ -117,7 +117,8 @@ public class AccountDeletionServiceTests
 
         var expectedScheduledFor = _clock.GetCurrentInstant().Plus(Duration.FromDays(30));
         await _userService.Received(1).SetDeletionPendingAsync(
-            userId, _clock.GetCurrentInstant(), expectedScheduledFor, Arg.Any<CancellationToken>());
+            userId, _clock.GetCurrentInstant(), expectedScheduledFor,
+            Arg.Any<Instant?>(), Arg.Any<CancellationToken>());
 
         await _teamService.Received(1).RevokeAllMembershipsAsync(userId, Arg.Any<CancellationToken>());
         await _roleAssignmentService.Received(1).RevokeAllActiveAsync(userId, Arg.Any<CancellationToken>());

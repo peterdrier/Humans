@@ -17,6 +17,7 @@ using Humans.Application.Interfaces.Gdpr;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using MemberApplication = Humans.Domain.Entities.Application;
 using Humans.Web.Authorization;
 using Humans.Web.Extensions;
 using Humans.Web.Models;
@@ -26,7 +27,9 @@ using Microsoft.Extensions.Options;
 using NodaTime;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Campaigns;
+using Humans.Application.Interfaces.Consent;
 using Humans.Application.Interfaces.Email;
+using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Tickets;
@@ -75,6 +78,10 @@ public class ProfileController : HumansControllerBase
     private readonly IClock _clock;
     private readonly IAuthorizationService _authorizationService;
     private readonly IUserService _userService;
+    private readonly IUserEmailRepository _userEmailRepository;
+    private readonly IConsentService _consentService;
+    private readonly IApplicationDecisionService _applicationDecisionService;
+    private readonly IAccountDeletionService _accountDeletionService;
     private readonly IMembershipCalculator _membershipCalculator;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly SignInManager<User> _signInManager;
@@ -131,6 +138,10 @@ public class ProfileController : HumansControllerBase
         IClock clock,
         IAuthorizationService authorizationService,
         IUserService userService,
+        IUserEmailRepository userEmailRepository,
+        IConsentService consentService,
+        IApplicationDecisionService applicationDecisionService,
+        IAccountDeletionService accountDeletionService,
         IMembershipCalculator membershipCalculator,
         IHttpClientFactory httpClientFactory,
         SignInManager<User> signInManager,
@@ -162,6 +173,10 @@ public class ProfileController : HumansControllerBase
         _clock = clock;
         _authorizationService = authorizationService;
         _userService = userService;
+        _userEmailRepository = userEmailRepository;
+        _consentService = consentService;
+        _applicationDecisionService = applicationDecisionService;
+        _accountDeletionService = accountDeletionService;
         _membershipCalculator = membershipCalculator;
         _httpClientFactory = httpClientFactory;
         _signInManager = signInManager;
@@ -232,8 +247,13 @@ public class ProfileController : HumansControllerBase
         if (user is null)
             return NotFound();
 
-        var (profile, latestApplication, pendingConsentCount) =
-            await _profileService.GetProfileIndexDataAsync(user.Id, ct);
+        var profile = await _profileService.GetProfileAsync(user.Id, ct);
+        var snapshot = await _membershipCalculator.GetMembershipSnapshotAsync(user.Id, ct);
+        var pendingConsentCount = snapshot.PendingConsentCount;
+
+        var applications = await _applicationDecisionService.GetUserApplicationsAsync(user.Id, ct);
+        var latestApplication = applications.Count > 0 ? applications[0] : null;
+
         var campaignGrants = await _campaignService.GetActiveOrCompletedGrantsForUserAsync(user.Id, ct);
 
         var viewModel = new ProfileViewModel
@@ -266,8 +286,22 @@ public class ProfileController : HumansControllerBase
         if (user is null)
             return NotFound();
 
-        var (profile, isTierLocked, pendingApplication) =
-            await _profileService.GetProfileEditDataAsync(user.Id, ct);
+        var profile = await _profileService.GetProfileAsync(user.Id, ct);
+
+        // isTierLocked + pendingApplication are view-composition state derived
+        // from the user's Application history — fetched here, not in
+        // ProfileService (issue nobodies-collective/Humans#685: tier is not a
+        // Profile-owned concept; the radios disable when an Application is
+        // already in flight to prevent duplicate Submitted apps).
+        var applications = await _applicationDecisionService.GetUserApplicationsAsync(user.Id, ct);
+        var isTierLocked = profile is not null && applications.Any(a =>
+            a.Status == ApplicationStatus.Submitted || a.Status == ApplicationStatus.Approved);
+        MemberApplication? pendingApplication = null;
+        if (profile is null || !profile.IsApproved)
+        {
+            pendingApplication = applications.FirstOrDefault(a =>
+                a.Status == ApplicationStatus.Submitted);
+        }
 
         // Get all contact fields for editing
         var contactFields = profile is not null
@@ -532,24 +566,57 @@ public class ProfileController : HumansControllerBase
             NoPriorBurnExperience: model.NoPriorBurnExperience,
             ProfilePictureData: pictureData,
             ProfilePictureContentType: pictureContentType,
-            RemoveProfilePicture: model.RemoveProfilePicture,
-            SelectedTier: isInitialSetup ? model.SelectedTier : null,
-            ApplicationMotivation: model.ApplicationMotivation,
-            ApplicationAdditionalInfo: model.ApplicationAdditionalInfo,
-            ApplicationSignificantContribution: model.ApplicationSignificantContribution,
-            ApplicationRoleUnderstanding: model.ApplicationRoleUnderstanding);
+            RemoveProfilePicture: model.RemoveProfilePicture);
 
         var profileId = await _profileService.SaveProfileAsync(
             user.Id, model.BurnerName, saveRequest,
             CultureInfo.CurrentUICulture.TwoLetterISOLanguageName);
 
-        // Cancel any pending deletion request when creating a profile
+        // Initial-setup tier-application orchestration. Same form submission
+        // as profile fields, by design — onboarding efficiency. The form
+        // disables the radios when a Submitted/Approved Application already
+        // exists (`isTierLocked` in the GET) so this branch only runs when
+        // either no application exists yet or an existing draft is being
+        // edited; ApplicationDecisionService.SubmitAsync also rejects with
+        // AlreadyPending as a backstop. See issue
+        // nobodies-collective/Humans#685.
+        if (isInitialSetup && model.SelectedTier != MembershipTier.Volunteer)
+        {
+            var existingApps = await _applicationDecisionService.GetUserApplicationsAsync(user.Id);
+            var existingDraft = existingApps.FirstOrDefault(a =>
+                a.Status == ApplicationStatus.Submitted);
+            var hasApprovedApp = existingApps.Any(a =>
+                a.Status == ApplicationStatus.Approved);
+
+            if (existingDraft is not null)
+            {
+                await _applicationDecisionService.UpdateDraftApplicationAsync(
+                    existingDraft.Id,
+                    model.SelectedTier,
+                    model.ApplicationMotivation!,
+                    model.ApplicationAdditionalInfo,
+                    model.SelectedTier == MembershipTier.Asociado ? model.ApplicationSignificantContribution : null,
+                    model.SelectedTier == MembershipTier.Asociado ? model.ApplicationRoleUnderstanding : null);
+            }
+            else if (!hasApprovedApp)
+            {
+                await _applicationDecisionService.SubmitAsync(
+                    user.Id, model.SelectedTier,
+                    model.ApplicationMotivation!,
+                    model.ApplicationAdditionalInfo,
+                    model.SelectedTier == MembershipTier.Asociado ? model.ApplicationSignificantContribution : null,
+                    model.SelectedTier == MembershipTier.Asociado ? model.ApplicationRoleUnderstanding : null,
+                    CultureInfo.CurrentUICulture.TwoLetterISOLanguageName);
+            }
+        }
+
+        // Cancel any pending deletion request when creating a profile.
+        // Routes through IAccountDeletionService so the deletion-fields
+        // write + FullProfile invalidation goes through the orchestrator,
+        // not raw UserManager.UpdateAsync.
         if (isInitialSetup && user.IsDeletionPending)
         {
-            user.DeletionRequestedAt = null;
-            user.DeletionScheduledFor = null;
-            user.DeletionEligibleAfter = null;
-            await UserManager.UpdateAsync(user);
+            await _accountDeletionService.CancelDeletionAsync(user.Id);
             _logger.LogInformation(
                 "Cancelled pending deletion request for user {UserId} on profile creation",
                 user.Id);
@@ -1424,7 +1491,7 @@ public class ProfileController : HumansControllerBase
         if (user is null)
             return NotFound();
 
-        var result = await _profileService.RequestDeletionAsync(user.Id);
+        var result = await _accountDeletionService.RequestDeletionAsync(user.Id);
         if (!result.Success)
         {
             if (string.Equals(result.ErrorKey, "AlreadyPending", StringComparison.Ordinal))
@@ -1432,10 +1499,15 @@ public class ProfileController : HumansControllerBase
             return RedirectToAction(nameof(Privacy));
         }
 
-        var deletionDate = user.DeletionScheduledFor?.ToDateTimeUtc();
+        // Re-fetch user so the success message reflects the dates that
+        // AccountDeletionService just wrote (DeletionScheduledFor +
+        // optional DeletionEligibleAfter for the ticket-hold case).
+        var fresh = await _userService.GetByIdAsync(user.Id);
+        var effective = fresh?.DeletionEligibleAfter?.ToDateTimeUtc()
+            ?? fresh?.DeletionScheduledFor?.ToDateTimeUtc();
         SetSuccess(string.Format(CultureInfo.CurrentCulture,
             _localizer["Profile_DeletionRequested"].Value,
-            deletionDate.ToDisplayLongDate() ?? ""));
+            effective.ToDisplayLongDate() ?? ""));
         return RedirectToAction(nameof(Privacy));
     }
 
@@ -1447,7 +1519,7 @@ public class ProfileController : HumansControllerBase
         if (user is null)
             return NotFound();
 
-        var result = await _profileService.CancelDeletionAsync(user.Id);
+        var result = await _accountDeletionService.CancelDeletionAsync(user.Id);
         if (!result.Success)
         {
             if (string.Equals(result.ErrorKey, "NoDeletionPending", StringComparison.Ordinal))
@@ -2075,10 +2147,25 @@ public class ProfileController : HumansControllerBase
     [HttpGet("{id:guid}/Admin")]
     public async Task<IActionResult> AdminDetail(Guid id, CancellationToken ct)
     {
-        var data = await _profileService.GetAdminHumanDetailAsync(id, ct);
-        if (data is null)
-        {
+        // Per-section composition (issue nobodies-collective/Humans#685): the
+        // Profile section reads its own row; cross-section data (Applications,
+        // RoleAssignments, ConsentCount, UserEmails, rejected-by display name)
+        // is fetched from each owning section here.
+        var user = await _userService.GetByIdAsync(id, ct);
+        if (user is null)
             return NotFound();
+
+        var profile = await _profileService.GetProfileAsync(id, ct);
+        var applications = await _applicationDecisionService.GetUserApplicationsAsync(id, ct);
+        var userEmails = await _userEmailRepository.GetByUserIdReadOnlyAsync(id, ct);
+        var consentCount = await _consentService.GetConsentRecordCountAsync(id, ct);
+        var roleAssignments = await _roleAssignmentService.GetByUserIdAsync(id, ct);
+
+        string? rejectedByName = null;
+        if (profile?.RejectedByUserId is not null)
+        {
+            var rejectedByUser = await _userService.GetByIdAsync(profile.RejectedByUserId.Value, ct);
+            rejectedByName = rejectedByUser?.DisplayName;
         }
 
         var campaignGrants = await _campaignService.GetAllGrantsForUserAsync(id, ct);
@@ -2087,38 +2174,39 @@ public class ProfileController : HumansControllerBase
         var outboxCount = await _emailOutboxService.GetMessageCountForUserAsync(id, ct);
         ViewBag.OutboxCount = outboxCount;
 
-        var profileLanguages = data.Profile is not null
-            ? await _profileService.GetProfileLanguagesAsync(data.Profile.Id, ct)
+        var profileLanguages = profile is not null
+            ? await _profileService.GetProfileLanguagesAsync(profile.Id, ct)
             : (IReadOnlyList<ProfileLanguage>)[];
 
         var now = _clock.GetCurrentInstant();
 
-        var effectiveEmail = data.UserEmails
+        var effectiveEmail = userEmails
             .FirstOrDefault(e => e.IsPrimary && e.IsVerified)?.Email
-            ?? data.User.Email;
+            ?? user.Email;
 
         var viewModel = new AdminHumanDetailViewModel
         {
-            UserId = data.User.Id,
+            UserId = user.Id,
             Email = effectiveEmail ?? string.Empty,
-            DisplayName = data.User.DisplayName,
-            ProfilePictureUrl = data.User.ProfilePictureUrl,
-            CreatedAt = data.User.CreatedAt.ToDateTimeUtc(),
-            LastLoginAt = data.User.LastLoginAt?.ToDateTimeUtc(),
-            IsSuspended = data.Profile?.IsSuspended ?? false,
-            IsApproved = data.Profile?.IsApproved ?? false,
-            HasProfile = data.Profile is not null,
-            AdminNotes = data.Profile?.AdminNotes,
-            PreferredLanguage = data.User.PreferredLanguage,
-            MembershipTier = data.Profile?.MembershipTier ?? MembershipTier.Volunteer,
-            ConsentCheckStatus = data.Profile?.ConsentCheckStatus,
-            IsRejected = data.Profile?.RejectedAt is not null,
-            RejectionReason = data.Profile?.RejectionReason,
-            RejectedAt = data.Profile?.RejectedAt?.ToDateTimeUtc(),
-            RejectedByName = data.RejectedByName,
-            ApplicationCount = data.Applications.Count,
-            ConsentCount = data.ConsentCount,
-            Applications = data.Applications
+            DisplayName = user.DisplayName,
+            ProfilePictureUrl = user.ProfilePictureUrl,
+            CreatedAt = user.CreatedAt.ToDateTimeUtc(),
+            LastLoginAt = user.LastLoginAt?.ToDateTimeUtc(),
+            IsSuspended = profile?.IsSuspended ?? false,
+            IsApproved = profile?.IsApproved ?? false,
+            HasProfile = profile is not null,
+            AdminNotes = profile?.AdminNotes,
+            PreferredLanguage = user.PreferredLanguage,
+            MembershipTier = profile?.MembershipTier ?? MembershipTier.Volunteer,
+            ConsentCheckStatus = profile?.ConsentCheckStatus,
+            IsRejected = profile?.RejectedAt is not null,
+            RejectionReason = profile?.RejectionReason,
+            RejectedAt = profile?.RejectedAt?.ToDateTimeUtc(),
+            RejectedByName = rejectedByName,
+            ApplicationCount = applications.Count,
+            ConsentCount = consentCount,
+            Applications = applications
+                .OrderByDescending(a => a.SubmittedAt)
                 .Take(5)
                 .Select(a => new AdminHumanApplicationViewModel
                 {
@@ -2126,7 +2214,7 @@ public class ProfileController : HumansControllerBase
                     Status = a.Status,
                     SubmittedAt = a.SubmittedAt.ToDateTimeUtc()
                 }).ToList(),
-            RoleAssignments = data.RoleAssignments.Select(ra => new AdminRoleAssignmentViewModel
+            RoleAssignments = roleAssignments.Select(ra => new AdminRoleAssignmentViewModel
             {
                 Id = ra.Id,
                 UserId = ra.UserId,
@@ -2144,14 +2232,14 @@ public class ProfileController : HumansControllerBase
                 LanguageName = Helpers.LanguageCatalog.GetDisplayName(pl.LanguageCode),
                 Proficiency = pl.Proficiency
             }).ToList(),
-            OAuthEmail = data.User.Email,
-            GoogleServiceEmail = data.UserEmails
+            OAuthEmail = user.Email,
+            GoogleServiceEmail = userEmails
                 .Where(e => e.IsVerified && e.IsGoogle)
                 .Select(e => e.Email)
                 .FirstOrDefault()
-                ?? data.User.Email,
-            GoogleEmailStatus = data.User.GoogleEmailStatus,
-            UserEmails = data.UserEmails
+                ?? user.Email,
+            GoogleEmailStatus = user.GoogleEmailStatus,
+            UserEmails = userEmails
                 .OrderBy(e => e.Email, StringComparer.OrdinalIgnoreCase)
                 .Select(e => new AdminUserEmailViewModel
                 {
