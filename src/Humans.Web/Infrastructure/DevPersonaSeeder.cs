@@ -171,9 +171,13 @@ public sealed class DevPersonaSeeder
         // CachingProfileService decorator handles the FullProfile cache
         // refresh atomically with the DB write (issue #474 — Profiles is the
         // single writer to the profile state fields).
-        await _profileService.RecordConsentCheckAsync(
+        var consentCheckResult = await _profileService.RecordConsentCheckAsync(
             id, reviewerId: id, ConsentCheckStatus.Cleared,
             notes: "Dev persona — auto-seeded");
+        if (!consentCheckResult.Success)
+            _logger.LogWarning(
+                "DEV: consent-check approval failed for persona {UserId}: {ErrorKey}",
+                id, consentCheckResult.ErrorKey);
 
         // Seed sample contact fields so profile page exercises the contact rendering path.
         // ContactFields are Profile-section auxiliary data with no public service write
