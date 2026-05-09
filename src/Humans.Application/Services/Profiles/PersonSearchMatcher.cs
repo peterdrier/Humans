@@ -123,13 +123,9 @@ public static class PersonSearchMatcher
         // ── Name bucket ─────────────────────────────────────────────
         if (includeName)
         {
-            // BurnerName is the primary public name; DisplayName is the
-            // legal/registered name on the underlying User row.
+            // BurnerName only — see memory/architecture/burnername-is-the-display-name.md.
             if (!string.IsNullOrEmpty(p.BurnerName) &&
                 p.BurnerName.Contains(query, StringComparison.OrdinalIgnoreCase))
-                return ("Name", null, null);
-
-            if (p.DisplayName.Contains(query, StringComparison.OrdinalIgnoreCase))
                 return ("Name", null, null);
         }
 
