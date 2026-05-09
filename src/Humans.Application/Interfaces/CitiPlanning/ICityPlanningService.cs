@@ -50,6 +50,7 @@ public interface ICityPlanningService
 
 public record CampPolygonDto(
     Guid CampSeasonId,
+    Guid CampId,
     string CampName,
     string CampSlug,
     string GeoJson,

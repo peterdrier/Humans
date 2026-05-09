@@ -216,6 +216,15 @@ public interface ICampRepository
     /// </summary>
     Task<Guid?> GetCampLeadSeasonIdForYearAsync(Guid userId, int year, CancellationToken ct = default);
 
+    /// <summary>
+    /// Returns the camp id where the user has an active lead assignment on
+    /// a camp participating in the given year. Null if none.
+    /// </summary>
+    Task<Guid?> GetCampLeadCampIdForYearAsync(Guid userId, int year, CancellationToken ct = default);
+
+    Task<IReadOnlyDictionary<Guid, (string Name, string CampSlug)>>
+        GetCampDisplayDataForYearAsync(int year, CancellationToken ct = default);
+
     // ==========================================================================
     // Writes / reads — Lead
     // ==========================================================================

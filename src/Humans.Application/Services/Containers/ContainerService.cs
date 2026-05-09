@@ -1,3 +1,5 @@
+using Humans.Application.Interfaces.Camps;
+using Humans.Application.Interfaces.CitiPlanning;
 using Humans.Application.Interfaces.Containers;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
@@ -12,34 +14,40 @@ public sealed class ContainerService : IContainerService
 
     private readonly IContainerRepository _repo;
     private readonly IContainerImageStorage _imageStorage;
+    private readonly ICampService _campService;
+    private readonly ICityPlanningService _cityPlanningService;
     private readonly IClock _clock;
 
     public ContainerService(
         IContainerRepository repo,
         IContainerImageStorage imageStorage,
+        ICampService campService,
+        ICityPlanningService cityPlanningService,
         IClock clock)
     {
         _repo = repo;
         _imageStorage = imageStorage;
+        _campService = campService;
+        _cityPlanningService = cityPlanningService;
         _clock = clock;
     }
 
-    public async Task<IReadOnlyList<ContainerDto>> GetBySeasonAsync(Guid campSeasonId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<ContainerDto>> GetByCampAsync(Guid campId, int year, CancellationToken ct = default)
     {
-        var containers = await _repo.GetBySeasonAsync(campSeasonId, ct);
-        return containers.Select(ToDto).OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase).ToList();
+        var containers = await _repo.GetByCampAsync(campId, year, ct);
+        return containers.Select(ToDto).ToList();
     }
 
     public async Task<IReadOnlyList<ContainerDto>> GetOrgByYearAsync(int year, CancellationToken ct = default)
     {
         var containers = await _repo.GetOrgByYearAsync(year, ct);
-        return containers.Select(ToDto).OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase).ToList();
+        return containers.Select(ToDto).ToList();
     }
 
     public async Task<IReadOnlyList<ContainerDto>> GetAllByYearAsync(int year, CancellationToken ct = default)
     {
         var containers = await _repo.GetAllByYearAsync(year, ct);
-        return containers.Select(ToDto).OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase).ToList();
+        return containers.Select(ToDto).ToList();
     }
 
     public async Task<ContainerDto?> GetByIdAsync(Guid id, CancellationToken ct = default)
@@ -57,7 +65,7 @@ public sealed class ContainerService : IContainerService
         var container = new Container
         {
             Id = id,
-            CampSeasonId = data.CampSeasonId,
+            CampId = data.CampId,
             Year = data.Year,
             Name = data.Name,
             Description = data.Description,
@@ -182,6 +190,46 @@ public sealed class ContainerService : IContainerService
         await _repo.UpdateAsync(container, ct);
     }
 
+    public async Task<ContainerAdminOverview> GetAdminOverviewAsync(int year, CancellationToken ct = default)
+    {
+        var allContainers = await _repo.GetAllByYearAsync(year, ct);
+        var campDisplay = await _campService.GetCampDisplayDataForYearAsync(year, ct);
+
+        var byCampId = allContainers
+            .Where(c => c.CampId is not null)
+            .GroupBy(c => c.CampId!.Value)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        var orgContainers = allContainers
+            .Where(c => c.CampId is null)
+            .Select(ToDto)
+            .ToList();
+
+        var campGroups = campDisplay
+            .Select(kvp => new ContainerCampGroup(
+                kvp.Key,
+                kvp.Value.Name,
+                kvp.Value.CampSlug,
+                byCampId.TryGetValue(kvp.Key, out var cs)
+                    ? cs.Select(ToDto).ToList()
+                    : []))
+            .ToList();
+
+        return new ContainerAdminOverview(year, orgContainers, campGroups);
+    }
+
+    public async Task<bool> CanUserPlaceContainerAsync(
+        Guid userId, ContainerDto container, bool isMapAdmin, CancellationToken ct = default)
+    {
+        if (isMapAdmin) return true;
+        if (container.CampId is null) return false;
+
+        var settings = await _cityPlanningService.GetSettingsAsync(ct);
+        if (!settings.IsContainerPlacementOpen) return false;
+
+        return await _campService.IsUserCampLeadAsync(userId, container.CampId.Value, ct);
+    }
+
     private static void ValidateImages(ContainerImageUpload? mainImage, ContainerImageUpload? placementImage)
     {
         if (mainImage is not null && !AllowedContentTypes.Contains(mainImage.ContentType))
@@ -204,7 +252,7 @@ public sealed class ContainerService : IContainerService
 
     private static ContainerDto ToDto(Container c) => new(
         c.Id,
-        c.CampSeasonId,
+        c.CampId,
         c.Year,
         c.Name,
         c.Description,

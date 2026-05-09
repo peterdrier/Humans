@@ -1,4 +1,6 @@
 using AwesomeAssertions;
+using Humans.Application.Interfaces.Camps;
+using Humans.Application.Interfaces.CitiPlanning;
 using Humans.Application.Interfaces.Containers;
 using Humans.Application.Services.Containers;
 using Humans.Application.Tests.Infrastructure;
@@ -29,7 +31,12 @@ public class ContainerImageServiceTests : IDisposable
         _clock = new FakeClock(_startTime);
         _imageStorage = Substitute.For<IContainerImageStorage>();
         var repo = new ContainerRepository(new TestDbContextFactory(_dbOptions));
-        _sut = new ContainerService(repo, _imageStorage, _clock);
+        _sut = new ContainerService(
+            repo,
+            _imageStorage,
+            Substitute.For<ICampService>(),
+            Substitute.For<ICityPlanningService>(),
+            _clock);
     }
 
     public void Dispose()
@@ -75,7 +82,7 @@ public class ContainerImageServiceTests : IDisposable
             .Returns("uploads/containers/id/placement-guid.jpg");
 
         var result = await _sut.CreateAsync(new ContainerData(
-            CampSeasonId: null,
+            CampId: null,
             Year: 2026,
             Name: "Test",
             Description: null,
@@ -96,7 +103,7 @@ public class ContainerImageServiceTests : IDisposable
             placementImagePath: "uploads/containers/id/placement-guid.jpg");
 
         await _sut.UpdateAsync(container.Id, new ContainerData(
-            CampSeasonId: null,
+            CampId: null,
             Year: container.Year,
             Name: container.Name,
             Description: null,
@@ -118,7 +125,7 @@ public class ContainerImageServiceTests : IDisposable
             placementImagePath: "uploads/containers/id/placement-guid.jpg");
 
         await _sut.UpdateAsync(container.Id, new ContainerData(
-            CampSeasonId: null,
+            CampId: null,
             Year: container.Year,
             Name: container.Name,
             Description: null,
@@ -140,7 +147,7 @@ public class ContainerImageServiceTests : IDisposable
             .Returns("uploads/containers/id/main-new.jpg");
 
         await _sut.UpdateAsync(container.Id, new ContainerData(
-            CampSeasonId: null,
+            CampId: null,
             Year: container.Year,
             Name: container.Name,
             Description: null,
@@ -160,7 +167,7 @@ public class ContainerImageServiceTests : IDisposable
             placementImagePath: "uploads/containers/id/placement.jpg");
 
         await _sut.UpdateAsync(container.Id, new ContainerData(
-            CampSeasonId: null,
+            CampId: null,
             Year: container.Year,
             Name: container.Name,
             Description: null,
@@ -181,7 +188,7 @@ public class ContainerImageServiceTests : IDisposable
         var container = await SeedContainerAsync(placementNotes: "Old notes");
 
         await _sut.UpdateAsync(container.Id, new ContainerData(
-            CampSeasonId: null,
+            CampId: null,
             Year: container.Year,
             Name: container.Name,
             Description: null,

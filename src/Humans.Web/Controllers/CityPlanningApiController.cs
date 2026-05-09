@@ -187,7 +187,7 @@ public class CityPlanningApiController : ControllerBase
         var userId = CurrentUserId();
         var isMapAdmin = await IsMapAdminAsync(userId, cancellationToken);
         var settings = await _cityPlanningService.GetSettingsAsync(cancellationToken);
-        var userSeasonId = await _campService.GetCampLeadSeasonIdForYearAsync(userId, year, cancellationToken);
+        var userCampId = await _campService.GetCampLeadCampIdForYearAsync(userId, year, cancellationToken);
 
         var containers = await _containerService.GetAllByYearAsync(year, cancellationToken);
 
@@ -195,12 +195,12 @@ public class CityPlanningApiController : ControllerBase
             c.Id,
             c.Name,
             c.Description,
-            c.CampSeasonId,
+            c.CampId,
             c.LocationGeoJson,
             isMapAdmin ||
                 (settings.IsContainerPlacementOpen &&
-                 userSeasonId.HasValue &&
-                 c.CampSeasonId == userSeasonId)));
+                 userCampId.HasValue &&
+                 c.CampId == userCampId)));
 
         return Ok(result);
     }
@@ -211,9 +211,9 @@ public class CityPlanningApiController : ControllerBase
     {
         var userId = CurrentUserId();
         var isMapAdmin = await IsMapAdminAsync(userId, cancellationToken);
-        var userSeasonId = await _campService.GetCampLeadSeasonIdForYearAsync(userId, year, cancellationToken);
+        var userCampId = await _campService.GetCampLeadCampIdForYearAsync(userId, year, cancellationToken);
 
-        if (!isMapAdmin && !userSeasonId.HasValue)
+        if (!isMapAdmin && !userCampId.HasValue)
         {
             return Forbid();
         }
@@ -222,7 +222,7 @@ public class CityPlanningApiController : ControllerBase
 
         var placed = allContainers
             .Where(c => c.LocationGeoJson is not null)
-            .Where(c => isMapAdmin || c.CampSeasonId == userSeasonId)
+            .Where(c => isMapAdmin || c.CampId == userCampId)
             .ToList();
 
         var features = placed.Select(c =>
@@ -261,16 +261,9 @@ public class CityPlanningApiController : ControllerBase
         if (container is null) return NotFound();
 
         var isMapAdmin = await IsMapAdminAsync(userId, cancellationToken);
-        if (!isMapAdmin)
+        if (!await _containerService.CanUserPlaceContainerAsync(userId, container, isMapAdmin, cancellationToken))
         {
-            var settings = await _cityPlanningService.GetSettingsAsync(cancellationToken);
-            var userSeasonId = await _campService.GetCampLeadSeasonIdForYearAsync(userId, container.Year, cancellationToken);
-            if (!settings.IsContainerPlacementOpen ||
-                !userSeasonId.HasValue ||
-                container.CampSeasonId != userSeasonId)
-            {
-                return Forbid();
-            }
+            return Forbid();
         }
 
         if (string.IsNullOrWhiteSpace(request.GeoJson) || !IsValidContainerPlacementGeoJson(request.GeoJson))
@@ -292,16 +285,9 @@ public class CityPlanningApiController : ControllerBase
         if (container is null) return NotFound();
 
         var isMapAdmin = await IsMapAdminAsync(userId, cancellationToken);
-        if (!isMapAdmin)
+        if (!await _containerService.CanUserPlaceContainerAsync(userId, container, isMapAdmin, cancellationToken))
         {
-            var settings = await _cityPlanningService.GetSettingsAsync(cancellationToken);
-            var userSeasonId = await _campService.GetCampLeadSeasonIdForYearAsync(userId, container.Year, cancellationToken);
-            if (!settings.IsContainerPlacementOpen ||
-                !userSeasonId.HasValue ||
-                container.CampSeasonId != userSeasonId)
-            {
-                return Forbid();
-            }
+            return Forbid();
         }
 
         await _containerService.ClearPlacementAsync(id, cancellationToken);
@@ -349,6 +335,6 @@ public record ContainerPlacementDto(
     Guid Id,
     string Name,
     string? Description,
-    Guid? CampSeasonId,
+    Guid? CampId,
     string? LocationGeoJson,
     bool CanEdit);

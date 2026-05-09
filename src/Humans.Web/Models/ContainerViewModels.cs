@@ -10,6 +10,7 @@ public class ContainerIndexViewModel
     public string CampName { get; set; } = string.Empty;
     public int Year { get; set; }
     public Guid SeasonId { get; set; }
+    public Guid CampId { get; set; }
     public List<ContainerViewModel> Containers { get; set; } = new();
     public bool CanManage { get; set; }
     public bool IsPlacementOpen { get; set; }
@@ -45,8 +46,8 @@ public class ContainerFormModel
     public bool RemoveMainImage { get; set; }
     public bool RemovePlacementImage { get; set; }
 
-    public ContainerData ToContainerData(Guid? campSeasonId, int year) => new(
-        CampSeasonId: campSeasonId,
+    public ContainerData ToContainerData(Guid? campId, int year) => new(
+        CampId: campId,
         Year: year,
         Name: Name,
         Description: Description,
@@ -71,7 +72,7 @@ public class OrgContainerIndexViewModel
 
 public class BarrioContainerGroup
 {
-    public Guid SeasonId { get; set; }
+    public Guid CampId { get; set; }
     public string CampName { get; set; } = string.Empty;
     public string CampSlug { get; set; } = string.Empty;
     public List<ContainerViewModel> Containers { get; set; } = new();
@@ -81,7 +82,7 @@ public class ContainerMapViewModel
 {
     public int Year { get; set; }
     public bool IsMapAdmin { get; set; }
-    public string UserCampSeasonId { get; set; } = string.Empty; // empty for admins
+    public string UserCampId { get; set; } = string.Empty; // empty for admins
     public string CampSlug { get; set; } = string.Empty; // empty for admins
     public string CampName { get; set; } = string.Empty; // empty for admins
 }

@@ -4,7 +4,7 @@ namespace Humans.Application.Interfaces.Containers;
 
 public interface IContainerService
 {
-    Task<IReadOnlyList<ContainerDto>> GetBySeasonAsync(Guid campSeasonId, CancellationToken ct = default);
+    Task<IReadOnlyList<ContainerDto>> GetByCampAsync(Guid campId, int year, CancellationToken ct = default);
     Task<IReadOnlyList<ContainerDto>> GetOrgByYearAsync(int year, CancellationToken ct = default);
     Task<IReadOnlyList<ContainerDto>> GetAllByYearAsync(int year, CancellationToken ct = default);
     Task<ContainerDto?> GetByIdAsync(Guid id, CancellationToken ct = default);
@@ -13,7 +13,32 @@ public interface IContainerService
     Task DeleteAsync(Guid id, CancellationToken ct = default);
     Task<ContainerDto> SavePlacementAsync(Guid id, string geoJson, CancellationToken ct = default);
     Task ClearPlacementAsync(Guid id, CancellationToken ct = default);
+
+    /// <summary>
+    /// Org-wide admin overview of containers for a year, grouped by camp.
+    /// Per-camp barrio groupings include all camps with a season in the year
+    /// (even if the camp has no containers yet).
+    /// </summary>
+    Task<ContainerAdminOverview> GetAdminOverviewAsync(int year, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns true iff the user may save/clear a container's placement —
+    /// either as a map admin (caller passes that flag) or as the camp lead
+    /// of the container's owning camp during an open placement phase.
+    /// </summary>
+    Task<bool> CanUserPlaceContainerAsync(Guid userId, ContainerDto container, bool isMapAdmin, CancellationToken ct = default);
 }
+
+public record ContainerAdminOverview(
+    int Year,
+    IReadOnlyList<ContainerDto> OrgContainers,
+    IReadOnlyList<ContainerCampGroup> CampGroups);
+
+public record ContainerCampGroup(
+    Guid CampId,
+    string CampName,
+    string CampSlug,
+    IReadOnlyList<ContainerDto> Containers);
 
 public interface IContainerImageStorage
 {
@@ -27,7 +52,7 @@ public record ContainerImageUpload(Stream Content, string ContentType, string Fi
 
 public record ContainerDto(
     Guid Id,
-    Guid? CampSeasonId,
+    Guid? CampId,
     int Year,
     string Name,
     string? Description,
@@ -44,7 +69,7 @@ public record ContainerDto(
 );
 
 public record ContainerData(
-    Guid? CampSeasonId,
+    Guid? CampId,
     int Year,
     string Name,
     string? Description,

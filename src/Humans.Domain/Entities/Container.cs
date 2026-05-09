@@ -6,8 +6,7 @@ public class Container
 {
     public Guid Id { get; init; }
 
-    public Guid? CampSeasonId { get; init; }
-    public CampSeason? CampSeason { get; set; } // declared but not read by Containers code (design-rules §15i)
+    public Guid? CampId { get; init; }
 
     public int Year { get; init; }
     public string Name { get; set; } = string.Empty;

@@ -8,7 +8,7 @@ let _onSave      = null; // async callback(container, feature) — called on mou
 let _onSelect    = null; // callback(featureId) — called when user clicks a placed editable container
 
 // Active container state
-let _activeContainer = null; // { id, campSeasonId, canEdit }
+let _activeContainer = null; // { id, campId, canEdit }
 let _currentCenter   = null; // { lng, lat }
 let _currentRotation = 0;    // CCW degrees (turf convention)
 let _activeFeature   = null;

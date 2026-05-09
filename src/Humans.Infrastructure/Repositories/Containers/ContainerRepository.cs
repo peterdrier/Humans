@@ -14,12 +14,12 @@ public sealed class ContainerRepository : IContainerRepository
         _factory = factory;
     }
 
-    public async Task<IReadOnlyList<Container>> GetBySeasonAsync(Guid campSeasonId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<Container>> GetByCampAsync(Guid campId, int year, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.Containers
             .AsNoTracking()
-            .Where(c => c.CampSeasonId == campSeasonId)
+            .Where(c => c.CampId == campId && c.Year == year)
             .ToListAsync(ct);
     }
 
@@ -28,7 +28,7 @@ public sealed class ContainerRepository : IContainerRepository
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.Containers
             .AsNoTracking()
-            .Where(c => c.CampSeasonId == null && c.Year == year)
+            .Where(c => c.CampId == null && c.Year == year)
             .ToListAsync(ct);
     }
 

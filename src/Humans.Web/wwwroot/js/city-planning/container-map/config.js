@@ -6,7 +6,7 @@ const el = document.getElementById('map');
 export const CONFIG = {
     YEAR:                parseInt(el.dataset.year, 10),
     IS_MAP_ADMIN:        el.dataset.isMapAdmin === 'true',
-    USER_CAMP_SEASON_ID: el.dataset.userCampSeasonId || null,
+    USER_CAMP_ID:        el.dataset.userCampId || null,
 
     ESRI_TILES,
     MAP_BOUNDS,

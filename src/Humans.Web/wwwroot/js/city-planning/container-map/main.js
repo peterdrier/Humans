@@ -40,11 +40,11 @@ async function init() {
     addContainerLayers(map);
     initMeasure(map);
 
-    // Build campSeasonId → campName lookup for sidebar grouping
+    // Build campId → campName lookup for sidebar grouping
     const campNames = Object.fromEntries(
         (stateData.campPolygons ?? [])
-            .filter(p => p.campSeasonId && p.campName)
-            .map(p => [p.campSeasonId, p.campName])
+            .filter(p => p.campId && p.campName)
+            .map(p => [p.campId, p.campName])
     );
     setCampNames(campNames);
 
@@ -53,8 +53,8 @@ async function init() {
     updateContainerSource(map, containers, null);
 
     // Zoom to barrio lead's camp if not admin
-    if (!CONFIG.IS_MAP_ADMIN && CONFIG.USER_CAMP_SEASON_ID) {
-        const campPolygon = stateData.campPolygons?.find(p => p.campSeasonId === CONFIG.USER_CAMP_SEASON_ID);
+    if (!CONFIG.IS_MAP_ADMIN && CONFIG.USER_CAMP_ID) {
+        const campPolygon = stateData.campPolygons?.find(p => p.campId === CONFIG.USER_CAMP_ID);
         if (campPolygon?.geoJson) {
             const bbox = turf.bbox(JSON.parse(campPolygon.geoJson));
             map.fitBounds([[bbox[0], bbox[1]], [bbox[2], bbox[3]]], { padding: 60, duration: 0 });
@@ -108,7 +108,7 @@ async function init() {
             const f = JSON.parse(container.locationGeoJson);
             map.flyTo({ center: [f.properties.center_lng, f.properties.center_lat], duration: 400 });
         },
-        CONFIG.IS_MAP_ADMIN ? null : CONFIG.USER_CAMP_SEASON_ID || null,
+        CONFIG.IS_MAP_ADMIN ? null : CONFIG.USER_CAMP_ID || null,
     );
     setContainers(containers);
 
@@ -145,17 +145,17 @@ async function init() {
 /**
  * Compute the placement center for a container being activated.
  * - Barrio containers: centroid of their camp polygon, or fallback to site center.
- * - Org containers (no campSeasonId): site center.
+ * - Org containers (no campId): site center.
  */
 function getBarrioCenter(stateData, container) {
     const siteCenterLng = (CONFIG.MAP_BOUNDS[0][0] + CONFIG.MAP_BOUNDS[1][0]) / 2;
     const siteCenterLat = (CONFIG.MAP_BOUNDS[0][1] + CONFIG.MAP_BOUNDS[1][1]) / 2;
 
-    if (!container.campSeasonId) {
+    if (!container.campId) {
         return { lng: siteCenterLng, lat: siteCenterLat };
     }
 
-    const campPolygon = stateData.campPolygons?.find(p => p.campSeasonId === container.campSeasonId);
+    const campPolygon = stateData.campPolygons?.find(p => p.campId === container.campId);
     if (!campPolygon?.geoJson) {
         return { lng: siteCenterLng, lat: siteCenterLat };
     }

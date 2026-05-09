@@ -324,6 +324,7 @@ public class CityPlanningServiceTests : IDisposable
     {
         var season2026Id = Guid.NewGuid();
         var season2027Id = Guid.NewGuid();
+        var camp2026Id = Guid.NewGuid();
         var userId = NewUserId();
 
         await _sut.SaveCampPolygonAsync(season2026Id, """{"type":"Feature"}""", 100, userId);
@@ -334,11 +335,14 @@ public class CityPlanningServiceTests : IDisposable
             {
                 [season2026Id] = new("Test Camp 2026", "test-camp", null, null)
             });
+        _campService.GetCampSeasonByIdAsync(season2026Id, Arg.Any<CancellationToken>())
+            .Returns(new CampSeason { Id = season2026Id, CampId = camp2026Id, Year = 2026 });
 
         var result = await _sut.GetCampPolygonsAsync(2026);
 
         result.Should().HaveCount(1);
         result[0].CampSeasonId.Should().Be(season2026Id);
+        result[0].CampId.Should().Be(camp2026Id);
     }
 
     [HumansFact]
@@ -439,6 +443,7 @@ public class CityPlanningServiceTests : IDisposable
     public async Task GetCampPolygonsAsync_IncludesSoundZone_WhenSet()
     {
         var campSeasonId = Guid.NewGuid();
+        var campId = Guid.NewGuid();
         var userId = NewUserId();
         const string geoJson = """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[]]}}""";
         await _sut.SaveCampPolygonAsync(campSeasonId, geoJson, 100.0, userId);
@@ -448,6 +453,8 @@ public class CityPlanningServiceTests : IDisposable
             {
                 [campSeasonId] = new("Test Camp", "test-camp", SoundZone.Blue, null)
             });
+        _campService.GetCampSeasonByIdAsync(campSeasonId, Arg.Any<CancellationToken>())
+            .Returns(new CampSeason { Id = campSeasonId, CampId = campId, Year = 2026 });
 
         var polygons = await _sut.GetCampPolygonsAsync(2026);
 
@@ -458,6 +465,7 @@ public class CityPlanningServiceTests : IDisposable
     public async Task GetCampPolygonsAsync_SoundZoneIsNull_WhenNotSet()
     {
         var campSeasonId = Guid.NewGuid();
+        var campId = Guid.NewGuid();
         var userId = NewUserId();
         const string geoJson = """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[]]}}""";
         await _sut.SaveCampPolygonAsync(campSeasonId, geoJson, 100.0, userId);
@@ -467,6 +475,8 @@ public class CityPlanningServiceTests : IDisposable
             {
                 [campSeasonId] = new("Test Camp", "test-camp", null, null)
             });
+        _campService.GetCampSeasonByIdAsync(campSeasonId, Arg.Any<CancellationToken>())
+            .Returns(new CampSeason { Id = campSeasonId, CampId = campId, Year = 2026 });
 
         var polygons = await _sut.GetCampPolygonsAsync(2026);
 

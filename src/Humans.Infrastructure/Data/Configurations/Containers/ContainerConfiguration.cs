@@ -21,12 +21,9 @@ public class ContainerConfiguration : IEntityTypeConfiguration<Container>
         builder.Property(c => c.PlacementImageContentType).HasMaxLength(64);
         builder.Property(c => c.PlacementImageFileName).HasMaxLength(256);
 
-        builder.HasIndex(c => c.CampSeasonId);
+        // Bare FK column (no HasOne / nav) — Camp lives in a different section.
+        // See memory/architecture/no-cross-section-ef-joins.md.
+        builder.HasIndex(c => c.CampId);
         builder.HasIndex(c => c.Year);
-
-        builder.HasOne(c => c.CampSeason)
-            .WithMany()
-            .HasForeignKey(c => c.CampSeasonId)
-            .OnDelete(DeleteBehavior.Cascade);
     }
 }

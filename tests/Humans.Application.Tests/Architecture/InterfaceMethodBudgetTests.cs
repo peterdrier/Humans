@@ -76,7 +76,13 @@ public class InterfaceMethodBudgetTests
         // new lead-pin feature on this branch already calls the repo
         // method directly); SetSeasonFullAsync and
         // GetCampSeasonBriefsForYearAsync (both zero callers, zero tests).
-        [typeof(ICampService)] = 51,
+        // 51→53: containers refactor (PR #389). +2 for camp-id-based lookups
+        // needed by Containers section after dropping cross-section nav from
+        // Container → CampSeason: GetCampDisplayDataForYearAsync (camp-keyed
+        // display data for grouping containers by camp), and
+        // GetCampLeadCampIdForYearAsync (camp lead's camp id for the year,
+        // replacing the season-id variant on container map and admin views).
+        [typeof(ICampService)] = 53,
         // +1: GetOverallCoverageAsync for admin dashboard shift-coverage tile (peterdrier#349).
         // 50→50: account-merge fold redesign Phase 3.2. Added
         // ReassignProfilesAndTagPrefsToUserAsync; removed CanManageShiftsAsync

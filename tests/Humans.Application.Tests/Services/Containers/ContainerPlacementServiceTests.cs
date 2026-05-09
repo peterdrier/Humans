@@ -1,4 +1,6 @@
 using AwesomeAssertions;
+using Humans.Application.Interfaces.Camps;
+using Humans.Application.Interfaces.CitiPlanning;
 using Humans.Application.Interfaces.Containers;
 using Humans.Application.Services.Containers;
 using Humans.Application.Tests.Infrastructure;
@@ -27,7 +29,12 @@ public class ContainerPlacementServiceTests : IDisposable
             .Options;
         _clock = new FakeClock(_startTime);
         var repo = new ContainerRepository(new TestDbContextFactory(_dbOptions));
-        _sut = new ContainerService(repo, Substitute.For<IContainerImageStorage>(), _clock);
+        _sut = new ContainerService(
+            repo,
+            Substitute.For<IContainerImageStorage>(),
+            Substitute.For<ICampService>(),
+            Substitute.For<ICityPlanningService>(),
+            _clock);
     }
 
     public void Dispose()
@@ -35,13 +42,13 @@ public class ContainerPlacementServiceTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    private async Task<Container> SeedContainerAsync(Guid? campSeasonId = null)
+    private async Task<Container> SeedContainerAsync(Guid? campId = null)
     {
         await using var ctx = new HumansDbContext(_dbOptions);
         var container = new Container
         {
             Id = Guid.NewGuid(),
-            CampSeasonId = campSeasonId,
+            CampId = campId,
             Year = 2026,
             Name = "Container A",
             CreatedAt = _startTime,

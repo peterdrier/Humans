@@ -34,11 +34,13 @@ public class ContainerController : HumansControllerBase
         _authorizationService = authorizationService;
     }
 
-    private async Task<bool> CanManageAsync(Guid userId, Camp camp, CancellationToken ct)
+    private sealed record CampContext(Camp Camp, CampSeason Season, bool CanManage, bool IsPrivileged);
+
+    private async Task<bool> CanManageAsync(Guid userId, Guid campId, CancellationToken ct)
     {
         if (RoleChecks.IsCampAdmin(User)) return true;
         if (await _cityPlanningService.IsCityPlanningTeamMemberAsync(userId, ct)) return true;
-        if (await _campService.IsUserCampLeadAsync(userId, camp.Id, ct)) return true;
+        if (await _campService.IsUserCampLeadAsync(userId, campId, ct)) return true;
         return false;
     }
 
@@ -48,81 +50,94 @@ public class ContainerController : HumansControllerBase
         return await _cityPlanningService.IsCityPlanningTeamMemberAsync(userId, ct);
     }
 
-    private async Task<(bool blocked, IActionResult? result)> CheckPlacementPhaseAsync(
+    private async Task<(IActionResult? Error, CampContext? Ctx)> ResolveCampContextAsync(
+        string slug, int year, Guid userId, CancellationToken ct)
+    {
+        var camp = await _campService.GetCampBySlugAsync(slug, ct);
+        if (camp is null) return (NotFound(), null);
+
+        var season = camp.Seasons.FirstOrDefault(s => s.Year == year);
+        if (season is null) return (NotFound(), null);
+
+        var canManage = await CanManageAsync(userId, camp.Id, ct);
+        if (!canManage) return (Forbid(), null);
+
+        var isPrivileged = await IsPrivilegedAsync(userId, ct);
+        return (null, new CampContext(camp, season, canManage, isPrivileged));
+    }
+
+    private async Task<IActionResult?> CheckPlacementPhaseAsync(
         Guid userId, string slug, int year, CancellationToken ct)
     {
-        if (await IsPrivilegedAsync(userId, ct)) return (false, null);
+        if (await IsPrivilegedAsync(userId, ct)) return null;
         var settings = await _cityPlanningService.GetSettingsAsync(ct);
-        if (settings.IsContainerPlacementOpen) return (false, null);
+        if (settings.IsContainerPlacementOpen) return null;
         SetError("Container placement is currently closed.");
-        return (true, RedirectToAction(nameof(Index), new { slug, year }));
+        return RedirectToAction(nameof(Index), new { slug, year });
     }
 
     [HttpGet("")]
     public async Task<IActionResult> Index(string slug, int year, CancellationToken ct)
     {
-        var camp = await _campService.GetCampBySlugAsync(slug, ct);
-        if (camp is null) return NotFound();
+        var (userError, user) = await RequireCurrentUserAsync();
+        if (userError is not null) return userError;
 
-        var (error, user) = await RequireCurrentUserAsync();
-        if (error is not null) return error;
-
-        var season = camp.Seasons.FirstOrDefault(s => s.Year == year);
-        if (season is null) return NotFound();
-
-        var canManage = await CanManageAsync(user.Id, camp, ct);
-        if (!canManage) return Forbid();
+        var (resolveError, ctx) = await ResolveCampContextAsync(slug, year, user.Id, ct);
+        if (resolveError is not null) return resolveError;
 
         var settings = await _cityPlanningService.GetSettingsAsync(ct);
-        var isPrivileged = await IsPrivilegedAsync(user.Id, ct);
+        var containers = await _containerService.GetByCampAsync(ctx!.Camp.Id, year, ct);
+        var sortedContainers = containers
+            .OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
 
-        var containers = await _containerService.GetBySeasonAsync(season.Id, ct);
-
-        var isLead = canManage && !isPrivileged;
-
-        var vm = new ContainerIndexViewModel
-        {
-            CampSlug = camp.Slug,
-            CampName = season.Name,
-            Year = year,
-            SeasonId = season.Id,
-            CanManage = canManage && (isPrivileged || settings.IsContainerPlacementOpen),
-            IsPlacementOpen = settings.IsContainerPlacementOpen,
-            IsLeadButPhaseClosed = isLead && !settings.IsContainerPlacementOpen,
-            Containers = containers.Select(c => new ContainerViewModel
-            {
-                Id = c.Id,
-                Name = c.Name,
-                Description = c.Description,
-                ImageUrl = c.ImageStoragePath,
-                ImageFileName = c.ImageFileName,
-                IsPlaced = c.LocationGeoJson is not null,
-                PlacementNotes = c.PlacementNotes,
-                PlacementImageUrl = c.PlacementImageStoragePath,
-                PlacementImageFileName = c.PlacementImageFileName,
-            }).ToList()
-        };
-
+        var vm = BuildIndexViewModel(ctx, year, settings.IsContainerPlacementOpen, sortedContainers);
         return View(vm);
     }
+
+    private static ContainerIndexViewModel BuildIndexViewModel(
+        CampContext ctx, int year, bool isPlacementOpen, IReadOnlyList<ContainerDto> containers)
+    {
+        var isLead = ctx.CanManage && !ctx.IsPrivileged;
+        return new ContainerIndexViewModel
+        {
+            CampSlug = ctx.Camp.Slug,
+            CampName = ctx.Season.Name,
+            Year = year,
+            SeasonId = ctx.Season.Id,
+            CampId = ctx.Camp.Id,
+            CanManage = ctx.CanManage && (ctx.IsPrivileged || isPlacementOpen),
+            IsPlacementOpen = isPlacementOpen,
+            IsLeadButPhaseClosed = isLead && !isPlacementOpen,
+            Containers = containers.Select(ToContainerViewModel).ToList()
+        };
+    }
+
+    private static ContainerViewModel ToContainerViewModel(ContainerDto c) => new()
+    {
+        Id = c.Id,
+        Name = c.Name,
+        Description = c.Description,
+        ImageUrl = c.ImageStoragePath,
+        ImageFileName = c.ImageFileName,
+        IsPlaced = c.LocationGeoJson is not null,
+        PlacementNotes = c.PlacementNotes,
+        PlacementImageUrl = c.PlacementImageStoragePath,
+        PlacementImageFileName = c.PlacementImageFileName,
+    };
 
     [HttpPost("Create")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(string slug, int year, ContainerFormModel model, CancellationToken ct)
     {
-        var camp = await _campService.GetCampBySlugAsync(slug, ct);
-        if (camp is null) return NotFound();
+        var (userError, user) = await RequireCurrentUserAsync();
+        if (userError is not null) return userError;
 
-        var (error, user) = await RequireCurrentUserAsync();
-        if (error is not null) return error;
+        var (resolveError, ctx) = await ResolveCampContextAsync(slug, year, user.Id, ct);
+        if (resolveError is not null) return resolveError;
 
-        if (!await CanManageAsync(user.Id, camp, ct)) return Forbid();
-
-        var (blocked, blockResult) = await CheckPlacementPhaseAsync(user.Id, slug, year, ct);
-        if (blocked) return blockResult!;
-
-        var season = camp.Seasons.FirstOrDefault(s => s.Year == year);
-        if (season is null) return NotFound();
+        var blockResult = await CheckPlacementPhaseAsync(user.Id, slug, year, ct);
+        if (blockResult is not null) return blockResult;
 
         if (!ModelState.IsValid)
         {
@@ -130,35 +145,24 @@ public class ContainerController : HumansControllerBase
             return RedirectToAction(nameof(Index), new { slug, year });
         }
 
-        try
-        {
-            await _containerService.CreateAsync(model.ToContainerData(season.Id, year), ct);
-        }
-        catch (InvalidOperationException ex)
-        {
-            SetError(ex.Message);
-            return RedirectToAction(nameof(Index), new { slug, year });
-        }
-
-        SetSuccess("Container added.");
-        return RedirectToAction(nameof(Index), new { slug, year });
+        return await TryRunContainerWriteAsync(
+            () => _containerService.CreateAsync(model.ToContainerData(ctx!.Camp.Id, year), ct),
+            slug, year,
+            "Container added.");
     }
 
     [HttpPost("{id}/Edit")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit(string slug, int year, Guid id, ContainerFormModel model, CancellationToken ct)
     {
-        var entity = await GetContainerEntityAsync(id, ct);
-        if (entity is null) return NotFound();
-
         var (userError, user) = await RequireCurrentUserAsync();
         if (userError is not null) return userError;
 
-        var authResult = await _authorizationService.AuthorizeAsync(User, entity, ContainerOperationRequirement.Manage);
-        if (!authResult.Succeeded) return Forbid();
+        var (authError, entity) = await AuthorizeContainerOpAsync(id, ct);
+        if (authError is not null) return authError;
 
-        var (blocked, blockResult) = await CheckPlacementPhaseAsync(user.Id, slug, year, ct);
-        if (blocked) return blockResult!;
+        var blockResult = await CheckPlacementPhaseAsync(user.Id, slug, year, ct);
+        if (blockResult is not null) return blockResult;
 
         if (!ModelState.IsValid)
         {
@@ -166,18 +170,21 @@ public class ContainerController : HumansControllerBase
             return RedirectToAction(nameof(Index), new { slug, year });
         }
 
-        try
-        {
-            await _containerService.UpdateAsync(id, model.ToContainerData(entity.CampSeasonId, entity.Year), ct);
-        }
-        catch (InvalidOperationException ex)
-        {
-            SetError(ex.Message);
-            return RedirectToAction(nameof(Index), new { slug, year });
-        }
+        return await TryRunContainerWriteAsync(
+            () => _containerService.UpdateAsync(id, model.ToContainerData(entity!.CampId, entity.Year), ct),
+            slug, year,
+            "Container updated.");
+    }
 
-        SetSuccess("Container updated.");
-        return RedirectToAction(nameof(Index), new { slug, year });
+    private async Task<(IActionResult? Error, Container? Entity)> AuthorizeContainerOpAsync(Guid id, CancellationToken ct)
+    {
+        var entity = await GetContainerEntityAsync(id, ct);
+        if (entity is null) return (NotFound(), null);
+
+        var authResult = await _authorizationService.AuthorizeAsync(User, entity, ContainerOperationRequirement.Manage);
+        if (!authResult.Succeeded) return (Forbid(), null);
+
+        return (null, entity);
     }
 
     [HttpPost("{id}/Delete")]
@@ -193,11 +200,28 @@ public class ContainerController : HumansControllerBase
         var authResult = await _authorizationService.AuthorizeAsync(User, entity, ContainerOperationRequirement.Manage);
         if (!authResult.Succeeded) return Forbid();
 
-        var (blocked, blockResult) = await CheckPlacementPhaseAsync(user.Id, slug, year, ct);
-        if (blocked) return blockResult!;
+        var blockResult = await CheckPlacementPhaseAsync(user.Id, slug, year, ct);
+        if (blockResult is not null) return blockResult;
 
         await _containerService.DeleteAsync(id, ct);
         SetSuccess("Container deleted.");
+        return RedirectToAction(nameof(Index), new { slug, year });
+    }
+
+    private async Task<IActionResult> TryRunContainerWriteAsync(
+        Func<Task> write, string slug, int year, string successMessage)
+    {
+        try
+        {
+            await write();
+        }
+        catch (InvalidOperationException ex)
+        {
+            SetError(ex.Message);
+            return RedirectToAction(nameof(Index), new { slug, year });
+        }
+
+        SetSuccess(successMessage);
         return RedirectToAction(nameof(Index), new { slug, year });
     }
 
@@ -206,12 +230,12 @@ public class ContainerController : HumansControllerBase
         var dto = await _containerService.GetByIdAsync(id, ct);
         if (dto is null) return null;
 
-        // ContainerAuthorizationHandler only reads CampSeasonId (to check camp lead ownership).
+        // ContainerAuthorizationHandler only reads CampId (camp lead ownership).
         // If the handler is extended to inspect other fields, populate them here too.
         return new Container
         {
             Id = dto.Id,
-            CampSeasonId = dto.CampSeasonId,
+            CampId = dto.CampId,
             Year = dto.Year
         };
     }

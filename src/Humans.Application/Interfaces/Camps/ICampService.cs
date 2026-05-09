@@ -74,7 +74,14 @@ public interface ICampService
     // Cross-service queries (used by CityPlanningService)
     Task<CampSeason?> GetCampSeasonByIdAsync(Guid campSeasonId, CancellationToken cancellationToken = default);
     Task<IReadOnlyDictionary<Guid, CampSeasonDisplayData>> GetCampSeasonDisplayDataForYearAsync(int year, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns camp-level display data for every camp with a season in the given year.
+    /// Keyed by camp id (NOT season id).
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, CampDisplayData>> GetCampDisplayDataForYearAsync(int year, CancellationToken cancellationToken = default);
     Task<Guid?> GetCampLeadSeasonIdForYearAsync(Guid userId, int year, CancellationToken cancellationToken = default);
+    Task<Guid?> GetCampLeadCampIdForYearAsync(Guid userId, int year, CancellationToken cancellationToken = default);
 
     // Authorization checks
     Task<bool> IsUserCampLeadAsync(Guid userId, Guid campId, CancellationToken cancellationToken = default);
@@ -389,5 +396,7 @@ public record CampPlacementSummary(
     string? ElectricalGrid);
 
 public record CampSeasonDisplayData(string Name, string CampSlug, SoundZone? SoundZone, SpaceSize? SpaceRequirement);
+
+public record CampDisplayData(string Name, string CampSlug);
 
 public record CampSeasonBrief(Guid CampSeasonId, string Name, string CampSlug, SpaceSize? SpaceRequirement);

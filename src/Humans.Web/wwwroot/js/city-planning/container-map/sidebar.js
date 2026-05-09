@@ -4,24 +4,24 @@
 const unplacedEl = document.getElementById('sidebar-unplaced');
 const placedEl   = document.getElementById('sidebar-placed');
 
-let _containers        = [];    // current container data array
-let _campNames         = {};    // campSeasonId → campName
-let _activeId          = null;  // currently active container ID
-let _filterCampSeasonId = null; // if set, sidebar only shows this barrio's containers
+let _containers     = [];    // current container data array
+let _campNames      = {};    // campId → campName
+let _activeId       = null;  // currently active container ID
+let _filterCampId   = null;  // if set, sidebar only shows this barrio's containers
 let _onActivate  = null;  // callback(container) when user clicks an unplaced card
 let _onClear     = null;  // callback(container) when user clicks "Clear placement"
 let _onSelect    = null;  // callback(container) when user clicks a placed card
 let _onLocate    = null;  // callback(container) when user clicks the locate button
 
-export function initSidebar(onActivate, onClear, onSelect, onLocate, filterCampSeasonId = null) {
-    _onActivate         = onActivate;
-    _onClear            = onClear;
-    _onSelect           = onSelect;
-    _onLocate           = onLocate;
-    _filterCampSeasonId = filterCampSeasonId;
+export function initSidebar(onActivate, onClear, onSelect, onLocate, filterCampId = null) {
+    _onActivate    = onActivate;
+    _onClear       = onClear;
+    _onSelect      = onSelect;
+    _onLocate      = onLocate;
+    _filterCampId  = filterCampId;
 }
 
-/** Provide the campSeasonId → campName lookup used for barrio group headers. */
+/** Provide the campId → campName lookup used for barrio group headers. */
 export function setCampNames(campNames) {
     _campNames = campNames;
 }
@@ -56,8 +56,8 @@ export function scrollToPlaced(id) {
 }
 
 function render() {
-    const visible = _filterCampSeasonId
-        ? _containers.filter(c => c.campSeasonId === _filterCampSeasonId)
+    const visible = _filterCampId
+        ? _containers.filter(c => c.campId === _filterCampId)
         : _containers;
     renderSection(unplacedEl, visible.filter(c => !c.locationGeoJson), false);
     renderSection(placedEl,   visible.filter(c =>  c.locationGeoJson), true);
@@ -71,13 +71,13 @@ function renderSection(sectionEl, items, isPlaced) {
     const groups = groupByCamp(items);
     const showHeaders = groups.size > 1;
 
-    for (const [campSeasonId, groupItems] of groups) {
+    for (const [campId, groupItems] of groups) {
         if (showHeaders) {
             const hdr = document.createElement('div');
             hdr.className = 'list-group-item py-1 px-3 small text-muted bg-body-secondary';
-            hdr.textContent = campSeasonId === null
+            hdr.textContent = campId === null
                 ? 'Nobodies'
-                : (_campNames[campSeasonId] ?? campSeasonId);
+                : (_campNames[campId] ?? campId);
             sectionEl.appendChild(hdr);
         }
         for (const c of groupItems) {
@@ -89,7 +89,7 @@ function renderSection(sectionEl, items, isPlaced) {
 function groupByCamp(items) {
     const groups = new Map();
     for (const c of items) {
-        const key = c.campSeasonId ?? null;
+        const key = c.campId ?? null;
         if (!groups.has(key)) groups.set(key, []);
         groups.get(key).push(c);
     }

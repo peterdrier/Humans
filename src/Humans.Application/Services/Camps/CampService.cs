@@ -1067,9 +1067,22 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
                 kv.Value.SpaceRequirement));
     }
 
+    public async Task<IReadOnlyDictionary<Guid, CampDisplayData>> GetCampDisplayDataForYearAsync(
+        int year, CancellationToken cancellationToken = default)
+    {
+        var rows = await _repo.GetCampDisplayDataForYearAsync(year, cancellationToken);
+        return rows.ToDictionary(
+            kv => kv.Key,
+            kv => new CampDisplayData(kv.Value.Name, kv.Value.CampSlug));
+    }
+
     public Task<Guid?> GetCampLeadSeasonIdForYearAsync(
         Guid userId, int year, CancellationToken cancellationToken = default) =>
         _repo.GetCampLeadSeasonIdForYearAsync(userId, year, cancellationToken);
+
+    public Task<Guid?> GetCampLeadCampIdForYearAsync(
+        Guid userId, int year, CancellationToken cancellationToken = default) =>
+        _repo.GetCampLeadCampIdForYearAsync(userId, year, cancellationToken);
 
     // ==========================================================================
     // Authorization checks

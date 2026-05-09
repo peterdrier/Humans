@@ -403,6 +403,38 @@ public sealed class CampRepository : ICampRepository
             .FirstOrDefaultAsync(ct);
     }
 
+    public async Task<Guid?> GetCampLeadCampIdForYearAsync(
+        Guid userId, int year, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.CampLeads
+            .AsNoTracking()
+            .Where(l => l.UserId == userId && l.LeftAt == null)
+            .Join(ctx.CampSeasons,
+                l => l.CampId,
+                s => s.CampId,
+                (l, s) => new { s.CampId, s.Year })
+            .Where(x => x.Year == year)
+            .Select(x => (Guid?)x.CampId)
+            .FirstOrDefaultAsync(ct);
+    }
+
+    public async Task<IReadOnlyDictionary<Guid, (string Name, string CampSlug)>>
+        GetCampDisplayDataForYearAsync(int year, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var rows = await ctx.CampSeasons
+            .AsNoTracking()
+            .Include(s => s.Camp)
+            .Where(s => s.Year == year)
+            .Select(s => new { CampId = s.CampId, s.Name, s.Camp.Slug })
+            .ToListAsync(ct);
+
+        return rows.ToDictionary(
+            r => r.CampId,
+            r => (r.Name, CampSlug: r.Slug));
+    }
+
     // ==========================================================================
     // Leads
     // ==========================================================================

@@ -345,34 +345,34 @@ public class CityPlanningController : HumansControllerBase
         if (error != null) return error;
 
         var isMapAdmin = await IsMapAdminAsync(user.Id, cancellationToken);
-        var userSeasonId = await _campService.GetCampLeadSeasonIdForYearAsync(user.Id, year, cancellationToken);
+        var userCampId = await _campService.GetCampLeadCampIdForYearAsync(user.Id, year, cancellationToken);
         var settings = await _cityPlanningService.GetSettingsAsync(cancellationToken);
 
-        if (!isMapAdmin && (!settings.IsContainerPlacementOpen || !userSeasonId.HasValue))
+        if (!isMapAdmin && (!settings.IsContainerPlacementOpen || !userCampId.HasValue))
         {
             return Forbid();
         }
 
-        string campSlug = string.Empty;
-        string campName = string.Empty;
-        if (!isMapAdmin && userSeasonId.HasValue)
-        {
-            var displayData = await _campService.GetCampSeasonDisplayDataForYearAsync(year, cancellationToken);
-            if (displayData.TryGetValue(userSeasonId.Value, out var data))
-            {
-                campSlug = data.CampSlug;
-                campName = data.Name;
-            }
-        }
+        var (campSlug, campName) = await ResolveLeadCampDisplayAsync(isMapAdmin, userCampId, year, cancellationToken);
 
         return View(new ContainerMapViewModel
         {
             Year = year,
             IsMapAdmin = isMapAdmin,
-            UserCampSeasonId = userSeasonId?.ToString() ?? string.Empty,
+            UserCampId = userCampId?.ToString() ?? string.Empty,
             CampSlug = campSlug,
             CampName = campName,
         });
+    }
+
+    private async Task<(string Slug, string Name)> ResolveLeadCampDisplayAsync(
+        bool isMapAdmin, Guid? userCampId, int year, CancellationToken ct)
+    {
+        if (isMapAdmin || !userCampId.HasValue) return (string.Empty, string.Empty);
+        var displayData = await _campService.GetCampDisplayDataForYearAsync(year, ct);
+        return displayData.TryGetValue(userCampId.Value, out var data)
+            ? (data.CampSlug, data.Name)
+            : (string.Empty, string.Empty);
     }
 
     [HttpGet("BarrioMap/Admin/Containers/{year}")]
@@ -387,32 +387,27 @@ public class CityPlanningController : HumansControllerBase
         }
 
         var settings = await _cityPlanningService.GetSettingsAsync(cancellationToken);
-        var allContainers = await _containerService.GetAllByYearAsync(year, cancellationToken);
-        var seasonDisplayData = await _campService.GetCampSeasonDisplayDataForYearAsync(year, cancellationToken);
-
-        var bySeasonId = allContainers
-            .Where(c => c.CampSeasonId is not null)
-            .GroupBy(c => c.CampSeasonId!.Value)
-            .ToDictionary(g => g.Key, g => g.ToList());
+        var overview = await _containerService.GetAdminOverviewAsync(year, cancellationToken);
 
         var vm = new OrgContainerIndexViewModel
         {
             Year = year,
             IsContainerPlacementOpen = settings.IsContainerPlacementOpen,
-            OrgContainers = allContainers
-                .Where(c => c.CampSeasonId is null)
+            OrgContainers = overview.OrgContainers
+                .OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase)
                 .Select(ToContainerViewModel)
                 .ToList(),
-            BarrioGroups = seasonDisplayData
-                .OrderBy(kvp => kvp.Value.Name, StringComparer.OrdinalIgnoreCase)
-                .Select(kvp => new BarrioContainerGroup
+            BarrioGroups = overview.CampGroups
+                .OrderBy(g => g.CampName, StringComparer.OrdinalIgnoreCase)
+                .Select(g => new BarrioContainerGroup
                 {
-                    SeasonId = kvp.Key,
-                    CampName = kvp.Value.Name,
-                    CampSlug = kvp.Value.CampSlug,
-                    Containers = bySeasonId.TryGetValue(kvp.Key, out var cs)
-                        ? cs.Select(ToContainerViewModel).ToList()
-                        : []
+                    CampId = g.CampId,
+                    CampName = g.CampName,
+                    CampSlug = g.CampSlug,
+                    Containers = g.Containers
+                        .OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase)
+                        .Select(ToContainerViewModel)
+                        .ToList()
                 })
                 .ToList()
         };
@@ -433,20 +428,14 @@ public class CityPlanningController : HumansControllerBase
         PlacementImageFileName = c.PlacementImageFileName,
     };
 
-    [HttpPost("BarrioMap/Admin/Containers/{year}/Barrios/{seasonId}/Create")]
+    [HttpPost("BarrioMap/Admin/Containers/{year}/Barrios/{campId}/Create")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> CreateBarrioContainer(int year, Guid seasonId, ContainerFormModel model, CancellationToken cancellationToken)
+    public async Task<IActionResult> CreateBarrioContainer(int year, Guid campId, ContainerFormModel model, CancellationToken cancellationToken)
     {
         var (error, user) = await RequireCurrentUserAsync();
         if (error != null) return error;
 
-        if (!await IsMapAdminAsync(user.Id, cancellationToken))
-        {
-            return Forbid();
-        }
-
-        var season = await _campService.GetCampSeasonByIdAsync(seasonId, cancellationToken);
-        if (season is null || season.Year != year) return NotFound();
+        if (!await IsMapAdminAsync(user.Id, cancellationToken)) return Forbid();
 
         if (!ModelState.IsValid)
         {
@@ -454,9 +443,15 @@ public class CityPlanningController : HumansControllerBase
             return RedirectToAction(nameof(Containers), new { year });
         }
 
+        return await TryCreateContainerAsync(model, campId, year, cancellationToken);
+    }
+
+    private async Task<IActionResult> TryCreateContainerAsync(
+        ContainerFormModel model, Guid? campId, int year, CancellationToken ct)
+    {
         try
         {
-            await _containerService.CreateAsync(model.ToContainerData(seasonId, year), cancellationToken);
+            await _containerService.CreateAsync(model.ToContainerData(campId, year), ct);
         }
         catch (InvalidOperationException ex)
         {
@@ -475,10 +470,7 @@ public class CityPlanningController : HumansControllerBase
         var (error, user) = await RequireCurrentUserAsync();
         if (error != null) return error;
 
-        if (!await IsMapAdminAsync(user.Id, cancellationToken))
-        {
-            return Forbid();
-        }
+        if (!await IsMapAdminAsync(user.Id, cancellationToken)) return Forbid();
 
         if (!ModelState.IsValid)
         {
@@ -486,18 +478,7 @@ public class CityPlanningController : HumansControllerBase
             return RedirectToAction(nameof(Containers), new { year });
         }
 
-        try
-        {
-            await _containerService.CreateAsync(model.ToContainerData(null, year), cancellationToken);
-        }
-        catch (InvalidOperationException ex)
-        {
-            SetError(ex.Message);
-            return RedirectToAction(nameof(Containers), new { year });
-        }
-
-        SetSuccess("Container added.");
-        return RedirectToAction(nameof(Containers), new { year });
+        return await TryCreateContainerAsync(model, null, year, cancellationToken);
     }
 
     [HttpPost("BarrioMap/Admin/Containers/{id}/Edit")]
@@ -507,10 +488,7 @@ public class CityPlanningController : HumansControllerBase
         var (error, user) = await RequireCurrentUserAsync();
         if (error != null) return error;
 
-        if (!await IsMapAdminAsync(user.Id, cancellationToken))
-        {
-            return Forbid();
-        }
+        if (!await IsMapAdminAsync(user.Id, cancellationToken)) return Forbid();
 
         var container = await _containerService.GetByIdAsync(id, cancellationToken);
         if (container is null) return NotFound();
@@ -521,18 +499,24 @@ public class CityPlanningController : HumansControllerBase
             return RedirectToAction(nameof(Containers), new { year = container.Year });
         }
 
+        return await TryUpdateContainerAsync(id, model, container.CampId, container.Year, cancellationToken);
+    }
+
+    private async Task<IActionResult> TryUpdateContainerAsync(
+        Guid id, ContainerFormModel model, Guid? campId, int year, CancellationToken ct)
+    {
         try
         {
-            await _containerService.UpdateAsync(id, model.ToContainerData(container.CampSeasonId, container.Year), cancellationToken);
+            await _containerService.UpdateAsync(id, model.ToContainerData(campId, year), ct);
         }
         catch (InvalidOperationException ex)
         {
             SetError(ex.Message);
-            return RedirectToAction(nameof(Containers), new { year = container.Year });
+            return RedirectToAction(nameof(Containers), new { year });
         }
 
         SetSuccess("Container updated.");
-        return RedirectToAction(nameof(Containers), new { year = container.Year });
+        return RedirectToAction(nameof(Containers), new { year });
     }
 
     [HttpPost("BarrioMap/Admin/Containers/{id}/Delete")]
