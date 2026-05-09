@@ -5,21 +5,14 @@
   src/Humans.Web/Controllers/HumansTeamControllerBase.cs
   src/Humans.Web/Views/Team/**
   src/Humans.Web/Views/TeamAdmin/**
-  src/Humans.Domain/Entities/Team.cs
-  src/Humans.Domain/Entities/TeamMember.cs
-  src/Humans.Domain/Entities/TeamJoinRequest.cs
-  src/Humans.Domain/Entities/TeamJoinRequestStateHistory.cs
-  src/Humans.Domain/Entities/TeamRoleDefinition.cs
-  src/Humans.Domain/Entities/TeamRoleAssignment.cs
-  src/Humans.Domain/Constants/SystemTeamIds.cs
-  src/Humans.Infrastructure/Data/Configurations/Teams/**
-  src/Humans.Infrastructure/Jobs/SystemTeamSyncJob.cs
 -->
 <!-- freshness:flag-on-change
-  Team data model, hierarchy/department rules, system-team sync, IsManagement role behavior, role slots, and route table — review when Teams services, entities, or controllers change.
+  User-facing flows: browse/join/leave, public team pages, role assignment UX. Section invariants and data model live in docs/sections/Teams.md.
 -->
 
 # Teams & Working Groups
+
+> **Section invariants** (data model, entity fields, system-team sync rules, routing, authorization, owning services): [`docs/sections/Teams.md`](../../sections/Teams.md). This file is the user-facing spec — stories, acceptance criteria, and workflows.
 
 ## Business Context
 
@@ -159,189 +152,9 @@ Nobodies Collective operates through self-organizing working groups (teams). Tea
 - Authenticated users see the full existing layout unchanged
 - Subteams only appear if `IsPromotedToDirectory` is true; top-level teams always appear
 
-## Data Model
+## Workflows
 
-### Team Entity
-```
-Team
-├── Id: Guid
-├── Name: string (256)
-├── Description: string? (2000)
-├── Slug: string (256) [unique, URL-friendly]
-├── IsActive: bool
-├── RequiresApproval: bool
-├── SystemTeamType: SystemTeamType [enum]
-├── ParentTeamId: Guid? (FK → Team, self-referencing)
-├── GoogleGroupPrefix: string? (100) [email prefix before @nobodies.team]
-├── CreatedAt: Instant
-├── UpdatedAt: Instant
-├── IsPublicPage: bool [default false, opt-in public visibility]
-├── PageContent: string? (50000) [markdown content for public page]
-├── PageContentUpdatedAt: Instant? [last edit timestamp]
-├── PageContentUpdatedByUserId: Guid? [FK → User, who last edited]
-├── CallsToAction: List<CallToAction> [JSONB, max 3 items]
-├── IsPromotedToDirectory: bool [default false, promotes subteam to directory]
-├── Computed: IsSystemTeam (SystemTeamType != None)
-├── Computed: IsInDirectory (ParentTeamId == null || IsPromotedToDirectory)
-├── Computed: GoogleGroupEmail (prefix + "@nobodies.team", or null)
-└── Navigation: Members, JoinRequests, GoogleResources, ChildTeams, ParentTeam
-```
-
-### TeamMember Entity
-```
-TeamMember
-├── Id: Guid
-├── TeamId: Guid (FK → Team)
-├── UserId: Guid (FK → User)
-├── Role: TeamMemberRole [enum: Member, Coordinator]
-├── JoinedAt: Instant
-├── LeftAt: Instant? (null = active)
-└── Computed: IsActive (LeftAt == null)
-```
-
-### TeamJoinRequest Entity
-```
-TeamJoinRequest
-├── Id: Guid
-├── TeamId: Guid (FK → Team)
-├── UserId: Guid (FK → User)
-├── Status: TeamJoinRequestStatus [enum]
-├── Message: string? (2000)
-├── RequestedAt: Instant
-├── ResolvedAt: Instant?
-├── ReviewedByUserId: Guid?
-├── ReviewNotes: string? (2000)
-└── Navigation: StateHistory
-```
-
-### Enums
-```
-TeamMemberRole:
-  Member = 0
-  Coordinator = 1
-
-SystemTeamType:
-  None = 0            // User-created team
-  Volunteers = 1      // Auto: all with signed docs
-  Coordinators = 2    // Auto: all team coordinators
-  Board = 3           // Auto: active Board role
-
-TeamJoinRequestStatus:
-  Pending = 0
-  Approved = 1
-  Rejected = 2
-  Withdrawn = 3
-
-CallToActionStyle:
-  Primary = 0
-  Secondary = 1
-```
-
-### CallToAction Value Object
-```
-CallToAction (JSONB on Team.CallsToAction)
-├── Text: string (100) [button label]
-├── Url: string (512) [button link]
-└── Style: CallToActionStyle [Primary or Secondary]
-```
-
-## Team Hierarchy (Departments)
-
-Teams are either **departments** (top-level, no parent) or **sub-teams** (have a parent). A department may have child sub-teams.
-
-### Terminology
-- **Department**: Any user-created team that is NOT a sub-team. May or may not have children.
-- **Sub-team**: A team with a `ParentTeamId` set. Always belongs to a department.
-
-### Hierarchy Rules
-- Only user-created teams can participate in hierarchy (system teams cannot be parents or children)
-- Only single-level nesting (a sub-team cannot also be a parent)
-- `ParentTeamId` is set during team creation or editing
-- When a department becomes a sub-team, its coordinators are immediately synced out of the Coordinators system team. Management roles and assignments are preserved (coordinators become sub-team managers).
-
-### Coordinator / Manager (IsManagement) Rules
-- Both departments and sub-teams can have an `IsManagement` role
-- At most one role per team can have `IsManagement = true`
-- Department `IsManagement` role holders are **coordinators** (added to Coordinators system team, full department access)
-- Sub-team `IsManagement` role holders are **managers** (scoped to their sub-team only, not added to Coordinators system team, no Google resource access, no budget access)
-- Assigning a member to an `IsManagement` role sets their `TeamMember.Role = Coordinator`
-- Unassigning from an `IsManagement` role demotes to Member (if no other management assignments remain)
-- `IsManagement` cannot be toggled while members are assigned to the role
-- `IsManagement` roles can be renamed and deleted (if no assignments)
-- No roles are auto-created on team creation — admins add roles manually
-
-### Permission Inheritance
-- Department coordinators automatically have management permissions on all child sub-teams
-- This includes: viewing/approving/rejecting join requests, managing members, editing sub-team pages
-- Permission checks cascade upward: checking coordinator status on a sub-team also checks the parent department
-- Both `TeamMember.Role == Coordinator` and `TeamRoleAssignment.IsManagement` paths are checked for consistency
-
-### Google Resource Rollup
-- Sub-team members are automatically included in the parent department's Google Group and Drive folder sync
-- Effective membership = direct department members + all active child team members (deduplicated)
-- Rollup is one-way: sub-team members get parent resources; parent members do NOT get sub-team resources
-- When a user joins a sub-team, they are immediately added to parent department resources
-- When a user leaves a sub-team, the reconciliation job removes them from parent resources (unless they remain in another sub-team or are a direct department member)
-- The department detail page (`/Teams/{slug}`) shows all effective humans with source team badges
-
-### Display
-- Sub-team names display as "Department - SubTeam" on profile pills, team details, and MyTeams
-- `/Teams` page groups cards into: My Teams, Departments, System Teams
-- `/Teams/Summary` shows hierarchy with sub-teams indented below their parent
-
-## System Teams
-
-### Automatic Membership Sync
-
-| Team | Auto-Add Trigger | Auto-Remove Trigger |
-|------|------------------|---------------------|
-| **Volunteers** | Profile + all required consents signed (no CC approval required) | Missing consent, suspended, CC-flagged, or rejected |
-| **Coordinators** | Become Coordinator of any team + team consents | No longer Coordinator anywhere |
-| **Board** | Active "Board" RoleAssignment + team consents | RoleAssignment expires |
-
-Volunteers team membership is the source of truth for "active volunteer" status. Consent completion (`ConsentController.Submit`) triggers an immediate single-user sync via `SyncVolunteersMembershipForUserAsync` so the user doesn't wait for the scheduled job. CC approval (`ProfileController.ApproveVolunteer`) also fires a single-user sync as an audit-track no-op for users already admitted.
-
-### System Team Properties
-- `RequiresApproval = false` (auto-managed)
-- Name, slug, active status, and parent team cannot be changed
-- Description and Google Group prefix can be edited by admins
-- Cannot be deleted
-- Cannot manually join or leave
-- Cannot change member roles
-
-### Sync Job
-```
-SystemTeamSyncJob (scheduled hourly, currently disabled; also triggered inline):
-
-  1. SyncVolunteersTeamAsync()
-     - Get all users with a profile where !IsSuspended, ConsentCheckStatus != Flagged, RejectedAt is null
-     - Filter to those with all required Volunteers-team consents
-     - Add missing members, remove ineligible
-     - (Profile.IsApproved is the CC's audit annotation; not consulted here)
-
-  2. SyncCoordinatorsTeamAsync()
-     - Get all users with TeamMember.Role = Coordinator (non-system teams)
-     - Filter by Coordinators-team consents
-     - Add missing members, remove ineligible
-
-  3. SyncBoardTeamAsync()
-     - Get all users with active Board RoleAssignment
-     - Where ValidFrom <= now AND (ValidTo == null OR ValidTo > now)
-     - Filter by Board-team consents
-     - Add missing members, remove ineligible
-
-  Single-user variants:
-     - SyncVolunteersMembershipForUserAsync(userId)
-     - SyncCoordinatorsMembershipForUserAsync(userId)
-     - Called by AdminController (after approval) and ConsentController (after consent)
-     - Evaluates one user without affecting others
-```
-
-### Access Gating
-
-Volunteers team membership controls app access. Non-volunteers can only access Home, Profile, Consent, Account, and Application pages. Teams, Governance, and other member features require the `ActiveMember` claim, which is granted when the user is in the Volunteers team.
-
-## Join Request State Machine
+### Join Request State Machine
 
 ```
                   +---------+
@@ -361,70 +174,8 @@ Volunteers team membership controls app access. Non-volunteers can only access H
    +---------+   +---------+   +----------+
 ```
 
-## Approval Authority
-
-### Who Can Approve Join Requests
-
-| User Type | Can Approve |
-|-----------|-------------|
-| Team Coordinator | Own team only |
-| Board Member | Any team |
-| Regular Member | No |
-
-### Authorization Check
-```csharp
-bool CanApprove(teamId, userId)
-{
-    // Board members can approve any team
-    if (IsUserBoardMember(userId)) return true;
-
-    // Coordinators can approve their own team
-    return IsUserCoordinatorOfTeam(teamId, userId);
-}
-```
-
-## TeamsAdmin Role
-
-The `TeamsAdmin` role provides system-wide team management capabilities without requiring Board or Admin access.
-
-### Capabilities
-- Manage all teams (edit settings, approve join requests, assign coordinators)
-- Configure `GoogleGroupPrefix` on teams
-- View sync status at `/Teams/Sync`
-
-### Limitations
-- Cannot execute sync actions (Admin-only)
-- Cannot access Admin area pages (Sync Settings, Configuration, etc.)
-- Cannot assign roles
-
-### Authorization
-TeamsAdmin bypasses the `MembershipRequiredFilter` (like ConsentCoordinator and VolunteerCoordinator), so it works even if the user hasn't completed full volunteer onboarding.
-
-## Google Group Lifecycle
-
-Teams can be associated with a Google Group via the `GoogleGroupPrefix` property.
-
-### Setting a Prefix
-When a TeamsAdmin, Board, or Admin user sets `GoogleGroupPrefix` on a team (e.g., `"events"`):
-1. The computed `GoogleGroupEmail` becomes `events@nobodies.team`
-2. `EnsureTeamGroupAsync` is called to create or link the Google Group
-3. The group is created with configured `GroupSettings` (from `GoogleWorkspace:Groups` in appsettings)
-4. A `GoogleResource` record (type: Group) is created and linked to the team
-
-### Clearing a Prefix
-When `GoogleGroupPrefix` is cleared:
-1. Any active Group resource for the team is deactivated (`IsActive = false`)
-2. The Google Group itself is NOT deleted (soft unlink only)
-
-### Changing a Prefix
-When the prefix changes (e.g., `"events"` to `"events-team"`):
-1. The old Group resource is deactivated
-2. A new Google Group is created with the new email
-3. A new `GoogleResource` record is linked
-
-## Join Workflow
-
 ### Direct Join (No Approval)
+
 ```
 User clicks "Join"
         |
@@ -446,6 +197,7 @@ User clicks "Join"
 ```
 
 ### Approval Join
+
 ```
 User submits request
         |
@@ -475,7 +227,7 @@ User submits request
 +--------+  +--------+
 ```
 
-## Leave Workflow
+### Leave
 
 ```
 User clicks "Leave"
@@ -503,52 +255,10 @@ User clicks "Leave"
     [User removed]
 ```
 
-## Google Integration
-
-When membership changes:
-- **Join**: `AddUserToTeamResourcesAsync(teamId, userId)`
-- **Leave**: `RemoveUserFromTeamResourcesAsync(teamId, userId)`
-
-Currently uses `StubGoogleSyncService` that logs actions.
-Real implementation will manage Google Drive folder permissions.
-
-## URL Structure
-
-| Route | Description | Auth |
-|-------|-------------|------|
-| `/Teams` | Teams directory | AllowAnonymous (anonymous: public teams only) |
-| `/Teams/{slug}` | Team details | AllowAnonymous (anonymous: public teams only, 404 for non-public) |
-| `/Teams/{slug}/Join` | Join form | Authenticated |
-| `/Teams/My` | User's teams | Authenticated |
-| `/Teams/Birthdays` | Birthday calendar | Authenticated |
-| `/Teams/Sync` | Sync status | TeamsAdmin, Board, Admin |
-| `/Teams/{slug}/Members` | Manage members | Coordinator, Board, Admin, TeamsAdmin |
-| `/Teams/{slug}/EditPage` | Edit public page content | Coordinator, Board, Admin, TeamsAdmin |
-| `/Teams/Summary` | Team summary with resource columns | Board, Admin, TeamsAdmin |
-| `/Teams/Create` | Create team form | Board, Admin, TeamsAdmin |
-| `/Teams/{id}/Edit` | Edit team settings | Board, Admin, TeamsAdmin |
-
-## Role Slots
-
-Teams can define named role slots that members fill. Each role has a configurable number of slots with explicit priority levels (Critical, Important, Nice to Have). This helps teams track which positions are filled and where gaps exist.
-
-### Key Concepts
-
-- **Role Definition**: A named role on a team (e.g., "Social Media", "Designer") with a slot count and priority per slot
-- **Role Assignment**: Links a team member to a specific slot in a role definition
-- **IsManagement flag**: One role per team can be marked `IsManagement = true`. Assigning a member to this role sets their `TeamMember.Role = Coordinator`. On departments this grants coordinator access; on sub-teams this grants scoped manager access.
-- **Auto-add**: Assigning a non-member to a role automatically adds them to the team
-- **Roster Summary**: Cross-team view showing all slots with priority/status filtering
-
-### Routes
-
-- `GET /Teams/Roster` -- cross-team roster summary
-- `GET /Teams/{slug}/Roles` -- role management page
-- Role CRUD and assignment via POST actions on TeamAdminController
-
 ## Related Features
 
-- [Authentication](../auth/authentication.md) - Board role enables team creation
-- [Volunteer Status](../onboarding/volunteer-status.md) - Determines Volunteers team membership
-- [Google Integration](../google-integration/google-integration.md) - Team resource provisioning
-- [Background Jobs](../global/background-jobs.md) - System team sync job
+- [Authentication](../auth/authentication.md) — Board role enables team creation
+- [Volunteer Status](../onboarding/volunteer-status.md) — Determines Volunteers team membership
+- [Google Integration](../google-integration/google-integration.md) — Team resource provisioning
+- [Background Jobs](../global/background-jobs.md) — System team sync job
+- [Hidden Teams](hidden-teams.md) — Admin-only team visibility flag
