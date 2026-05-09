@@ -1621,7 +1621,7 @@ namespace Humans.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<Guid?>("CampSeasonId")
+                    b.Property<Guid?>("CampId")
                         .HasColumnType("uuid");
 
                     b.Property<Instant>("CreatedAt")
@@ -1674,7 +1674,7 @@ namespace Humans.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CampSeasonId");
+                    b.HasIndex("CampId");
 
                     b.HasIndex("Year");
 
@@ -4858,16 +4858,6 @@ namespace Humans.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Profile");
-                });
-
-            modelBuilder.Entity("Humans.Domain.Entities.Container", b =>
-                {
-                    b.HasOne("Humans.Domain.Entities.CampSeason", "CampSeason")
-                        .WithMany()
-                        .HasForeignKey("CampSeasonId")
-                        .OnDelete(DeleteBehavior.Cascade);
-
-                    b.Navigation("CampSeason");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.DocumentVersion", b =>
