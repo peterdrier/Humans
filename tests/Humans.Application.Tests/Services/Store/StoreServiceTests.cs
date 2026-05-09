@@ -63,6 +63,40 @@ public class StoreServiceTests
     }
 
     [HumansFact]
+    public async Task GetActiveCatalogAsync_orders_products_by_name()
+    {
+        _repo.GetActiveProductsForYearAsync(2026, Arg.Any<CancellationToken>())
+            .Returns(new[]
+            {
+                MakeProduct(name: "Tent"),
+                MakeProduct(name: "Cup"),
+                MakeProduct(name: "Blanket")
+            });
+
+        var result = await _service.GetActiveCatalogAsync(2026);
+
+        result.Select(p => p.Name).Should().Equal("Blanket", "Cup", "Tent");
+    }
+
+    [HumansFact]
+    public async Task GetAllProductsForYearAsync_orders_active_products_first_then_name()
+    {
+        var activeTent = MakeProduct(name: "Tent");
+        activeTent.IsActive = true;
+        var inactiveBag = MakeProduct(name: "Bag");
+        inactiveBag.IsActive = false;
+        var activeCup = MakeProduct(name: "Cup");
+        activeCup.IsActive = true;
+
+        _repo.GetAllProductsForYearAsync(2026, Arg.Any<CancellationToken>())
+            .Returns(new[] { activeTent, inactiveBag, activeCup });
+
+        var result = await _service.GetAllProductsForYearAsync(2026);
+
+        result.Select(p => p.Name).Should().Equal("Cup", "Tent", "Bag");
+    }
+
+    [HumansFact]
     public async Task GetOrdersForCampSeasonAsync_maps_orders_with_balance()
     {
         var product = MakeProduct(name: "Tent", price: 50m, vat: 21m);

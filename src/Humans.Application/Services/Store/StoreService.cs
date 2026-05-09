@@ -35,13 +35,20 @@ public class StoreService : IStoreService
     public async Task<IReadOnlyList<ProductDto>> GetActiveCatalogAsync(int year, CancellationToken ct = default)
     {
         var products = await _repo.GetActiveProductsForYearAsync(year, ct);
-        return products.Select(MapProduct).ToList();
+        return products
+            .OrderBy(p => p.Name, StringComparer.Ordinal)
+            .Select(MapProduct)
+            .ToList();
     }
 
     public async Task<IReadOnlyList<ProductDto>> GetAllProductsForYearAsync(int year, CancellationToken ct = default)
     {
         var products = await _repo.GetAllProductsForYearAsync(year, ct);
-        return products.Select(MapProduct).ToList();
+        return products
+            .OrderByDescending(p => p.IsActive)
+            .ThenBy(p => p.Name, StringComparer.Ordinal)
+            .Select(MapProduct)
+            .ToList();
     }
 
     public async Task<ProductDto?> GetProductAsync(Guid productId, CancellationToken ct = default)
