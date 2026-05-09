@@ -1843,19 +1843,11 @@ public class ProfileController : HumansControllerBase
                 // Profile-less user (e.g. mailing-list / ticketing import) —
                 // render a sparse popover from User + UserEmail data instead
                 // of returning 404. See issue #690.
-                var fallbackEmail = popoverUser.Email;
-                if (string.IsNullOrEmpty(fallbackEmail))
-                {
-                    var userEmails = await _userEmailService.GetUserEmailsAsync(id, ct);
-                    fallbackEmail = userEmails.FirstOrDefault(e => e.IsVerified && e.IsPrimary)?.Email
-                        ?? userEmails.FirstOrDefault(e => e.IsVerified)?.Email;
-                }
-
                 var fallbackVm = new ProfileSummaryViewModel
                 {
                     UserId = id,
                     DisplayName = popoverUser.DisplayName,
-                    Email = fallbackEmail,
+                    Email = await _userEmailService.GetBestAvailableEmailAsync(id, ct),
                     ProfilePictureUrl = popoverUser.ProfilePictureUrl,
                     PreferredLanguage = popoverUser.PreferredLanguage,
                     HasProfile = false,

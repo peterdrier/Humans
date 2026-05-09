@@ -56,6 +56,17 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
     // TeamService -> IEmailService -> IUserEmailService -> IAccountMergeService -> ITeamService.
     private IAccountMergeService MergeService => _serviceProvider.GetRequiredService<IAccountMergeService>();
 
+    public async Task<string?> GetBestAvailableEmailAsync(
+        Guid userId, CancellationToken cancellationToken = default)
+    {
+        var emails = await _repository.GetByUserIdReadOnlyAsync(userId, cancellationToken);
+        return emails
+            .Where(e => e.IsVerified)
+            .OrderByDescending(e => e.IsPrimary)
+            .Select(e => e.Email)
+            .FirstOrDefault();
+    }
+
     public async Task<IReadOnlyList<UserEmailEditDto>> GetUserEmailsAsync(
         Guid userId, CancellationToken cancellationToken = default)
     {
