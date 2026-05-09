@@ -15,20 +15,22 @@
 
 # Finance — Section Invariants
 
-Treasurer-facing surface: Budget administration UI at `/Finance` today; external-accounting reconciliation (Holded integration) **not yet built**.
+Finance is the **treasurer's reality side** of the money story. Budget owns planning and public presentation; Finance owns actuals, reconciliation, and treasurer-facing operational data. The two share `BudgetGroup` / `BudgetCategory` keys; nothing else.
 
-> Finance is the **reality side** of the money story. Budget owns planning and public presentation; Finance owns actuals, reconciliation, and treasurer-facing operational data. They share the `BudgetGroup` / `BudgetCategory` keys but nothing else.
+## Today vs Planned
 
-> **Pre-migration notice:** The Holded integration described below (entities, services, repository, sync job) is **specified but not implemented**. The only Finance code that currently exists is `FinanceController.cs`, which is a Budget-backed UI shell (no Finance-owned infrastructure behind it). Do not treat the Concepts / Data Model sections as live contracts until the Holded work lands.
+**Today** (built): `FinanceController` at `/Finance/*` is the treasurer's window over Budget data — Budget years, groups, categories, line items, ticketing projections, audit log, cash-flow view. Gated on `FinanceAdmin` or `Admin`. All reads/writes route through `IBudgetService`, `ITicketingBudgetService`, `ITicketQueryService`. Finance owns no tables and no Application-layer services yet.
+
+**Planned** (specified, not yet implemented): external-accounting reconciliation via Holded integration — pull purchase docs from Holded each cycle, match to `BudgetCategory` via the `{group-slug}-{category-slug}` tag convention, surface unmatched docs in a treasurer queue, and write resolved tags back to Holded. Concepts, data model, and the four `/Finance/Holded*` routes below describe the **target shape**, not current code.
 
 ## Concepts
+
+> All concepts below are **planned** — the Holded integration is specified but not yet implemented as of 2026-05-09. Today's Finance surface uses Budget vocabulary (years, groups, categories, line items).
 
 - A **Holded Transaction** is a purchase invoice pulled from Holded and stored verbatim. Each carries a `MatchStatus` indicating whether it has been resolved to a budget category.
 - The **Tag Convention** is `{group-slug}-{category-slug}` — split on the first `-`, group prefix and category suffix resolve against `BudgetGroup.Slug` and `BudgetCategory.Slug` within the budget year covering the doc's date.
 - The **Holded Sync State** is a singleton row tracking the operational state of the recurring sync job (`Idle / Running / Error`).
 - The **Unmatched Queue** is the working surface where the treasurer resolves docs whose `MatchStatus != Matched`.
-
-> **Not yet built.** None of the above entities or queues exist in code as of 2026-05-09. The current `FinanceController` renders Budget data only.
 
 ## Data Model
 
@@ -103,35 +105,44 @@ Stored as string via `HasConversion<string>()`.
 
 ## Routing
 
-| Route | Controller action | Status |
-|-------|-------------------|--------|
-| `GET /Finance` | `Index` — Budget year overview (active year) | Built |
-| `GET /Finance/Years/{id}` | `YearDetail` — Budget year detail | Built |
-| `GET /Finance/Categories/{id}` | `CategoryDetail` — Budget category detail | Built |
-| `GET /Finance/AuditLog/{yearId?}` | `AuditLog` — Budget audit log | Built |
-| `GET /Finance/CashFlow` | `CashFlow` — Cash flow projection | Built |
-| `GET /Finance/Admin` | `Admin` — Budget admin (years/groups) | Built |
-| `POST /Finance/Years/{id}/SyncDepartments` | `SyncDepartments` | Built |
-| `POST /Finance/Years/Create` | `CreateYear` | Built |
-| `POST /Finance/Years/{id}/UpdateStatus` | `UpdateYearStatus` | Built |
-| `POST /Finance/Years/{id}/Update` | `UpdateYear` | Built |
-| `POST /Finance/Years/{id}/Delete` | `DeleteYear` | Built |
-| `POST /Finance/Groups/Create` | `CreateGroup` | Built |
-| `POST /Finance/Groups/{id}/Update` | `UpdateGroup` | Built |
-| `POST /Finance/Groups/{id}/Delete` | `DeleteGroup` | Built |
-| `POST /Finance/Categories/Create` | `CreateCategory` | Built |
-| `POST /Finance/Categories/{id}/Update` | `UpdateCategory` | Built |
-| `POST /Finance/Categories/{id}/Delete` | `DeleteCategory` | Built |
-| `POST /Finance/LineItems/Create` | `CreateLineItem` | Built |
-| `POST /Finance/LineItems/{id}/Update` | `UpdateLineItem` | Built |
-| `POST /Finance/LineItems/{id}/Delete` | `DeleteLineItem` | Built |
-| `POST /Finance/Years/{id}/EnsureTicketingGroup` | `EnsureTicketingGroup` | Built |
-| `POST /Finance/TicketingProjection/{groupId}/Update` | `UpdateTicketingProjection` | Built |
-| `POST /Finance/TicketingBudget/{yearId}/Sync` | `SyncTicketingBudget` | Built |
-| `/Finance/HoldedUnmatched` | Unmatched-queue UI | **Not built** |
-| `/Finance/HoldedTags` | Read-only tag inventory | **Not built** |
-| `POST /Finance/HoldedSync/Run` | Manual sync trigger | **Not built** |
-| `POST /Finance/HoldedUnmatched/{id}/Assign` | Manual reassignment | **Not built** |
+All routes are gated by `[Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]` on `FinanceController`.
+
+### Today — treasurer surface over Budget
+
+| Route | Controller action |
+|-------|-------------------|
+| `GET /Finance` | `Index` — Budget year overview (active year) |
+| `GET /Finance/Years/{id}` | `YearDetail` — Budget year detail |
+| `GET /Finance/Categories/{id}` | `CategoryDetail` — Budget category detail |
+| `GET /Finance/AuditLog/{yearId?}` | `AuditLog` — Budget audit log |
+| `GET /Finance/CashFlow` | `CashFlow` — Cash flow projection |
+| `GET /Finance/Admin` | `Admin` — Budget admin (years/groups) |
+| `POST /Finance/Years/{id}/SyncDepartments` | `SyncDepartments` |
+| `POST /Finance/Years/Create` | `CreateYear` |
+| `POST /Finance/Years/{id}/UpdateStatus` | `UpdateYearStatus` |
+| `POST /Finance/Years/{id}/Update` | `UpdateYear` |
+| `POST /Finance/Years/{id}/Delete` | `DeleteYear` |
+| `POST /Finance/Groups/Create` | `CreateGroup` |
+| `POST /Finance/Groups/{id}/Update` | `UpdateGroup` |
+| `POST /Finance/Groups/{id}/Delete` | `DeleteGroup` |
+| `POST /Finance/Categories/Create` | `CreateCategory` |
+| `POST /Finance/Categories/{id}/Update` | `UpdateCategory` |
+| `POST /Finance/Categories/{id}/Delete` | `DeleteCategory` |
+| `POST /Finance/LineItems/Create` | `CreateLineItem` |
+| `POST /Finance/LineItems/{id}/Update` | `UpdateLineItem` |
+| `POST /Finance/LineItems/{id}/Delete` | `DeleteLineItem` |
+| `POST /Finance/Years/{id}/EnsureTicketingGroup` | `EnsureTicketingGroup` |
+| `POST /Finance/TicketingProjection/{groupId}/Update` | `UpdateTicketingProjection` |
+| `POST /Finance/TicketingBudget/{yearId}/Sync` | `SyncTicketingBudget` |
+
+### Planned — Holded integration
+
+| Route | Purpose |
+|-------|---------|
+| `GET /Finance/HoldedUnmatched` | Unmatched-queue UI |
+| `GET /Finance/HoldedTags` | Read-only tag inventory |
+| `POST /Finance/HoldedSync/Run` | Manual sync trigger |
+| `POST /Finance/HoldedUnmatched/{id}/Assign` | Manual reassignment |
 
 ## Actors & Roles
 
