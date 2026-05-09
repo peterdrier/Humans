@@ -5,6 +5,7 @@ using Humans.Application.DTOs;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Campaigns;
+using Humans.Application.Interfaces.Consent;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Governance;
@@ -35,7 +36,6 @@ using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Xunit;
 
 namespace Humans.Application.Tests.Controllers;
 
@@ -98,6 +98,9 @@ public class ProfileControllerPopoverTests
             new FakeClock(Instant.FromUtc(2026, 5, 9, 12, 0)),
             Substitute.For<IAuthorizationService>(),
             _userService,
+            Substitute.For<IConsentService>(),
+            Substitute.For<IApplicationDecisionService>(),
+            Substitute.For<IAccountDeletionService>(),
             Substitute.For<IMembershipCalculator>(),
             Substitute.For<IHttpClientFactory>(),
             signInManager,
