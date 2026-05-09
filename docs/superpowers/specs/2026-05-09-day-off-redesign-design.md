@@ -149,7 +149,7 @@ In `VolunteerTrackingService.GetTrackingDataAsync`, the main-cohort cell-state b
 5. Gap              (otherwise)
 ```
 
-By validation, branches 1, 3, and 4 are mutually exclusive in practice — but ordering DayOff above Gap is what makes the day not count as a gap. `GapCount` increments only on branch 5.
+By validation, branches 1, 3, and 4 are mutually exclusive in practice — and branch 2 (Outside) cannot host a DayOff entry either, since the day-off validation rule constrains entries to the same `[BuildStartOffset, 0)` range that defines the in-window cells. Ordering DayOff above Gap is what makes the day not count as a gap. `GapCount` increments only on branch 5.
 
 The unbooked cohort is unchanged. Day-offs apply only to the main cohort (volunteers with at least one Build signup); the unbooked cohort has no commitment to ack.
 
@@ -191,9 +191,10 @@ public sealed class ClearDayOffForm
 Both actions:
 - Resolve the current user via `GetCurrentUserAsync`; `Forbid` if absent.
 - Call the service.
-- On `Ok = false` from `SetDayOffAsync`: surface the error key as a TempData error and `BadRequest` (no audit).
-- On success (or `Removed = true`): write one audit row, set success TempData, redirect to `Index`.
-- For `ClearDayOff` with `Removed = false`: redirect to `Index` with no audit and no success message (coord clicked clear on something that wasn't there; nothing changed).
+- On `SetDayOffAsync` returning `Ok = false`: surface the error key as a TempData error and `BadRequest` (no audit).
+- On `SetDayOffAsync` returning `Ok = true`: write one `VolunteerDayOffMarked` audit row, set success TempData, redirect to `Index`. Re-marking an already-marked day produces another `VolunteerDayOffMarked` row (no separate "edited" verb — the semantics are "this day is marked off as of now, last reason X, by Y").
+- On `ClearDayOffAsync` returning `Removed = true`: write one `VolunteerDayOffCleared` audit row, set success TempData, redirect to `Index`.
+- On `ClearDayOffAsync` returning `Removed = false`: redirect to `Index` with no audit and no success message (coord clicked clear on something that wasn't there; nothing changed).
 
 ### Audit emission
 
@@ -220,11 +221,15 @@ The cell popover gains a Day-off section below the camp-setup section. It is **s
 | Cell state | Rendered |
 |---|---|
 | DayOff (entry exists for this day) | A small caption showing the reason (or "no reason given"), then a `Cancel day off` button posting `ClearDayOff`. |
-| Confirmed or Pending | A muted note: "Bail this signup before marking a day off." (no button) |
-| CampSetup | A muted note: "Camp set-up is already covering this day." (no button) |
-| Gap or Outside | A small `<input name="Reason" placeholder="Reason (optional)">` plus a `Mark day off` button posting `SetDayOff`. |
+| Confirmed or Pending | A muted note from `VolTrack_Popover_DayOffBlockedBySignups` (no button). |
+| CampSetup | A muted note from `VolTrack_Popover_DayOffBlockedByCampSetup` (no button). |
+| Gap | A small `<input name="Reason" placeholder="Reason (optional)">` plus a `Mark day off` button posting `SetDayOff`. |
+
+The Outside cell case never reaches a markable state in practice: the validation rule `BuildStartOffset ≤ DayOffset < 0` is identical to the active-window range, so an Outside-cell day-off is impossible by validation; the popover renders no day-off section there.
 
 The conditional rendering means the coord visually sees what's possible before clicking. The server-side validation is the source of truth (defence in depth) but the user only hits its error path if the page state went stale between render and click — acceptable for a coord-only flow with low concurrency.
+
+`SetDayOffForm.Reason` carries `[StringLength(200)]` so oversized POST bodies are rejected at model binding before the service runs. The service's trim-and-truncate-to-200 rule is a no-op for that controller path; it exists so non-controller callers (tests, future programmatic uses) get the same normalization.
 
 Buttons stack vertically inside the popover, separated by `<hr class="my-2" />`, matching the existing camp-setup pattern.
 
