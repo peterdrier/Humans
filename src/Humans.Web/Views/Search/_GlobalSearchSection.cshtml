@@ -22,13 +22,7 @@
                     <i class="@icon text-muted"></i>
                 </div>
                 <div class="flex-grow-1">
-                    <div class="d-flex align-items-center gap-2 flex-wrap">
-                        <strong>@result.Title</strong>
-                        @if (!string.IsNullOrEmpty(result.MatchField))
-                        {
-                            <small class="text-muted">matched @result.MatchField</small>
-                        }
-                    </div>
+                    <strong>@result.Title</strong>
                     @if (!string.IsNullOrEmpty(result.Subtitle))
                     {
                         <div class="small text-muted">@result.Subtitle</div>

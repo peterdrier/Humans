@@ -19,24 +19,20 @@ public enum SearchResultType
 /// canonical <c>_HumanSearchResults</c> partial can render them.
 /// </summary>
 /// <param name="Type">Whether this is a Team, Camp, or Shift hit.</param>
-/// <param name="Title">Primary display label (team name, camp name,
-/// rota name).</param>
-/// <param name="Subtitle">Optional secondary line (matched snippet, slug,
-/// or owning-team name for shifts).</param>
+/// <param name="Title">Primary display label (team name, camp season name,
+/// rota name) — the only field matched against the query.</param>
+/// <param name="Subtitle">Secondary line: slug for teams/camps, owning-team
+/// name for shifts.</param>
 /// <param name="Url">Canonical detail-page URL for the entity.</param>
-/// <param name="Score">Higher = better match. Composed from match-strength
-/// + multi-field boost. Display ordering within each type group is
-/// descending Score, then Title.</param>
-/// <param name="MatchField">Short label for which field matched
-/// ("Name", "Slug", "Description"). Null when the matcher returned no
-/// per-field detail.</param>
+/// <param name="Score">Higher = better match. Derived from name-match
+/// strength (exact > prefix > contains). The controller orders each
+/// type bucket by descending Score then ascending Title.</param>
 public record GlobalSearchResult(
     SearchResultType Type,
     string Title,
-    string? Subtitle,
+    string Subtitle,
     string Url,
-    int Score,
-    string? MatchField = null);
+    int Score);
 
 /// <summary>
 /// Aggregated output of a single global-search call. Each type bucket is

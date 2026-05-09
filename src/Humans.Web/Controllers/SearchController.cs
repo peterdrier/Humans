@@ -100,16 +100,23 @@ public sealed class SearchController : HumansControllerBase
         {
             Query = results.Query,
             Filter = filter,
-            // Display ordering for humans matches /Profile/Search
-            // (BurnerName asc) per
-            // memory/architecture/display-sort-in-controllers.md.
-            // Other buckets are already score-desc sorted by the service.
+            // Display ordering belongs at the controller per
+            // memory/architecture/display-sort-in-controllers.md. Humans
+            // sort by BurnerName asc (matches /Profile/Search); the other
+            // three buckets sort by Score desc then Title asc.
             HumanResults = results.Humans
                 .OrderBy(r => r.BurnerName, StringComparer.OrdinalIgnoreCase)
                 .Select(r => r.ToHumanSearchViewModel())
                 .ToList(),
-            TeamResults = results.Teams,
-            CampResults = results.Camps,
-            ShiftResults = results.Shifts,
+            TeamResults = SortByScore(results.Teams),
+            CampResults = SortByScore(results.Camps),
+            ShiftResults = SortByScore(results.Shifts),
         };
+
+    private static IReadOnlyList<GlobalSearchResult> SortByScore(
+        IReadOnlyList<GlobalSearchResult> bucket) =>
+        bucket
+            .OrderByDescending(r => r.Score)
+            .ThenBy(r => r.Title, StringComparer.OrdinalIgnoreCase)
+            .ToList();
 }

@@ -49,14 +49,14 @@ The feature is deliberately scoped to **name-only matching**. Earlier drafts pro
 
 ### US-GS.3: Match by the right fields
 **As an** authenticated user
-**I want** matches based on what I'd actually remember about the entity
+**I want** matches based on the entity's name
 **So that** I find what I'm looking for without typing exactly the right field
 
 **Acceptance Criteria:**
-- **Humans** match via `IProfileService.SearchProfilesAsync` with `PersonSearchFields.PublicAll` for non-admins and `PersonSearchFields.AdminAll` for admins (per `memory/architecture/person-search.md`). Emergency-contact data is never searchable, regardless of scope.
-- **Teams** match on `Team.Name`, `Team.Slug`, and `Team.Description`.
-- **Camps** match on `Camp.Slug`, `CampSeason.Name` for the public year, and `CampSeason.BlurbShort` for the public year.
-- **Shifts** (rotas) match on `Rota.Name` and `Rota.Description` within the active event.
+- **Humans** match via `IProfileService.SearchProfilesAsync` with `PersonSearchFields.PublicAll` for non-admins and `PersonSearchFields.AdminAll` for admins (per `memory/architecture/person-search.md`). The bit-flag's existing fields are unchanged — humans intentionally inherit the same scope as `/Profile/Search`. Emergency-contact data is never searchable.
+- **Teams** match on `Team.Name` only.
+- **Camps** match on the public-year `CampSeason.Name` only.
+- **Shifts** (rotas) match on `Rota.Name` only.
 - All matchers run case-insensitive Postgres `EF.Functions.ILike` at the DB layer per `memory/feedback_ef_ilike_not_toupper.md`.
 
 ### US-GS.4: Search respects existing visibility
@@ -111,18 +111,17 @@ SearchController
          └── IShiftManagementService.SearchAsync(query, SearchScope, max)           → IReadOnlyList<RotaSearchHit>
 ```
 
-Each section's repository runs the case-insensitive Postgres `ILike` filter at the DB layer with `EscapeLikePattern` to defang `%` / `_` / `\` in user input. Section services map their domain entities to type-specific search-hit DTOs (`TeamSearchHit`, `CampSearchHit`, `RotaSearchHit`) so the orchestrator never has to traverse cross-domain navigation properties to render a row.
+Each section's repository runs the case-insensitive Postgres `ILike` filter against the entity's name field at the DB layer with `EscapeLikePattern` to defang `%` / `_` / `\` in user input. Section services map their domain entities to type-specific search-hit DTOs (`TeamSearchHit`, `CampSearchHit`, `RotaSearchHit`) so the orchestrator never has to traverse cross-domain navigation properties to render a row.
 
-The orchestrator scores within each type using:
+The orchestrator scores each hit by name-match strength:
 
-| Field hit               | Score |
-|-------------------------|-------|
-| Name (exact)            |  100  |
-| Name (prefix)           |   80  |
-| Slug (contains)         |   70  |
-| Name (contains)         |   60  |
-| Description (contains)  |   30  |
-| Multi-field bonus (×N)  |  +15  |
+| Match shape     | Score |
+|-----------------|-------|
+| Name (exact)    |  100  |
+| Name (prefix)   |   80  |
+| Name (contains) |   60  |
+
+Display ordering is a presentation concern and lives in `SearchController.BuildViewModel` per `memory/architecture/display-sort-in-controllers.md` — the service returns scored but unsorted buckets. Each non-human bucket sorts by `Score desc, Title asc` at the controller; the humans bucket sorts by `BurnerName asc`, matching `/Profile/Search`.
 
 Counts are post-cap by design — they reflect what the user actually sees in the page. There is no separate `CountMatchingAsync` per section; total-match counts at scale (~500 users) aren't worth the second query.
 
@@ -131,10 +130,10 @@ Counts are post-cap by design — they reflect what the user actually sees in th
 | DTO | Returned by | Used by |
 |---|---|---|
 | `HumanSearchResult` | `IProfileService` (existing) | View renders via `_HumanSearchResults` partial |
-| `TeamSearchHit (Name, Slug, Description?)` | `ITeamService.SearchAsync` | Orchestrator scores → `GlobalSearchResult` |
-| `CampSearchHit (Slug, Name, Blurb?)` | `ICampService.SearchAsync` | Orchestrator scores → `GlobalSearchResult` |
-| `RotaSearchHit (Name, Description?, TeamId, TeamName)` | `IShiftManagementService.SearchAsync` | Orchestrator scores → `GlobalSearchResult` |
-| `GlobalSearchResult (Type, Title, Subtitle?, Url, Score, MatchField?)` | Orchestrator | View renders simple list rows for Teams / Camps / Shifts |
+| `TeamSearchHit (Name, Slug)` | `ITeamService.SearchAsync` | Orchestrator scores → `GlobalSearchResult` |
+| `CampSearchHit (Slug, Name)` | `ICampService.SearchAsync` | Orchestrator scores → `GlobalSearchResult` |
+| `RotaSearchHit (Name, TeamId, TeamName)` | `IShiftManagementService.SearchAsync` | Orchestrator scores → `GlobalSearchResult` |
+| `GlobalSearchResult (Type, Title, Subtitle, Url, Score)` | Orchestrator | View renders simple list rows for Teams / Camps / Shifts |
 | `GlobalSearchResults (Query, Humans, Teams, Camps, Shifts)` | `ISearchService` | View-model / view |
 | `SearchScope { Public, Admin }` | enum | Controller → service → section services |
 

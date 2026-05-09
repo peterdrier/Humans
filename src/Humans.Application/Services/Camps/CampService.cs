@@ -401,8 +401,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         {
             var season = camp.Seasons.FirstOrDefault(s => s.Year == year);
             var name = season?.Name ?? camp.Slug;
-            var blurb = season?.BlurbShort;
-            hits.Add(new CampSearchHit(camp.Slug, name, blurb));
+            hits.Add(new CampSearchHit(camp.Slug, name));
         }
         return hits;
     }

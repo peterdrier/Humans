@@ -227,7 +227,7 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
         var teams = await _repo.SearchAsync(
             query, includeHidden: scope == SearchScope.Admin, max, cancellationToken);
         return teams
-            .Select(t => new TeamSearchHit(t.Name, t.Slug, t.Description))
+            .Select(t => new TeamSearchHit(t.Name, t.Slug))
             .ToList();
     }
 

@@ -323,7 +323,6 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         return rotas
             .Select(r => new RotaSearchHit(
                 r.Name,
-                r.Description,
                 r.TeamId,
                 teamNames.TryGetValue(r.TeamId, out var name) ? name : string.Empty))
             .ToList();

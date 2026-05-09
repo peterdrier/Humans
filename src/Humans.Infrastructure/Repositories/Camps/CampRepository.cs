@@ -143,11 +143,8 @@ public sealed class CampRepository : ICampRepository
         var q = ctx.Camps
             .AsNoTracking()
             .Include(c => c.Seasons.Where(s => s.Year == year))
-            .Where(c => c.Seasons.Any(s => s.Year == year)
-                && (EF.Functions.ILike(c.Slug, pattern, "\\")
-                    || c.Seasons.Any(s => s.Year == year
-                        && (EF.Functions.ILike(s.Name, pattern, "\\")
-                            || EF.Functions.ILike(s.BlurbShort, pattern, "\\")))));
+            .Where(c => c.Seasons.Any(s => s.Year == year
+                && EF.Functions.ILike(s.Name, pattern, "\\")));
 
         if (onlyPublicStatus)
         {

@@ -172,10 +172,8 @@ public sealed class TeamRepository : ITeamRepository
             q = q.Where(t => !t.IsHidden);
 
         return await q
-            .Where(t => EF.Functions.ILike(t.Name, pattern, "\\")
-                || EF.Functions.ILike(t.Slug, pattern, "\\")
-                || (t.Description != null && EF.Functions.ILike(t.Description, pattern, "\\")))
-            // Deterministic Take(max) for global search; orchestrator re-ranks by score before display.
+            .Where(t => EF.Functions.ILike(t.Name, pattern, "\\"))
+            // Deterministic Take(max) for global search; controller re-ranks by score before display.
             .OrderBy(t => t.Name) // arch:db-sort-ok
             .Take(max)
             .ToListAsync(ct);

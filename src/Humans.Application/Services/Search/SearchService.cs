@@ -11,12 +11,19 @@ namespace Humans.Application.Services.Search;
 /// <summary>
 /// Application-layer implementation of <see cref="ISearchService"/>. Names-only
 /// orchestrator: each section's own service runs the case-insensitive Postgres
-/// ILike query at the DB layer (per
+/// ILike query against the entity's name field at the DB layer (per
 /// <c>memory/feedback_ef_ilike_not_toupper.md</c>) and returns its own hit
-/// shape; this orchestrator scores within each type and returns four
-/// independently-ranked buckets. There is no cross-modal / relational
-/// expansion (see <c>docs/features/global-search.md</c>).
+/// shape; this orchestrator scores each hit by name-match strength and
+/// returns four type-grouped buckets. There is no cross-modal / relational
+/// expansion and no matching beyond the name field on the entity itself
+/// (see <c>docs/features/global-search.md</c>).
 /// </summary>
+/// <remarks>
+/// Display ordering is a presentation concern and lives in
+/// <c>SearchController.BuildViewModel</c> per
+/// <c>memory/architecture/display-sort-in-controllers.md</c> — the buckets
+/// returned here are scored but unsorted.
+/// </remarks>
 public sealed class SearchService : ISearchService
 {
     private readonly IProfileService _profileService;
@@ -24,15 +31,10 @@ public sealed class SearchService : ISearchService
     private readonly ICampService _campService;
     private readonly IShiftManagementService _shiftService;
 
-    // Score band — multi-field matches receive a small additive boost so a
-    // name+description hit ranks above a description-only hit. Title-equals
-    // beats title-startswith beats title-contains beats body-contains.
+    // Name-match scoring: exact > prefix > contains.
     private const int ScoreExactName = 100;
     private const int ScorePrefixName = 80;
     private const int ScoreContainsName = 60;
-    private const int ScoreSlugMatch = 70;
-    private const int ScoreContainsBody = 30;
-    private const int ScoreMultiFieldBoost = 15;
 
     public SearchService(
         IProfileService profileService,
@@ -85,10 +87,9 @@ public sealed class SearchService : ISearchService
     {
         // PersonSearchFields enum carries the public/admin split for humans
         // per memory/architecture/person-search.md; SearchScope translates
-        // to it here. Display ordering is the matcher's own scoring inside
-        // ProfileService — the global-search view renders each bucket via
-        // the canonical _HumanSearchResults partial after a controller-side
-        // BurnerName sort, matching /Profile/Search.
+        // to it here. The matcher's own scoring is preserved; the
+        // controller renders the bucket via the canonical _HumanSearchResults
+        // partial after a BurnerName sort.
         var fields = scope == SearchScope.Admin
             ? PersonSearchFields.AdminAll
             : PersonSearchFields.PublicAll;
@@ -100,20 +101,13 @@ public sealed class SearchService : ISearchService
     {
         var hits = await _teamService.SearchAsync(query, scope, limit, ct);
         return hits
-            .Select(t =>
-            {
-                var score = ScoreEntityMatch(query, t.Name, t.Slug, t.Description, out var matchField);
-                return new GlobalSearchResult(
-                    Type: SearchResultType.Team,
-                    Title: t.Name,
-                    Subtitle: ComposeSnippet(query, t.Description) ?? t.Slug,
-                    Url: $"/Teams/{t.Slug}",
-                    Score: score,
-                    MatchField: matchField);
-            })
+            .Select(t => new GlobalSearchResult(
+                Type: SearchResultType.Team,
+                Title: t.Name,
+                Subtitle: t.Slug,
+                Url: $"/Teams/{t.Slug}",
+                Score: ScoreNameField(t.Name, query)))
             .Where(r => r.Score > 0)
-            .OrderByDescending(r => r.Score)
-            .ThenBy(r => r.Title, StringComparer.OrdinalIgnoreCase)
             .ToList();
     }
 
@@ -122,20 +116,13 @@ public sealed class SearchService : ISearchService
     {
         var hits = await _campService.SearchAsync(query, scope, limit, ct);
         return hits
-            .Select(c =>
-            {
-                var score = ScoreEntityMatch(query, c.Name, c.Slug, c.Blurb, out var matchField);
-                return new GlobalSearchResult(
-                    Type: SearchResultType.Camp,
-                    Title: c.Name,
-                    Subtitle: ComposeSnippet(query, c.Blurb) ?? c.Slug,
-                    Url: $"/Camps/{c.Slug}",
-                    Score: score,
-                    MatchField: matchField);
-            })
+            .Select(c => new GlobalSearchResult(
+                Type: SearchResultType.Camp,
+                Title: c.Name,
+                Subtitle: c.Slug,
+                Url: $"/Camps/{c.Slug}",
+                Score: ScoreNameField(c.Name, query)))
             .Where(r => r.Score > 0)
-            .OrderByDescending(r => r.Score)
-            .ThenBy(r => r.Title, StringComparer.OrdinalIgnoreCase)
             .ToList();
     }
 
@@ -147,63 +134,14 @@ public sealed class SearchService : ISearchService
         // human-readable title to match against.
         var hits = await _shiftService.SearchAsync(query, scope, limit, ct);
         return hits
-            .Select(r =>
-            {
-                var score = ScoreEntityMatch(query, r.Name, slug: null, r.Description, out var matchField);
-                return new GlobalSearchResult(
-                    Type: SearchResultType.Shift,
-                    Title: r.Name,
-                    Subtitle: ComposeSnippet(query, r.Description) ?? r.TeamName,
-                    Url: $"/Shifts?departmentId={r.TeamId}",
-                    Score: score,
-                    MatchField: matchField);
-            })
+            .Select(r => new GlobalSearchResult(
+                Type: SearchResultType.Shift,
+                Title: r.Name,
+                Subtitle: r.TeamName,
+                Url: $"/Shifts?departmentId={r.TeamId}",
+                Score: ScoreNameField(r.Name, query)))
             .Where(r => r.Score > 0)
-            .OrderByDescending(r => r.Score)
-            .ThenBy(r => r.Title, StringComparer.OrdinalIgnoreCase)
             .ToList();
-    }
-
-    /// <summary>
-    /// Score an entity by which fields match. Returns 0 when nothing
-    /// matches — caller should drop those rows. Multi-field matches receive
-    /// a small additive boost so a name+description hit ranks above a
-    /// description-only hit. Sets <paramref name="matchField"/> to the
-    /// field that produced the highest single-field contribution.
-    /// </summary>
-    private static int ScoreEntityMatch(
-        string query, string name, string? slug, string? body, out string matchField)
-    {
-        matchField = string.Empty;
-        var total = 0;
-        var matchCount = 0;
-
-        var nameScore = ScoreNameField(name, query);
-        if (nameScore > 0)
-        {
-            total += nameScore;
-            matchField = "Name";
-            matchCount++;
-        }
-
-        if (!string.IsNullOrEmpty(slug)
-            && slug.Contains(query, StringComparison.OrdinalIgnoreCase))
-        {
-            total += ScoreSlugMatch;
-            if (matchField.Length == 0) matchField = "Slug";
-            matchCount++;
-        }
-
-        if (!string.IsNullOrEmpty(body)
-            && body.Contains(query, StringComparison.OrdinalIgnoreCase))
-        {
-            total += ScoreContainsBody;
-            if (matchField.Length == 0) matchField = "Description";
-            matchCount++;
-        }
-
-        if (matchCount > 1) total += ScoreMultiFieldBoost;
-        return total;
     }
 
     private static int ScoreNameField(string name, string query)
@@ -213,20 +151,5 @@ public sealed class SearchService : ISearchService
         if (name.StartsWith(query, StringComparison.OrdinalIgnoreCase)) return ScorePrefixName;
         if (name.Contains(query, StringComparison.OrdinalIgnoreCase)) return ScoreContainsName;
         return 0;
-    }
-
-    private static string? ComposeSnippet(string query, string? body)
-    {
-        if (string.IsNullOrWhiteSpace(body)) return null;
-        var idx = body.IndexOf(query, StringComparison.OrdinalIgnoreCase);
-        if (idx < 0) return null;
-
-        const int radius = 40;
-        var start = Math.Max(0, idx - radius);
-        var end = Math.Min(body.Length, idx + query.Length + radius);
-        var snippet = body[start..end].Trim();
-        if (start > 0) snippet = "…" + snippet;
-        if (end < body.Length) snippet = snippet + "…";
-        return snippet;
     }
 }
