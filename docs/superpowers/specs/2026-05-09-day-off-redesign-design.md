@@ -78,6 +78,14 @@ The signup-overlap rule means the coord must bail any pre-existing signups on th
 
 The unique-per-day invariant ensures the cell-state computation only ever sees one entry per cell.
 
+### Camp-setup interaction (one-directional invariant)
+
+The day-off ↔ camp-setup constraint is enforced **only** when adding a day-off. `SetCampSetupAsync` is unchanged by this spec — the coord can set, change, or clear `BarrioSetupStartDate` at any time, regardless of which day-off entries exist on the row. The pre-existing camp-setup validations (`setupOffset < 0`, `setupOffset ≥ firstSignup`) are the only gates.
+
+When `SetCampSetupAsync` results in a span that newly covers existing day-off entries (entries where `DayOffset ≥ newSetupOffset`), those entries are **silently auto-cleared** as part of the same transaction. They no longer represent useful state — the volunteer is on-site for camp-setup that day, so the "don't chase me" annotation is redundant. Each cleared entry emits a `VolunteerDayOffCleared` audit row alongside the `VolunteerCampSetupSet` row, so the trail is reconstructable.
+
+`ClearCampSetupAsync` does **not** auto-resurrect anything — it just nulls the camp-setup fields. Day-offs that were valid (offset before the now-cleared setup span) are untouched and remain valid.
+
 ## Application Layer
 
 ### `IVolunteerTrackingService` — new methods
@@ -111,6 +119,21 @@ Service implementation:
 - Delegates the write to the repository, passing a fully-constructed `DayOffEntry` (timestamp from `IClock`). Service owns the clock concern; repo persists what it's given.
 
 `ClearDayOffAsync` does the same active-event check, then delegates a remove-by-(userId, dayOffset) call to the repo. The bool return reflects whether something was actually removed (drives audit emission in the controller).
+
+### `SetCampSetupAsync` — auto-cleanup of newly-shadowed day-offs
+
+`SetCampSetupAsync` keeps its existing signature and existing validations. It gains one new behaviour: after the camp-setup write, the service inspects the row's `DayOffs` collection and removes any entry where `DayOffset ≥ newSetupOffset` (entries the new span has just rendered redundant). The result, returned to the controller, is extended:
+
+```csharp
+public sealed record SetCampSetupResult(
+    bool Ok,
+    string? ErrorMessageKey,
+    IReadOnlyList<int> AutoClearedDayOffs);  // dayOffsets removed by auto-cleanup, empty if none
+```
+
+The controller uses `AutoClearedDayOffs` to fan out one `VolunteerDayOffCleared` audit row per cleared offset, alongside the existing `VolunteerCampSetupSet` row. This keeps the audit-fan-out concern in the controller (consistent with the `ShiftsController.SaveBlockedDays` pattern that the prior teardown commit removed).
+
+Repository: the auto-cleanup uses the existing `RemoveDayOffAsync` per offset. No new repo method needed.
 
 ### `IVolunteerTrackingRepository` — new methods
 
@@ -340,6 +363,8 @@ Adds a column with a default — existing rows get `[]` automatically; no backfi
 - `ClearDayOffAsync_removes_entry_when_present`.
 - `ClearDayOffAsync_is_idempotent_when_entry_absent`.
 - `MainCohort_dayoff_renders_DayOff_state_and_does_not_count_as_gap` (locks in cell-state precedence + `GapCount`).
+- `SetCampSetupAsync_auto_clears_dayoffs_now_inside_span` (e.g. day-offs at -10 and -6 with new setup at -7 → only -6 cleared, -10 retained, return value lists [-6]).
+- `SetCampSetupAsync_returns_empty_AutoClearedDayOffs_when_no_overlap` (regression guard).
 
 `FakeVolunteerTrackingRepository` in the test file gains `UpsertDayOffAsync` and `RemoveDayOffAsync` (in-memory implementations, ~30 lines).
 
@@ -359,6 +384,7 @@ Adds a column with a default — existing rows get `[]` automatically; no backfi
 - `SetDayOff_ServiceRejects_ReturnsBadRequestWithErrorTempData_NoAudit`.
 - `ClearDayOff_HappyPath_RedirectsAndAuditsClearedAction`.
 - `ClearDayOff_NoEntryToRemove_RedirectsWithoutAudit`.
+- `SetCampSetup_FansOutOneAuditPerAutoClearedDayOff` — when the service's `AutoClearedDayOffs` is non-empty, the controller emits one `VolunteerDayOffCleared` row per offset alongside the `VolunteerCampSetupSet` row.
 
 ### E2E tests (`tests/Humans.E2E.Tests/`)
 
