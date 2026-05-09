@@ -167,12 +167,17 @@ public sealed class DevPersonaSeeder
         var profileId = await _profileService.SaveProfileAsync(id, displayName, saveRequest, "en");
 
         // Mark approved + cleared so the dev persona skips the consent gate
-        // and lands on the dashboard. This was the original behavior of the
-        // direct-add path.
-        var approvedProfile = await _db.Profiles.FirstAsync(p => p.Id == profileId);
-        approvedProfile.IsApproved = true;
-        approvedProfile.ConsentCheckStatus = ConsentCheckStatus.Cleared;
-        approvedProfile.UpdatedAt = now;
+        // and lands on the dashboard. Routes through ProfileService so the
+        // CachingProfileService decorator handles the FullProfile cache
+        // refresh atomically with the DB write (issue #474 — Profiles is the
+        // single writer to the profile state fields).
+        var consentCheckResult = await _profileService.RecordConsentCheckAsync(
+            id, reviewerId: id, ConsentCheckStatus.Cleared,
+            notes: "Dev persona — auto-seeded");
+        if (!consentCheckResult.Success)
+            _logger.LogWarning(
+                "DEV: consent-check approval failed for persona {UserId}: {ErrorKey}",
+                id, consentCheckResult.ErrorKey);
 
         // Seed sample contact fields so profile page exercises the contact rendering path.
         // ContactFields are Profile-section auxiliary data with no public service write
@@ -230,12 +235,6 @@ public sealed class DevPersonaSeeder
 
         await _db.SaveChangesAsync();
         _cache.InvalidateUserAccess(id);
-        // SaveProfileAsync (above) refreshed FullProfile while IsApproved=false /
-        // ConsentCheckStatus=Pending. We then patched both directly on the EF entity
-        // and saved — that bypasses CachingProfileService, leaving the FullProfile
-        // dict stale (persona looks unapproved, gets routed to onboarding).
-        // Re-invalidate so the dict picks up the post-patch row.
-        await _fullProfileInvalidator.InvalidateAsync(id);
 
         _logger.LogInformation("DEV: seeded persona {Email} with roles [{Roles}] and teams [{Teams}]",
             email, string.Join(", ", roles), string.Join(", ", teams.Select(t => t)));

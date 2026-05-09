@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Caching;
+using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Services.Profiles;
@@ -353,4 +354,210 @@ public class CachingProfileServiceTests
         IsApproved: true, IsSuspended: false,
         CVEntries: Array.Empty<CVEntry>(),
         PrimaryEmail: null);
+
+    // ==========================================================================
+    // Issue #474 — every profile-state mutation routed through ProfileService
+    // must refresh the FullProfile dict via the decorator, so cache and DB
+    // never diverge. These tests pin the decorator's refresh-after-write
+    // contract for the methods OnboardingService and ApplicationDecisionService
+    // call into.
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task SetMembershipTierAsync_RefreshesDictWithLatestTier()
+    {
+        var userId = Guid.NewGuid();
+        var profileId = Guid.NewGuid();
+        var profile = new Profile
+        {
+            Id = profileId,
+            UserId = userId,
+            BurnerName = "Tier",
+            MembershipTier = Humans.Domain.Enums.MembershipTier.Colaborador,
+        };
+        var user = new User { Id = userId, DisplayName = "Tier" };
+
+        _profileRepository.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(profile);
+        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
+        _userEmailRepository.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(Array.Empty<UserEmail>());
+
+        var sut = CreateSut();
+        // Prime dict with a stale entry so we can prove refresh fired.
+        _inner.GetFullProfileAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<FullProfile?>(SampleFullProfile(userId)));
+        await sut.GetFullProfileAsync(userId);
+
+        await sut.SetMembershipTierAsync(userId, Humans.Domain.Enums.MembershipTier.Asociado);
+
+        // Inner write was invoked + nav badge invalidated + dict was refreshed.
+        await _inner.Received(1).SetMembershipTierAsync(
+            userId, Humans.Domain.Enums.MembershipTier.Asociado, Arg.Any<CancellationToken>());
+        _navBadge.Received(1).Invalidate();
+        await _profileRepository.Received().GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ApproveVolunteerAsync_Success_RefreshesDictAndInvalidatesNavBadge()
+    {
+        var userId = Guid.NewGuid();
+        var profile = new Profile { Id = Guid.NewGuid(), UserId = userId, IsApproved = true };
+        var user = new User { Id = userId, DisplayName = "Approved" };
+
+        _inner.ApproveVolunteerAsync(userId, Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new OnboardingResult(true));
+        _profileRepository.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(profile);
+        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
+        _userEmailRepository.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(Array.Empty<UserEmail>());
+
+        var sut = CreateSut();
+
+        var result = await sut.ApproveVolunteerAsync(userId, Guid.NewGuid());
+
+        result.Success.Should().BeTrue();
+        _navBadge.Received(1).Invalidate();
+        _notificationMeter.Received(1).Invalidate();
+        await _profileRepository.Received().GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ApproveVolunteerAsync_Failure_DoesNotInvalidate()
+    {
+        var userId = Guid.NewGuid();
+        _inner.ApproveVolunteerAsync(userId, Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new OnboardingResult(false, "NotFound"));
+
+        var sut = CreateSut();
+        var result = await sut.ApproveVolunteerAsync(userId, Guid.NewGuid());
+
+        result.Success.Should().BeFalse();
+        _navBadge.DidNotReceive().Invalidate();
+        _notificationMeter.DidNotReceive().Invalidate();
+        await _profileRepository.DidNotReceive().GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task RecordConsentCheckAsync_ClearedSuccess_RefreshesDictAndInvalidatesNavBadge()
+    {
+        var userId = Guid.NewGuid();
+        var profile = new Profile
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            IsApproved = true,
+            ConsentCheckStatus = Humans.Domain.Enums.ConsentCheckStatus.Cleared,
+        };
+        var user = new User { Id = userId, DisplayName = "Cleared" };
+
+        _inner.RecordConsentCheckAsync(
+                userId, Arg.Any<Guid>(),
+                Humans.Domain.Enums.ConsentCheckStatus.Cleared,
+                Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(new OnboardingResult(true));
+        _profileRepository.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(profile);
+        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
+        _userEmailRepository.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(Array.Empty<UserEmail>());
+
+        var sut = CreateSut();
+
+        var result = await sut.RecordConsentCheckAsync(
+            userId, Guid.NewGuid(), Humans.Domain.Enums.ConsentCheckStatus.Cleared, "ok");
+
+        result.Success.Should().BeTrue();
+        _navBadge.Received(1).Invalidate();
+        _notificationMeter.Received(1).Invalidate();
+        await _profileRepository.Received().GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task RejectSignupAsync_Success_RefreshesDictAndInvalidatesNavBadge()
+    {
+        var userId = Guid.NewGuid();
+        var profile = new Profile { Id = Guid.NewGuid(), UserId = userId, IsApproved = false };
+        var user = new User { Id = userId, DisplayName = "Rejected" };
+
+        _inner.RejectSignupAsync(userId, Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(new OnboardingResult(true));
+        _profileRepository.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(profile);
+        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
+        _userEmailRepository.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(Array.Empty<UserEmail>());
+
+        var sut = CreateSut();
+
+        var result = await sut.RejectSignupAsync(userId, Guid.NewGuid(), "spam");
+
+        result.Success.Should().BeTrue();
+        _navBadge.Received(1).Invalidate();
+        _notificationMeter.Received(1).Invalidate();
+        await _profileRepository.Received().GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SetSuspendedAsync_Success_RefreshesDict()
+    {
+        var userId = Guid.NewGuid();
+        var profile = new Profile { Id = Guid.NewGuid(), UserId = userId };
+        var user = new User { Id = userId, DisplayName = "Suspended" };
+
+        _inner.SetSuspendedAsync(userId, Arg.Any<Guid>(), Arg.Any<bool>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(new OnboardingResult(true));
+        _profileRepository.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(profile);
+        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
+        _userEmailRepository.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(Array.Empty<UserEmail>());
+
+        var sut = CreateSut();
+
+        var result = await sut.SetSuspendedAsync(userId, Guid.NewGuid(), suspended: true, "Disruptive");
+
+        result.Success.Should().BeTrue();
+        await _profileRepository.Received().GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SetConsentCheckPendingAsync_Success_RefreshesDict()
+    {
+        var userId = Guid.NewGuid();
+        var profile = new Profile { Id = Guid.NewGuid(), UserId = userId };
+        var user = new User { Id = userId, DisplayName = "Pending" };
+
+        _inner.SetConsentCheckPendingAsync(userId, Arg.Any<CancellationToken>()).Returns(true);
+        _profileRepository.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(profile);
+        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
+        _userEmailRepository.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(Array.Empty<UserEmail>());
+
+        var sut = CreateSut();
+
+        var set = await sut.SetConsentCheckPendingAsync(userId);
+
+        set.Should().BeTrue();
+        _navBadge.Received(1).Invalidate();
+        _notificationMeter.Received(1).Invalidate();
+        await _profileRepository.Received().GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task SetConsentCheckPendingAsync_FalseFromInner_DoesNotInvalidateOrRefresh()
+    {
+        var userId = Guid.NewGuid();
+        _inner.SetConsentCheckPendingAsync(userId, Arg.Any<CancellationToken>()).Returns(false);
+
+        var sut = CreateSut();
+        var set = await sut.SetConsentCheckPendingAsync(userId);
+
+        set.Should().BeFalse();
+        _navBadge.DidNotReceive().Invalidate();
+        _notificationMeter.DidNotReceive().Invalidate();
+        await _profileRepository.DidNotReceive().GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>());
+    }
 }

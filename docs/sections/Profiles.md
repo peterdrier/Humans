@@ -425,5 +425,4 @@ Account deletion cascades (user-requested / admin-initiated / expiry-triggered) 
 
 ### Touch-and-clean guidance
 
-- `SetConsentCheckPendingIfEligibleAsync` does not currently invalidate the `FullProfile` dict (§15i). Pre-existing behavior; to be addressed when Shifts migrates (§15 NEW-B).
 - Cross-section reads for `Profile.User` / `UserEmail.User` / `CommunicationPreference.User` must go through `IUserService.GetByIdsAsync` — do not re-add nav properties to the entities.
