@@ -1641,4 +1641,248 @@ public class ProfileServiceTests : IDisposable
 
         await fakeRepo.Received(1).AddAsync(Arg.Any<Profile>(), Arg.Any<CancellationToken>());
     }
+
+    // ==========================================================================
+    // Issue #474 — phase 5 service-ownership: every profile state mutation now
+    // routes through ProfileService so the §15 caching decorator can keep the
+    // FullProfile dict in sync atomically with the DB write. These tests pin
+    // the contracts the decorator relies on (return values, field updates,
+    // error keys) so future refactors can't drift the behaviour.
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task SetMembershipTierAsync_UpdatesTierAndUpdatedAt()
+    {
+        var userId = Guid.NewGuid();
+        await SeedUserWithProfileAsync(userId);
+        _clock.Advance(Duration.FromHours(1));
+
+        await _service.SetMembershipTierAsync(userId, MembershipTier.Colaborador);
+
+        var profile = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
+        profile.MembershipTier.Should().Be(MembershipTier.Colaborador);
+        profile.UpdatedAt.Should().Be(_clock.GetCurrentInstant());
+    }
+
+    [HumansFact]
+    public async Task SetMembershipTierAsync_UnknownUser_NoOp()
+    {
+        var unknownUserId = Guid.NewGuid();
+
+        // No throw, no profile created — just a logged warning.
+        await _service.SetMembershipTierAsync(unknownUserId, MembershipTier.Asociado);
+
+        var profileExists = await _dbContext.Profiles.AsNoTracking().AnyAsync(p => p.UserId == unknownUserId);
+        profileExists.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task RecordConsentCheckAsync_Cleared_FlipsIsApprovedAndStamps()
+    {
+        var userId = Guid.NewGuid();
+        var reviewerId = Guid.NewGuid();
+        await SeedUserWithProfileAsync(userId);
+
+        var result = await _service.RecordConsentCheckAsync(
+            userId, reviewerId, ConsentCheckStatus.Cleared, "Looks good");
+
+        result.Success.Should().BeTrue();
+        var profile = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
+        profile.ConsentCheckStatus.Should().Be(ConsentCheckStatus.Cleared);
+        profile.IsApproved.Should().BeTrue();
+        profile.ConsentCheckAt.Should().Be(_clock.GetCurrentInstant());
+        profile.ConsentCheckedByUserId.Should().Be(reviewerId);
+        profile.ConsentCheckNotes.Should().Be("Looks good");
+    }
+
+    [HumansFact]
+    public async Task RecordConsentCheckAsync_Flagged_KeepsIsApprovedFalse()
+    {
+        var userId = Guid.NewGuid();
+        var reviewerId = Guid.NewGuid();
+        await SeedUserWithProfileAsync(userId);
+
+        var result = await _service.RecordConsentCheckAsync(
+            userId, reviewerId, ConsentCheckStatus.Flagged, "Concern X");
+
+        result.Success.Should().BeTrue();
+        var profile = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
+        profile.ConsentCheckStatus.Should().Be(ConsentCheckStatus.Flagged);
+        profile.IsApproved.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task RecordConsentCheckAsync_NoProfile_ReturnsNotFound()
+    {
+        var unknownUserId = Guid.NewGuid();
+
+        var result = await _service.RecordConsentCheckAsync(
+            unknownUserId, Guid.NewGuid(), ConsentCheckStatus.Cleared, null);
+
+        result.Success.Should().BeFalse();
+        result.ErrorKey.Should().Be("NotFound");
+    }
+
+    [HumansFact]
+    public async Task RecordConsentCheckAsync_AlreadyRejected_BlocksClear()
+    {
+        var userId = Guid.NewGuid();
+        var profileId = await SeedUserWithProfileAsync(userId);
+        var profile = await _dbContext.Profiles.FirstAsync(p => p.Id == profileId);
+        profile.RejectedAt = _clock.GetCurrentInstant();
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.RecordConsentCheckAsync(
+            userId, Guid.NewGuid(), ConsentCheckStatus.Cleared, null);
+
+        result.Success.Should().BeFalse();
+        result.ErrorKey.Should().Be("AlreadyRejected");
+    }
+
+    [HumansFact]
+    public async Task RecordConsentCheckAsync_PendingValue_Throws()
+    {
+        var userId = Guid.NewGuid();
+        await SeedUserWithProfileAsync(userId);
+
+        // Pending is the system-driven transition — must use SetConsentCheckPendingAsync.
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            _service.RecordConsentCheckAsync(
+                userId, Guid.NewGuid(), ConsentCheckStatus.Pending, null));
+    }
+
+    [HumansFact]
+    public async Task RejectSignupAsync_StampsRejectionFields()
+    {
+        var userId = Guid.NewGuid();
+        var reviewerId = Guid.NewGuid();
+        await SeedUserWithProfileAsync(userId);
+
+        var result = await _service.RejectSignupAsync(userId, reviewerId, "Spam account");
+
+        result.Success.Should().BeTrue();
+        var profile = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
+        profile.RejectedAt.Should().Be(_clock.GetCurrentInstant());
+        profile.RejectedByUserId.Should().Be(reviewerId);
+        profile.RejectionReason.Should().Be("Spam account");
+        profile.IsApproved.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task RejectSignupAsync_AlreadyRejected_ReturnsErrorKey()
+    {
+        var userId = Guid.NewGuid();
+        var profileId = await SeedUserWithProfileAsync(userId);
+        var profile = await _dbContext.Profiles.FirstAsync(p => p.Id == profileId);
+        profile.RejectedAt = _clock.GetCurrentInstant();
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.RejectSignupAsync(userId, Guid.NewGuid(), null);
+
+        result.Success.Should().BeFalse();
+        result.ErrorKey.Should().Be("AlreadyRejected");
+    }
+
+    [HumansFact]
+    public async Task RejectSignupAsync_NoProfile_ReturnsNotFound()
+    {
+        var result = await _service.RejectSignupAsync(Guid.NewGuid(), Guid.NewGuid(), null);
+
+        result.Success.Should().BeFalse();
+        result.ErrorKey.Should().Be("NotFound");
+    }
+
+    [HumansFact]
+    public async Task ApproveVolunteerAsync_FlipsIsApprovedTrue()
+    {
+        var userId = Guid.NewGuid();
+        await SeedUserWithProfileAsync(userId, isApproved: false);
+
+        var result = await _service.ApproveVolunteerAsync(userId, Guid.NewGuid());
+
+        result.Success.Should().BeTrue();
+        var profile = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
+        profile.IsApproved.Should().BeTrue();
+        profile.UpdatedAt.Should().Be(_clock.GetCurrentInstant());
+    }
+
+    [HumansFact]
+    public async Task ApproveVolunteerAsync_NoProfile_ReturnsNotFound()
+    {
+        var result = await _service.ApproveVolunteerAsync(Guid.NewGuid(), Guid.NewGuid());
+
+        result.Success.Should().BeFalse();
+        result.ErrorKey.Should().Be("NotFound");
+    }
+
+    [HumansFact]
+    public async Task SetSuspendedAsync_True_SetsSuspendedAndState()
+    {
+        var userId = Guid.NewGuid();
+        await SeedUserWithProfileAsync(userId);
+
+        var result = await _service.SetSuspendedAsync(userId, Guid.NewGuid(), suspended: true, "Disruptive");
+
+        result.Success.Should().BeTrue();
+        var profile = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
+#pragma warning disable HUM_PROFILE_ISSUSPENDED
+        profile.IsSuspended.Should().BeTrue();
+#pragma warning restore HUM_PROFILE_ISSUSPENDED
+        profile.State.Should().Be(ProfileState.Suspended);
+        profile.AdminNotes.Should().Be("Disruptive");
+    }
+
+    [HumansFact]
+    public async Task SetSuspendedAsync_FalseRestoresActiveWhenIdentityComplete()
+    {
+        var userId = Guid.NewGuid();
+        var profileId = await SeedUserWithProfileAsync(userId);
+        var profile = await _dbContext.Profiles.FirstAsync(p => p.Id == profileId);
+#pragma warning disable HUM_PROFILE_ISSUSPENDED
+        profile.IsSuspended = true;
+#pragma warning restore HUM_PROFILE_ISSUSPENDED
+        profile.State = ProfileState.Suspended;
+        // SeedUserWithProfileAsync seeds BurnerName/FirstName/LastName, so identity is complete.
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.SetSuspendedAsync(userId, Guid.NewGuid(), suspended: false, notes: null);
+
+        result.Success.Should().BeTrue();
+        var fresh = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
+#pragma warning disable HUM_PROFILE_ISSUSPENDED
+        fresh.IsSuspended.Should().BeFalse();
+#pragma warning restore HUM_PROFILE_ISSUSPENDED
+        fresh.State.Should().Be(ProfileState.Active);
+    }
+
+    [HumansFact]
+    public async Task SetSuspendedAsync_NoProfile_ReturnsNotFound()
+    {
+        var result = await _service.SetSuspendedAsync(
+            Guid.NewGuid(), Guid.NewGuid(), suspended: true, notes: null);
+
+        result.Success.Should().BeFalse();
+        result.ErrorKey.Should().Be("NotFound");
+    }
+
+    [HumansFact]
+    public async Task SetConsentCheckPendingAsync_FlipsToPending()
+    {
+        var userId = Guid.NewGuid();
+        await SeedUserWithProfileAsync(userId);
+
+        var set = await _service.SetConsentCheckPendingAsync(userId);
+
+        set.Should().BeTrue();
+        var profile = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
+        profile.ConsentCheckStatus.Should().Be(ConsentCheckStatus.Pending);
+    }
+
+    [HumansFact]
+    public async Task SetConsentCheckPendingAsync_NoProfile_ReturnsFalse()
+    {
+        var set = await _service.SetConsentCheckPendingAsync(Guid.NewGuid());
+
+        set.Should().BeFalse();
+    }
 }
