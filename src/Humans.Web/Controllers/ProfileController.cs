@@ -1839,6 +1839,7 @@ public class ProfileController : HumansControllerBase
 
             var popoverUser = await _userService.GetByIdAsync(id, ct);
             var teams = (await _teamService.GetActiveTeamMembershipsForUserAsync(id, ct))
+                .OrderBy(m => m.TeamName, StringComparer.OrdinalIgnoreCase)
                 .Select(m => m.TeamName)
                 .ToList();
             var profileLanguages = await _profileService.GetProfileLanguagesAsync(profile.Id, ct);
