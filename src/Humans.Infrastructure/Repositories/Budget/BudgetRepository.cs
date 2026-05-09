@@ -1103,7 +1103,7 @@ public sealed class BudgetRepository : IBudgetRepository
         await using var ctx = await _factory.CreateDbContextAsync(ct);
 
         // No cross-domain Include — BudgetAuditLog.ActorUser is obsolete; the
-        // Finance audit log view renders actor via <human-link user-id=@ActorUserId>.
+        // Finance audit log view renders actor via <vc:human user-id=@ActorUserId>.
         var query = ctx.BudgetAuditLogs.AsNoTracking().AsQueryable();
 
         if (budgetYearId.HasValue)

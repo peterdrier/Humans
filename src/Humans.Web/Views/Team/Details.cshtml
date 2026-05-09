@@ -163,21 +163,19 @@
                                 <div class="col-6 col-sm-4 col-md-3">
                                     @if (Model.IsAuthenticated)
                                     {
-                                        <human-link user-id="@member.UserId" display-name="@member.DisplayName"
-                                                    mode="Card" size="128"
-                                                    profile-picture-url="@member.EffectiveProfilePictureUrl"
-                                                    avatar-css-class="border border-primary border-3"
-                                                    avatar-bg-color="bg-primary">
-                                            @await Html.PartialAsync("_RoleBadge", TeamMemberRole.Coordinator)
-                                        </human-link>
+                                        <vc:human user-id="@member.UserId"
+                                                  layout="Card" size="128"
+                                                  css-class="border border-primary border-3"
+                                                  bg-color="bg-primary" />
                                     }
                                     else
                                     {
                                         <div class="text-center">
-                                            <vc:user-avatar user-id="@member.UserId"
-                                                            size="128"
-                                                            css-class="mb-2 mx-auto border border-primary border-3"
-                                                            bg-color="bg-primary" />
+                                            <vc:human user-id="@member.UserId"
+                                                      layout="Avatar"
+                                                      size="128"
+                                                      css-class="mb-2 mx-auto border border-primary border-3"
+                                                      bg-color="bg-primary" />
                                             <div class="fw-semibold small">@member.DisplayName</div>
                                         </div>
                                     }
@@ -196,9 +194,7 @@
                             @foreach (var member in regularMembers)
                             {
                                 <div class="col-6 col-sm-4 col-md-3">
-                                    <human-link user-id="@member.UserId" display-name="@member.DisplayName"
-                                                mode="Card" size="102"
-                                                profile-picture-url="@member.EffectiveProfilePictureUrl" />
+                                    <vc:human user-id="@member.UserId" layout="Card" size="102" />
                                 </div>
                             }
                         </div>
@@ -223,14 +219,14 @@
                     @foreach (var lead in Model.SubteamLeads.OrderBy(l => l.DisplayName, StringComparer.OrdinalIgnoreCase))
                     {
                         <div class="col-6 col-sm-4 col-md-3">
-                            <human-link user-id="@lead.UserId" display-name="@lead.DisplayName"
-                                        mode="Card" size="128"
-                                        profile-picture-url="@lead.EffectiveProfilePictureUrl"
-                                        avatar-css-class="border border-primary border-3"
-                                        avatar-bg-color="bg-primary">
-                                <span class="badge bg-primary small">@(lead.RoleTitle ?? "Coordinator")</span>
-                                <span class="badge bg-secondary bg-opacity-50 small">@lead.ChildTeamName</span>
-                            </human-link>
+                            <vc:human user-id="@lead.UserId"
+                                      layout="Card" size="128"
+                                      css-class="border border-primary border-3"
+                                      bg-color="bg-primary" />
+                            <div class="text-center small mt-1">
+                                <span class="badge bg-primary">@(lead.RoleTitle ?? "Coordinator")</span>
+                                <span class="badge bg-secondary bg-opacity-50">@lead.ChildTeamName</span>
+                            </div>
                         </div>
                     }
                 </div>
@@ -249,11 +245,10 @@
                     @foreach (var member in Model.ChildTeamMembers.OrderBy(m => m.DisplayName, StringComparer.OrdinalIgnoreCase))
                     {
                         <div class="col-6 col-sm-4 col-md-3">
-                            <human-link user-id="@member.UserId" display-name="@member.DisplayName"
-                                        mode="Card" size="102"
-                                        profile-picture-url="@member.EffectiveProfilePictureUrl">
-                                <span class="badge bg-secondary bg-opacity-50 small">@member.ChildTeamName</span>
-                            </human-link>
+                            <vc:human user-id="@member.UserId" layout="Card" size="102" />
+                            <div class="text-center small mt-1">
+                                <span class="badge bg-secondary bg-opacity-50">@member.ChildTeamName</span>
+                            </div>
                         </div>
                     }
                 </div>

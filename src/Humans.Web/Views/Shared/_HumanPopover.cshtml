@@ -4,7 +4,7 @@
 @inject IAuthorizationService AuthService
 
 <div class="d-flex align-items-center" style="min-width: 200px;">
-    <vc:user-avatar user-id="@Model.UserId" size="72" css-class="me-2" />
+    <vc:human user-id="@Model.UserId" layout="Avatar" size="72" css-class="me-2" link="None" />
     <div>
         <div class="fw-semibold">
             @Model.DisplayName

@@ -62,7 +62,7 @@
                     {
                         <tr class="@(ra.IsActive ? "" : "table-secondary")">
                             <td>
-                                <human-link user-id="@ra.UserId" display-name="@ra.UserDisplayName" admin="true" show-popover="true" />
+                                <vc:human user-id="@ra.UserId" link="Admin" />
                                 <br />
                                 <small class="text-muted">@ra.UserEmail</small>
                             </td>

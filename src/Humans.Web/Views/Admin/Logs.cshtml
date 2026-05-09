@@ -74,7 +74,7 @@
                             <td>
                                 @if (evtUserId.HasValue)
                                 {
-                                    <human-link user-id="@evtUserId.Value"></human-link>
+                                    <vc:human user-id="@evtUserId.Value" />
                                 }
                                 else
                                 {

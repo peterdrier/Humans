@@ -21,7 +21,7 @@ public class BudgetAuditLog
     /// <summary>
     /// Cross-domain navigation to the actor user. Do not use — callers resolve
     /// display names via <see cref="Humans.Application.Interfaces.IUserService"/>
-    /// / <c>human-link</c> tag helper, keyed off <see cref="ActorUserId"/>.
+    /// or <c>&lt;vc:human user-id="@ActorUserId" /&gt;</c>, keyed off <see cref="ActorUserId"/>.
     /// Retained only so EF's configured relationship keeps the FK constraint.
     /// </summary>
     [Obsolete("Cross-domain nav. Use ActorUserId + IUserService to resolve the user.")]

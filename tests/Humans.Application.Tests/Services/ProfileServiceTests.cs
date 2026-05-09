@@ -658,17 +658,18 @@ public class ProfileServiceTests : IDisposable
     // --- SearchProfilesAsync (PersonSearchFields bit-flag) ---
 
     [HumansFact]
-    public async Task SearchProfilesAsync_PublicAll_MatchesByDisplayName()
+    public async Task SearchProfilesAsync_PublicAll_MatchesByBurnerName()
     {
         var userId = Guid.NewGuid();
         var user = await SeedUserAsync(userId, displayName: "Sparkle Phoenix");
         var profile = MakeProfile(userId, isApproved: true);
+        profile.BurnerName = "Burner Bob";
         _dbContext.Profiles.Add(profile);
         await _dbContext.SaveChangesAsync();
         _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, User> { [userId] = user });
 
-        var results = await _service.SearchProfilesAsync("Sparkle", PersonSearchFields.PublicAll);
+        var results = await _service.SearchProfilesAsync("Burner", PersonSearchFields.PublicAll);
 
         results.Should().HaveCount(1);
         results[0].UserId.Should().Be(userId);
@@ -978,7 +979,7 @@ public class ProfileServiceTests : IDisposable
 
         result.Should().NotBeNull();
         result!.UserId.Should().Be(userId);
-        result.DisplayName.Should().Be("Real Name");
+        result.DisplayName.Should().Be("Burner");
         result.ProfilePictureUrl.Should().Be("https://img");
         result.ProfileId.Should().Be(profileId);
         result.BurnerName.Should().Be("Burner");
