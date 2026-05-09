@@ -95,6 +95,9 @@ src/Humans.Application/Services/Profile/ContactFieldService.cs:Team#1
 src/Humans.Application/Services/Profile/ContactFieldService.cs:Team#2
 src/Humans.Application/Services/Profile/DuplicateAccountService.cs:Team#1
 src/Humans.Application/Services/Profile/DuplicateAccountService.cs:Team#2
+src/Humans.Application/Services/Search/SearchService.cs:Team#1
+src/Humans.Application/Services/Search/SearchService.cs:Team#2
+src/Humans.Application/Services/Search/SearchService.cs:Team#3
 src/Humans.Application/Services/Shifts/ShiftManagementService.cs:Team#1
 src/Humans.Application/Services/Shifts/ShiftManagementService.cs:Team#2
 src/Humans.Application/Services/Shifts/ShiftSignupService.cs:Team#1

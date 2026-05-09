@@ -1,0 +1,148 @@
+@using Humans.Application.DTOs
+@model Humans.Web.Models.GlobalSearchViewModel
+
+@{
+    ViewData["Title"] = "Search";
+
+    string ChipUrl(SearchResultType? filter)
+    {
+        var q = Model.Query ?? string.Empty;
+        return filter.HasValue
+            ? Url.Action("Index", "Search", new { q, filter = filter.Value })!
+            : Url.Action("Index", "Search", new { q })!;
+    }
+
+    string ChipClass(SearchResultType? filter) =>
+        Model.Filter == filter
+            ? "btn btn-primary btn-sm"
+            : "btn btn-outline-primary btn-sm";
+
+    string TypeBadge(SearchResultType type) => type switch
+    {
+        SearchResultType.Human => "bg-info text-dark",
+        SearchResultType.Team => "bg-success",
+        SearchResultType.Camp => "bg-warning text-dark",
+        SearchResultType.Shift => "bg-secondary",
+        _ => "bg-light text-dark",
+    };
+
+    string TypeIcon(SearchResultType type) => type switch
+    {
+        SearchResultType.Human => "fa-solid fa-user",
+        SearchResultType.Team => "fa-solid fa-users",
+        SearchResultType.Camp => "fa-solid fa-campground",
+        SearchResultType.Shift => "fa-solid fa-clock",
+        _ => "fa-solid fa-circle",
+    };
+
+    string TypeLabel(SearchResultType type) => type switch
+    {
+        SearchResultType.Human => "Human",
+        SearchResultType.Team => "Team",
+        SearchResultType.Camp => "Camp",
+        SearchResultType.Shift => "Shift",
+        _ => "Result",
+    };
+}
+
+<h2><i class="fa-solid fa-magnifying-glass me-2"></i>Search</h2>
+
+<form method="get" class="mb-4" asp-action="Index" asp-controller="Search">
+    @if (Model.Filter.HasValue)
+    {
+        <input type="hidden" name="filter" value="@Model.Filter.Value" />
+    }
+    <div class="input-group" style="max-width: 600px;">
+        <input type="text" name="q" class="form-control" value="@Model.Query"
+               placeholder="Search humans, teams, camps, shifts…"
+               autofocus aria-label="Search query" />
+        <button type="submit" class="btn btn-primary">
+            <i class="fa-solid fa-magnifying-glass me-1"></i>Search
+        </button>
+    </div>
+</form>
+
+@if (!Model.HasQuery)
+{
+    <div class="alert alert-info">
+        <i class="fa-solid fa-circle-info me-2"></i>
+        Type at least 2 characters to search across humans, teams, camps, and shifts.
+    </div>
+}
+else if (Model.QueryIsTooShort)
+{
+    <div class="alert alert-info">
+        <i class="fa-solid fa-circle-info me-2"></i>
+        Please enter at least 2 characters.
+    </div>
+}
+else
+{
+    <div class="d-flex flex-wrap gap-2 mb-3" role="group" aria-label="Filter results by type">
+        <a href="@ChipUrl(null)" class="@ChipClass(null)">
+            All (@(Model.HumanCount + Model.TeamCount + Model.CampCount + Model.ShiftCount))
+        </a>
+        <a href="@ChipUrl(SearchResultType.Human)" class="@ChipClass(SearchResultType.Human)">
+            <i class="fa-solid fa-user me-1"></i>Humans (@Model.HumanCount)
+        </a>
+        <a href="@ChipUrl(SearchResultType.Team)" class="@ChipClass(SearchResultType.Team)">
+            <i class="fa-solid fa-users me-1"></i>Teams (@Model.TeamCount)
+        </a>
+        <a href="@ChipUrl(SearchResultType.Camp)" class="@ChipClass(SearchResultType.Camp)">
+            <i class="fa-solid fa-campground me-1"></i>Camps (@Model.CampCount)
+        </a>
+        <a href="@ChipUrl(SearchResultType.Shift)" class="@ChipClass(SearchResultType.Shift)">
+            <i class="fa-solid fa-clock me-1"></i>Shifts (@Model.ShiftCount)
+        </a>
+    </div>
+
+    @if (!Model.HasResults)
+    {
+        <div class="alert alert-light">
+            No results for <strong>@Model.Query</strong>@(Model.Filter.HasValue ? $" in {TypeLabel(Model.Filter.Value)}s" : "").
+        </div>
+    }
+    else
+    {
+        <div class="list-group">
+            @foreach (var result in Model.Results)
+            {
+                <a href="@result.Url" class="list-group-item list-group-item-action">
+                    <div class="d-flex align-items-start gap-3">
+                        @if (result.Type == SearchResultType.Human && result.UserId.HasValue)
+                        {
+                            <vc:user-avatar user-id="@result.UserId.Value" size="40" />
+                        }
+                        else
+                        {
+                            <div class="d-flex align-items-center justify-content-center rounded bg-light"
+                                 style="width: 40px; height: 40px; flex-shrink: 0;">
+                                <i class="@TypeIcon(result.Type) text-muted"></i>
+                            </div>
+                        }
+                        <div class="flex-grow-1">
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <span class="badge @TypeBadge(result.Type)">
+                                    <i class="@TypeIcon(result.Type) me-1"></i>@TypeLabel(result.Type)
+                                </span>
+                                <strong>@result.Title</strong>
+                                @if (!string.IsNullOrEmpty(result.MatchField))
+                                {
+                                    <small class="text-muted">matched @result.MatchField</small>
+                                }
+                            </div>
+                            @if (!string.IsNullOrEmpty(result.Subtitle))
+                            {
+                                <div class="small text-muted">@result.Subtitle</div>
+                            }
+                            @if (!string.IsNullOrEmpty(result.RelationContext))
+                            {
+                                <div class="small fst-italic text-muted">@result.RelationContext</div>
+                            }
+                        </div>
+                    </div>
+                </a>
+            }
+        </div>
+    }
+}
