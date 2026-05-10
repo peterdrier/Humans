@@ -145,4 +145,5 @@ public enum AuditAction
     VolunteerOwnBlockedDaysSaved,
     VolunteerDayOffMarked,
     VolunteerDayOffCleared,
+    GoogleSyncRetryScheduled,
 }

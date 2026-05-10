@@ -54,6 +54,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
     // lookup is safe — same pattern MembershipCalculator uses for IConsentService.
     private readonly IServiceProvider _serviceProvider;
     private readonly IGoogleSyncService _googleSyncService;
+    private readonly IGoogleGroupSync _googleGroupSync;
     private readonly IAuditLogService _auditLogService;
     private readonly IEmailService _emailService;
     private readonly IRoleAssignmentClaimsCacheInvalidator _roleAssignmentClaimsInvalidator;
@@ -68,6 +69,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
         ICampRepository campRepository,
         IServiceProvider serviceProvider,
         IGoogleSyncService googleSyncService,
+        IGoogleGroupSync googleGroupSync,
         IAuditLogService auditLogService,
         IEmailService emailService,
         IRoleAssignmentClaimsCacheInvalidator roleAssignmentClaimsInvalidator,
@@ -81,6 +83,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
         _campRepository = campRepository;
         _serviceProvider = serviceProvider;
         _googleSyncService = googleSyncService;
+        _googleGroupSync = googleGroupSync;
         _auditLogService = auditLogService;
         _emailService = emailService;
         _roleAssignmentClaimsInvalidator = roleAssignmentClaimsInvalidator;
@@ -128,12 +131,9 @@ public class SystemTeamSyncJob : ISystemTeamSync
             await SyncColaboradorsTeamAsync(report, cancellationToken);
             await SyncBarrioLeadsTeamAsync(report, cancellationToken);
 
-            // Issue nobodies-collective/Humans#687: BackfillGoogleEmailsAsync
-            // step removed. UserEmail.IsGoogle is the sole source of truth and
-            // is maintained by UserEmailService.EnsureGoogleInvariantAsync on
-            // every UserEmail row creation; the User.GoogleEmail shadow column
-            // is no longer the read path, so a per-sync backfill into it is
-            // dead work.
+            // After team membership settles, reconcile group membership so
+            // Google Groups reflect the current system-team state hourly.
+            await _googleGroupSync.ReconcileAllAsync(SyncAction.Execute, cancellationToken);
 
             _metrics.RecordJobRun("system_team_sync", "success");
             _logger.LogInformation("Completed system team sync");

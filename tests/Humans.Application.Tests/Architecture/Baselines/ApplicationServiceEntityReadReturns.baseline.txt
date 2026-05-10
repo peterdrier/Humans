@@ -117,7 +117,6 @@ Humans.Application.Interfaces.Teams.ITeamResourceService.GetActiveDriveFoldersAs
 Humans.Application.Interfaces.Teams.ITeamResourceService.GetResourceByIdAsync:Humans.Domain.Entities.GoogleResource
 Humans.Application.Interfaces.Teams.ITeamResourceService.GetResourcesByTeamIdsAsync:Humans.Domain.Entities.GoogleResource
 Humans.Application.Interfaces.Teams.ITeamResourceService.GetTeamResourcesAsync:Humans.Domain.Entities.GoogleResource
-Humans.Application.Interfaces.Teams.ITeamService.GetActiveChildMembersByParentIdsAsync:Humans.Domain.Entities.TeamMember
 Humans.Application.Interfaces.Teams.ITeamService.GetActiveMembersForTeamsAsync:Humans.Domain.Entities.TeamMember
 Humans.Application.Interfaces.Teams.ITeamService.GetActiveMembershipsForRoleReconciliationAsync:Humans.Domain.Entities.TeamMember
 Humans.Application.Interfaces.Teams.ITeamService.GetAllRoleDefinitionsAsync:Humans.Domain.Entities.TeamRoleDefinition

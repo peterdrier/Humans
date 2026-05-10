@@ -96,6 +96,12 @@ public sealed partial class TeamResourceService : ITeamResourceService
     public Task<IReadOnlyDictionary<Guid, int>> GetActiveResourceCountsByTeamAsync(CancellationToken ct = default)
         => _repository.GetActiveResourceCountsByTeamAsync(ct);
 
+    public Task MarkResourceSyncedAsync(Guid resourceId, Instant now, CancellationToken ct = default)
+        => _repository.MarkSyncedAsync(resourceId, now, ct);
+
+    public Task RecordResourceErrorAsync(Guid resourceId, string errorMessage, CancellationToken ct = default)
+        => _repository.SetErrorMessageManyAsync([resourceId], errorMessage, ct);
+
     public async Task<IReadOnlyList<UserTeamGoogleResource>> GetUserTeamResourcesAsync(
         Guid userId,
         CancellationToken ct = default)

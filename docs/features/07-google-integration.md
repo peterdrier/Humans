@@ -141,6 +141,18 @@ Nobodies Collective uses Google Workspace for collaboration. The system integrat
 - Default: false (only Board members can manage)
 - When enabled, Coordinators can link/unlink/sync resources for their teams
 
+## Google Group Membership Sync Architecture
+
+Google Group membership is reconciled by `IGoogleGroupSync`, not by the Drive-oriented `IGoogleSyncService` gateway. `IGoogleGroupMembershipSource` is a plugin interface: each source returns expected user IDs for the Google group keys it owns, and the orchestrator performs the shared work of hydrating users/emails, filtering deletion/merge/suspension/rejected-email state, diffing against Google, and applying changes.
+
+`TeamService` directly implements `IGoogleGroupMembershipSource` for team Google Groups. `ITeamService` intentionally does not inherit the source interface; Google Integration registers the concrete Teams service as a source so group membership ownership remains explicit and does not expand the general Teams boundary.
+
+Collision handling is fail-closed. If more than one source claims the same group key, `IGoogleGroupSync` logs and audits the collision and skips mutation for that group. First-wins would be unsafe because one source could silently remove members owned by another source.
+
+`ReconcileAllAsync` is the daily and bulk-preview/bulk-execute path. It loads all claims, hydrates expected users once for the pass, and reports per-group errors without scheduling scoped retries. `ReconcileOneAsync` is the scoped path used by Hangfire requests after membership/email changes and by per-row Execute in the UI; when scoped Execute hits a Google API failure, it schedules another scoped Hangfire attempt after the retry delay.
+
+Group sync requests use Hangfire instead of in-process retry. Team membership and email changes commit first, then enqueue scoped group reconciliation by group key. This keeps Google API failures outside the Teams transaction and makes retries visible and independently executable.
+
 ## Data Model
 
 ### GoogleResource Entity
@@ -179,7 +191,7 @@ public interface IGoogleSyncService
     // Shared Drive folder provisioning
     Task<GoogleResource> ProvisionTeamFolderAsync(Guid teamId, string folderName, CancellationToken ct);
 
-    // Unified sync — replaces the old SyncResourcePermissionsAsync/SyncAllResourcesAsync/PreviewSyncAllAsync
+    // Drive resource sync (Groups are delegated to IGoogleGroupSync)
     Task<SyncPreviewResult> SyncResourcesByTypeAsync(GoogleResourceType resourceType, SyncAction action, CancellationToken ct);
     Task<ResourceSyncDiff> SyncSingleResourceAsync(Guid resourceId, SyncAction action, CancellationToken ct);
 
@@ -190,15 +202,21 @@ public interface IGoogleSyncService
     // Status
     Task<GoogleResource?> GetResourceStatusAsync(Guid resourceId, CancellationToken ct);
 
-    // Google Group lifecycle
-    Task EnsureTeamGroupAsync(Guid teamId, CancellationToken ct);
+    // Google Group lifecycle/settings, not membership
+    Task EnsureTeamGroupAsync(Guid teamId, bool confirmReactivation = false, CancellationToken ct = default);
     Task<GoogleResource> ProvisionTeamGroupAsync(Guid teamId, string groupEmail, string groupName, CancellationToken ct);
-    Task AddUserToGroupAsync(Guid groupResourceId, string userEmail, CancellationToken ct);
-    Task RemoveUserFromGroupAsync(Guid groupResourceId, string userEmail, CancellationToken ct);
-    Task SyncTeamGroupMembersAsync(Guid teamId, CancellationToken ct);
-
     // Restoration
     Task RestoreUserToAllTeamsAsync(Guid userId, CancellationToken ct);
+}
+```
+
+### IGoogleGroupSync
+```csharp
+public interface IGoogleGroupSync
+{
+    Task RequestSyncAsync(string groupKey, CancellationToken ct = default);
+    Task<SyncPreviewResult> ReconcileAllAsync(SyncAction action, CancellationToken ct = default);
+    Task<ResourceSyncDiff> ReconcileOneAsync(string groupKey, SyncAction action, CancellationToken ct = default);
 }
 ```
 

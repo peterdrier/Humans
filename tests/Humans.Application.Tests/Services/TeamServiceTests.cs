@@ -1630,6 +1630,24 @@ public class TeamServiceTests : IDisposable
             Arg.Any<Guid>(), Arg.Any<GoogleResourceType?>(), Arg.Any<CancellationToken>());
     }
 
+    [HumansFact]
+    public async Task GetExpectedAsync_DuplicateGoogleGroupEmail_SkipsClaim()
+    {
+        var alice = SeedUser(displayName: "Alice");
+        var bob = SeedUser(displayName: "Bob");
+        var first = SeedTeam("First");
+        var second = SeedTeam("Second");
+        first.GoogleGroupPrefix = "shared";
+        second.GoogleGroupPrefix = "shared";
+        SeedTeamMember(first.Id, alice.Id);
+        SeedTeamMember(second.Id, bob.Id);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.GetExpectedAsync();
+
+        result.Should().NotContainKey($"shared@{DomainConstants.GoogleGroupDomain}");
+    }
+
     // --- Helpers ---
 
     private User SeedUser(Guid? id = null, string displayName = "Test User")

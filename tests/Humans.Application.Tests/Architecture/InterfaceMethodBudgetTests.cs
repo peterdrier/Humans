@@ -66,7 +66,9 @@ public class InterfaceMethodBudgetTests
         // 73→71: tech-debt query consolidation — removed GetTeamMembersAsync
         // and GetActiveMemberUserIdsAsync; callers project members/user IDs
         // from GetTeamAsync/GetTeamsAsync read models.
-        [typeof(ITeamService)] = 71,
+        // 71->70: removed GetActiveChildMembersByParentIdsAsync - group
+        // membership child-rollup now lives behind IGoogleGroupMembershipSource.
+        [typeof(ITeamService)] = 70,
         // ICampService raised 53→57 for per-camp roles feature (peterdrier#489):
         // AddCampMemberAsLeadAsync, GetSeasonMembersAsync, GetCampMemberStatusAsync,
         // GetCampSeasonsForComplianceAsync — all needed by ICampRoleService and the

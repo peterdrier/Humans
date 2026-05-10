@@ -10,8 +10,10 @@ using GoogleDriveActivityMonitorService = Humans.Application.Services.GoogleInte
 using GoogleAdminService = Humans.Application.Services.GoogleIntegration.GoogleAdminService;
 using GoogleWorkspaceSyncService = Humans.Application.Services.GoogleIntegration.GoogleWorkspaceSyncService;
 using GoogleRemovalNotificationService = Humans.Application.Services.GoogleIntegration.GoogleRemovalNotificationService;
+using GoogleGroupSyncService = Humans.Application.Services.GoogleIntegration.GoogleGroupSyncService;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Teams;
+using Humans.Infrastructure.GoogleIntegration;
 using Humans.Infrastructure.Repositories.GoogleIntegration;
 
 namespace Humans.Web.Extensions.Infrastructure;
@@ -113,6 +115,8 @@ internal static class GoogleWorkspaceInfrastructureExtensions
         }
 
         services.AddScoped<IGoogleAdminService, GoogleAdminService>();
+        services.AddScoped<IGoogleGroupSyncScheduler, HangfireGoogleGroupSyncScheduler>();
+        services.AddScoped<IGoogleGroupSync, GoogleGroupSyncService>();
 
         // Issue peterdrier/Humans#639 — emit user-facing emails when Google
         // sync removes a Group membership or Drive permission. Application-

@@ -697,18 +697,6 @@ public interface ITeamService : IApplicationService
         IReadOnlyCollection<Guid> teamIds,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Returns every active (<see cref="TeamMember.LeftAt"/> is null) team member
-    /// whose team has a parent team id in <paramref name="parentTeamIds"/>.
-    /// The child team is hydrated on <see cref="TeamMember.Team"/>; the
-    /// <see cref="TeamMember.User"/> nav is stitched in-memory. Used by the
-    /// subteam rollup path in Google Workspace reconciliation — department
-    /// resources must grant access to every member of every child team.
-    /// </summary>
-    Task<IReadOnlyList<TeamMember>> GetActiveChildMembersByParentIdsAsync(
-        IReadOnlyCollection<Guid> parentTeamIds,
-        CancellationToken cancellationToken = default);
-
     // ==========================================================================
     // System team sync support (issue #570 — §15 Google-writing jobs)
     //

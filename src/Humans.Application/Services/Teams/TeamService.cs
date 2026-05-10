@@ -40,7 +40,7 @@ namespace Humans.Application.Services.Teams;
 /// owned by the transparent caching decorator, not this scoped inner service.
 /// </para>
 /// </summary>
-public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
+public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IUserDataContributor, IUserMerge
 {
     private readonly ITeamRepository _repo;
     private readonly IAuditLogService _auditLogService;
@@ -72,6 +72,9 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
 
     private IUserService UserService
         => _serviceProvider.GetRequiredService<IUserService>();
+
+    private IGoogleGroupSync GoogleGroupSync
+        => _serviceProvider.GetRequiredService<IGoogleGroupSync>();
 
     public TeamService(
         ITeamRepository repo,
@@ -707,6 +710,7 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
             userId,
             relatedEntityId: userId, relatedEntityType: nameof(User));
 
+        await RequestGoogleGroupSyncForTeamAsync(team, cancellationToken);
         await SendAddedToTeamEmailAsync(userId, team, cancellationToken);
 
         return member;
@@ -754,6 +758,7 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
             relatedEntityId: userId, relatedEntityType: nameof(User));
 
         InvalidateShiftAuthorizationIfNeeded(userId, removedAssignments);
+        await RequestGoogleGroupSyncForTeamAsync(team, cancellationToken);
 
         return wasCoordinator;
     }
@@ -831,6 +836,7 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
 
         _notificationMeterInvalidator.Invalidate();
 
+        await RequestGoogleGroupSyncForTeamIdAsync(request.TeamId, cancellationToken);
         await SendAddedToTeamEmailAsync(request.UserId, request.Team, cancellationToken);
 
         return member;
@@ -1018,6 +1024,7 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
             relatedEntityId: userId, relatedEntityType: nameof(User));
 
         InvalidateShiftAuthorizationIfNeeded(userId, removedAssignments);
+        await RequestGoogleGroupSyncForTeamAsync(team, cancellationToken);
 
         try
         {
@@ -1123,6 +1130,7 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
             actorUserId,
             relatedEntityId: targetUserId, relatedEntityType: nameof(User));
 
+        await RequestGoogleGroupSyncForTeamAsync(team, cancellationToken);
         await SendAddedToTeamEmailAsync(targetUserId, team, cancellationToken);
 
         return member;
@@ -1486,6 +1494,8 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
                 $"Auto-added to {definition.Team.Name} via role assignment",
                 actorUserId,
                 relatedEntityId: targetUserId, relatedEntityType: nameof(User));
+
+            await RequestGoogleGroupSyncForTeamIdAsync(definition.TeamId, cancellationToken);
         }
 
         await _auditLogService.LogAsync(
@@ -1645,17 +1655,6 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
         if (teamIds.Count == 0)
             return [];
         var members = await _repo.GetActiveMembersForTeamsAsync(teamIds, cancellationToken);
-        await StitchMemberUserSlicesAsync(members, cancellationToken);
-        return members;
-    }
-
-    public async Task<IReadOnlyList<TeamMember>> GetActiveChildMembersByParentIdsAsync(
-        IReadOnlyCollection<Guid> parentTeamIds,
-        CancellationToken cancellationToken = default)
-    {
-        if (parentTeamIds.Count == 0)
-            return [];
-        var members = await _repo.GetActiveChildMembersByParentIdsAsync(parentTeamIds, cancellationToken);
         await StitchMemberUserSlicesAsync(members, cancellationToken);
         return members;
     }
@@ -2000,6 +1999,51 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
         };
     }
 
+    private async Task RequestGoogleGroupSyncForTeamAsync(Team team, CancellationToken cancellationToken)
+    {
+        if (!string.IsNullOrWhiteSpace(team.GoogleGroupEmail))
+        {
+            await RequestGoogleGroupSyncAsync(team.Id, team.GoogleGroupEmail, cancellationToken);
+        }
+
+        if (team.ParentTeamId.HasValue)
+        {
+            var parent = await _repo.GetByIdAsync(team.ParentTeamId.Value, cancellationToken);
+            if (!string.IsNullOrWhiteSpace(parent?.GoogleGroupEmail))
+            {
+                await RequestGoogleGroupSyncAsync(parent.Id, parent.GoogleGroupEmail, cancellationToken);
+            }
+        }
+    }
+
+    private async Task RequestGoogleGroupSyncForTeamIdAsync(Guid teamId, CancellationToken cancellationToken)
+    {
+        var team = await _repo.GetByIdAsync(teamId, cancellationToken);
+        if (team is not null)
+        {
+            await RequestGoogleGroupSyncForTeamAsync(team, cancellationToken);
+        }
+    }
+
+    private async Task RequestGoogleGroupSyncAsync(
+        Guid teamId,
+        string groupEmail,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await GoogleGroupSync.RequestSyncAsync(groupEmail, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Failed to request Google Group sync for team {TeamId} ({GroupEmail})",
+                teamId,
+                groupEmail);
+        }
+    }
+
     private async Task SendAddedToTeamEmailAsync(Guid userId, Team team, CancellationToken cancellationToken)
     {
         if (team.IsHidden) return;
@@ -2177,5 +2221,74 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
     {
         return await _repo.ApplySystemTeamMembershipDeltaAsync(
             teamId, userIdsToAdd, userIdsToRemove, now, cancellationToken);
+    }
+
+    public async Task<Dictionary<string, Guid[]>> GetExpectedAsync(
+        string? groupKey = null,
+        CancellationToken ct = default)
+    {
+        var requestedKey = string.IsNullOrWhiteSpace(groupKey)
+            ? null
+            : groupKey.Trim();
+
+        var teams = await _repo.GetAllActiveAsync(ct);
+        var groupTeams = teams
+            .Where(t => t.GoogleGroupEmail is not null)
+            .Where(t => requestedKey is null
+                || string.Equals(t.GoogleGroupEmail, requestedKey, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        if (groupTeams.Count == 0)
+            return new Dictionary<string, Guid[]>(StringComparer.OrdinalIgnoreCase);
+
+        var duplicateGroupEmails = groupTeams
+            .GroupBy(t => t.GoogleGroupEmail!, StringComparer.OrdinalIgnoreCase)
+            .Where(g => g.Count() > 1)
+            .Select(g => g.Key)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var duplicateGroupEmail in duplicateGroupEmails)
+        {
+            _logger.LogWarning(
+                "Multiple active Teams share Google group {GroupKey}; skipping this group membership claim so Google sync fails closed",
+                duplicateGroupEmail);
+        }
+
+        var syncableGroupTeams = groupTeams
+            .Where(t => !duplicateGroupEmails.Contains(t.GoogleGroupEmail!))
+            .ToList();
+        if (syncableGroupTeams.Count == 0)
+            return new Dictionary<string, Guid[]>(StringComparer.OrdinalIgnoreCase);
+
+        var groupTeamIds = syncableGroupTeams.Select(t => t.Id).ToHashSet();
+        var parentIdByChildTeamId = teams
+            .Where(t => t.ParentTeamId is { } parentId && groupTeamIds.Contains(parentId))
+            .ToDictionary(t => t.Id, t => t.ParentTeamId!.Value);
+
+        var childMemberUserIdsByParentTeam = teams
+            .Where(t => parentIdByChildTeamId.ContainsKey(t.Id))
+            .GroupBy(t => parentIdByChildTeamId[t.Id])
+            .ToDictionary(
+                g => g.Key,
+                g => g.SelectMany(t => t.Members.Where(m => m.LeftAt is null).Select(m => m.UserId))
+                    .Distinct()
+                    .ToArray());
+
+        var result = new Dictionary<string, Guid[]>(StringComparer.OrdinalIgnoreCase);
+        foreach (var team in syncableGroupTeams)
+        {
+            var directUserIds = team.Members
+                .Where(m => m.LeftAt is null)
+                .Select(m => m.UserId);
+
+            var childUserIds = childMemberUserIdsByParentTeam.GetValueOrDefault(team.Id)
+                ?? Array.Empty<Guid>();
+
+            result[team.GoogleGroupEmail!] = directUserIds
+                .Concat(childUserIds)
+                .Distinct()
+                .ToArray();
+        }
+
+        return result;
     }
 }

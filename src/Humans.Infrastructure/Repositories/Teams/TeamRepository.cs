@@ -394,24 +394,6 @@ public sealed class TeamRepository : ITeamRepository
             .ToListAsync(ct);
     }
 
-    public async Task<IReadOnlyList<TeamMember>> GetActiveChildMembersByParentIdsAsync(
-        IReadOnlyCollection<Guid> parentTeamIds, CancellationToken ct = default)
-    {
-        if (parentTeamIds.Count == 0)
-            return [];
-
-        await using var db = await _factory.CreateDbContextAsync(ct);
-        return await db.TeamMembers
-            .AsNoTracking()
-            .Include(tm => tm.Team)
-            .Where(tm =>
-                tm.Team.ParentTeamId != null
-                && parentTeamIds.Contains(tm.Team.ParentTeamId!.Value)
-                && tm.Team.IsActive
-                && tm.LeftAt == null)
-            .ToListAsync(ct);
-    }
-
     public async Task<IReadOnlyList<Guid>> GetUserCoordinatorTeamIdsAsync(
         Guid userId, CancellationToken ct = default)
     {

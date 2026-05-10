@@ -13,26 +13,23 @@ namespace Humans.Application.Interfaces.GoogleIntegration;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Retry on transient Google failure flows through the existing
-/// <c>google_sync_outbox_events</c> table — the new
-/// <c>ReconcileGroupMembership</c> event type stores the group email in
-/// <c>DeduplicationKey</c>, which gives natural coalescing of multiple
-/// changes-in-quick-succession into a single reconcile pass.
+/// Scoped sync requests are queued through Hangfire. When a scoped execute
+/// pass hits a Google API failure, the orchestrator schedules another scoped
+/// execute pass for the same group key after the configured retry delay, up
+/// to the scoped retry cap.
 /// </para>
 /// <para>
-/// Drive folder permissions are <em>not</em> handled here — they remain
-/// per-user-per-team via <c>IGoogleSyncService.AddUserToTeamResourcesAsync</c>
-/// and <c>RemoveUserFromTeamResourcesAsync</c>. Group membership is the
-/// concern of this orchestrator alone.
+/// Drive folder permissions are not handled here. Drive access removal
+/// is deferred to the scheduled <c>GoogleResourceReconciliationJob</c>
+/// reconciliation pass. Group membership is the concern of this
+/// orchestrator alone.
 /// </para>
 /// </remarks>
 public interface IGoogleGroupSync
 {
     /// <summary>
     /// Enqueues a deferred reconcile for one group key. Called by section
-    /// services after a DB commit (e.g. team membership change). Coalesces
-    /// via <c>DeduplicationKey</c> — multiple calls for the same key while a
-    /// previous event is still pending collapse into one reconcile pass.
+    /// services after a DB commit (e.g. team membership change).
     /// </summary>
     Task RequestSyncAsync(string groupKey, CancellationToken ct = default);
 
@@ -51,15 +48,12 @@ public interface IGoogleGroupSync
         CancellationToken ct = default);
 
     /// <summary>
-    /// Reconciles one group. Throws on Google API failure so the outbox
-    /// processor can record retry state via the standard
-    /// <c>RetryCount</c> + <c>LastError</c> pattern. Called by
-    /// <c>ProcessGoogleSyncOutboxJob</c> when draining a
-    /// <c>ReconcileGroupMembership</c> event, and by the <c>/Google/Sync</c>
-    /// Groups tab's per-row Execute.
+    /// Reconciles one group. Called by Hangfire-scoped sync requests and by
+    /// the <c>/Google/Sync</c> Groups tab's per-row Execute.
     /// </summary>
     Task<ResourceSyncDiff> ReconcileOneAsync(
         string groupKey,
         SyncAction action,
-        CancellationToken ct = default);
+        CancellationToken ct = default,
+        int retryAttempt = 0);
 }

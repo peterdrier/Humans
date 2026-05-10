@@ -2,6 +2,7 @@ using Humans.Application.Interfaces;
 using Humans.Application.DTOs;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using NodaTime;
 
 namespace Humans.Application.Interfaces.Teams;
 
@@ -63,6 +64,17 @@ public interface ITeamResourceService : IApplicationService
     /// regardless of resource type. Used by admin aggregates (e.g. email rename impact).
     /// </summary>
     Task<IReadOnlyDictionary<Guid, int>> GetActiveResourceCountsByTeamAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Marks a Google resource reconciliation as successful and clears any
+    /// previously recorded sync error.
+    /// </summary>
+    Task MarkResourceSyncedAsync(Guid resourceId, Instant now, CancellationToken ct = default);
+
+    /// <summary>
+    /// Records the last Google reconciliation error for a linked team resource.
+    /// </summary>
+    Task RecordResourceErrorAsync(Guid resourceId, string errorMessage, CancellationToken ct = default);
 
     /// <summary>
     /// Gets the active Google resources visible to a user, joined with their team metadata.

@@ -587,11 +587,6 @@ public sealed class CachingTeamService : ITeamService, IUserMerge
         CancellationToken cancellationToken = default) =>
         WithInner(inner => inner.GetActiveMembersForTeamsAsync(teamIds, cancellationToken));
 
-    public Task<IReadOnlyList<TeamMember>> GetActiveChildMembersByParentIdsAsync(
-        IReadOnlyCollection<Guid> parentTeamIds,
-        CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetActiveChildMembersByParentIdsAsync(parentTeamIds, cancellationToken));
-
     public Task<Team?> GetSystemTeamWithActiveMembersAsync(
         SystemTeamType type,
         CancellationToken cancellationToken = default) =>

@@ -7,6 +7,7 @@ using Humans.Application.Interfaces.Users;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 using EmailProvisioningService = Humans.Application.Services.GoogleIntegration.EmailProvisioningService;
+using GoogleGroupSyncService = Humans.Application.Services.GoogleIntegration.GoogleGroupSyncService;
 using GoogleWorkspaceSyncService = Humans.Application.Services.GoogleIntegration.GoogleWorkspaceSyncService;
 
 namespace Humans.Application.Tests.Architecture;
@@ -149,8 +150,12 @@ public class GoogleIntegrationArchitectureTests
         var ctor = typeof(GoogleWorkspaceSyncService).GetConstructors().Single();
         var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
 
-        // Google SDK bridges (Part 2a).
-        paramTypes.Should().Contain(typeof(IGoogleGroupMembershipClient));
+        // Google SDK bridges (Part 2a). Group membership calls live in
+        // GoogleGroupSyncService; this service only provisions groups and
+        // manages settings drift.
+        paramTypes.Should().NotContain(typeof(IGoogleGroupMembershipClient));
+        paramTypes.Should().Contain(typeof(IGoogleGroupSync),
+            because: "group membership sync requests after Drive resource link/unlink route through IGoogleGroupSync.RequestSyncAsync");
         paramTypes.Should().Contain(typeof(IGoogleGroupProvisioningClient));
         paramTypes.Should().Contain(typeof(IGoogleDrivePermissionsClient));
         paramTypes.Should().Contain(typeof(IGoogleDirectoryClient));
@@ -185,5 +190,68 @@ public class GoogleIntegrationArchitectureTests
     {
         typeof(GoogleWorkspaceSyncService).IsSealed.Should().BeTrue(
             because: "§15-migrated services are sealed to prevent ad-hoc extension");
+    }
+    // GoogleGroupSyncService
+
+    [HumansFact]
+    public void GoogleGroupSyncService_LivesInHumansApplicationServicesGoogleIntegrationNamespace()
+    {
+        typeof(GoogleGroupSyncService).Namespace
+            .Should().Be("Humans.Application.Services.GoogleIntegration",
+                because: "Google group membership orchestration is Application-layer Google Integration business logic");
+    }
+
+    [HumansFact]
+    public void GoogleGroupSyncService_HasNoDbContextConstructorParameter()
+    {
+        var ctor = typeof(GoogleGroupSyncService).GetConstructors().Single();
+        ctor.GetParameters()
+            .Should().NotContain(
+                p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
+                because: "services in Humans.Application must never take DbContext");
+    }
+
+    [HumansFact]
+    public void GoogleGroupSyncService_HasNoDbContextFactoryConstructorParameter()
+    {
+        var ctor = typeof(GoogleGroupSyncService).GetConstructors().Single();
+        var factoryParam = ctor.GetParameters()
+            .FirstOrDefault(p =>
+                p.ParameterType.IsGenericType &&
+                p.ParameterType.GetGenericTypeDefinition() == typeof(IDbContextFactory<>));
+
+        factoryParam.Should().BeNull(
+            because: "IDbContextFactory belongs behind a repository or service boundary");
+    }
+
+    [HumansFact]
+    public void GoogleGroupSyncService_HasNoUserManagerConstructorParameter()
+    {
+        var ctor = typeof(GoogleGroupSyncService).GetConstructors().Single();
+        var userManagerParam = ctor.GetParameters()
+            .FirstOrDefault(p => (p.ParameterType.FullName ?? string.Empty)
+                .StartsWith("Microsoft.AspNetCore.Identity.UserManager", StringComparison.Ordinal));
+
+        userManagerParam.Should().BeNull(
+            because: "User mutations go through user-section service interfaces");
+    }
+
+    [HumansFact]
+    public void GoogleGroupSyncService_HasNoGoogleApisAssemblyReference()
+    {
+        var assembly = typeof(GoogleGroupSyncService).Assembly;
+        var referencedAssemblies = assembly.GetReferencedAssemblies();
+
+        referencedAssemblies
+            .Should().NotContain(
+                a => (a.Name ?? string.Empty).StartsWith("Google.Apis", StringComparison.Ordinal),
+                because: "SDK calls route through Google Integration bridge interfaces");
+    }
+
+    [HumansFact]
+    public void GoogleGroupSyncService_IsSealed()
+    {
+        typeof(GoogleGroupSyncService).IsSealed.Should().BeTrue(
+            because: "Application-layer Google Integration services are sealed to prevent ad-hoc extension");
     }
 }
