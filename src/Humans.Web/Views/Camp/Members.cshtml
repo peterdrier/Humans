@@ -164,15 +164,34 @@
                                         <span class="badge bg-info text-dark" title="Camp lead">Lead</span>
                                     }
                                 </div>
-                                @if (!active.IsLead && active.CampMemberId != Guid.Empty)
-                                {
-                                    <form asp-action="RemoveMembership" asp-route-slug="@Model.Slug" asp-route-campMemberId="@active.CampMemberId" method="post" class="d-inline">
-                                        @Html.AntiForgeryToken()
-                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove" data-confirm="Remove this human?">
-                                            <i class="fa-solid fa-user-minus"></i>
-                                        </button>
-                                    </form>
-                                }
+                                <div class="d-flex gap-2 align-items-center">
+                                    @if (active.CampMemberId != Guid.Empty)
+                                    {
+                                        var canGrant = Model.EeGrantedCount < Model.EeSlotCount;
+                                        var eeDisabled = !active.HasEarlyEntry && !canGrant;
+                                        <form method="post" asp-action="SetMemberEarlyEntry"
+                                              asp-route-slug="@Model.Slug" asp-route-campMemberId="@active.CampMemberId"
+                                              class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="granted" value="@((!active.HasEarlyEntry).ToString().ToLowerInvariant())" />
+                                            <button type="submit"
+                                                    class="btn btn-sm @(active.HasEarlyEntry ? "btn-success" : "btn-outline-secondary")"
+                                                    title="@(active.HasEarlyEntry ? "Revoke Early Entry" : "Grant Early Entry")"
+                                                    @(eeDisabled ? "disabled" : "")>
+                                                @(active.HasEarlyEntry ? "✓ EE" : "Grant EE")
+                                            </button>
+                                        </form>
+                                    }
+                                    @if (!active.IsLead && active.CampMemberId != Guid.Empty)
+                                    {
+                                        <form asp-action="RemoveMembership" asp-route-slug="@Model.Slug" asp-route-campMemberId="@active.CampMemberId" method="post" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove" data-confirm="Remove this human?">
+                                                <i class="fa-solid fa-user-minus"></i>
+                                            </button>
+                                        </form>
+                                    }
+                                </div>
                             </li>
                         }
                     </ul>

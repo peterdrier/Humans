@@ -494,7 +494,8 @@ public class CampController : HumansCampControllerBase
                 DisplayName = m.DisplayName,
                 RequestedAt = m.RequestedAt,
                 ConfirmedAt = m.ConfirmedAt,
-                IsLead = m.IsLead
+                IsLead = m.IsLead,
+                HasEarlyEntry = m.HasEarlyEntry
             })
             .ToList();
         viewModel.ActiveMembers = members.Active
@@ -505,9 +506,12 @@ public class CampController : HumansCampControllerBase
                 DisplayName = m.DisplayName,
                 RequestedAt = m.RequestedAt,
                 ConfirmedAt = m.ConfirmedAt,
-                IsLead = m.IsLead
+                IsLead = m.IsLead,
+                HasEarlyEntry = m.HasEarlyEntry
             })
             .ToList();
+        viewModel.EeSlotCount = members.EeSlotCount;
+        viewModel.EeGrantedCount = viewModel.ActiveMembers.Count(m => m.HasEarlyEntry);
     }
 
     [Authorize]

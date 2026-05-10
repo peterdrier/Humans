@@ -152,6 +152,10 @@ public class CampEditViewModel : CampRegisterViewModel
     public List<CampHistoricalNameViewModel> ExistingHistoricalNames { get; set; } = new();
     public List<CampMemberRowViewModel> PendingMembers { get; set; } = new();
     public List<CampMemberRowViewModel> ActiveMembers { get; set; } = new();
+    /// <summary>EE slot cap for the current season (CampAdmin-managed). 0 = no EE.</summary>
+    public int EeSlotCount { get; set; }
+    /// <summary>Count of active members with HasEarlyEntry=true for the current season.</summary>
+    public int EeGrantedCount { get; set; }
 
     /// <summary>
     /// Per-camp roles panel data (issue nobodies-collective#489). Null when the
@@ -168,6 +172,7 @@ public class CampMemberRowViewModel
     public NodaTime.Instant RequestedAt { get; set; }
     public NodaTime.Instant? ConfirmedAt { get; set; }
     public bool IsLead { get; set; }
+    public bool HasEarlyEntry { get; set; }
 }
 
 public class CampImageViewModel

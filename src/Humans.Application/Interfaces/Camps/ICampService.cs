@@ -258,6 +258,7 @@ public enum CampMemberStatusSummary
 public record CampMemberListData(
     Guid CampSeasonId,
     int Year,
+    int EeSlotCount,
     IReadOnlyList<CampMemberRow> Pending,
     IReadOnlyList<CampMemberRow> Active);
 
@@ -272,7 +273,8 @@ public record CampMemberRow(
     string DisplayName,
     Instant RequestedAt,
     Instant? ConfirmedAt,
-    bool IsLead);
+    bool IsLead,
+    bool HasEarlyEntry);
 
 public record CampMembershipSummary(
     Guid CampMemberId,
