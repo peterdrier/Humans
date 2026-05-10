@@ -45,7 +45,7 @@ Cross-domain nav `Camp.CreatedByUser` is declared on the entity but never read b
 
 ### CampSeason
 
-Per-year season data (name, blurbs, community info, placement).
+Per-year season data (name, blurbs, community info, placement). `EeSlotCount` (int, default 0) tracks the Early Entry slot cap for the season; managed by CampAdmin.
 
 **Table:** `camp_seasons`
 
@@ -73,7 +73,7 @@ Name history for tracking renames.
 
 ### CampSettings
 
-Singleton settings: public year, open seasons, name-lock dates.
+Singleton settings: public year, open seasons, name-lock dates, and Early Entry start date. `EeStartDate` (LocalDate?, nullable) is the global date from which EE access begins; set by CampAdmin/Admin.
 
 **Table:** `camp_settings`
 
@@ -94,6 +94,7 @@ Per-season, post-hoc human/camp affiliation. Status: Pending → Active → Remo
 | ConfirmedByUserId | Guid? | Lead who approved (scalar) |
 | RemovedAt | Instant? | Set on remove/withdraw/leave/reject |
 | RemovedByUserId | Guid? | Actor who closed the row (scalar) |
+| HasEarlyEntry | bool | Default false; cleared on Removed transition |
 
 ### CampRoleDefinition
 
@@ -179,6 +180,9 @@ Three controllers serve this section. The MVC URL surface is dual-routed under `
 | `/Camps/Admin/{Approve,Reject,OpenSeason,CloseSeason,SetPublicYear,SetNameLockDate,Reactivate,UpdateRegistrationInfo,Delete}/...` | `CampAdminController` | Season lifecycle actions |
 | `/api/camps/{year}` | `CampApiController` | Year directory JSON |
 | `/api/camps/{year}/placement` | `CampApiController` | Placement-data JSON |
+| `/Camps/{slug}/Members/{campMemberId}/EarlyEntry` | `CampController` | Grant / revoke EE on a camp member |
+| `/Camps/Admin/SetCampSeasonEeSlotCount/{seasonId}` | `CampAdminController` | Set a season's EE slot cap |
+| `/Camps/Admin/SetEeStartDate` | `CampAdminController` | Set the global EE start date |
 
 Admin pages live under `/Camps/Admin/*` — never `/Admin/Camps/*` (per `docs/architecture/design-rules.md` § "Admin is not a section": `/Admin/*` is a nav holder for actions whose services live in their owning sections).
 
@@ -210,6 +214,10 @@ Admin pages live under `/Camps/Admin/*` — never `/Admin/Camps/*` (per `docs/ar
 - Leave/Withdraw/Remove cascades clear role assignments via `ICampRoleService.RemoveAllForMemberAsync` before the soft-delete. Hard-delete of a `CampMember` row cascades through the FK directly.
 - Camp Lead authz remains on the `CampLead` entity until the follow-up issue retires it. The "Camp Lead" role is **not** a `CampRoleDefinition` row in this PR.
 - The `/Camps ↔ /Barrios` and `/api/camps ↔ /api/barrios` dual-route aliases are the **only sanctioned URL aliases in the codebase**. No other section may add URL aliases without explicit owner approval.
+- Early Entry slot count is per-season (`CampSeason.EeSlotCount`, CampAdmin-managed). The EE start date is global per year (`CampSettings.EeStartDate`).
+- A `CampMember.HasEarlyEntry` grant requires `Status = Active`. Granting beyond `EeSlotCount` is rejected; lowering `EeSlotCount` below current grants is allowed (no auto-revoke; overflow flagged in UI).
+- Member-removal transitions (Remove / Leave / Withdraw / Reject) clear `HasEarlyEntry` in the same `SaveChangesAsync` as the status flip.
+- EE state is **never** rendered on anonymous or public views — only on `/Camps/Admin` and `/Camps/{slug}/Edit/Members` for CampAdmin/leads.
 
 ## Negative Access Rules
 
@@ -221,6 +229,8 @@ Admin pages live under `/Camps/Admin/*` — never `/Admin/Camps/*` (per `docs/ar
 - Camp leads **cannot** manage the role-definition catalogue (create, edit, deactivate). Only CampAdmin or Admin can.
 - A camp lead **cannot** assign or unassign roles on a camp other than their own (controller verifies `assignment.CampSeason.CampId == camp.Id` before delegating to the service).
 - Anyone **cannot** assign a role to a human who is not an Active CampMember of the same season — service rejects with `MemberNotActive` / `MemberSeasonMismatch`.
+- Camp leads **cannot** edit `EeSlotCount` (CampAdmin/Admin only).
+- Anyone **cannot** grant EE to a non-Active member (service rejects with `MemberNotActive`).
 
 ## Triggers
 
@@ -236,6 +246,8 @@ Admin pages live under `/Camps/Admin/*` — never `/Admin/Camps/*` (per `docs/ar
 - Assigning a per-camp role writes a `CampRoleAssigned` audit entry and sends a best-effort `CampRoleAssigned` notification to the assignee. Unassign writes `CampRoleUnassigned` and does **not** notify.
 - Definition CRUD (`CampRoleDefinitionCreated` / `Updated` / `Deactivated` / `Reactivated`) writes audit entries; ordering is `repo.Add` then `SaveChangesAsync` then `auditLog.LogAsync`.
 - When an account merge accepts, `ICampService.ReassignAssignmentsToUserAsync` re-FKs `CampLead.UserId` and `CampRoleAssignment.AssignedByUserId` from source to target. Called only by `IAccountMergeService.AcceptAsync` (Profiles section). **Known gap:** `CampMember.UserId` is **not** currently folded — `CampMember` rows attached to a source remain attributed to the tombstoned source after merge.
+- Granting / revoking EE writes `CampEarlyEntryGranted` / `CampEarlyEntryRevoked` audit entries. Idempotent set writes no audit row.
+- Changing `EeSlotCount` writes `CampSeasonEeSlotCountChanged`; changing `EeStartDate` writes `CampSettingsEeStartDateChanged`.
 
 ## Cross-Section Dependencies
 
