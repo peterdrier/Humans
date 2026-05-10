@@ -382,7 +382,7 @@ Adds a column with a default — existing rows get `[]` automatically; no backfi
 
 - Add `nameof(VolunteerTrackingController.SetDayOff)` and `nameof(VolunteerTrackingController.ClearDayOff)` to both `WriteActions_Require_VolunteerTrackingWrite_Policy` and `WriteActions_Have_AntiForgery_Validation` theories.
 - `SetDayOff_HappyPath_RedirectsAndAuditsMarkedAction`.
-- `SetDayOff_ServiceRejects_ReturnsBadRequestWithErrorTempData_NoAudit`.
+- `SetDayOff_ServiceRejects_RedirectsWithErrorTempData_NoAudit`.
 - `ClearDayOff_HappyPath_RedirectsAndAuditsClearedAction`.
 - `ClearDayOff_NoEntryToRemove_RedirectsWithoutAudit`.
 - `SetCampSetup_FansOutOneAuditPerAutoClearedDayOff` — when the service's `AutoClearedDayOffs` is non-empty, the controller emits one `VolunteerDayOffCleared` row per offset alongside the `VolunteerCampSetupSet` row.
