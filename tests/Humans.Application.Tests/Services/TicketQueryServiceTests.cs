@@ -184,6 +184,37 @@ public sealed class TicketQueryServiceTests : IDisposable
         weekly.VipDonations.Should().Be(0m);
     }
 
+    [HumansFact]
+    public async Task GetAvailableTicketTypesAsync_ReturnsDistinctTypes()
+    {
+        var orderId = Guid.NewGuid();
+        _dbContext.TicketOrders.Add(new TicketOrder
+        {
+            Id = orderId,
+            VendorOrderId = "ord_ticket_type_options",
+            BuyerName = "Buyer",
+            BuyerEmail = "buyer@example.com",
+            TotalAmount = 300m,
+            Currency = "EUR",
+            PaymentStatus = TicketPaymentStatus.Paid,
+            VendorEventId = "ev_test",
+            PurchasedAt = Instant.FromUtc(2026, 3, 1, 10, 0),
+            SyncedAt = Instant.FromUtc(2026, 3, 1, 10, 0),
+            Attendees =
+            [
+                MakeAttendee(orderId, "tkt_weekend", "Weekend"),
+                MakeAttendee(orderId, "tkt_vip", "VIP"),
+                MakeAttendee(orderId, "tkt_full_week", "Full Week"),
+                MakeAttendee(orderId, "tkt_weekend_duplicate", "Weekend")
+            ]
+        });
+        await _dbContext.SaveChangesAsync();
+
+        var types = await _service.GetAvailableTicketTypesAsync();
+
+        types.Should().BeEquivalentTo(["Full Week", "VIP", "Weekend"]);
+    }
+
     // ====================================================================
     // GetOrdersPageAsync tests
     // ====================================================================
@@ -574,4 +605,19 @@ public sealed class TicketQueryServiceTests : IDisposable
             Attendees = attendees,
         };
     }
+
+    private static TicketAttendee MakeAttendee(Guid orderId, string vendorTicketId, string ticketTypeName) =>
+        new()
+        {
+            Id = Guid.NewGuid(),
+            VendorTicketId = vendorTicketId,
+            TicketOrderId = orderId,
+            TicketOrder = null!,
+            AttendeeName = ticketTypeName,
+            TicketTypeName = ticketTypeName,
+            Price = 100m,
+            Status = TicketAttendeeStatus.Valid,
+            VendorEventId = "ev_test",
+            SyncedAt = Instant.FromUtc(2026, 3, 1, 10, 0),
+        };
 }

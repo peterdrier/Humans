@@ -50,11 +50,7 @@ public sealed class LegalDocumentRepository : ILegalDocumentRepository
             query = query.Where(d => d.TeamId == teamId.Value);
         }
 
-        // Order by document name — callers group/sort by team name in memory
-        // after stitching via ITeamService so this repo never .Include(d => d.Team).
-        return await query
-            .OrderBy(d => d.Name)
-            .ToListAsync(ct);
+        return await query.ToListAsync(ct);
     }
 
     public async Task<IReadOnlyList<LegalDocument>> GetActiveDocumentsAsync(CancellationToken ct = default)

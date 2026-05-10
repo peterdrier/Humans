@@ -79,7 +79,7 @@ public sealed class FeedbackRepository : IFeedbackRepository
             query = query.Where(f => f.AssignedToUserId == null && f.AssignedToTeamId == null);
 
         return await query
-            .OrderByDescending(f => f.CreatedAt)
+            .OrderByDescending(f => f.CreatedAt) // arch:db-sort-ok top-N selector
             .Take(limit)
             .ToListAsync(ct);
     }
@@ -128,7 +128,6 @@ public sealed class FeedbackRepository : IFeedbackRepository
             .AsNoTracking()
             .Include(fr => fr.Messages)
             .Where(fr => fr.UserId == userId)
-            .OrderByDescending(fr => fr.CreatedAt)
             .ToListAsync(ct);
     }
 

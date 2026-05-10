@@ -7,10 +7,10 @@ using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 
@@ -21,24 +21,18 @@ namespace Humans.Application.Services.Users.AccountLifecycle;
 /// <see cref="IAccountDeletionService"/> for the shape and rationale.
 /// </summary>
 /// <remarks>
-/// <para>
 /// Foundational services (<see cref="IUserService"/>, <see cref="IProfileService"/>)
 /// must not reach up into higher-level sections — Teams, RoleAssignments,
-/// Shifts all sit above them in the section ownership graph (see
-/// <c>project_section_ownership</c> memory + <c>feedback_user_profile_foundational</c>).
-/// Placing the cascade here keeps User/Profile dependency-free of those
-/// sections and gives the Hangfire deletion job a single entry point.
-/// </para>
-/// <para>
-/// Lazy-resolves <see cref="IProfileService"/> via <see cref="IServiceProvider"/>
-/// to break the Profile ↔ AccountDeletion DI cycle: <see cref="IProfileService"/>
-/// eagerly injects <see cref="IAccountDeletionService"/> (so that
-/// <c>CachingProfileService</c> can fire post-success cache side effects on
-/// <c>RequestDeletionAsync</c>), so this service must lazy-resolve
-/// <see cref="IProfileService"/> back to invoke the cascade's
-/// profile-anonymization step. See <c>docs/architecture/dependency-graph.md</c>
-/// cycle #2.
-/// </para>
+/// Shifts, Tickets all sit above them in the section ownership graph (see
+/// <c>memory/architecture/user-profile-foundational.md</c>). Placing the
+/// cascade here keeps User/Profile dependency-free of those sections and
+/// gives the Hangfire deletion job + the user-initiated entry points
+/// (<c>ProfileController.RequestDeletion</c>, <c>GuestController.RequestDeletion</c>)
+/// a single orchestrator. Issue nobodies-collective/Humans#685 dropped the
+/// previous lazy <see cref="IServiceProvider"/> resolve of
+/// <see cref="IProfileService"/>: removing <c>RequestDeletionAsync</c> from
+/// <see cref="IProfileService"/> dissolved the Profile↔AccountDeletion DI
+/// cycle, so this service now eagerly injects <see cref="IProfileService"/>.
 /// </remarks>
 public sealed class AccountDeletionService : IAccountDeletionService
 {
@@ -48,18 +42,14 @@ public sealed class AccountDeletionService : IAccountDeletionService
     private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly IShiftSignupService _shiftSignupService;
     private readonly IShiftManagementService _shiftManagementService;
-    private readonly IServiceProvider _serviceProvider;
+    private readonly IProfileService _profileService;
+    private readonly ITicketQueryService _ticketQueryService;
     private readonly IRoleAssignmentClaimsCacheInvalidator _roleAssignmentClaimsInvalidator;
     private readonly IShiftAuthorizationInvalidator _shiftAuthorizationInvalidator;
     private readonly IAuditLogService _auditLogService;
     private readonly IEmailService _emailService;
     private readonly IClock _clock;
     private readonly ILogger<AccountDeletionService> _logger;
-
-    // Lazy-resolved to break the Profile ↔ AccountDeletion DI cycle (see
-    // class remarks). Only called on the expiry-cascade path, so the extra
-    // resolve cost is irrelevant.
-    private IProfileService ProfileService => _serviceProvider.GetRequiredService<IProfileService>();
 
     public AccountDeletionService(
         IUserService userService,
@@ -68,7 +58,8 @@ public sealed class AccountDeletionService : IAccountDeletionService
         IRoleAssignmentService roleAssignmentService,
         IShiftSignupService shiftSignupService,
         IShiftManagementService shiftManagementService,
-        IServiceProvider serviceProvider,
+        IProfileService profileService,
+        ITicketQueryService ticketQueryService,
         IRoleAssignmentClaimsCacheInvalidator roleAssignmentClaimsInvalidator,
         IShiftAuthorizationInvalidator shiftAuthorizationInvalidator,
         IAuditLogService auditLogService,
@@ -82,7 +73,8 @@ public sealed class AccountDeletionService : IAccountDeletionService
         _roleAssignmentService = roleAssignmentService;
         _shiftSignupService = shiftSignupService;
         _shiftManagementService = shiftManagementService;
-        _serviceProvider = serviceProvider;
+        _profileService = profileService;
+        _ticketQueryService = ticketQueryService;
         _roleAssignmentClaimsInvalidator = roleAssignmentClaimsInvalidator;
         _shiftAuthorizationInvalidator = shiftAuthorizationInvalidator;
         _auditLogService = auditLogService;
@@ -95,20 +87,32 @@ public sealed class AccountDeletionService : IAccountDeletionService
     // User-initiated deletion request (30-day scheduled)
     // ==========================================================================
 
-    public async Task<OnboardingResult> RequestDeletionAsync(Guid userId, CancellationToken ct = default)
+    public async Task<DeletionRequestResult> RequestDeletionAsync(Guid userId, CancellationToken ct = default)
     {
         var user = await _userService.GetByIdAsync(userId, ct);
         if (user is null)
-            return new OnboardingResult(false, "NotFound");
+            return new DeletionRequestResult(false, "NotFound");
 
         if (user.IsDeletionPending)
-            return new OnboardingResult(false, "AlreadyPending");
+            return new DeletionRequestResult(false, "AlreadyPending");
 
         var now = _clock.GetCurrentInstant();
         var deletionDate = now.Plus(Duration.FromDays(30));
 
-        // 1. Persist deletion-pending fields on User.
-        await _userService.SetDeletionPendingAsync(userId, now, deletionDate, ct);
+        // Ticket hold: if the user holds a current event ticket, deletion is
+        // held until after the event so the ticket remains usable. Previously
+        // computed in ProfileService.GetEventHoldDateAsync; folded inline so
+        // both deletion-request entry points (profile and profileless) get
+        // the same treatment without a Profile-section round-trip.
+        Instant? eligibleAfter = null;
+        if (await _ticketQueryService.HasCurrentEventTicketAsync(userId, ct))
+        {
+            eligibleAfter = await _ticketQueryService.GetPostEventHoldDateAsync(ct);
+        }
+
+        // 1. Persist deletion-pending fields on User. UserService invalidates
+        //    FullProfile after the write.
+        await _userService.SetDeletionPendingAsync(userId, now, deletionDate, eligibleAfter, ct);
 
         // 2. Revoke team memberships and team role assignments immediately so
         //    the user loses access during the 30-day grace period.
@@ -124,9 +128,9 @@ public sealed class AccountDeletionService : IAccountDeletionService
             userId);
 
         _logger.LogWarning(
-            "User {UserId} requested account deletion. Scheduled for {DeletionDate}. " +
+            "User {UserId} requested account deletion. Scheduled for {DeletionDate} (eligibleAfter {EligibleAfter}). " +
             "Revoked {MembershipCount} memberships and {RoleCount} roles immediately",
-            userId, deletionDate, endedMemberships, endedRoles);
+            userId, deletionDate, eligibleAfter, endedMemberships, endedRoles);
 
         // 5. Send deletion confirmation email. Route through IUserEmailService —
         //    user_emails is a Profiles-section table, so we cross via the
@@ -150,6 +154,27 @@ public sealed class AccountDeletionService : IAccountDeletionService
         //    callers of IAccountDeletionService don't depend on routing through
         //    the Profile caching decorator for correctness.
         _shiftAuthorizationInvalidator.Invalidate(userId);
+
+        return new DeletionRequestResult(
+            Success: true,
+            EffectiveDeletionDate: eligibleAfter ?? deletionDate,
+            IsHeldForTicket: eligibleAfter is not null);
+    }
+
+    public async Task<OnboardingResult> CancelDeletionAsync(Guid userId, CancellationToken ct = default)
+    {
+        var user = await _userService.GetByIdAsync(userId, ct);
+        if (user is null)
+            return new OnboardingResult(false, "NotFound");
+
+        if (!user.IsDeletionPending)
+            return new OnboardingResult(false, "NoDeletionPending");
+
+        // UserService.ClearDeletionAsync writes the User row and invalidates
+        // FullProfile.
+        await _userService.ClearDeletionAsync(userId, ct);
+
+        _logger.LogInformation("User {UserId} cancelled account deletion request", userId);
 
         return new OnboardingResult(true);
     }
@@ -233,7 +258,7 @@ public sealed class AccountDeletionService : IAccountDeletionService
         await _roleAssignmentService.RevokeAllActiveAsync(userId, ct);
 
         // 3. Anonymize the profile + remove contact fields + volunteer history.
-        await ProfileService.AnonymizeExpiredProfileAsync(userId, ct);
+        await _profileService.AnonymizeExpiredProfileAsync(userId, ct);
 
         // 4. Cancel active shift signups (returns ids for per-signup audit log).
         var cancelledSignupIds = await _shiftSignupService.CancelActiveSignupsForUserAsync(

@@ -140,7 +140,6 @@ public class TeamServiceTests : IDisposable
             Substitute.For<INotificationMeterCacheInvalidator>(),
             _shiftAuthInvalidator,
             serviceProvider,
-            _cache,
             _clock,
             NullLogger<TeamService>.Instance);
     }
@@ -634,7 +633,7 @@ public class TeamServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task GetAllTeamsAsync_OrderedByName()
+    public async Task GetAllTeamsAsync_ReturnsActiveTeamsWithoutPresentationOrdering()
     {
         SeedTeam("Charlie");
         SeedTeam("Alpha");
@@ -643,9 +642,7 @@ public class TeamServiceTests : IDisposable
 
         var result = await _service.GetAllTeamsAsync();
 
-        result.Select(t => t.Name).Should().BeEquivalentTo(
-            new[] { "Alpha", "Bravo", "Charlie" },
-            cfg => cfg.WithStrictOrdering());
+        result.Select(t => t.Name).Should().BeEquivalentTo(["Alpha", "Bravo", "Charlie"]);
     }
 
     [HumansFact]

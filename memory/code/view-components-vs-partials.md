@@ -24,7 +24,7 @@ ASP.NET Core offers two reusable view mechanisms. Use the right one:
 **Interactive search rule:**
 - If two endpoints feed the same client-side interaction pattern, prefer a shared builder/helper for the response assembly instead of duplicating result-shaping logic in each controller
 
-**Existing View Components:** `ProfileCardViewComponent`, `NavBadgesViewComponent`, `UserAvatarViewComponent`, `TempDataAlertsViewComponent`.
+**Existing View Components:** `ProfileCardViewComponent`, `NavBadgesViewComponent`, `HumanViewComponent`, `TempDataAlertsViewComponent`.
 
 **Example — wrong:**
 ```csharp

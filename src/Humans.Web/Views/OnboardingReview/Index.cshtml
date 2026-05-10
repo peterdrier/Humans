@@ -46,9 +46,7 @@
                                 {
                                     <span class="form-check-input me-3 invisible" aria-hidden="true"></span>
                                 }
-                                <human-link user-id="@item.UserId" display-name="@item.DisplayName"
-                                            mode="Avatar" size="40" show-popover="false"
-                                            profile-picture-url="@item.ProfilePictureUrl" />
+                                <vc:human user-id="@item.UserId" layout="Avatar" size="40" popover="false" />
                                 <a asp-controller="Profile" asp-action="ViewProfile" asp-route-id="@item.UserId"
                                    class="ms-2 text-decoration-none text-reset"
                                    data-human-popover="true"
@@ -111,9 +109,7 @@
                                 {
                                     <span class="form-check-input me-3 invisible" aria-hidden="true"></span>
                                 }
-                                <human-link user-id="@item.UserId" display-name="@item.DisplayName"
-                                            mode="Avatar" size="40" show-popover="false"
-                                            profile-picture-url="@item.ProfilePictureUrl" />
+                                <vc:human user-id="@item.UserId" layout="Avatar" size="40" popover="false" />
                                 <a asp-controller="Profile" asp-action="ViewProfile" asp-route-id="@item.UserId"
                                    class="ms-2 text-decoration-none text-reset"
                                    data-human-popover="true"

@@ -1,3 +1,4 @@
+using Humans.Application.DTOs;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Domain.ValueObjects;
@@ -5,13 +6,13 @@ using NodaTime;
 
 namespace Humans.Application.Interfaces.Teams;
 
-public record CachedTeam(
+public record TeamInfo(
     Guid Id, string Name, string? Description, string Slug,
-    bool IsSystemTeam, SystemTeamType SystemTeamType, bool RequiresApproval,
-    bool IsPublicPage, bool IsHidden, bool IsPromotedToDirectory, Instant CreatedAt, List<CachedTeamMember> Members,
+    bool IsActive, bool IsSystemTeam, SystemTeamType SystemTeamType, bool RequiresApproval,
+    bool IsPublicPage, bool IsHidden, bool IsPromotedToDirectory, Instant CreatedAt, List<TeamMemberInfo> Members,
     Guid? ParentTeamId = null);
 
-public record CachedTeamMember(
+public record TeamMemberInfo(
     Guid TeamMemberId, Guid UserId, string DisplayName,
     string? ProfilePictureUrl, TeamMemberRole Role, Instant JoinedAt);
 
@@ -149,6 +150,16 @@ public interface ITeamService
     Task<Team?> GetTeamByIdAsync(Guid teamId, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Gets the team read model by ID, including active members.
+    /// </summary>
+    Task<TeamInfo?> GetTeamAsync(Guid teamId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets team read models keyed by ID, including active members.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, TeamInfo>> GetTeamsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Returns the display name of the team whose <c>GoogleGroupPrefix</c> matches
     /// <paramref name="googleGroupPrefix"/> (case-insensitive), or null if no team
     /// uses that prefix. Used by @nobodies.team provisioning to block personal
@@ -174,6 +185,18 @@ public interface ITeamService
     /// Gets all active teams.
     /// </summary>
     Task<IReadOnlyList<Team>> GetAllTeamsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Active, non-hidden teams whose <c>Name</c> contains
+    /// <paramref name="query"/> (case-insensitive). Capped at
+    /// <paramref name="max"/>; returned in unspecified order — the global
+    /// search orchestrator scores and ranks. Used by the global /Search
+    /// page (<c>SearchService</c>); every caller sees the public surface
+    /// regardless of role.
+    /// </summary>
+    Task<IReadOnlyList<TeamSearchHit>> SearchAsync(
+        string query, int max,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets the summarized team directory for anonymous or authenticated viewers.

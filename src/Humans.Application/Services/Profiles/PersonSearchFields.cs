@@ -29,9 +29,10 @@ public enum PersonSearchFields
     /// <summary>No fields. Returns no results.</summary>
     None = 0,
 
-    /// <summary><see cref="Humans.Domain.Entities.Profile.BurnerName"/> +
-    /// the underlying <c>User.DisplayName</c> (legal/registered name). The
-    /// "narrow picker" subset.</summary>
+    /// <summary><see cref="Humans.Domain.Entities.Profile.BurnerName"/> only.
+    /// The legacy <c>User.DisplayName</c> is never matched — it would leak
+    /// the legacy field that the BurnerName replaces. The "narrow picker"
+    /// subset.</summary>
     Name = 1 << 0,
 
     /// <summary>Bio, city, contribution-interests, CV entries, pronouns, and

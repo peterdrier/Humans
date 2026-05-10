@@ -17,3 +17,9 @@ The `tests/Humans.Application.Tests/Architecture/InterfaceMethodBudgetTests.cs` 
 - **Hit a wall? STOP and ask Peter.** If a feature genuinely can't be expressed without growth, present the case and let him decide. Don't raise, split, or work around in the meantime.
 
 **Scope:** all currently-budgeted interfaces (ITeamService, ICampService, IShiftManagementService, IProfileService, IUserService — verify the test file for the current set). The list of budgeted interfaces can grow (bringing more under the ratchet); no number on an existing entry goes up.
+
+**Authorized exceptions log:**
+
+- 2026-05-09 (issue #682): +1 each on `ITeamService`, `ICampService`, `IShiftManagementService` for `SearchAsync`. Queries against the owning section's tables must live in that section's service per design-rules §6 — moving them in is the consolidation goal, not a workaround.
+- 2026-05-10 (PR #474, Peter explicit sign-off): +2 on `ITeamService` for canonical `GetTeamAsync(Guid)` / `GetTeamsAsync()` read-model methods that make the `CachingTeamService` decorator possible and establish the consolidation target for removing narrower team read helpers. This is temporary groundwork for the service-entity-boundary cleanup; follow-up Teams passes must reduce the budget back down by migrating callers to these methods and removing obsolete `Get*` helpers.
+- 2026-05-10 (PR #474, Peter explicit sign-off): +1 on `ITeamRepository` for `GetAllWithMembersAsync`, needed by the `CachingTeamService` canonical team index because the previous active-only shape excluded inactive teams and `GetAllAsync` does not include members.

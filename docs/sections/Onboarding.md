@@ -112,7 +112,7 @@ After the nobodies-collective#584 narrowing, `OnboardingService` injects only wh
 ## Architecture
 
 **Owning services:** `OnboardingService` (intake funnel only after the nobodies-collective#584 narrowing).
-**Sibling services in the three-concerns split:** `HumanLifecycleService` (state-machine), `ApplicationDecisionService` (board voting), `AdminDashboardService` (dashboard aggregation), future `AccountDeletionService` (cascade).
+**Sibling services in the three-concerns split:** `HumanLifecycleService` (state-machine), `ApplicationDecisionService` (board voting), `AdminDashboardService` (dashboard aggregation), `AccountDeletionService` (cascade — single entry point for `RequestDeletionAsync` and `CancelDeletionAsync`; both `ProfileController` and `GuestController` deletion actions call through it; ticket-hold + 30-day-grace fields written atomically, see `Profiles.md` cascade section).
 **Owned tables:** None — orchestrator over Profiles, Legal & Consent, Teams, Governance.
 **Status:** (A) Migrated (peterdrier/Humans PR #285 for issue nobodies-collective/Humans#553, 2026-04-22). Three-concerns narrowing complete with nobodies-collective#583 (lifecycle) and nobodies-collective#584 (board voting + admin dashboard).
 

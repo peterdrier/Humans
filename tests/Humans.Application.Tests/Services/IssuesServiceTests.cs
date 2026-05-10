@@ -608,6 +608,59 @@ public class IssuesServiceTests : IDisposable
             Arg.Any<CancellationToken>());
     }
 
+    [HumansFact]
+    public async Task GetIssueListAsync_applies_updated_descending_limit()
+    {
+        var reporterId = Guid.NewGuid();
+        _dbContext.Users.Add(new User
+        {
+            Id = reporterId,
+            Email = "reporter@example.org",
+            DisplayName = "Reporter"
+        });
+
+        var older = new Issue
+        {
+            Id = Guid.NewGuid(),
+            ReporterUserId = reporterId,
+            Category = IssueCategory.Bug,
+            Title = "Older",
+            Description = "Description",
+            Status = IssueStatus.Open,
+            CreatedAt = _clock.GetCurrentInstant(),
+            UpdatedAt = _clock.GetCurrentInstant() - Duration.FromHours(2)
+        };
+        var newer = new Issue
+        {
+            Id = Guid.NewGuid(),
+            ReporterUserId = reporterId,
+            Category = IssueCategory.Bug,
+            Title = "Newer",
+            Description = "Description",
+            Status = IssueStatus.Open,
+            CreatedAt = _clock.GetCurrentInstant(),
+            UpdatedAt = _clock.GetCurrentInstant()
+        };
+        var middle = new Issue
+        {
+            Id = Guid.NewGuid(),
+            ReporterUserId = reporterId,
+            Category = IssueCategory.Bug,
+            Title = "Middle",
+            Description = "Description",
+            Status = IssueStatus.Open,
+            CreatedAt = _clock.GetCurrentInstant(),
+            UpdatedAt = _clock.GetCurrentInstant() - Duration.FromHours(1)
+        };
+        await _dbContext.Issues.AddRangeAsync(older, newer, middle);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.GetIssueListAsync(
+            new IssueListFilter(Limit: 2), reporterId, viewerRoles: [], viewerIsAdmin: true);
+
+        result.Select(i => i.Id).Should().Equal(newer.Id, middle.Id);
+    }
+
     // ==========================================================================
     // GetActionableCountForViewerAsync
     // ==========================================================================

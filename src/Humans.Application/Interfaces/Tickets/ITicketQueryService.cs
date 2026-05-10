@@ -1,4 +1,5 @@
 using Humans.Application.DTOs;
+using Humans.Domain.Entities;
 using NodaTime;
 
 namespace Humans.Application.Interfaces.Tickets;
@@ -166,6 +167,18 @@ public interface ITicketQueryService
         Instant fromInclusive,
         Instant toExclusive,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Cache eviction seam invoked by <c>TicketTransferService</c> after an
+    /// approved transfer has mutated local <see cref="TicketAttendee"/> rows
+    /// (the voided original and, on full success, the newly issued row for the
+    /// Receiver). Drops <c>UserIdsWithTickets</c>, <c>ValidAttendeeEmails</c>,
+    /// and per-user ticket counts for both parties so the homepage card
+    /// reflects the new state without waiting for the 5-min TTL or the next
+    /// vendor sync. Pass <c>null</c> for <paramref name="receiverUserId"/>
+    /// when the Receiver did not gain a local row (vendor reissue half-failed).
+    /// </summary>
+    void InvalidateAfterTransfer(Guid senderUserId, Guid? receiverUserId);
 }
 
 /// <summary>

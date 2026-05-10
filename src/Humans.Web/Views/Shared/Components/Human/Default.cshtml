@@ -1,0 +1,72 @@
+@model Humans.Web.ViewComponents.HumanViewModel
+@using Humans.Web.ViewComponents
+@using System.Globalization
+@functions {
+    string AvatarHtml(string? extraClass)
+    {
+        var enc = System.Text.Encodings.Web.HtmlEncoder.Default;
+        var classExtra = string.IsNullOrEmpty(extraClass) ? "" : " " + extraClass;
+        var sizeStyle = $"width: {Model.Size}px; height: {Model.Size}px;";
+        if (!string.IsNullOrEmpty(Model.ProfilePictureUrl))
+        {
+            return $"<img src=\"{enc.Encode(Model.ProfilePictureUrl)}\" alt=\"{enc.Encode(Model.DisplayName)}\" class=\"rounded-circle {Model.CssClass}{classExtra}\" style=\"{sizeStyle} object-fit: cover;\" />";
+        }
+        var initial = string.IsNullOrEmpty(Model.DisplayName) ? "?" : Model.DisplayName[..1];
+        var fontRemStr = Model.FontRem.ToString(CultureInfo.InvariantCulture);
+        return $"<div class=\"{Model.BgColor} rounded-circle d-flex align-items-center justify-content-center text-white {Model.CssClass}{classExtra}\" style=\"{sizeStyle} font-size: {fontRemStr}rem;\">{enc.Encode(initial)}</div>";
+    }
+}
+@{
+    var popoverAttrs = Model.ShowPopover
+        ? $" data-human-popover=\"true\" data-user-id=\"{Model.UserId}\""
+        : "";
+}
+@switch (Model.Layout)
+{
+    case HumanLayout.Text:
+        if (Model.Href is not null)
+        {
+            @Html.Raw($"<a href=\"{Model.Href}\" class=\"text-decoration-none\"{popoverAttrs}>{System.Text.Encodings.Web.HtmlEncoder.Default.Encode(Model.DisplayName)}</a>")
+        }
+        else
+        {
+            <span>@Model.DisplayName</span>
+        }
+        break;
+
+    case HumanLayout.Avatar:
+        if (Model.Href is not null)
+        {
+            var titleAttr = $" title=\"{System.Text.Encodings.Web.HtmlEncoder.Default.Encode(Model.DisplayName)}\"";
+            @Html.Raw($"<a href=\"{Model.Href}\"{titleAttr}{popoverAttrs}>{AvatarHtml(null)}</a>")
+        }
+        else
+        {
+            @Html.Raw(AvatarHtml(null))
+        }
+        break;
+
+    case HumanLayout.AvatarName:
+        var nameEnc = System.Text.Encodings.Web.HtmlEncoder.Default.Encode(Model.DisplayName);
+        if (Model.Href is not null)
+        {
+            @Html.Raw($"<a href=\"{Model.Href}\" class=\"d-flex align-items-center text-decoration-none text-reset\"{popoverAttrs}>{AvatarHtml("me-2")}<div><div class=\"fw-semibold\">{nameEnc}</div></div></a>")
+        }
+        else
+        {
+            @Html.Raw($"<div class=\"d-flex align-items-center\">{AvatarHtml("me-2")}<div><div class=\"fw-semibold\">{nameEnc}</div></div></div>")
+        }
+        break;
+
+    case HumanLayout.Card:
+        var cardNameEnc = System.Text.Encodings.Web.HtmlEncoder.Default.Encode(Model.DisplayName);
+        if (Model.Href is not null)
+        {
+            @Html.Raw($"<a href=\"{Model.Href}\" class=\"text-center text-decoration-none d-block\"{popoverAttrs}>{AvatarHtml("mb-2 mx-auto")}<div class=\"small\">{cardNameEnc}</div></a>")
+        }
+        else
+        {
+            @Html.Raw($"<div class=\"text-center d-block\">{AvatarHtml("mb-2 mx-auto")}<div class=\"small\">{cardNameEnc}</div></div>")
+        }
+        break;
+}

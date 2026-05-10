@@ -51,7 +51,7 @@ public sealed class AuditLogRepository : IAuditLogRepository
         return await ctx.AuditLogEntries
             .AsNoTracking()
             .Where(e => e.ResourceId == resourceId)
-            .OrderByDescending(e => e.OccurredAt)
+            .OrderByDescending(e => e.OccurredAt) // arch:db-sort-ok top-N selector
             .Take(200)
             .ToListAsync(ct);
     }

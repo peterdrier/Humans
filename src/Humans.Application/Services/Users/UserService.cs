@@ -204,12 +204,24 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
             await _fullProfileInvalidator.InvalidateAsync(userId, ct);
     }
 
-    public Task<bool> SetDeletionPendingAsync(
-        Guid userId, Instant requestedAt, Instant scheduledFor, CancellationToken ct = default) =>
-        _repo.SetDeletionPendingAsync(userId, requestedAt, scheduledFor, ct);
+    public async Task<bool> SetDeletionPendingAsync(
+        Guid userId, Instant requestedAt, Instant scheduledFor, Instant? eligibleAfter,
+        CancellationToken ct = default)
+    {
+        var updated = await _repo.SetDeletionPendingAsync(
+            userId, requestedAt, scheduledFor, eligibleAfter, ct);
+        if (updated)
+            await _fullProfileInvalidator.InvalidateAsync(userId, ct);
+        return updated;
+    }
 
-    public Task<bool> ClearDeletionAsync(Guid userId, CancellationToken ct = default) =>
-        _repo.ClearDeletionAsync(userId, ct);
+    public async Task<bool> ClearDeletionAsync(Guid userId, CancellationToken ct = default)
+    {
+        var updated = await _repo.ClearDeletionAsync(userId, ct);
+        if (updated)
+            await _fullProfileInvalidator.InvalidateAsync(userId, ct);
+        return updated;
+    }
 
     public Task SetLastConsentReminderSentAsync(
         Guid userId, Instant sentAt, CancellationToken ct = default) =>
