@@ -169,9 +169,8 @@ Admin queue (TicketAdminOrAdmin)
 
 ## Related Features
 
-- [`19-tickets.md`](19-tickets.md) — base ticket model, sync architecture, attendee linkage to users
-- [`32-budget-and-projections.md`](32-budget-and-projections.md) — `TicketingBudgetService` consumes the same `ticket_attendees` table for projections
-- [`docs/sections/Tickets.md`](../sections/Tickets.md) — section invariants, cross-section dependencies, table ownership
+- [`docs/features/budget/budget.md`](../budget/budget.md) — `TicketingBudgetService` consumes the same `ticket_attendees` table for projections
+- [`docs/sections/Tickets.md`](../../sections/Tickets.md) — section invariants, cross-section dependencies, table ownership (base ticket model, sync architecture, attendee linkage)
 
 ## Open Follow-ups
 

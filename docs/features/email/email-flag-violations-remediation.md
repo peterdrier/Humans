@@ -96,11 +96,11 @@ New audit actions: `AuditAction.UserEmailGoogleCleared`, `UserEmailPrimaryCleare
 
 ## Cross-Section Dependencies
 
-- **[Profiles section](../sections/Profiles.md)** — owns `UserEmail` and the `EnsurePrimaryInvariantAsync` invariant. `ClearPrimaryAsync` is the deliberate-bypass admin recovery path; document there.
-- **[GoogleIntegration section](../sections/GoogleIntegration.md)** — owns the `/Google/*` admin surface; the violations page lives there because Google identity (`IsGoogle`) is the primary invariant under remediation, even though the data is `UserEmail`-shaped.
+- **[Profiles section](../../sections/Profiles.md)** — owns `UserEmail` and the `EnsurePrimaryInvariantAsync` invariant. `ClearPrimaryAsync` is the deliberate-bypass admin recovery path; document there.
+- **[GoogleIntegration section](../../sections/GoogleIntegration.md)** — owns the `/Google/*` admin surface; the violations page lives there because Google identity (`IsGoogle`) is the primary invariant under remediation, even though the data is `UserEmail`-shaped.
 
 ## Related
 
 - [`docs/features/profiles/preferred-email.md`](../profiles/preferred-email.md) — base email management feature; the Set Primary / Set Google flow this remediation extends.
-- [`memory/code/localization-admin-exempt.md`](../../memory/code/localization-admin-exempt.md) — why `/Google/EmailFlagViolations` uses inline literals rather than resx keys.
-- [`memory/architecture/display-sort-in-controllers.md`](../../memory/architecture/display-sort-in-controllers.md) — why violation sort happens in `GoogleController.EmailFlagViolations`, not in the service.
+- [`memory/code/localization-admin-exempt.md`](../../../memory/code/localization-admin-exempt.md) — why `/Google/EmailFlagViolations` uses inline literals rather than resx keys.
+- [`memory/architecture/display-sort-in-controllers.md`](../../../memory/architecture/display-sort-in-controllers.md) — why violation sort happens in `GoogleController.EmailFlagViolations`, not in the service.

@@ -107,7 +107,7 @@ This is **not** the same surface as Feedback (`27-feedback-system.md`). Feedback
 
 ## Data Model
 
-See [`docs/sections/Issues.md`](../sections/Issues.md) for full field-level detail on `Issue`, `IssueComment`, and the `IssueStatus` / `IssueCategory` enums. Owned tables: `issues`, `issue_comments`. Cross-section FKs (`ReporterUserId`, `AssigneeUserId`, `ResolvedByUserId`, `SenderUserId`) are FK-only — the navigation properties are `[Obsolete]`-marked and display data is stitched in `IssuesService` via `IUserService`.
+See [`docs/sections/Issues.md`](../../sections/Issues.md) for full field-level detail on `Issue`, `IssueComment`, and the `IssueStatus` / `IssueCategory` enums. Owned tables: `issues`, `issue_comments`. Cross-section FKs (`ReporterUserId`, `AssigneeUserId`, `ResolvedByUserId`, `SenderUserId`) are FK-only — the navigation properties are `[Obsolete]`-marked and display data is stitched in `IssuesService` via `IUserService`.
 
 **Screenshot storage:** `wwwroot/uploads/issues/{issueId}/{guid}.{ext}`
 

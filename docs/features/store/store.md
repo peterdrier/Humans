@@ -27,7 +27,7 @@ This is fundamentally **camp data** with provenance recording (per `memory/archi
 
 Refunds, payouts, and chargebacks remain Stripe-dashboard-manual (per `memory/architecture/refunds-manual-via-dashboard.md`). Humans only does the bookkeeping side: a refund issued in Stripe gets recorded as a negative `StorePayment` row by the Treasurer.
 
-The full architecture spec lives at [`docs/superpowers/specs/2026-04-30-store-section-design.md`](../superpowers/specs/2026-04-30-store-section-design.md); the section invariant doc is [`docs/sections/Store.md`](../sections/Store.md).
+The full architecture spec lives at [`docs/superpowers/specs/2026-04-30-store-section-design.md`](../../superpowers/specs/2026-04-30-store-section-design.md); the section invariant doc is [`docs/sections/Store.md`](../../sections/Store.md).
 
 ## User Stories
 
@@ -102,7 +102,7 @@ The full architecture spec lives at [`docs/superpowers/specs/2026-04-30-store-se
 
 ## Data Model
 
-See [`docs/sections/Store.md`](../sections/Store.md) for the full table schema. Summary:
+See [`docs/sections/Store.md`](../../sections/Store.md) for the full table schema. Summary:
 
 | Entity | Table | Aggregate root | Cross-section linkage |
 |---|---|---|---|
@@ -170,10 +170,10 @@ The Store section reads several environment variables — see `docs/sections/Sto
 
 ## Related Features / Sections
 
-- [`docs/sections/Store.md`](../sections/Store.md) — section invariants (canonical reference)
-- [`docs/superpowers/specs/2026-04-30-store-section-design.md`](../superpowers/specs/2026-04-30-store-section-design.md) — full architecture / phasing spec
-- [`memory/architecture/refunds-manual-via-dashboard.md`](../../memory/architecture/refunds-manual-via-dashboard.md) — money-out is dashboard-manual
-- [`memory/code/stripe-restricted-keys.md`](../../memory/code/stripe-restricted-keys.md) — production keys must be RAKs
-- [`memory/architecture/provenance-fks-not-user-scoped.md`](../../memory/architecture/provenance-fks-not-user-scoped.md) — Store FKs are provenance, not user-scoped data
+- [`docs/sections/Store.md`](../../sections/Store.md) — section invariants (canonical reference)
+- [`docs/superpowers/specs/2026-04-30-store-section-design.md`](../../superpowers/specs/2026-04-30-store-section-design.md) — full architecture / phasing spec
+- [`memory/architecture/refunds-manual-via-dashboard.md`](../../../memory/architecture/refunds-manual-via-dashboard.md) — money-out is dashboard-manual
+- [`memory/code/stripe-restricted-keys.md`](../../../memory/code/stripe-restricted-keys.md) — production keys must be RAKs
+- [`memory/architecture/provenance-fks-not-user-scoped.md`](../../../memory/architecture/provenance-fks-not-user-scoped.md) — Store FKs are provenance, not user-scoped data
 - `20-camps.md` — `CampSeason` is the order's owning aggregate
 - `24-ticket-vendor-integration.md` — sibling Stripe integration; same RAK + dashboard-only-refunds discipline

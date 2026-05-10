@@ -128,7 +128,7 @@ The notification is **always** post-delete, never pre-delete — we don't tell u
 - [`07-google-integration.md`](../google-integration/google-integration.md) — sync architecture, gateway methods, sync modes
 - [`21-email-outbox.md`](../email/email-outbox.md) — outbox infrastructure, `MessageCategory`, branded-template composition
 - [`02-profiles.md`](../profiles/profiles.md) — `UserEmail` rows, `IsGoogle` flag, email rotation flows
-- [`docs/sections/GoogleIntegration.md`](../sections/GoogleIntegration.md) — section invariants, cross-section dependencies
+- [`docs/sections/GoogleIntegration.md`](../../sections/GoogleIntegration.md) — section invariants, cross-section dependencies
 
 ## Open Follow-ups
 
