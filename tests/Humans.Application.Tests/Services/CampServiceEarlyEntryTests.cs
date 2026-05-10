@@ -344,4 +344,22 @@ public class CampServiceEarlyEntryTests : IDisposable
         var reloaded = await _dbContext.CampMembers.AsNoTracking().FirstAsync(m => m.Id == member.Id);
         reloaded.HasEarlyEntry.Should().BeFalse();
     }
+
+    [HumansFact]
+    public async Task SetEarlyEntryAsync_Idempotent_ReturnsNoChangeAndWritesNoAudit()
+    {
+        await SeedSettingsAsync();
+        var (_, season) = await SeedCampWithSeasonAsync(initialEeSlotCount: 5);
+        var member = await SeedActiveMemberWithEarlyEntryAsync(season.Id);
+
+        var outcome = await _service.SetEarlyEntryAsync(member.Id, granted: true, Guid.NewGuid());
+
+        outcome.Should().Be(SetEarlyEntryOutcome.NoChange);
+
+        await _auditLog.DidNotReceive().LogAsync(
+            AuditAction.CampEarlyEntryGranted,
+            Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
 }
