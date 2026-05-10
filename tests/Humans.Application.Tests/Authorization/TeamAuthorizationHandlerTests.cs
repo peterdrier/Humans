@@ -10,11 +10,6 @@ using Xunit;
 
 namespace Humans.Application.Tests.Authorization;
 
-/// <summary>
-/// Unit tests for TeamAuthorizationHandler — resource-based authorization for team management.
-/// Tests cover: Admin override, TeamsAdmin override, Board override, team coordinator access,
-/// denial for non-coordinators, and edge cases.
-/// </summary>
 public sealed class TeamAuthorizationHandlerTests
 {
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
@@ -27,140 +22,76 @@ public sealed class TeamAuthorizationHandlerTests
     public TeamAuthorizationHandlerTests()
     {
         _handler = new TeamAuthorizationHandler(_teamService);
-
-        _teamService.IsUserCoordinatorOfTeamAsync(CoordinatorTeamId, UserId)
-            .Returns(true);
-        _teamService.IsUserCoordinatorOfTeamAsync(OtherTeamId, UserId)
-            .Returns(false);
+        _teamService.IsUserCoordinatorOfTeamAsync(CoordinatorTeamId, UserId).Returns(true);
+        _teamService.IsUserCoordinatorOfTeamAsync(OtherTeamId, UserId).Returns(false);
     }
 
-    // --- Admin override ---
-
-    [HumansFact]
-    public async Task Admin_CanManageAnyTeam()
+    public static TheoryData<string, string, bool> TeamAuthorizationCases => new()
     {
-        var user = CreateUserWithRoles(RoleNames.Admin);
-        var team = CreateTeam(OtherTeamId);
+        { "admin", "other", true },
+        { "teams-admin", "other", true },
+        { "board", "other", true },
+        { "coordinator", "coordinator", true },
+        { "coordinator", "other", false },
+        { "regular", "coordinator", false },
+        { "anonymous", "coordinator", false },
+        { "invalid-id", "coordinator", false },
+    };
 
-        var result = await EvaluateAsync(user, team);
-
-        result.Should().BeTrue();
-    }
-
-    // --- TeamsAdmin override ---
-
-    [HumansFact]
-    public async Task TeamsAdmin_CanManageAnyTeam()
-    {
-        var user = CreateUserWithRoles(RoleNames.TeamsAdmin);
-        var team = CreateTeam(OtherTeamId);
-
-        var result = await EvaluateAsync(user, team);
-
-        result.Should().BeTrue();
-    }
-
-    // --- Board override ---
-
-    [HumansFact]
-    public async Task Board_CanManageAnyTeam()
-    {
-        var user = CreateUserWithRoles(RoleNames.Board);
-        var team = CreateTeam(OtherTeamId);
-
-        var result = await EvaluateAsync(user, team);
-
-        result.Should().BeTrue();
-    }
-
-    // --- Team coordinator access ---
-
-    [HumansFact]
-    public async Task Coordinator_CanManageOwnTeam()
-    {
-        var user = CreateUser(UserId);
-        var team = CreateTeam(CoordinatorTeamId);
-
-        var result = await EvaluateAsync(user, team);
-
-        result.Should().BeTrue();
-    }
-
-    [HumansFact]
-    public async Task Coordinator_CannotManageOtherTeam()
-    {
-        var user = CreateUser(UserId);
-        var team = CreateTeam(OtherTeamId);
-
-        var result = await EvaluateAsync(user, team);
-
-        result.Should().BeFalse();
-    }
-
-    // --- Denial cases ---
-
-    [HumansFact]
-    public async Task RegularUser_DeniedOnAnyTeam()
+    [HumansTheory]
+    [MemberData(nameof(TeamAuthorizationCases))]
+    public async Task Team_management_authorization_matches_expected_scenarios(
+        string userKind,
+        string teamKind,
+        bool expected)
     {
         var regularUserId = Guid.NewGuid();
-        _teamService.IsUserCoordinatorOfTeamAsync(CoordinatorTeamId, regularUserId)
-            .Returns(false);
-        var user = CreateUser(regularUserId);
-        var team = CreateTeam(CoordinatorTeamId);
+        _teamService.IsUserCoordinatorOfTeamAsync(CoordinatorTeamId, regularUserId).Returns(false);
+
+        var user = CreateUser(userKind, regularUserId);
+        var team = CreateTeam(teamKind);
 
         var result = await EvaluateAsync(user, team);
 
-        result.Should().BeFalse();
+        result.Should().Be(expected);
     }
-
-    // --- Edge cases ---
-
-    [HumansFact]
-    public async Task UnauthenticatedUser_Denied()
-    {
-        var user = new ClaimsPrincipal(new ClaimsIdentity());
-        var team = CreateTeam(CoordinatorTeamId);
-
-        var result = await EvaluateAsync(user, team);
-
-        result.Should().BeFalse();
-    }
-
-    [HumansFact]
-    public async Task UserWithInvalidIdClaim_Denied()
-    {
-        var claims = new List<Claim>
-        {
-            new(ClaimTypes.NameIdentifier, "not-a-guid"),
-            new(ClaimTypes.Name, "test@example.com")
-        };
-        var user = new ClaimsPrincipal(new ClaimsIdentity(claims, "TestAuth"));
-        var team = CreateTeam(CoordinatorTeamId);
-
-        var result = await EvaluateAsync(user, team);
-
-        result.Should().BeFalse();
-    }
-
-    // --- Helpers ---
 
     private async Task<bool> EvaluateAsync(ClaimsPrincipal user, Team resource)
     {
         var requirement = TeamOperationRequirement.ManageCoordinators;
-        var context = new AuthorizationHandlerContext(
-            [requirement], user, resource);
+        var context = new AuthorizationHandlerContext([requirement], user, resource);
 
         await _handler.HandleAsync(context);
         return context.HasSucceeded;
     }
 
-    private static Team CreateTeam(Guid teamId)
-    {
-        return new Team
+    private static Team CreateTeam(string kind) =>
+        new()
         {
-            Id = teamId
+            Id = kind switch
+            {
+                "coordinator" => CoordinatorTeamId,
+                "other" => OtherTeamId,
+                _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
+            }
         };
-    }
+
+    private static ClaimsPrincipal CreateUser(string kind, Guid regularUserId) =>
+        kind switch
+        {
+            "admin" => CreateUserWithRoles(RoleNames.Admin),
+            "teams-admin" => CreateUserWithRoles(RoleNames.TeamsAdmin),
+            "board" => CreateUserWithRoles(RoleNames.Board),
+            "coordinator" => CreateUserWithId(UserId),
+            "regular" => CreateUserWithId(regularUserId),
+            "anonymous" => new ClaimsPrincipal(new ClaimsIdentity()),
+            "invalid-id" => new ClaimsPrincipal(new ClaimsIdentity(
+            [
+                new Claim(ClaimTypes.NameIdentifier, "not-a-guid"),
+                new Claim(ClaimTypes.Name, "test@example.com")
+            ], "TestAuth")),
+            _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
+        };
 
     private static ClaimsPrincipal CreateUserWithRoles(params string[] roles)
     {
@@ -176,7 +107,7 @@ public sealed class TeamAuthorizationHandlerTests
         return new ClaimsPrincipal(new ClaimsIdentity(claims, "TestAuth"));
     }
 
-    private static ClaimsPrincipal CreateUser(Guid userId)
+    private static ClaimsPrincipal CreateUserWithId(Guid userId)
     {
         var claims = new List<Claim>
         {

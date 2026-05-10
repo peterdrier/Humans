@@ -76,7 +76,7 @@ the manual test-count ratchet. As of the 2026-05-10 manual gate setup, the
 baseline is:
 
 ```text
-Test attributes: 2260
+Test attributes: 2139
 ```
 
 For normal PRs, the expected rule is no net increase in test attributes unless
