@@ -148,6 +148,12 @@ public class Profile
     public string? BoardNotes { get; set; }
 
     /// <summary>
+    /// Member's IBAN for expense reimbursements. Stored normalized (no spaces).
+    /// </summary>
+    [PersonalData]
+    public string? Iban { get; set; }
+
+    /// <summary>
     /// Whether the member has been manually suspended.
     /// </summary>
     /// <remarks>
