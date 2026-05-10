@@ -119,4 +119,37 @@ public class CampsArchitectureTests
             .Should().NotBeNull(
                 because: "FK stays — only the navigation property is stripped");
     }
+
+    // ── Public detail page — EE non-exposure invariant ───────────────────────
+
+    /// <summary>
+    /// Pins the invariant: the public camp detail page can never render Early Entry
+    /// state because the data shape returned by BuildCampDetailDataAsync — and every
+    /// record type reachable from it — contains no EE-related properties.
+    /// Guards against future accidental additions (e.g., HasEarlyEntry, EeSlotCount,
+    /// EeStartDate, IsEarlyAccess) by matching on name substrings / prefixes.
+    /// Issue #490: EE state is admin-only and must never appear on anonymous views.
+    /// </summary>
+    [HumansFact]
+    public void PublicCampDetail_DoesNotExposeEarlyEntryState()
+    {
+        // All record types that compose the public detail data shape.
+        var publicDetailTypes = new[]
+        {
+            typeof(CampDetailData),
+            typeof(CampSeasonDetailData),
+            typeof(CampLeadSummary),
+        };
+
+        var eeProperties = publicDetailTypes
+            .SelectMany(t => t.GetProperties())
+            .Where(p => p.Name.Contains("EarlyEntry", StringComparison.OrdinalIgnoreCase)
+                        || p.Name.StartsWith("Ee", StringComparison.Ordinal))
+            .Select(p => $"{p.DeclaringType!.Name}.{p.Name}")
+            .ToList();
+
+        eeProperties.Should().BeEmpty(
+            because: "Early Entry state (HasEarlyEntry, EeSlotCount, EeStartDate, etc.) must never be " +
+                     "projected into the public detail data shape — it is admin-only (issue #490, spec §4.4)");
+    }
 }
