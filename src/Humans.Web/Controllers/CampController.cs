@@ -1031,25 +1031,20 @@ public class CampController : HumansCampControllerBase
         var outcome = await _campService.SetEarlyEntryAsync(
             campMemberId, granted, user.Id, cancellationToken);
 
-        switch (outcome)
-        {
-            case SetEarlyEntryOutcome.Success:
-                SetSuccess(granted ? "Early Entry granted." : "Early Entry revoked.");
-                break;
-            case SetEarlyEntryOutcome.NoChange:
-                // Silent — UI already reflected the state.
-                break;
-            case SetEarlyEntryOutcome.SlotCapExceeded:
-                SetError("Cannot grant Early Entry: slot cap reached for this camp.");
-                break;
-            case SetEarlyEntryOutcome.MemberNotActive:
-                SetError("Only Active camp members can hold Early Entry.");
-                break;
-            case SetEarlyEntryOutcome.MemberNotFound:
-                return NotFound();
-        }
-
+        if (outcome == SetEarlyEntryOutcome.MemberNotFound) return NotFound();
+        ApplyEarlyEntryFlash(outcome, granted);
         return RedirectToAction(nameof(Members), new { slug });
+    }
+
+    private void ApplyEarlyEntryFlash(SetEarlyEntryOutcome outcome, bool granted)
+    {
+        if (outcome == SetEarlyEntryOutcome.Success)
+            SetSuccess(granted ? "Early Entry granted." : "Early Entry revoked.");
+        else if (outcome == SetEarlyEntryOutcome.SlotCapExceeded)
+            SetError("Cannot grant Early Entry: slot cap reached for this camp.");
+        else if (outcome == SetEarlyEntryOutcome.MemberNotActive)
+            SetError("Only Active camp members can hold Early Entry.");
+        // NoChange: silent — UI already reflected the state.
     }
 
     [Authorize]

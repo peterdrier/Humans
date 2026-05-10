@@ -303,24 +303,17 @@ public class CampAdminController : HumansControllerBase
         if (actorIdClaim is null || !Guid.TryParse(actorIdClaim.Value, out var actorId))
             return Forbid();
 
-        LocalDate? parsed = null;
-        if (!string.IsNullOrWhiteSpace(eeStartDate))
+        var (ok, parsed, parseError) = TryParseEeStartDate(eeStartDate);
+        if (!ok)
         {
-            var parseResult = NodaTime.Text.LocalDatePattern.Iso.Parse(eeStartDate);
-            if (!parseResult.Success)
-            {
-                SetError("Invalid date format. Use yyyy-MM-dd.");
-                return RedirectToAction(nameof(Index));
-            }
-            parsed = parseResult.Value;
+            SetError(parseError!);
+            return RedirectToAction(nameof(Index));
         }
 
         try
         {
             await _campService.SetEeStartDateAsync(parsed, actorId, cancellationToken);
-            SetSuccess(parsed.HasValue
-                ? $"EE start date set to {parsed.Value}."
-                : "EE start date cleared.");
+            SetSuccess(EeStartDateSuccessMessage(parsed));
         }
         catch (Exception ex)
         {
@@ -329,6 +322,18 @@ public class CampAdminController : HumansControllerBase
         }
 
         return RedirectToAction(nameof(Index));
+    }
+
+    private static string EeStartDateSuccessMessage(LocalDate? date) =>
+        date.HasValue ? $"EE start date set to {date.Value}." : "EE start date cleared.";
+
+    private static (bool Ok, LocalDate? Value, string? Error) TryParseEeStartDate(string? input)
+    {
+        if (string.IsNullOrWhiteSpace(input)) return (true, null, null);
+        var result = NodaTime.Text.LocalDatePattern.Iso.Parse(input);
+        return result.Success
+            ? (true, result.Value, null)
+            : (false, null, "Invalid date format. Use yyyy-MM-dd.");
     }
 
     [HttpPost("Reactivate/{seasonId:guid}")]
