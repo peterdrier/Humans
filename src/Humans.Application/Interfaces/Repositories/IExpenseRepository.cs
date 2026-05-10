@@ -3,7 +3,7 @@ using Humans.Domain.Enums;
 
 namespace Humans.Application.Interfaces.Repositories;
 
-public interface IExpenseRepository
+public interface IExpenseRepository : IRepository
 {
     // Reads
     Task<ExpenseReport?> GetByIdAsync(Guid id, CancellationToken ct = default);

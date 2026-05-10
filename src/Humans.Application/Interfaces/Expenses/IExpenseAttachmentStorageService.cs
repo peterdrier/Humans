@@ -1,6 +1,8 @@
+using Humans.Application.Interfaces;
+
 namespace Humans.Application.Interfaces.Expenses;
 
-public interface IExpenseAttachmentStorageService
+public interface IExpenseAttachmentStorageService : IApplicationService
 {
     /// <summary>Persists the stream and returns the new attachment id.</summary>
     Task<Guid> StoreAsync(

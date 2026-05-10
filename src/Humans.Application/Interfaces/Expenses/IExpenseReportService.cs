@@ -1,8 +1,9 @@
+using Humans.Application.Interfaces;
 using Humans.Application.Services.Expenses.Dtos;
 
 namespace Humans.Application.Interfaces.Expenses;
 
-public interface IExpenseReportService
+public interface IExpenseReportService : IApplicationService
 {
     Task<ExpenseReportDto?> GetAsync(Guid id, CancellationToken ct = default);
     Task<IReadOnlyList<ExpenseReportDto>> GetForSubmitterAsync(
