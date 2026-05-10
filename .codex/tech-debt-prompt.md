@@ -82,17 +82,19 @@ Run this phase before the older generic consolidation phases. Recent refactoring
 
 ### Repository Layer Boundaries
 
-**Problem:** Repositories should be thin persistence adapters, but older code may still contain query-shaping or UI-flow decisions in repository methods.
+**Problem:** Repositories should be thin persistence adapters, but older code may still contain cross-section joins, query-shaping, or UI-flow decisions in repository methods.
 
-**Fix:** Repositories may express storage-safe predicates needed to retrieve a coherent data set, but they must not own presentation or workflow shaping.
+**Fix:** Repositories may express storage-safe predicates needed to retrieve a coherent owned data set, but they must not own presentation shaping. Cross-section DB joins/includes are the higher-priority violation: fix those before display-sort cleanups.
 
-Look for and move out of repositories:
+Look for and move out of repositories when they are presentation concerns over finite/cached data:
 - `OrderBy`, `ThenBy`, display sorting, or user-facing ordering decisions
 - `Take(50)`, arbitrary page/window caps, "recent", "top", or dashboard limits
 - search/filter criteria that come from a screen, query string, tab, or controller action rather than from a storage invariant
 - joins/includes that exist only to support navigation/display shaping
 
-Move that work to the controller/view layer when it is presentation-specific. If the logic is reusable application behavior, move it to the owning service, but keep final display ordering, screen filtering, and UI limits in the controller/view.
+Move presentation shaping to the controller/view layer for bounded data sets such as cached profiles, teams, camps, and lookup/options lists. If the logic is reusable application behavior, move it to the owning service, but keep final display ordering, screen filtering, and UI limits in the controller/view.
+
+Do not load unbounded operational/history tables just so a controller can take the last N rows. Audit, email outbox, feedback, issue history, and similarly growing tables should keep efficient DB-side ordering/paging/windowing in the owning repository. Mark intentional exceptions inline, for example `// arch:db-sort-ok top-N selector`, and keep method names explicit (`GetRecentAsync`, `GetPageAsync`, `GetFilteredAsync`) rather than hiding screen behavior in broad `GetAllAsync` calls.
 
 ### EF Navigation Joins
 
@@ -133,7 +135,9 @@ Disallowed shape:
 - display grouping and secondary ordering
 - "show recent", "top N", or dashboard-card limits
 
-Services may return enough owned data for the screen to shape safely, or provide reusable domain/application queries where the rule is not screen-specific. Services must not bake in one screen's ordering, filters, or row limits. Repositories should not decide these concerns either.
+This rule is strongest for finite or cached data sets where materializing the owned collection is already normal, such as profiles, teams, camps, and option lists. Services may return enough owned data for the screen to shape safely, or provide reusable domain/application queries where the rule is not screen-specific. Services must not bake in one screen's ordering, filters, or row limits.
+
+For unbounded tables, prefer an explicit repository query that performs the DB-side order/page/take and returns only the bounded slice. The service may orchestrate cross-section stitching after the slice is selected, but it should not pull the full table and then sort/filter/take in memory.
 
 ### First-Pass Search Plan
 

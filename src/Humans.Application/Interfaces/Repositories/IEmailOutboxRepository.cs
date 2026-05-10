@@ -39,13 +39,14 @@ public interface IEmailOutboxRepository
     Task<int> GetSentCountSinceAsync(Instant since, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns all outbox messages, read-only. Display ordering and windows
-    /// are owned by the service/controller boundary.
+    /// Returns the newest outbox messages for the admin dashboard. This is a
+    /// bounded operational-history read; the ordering/window stay DB-side so
+    /// dashboard rendering never loads the full outbox table.
     /// </summary>
-    Task<IReadOnlyList<EmailOutboxMessage>> GetAllAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<EmailOutboxMessage>> GetRecentAsync(int take, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns all outbox messages for a user, read-only.
+    /// Returns all outbox messages for a user, newest first, read-only.
     /// </summary>
     Task<IReadOnlyList<EmailOutboxMessage>> GetForUserAsync(
         Guid userId, CancellationToken ct = default);

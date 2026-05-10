@@ -27,8 +27,8 @@ public sealed class EmailOutboxServiceTests
         var middle = BuildMessage(_now - Duration.FromHours(1));
         var newer = BuildMessage(_now);
 
-        _repo.GetAllAsync(Arg.Any<CancellationToken>())
-            .Returns([older, newer, middle]);
+        _repo.GetRecentAsync(2, Arg.Any<CancellationToken>())
+            .Returns([newer, middle]);
 
         var result = await _service.GetOutboxStatsAsync(recentMessageCount: 2);
 
@@ -43,7 +43,7 @@ public sealed class EmailOutboxServiceTests
         var newer = BuildMessage(_now - Duration.FromHours(1), userId);
 
         _repo.GetForUserAsync(userId, Arg.Any<CancellationToken>())
-            .Returns([older, newer]);
+            .Returns([newer, older]);
 
         var result = await _service.GetMessagesForUserAsync(userId);
 

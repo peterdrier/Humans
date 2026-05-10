@@ -63,7 +63,7 @@ public class StoreServiceTests
     }
 
     [HumansFact]
-    public async Task GetActiveCatalogAsync_orders_products_by_name()
+    public async Task GetActiveCatalogAsync_preserves_repository_order()
     {
         _repo.GetActiveProductsForYearAsync(2026, Arg.Any<CancellationToken>())
             .Returns(new[]
@@ -75,11 +75,11 @@ public class StoreServiceTests
 
         var result = await _service.GetActiveCatalogAsync(2026);
 
-        result.Select(p => p.Name).Should().Equal("Blanket", "Cup", "Tent");
+        result.Select(p => p.Name).Should().Equal("Tent", "Cup", "Blanket");
     }
 
     [HumansFact]
-    public async Task GetAllProductsForYearAsync_orders_active_products_first_then_name()
+    public async Task GetAllProductsForYearAsync_preserves_repository_order()
     {
         var activeTent = MakeProduct(name: "Tent");
         activeTent.IsActive = true;
@@ -93,7 +93,7 @@ public class StoreServiceTests
 
         var result = await _service.GetAllProductsForYearAsync(2026);
 
-        result.Select(p => p.Name).Should().Equal("Cup", "Tent", "Bag");
+        result.Select(p => p.Name).Should().Equal("Tent", "Bag", "Cup");
     }
 
     [HumansFact]

@@ -220,9 +220,7 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
     public async Task<IReadOnlyList<Team>> GetAllTeamsAsync(CancellationToken cancellationToken = default)
     {
         var teams = await _repo.GetAllActiveAsync(cancellationToken);
-        return teams
-            .OrderBy(t => t.Name, StringComparer.Ordinal)
-            .ToList();
+        return teams.ToList();
     }
 
     public async Task<IReadOnlyList<TeamSearchHit>> SearchAsync(
@@ -240,18 +238,14 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
         CancellationToken cancellationToken = default)
     {
         var teams = await _repo.GetActiveOptionsAsync(cancellationToken);
-        return teams
-            .OrderBy(t => t.Name, StringComparer.Ordinal)
-            .ToList();
+        return teams.ToList();
     }
 
     public async Task<IReadOnlyList<TeamOptionDto>> GetBudgetableTeamsAsync(
         CancellationToken cancellationToken = default)
     {
         var teams = await _repo.GetBudgetableOptionsAsync(cancellationToken);
-        return teams
-            .OrderBy(t => t.Name, StringComparer.Ordinal)
-            .ToList();
+        return teams.ToList();
     }
 
     public async Task<IReadOnlyCollection<Guid>> GetEffectiveBudgetCoordinatorTeamIdsAsync(
@@ -992,7 +986,7 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
         // Stitch the cross-domain User slice in memory.
         await StitchJoinRequestUserSlicesAsync(requests, cancellationToken);
 
-        return OrderPendingJoinRequests(requests).ToList();
+        return requests;
     }
 
     public async Task<IReadOnlyList<TeamJoinRequest>> GetPendingRequestsForTeamAsync(
@@ -1001,12 +995,8 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
     {
         var requests = await _repo.GetPendingForTeamAsync(teamId, cancellationToken);
         await StitchJoinRequestUserSlicesAsync(requests, cancellationToken);
-        return OrderPendingJoinRequests(requests).ToList();
+        return requests;
     }
-
-    private static IOrderedEnumerable<TeamJoinRequest> OrderPendingJoinRequests(
-        IEnumerable<TeamJoinRequest> requests) =>
-        requests.OrderBy(r => r.RequestedAt);
 
     public Task<TeamJoinRequest?> GetUserPendingRequestAsync(
         Guid teamId,
@@ -1856,14 +1846,7 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
     public async Task<(IReadOnlyList<Team> Items, int TotalCount)> GetAllTeamsForAdminAsync(
         int page, int pageSize, CancellationToken cancellationToken = default)
     {
-        var teams = await _repo.GetAllForAdminAsync(cancellationToken);
-        var totalCount = teams.Count;
-        var items = OrderTeamsForAdmin(teams)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .ToList();
-
-        return (items, totalCount);
+        return await _repo.GetAllForAdminAsync(page, pageSize, cancellationToken);
     }
 
     public async Task<AdminTeamListResult> GetAdminTeamListAsync(
@@ -1871,12 +1854,7 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
         int pageSize,
         CancellationToken cancellationToken = default)
     {
-        var teams = await _repo.GetAllForAdminAsync(cancellationToken);
-        var totalCount = teams.Count;
-        var items = OrderTeamsForAdmin(teams)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .ToList();
+        var (items, totalCount) = await _repo.GetAllForAdminAsync(page, pageSize, cancellationToken);
 
         var activeEvent = await _shiftManagementService.GetActiveAsync();
         var activeEventId = activeEvent?.Id ?? Guid.Empty;
@@ -1894,11 +1872,6 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
             BuildAdminTeamSummaries(items, pendingShiftCounts, resourceSummaries),
             totalCount);
     }
-
-    private static IOrderedEnumerable<Team> OrderTeamsForAdmin(IEnumerable<Team> teams) =>
-        teams
-            .OrderBy(t => t.SystemTeamType)
-            .ThenBy(t => t.Name, StringComparer.Ordinal);
 
     // ==========================================================================
     // Cache helpers — public surface

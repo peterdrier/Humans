@@ -58,14 +58,16 @@ Deprioritize:
 
 Treat these as the first-pass search rules for new tech-debt runs.
 
-Repositories are persistence adapters. They may apply storage predicates needed to fetch the owned data set, but they must not own screen behavior:
+Repositories are persistence adapters. They may apply storage predicates needed to fetch the owned data set, but they must not own screen behavior. Cross-section DB joins/includes are more important than display-sort cleanup and should be fixed first:
 
 - no display sorting or user-facing ordering in repositories
-- no screen/page caps such as `Take(50)`, "recent", "top", or dashboard limits in repositories
+- no screen/page caps such as `Take(50)`, "recent", "top", or dashboard limits in repositories when the source is a bounded/cached set
 - no query-string, tab, or screen-specific filtering in repositories
 - no joins/includes added only to shape a view model
 
-Controllers and views own UI-specific shaping:
+Exception: do not load unbounded operational/history tables just to sort/filter/take in a service or controller. Audit, email outbox, feedback, issue lists, and similarly growing tables should use explicit repository methods that perform DB-side ordering/paging/windowing and return only the bounded slice. Mark those intentional exceptions inline with `// arch:db-sort-ok top-N selector`, `// arch:db-sort-ok admin page window`, or a similarly specific reason.
+
+Controllers and views own UI-specific shaping for finite/cached data sets such as profiles, teams, camps, and option lists:
 
 - final display sort order
 - screen-specific filters
@@ -73,7 +75,7 @@ Controllers and views own UI-specific shaping:
 - grouping and secondary ordering for tables/cards
 - dashboard-card "recent" or "top N" choices
 
-Services own reusable application behavior, not display choices. If a rule is truly domain/application behavior, put it in the owning service. If it is just how one screen wants to sort, filter, group, cap, or show data, keep it at the controller/view boundary.
+Services own reusable application behavior, not display choices. If a rule is truly domain/application behavior, put it in the owning service. If it is just how one screen wants to sort, filter, group, cap, or show data over already-bounded data, keep it at the controller/view boundary. For unbounded tables, services may orchestrate after a repository-selected slice, but must not load the full table and then apply top-N/windowing in memory.
 
 Sections must not reach across each other's persistence:
 

@@ -88,10 +88,12 @@ public interface ITeamRepository
     Task<string?> GetNameByGoogleGroupPrefixAsync(string prefix, CancellationToken ct = default);
 
     /// <summary>
-    /// All teams (active/inactive) with active members, pending join requests,
-    /// and role definitions eagerly loaded.
+    /// Page of all teams (active/inactive) with active members, pending join
+    /// requests, and role definitions eagerly loaded. Admin paging stays
+    /// DB-side because the include graph is too expensive to load wholesale.
     /// </summary>
-    Task<IReadOnlyList<Team>> GetAllForAdminAsync(CancellationToken ct = default);
+    Task<(IReadOnlyList<Team> Items, int TotalCount)> GetAllForAdminAsync(
+        int page, int pageSize, CancellationToken ct = default);
 
     /// <summary>
     /// Active teams whose <c>Name</c> contains <paramref name="query"/>

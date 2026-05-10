@@ -43,9 +43,10 @@ public interface IFeedbackRepository
     Task<FeedbackReport?> FindForMutationAsync(Guid id, CancellationToken ct = default);
 
     /// <summary>
-    /// Filtered list of feedback reports, with their aggregate-local
-    /// <c>Messages</c> collection (callers use <c>Messages.Count</c> only).
-    /// Read-only (AsNoTracking).
+    /// Filtered, newest-first list of feedback reports, capped by
+    /// <paramref name="limit"/>, with their aggregate-local <c>Messages</c>
+    /// collection (callers use <c>Messages.Count</c> only). This is a
+    /// bounded admin-history read, so the ordering/window stay DB-side.
     /// </summary>
     Task<IReadOnlyList<FeedbackReport>> GetListAsync(
         FeedbackStatus? status,
@@ -54,6 +55,7 @@ public interface IFeedbackRepository
         Guid? assignedToUserId,
         Guid? assignedToTeamId,
         bool? unassignedOnly,
+        int limit,
         CancellationToken ct = default);
 
     /// <summary>

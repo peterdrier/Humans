@@ -36,7 +36,6 @@ public class StoreService : IStoreService
     {
         var products = await _repo.GetActiveProductsForYearAsync(year, ct);
         return products
-            .OrderBy(p => p.Name, StringComparer.Ordinal)
             .Select(MapProduct)
             .ToList();
     }
@@ -45,8 +44,6 @@ public class StoreService : IStoreService
     {
         var products = await _repo.GetAllProductsForYearAsync(year, ct);
         return products
-            .OrderByDescending(p => p.IsActive)
-            .ThenBy(p => p.Name, StringComparer.Ordinal)
             .Select(MapProduct)
             .ToList();
     }

@@ -185,7 +185,7 @@ public sealed class TicketQueryServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task GetAvailableTicketTypesAsync_ReturnsDistinctTypesOrderedByName()
+    public async Task GetAvailableTicketTypesAsync_ReturnsDistinctTypes()
     {
         var orderId = Guid.NewGuid();
         _dbContext.TicketOrders.Add(new TicketOrder
@@ -212,7 +212,7 @@ public sealed class TicketQueryServiceTests : IDisposable
 
         var types = await _service.GetAvailableTicketTypesAsync();
 
-        types.Should().Equal("Full Week", "VIP", "Weekend");
+        types.Should().BeEquivalentTo(["Full Week", "VIP", "Weekend"]);
     }
 
     // ====================================================================

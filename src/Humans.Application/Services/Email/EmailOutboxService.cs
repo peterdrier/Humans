@@ -57,10 +57,7 @@ public sealed class EmailOutboxService : IEmailOutboxService
         var sentLast24H = await _repo.GetSentCountSinceAsync(cutoff24H, cancellationToken);
         var failedCount = await _repo.GetCountByStatusAsync(EmailOutboxStatus.Failed, cancellationToken);
         var isPaused = await _repo.GetSendingPausedAsync(cancellationToken);
-        var messages = (await _repo.GetAllAsync(cancellationToken))
-            .OrderByDescending(m => m.CreatedAt)
-            .Take(recentMessageCount)
-            .ToList();
+        var messages = await _repo.GetRecentAsync(recentMessageCount, cancellationToken);
 
         return new EmailOutboxStats(totalCount, queuedCount, sentLast24H, failedCount, isPaused, messages);
     }
@@ -68,10 +65,7 @@ public sealed class EmailOutboxService : IEmailOutboxService
     public async Task<IReadOnlyList<EmailOutboxMessage>> GetMessagesForUserAsync(
         Guid userId, CancellationToken cancellationToken = default)
     {
-        var messages = await _repo.GetForUserAsync(userId, cancellationToken);
-        return messages
-            .OrderByDescending(m => m.CreatedAt)
-            .ToList();
+        return await _repo.GetForUserAsync(userId, cancellationToken);
     }
 
     public Task<int> GetMessageCountForUserAsync(

@@ -42,7 +42,10 @@ public class StoreAdminController : HumansControllerBase
     {
         var activeEvent = await _shifts.GetActiveAsync();
         var year = activeEvent?.Year > 0 ? activeEvent.Year : _clock.GetCurrentInstant().InUtc().Year;
-        var products = await _storeService.GetAllProductsForYearAsync(year, ct);
+        var products = (await _storeService.GetAllProductsForYearAsync(year, ct))
+            .OrderByDescending(p => p.IsActive)
+            .ThenBy(p => p.Name, StringComparer.Ordinal)
+            .ToList();
         return View(new StoreCatalogAdminViewModel { Year = year, Products = products });
     }
 

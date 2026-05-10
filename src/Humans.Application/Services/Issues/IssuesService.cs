@@ -205,10 +205,7 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
 
         var issues = await _repo.GetListAsync(filter, sectionFilter, reporterFallback, ct);
         await StitchCrossDomainNavsAsync(issues, ct);
-        return issues
-            .OrderByDescending(i => i.UpdatedAt)
-            .Take(filter.Limit)
-            .ToList();
+        return issues;
     }
 
     public async Task<IReadOnlyList<IssueThreadEvent>> GetThreadAsync(

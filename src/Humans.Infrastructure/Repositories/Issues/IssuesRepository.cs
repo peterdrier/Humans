@@ -74,7 +74,10 @@ public sealed class IssuesRepository : IIssuesRepository
                 (fallback.HasValue && i.ReporterUserId == fallback.Value));
         }
 
-        return await q.ToListAsync(ct);
+        return await q
+            .OrderByDescending(i => i.UpdatedAt) // arch:db-sort-ok top-N selector
+            .Take(f.Limit)
+            .ToListAsync(ct);
     }
 
     public async Task SaveTrackedIssueAsync(Issue issue, CancellationToken ct = default)

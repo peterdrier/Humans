@@ -94,7 +94,7 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task GetAllAsync_ReturnsAllMessages()
+    public async Task GetRecentAsync_ReturnsNewestMessagesCapped()
     {
         // Older to newer
         var msg1 = BuildMessage(createdAt: _clock.GetCurrentInstant() - Duration.FromMinutes(30));
@@ -105,8 +105,8 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
         await _repo.AddAsync(msg2);
         await _repo.AddAsync(msg3);
 
-        var all = await _repo.GetAllAsync();
-        all.Select(m => m.Id).Should().BeEquivalentTo([msg1.Id, msg2.Id, msg3.Id]);
+        var recent = await _repo.GetRecentAsync(2);
+        recent.Select(m => m.Id).Should().Equal(msg3.Id, msg2.Id);
     }
 
     [HumansFact]
