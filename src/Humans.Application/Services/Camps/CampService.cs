@@ -1827,10 +1827,27 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             actorUserId);
     }
 
-    public Task SetCampSeasonEeSlotCountAsync(
+    public async Task SetCampSeasonEeSlotCountAsync(
         Guid campSeasonId, int slotCount, Guid actorUserId,
         CancellationToken cancellationToken = default)
-        => throw new NotSupportedException("issue-490 Phase 3");
+    {
+        if (slotCount < 0)
+            throw new ArgumentOutOfRangeException(nameof(slotCount), "EE slot count cannot be negative.");
+
+        var result = await _repo.SetCampSeasonEeSlotCountAsync(campSeasonId, slotCount, cancellationToken);
+        if (result is null)
+            throw new InvalidOperationException("Camp season not found.");
+
+        var (oldValue, newValue, campId) = result.Value;
+        if (oldValue == newValue) return;
+
+        await _auditLog.LogAsync(
+            AuditAction.CampSeasonEeSlotCountChanged,
+            nameof(CampSeason), campSeasonId,
+            $"EE slot count changed from {oldValue} to {newValue}.",
+            actorUserId,
+            relatedEntityId: campId, relatedEntityType: nameof(Camp));
+    }
 
     public Task<SetEarlyEntryOutcome> SetEarlyEntryAsync(
         Guid campMemberId, bool granted, Guid actorUserId,

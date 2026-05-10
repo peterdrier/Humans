@@ -111,6 +111,52 @@ public class CampServiceEarlyEntryTests : IDisposable
     }
 
     // ==========================================================================
+    // SetCampSeasonEeSlotCountAsync
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task SetCampSeasonEeSlotCountAsync_SetsValue_AndAuditsChange()
+    {
+        await SeedSettingsAsync();
+        var (camp, season) = await SeedCampWithSeasonAsync();
+        var actor = Guid.NewGuid();
+
+        await _service.SetCampSeasonEeSlotCountAsync(season.Id, 13, actor);
+
+        var reloaded = await _dbContext.CampSeasons.AsNoTracking().FirstAsync(s => s.Id == season.Id);
+        reloaded.EeSlotCount.Should().Be(13);
+
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.CampSeasonEeSlotCountChanged,
+            nameof(CampSeason), season.Id,
+            Arg.Any<string>(), actor,
+            camp.Id, nameof(Camp));
+    }
+
+    [HumansFact]
+    public async Task SetCampSeasonEeSlotCountAsync_AllowsReducingBelowCurrentGrants()
+    {
+        await SeedSettingsAsync();
+        var (camp, season) = await SeedCampWithSeasonAsync(initialEeSlotCount: 10);
+        // Seed 5 active members all with HasEarlyEntry=true.
+        for (var i = 0; i < 5; i++)
+            await SeedActiveMemberWithEarlyEntryAsync(season.Id);
+
+        var actor = Guid.NewGuid();
+        await _service.SetCampSeasonEeSlotCountAsync(season.Id, 3, actor);
+
+        var reloaded = await _dbContext.CampSeasons.AsNoTracking().FirstAsync(s => s.Id == season.Id);
+        reloaded.EeSlotCount.Should().Be(3);
+
+        // Existing grants persist — no auto-revoke.
+        var grantedCount = await _dbContext.CampMembers
+            .CountAsync(m => m.CampSeasonId == season.Id
+                          && m.HasEarlyEntry
+                          && m.Status == CampMemberStatus.Active);
+        grantedCount.Should().Be(5);
+    }
+
+    // ==========================================================================
     // Helpers
     // ==========================================================================
 
@@ -126,5 +172,66 @@ public class CampServiceEarlyEntryTests : IDisposable
             });
             await _dbContext.SaveChangesAsync();
         }
+    }
+
+    private async Task<(Camp camp, CampSeason season)> SeedCampWithSeasonAsync(int initialEeSlotCount = 0)
+    {
+        var camp = new Camp
+        {
+            Id = Guid.NewGuid(),
+            Slug = $"camp-{Guid.NewGuid():N}".Substring(0, 12),
+            ContactEmail = "test@camp.com",
+            ContactPhone = "+34600000000",
+            CreatedByUserId = Guid.NewGuid(),
+            CreatedAt = _clock.GetCurrentInstant(),
+            UpdatedAt = _clock.GetCurrentInstant(),
+        };
+        var season = new CampSeason
+        {
+            Id = Guid.NewGuid(),
+            CampId = camp.Id,
+            Year = 2026,
+            Status = CampSeasonStatus.Active,
+            Name = "Test Camp",
+            EeSlotCount = initialEeSlotCount,
+            BlurbLong = "A fun camp for everyone",
+            BlurbShort = "Fun camp",
+            Languages = "English, Spanish",
+            AcceptingMembers = YesNoMaybe.Yes,
+            KidsWelcome = YesNoMaybe.Maybe,
+            KidsVisiting = KidsVisitingPolicy.DaytimeOnly,
+            HasPerformanceSpace = PerformanceSpaceStatus.Yes,
+            PerformanceTypes = "Music, dance",
+            Vibes = new List<CampVibe> { CampVibe.LiveMusic, CampVibe.ChillOut },
+            AdultPlayspace = AdultPlayspacePolicy.No,
+            MemberCount = 25,
+            SpaceRequirement = SpaceSize.Sqm600,
+            SoundZone = SoundZone.Yellow,
+            ContainerCount = 1,
+            ElectricalGrid = ElectricalGrid.Yellow,
+            CreatedAt = _clock.GetCurrentInstant(),
+            UpdatedAt = _clock.GetCurrentInstant(),
+        };
+        _dbContext.Camps.Add(camp);
+        _dbContext.CampSeasons.Add(season);
+        await _dbContext.SaveChangesAsync();
+        return (camp, season);
+    }
+
+    private async Task<CampMember> SeedActiveMemberWithEarlyEntryAsync(Guid campSeasonId)
+    {
+        var member = new CampMember
+        {
+            Id = Guid.NewGuid(),
+            CampSeasonId = campSeasonId,
+            UserId = Guid.NewGuid(),
+            Status = CampMemberStatus.Active,
+            RequestedAt = _clock.GetCurrentInstant(),
+            ConfirmedAt = _clock.GetCurrentInstant(),
+            HasEarlyEntry = true,
+        };
+        _dbContext.CampMembers.Add(member);
+        await _dbContext.SaveChangesAsync();
+        return member;
     }
 }

@@ -449,6 +449,18 @@ public interface ICampRepository : IRepository
         Guid campMemberId, CancellationToken ct = default);
 
     // ==========================================================================
+    // Early Entry
+    // ==========================================================================
+
+    /// <summary>
+    /// Sets <c>EeSlotCount</c> on the given season. Returns (OldValue, NewValue, CampId),
+    /// or null if the season was not found. When old == new, the row is not updated
+    /// but the result tuple is still returned so the service can short-circuit the audit.
+    /// </summary>
+    Task<(int OldValue, int NewValue, Guid CampId)?> SetCampSeasonEeSlotCountAsync(
+        Guid campSeasonId, int slotCount, CancellationToken cancellationToken = default);
+
+    // ==========================================================================
     // Account-merge fold
     // ==========================================================================
 

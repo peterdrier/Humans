@@ -956,4 +956,24 @@ public sealed class CampRepository : ICampRepository
         return await ctx.CampLeads
             .CountAsync(l => l.UserId == targetUserId, ct);
     }
+
+    // ==========================================================================
+    // Early Entry
+    // ==========================================================================
+
+    public async Task<(int OldValue, int NewValue, Guid CampId)?> SetCampSeasonEeSlotCountAsync(
+        Guid campSeasonId, int slotCount, CancellationToken cancellationToken = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(cancellationToken);
+        var season = await ctx.CampSeasons
+            .FirstOrDefaultAsync(s => s.Id == campSeasonId, cancellationToken);
+        if (season is null) return null;
+
+        var oldValue = season.EeSlotCount;
+        if (oldValue == slotCount) return (oldValue, slotCount, season.CampId);
+
+        season.EeSlotCount = slotCount;
+        await ctx.SaveChangesAsync(cancellationToken);
+        return (oldValue, slotCount, season.CampId);
+    }
 }
