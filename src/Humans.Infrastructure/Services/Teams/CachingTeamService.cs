@@ -2,7 +2,6 @@ using System.Collections.Concurrent;
 using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Extensions;
-using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
@@ -96,65 +95,10 @@ public sealed class CachingTeamService : ITeamService, IUserMerge
         CancellationToken cancellationToken = default) =>
         WithInner(inner => inner.SearchAsync(query, max, cancellationToken));
 
-    public async Task<TeamDirectoryResult> GetTeamDirectoryAsync(
+    public Task<TeamDirectoryResult> GetTeamDirectoryAsync(
         Guid? userId,
-        CancellationToken cancellationToken = default)
-    {
-        var teamsById = await GetTeamsByIdAsync(cancellationToken);
-
-        if (!userId.HasValue)
-        {
-            var publicDepartments = teamsById.Values
-                .Where(t => !t.IsSystemTeam && !t.IsHidden
-                    && t.IsActive
-                    && ((t.ParentTeamId is null && t.IsPublicPage)
-                        || (t.ParentTeamId is not null && t.IsPromotedToDirectory)))
-                .Select(t => CreateDirectorySummary(t, teamsById, userId))
-                .ToList();
-
-            return new TeamDirectoryResult(
-                IsAuthenticated: false,
-                CanCreateTeam: false,
-                MyTeams: [],
-                Departments: publicDepartments,
-                SystemTeams: [],
-                HiddenTeams: []);
-        }
-
-        await using var scope = _scopeFactory.CreateAsyncScope();
-        var roles = scope.ServiceProvider.GetRequiredService<IRoleAssignmentService>();
-        var isBoardMember = await roles.IsUserBoardMemberAsync(userId.Value, cancellationToken);
-        var isAdmin = await roles.IsUserAdminAsync(userId.Value, cancellationToken);
-        var isTeamsAdmin = await roles.IsUserTeamsAdminAsync(userId.Value, cancellationToken);
-        var canCreateTeam = isBoardMember || isAdmin || isTeamsAdmin;
-        var canSeeHiddenTeams = canCreateTeam;
-
-        var visibleTeams = canSeeHiddenTeams
-            ? teamsById.Values
-            : teamsById.Values.Where(t => !t.IsHidden);
-
-        var summaries = visibleTeams
-            .Where(t => t.IsActive)
-            .Where(t => t.ParentTeamId is null || t.IsPromotedToDirectory)
-            .Select(t => CreateDirectorySummary(t, teamsById, userId))
-            .ToList();
-
-        return new TeamDirectoryResult(
-            IsAuthenticated: true,
-            CanCreateTeam: canCreateTeam,
-            MyTeams: summaries
-                .Where(t => t.IsCurrentUserMember)
-                .ToList(),
-            Departments: summaries
-                .Where(t => !t.IsCurrentUserMember && !t.IsSystemTeam && !t.IsHidden)
-                .ToList(),
-            SystemTeams: summaries
-                .Where(t => !t.IsCurrentUserMember && t.IsSystemTeam && !t.IsHidden)
-                .ToList(),
-            HiddenTeams: summaries
-                .Where(t => !t.IsCurrentUserMember && t.IsHidden)
-                .ToList());
-    }
+        CancellationToken cancellationToken = default) =>
+        WithInner(inner => inner.GetTeamDirectoryAsync(userId, cancellationToken));
 
     public Task<TeamDetailResult?> GetTeamDetailAsync(
         string slug,
@@ -779,34 +723,6 @@ public sealed class CachingTeamService : ITeamService, IUserMerge
             })
             .ToList(),
         ParentTeamId: team.ParentTeamId);
-
-    private static TeamDirectorySummary CreateDirectorySummary(
-        TeamInfo team,
-        IReadOnlyDictionary<Guid, TeamInfo> teamById,
-        Guid? userId)
-    {
-        TeamInfo? parent = team.ParentTeamId.HasValue && teamById.TryGetValue(team.ParentTeamId.Value, out var resolvedParent)
-            ? resolvedParent
-            : null;
-        var isCurrentUserMember = userId.HasValue && team.Members.Any(m => m.UserId == userId.Value);
-        var isCurrentUserCoordinator = userId.HasValue && team.Members.Any(
-            m => m.UserId == userId.Value && m.Role == TeamMemberRole.Coordinator);
-
-        return new TeamDirectorySummary(
-            team.Id,
-            team.Name,
-            team.Description,
-            team.Slug,
-            team.Members.Count,
-            team.IsSystemTeam,
-            team.IsHidden,
-            team.RequiresApproval,
-            team.IsPublicPage,
-            isCurrentUserMember,
-            isCurrentUserCoordinator,
-            parent?.Name,
-            parent?.Slug);
-    }
 
     private async Task<TResult> WithInner<TResult>(Func<ITeamService, Task<TResult>> action)
     {
