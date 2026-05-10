@@ -84,6 +84,10 @@ public static class RecurringJobExtensions
             ("holded-expense-outbox", () => RecurringJob.AddOrUpdate<HoldedExpenseOutboxJob>(
                 "holded-expense-outbox", job => job.ExecuteAsync(CancellationToken.None), "*/1 * * * *")),
 
+            // Poll Holded for payment confirmation on SepaSent reports — every 15 minutes.
+            ("expense-paid-polling", () => RecurringJob.AddOrUpdate<ExpensePaidPollingJob>(
+                "expense-paid-polling", job => job.ExecuteAsync(CancellationToken.None), "*/15 * * * *")),
+
             // Purge old agent conversations — daily at 03:15 UTC.
             ("agent-conversation-retention", () => RecurringJob.AddOrUpdate<AgentConversationRetentionJob>(
                 "agent-conversation-retention", job => job.ExecuteAsync(CancellationToken.None), "15 3 * * *")),

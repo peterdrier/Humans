@@ -20,6 +20,7 @@ internal static class ExpensesSectionExtensions
         services.AddSingleton<IExpenseRepository, ExpenseRepository>();
         services.AddScoped<IExpenseReportService, ExpenseReportService>();
         services.AddScoped<HoldedExpenseOutboxJob>();
+        services.AddScoped<ExpensePaidPollingJob>();
 
         // SEPA config — bind from appsettings "Sepa" section; allow IBAN override via env var.
         services.Configure<SepaConfig>(opts =>
