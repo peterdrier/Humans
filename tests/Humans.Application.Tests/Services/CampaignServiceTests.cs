@@ -46,14 +46,35 @@ public class CampaignServiceTests : IDisposable
         // Default stubs: fetch data from the in-memory DbContext so the existing
         // seed helpers still drive the scenarios end-to-end.
         _teamService
-            .GetTeamMembersAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .GetActiveTeamAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(async call =>
             {
                 var teamId = call.ArgAt<Guid>(0);
-                var list = await _dbContext.TeamMembers
-                    .Where(tm => tm.TeamId == teamId)
-                    .ToListAsync();
-                return (IReadOnlyList<TeamMember>)list;
+                var team = await _dbContext.Teams
+                    .Include(t => t.Members)
+                    .FirstOrDefaultAsync(t => t.Id == teamId);
+                if (team is null)
+                    return null;
+
+                var userIds = team.Members.Select(m => m.UserId).ToList();
+                var users = await _dbContext.Users
+                    .Where(u => userIds.Contains(u.Id))
+                    .ToDictionaryAsync(u => u.Id);
+                var members = team.Members
+                    .Where(tm => tm.LeftAt is null)
+                    .Select(tm =>
+                    {
+                        users.TryGetValue(tm.UserId, out var user);
+                        return new TeamMemberInfo(
+                            tm.Id, tm.UserId, user?.DisplayName ?? string.Empty,
+                            user?.Email, user?.ProfilePictureUrl, tm.Role, tm.JoinedAt);
+                    })
+                    .ToList();
+                return new TeamInfo(
+                    team.Id, team.Name, team.Description, team.Slug,
+                    team.IsSystemTeam, team.SystemTeamType, team.RequiresApproval,
+                    team.IsPublicPage, team.IsHidden, team.IsPromotedToDirectory,
+                    team.CreatedAt, members, team.ParentTeamId);
             });
 
         _teamService

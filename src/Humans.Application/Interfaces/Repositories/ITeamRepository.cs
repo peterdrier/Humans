@@ -180,13 +180,6 @@ public interface ITeamRepository
     /// Cross-domain User data is not included — caller stitches via
     /// <see cref="Users.IUserService"/>.
     /// </summary>
-    Task<IReadOnlyList<TeamMember>> GetActiveMembersAsync(Guid teamId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Get the active UserIds of every member of a team.
-    /// </summary>
-    Task<IReadOnlyList<Guid>> GetActiveMemberUserIdsAsync(Guid teamId, CancellationToken ct = default);
-
     /// <summary>
     /// Get active user ids with the <see cref="TeamMemberRole.Coordinator"/>
     /// role on the given team.

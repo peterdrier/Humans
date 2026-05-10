@@ -229,7 +229,8 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
         var recentOrders = await _ticketRepository.GetRecentOrdersAsync(count: 10);
 
         // Volunteer ticket coverage.
-        var volunteerUserIds = await _teamService.GetActiveMemberUserIdsAsync(SystemTeamIds.Volunteers);
+        var volunteerTeam = await _teamService.GetActiveTeamAsync(SystemTeamIds.Volunteers);
+        var volunteerUserIds = volunteerTeam?.Members.Select(m => m.UserId).ToList() ?? [];
         var totalActiveVolunteers = volunteerUserIds.Count;
 
         var userIdsWithTickets = await GetUserIdsWithTicketsAsync();
@@ -575,8 +576,8 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
 
         // Load Users and Volunteers-team membership via service interfaces.
         var allUsers = await _userService.GetAllUsersAsync();
-        var volunteerUserIds = (await _teamService.GetActiveMemberUserIdsAsync(SystemTeamIds.Volunteers))
-            .ToHashSet();
+        var volunteerTeam = await _teamService.GetActiveTeamAsync(SystemTeamIds.Volunteers);
+        var volunteerUserIds = volunteerTeam?.Members.Select(m => m.UserId).ToHashSet() ?? [];
 
         var candidateIds = allUsers
             .Where(u => volunteerUserIds.Contains(u.Id))

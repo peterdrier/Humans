@@ -34,14 +34,13 @@ public sealed class NotificationRecipientResolver : INotificationRecipientResolv
         Guid teamId,
         CancellationToken cancellationToken = default)
     {
-        var team = await _teamService.GetTeamByIdAsync(teamId, cancellationToken);
+        var team = await _teamService.GetActiveTeamAsync(teamId, cancellationToken);
         if (team is null)
         {
             return null;
         }
 
-        var members = await _teamService.GetTeamMembersAsync(teamId, cancellationToken);
-        var memberUserIds = members.Select(m => m.UserId).ToList();
+        var memberUserIds = team.Members.Select(m => m.UserId).ToList();
         return new TeamNotificationInfo(team.Id, team.Name, memberUserIds);
     }
 
