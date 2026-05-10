@@ -17,17 +17,26 @@ namespace Humans.Application.Tests.Architecture;
 /// <c>Humans.Infrastructure</c>, reintroduces a <c>DbContext</c> dependency,
 /// or accidentally pulls an EF Core reference into <c>Humans.Application</c>.
 /// </summary>
-public class GovernanceArchitectureTests
+public partial class ArchitectureShapeTests
 {
     [HumansFact]
+    public void GovernanceArchitecture_contracts_hold()
+    {
+        ApplicationDecisionService_LivesInHumansApplicationServicesGovernanceNamespace();
+        ApplicationDecisionService_HasNoDbContextConstructorParameter();
+        ApplicationDecisionService_HasNoIMemoryCacheConstructorParameter();
+        ApplicationDecisionService_TakesRepository();
+        ApplicationDecisionService_TakesNoTypeFromInterfacesStoresNamespace();
+        HumansApplicationAssembly_HasNoReferenceToEntityFrameworkCore();
+        IApplicationRepository_LivesInApplicationInterfacesRepositoriesNamespace();
+    }
+
     public void ApplicationDecisionService_LivesInHumansApplicationServicesGovernanceNamespace()
     {
         typeof(ApplicationDecisionService).Namespace
             .Should().Be("Humans.Application.Services.Governance",
                 because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
     }
-
-    [HumansFact]
     public void ApplicationDecisionService_HasNoDbContextConstructorParameter()
     {
         var ctor = typeof(ApplicationDecisionService).GetConstructors().Single();
@@ -36,8 +45,6 @@ public class GovernanceArchitectureTests
                 p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
                 because: "services in Humans.Application must never take DbContext — use IApplicationRepository instead (design-rules §3)");
     }
-
-    [HumansFact]
     public void ApplicationDecisionService_HasNoIMemoryCacheConstructorParameter()
     {
         var ctor = typeof(ApplicationDecisionService).GetConstructors().Single();
@@ -48,8 +55,6 @@ public class GovernanceArchitectureTests
         cachingParam.Should().BeNull(
             because: "caching is handled via cross-cutting invalidator interfaces, not IMemoryCache directly");
     }
-
-    [HumansFact]
     public void ApplicationDecisionService_TakesRepository()
     {
         var ctor = typeof(ApplicationDecisionService).GetConstructors().Single();
@@ -57,8 +62,6 @@ public class GovernanceArchitectureTests
 
         paramTypes.Should().Contain(typeof(IApplicationRepository));
     }
-
-    [HumansFact]
     public void ApplicationDecisionService_TakesNoTypeFromInterfacesStoresNamespace()
     {
         var ctor = typeof(ApplicationDecisionService).GetConstructors().Single();
@@ -68,8 +71,6 @@ public class GovernanceArchitectureTests
                     .StartsWith("Humans.Application.Interfaces.Stores", StringComparison.Ordinal),
                 because: "Governance has no store — service reads from IApplicationRepository directly (issue #533)");
     }
-
-    [HumansFact]
     public void HumansApplicationAssembly_HasNoReferenceToEntityFrameworkCore()
     {
         var applicationAssembly = typeof(IApplicationDecisionService).Assembly;
@@ -82,8 +83,6 @@ public class GovernanceArchitectureTests
             name => name.StartsWith("Microsoft.EntityFrameworkCore", StringComparison.Ordinal),
             because: "Humans.Application must not reference EF Core — repositories live in Infrastructure (design-rules §1, §3)");
     }
-
-    [HumansFact]
     public void IApplicationRepository_LivesInApplicationInterfacesRepositoriesNamespace()
     {
         typeof(IApplicationRepository).Namespace

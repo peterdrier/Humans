@@ -19,19 +19,27 @@ namespace Humans.Application.Tests.Architecture;
 /// Planning (#543), and Audit Log (#552) when they skipped the decorator.
 /// </para>
 /// </summary>
-public class GeneralAvailabilityArchitectureTests
+public partial class ArchitectureShapeTests
 {
-    // ── GeneralAvailabilityService ──────────────────────────────────────────
-
     [HumansFact]
+    public void GeneralAvailabilityArchitecture_contracts_hold()
+    {
+        GeneralAvailabilityService_LivesInHumansApplicationServicesShiftsNamespace();
+        GeneralAvailabilityService_HasNoDbContextConstructorParameter();
+        GeneralAvailabilityService_HasNoIMemoryCacheConstructorParameter();
+        GeneralAvailabilityService_TakesRepository();
+        GeneralAvailabilityService_ConstructorTakesNoStoreType();
+        IGeneralAvailabilityRepository_LivesInApplicationInterfacesRepositoriesNamespace();
+        GeneralAvailabilityRepository_IsSealed();
+    }
+
+    // ── GeneralAvailabilityService ──────────────────────────────────────────
     public void GeneralAvailabilityService_LivesInHumansApplicationServicesShiftsNamespace()
     {
         typeof(GeneralAvailabilityService).Namespace
             .Should().Be("Humans.Application.Services.Shifts",
                 because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
     }
-
-    [HumansFact]
     public void GeneralAvailabilityService_HasNoDbContextConstructorParameter()
     {
         var ctor = typeof(GeneralAvailabilityService).GetConstructors().Single();
@@ -40,8 +48,6 @@ public class GeneralAvailabilityArchitectureTests
                 p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
                 because: "services in Humans.Application must never take DbContext — use IGeneralAvailabilityRepository instead (design-rules §3)");
     }
-
-    [HumansFact]
     public void GeneralAvailabilityService_HasNoIMemoryCacheConstructorParameter()
     {
         var ctor = typeof(GeneralAvailabilityService).GetConstructors().Single();
@@ -52,8 +58,6 @@ public class GeneralAvailabilityArchitectureTests
         cachingParam.Should().BeNull(
             because: "canonical availability data is not IMemoryCache-backed; §15 Option A applies (no caching decorator warranted)");
     }
-
-    [HumansFact]
     public void GeneralAvailabilityService_TakesRepository()
     {
         var ctor = typeof(GeneralAvailabilityService).GetConstructors().Single();
@@ -61,8 +65,6 @@ public class GeneralAvailabilityArchitectureTests
 
         paramTypes.Should().Contain(typeof(IGeneralAvailabilityRepository));
     }
-
-    [HumansFact]
     public void GeneralAvailabilityService_ConstructorTakesNoStoreType()
     {
         var ctor = typeof(GeneralAvailabilityService).GetConstructors().Single();
@@ -75,16 +77,12 @@ public class GeneralAvailabilityArchitectureTests
     }
 
     // ── IGeneralAvailabilityRepository ──────────────────────────────────────
-
-    [HumansFact]
     public void IGeneralAvailabilityRepository_LivesInApplicationInterfacesRepositoriesNamespace()
     {
         typeof(IGeneralAvailabilityRepository).Namespace
             .Should().Be("Humans.Application.Interfaces.Repositories",
                 because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
     }
-
-    [HumansFact]
     public void GeneralAvailabilityRepository_IsSealed()
     {
         var repoType = typeof(GeneralAvailabilityRepository);

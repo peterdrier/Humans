@@ -26,19 +26,32 @@ namespace Humans.Application.Tests.Architecture;
 /// outbox persistence layer moves to Application.
 /// </para>
 /// </summary>
-public class EmailArchitectureTests
+public partial class ArchitectureShapeTests
 {
-    // ── EmailOutboxService ───────────────────────────────────────────────────
-
     [HumansFact]
+    public void EmailArchitecture_contracts_hold()
+    {
+        EmailOutboxService_LivesInHumansApplicationServicesEmailNamespace();
+        EmailOutboxService_HasNoDbContextConstructorParameter();
+        EmailOutboxService_HasNoIMemoryCacheConstructorParameter();
+        EmailOutboxService_TakesRepository();
+        OutboxEmailService_LivesInHumansApplicationServicesEmailNamespace();
+        OutboxEmailService_HasNoDbContextConstructorParameter();
+        OutboxEmailService_TakesOutboxRepositoryAndUserEmailService();
+        OutboxEmailService_TakesConnectorAbstractions();
+        OutboxEmailService_HasNoHangfireDependency();
+        IEmailOutboxRepository_LivesInApplicationInterfacesRepositoriesNamespace();
+        EmailOutboxRepository_IsSealed();
+        IEmailBodyComposer_AndIImmediateOutboxProcessor_LiveInApplicationInterfaces();
+    }
+
+    // ── EmailOutboxService ───────────────────────────────────────────────────
     public void EmailOutboxService_LivesInHumansApplicationServicesEmailNamespace()
     {
         typeof(EmailOutboxService).Namespace
             .Should().Be("Humans.Application.Services.Email",
                 because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
     }
-
-    [HumansFact]
     public void EmailOutboxService_HasNoDbContextConstructorParameter()
     {
         var ctor = typeof(EmailOutboxService).GetConstructors().Single();
@@ -47,8 +60,6 @@ public class EmailArchitectureTests
                 p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
                 because: "services in Humans.Application must never take DbContext — use IEmailOutboxRepository instead (design-rules §3)");
     }
-
-    [HumansFact]
     public void EmailOutboxService_HasNoIMemoryCacheConstructorParameter()
     {
         var ctor = typeof(EmailOutboxService).GetConstructors().Single();
@@ -59,8 +70,6 @@ public class EmailArchitectureTests
         cachingParam.Should().BeNull(
             because: "Email outbox is not IMemoryCache-backed; reads are infrequent admin dashboard queries that go straight to the repository (no decorator variant per Email §15 choice)");
     }
-
-    [HumansFact]
     public void EmailOutboxService_TakesRepository()
     {
         var ctor = typeof(EmailOutboxService).GetConstructors().Single();
@@ -70,16 +79,12 @@ public class EmailArchitectureTests
     }
 
     // ── OutboxEmailService ───────────────────────────────────────────────────
-
-    [HumansFact]
     public void OutboxEmailService_LivesInHumansApplicationServicesEmailNamespace()
     {
         typeof(OutboxEmailService).Namespace
             .Should().Be("Humans.Application.Services.Email",
                 because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
     }
-
-    [HumansFact]
     public void OutboxEmailService_HasNoDbContextConstructorParameter()
     {
         var ctor = typeof(OutboxEmailService).GetConstructors().Single();
@@ -88,8 +93,6 @@ public class EmailArchitectureTests
                 p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
                 because: "services in Humans.Application must never take DbContext — use IEmailOutboxRepository instead (design-rules §3)");
     }
-
-    [HumansFact]
     public void OutboxEmailService_TakesOutboxRepositoryAndUserEmailService()
     {
         var ctor = typeof(OutboxEmailService).GetConstructors().Single();
@@ -100,8 +103,6 @@ public class EmailArchitectureTests
         paramTypes.Should().Contain(typeof(IUserEmailService),
             because: "looking up UserId by email is a Profile-section query — routed through IUserEmailService rather than direct access to user_emails (§2c)");
     }
-
-    [HumansFact]
     public void OutboxEmailService_TakesConnectorAbstractions()
     {
         var ctor = typeof(OutboxEmailService).GetConstructors().Single();
@@ -112,8 +113,6 @@ public class EmailArchitectureTests
         paramTypes.Should().Contain(typeof(IImmediateOutboxProcessor),
             because: "triggering an immediate outbox run uses Hangfire's IBackgroundJobClient — Application layer takes the abstraction rather than the Hangfire type");
     }
-
-    [HumansFact]
     public void OutboxEmailService_HasNoHangfireDependency()
     {
         var ctor = typeof(OutboxEmailService).GetConstructors().Single();
@@ -126,16 +125,12 @@ public class EmailArchitectureTests
     }
 
     // ── IEmailOutboxRepository ───────────────────────────────────────────────
-
-    [HumansFact]
     public void IEmailOutboxRepository_LivesInApplicationInterfacesRepositoriesNamespace()
     {
         typeof(IEmailOutboxRepository).Namespace
             .Should().Be("Humans.Application.Interfaces.Repositories",
                 because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
     }
-
-    [HumansFact]
     public void EmailOutboxRepository_IsSealed()
     {
         var repoType = typeof(IEmailOutboxRepository).Assembly
@@ -149,8 +144,6 @@ public class EmailArchitectureTests
     }
 
     // ── Connector abstractions ──────────────────────────────────────────────
-
-    [HumansFact]
     public void IEmailBodyComposer_AndIImmediateOutboxProcessor_LiveInApplicationInterfaces()
     {
         typeof(IEmailBodyComposer).Namespace

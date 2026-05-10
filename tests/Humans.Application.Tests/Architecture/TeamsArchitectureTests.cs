@@ -26,19 +26,30 @@ namespace Humans.Application.Tests.Architecture;
 /// split can be layered on later without changing the <see cref="ITeamService"/>
 /// surface if profiling warrants it.
 /// </summary>
-public class TeamsArchitectureTests
+public partial class ArchitectureShapeTests
 {
-    // ── TeamService ──────────────────────────────────────────────────────────
-
     [HumansFact]
+    public void TeamsArchitecture_contracts_hold()
+    {
+        TeamService_LivesInHumansApplicationServicesTeamsNamespace();
+        TeamService_HasNoDbContextConstructorParameter();
+        TeamService_HasNoIDbContextFactoryConstructorParameter();
+        TeamService_TakesRepository();
+        TeamService_AssemblyIsHumansApplication();
+        TeamService_DoesNotReferenceEntityFrameworkCore();
+        ITeamRepository_LivesInApplicationInterfacesRepositoriesNamespace();
+        TeamRepository_IsSealed();
+        TeamRepository_ImplementsITeamRepository();
+        TeamRepository_LivesInInfrastructureRepositoriesTeamsNamespace();
+    }
+
+    // ── TeamService ──────────────────────────────────────────────────────────
     public void TeamService_LivesInHumansApplicationServicesTeamsNamespace()
     {
         typeof(TeamService).Namespace
             .Should().Be("Humans.Application.Services.Teams",
                 because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
     }
-
-    [HumansFact]
     public void TeamService_HasNoDbContextConstructorParameter()
     {
         var ctor = typeof(TeamService).GetConstructors().Single();
@@ -47,8 +58,6 @@ public class TeamsArchitectureTests
                 p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
                 because: "services in Humans.Application must never take DbContext — use ITeamRepository instead (design-rules §3)");
     }
-
-    [HumansFact]
     public void TeamService_HasNoIDbContextFactoryConstructorParameter()
     {
         var ctor = typeof(TeamService).GetConstructors().Single();
@@ -59,8 +68,6 @@ public class TeamsArchitectureTests
         factoryParam.Should().BeNull(
             because: "IDbContextFactory is a repository concern (design-rules §15b) — services go through repositories, not straight to the factory");
     }
-
-    [HumansFact]
     public void TeamService_TakesRepository()
     {
         var ctor = typeof(TeamService).GetConstructors().Single();
@@ -69,16 +76,12 @@ public class TeamsArchitectureTests
         paramTypes.Should().Contain(typeof(ITeamRepository),
             because: "§15 requires every section service to go through its owning repository interface");
     }
-
-    [HumansFact]
     public void TeamService_AssemblyIsHumansApplication()
     {
         typeof(TeamService).Assembly.GetName().Name
             .Should().Be("Humans.Application",
                 because: "cross-check: the Application-layer project graph structurally forbids EF Core references, so services in this assembly cannot import EF even if a future typo tries");
     }
-
-    [HumansFact]
     public void TeamService_DoesNotReferenceEntityFrameworkCore()
     {
         // Humans.Application.csproj does not reference Microsoft.EntityFrameworkCore,
@@ -94,30 +97,22 @@ public class TeamsArchitectureTests
     }
 
     // ── ITeamRepository + TeamRepository ─────────────────────────────────────
-
-    [HumansFact]
     public void ITeamRepository_LivesInApplicationInterfacesRepositoriesNamespace()
     {
         typeof(ITeamRepository).Namespace
             .Should().Be("Humans.Application.Interfaces.Repositories",
                 because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
     }
-
-    [HumansFact]
     public void TeamRepository_IsSealed()
     {
         typeof(TeamRepository).IsSealed.Should().BeTrue(
             because: "repository implementations are sealed to prevent ad-hoc extension; any new behavior belongs on the interface");
     }
-
-    [HumansFact]
     public void TeamRepository_ImplementsITeamRepository()
     {
         typeof(ITeamRepository).IsAssignableFrom(typeof(TeamRepository))
             .Should().BeTrue();
     }
-
-    [HumansFact]
     public void TeamRepository_LivesInInfrastructureRepositoriesTeamsNamespace()
     {
         typeof(TeamRepository).Namespace

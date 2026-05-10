@@ -19,19 +19,29 @@ namespace Humans.Application.Tests.Architecture;
 /// invalidates the nav-badge cache via <see cref="INavBadgeCacheInvalidator"/>
 /// after successful writes.
 /// </summary>
-public class FeedbackArchitectureTests
+public partial class ArchitectureShapeTests
 {
-    // ── FeedbackService ──────────────────────────────────────────────────────
-
     [HumansFact]
+    public void FeedbackArchitecture_contracts_hold()
+    {
+        FeedbackService_LivesInHumansApplicationServicesFeedbackNamespace();
+        FeedbackService_HasNoDbContextConstructorParameter();
+        FeedbackService_HasNoIMemoryCacheConstructorParameter();
+        FeedbackService_TakesRepository();
+        FeedbackService_TakesNavBadgeInvalidator();
+        FeedbackService_TakesCrossSectionServiceInterfaces();
+        FeedbackService_ConstructorTakesNoStoreType();
+        IFeedbackRepository_LivesInApplicationInterfacesRepositoriesNamespace();
+        FeedbackRepository_IsSealed();
+    }
+
+    // ── FeedbackService ──────────────────────────────────────────────────────
     public void FeedbackService_LivesInHumansApplicationServicesFeedbackNamespace()
     {
         typeof(FeedbackService).Namespace
             .Should().Be("Humans.Application.Services.Feedback",
                 because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
     }
-
-    [HumansFact]
     public void FeedbackService_HasNoDbContextConstructorParameter()
     {
         var ctor = typeof(FeedbackService).GetConstructors().Single();
@@ -40,8 +50,6 @@ public class FeedbackArchitectureTests
                 p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
                 because: "services in Humans.Application must never take DbContext — use IFeedbackRepository instead (design-rules §3)");
     }
-
-    [HumansFact]
     public void FeedbackService_HasNoIMemoryCacheConstructorParameter()
     {
         var ctor = typeof(FeedbackService).GetConstructors().Single();
@@ -52,8 +60,6 @@ public class FeedbackArchitectureTests
         cachingParam.Should().BeNull(
             because: "Feedback has no canonical domain cache; cross-cutting nav-badge invalidation goes through INavBadgeCacheInvalidator, not IMemoryCache directly (design-rules §5)");
     }
-
-    [HumansFact]
     public void FeedbackService_TakesRepository()
     {
         var ctor = typeof(FeedbackService).GetConstructors().Single();
@@ -61,8 +67,6 @@ public class FeedbackArchitectureTests
 
         paramTypes.Should().Contain(typeof(IFeedbackRepository));
     }
-
-    [HumansFact]
     public void FeedbackService_TakesNavBadgeInvalidator()
     {
         var ctor = typeof(FeedbackService).GetConstructors().Single();
@@ -71,8 +75,6 @@ public class FeedbackArchitectureTests
         paramTypes.Should().Contain(typeof(INavBadgeCacheInvalidator),
             because: "FeedbackService invalidates the nav-badge count cache after writes that can change it (submit / status change / message post) — the dependency proves the wire is in place");
     }
-
-    [HumansFact]
     public void FeedbackService_TakesCrossSectionServiceInterfaces()
     {
         var ctor = typeof(FeedbackService).GetConstructors().Single();
@@ -85,8 +87,6 @@ public class FeedbackArchitectureTests
         paramTypes.Should().Contain(typeof(ITeamService),
             because: "Feedback resolves assigned-team names via ITeamService.GetTeamNamesByIdsAsync — no FeedbackReport.AssignedToTeam navigation at query time");
     }
-
-    [HumansFact]
     public void FeedbackService_ConstructorTakesNoStoreType()
     {
         var ctor = typeof(FeedbackService).GetConstructors().Single();
@@ -99,16 +99,12 @@ public class FeedbackArchitectureTests
     }
 
     // ── IFeedbackRepository ──────────────────────────────────────────────────
-
-    [HumansFact]
     public void IFeedbackRepository_LivesInApplicationInterfacesRepositoriesNamespace()
     {
         typeof(IFeedbackRepository).Namespace
             .Should().Be("Humans.Application.Interfaces.Repositories",
                 because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
     }
-
-    [HumansFact]
     public void FeedbackRepository_IsSealed()
     {
         var repoType = typeof(FeedbackRepository);

@@ -24,35 +24,47 @@ namespace Humans.Application.Tests.Architecture;
 /// sub-task #547b — the <c>consent_records</c> table stays with it.
 /// </para>
 /// </summary>
-public class LegalArchitectureTests
+public partial class ArchitectureShapeTests
 {
-    // ── Application-layer services ───────────────────────────────────────────
-
     [HumansFact]
+    public void LegalArchitecture_contracts_hold()
+    {
+        AdminLegalDocumentService_LivesInApplicationLegalNamespace();
+        LegalDocumentSyncService_LivesInApplicationLegalNamespace();
+        LegalDocumentService_LivesInApplicationLegalNamespace();
+        AdminLegalDocumentService_HasNoDbContextConstructorParameter();
+        LegalDocumentSyncService_HasNoDbContextConstructorParameter();
+        LegalDocumentService_HasNoDbContextConstructorParameter();
+        AdminLegalDocumentService_TakesRepository();
+        LegalDocumentSyncService_TakesRepository();
+        LegalDocumentSyncService_TakesConnector();
+        LegalDocumentService_TakesConnector();
+        AdminLegalDocumentService_DoesNotReferenceOctokit();
+        ILegalDocumentRepository_LivesInApplicationInterfacesRepositoriesNamespace();
+        LegalDocumentRepository_IsSealed();
+        IGitHubLegalDocumentConnector_InterfaceLivesInApplication();
+        GitHubLegalDocumentConnector_ImplementationLivesInInfrastructure();
+    }
+
+    // ── Application-layer services ───────────────────────────────────────────
     public void AdminLegalDocumentService_LivesInApplicationLegalNamespace()
     {
         typeof(AdminLegalDocumentService).Namespace
             .Should().Be("Humans.Application.Services.Legal",
                 because: "data-owning Legal services live in Humans.Application per design-rules §2b");
     }
-
-    [HumansFact]
     public void LegalDocumentSyncService_LivesInApplicationLegalNamespace()
     {
         typeof(LegalDocumentSyncService).Namespace
             .Should().Be("Humans.Application.Services.Legal",
                 because: "data-owning Legal services live in Humans.Application per design-rules §2b");
     }
-
-    [HumansFact]
     public void LegalDocumentService_LivesInApplicationLegalNamespace()
     {
         typeof(LegalDocumentService).Namespace
             .Should().Be("Humans.Application.Services.Legal",
                 because: "all Legal-section services are co-located post-#547a so callers find them predictably");
     }
-
-    [HumansFact]
     public void AdminLegalDocumentService_HasNoDbContextConstructorParameter()
     {
         var ctor = typeof(AdminLegalDocumentService).GetConstructors().Single();
@@ -61,8 +73,6 @@ public class LegalArchitectureTests
                 p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
                 because: "services in Humans.Application must never take DbContext — use ILegalDocumentRepository instead");
     }
-
-    [HumansFact]
     public void LegalDocumentSyncService_HasNoDbContextConstructorParameter()
     {
         var ctor = typeof(LegalDocumentSyncService).GetConstructors().Single();
@@ -71,8 +81,6 @@ public class LegalArchitectureTests
                 p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
                 because: "services in Humans.Application must never take DbContext — use ILegalDocumentRepository instead");
     }
-
-    [HumansFact]
     public void LegalDocumentService_HasNoDbContextConstructorParameter()
     {
         var ctor = typeof(LegalDocumentService).GetConstructors().Single();
@@ -81,8 +89,6 @@ public class LegalArchitectureTests
                 p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
                 because: "the statutes fetcher has zero DB access — GitHub I/O goes via IGitHubLegalDocumentConnector");
     }
-
-    [HumansFact]
     public void AdminLegalDocumentService_TakesRepository()
     {
         var ctor = typeof(AdminLegalDocumentService).GetConstructors().Single();
@@ -90,8 +96,6 @@ public class LegalArchitectureTests
 
         paramTypes.Should().Contain(typeof(ILegalDocumentRepository));
     }
-
-    [HumansFact]
     public void LegalDocumentSyncService_TakesRepository()
     {
         var ctor = typeof(LegalDocumentSyncService).GetConstructors().Single();
@@ -99,8 +103,6 @@ public class LegalArchitectureTests
 
         paramTypes.Should().Contain(typeof(ILegalDocumentRepository));
     }
-
-    [HumansFact]
     public void LegalDocumentSyncService_TakesConnector()
     {
         var ctor = typeof(LegalDocumentSyncService).GetConstructors().Single();
@@ -109,8 +111,6 @@ public class LegalArchitectureTests
         paramTypes.Should().Contain(typeof(IGitHubLegalDocumentConnector),
             because: "external GitHub I/O must go through the connector — no direct Octokit in Application");
     }
-
-    [HumansFact]
     public void LegalDocumentService_TakesConnector()
     {
         var ctor = typeof(LegalDocumentService).GetConstructors().Single();
@@ -119,8 +119,6 @@ public class LegalArchitectureTests
         paramTypes.Should().Contain(typeof(IGitHubLegalDocumentConnector),
             because: "external GitHub I/O must go through the connector — no direct Octokit in Application");
     }
-
-    [HumansFact]
     public void AdminLegalDocumentService_DoesNotReferenceOctokit()
     {
         var ctor = typeof(AdminLegalDocumentService).GetConstructors().Single();
@@ -133,15 +131,11 @@ public class LegalArchitectureTests
     }
 
     // ── Repository ───────────────────────────────────────────────────────────
-
-    [HumansFact]
     public void ILegalDocumentRepository_LivesInApplicationInterfacesRepositoriesNamespace()
     {
         typeof(ILegalDocumentRepository).Namespace
             .Should().Be("Humans.Application.Interfaces.Repositories");
     }
-
-    [HumansFact]
     public void LegalDocumentRepository_IsSealed()
     {
         var repoType = typeof(LegalDocumentRepository);
@@ -150,16 +144,12 @@ public class LegalArchitectureTests
     }
 
     // ── Connector — lives in Infrastructure, not Application ─────────────────
-
-    [HumansFact]
     public void IGitHubLegalDocumentConnector_InterfaceLivesInApplication()
     {
         typeof(IGitHubLegalDocumentConnector).Assembly.GetName().Name
             .Should().Be("Humans.Application",
                 because: "connector interfaces live in Application so services can take them without an Octokit reference");
     }
-
-    [HumansFact]
     public void GitHubLegalDocumentConnector_ImplementationLivesInInfrastructure()
     {
         var implType = typeof(Humans.Infrastructure.Services.GitHubLegalDocumentConnector);

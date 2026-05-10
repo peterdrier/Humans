@@ -19,19 +19,29 @@ namespace Humans.Application.Tests.Architecture;
 /// they skipped the decorator.
 /// </para>
 /// </summary>
-public class ShiftSignupArchitectureTests
+public partial class ArchitectureShapeTests
 {
-    // ── ShiftSignupService ──────────────────────────────────────────────────
-
     [HumansFact]
+    public void ShiftSignupArchitecture_contracts_hold()
+    {
+        ShiftSignupService_LivesInHumansApplicationServicesShiftsNamespace();
+        ShiftSignupService_HasNoDbContextConstructorParameter();
+        ShiftSignupService_HasNoIMemoryCacheConstructorParameter();
+        ShiftSignupService_TakesRepository();
+        ShiftSignupService_ConstructorTakesNoStoreType();
+        ShiftSignupService_IsSealed();
+        IShiftSignupRepository_LivesInApplicationInterfacesRepositoriesNamespace();
+        ShiftSignupRepository_IsSealed();
+        ShiftSignupRepository_NamespaceIsHumansInfrastructureRepositories();
+    }
+
+    // ── ShiftSignupService ──────────────────────────────────────────────────
     public void ShiftSignupService_LivesInHumansApplicationServicesShiftsNamespace()
     {
         typeof(ShiftSignupService).Namespace
             .Should().Be("Humans.Application.Services.Shifts",
                 because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
     }
-
-    [HumansFact]
     public void ShiftSignupService_HasNoDbContextConstructorParameter()
     {
         var ctor = typeof(ShiftSignupService).GetConstructors().Single();
@@ -40,8 +50,6 @@ public class ShiftSignupArchitectureTests
                 p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
                 because: "services in Humans.Application must never take DbContext — use IShiftSignupRepository instead (design-rules §3)");
     }
-
-    [HumansFact]
     public void ShiftSignupService_HasNoIMemoryCacheConstructorParameter()
     {
         var ctor = typeof(ShiftSignupService).GetConstructors().Single();
@@ -52,8 +60,6 @@ public class ShiftSignupArchitectureTests
         cachingParam.Should().BeNull(
             because: "shift-signup reads are request-scoped; §15 Option A applies (no caching decorator warranted)");
     }
-
-    [HumansFact]
     public void ShiftSignupService_TakesRepository()
     {
         var ctor = typeof(ShiftSignupService).GetConstructors().Single();
@@ -61,8 +67,6 @@ public class ShiftSignupArchitectureTests
 
         paramTypes.Should().Contain(typeof(IShiftSignupRepository));
     }
-
-    [HumansFact]
     public void ShiftSignupService_ConstructorTakesNoStoreType()
     {
         var ctor = typeof(ShiftSignupService).GetConstructors().Single();
@@ -73,8 +77,6 @@ public class ShiftSignupArchitectureTests
         storeParam.Should().BeNull(
             because: "Application services must not depend on store abstractions (design-rules §15); ShiftSignup Option A does not use a store at all");
     }
-
-    [HumansFact]
     public void ShiftSignupService_IsSealed()
     {
         typeof(ShiftSignupService).IsSealed.Should().BeTrue(
@@ -82,16 +84,12 @@ public class ShiftSignupArchitectureTests
     }
 
     // ── IShiftSignupRepository ──────────────────────────────────────────────
-
-    [HumansFact]
     public void IShiftSignupRepository_LivesInApplicationInterfacesRepositoriesNamespace()
     {
         typeof(IShiftSignupRepository).Namespace
             .Should().Be("Humans.Application.Interfaces.Repositories",
                 because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
     }
-
-    [HumansFact]
     public void ShiftSignupRepository_IsSealed()
     {
         var repoType = typeof(ShiftSignupRepository);
@@ -99,8 +97,6 @@ public class ShiftSignupArchitectureTests
         repoType.IsSealed.Should().BeTrue(
             because: "repository implementations are sealed to prevent ad-hoc extension; any new behavior belongs on the interface");
     }
-
-    [HumansFact]
     public void ShiftSignupRepository_NamespaceIsHumansInfrastructureRepositories()
     {
         var repoType = typeof(ShiftSignupRepository);

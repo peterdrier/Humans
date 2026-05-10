@@ -22,8 +22,20 @@ namespace Humans.Application.Tests.Architecture;
 /// <c>Humans.Infrastructure</c> inside the Application project.
 /// </para>
 /// </summary>
-public class TicketVendorArchitectureTests
+public partial class ArchitectureShapeTests
 {
+    [HumansFact]
+    public void TicketVendorArchitecture_contracts_hold()
+    {
+        ITicketVendorService_LivesInApplicationInterfacesNamespace();
+        ITicketVendorService_IsDeclaredInApplicationAssembly();
+        HumansApplicationAssembly_HasNoReferenceToInfrastructureOrVendorSdk();
+        ITicketVendorService_ExposesNoForbiddenTypesInSignatures();
+        ITicketVendorService_AllDtoTypesLiveInApplicationDtos();
+        TicketTailorService_LivesInHumansInfrastructureServicesNamespace();
+        StubTicketVendorService_LivesInHumansInfrastructureServicesNamespace();
+    }
+
     // Namespaces that indicate an HTTP-client or vendor-SDK type leaking into
     // the Application-layer interface. Matching is prefix-based; add more
     // here if a new vendor library shows up.
@@ -33,24 +45,18 @@ public class TicketVendorArchitectureTests
         "TicketTailor",
         "Humans.Infrastructure",
     ];
-
-    [HumansFact]
     public void ITicketVendorService_LivesInApplicationInterfacesNamespace()
     {
         typeof(ITicketVendorService).Namespace
             .Should().Be("Humans.Application.Interfaces.Tickets",
                 because: "the vendor-agnostic port lives in the Application layer; HTTP/SDK adapters are Infrastructure (design-rules §1, §15)");
     }
-
-    [HumansFact]
     public void ITicketVendorService_IsDeclaredInApplicationAssembly()
     {
         typeof(ITicketVendorService).Assembly.GetName().Name
             .Should().Be("Humans.Application",
                 because: "the port must be compiled into Humans.Application so Application-layer consumers can reference it without an Infrastructure dependency");
     }
-
-    [HumansFact]
     public void HumansApplicationAssembly_HasNoReferenceToInfrastructureOrVendorSdk()
     {
         var applicationAssembly = typeof(ITicketVendorService).Assembly;
@@ -67,8 +73,6 @@ public class TicketVendorArchitectureTests
             name => name.StartsWith("TicketTailor", StringComparison.Ordinal),
             because: "Humans.Application must not reference the TicketTailor SDK; HTTP I/O is Infrastructure's concern");
     }
-
-    [HumansFact]
     public void ITicketVendorService_ExposesNoForbiddenTypesInSignatures()
     {
         var offenders = new List<string>();
@@ -114,8 +118,6 @@ public class TicketVendorArchitectureTests
             }
         }
     }
-
-    [HumansFact]
     public void ITicketVendorService_AllDtoTypesLiveInApplicationDtos()
     {
         // Strict allowlist: every type surfaced by the interface must be a
@@ -163,8 +165,6 @@ public class TicketVendorArchitectureTests
             }
         }
     }
-
-    [HumansFact]
     public void TicketTailorService_LivesInHumansInfrastructureServicesNamespace()
     {
         var infra = Assembly.Load("Humans.Infrastructure");
@@ -175,8 +175,6 @@ public class TicketVendorArchitectureTests
         impl.Namespace.Should().Be("Humans.Infrastructure.Services",
             because: "the HTTP-backed adapter must stay in Infrastructure — it owns HttpClient, JSON parsing, and TicketTailor-specific response shapes (design-rules §1, §15 connector)");
     }
-
-    [HumansFact]
     public void StubTicketVendorService_LivesInHumansInfrastructureServicesNamespace()
     {
         var infra = Assembly.Load("Humans.Infrastructure");

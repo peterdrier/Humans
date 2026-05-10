@@ -21,19 +21,28 @@ namespace Humans.Application.Tests.Architecture;
 /// justifying a decorator.
 /// </para>
 /// </summary>
-public class TicketingBudgetArchitectureTests
+public partial class ArchitectureShapeTests
 {
-    // ── TicketingBudgetService ───────────────────────────────────────────────
-
     [HumansFact]
+    public void TicketingBudgetArchitecture_contracts_hold()
+    {
+        TicketingBudgetService_LivesInHumansApplicationServicesTicketsNamespace();
+        TicketingBudgetService_HasNoDbContextConstructorParameter();
+        TicketingBudgetService_HasNoIMemoryCacheConstructorParameter();
+        TicketingBudgetService_TakesRepository();
+        TicketingBudgetService_TakesBudgetServiceForCrossSectionWrites();
+        TicketingBudgetService_ConstructorTakesNoStoreType();
+        ITicketingBudgetRepository_LivesInApplicationInterfacesRepositoriesNamespace();
+        TicketingBudgetRepository_IsSealed();
+    }
+
+    // ── TicketingBudgetService ───────────────────────────────────────────────
     public void TicketingBudgetService_LivesInHumansApplicationServicesTicketsNamespace()
     {
         typeof(TicketingBudgetService).Namespace
             .Should().Be("Humans.Application.Services.Tickets",
                 because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
     }
-
-    [HumansFact]
     public void TicketingBudgetService_HasNoDbContextConstructorParameter()
     {
         var ctor = typeof(TicketingBudgetService).GetConstructors().Single();
@@ -42,8 +51,6 @@ public class TicketingBudgetArchitectureTests
                 p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
                 because: "services in Humans.Application must never take DbContext — use ITicketingBudgetRepository instead (design-rules §3)");
     }
-
-    [HumansFact]
     public void TicketingBudgetService_HasNoIMemoryCacheConstructorParameter()
     {
         var ctor = typeof(TicketingBudgetService).GetConstructors().Single();
@@ -54,8 +61,6 @@ public class TicketingBudgetArchitectureTests
         cachingParam.Should().BeNull(
             because: "TicketingBudgetService is a batch-style bridge; no per-request caching is warranted (design-rules §15 + Governance/User precedent for decorator-less sections)");
     }
-
-    [HumansFact]
     public void TicketingBudgetService_TakesRepository()
     {
         var ctor = typeof(TicketingBudgetService).GetConstructors().Single();
@@ -63,8 +68,6 @@ public class TicketingBudgetArchitectureTests
 
         paramTypes.Should().Contain(typeof(ITicketingBudgetRepository));
     }
-
-    [HumansFact]
     public void TicketingBudgetService_TakesBudgetServiceForCrossSectionWrites()
     {
         var ctor = typeof(TicketingBudgetService).GetConstructors().Single();
@@ -73,8 +76,6 @@ public class TicketingBudgetArchitectureTests
         paramTypes.Should().Contain(typeof(IBudgetService),
             because: "ticketing_projections and budget_line_items are Budget-owned; all mutations route through IBudgetService (design-rules §2c, §8)");
     }
-
-    [HumansFact]
     public void TicketingBudgetService_ConstructorTakesNoStoreType()
     {
         var ctor = typeof(TicketingBudgetService).GetConstructors().Single();
@@ -87,16 +88,12 @@ public class TicketingBudgetArchitectureTests
     }
 
     // ── ITicketingBudgetRepository ───────────────────────────────────────────
-
-    [HumansFact]
     public void ITicketingBudgetRepository_LivesInApplicationInterfacesRepositoriesNamespace()
     {
         typeof(ITicketingBudgetRepository).Namespace
             .Should().Be("Humans.Application.Interfaces.Repositories",
                 because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
     }
-
-    [HumansFact]
     public void TicketingBudgetRepository_IsSealed()
     {
         // Mirrors ProfileRepository / UserRepository — repository implementations are terminal;

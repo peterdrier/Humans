@@ -30,19 +30,29 @@ namespace Humans.Application.Tests.Architecture;
 /// sub-task #547a.
 /// </para>
 /// </summary>
-public class ConsentArchitectureTests
+public partial class ArchitectureShapeTests
 {
-    // ── ConsentService ───────────────────────────────────────────────────────
-
     [HumansFact]
+    public void ConsentArchitecture_contracts_hold()
+    {
+        ConsentService_LivesInHumansApplicationServicesConsentNamespace();
+        ConsentService_HasNoDbContextConstructorParameter();
+        ConsentService_HasNoIMemoryCacheConstructorParameter();
+        ConsentService_TakesRepository();
+        ConsentService_ConstructorTakesNoStoreType();
+        IConsentRepository_LivesInApplicationInterfacesRepositoriesNamespace();
+        ConsentRepository_IsSealed();
+        IConsentRepository_HasNoUpdateOrDeleteOrRemoveMethods();
+        IConsentRepository_HasAddAsyncMethod();
+    }
+
+    // ── ConsentService ───────────────────────────────────────────────────────
     public void ConsentService_LivesInHumansApplicationServicesConsentNamespace()
     {
         typeof(ConsentService).Namespace
             .Should().Be("Humans.Application.Services.Consent",
                 because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
     }
-
-    [HumansFact]
     public void ConsentService_HasNoDbContextConstructorParameter()
     {
         var ctor = typeof(ConsentService).GetConstructors().Single();
@@ -51,8 +61,6 @@ public class ConsentArchitectureTests
                 p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
                 because: "services in Humans.Application must never take DbContext — use IConsentRepository instead (design-rules §3)");
     }
-
-    [HumansFact]
     public void ConsentService_HasNoIMemoryCacheConstructorParameter()
     {
         var ctor = typeof(ConsentService).GetConstructors().Single();
@@ -63,8 +71,6 @@ public class ConsentArchitectureTests
         cachingParam.Should().BeNull(
             because: "canonical Consent data is not IMemoryCache-backed; append-only semantics + per-user reads do not justify a decorator");
     }
-
-    [HumansFact]
     public void ConsentService_TakesRepository()
     {
         var ctor = typeof(ConsentService).GetConstructors().Single();
@@ -72,8 +78,6 @@ public class ConsentArchitectureTests
 
         paramTypes.Should().Contain(typeof(IConsentRepository));
     }
-
-    [HumansFact]
     public void ConsentService_ConstructorTakesNoStoreType()
     {
         var ctor = typeof(ConsentService).GetConstructors().Single();
@@ -86,16 +90,12 @@ public class ConsentArchitectureTests
     }
 
     // ── IConsentRepository ───────────────────────────────────────────────────
-
-    [HumansFact]
     public void IConsentRepository_LivesInApplicationInterfacesRepositoriesNamespace()
     {
         typeof(IConsentRepository).Namespace
             .Should().Be("Humans.Application.Interfaces.Repositories",
                 because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
     }
-
-    [HumansFact]
     public void ConsentRepository_IsSealed()
     {
         // Mirrors ProfileRepository / UserRepository / AuditLogRepository — repository implementations are terminal;
@@ -113,7 +113,6 @@ public class ConsentArchitectureTests
     /// test fails if a future refactor adds a method whose name implies
     /// mutation of existing rows.
     /// </summary>
-    [HumansFact]
     public void IConsentRepository_HasNoUpdateOrDeleteOrRemoveMethods()
     {
         var methods = typeof(IConsentRepository)
@@ -136,7 +135,6 @@ public class ConsentArchitectureTests
     /// method. Pins the append-only surface so removing the only write
     /// primitive fails the suite immediately.
     /// </summary>
-    [HumansFact]
     public void IConsentRepository_HasAddAsyncMethod()
     {
         var addAsync = typeof(IConsentRepository)
