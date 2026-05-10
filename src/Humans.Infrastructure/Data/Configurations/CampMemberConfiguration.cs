@@ -18,7 +18,7 @@ public class CampMemberConfiguration : IEntityTypeConfiguration<CampMember>
             .HasDefaultValue(false);
 
         builder.HasOne(m => m.CampSeason)
-            .WithMany()
+            .WithMany(s => s.Members)
             .HasForeignKey(m => m.CampSeasonId)
             .OnDelete(DeleteBehavior.Cascade);
 

@@ -78,6 +78,7 @@ public sealed class CampRepository : ICampRepository
         var query = ctx.Camps
             .AsNoTracking()
             .Include(c => c.Seasons.Where(s => s.Year == year))
+                .ThenInclude(s => s.Members.Where(m => m.Status == CampMemberStatus.Active))
             .Include(c => c.Leads.Where(l => l.LeftAt == null))
             .Where(c => c.Seasons.Any(s => s.Year == year));
 

@@ -56,6 +56,12 @@ public class CampSeason
     /// </summary>
     public int EeSlotCount { get; set; }
 
+    /// <summary>
+    /// Reverse navigation: all <see cref="CampMember"/> rows for this season.
+    /// Populated only when explicitly Included (e.g. in the admin read path).
+    /// </summary>
+    public ICollection<CampMember> Members { get; set; } = new List<CampMember>();
+
     public Instant CreatedAt { get; init; }
     public Instant UpdatedAt { get; set; }
 }

@@ -87,15 +87,19 @@ public class CampAdminController : HumansControllerBase
             var summaries = campsWithLeads.Select(c =>
             {
                 var season = c.Seasons.FirstOrDefault();
+                var eeGrantedCount = season?.Members?.Count(m => m.HasEarlyEntry) ?? 0;
                 return new CampSummaryRowViewModel
                 {
                     Name = season?.Name ?? c.Slug,
                     Slug = c.Slug,
+                    SeasonId = season?.Id,
                     AcceptingMembers = season?.AcceptingMembers.ToString() ?? "—",
                     MemberCount = season?.MemberCount ?? 0,
                     Zone = season?.SoundZone?.ToString() ?? "—",
                     SpaceRequirement = season?.SpaceRequirement?.ToString() ?? "—",
                     YearsParticipating = c.TimesAtNowhere,
+                    EeSlotCount = season?.EeSlotCount ?? 0,
+                    EeGrantedCount = eeGrantedCount,
                     Leads = c.Leads
                         .Where(l => l.IsActive)
                         .Select(l => new CampLeadViewModel
@@ -118,6 +122,7 @@ public class CampAdminController : HumansControllerBase
                 NameLockDates = nameLockDates,
                 AllCampSummaries = summaries,
                 RegistrationInfo = registrationInfo,
+                EeStartDate = settings.EeStartDate,
                 PendingCamps = pendingSeasons.Select(s => new CampCardViewModel
                 {
                     Id = s.CampId,

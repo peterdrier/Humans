@@ -210,16 +210,23 @@ public class CampAdminViewModel
     public Dictionary<int, NodaTime.LocalDate?> NameLockDates { get; set; } = new();
     public List<CampSummaryRowViewModel> AllCampSummaries { get; set; } = new();
     public string? RegistrationInfo { get; set; }
+    /// <summary>Global EE start date for the public year. Null until set by CampAdmin.</summary>
+    public NodaTime.LocalDate? EeStartDate { get; set; }
 }
 
 public class CampSummaryRowViewModel
 {
     public string Name { get; set; } = string.Empty;
     public string Slug { get; set; } = string.Empty;
+    public Guid? SeasonId { get; set; }
     public string AcceptingMembers { get; set; } = string.Empty;
     public int MemberCount { get; set; }
     public string Zone { get; set; } = string.Empty;
     public string SpaceRequirement { get; set; } = string.Empty;
     public int YearsParticipating { get; set; }
     public List<CampLeadViewModel> Leads { get; set; } = new();
+    /// <summary>EE slot cap for this season (CampAdmin-managed).</summary>
+    public int EeSlotCount { get; set; }
+    /// <summary>Count of Active members with HasEarlyEntry=true for this season.</summary>
+    public int EeGrantedCount { get; set; }
 }
