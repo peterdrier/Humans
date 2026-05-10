@@ -224,11 +224,12 @@ public interface IUserEmailRepository : IRepository
     /// returns null when no row matches <paramref name="provider"/>+
     /// <paramref name="providerKey"/>.
     ///
-    /// Per <c>memory/architecture/email-mutation-paths.md</c>: this method is
-    /// callable only by the OAuth sign-in callback in <c>AccountController</c>.
-    /// Cross-user conflict on the partial unique <c>Email</c> index is allowed
-    /// to propagate as a Postgres 23505; the callback's existing try/catch
-    /// surfaces it.
+    /// Per <c>memory/architecture/email-mutation-paths.md</c>: the sole
+    /// legitimate caller is <c>UserEmailService.UpdateEmailAsync</c>, which is
+    /// itself callable only by the OAuth sign-in callback in
+    /// <c>AccountController</c>. Cross-user conflict on the partial unique
+    /// <c>Email</c> index is allowed to propagate as a Postgres 23505; the
+    /// callback's existing try/catch surfaces it.
     /// </summary>
     Task<Guid?> UpdateEmailAsync(
         string provider, string providerKey, string newEmail, Instant updatedAt,

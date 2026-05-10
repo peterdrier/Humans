@@ -366,6 +366,8 @@ public sealed class UserEmailRepository : IUserEmailRepository
             .FirstOrDefaultAsync(ct);
     }
 
+    // Sole legitimate caller: UserEmailService.UpdateEmailAsync, itself called
+    // only by AccountController. See memory/architecture/email-mutation-paths.md.
     public async Task<Guid?> UpdateEmailAsync(
         string provider, string providerKey, string newEmail, Instant updatedAt,
         CancellationToken ct = default)

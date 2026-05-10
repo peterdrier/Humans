@@ -617,6 +617,8 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         string email, CancellationToken cancellationToken = default) =>
         _repository.AnyWithEmailAsync(email, cancellationToken);
 
+    // Sole legitimate caller: AccountController OAuth sign-in callback.
+    // See memory/architecture/email-mutation-paths.md.
     public async Task<bool> UpdateEmailAsync(
         string provider, string providerKey, string newEmail,
         CancellationToken cancellationToken = default)
