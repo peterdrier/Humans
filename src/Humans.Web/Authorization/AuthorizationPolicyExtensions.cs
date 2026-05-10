@@ -29,6 +29,10 @@ public static class AuthorizationPolicyExtensions
         services.AddScoped<IAuthorizationHandler, IsAnyTeamManagerOrCoordinatorHandler>();
         services.AddSingleton<IAuthorizationHandler, IssuesAuthorizationHandler>();
 
+        // Expense report resource-based handlers (scoped — depend on scoped services)
+        services.AddScoped<IAuthorizationHandler, ExpenseReportAuthorizationHandler>();
+        services.AddScoped<IAuthorizationHandler, IbanAccessHandler>();
+
         // Service-layer enforcement handlers (singleton — no scoped dependencies)
         services.AddSingleton<IAuthorizationHandler, RoleAssignmentAuthorizationHandler>();
         services.AddSingleton<IAuthorizationHandler, UserEmailAuthorizationHandler>();
