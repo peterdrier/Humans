@@ -220,13 +220,6 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
         return teams.GetValueOrDefault(teamId);
     }
 
-    public async Task<IReadOnlyDictionary<Guid, TeamInfo>> GetActiveTeamsAsync(
-        CancellationToken cancellationToken = default)
-    {
-        var teams = await GetActiveTeamIndexAsync(cancellationToken);
-        return teams;
-    }
-
     public Task<IReadOnlyDictionary<Guid, string>> GetTeamNamesByIdsAsync(
         IReadOnlyCollection<Guid> teamIds,
         CancellationToken cancellationToken = default) =>
@@ -1981,7 +1974,7 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
                 .ToList();
             var users = allUserIds.Count == 0
                 ? new Dictionary<Guid, User>()
-                : await UserService.GetByIdsAsync(allUserIds, ct);
+                : await UserService.GetByIdsWithEmailsAsync(allUserIds, ct);
 
             return new ConcurrentDictionary<Guid, TeamInfo>(
                 teams.ToDictionary(t => t.Id, t => BuildTeamInfo(t, users)));

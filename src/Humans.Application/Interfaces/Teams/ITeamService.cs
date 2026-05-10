@@ -155,11 +155,6 @@ public interface ITeamService
     Task<TeamInfo?> GetActiveTeamAsync(Guid teamId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Gets active team read models keyed by ID, including active members.
-    /// </summary>
-    Task<IReadOnlyDictionary<Guid, TeamInfo>> GetActiveTeamsAsync(CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Returns the display name of the team whose <c>GoogleGroupPrefix</c> matches
     /// <paramref name="googleGroupPrefix"/> (case-insensitive), or null if no team
     /// uses that prefix. Used by @nobodies.team provisioning to block personal

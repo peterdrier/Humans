@@ -1112,6 +1112,31 @@ public class TeamServiceTests : IDisposable
     }
 
     [HumansFact]
+    public async Task GetActiveTeamAsync_IncludesCanonicalUserEmail()
+    {
+        var team = SeedTeam("Alpha");
+        var user = SeedUser(displayName: "Alice");
+        user.Email = null;
+        _dbContext.UserEmails.Add(new UserEmail
+        {
+            Id = Guid.NewGuid(),
+            UserId = user.Id,
+            Email = "alice@example.test",
+            IsVerified = true,
+            IsPrimary = true,
+            CreatedAt = _clock.GetCurrentInstant(),
+            UpdatedAt = _clock.GetCurrentInstant()
+        });
+        SeedTeamMember(team.Id, user.Id);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.GetActiveTeamAsync(team.Id);
+
+        var member = result!.Members.Should().ContainSingle().Subject;
+        member.Email.Should().Be("alice@example.test");
+    }
+
+    [HumansFact]
     public async Task GetActiveTeamAsync_NoMembers_ReturnsEmpty()
     {
         var team = SeedTeam("Alpha");

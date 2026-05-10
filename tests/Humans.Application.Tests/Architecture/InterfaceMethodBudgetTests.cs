@@ -60,7 +60,11 @@ public class InterfaceMethodBudgetTests
         // must live in the owning section per design-rules §6, and the
         // ratchet's "remove one to add one" rule doesn't apply when the
         // addition is a moved-in query rather than a new feature surface.
-        [typeof(ITeamService)] = 71,
+        // 71â†’70: tech-debt query consolidation â€” replaced
+        // GetTeamMembersAsync and GetActiveMemberUserIdsAsync with
+        // GetActiveTeamAsync. Dropped the speculative GetActiveTeamsAsync
+        // surface after PR review because it had no production callers.
+        [typeof(ITeamService)] = 70,
         // ICampService raised 53→57 for per-camp roles feature (peterdrier#489):
         // AddCampMemberAsLeadAsync, GetSeasonMembersAsync, GetCampMemberStatusAsync,
         // GetCampSeasonsForComplianceAsync — all needed by ICampRoleService and the
