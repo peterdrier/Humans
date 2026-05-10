@@ -93,7 +93,9 @@ public class TeamController : HumansControllerBase
                 .Select(MapTeamSummary)
                 .ToList(),
             Departments = directory.Departments
-                .OrderBy(t => t.SortKey, StringComparer.OrdinalIgnoreCase)
+                .OrderBy(
+                    t => directory.IsAuthenticated ? t.SortKey : t.Name,
+                    StringComparer.OrdinalIgnoreCase)
                 .Select(MapTeamSummary)
                 .ToList(),
             SystemTeams = directory.SystemTeams

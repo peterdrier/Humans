@@ -560,6 +560,9 @@ public sealed class CachingTeamService : ITeamService, IUserMerge
 
     private void InvalidateTeamsCache()
     {
+        // This API is sync because legacy invalidation callers only expose void.
+        // The lock is held for the in-memory clear only except when racing startup
+        // warmup; ASP.NET Core has no sync context, and the warm set is small.
         _loadLock.Wait();
         try
         {
@@ -765,8 +768,8 @@ public sealed class CachingTeamService : ITeamService, IUserMerge
     private async Task WithInnerMerge(Func<IUserMerge, Task> action)
     {
         await using var scope = _scopeFactory.CreateAsyncScope();
-        var inner = scope.ServiceProvider.GetRequiredKeyedService<ITeamService>(InnerServiceKey);
-        await action((IUserMerge)inner);
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IUserMerge>(InnerServiceKey);
+        await action(inner);
     }
 }
 

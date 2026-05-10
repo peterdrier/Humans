@@ -27,6 +27,7 @@ internal static class TeamsSectionExtensions
         // singleton CachingTeamService decorator can resolve it per call without
         // self-resolving ITeamService.
         services.AddKeyedScoped<ITeamService, TeamsTeamService>(CachingTeamService.InnerServiceKey);
+        services.AddKeyedScoped<IUserMerge, TeamsTeamService>(CachingTeamService.InnerServiceKey);
         services.AddScoped<TeamsTeamService>(sp =>
             (TeamsTeamService)sp.GetRequiredKeyedService<ITeamService>(CachingTeamService.InnerServiceKey));
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<TeamsTeamService>());
