@@ -72,18 +72,18 @@ the candidate file before removing anything.
 ## Manual Test-Count Gate
 
 Until this is wired into CI, use `Test attributes` from the utility report as
-the manual test-count ratchet. As of the 2026-05-10 consolidation pass, the
+the manual test-count ratchet. As of the 2026-05-10 manual gate setup, the
 baseline is:
 
 ```text
-Test attributes: 1997
+Test attributes: 2259
 ```
 
 For normal PRs, the expected rule is no net increase in test attributes unless
 the PR explains why the new test surface is worth the added maintenance cost.
 Prefer one of these outcomes:
 
-- Replace several narrow shape tests with one grouped contract test.
+- Delete duplicate or low-value test methods outright.
 - Add behavior coverage while deleting or consolidating lower-value shape tests.
 - Keep a small number of intentional safety-net tests, such as DI cycle
   resolution checks, even when they look mock-heavy or reflection-heavy.

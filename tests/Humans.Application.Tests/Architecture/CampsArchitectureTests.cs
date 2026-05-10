@@ -18,30 +18,19 @@ namespace Humans.Application.Tests.Architecture;
 /// Camps did not get a caching decorator (per the §15 recommendation for
 /// sections where short-TTL IMemoryCache suffices — see design-rules §15f).
 /// </summary>
-public partial class ArchitectureShapeTests
+public class CampsArchitectureTests
 {
-    [HumansFact]
-    public void CampsArchitecture_contracts_hold()
-    {
-        CampService_LivesInHumansApplicationServicesCampsNamespace();
-        CampService_HasNoDbContextConstructorParameter();
-        CampService_TakesRepository();
-        CampService_TakesUserService();
-        CampService_TakesImageStorage();
-        CampService_ConstructorTakesNoStoreType();
-        ICampRepository_LivesInApplicationInterfacesRepositoriesNamespace();
-        CampRepository_IsSealed();
-        CampLead_HasNoUserNavigationProperty();
-        CampLead_KeepsUserIdForeignKey();
-    }
-
     // ── CampService ──────────────────────────────────────────────────────────
+
+    [HumansFact]
     public void CampService_LivesInHumansApplicationServicesCampsNamespace()
     {
         typeof(CampService).Namespace
             .Should().Be("Humans.Application.Services.Camps",
                 because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
     }
+
+    [HumansFact]
     public void CampService_HasNoDbContextConstructorParameter()
     {
         var ctor = typeof(CampService).GetConstructors().Single();
@@ -50,6 +39,8 @@ public partial class ArchitectureShapeTests
                 p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
                 because: "services in Humans.Application must never take DbContext — use ICampRepository instead (design-rules §3)");
     }
+
+    [HumansFact]
     public void CampService_TakesRepository()
     {
         var ctor = typeof(CampService).GetConstructors().Single();
@@ -57,6 +48,8 @@ public partial class ArchitectureShapeTests
 
         paramTypes.Should().Contain(typeof(ICampRepository));
     }
+
+    [HumansFact]
     public void CampService_TakesUserService()
     {
         var ctor = typeof(CampService).GetConstructors().Single();
@@ -65,6 +58,8 @@ public partial class ArchitectureShapeTests
         paramTypes.Should().Contain(typeof(IUserService),
             because: "lead display names are resolved via IUserService cross-section (design-rules §6, §9); CampLead.User nav is stripped");
     }
+
+    [HumansFact]
     public void CampService_TakesImageStorage()
     {
         var ctor = typeof(CampService).GetConstructors().Single();
@@ -73,6 +68,8 @@ public partial class ArchitectureShapeTests
         paramTypes.Should().Contain(typeof(IFileStorage),
             because: "filesystem I/O is delegated to the shared IFileStorage abstraction — the Application project can't touch System.IO directly (design-rules §1)");
     }
+
+    [HumansFact]
     public void CampService_ConstructorTakesNoStoreType()
     {
         var ctor = typeof(CampService).GetConstructors().Single();
@@ -85,12 +82,16 @@ public partial class ArchitectureShapeTests
     }
 
     // ── ICampRepository ──────────────────────────────────────────────────────
+
+    [HumansFact]
     public void ICampRepository_LivesInApplicationInterfacesRepositoriesNamespace()
     {
         typeof(ICampRepository).Namespace
             .Should().Be("Humans.Application.Interfaces.Repositories",
                 because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
     }
+
+    [HumansFact]
     public void CampRepository_IsSealed()
     {
         var repoType = typeof(CampRepository);
@@ -100,6 +101,8 @@ public partial class ArchitectureShapeTests
     }
 
     // ── CampLead ─────────────────────────────────────────────────────────────
+
+    [HumansFact]
     public void CampLead_HasNoUserNavigationProperty()
     {
         typeof(Humans.Domain.Entities.CampLead)
@@ -107,6 +110,8 @@ public partial class ArchitectureShapeTests
             .Should().BeNull(
                 because: "CampLead.User is a cross-domain nav into the Users section; resolve via IUserService instead (design-rules §6c)");
     }
+
+    [HumansFact]
     public void CampLead_KeepsUserIdForeignKey()
     {
         typeof(Humans.Domain.Entities.CampLead)

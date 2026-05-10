@@ -35,38 +35,27 @@ namespace Humans.Application.Tests.Architecture;
 /// recombine the pieces.
 /// </para>
 /// </summary>
-public partial class ArchitectureShapeTests
+public class TeamResourceArchitectureTests
 {
-    [HumansFact]
-    public void TeamResourceArchitecture_contracts_hold()
-    {
-        TeamResourceService_LivesInHumansApplicationServicesTeamsNamespace();
-        TeamResourceService_IsSealed();
-        TeamResourceService_HasNoDbContextConstructorParameter();
-        TeamResourceService_TakesRepository();
-        TeamResourceService_TakesGoogleConnector();
-        TeamResourceService_HasNoGoogleApisConstructorParameter();
-        TeamResourceService_AssemblyIsHumansApplication();
-        IGoogleResourceRepository_LivesInApplicationInterfacesRepositoriesNamespace();
-        GoogleResourceRepository_IsSealed();
-        GoogleResourceRepository_AssemblyIsHumansInfrastructure();
-        ITeamResourceGoogleClient_LivesInApplicationInterfacesNamespace();
-        ITeamResourceGoogleClient_ExposesNoGoogleApisTypes();
-    }
-
     // ── TeamResourceService ──────────────────────────────────────────────────
+
+    [HumansFact]
     public void TeamResourceService_LivesInHumansApplicationServicesTeamsNamespace()
     {
         typeof(TeamResourceService).Namespace
             .Should().Be("Humans.Application.Services.Teams",
                 because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
     }
+
+    [HumansFact]
     public void TeamResourceService_IsSealed()
     {
         typeof(TeamResourceService).IsSealed
             .Should().BeTrue(
                 because: "application services are terminal — extension happens via a caching decorator when warranted (§15d), not subclassing");
     }
+
+    [HumansFact]
     public void TeamResourceService_HasNoDbContextConstructorParameter()
     {
         var ctor = typeof(TeamResourceService).GetConstructors().Single();
@@ -75,6 +64,8 @@ public partial class ArchitectureShapeTests
                 p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
                 because: "services in Humans.Application must never take DbContext — use IGoogleResourceRepository instead (design-rules §3)");
     }
+
+    [HumansFact]
     public void TeamResourceService_TakesRepository()
     {
         var ctor = typeof(TeamResourceService).GetConstructors().Single();
@@ -83,6 +74,8 @@ public partial class ArchitectureShapeTests
         paramTypes.Should().Contain(typeof(IGoogleResourceRepository),
             because: "Application services reach persistence through a repository interface (design-rules §3/§15b)");
     }
+
+    [HumansFact]
     public void TeamResourceService_TakesGoogleConnector()
     {
         var ctor = typeof(TeamResourceService).GetConstructors().Single();
@@ -91,6 +84,8 @@ public partial class ArchitectureShapeTests
         paramTypes.Should().Contain(typeof(ITeamResourceGoogleClient),
             because: "Google API calls route through an application-layer connector so Humans.Application stays free of Google.Apis.* imports");
     }
+
+    [HumansFact]
     public void TeamResourceService_HasNoGoogleApisConstructorParameter()
     {
         var ctor = typeof(TeamResourceService).GetConstructors().Single();
@@ -101,6 +96,8 @@ public partial class ArchitectureShapeTests
         googleApiParam.Should().BeNull(
             because: "the Application layer must not depend on Google.Apis.* — the ITeamResourceGoogleClient connector encapsulates every Google call");
     }
+
+    [HumansFact]
     public void TeamResourceService_AssemblyIsHumansApplication()
     {
         typeof(TeamResourceService).Assembly.GetName().Name
@@ -108,12 +105,16 @@ public partial class ArchitectureShapeTests
     }
 
     // ── IGoogleResourceRepository ────────────────────────────────────────────
+
+    [HumansFact]
     public void IGoogleResourceRepository_LivesInApplicationInterfacesRepositoriesNamespace()
     {
         typeof(IGoogleResourceRepository).Namespace
             .Should().Be("Humans.Application.Interfaces.Repositories",
                 because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
     }
+
+    [HumansFact]
     public void GoogleResourceRepository_IsSealed()
     {
         // Mirrors ProfileRepository — repository implementations are terminal; no subclass should
@@ -122,6 +123,8 @@ public partial class ArchitectureShapeTests
         repoType.IsSealed.Should().BeTrue(
             because: "repository implementations are sealed to prevent ad-hoc extension; any new behavior belongs on the interface");
     }
+
+    [HumansFact]
     public void GoogleResourceRepository_AssemblyIsHumansInfrastructure()
     {
         typeof(GoogleResourceRepository).Assembly.GetName().Name
@@ -129,11 +132,15 @@ public partial class ArchitectureShapeTests
     }
 
     // ── ITeamResourceGoogleClient ────────────────────────────────────────────
+
+    [HumansFact]
     public void ITeamResourceGoogleClient_LivesInApplicationInterfacesNamespace()
     {
         typeof(ITeamResourceGoogleClient).Namespace
             .Should().Be("Humans.Application.Interfaces.GoogleIntegration");
     }
+
+    [HumansFact]
     public void ITeamResourceGoogleClient_ExposesNoGoogleApisTypes()
     {
         var methods = typeof(ITeamResourceGoogleClient).GetMethods();

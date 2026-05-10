@@ -37,7 +37,7 @@ namespace Humans.Application.Tests.Architecture;
 /// growth would matter. Smaller interfaces aren't budgeted — adding the 3rd
 /// method to a 2-method interface isn't a smell.
 /// </summary>
-public partial class ArchitectureShapeTests
+public class InterfaceMethodBudgetTests
 {
     /// <summary>
     /// Method-count ceilings per interface. Decrement when methods are

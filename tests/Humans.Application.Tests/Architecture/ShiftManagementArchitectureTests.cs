@@ -15,26 +15,17 @@ namespace Humans.Application.Tests.Architecture;
 /// Sibling services (<c>ShiftSignupService</c>, <c>GeneralAvailabilityService</c>)
 /// migrate in follow-up sub-tasks.
 /// </summary>
-public partial class ArchitectureShapeTests
+public class ShiftManagementArchitectureTests
 {
     [HumansFact]
-    public void ShiftManagementArchitecture_contracts_hold()
-    {
-        ShiftManagementService_LivesInHumansApplicationServicesShiftsNamespace();
-        ShiftManagementService_HasNoDbContextConstructorParameter();
-        ShiftManagementService_TakesRepository();
-        ShiftManagementService_ImplementsShiftAuthorizationInvalidator();
-        IShiftManagementRepository_LivesInApplicationInterfacesRepositoriesNamespace();
-        ShiftManagementRepository_IsSealed();
-        ShiftsOwnedEntities_HaveNoCrossDomainNavigationProperties();
-    }
-
     public void ShiftManagementService_LivesInHumansApplicationServicesShiftsNamespace()
     {
         typeof(ShiftManagementService).Namespace
             .Should().Be("Humans.Application.Services.Shifts",
                 because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
     }
+
+    [HumansFact]
     public void ShiftManagementService_HasNoDbContextConstructorParameter()
     {
         var ctor = typeof(ShiftManagementService).GetConstructors().Single();
@@ -43,6 +34,8 @@ public partial class ArchitectureShapeTests
                 p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
                 because: "services in Humans.Application must never take DbContext — use IShiftManagementRepository (design-rules §3)");
     }
+
+    [HumansFact]
     public void ShiftManagementService_TakesRepository()
     {
         var ctor = typeof(ShiftManagementService).GetConstructors().Single();
@@ -50,24 +43,32 @@ public partial class ArchitectureShapeTests
 
         paramTypes.Should().Contain(typeof(IShiftManagementRepository));
     }
+
+    [HumansFact]
     public void ShiftManagementService_ImplementsShiftAuthorizationInvalidator()
     {
         typeof(IShiftAuthorizationInvalidator).IsAssignableFrom(typeof(ShiftManagementService))
             .Should().BeTrue(
                 because: "the service owns the shift-auth cache and external sections (Profile deletion) drop it through this invalidator rather than poking IMemoryCache directly");
     }
+
+    [HumansFact]
     public void IShiftManagementRepository_LivesInApplicationInterfacesRepositoriesNamespace()
     {
         typeof(IShiftManagementRepository).Namespace
             .Should().Be("Humans.Application.Interfaces.Repositories",
                 because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
     }
+
+    [HumansFact]
     public void ShiftManagementRepository_IsSealed()
     {
         var repoType = typeof(ShiftManagementRepository);
         repoType.IsSealed.Should().BeTrue(
             because: "repository implementations are sealed to prevent ad-hoc extension; any new behavior belongs on the interface");
     }
+
+    [HumansFact]
     public void ShiftsOwnedEntities_HaveNoCrossDomainNavigationProperties()
     {
         // Cross-domain navs (Rota.Team, ShiftSignup.User/EnrolledByUser/ReviewedByUser,

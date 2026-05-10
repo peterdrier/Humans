@@ -12,26 +12,17 @@ namespace Humans.Application.Tests.Architecture;
 /// service interfaces, no DbContext / DbSet / cache / repository
 /// dependencies.
 /// </summary>
-public partial class ArchitectureShapeTests
+public class HumanLifecycleArchitectureTests
 {
     [HumansFact]
-    public void HumanLifecycleArchitecture_contracts_hold()
-    {
-        HumanLifecycleService_LivesInHumansApplicationServicesHumanLifecycleNamespace();
-        HumanLifecycleService_HasNoDbContextConstructorParameter();
-        HumanLifecycleService_HasNoIDbContextFactoryConstructorParameter();
-        HumanLifecycleService_HasNoDbSetConstructorParameter();
-        HumanLifecycleService_HasNoIMemoryCacheConstructorParameter();
-        HumanLifecycleService_HasNoRepositoryDependency();
-        HumanLifecycleService_DependsOnlyOnServiceInterfaces();
-    }
-
     public void HumanLifecycleService_LivesInHumansApplicationServicesHumanLifecycleNamespace()
     {
         typeof(HumanLifecycleService).Namespace
             .Should().Be("Humans.Application.Services.HumanLifecycle",
                 because: "lifecycle is an orchestrator over Profiles + notifications; lives in Humans.Application per design-rules §2b");
     }
+
+    [HumansFact]
     public void HumanLifecycleService_HasNoDbContextConstructorParameter()
     {
         var ctor = typeof(HumanLifecycleService).GetConstructors().Single();
@@ -40,6 +31,8 @@ public partial class ArchitectureShapeTests
                 p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
                 because: "lifecycle owns no tables — every state mutation flows through IProfileService (design-rules §2c)");
     }
+
+    [HumansFact]
     public void HumanLifecycleService_HasNoIDbContextFactoryConstructorParameter()
     {
         var ctor = typeof(HumanLifecycleService).GetConstructors().Single();
@@ -50,6 +43,8 @@ public partial class ArchitectureShapeTests
         factoryParam.Should().BeNull(
             because: "lifecycle owns no tables, so IDbContextFactory has no legitimate use (design-rules §9)");
     }
+
+    [HumansFact]
     public void HumanLifecycleService_HasNoDbSetConstructorParameter()
     {
         var ctor = typeof(HumanLifecycleService).GetConstructors().Single();
@@ -64,6 +59,8 @@ public partial class ArchitectureShapeTests
         dbSetParam.Should().BeNull(
             because: "no DbSet of any kind belongs in the orchestrator — all data access goes through owning section services");
     }
+
+    [HumansFact]
     public void HumanLifecycleService_HasNoIMemoryCacheConstructorParameter()
     {
         var ctor = typeof(HumanLifecycleService).GetConstructors().Single();
@@ -74,6 +71,8 @@ public partial class ArchitectureShapeTests
         cachingParam.Should().BeNull(
             because: "lifecycle owns no cached data; cache invalidation is the responsibility of each owning section's write path (design-rules §2d)");
     }
+
+    [HumansFact]
     public void HumanLifecycleService_HasNoRepositoryDependency()
     {
         var ctor = typeof(HumanLifecycleService).GetConstructors().Single();
@@ -84,6 +83,8 @@ public partial class ArchitectureShapeTests
         repositoryParam.Should().BeNull(
             because: "lifecycle owns no tables — it must not inject repository interfaces, only section service interfaces (design-rules §9)");
     }
+
+    [HumansFact]
     public void HumanLifecycleService_DependsOnlyOnServiceInterfaces()
     {
         var ctor = typeof(HumanLifecycleService).GetConstructors().Single();

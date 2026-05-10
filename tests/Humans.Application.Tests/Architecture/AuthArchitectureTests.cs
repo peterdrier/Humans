@@ -22,35 +22,19 @@ namespace Humans.Application.Tests.Architecture;
 /// <see cref="INavBadgeCacheInvalidator"/> +
 /// <see cref="IRoleAssignmentClaimsCacheInvalidator"/> after successful writes.
 /// </summary>
-public partial class ArchitectureShapeTests
+public class AuthArchitectureTests
 {
-    [HumansFact]
-    public void AuthArchitecture_contracts_hold()
-    {
-        RoleAssignmentService_LivesInHumansApplicationServicesAuthNamespace();
-        RoleAssignmentService_HasNoDbContextConstructorParameter();
-        RoleAssignmentService_HasNoIMemoryCacheConstructorParameter();
-        RoleAssignmentService_TakesRepository();
-        RoleAssignmentService_TakesUserServiceForNavStitching();
-        RoleAssignmentService_TakesClaimsInvalidator();
-        RoleAssignmentService_TakesNavBadgeInvalidator();
-        RoleAssignmentService_ConstructorTakesNoStoreType();
-        IRoleAssignmentRepository_LivesInApplicationInterfacesRepositoriesNamespace();
-        RoleAssignmentRepository_IsSealed();
-        MagicLinkService_LivesInHumansApplicationServicesAuthNamespace();
-        MagicLinkService_HasNoDbContextConstructorParameter();
-        MagicLinkService_HasNoIMemoryCacheConstructorParameter();
-        MagicLinkService_HasNoEmailSettingsOrDataProtectionConstructorParameter();
-        MagicLinkService_TakesUrlBuilderAndRateLimiter();
-    }
-
     // ── RoleAssignmentService ────────────────────────────────────────────────
+
+    [HumansFact]
     public void RoleAssignmentService_LivesInHumansApplicationServicesAuthNamespace()
     {
         typeof(RoleAssignmentService).Namespace
             .Should().Be("Humans.Application.Services.Auth",
                 because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
     }
+
+    [HumansFact]
     public void RoleAssignmentService_HasNoDbContextConstructorParameter()
     {
         var ctor = typeof(RoleAssignmentService).GetConstructors().Single();
@@ -59,6 +43,8 @@ public partial class ArchitectureShapeTests
                 p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
                 because: "services in Humans.Application must never take DbContext — use IRoleAssignmentRepository instead (design-rules §3)");
     }
+
+    [HumansFact]
     public void RoleAssignmentService_HasNoIMemoryCacheConstructorParameter()
     {
         var ctor = typeof(RoleAssignmentService).GetConstructors().Single();
@@ -69,6 +55,8 @@ public partial class ArchitectureShapeTests
         cachingParam.Should().BeNull(
             because: "Auth has no canonical domain cache; nav-badge and role-assignment-claims invalidation route through INavBadgeCacheInvalidator / IRoleAssignmentClaimsCacheInvalidator, not IMemoryCache directly (design-rules §5)");
     }
+
+    [HumansFact]
     public void RoleAssignmentService_TakesRepository()
     {
         var ctor = typeof(RoleAssignmentService).GetConstructors().Single();
@@ -76,6 +64,8 @@ public partial class ArchitectureShapeTests
 
         paramTypes.Should().Contain(typeof(IRoleAssignmentRepository));
     }
+
+    [HumansFact]
     public void RoleAssignmentService_TakesUserServiceForNavStitching()
     {
         var ctor = typeof(RoleAssignmentService).GetConstructors().Single();
@@ -84,6 +74,8 @@ public partial class ArchitectureShapeTests
         paramTypes.Should().Contain(typeof(IUserService),
             because: "RoleAssignmentService resolves assignee / assigner display names via IUserService.GetByIdsAsync and stitches them onto the [Obsolete] cross-domain navs in memory (design-rules §6b)");
     }
+
+    [HumansFact]
     public void RoleAssignmentService_TakesClaimsInvalidator()
     {
         var ctor = typeof(RoleAssignmentService).GetConstructors().Single();
@@ -92,6 +84,8 @@ public partial class ArchitectureShapeTests
         paramTypes.Should().Contain(typeof(IRoleAssignmentClaimsCacheInvalidator),
             because: "RoleAssignmentService must invalidate the per-user claims cache after Assign/End/Revoke — the dependency proves the wire is in place so the RoleAssignmentClaimsTransformation 60-second cached snapshot does not serve stale claims");
     }
+
+    [HumansFact]
     public void RoleAssignmentService_TakesNavBadgeInvalidator()
     {
         var ctor = typeof(RoleAssignmentService).GetConstructors().Single();
@@ -100,6 +94,8 @@ public partial class ArchitectureShapeTests
         paramTypes.Should().Contain(typeof(INavBadgeCacheInvalidator),
             because: "Assign/End affect nav-badge counts (active role totals), so the service invalidates the nav-badge cache after writes");
     }
+
+    [HumansFact]
     public void RoleAssignmentService_ConstructorTakesNoStoreType()
     {
         var ctor = typeof(RoleAssignmentService).GetConstructors().Single();
@@ -112,12 +108,16 @@ public partial class ArchitectureShapeTests
     }
 
     // ── IRoleAssignmentRepository ────────────────────────────────────────────
+
+    [HumansFact]
     public void IRoleAssignmentRepository_LivesInApplicationInterfacesRepositoriesNamespace()
     {
         typeof(IRoleAssignmentRepository).Namespace
             .Should().Be("Humans.Application.Interfaces.Repositories",
                 because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
     }
+
+    [HumansFact]
     public void RoleAssignmentRepository_IsSealed()
     {
         var repoType = typeof(RoleAssignmentRepository);
@@ -127,12 +127,16 @@ public partial class ArchitectureShapeTests
     }
 
     // ── MagicLinkService ─────────────────────────────────────────────────────
+
+    [HumansFact]
     public void MagicLinkService_LivesInHumansApplicationServicesAuthNamespace()
     {
         typeof(MagicLinkService).Namespace
             .Should().Be("Humans.Application.Services.Auth",
                 because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
     }
+
+    [HumansFact]
     public void MagicLinkService_HasNoDbContextConstructorParameter()
     {
         var ctor = typeof(MagicLinkService).GetConstructors().Single();
@@ -141,6 +145,8 @@ public partial class ArchitectureShapeTests
                 p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
                 because: "MagicLinkService owns no tables — verified-email lookup routes through IUserEmailService.FindVerifiedEmailWithUserAsync instead of direct DbContext queries");
     }
+
+    [HumansFact]
     public void MagicLinkService_HasNoIMemoryCacheConstructorParameter()
     {
         var ctor = typeof(MagicLinkService).GetConstructors().Single();
@@ -151,6 +157,8 @@ public partial class ArchitectureShapeTests
         cachingParam.Should().BeNull(
             because: "MagicLink's token-replay and signup-cooldown state routes through IMagicLinkRateLimiter, an Application-layer abstraction (same pattern as IUnsubscribeTokenProvider)");
     }
+
+    [HumansFact]
     public void MagicLinkService_HasNoEmailSettingsOrDataProtectionConstructorParameter()
     {
         var ctor = typeof(MagicLinkService).GetConstructors().Single();
@@ -164,6 +172,8 @@ public partial class ArchitectureShapeTests
         settingsParam.Should().BeNull(
             because: "Data-protection and URL construction live behind IMagicLinkUrlBuilder in Infrastructure so MagicLinkService stays free of Infrastructure config (mirrors CommunicationPreferenceService + IUnsubscribeTokenProvider)");
     }
+
+    [HumansFact]
     public void MagicLinkService_TakesUrlBuilderAndRateLimiter()
     {
         var ctor = typeof(MagicLinkService).GetConstructors().Single();

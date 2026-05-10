@@ -29,38 +29,19 @@ namespace Humans.Application.Tests.Architecture;
 /// IFullProfileInvalidator for cross-section cache-staleness signalling.
 /// </para>
 /// </summary>
-public partial class ArchitectureShapeTests
+public class UserArchitectureTests
 {
-    [HumansFact]
-    public void UserArchitecture_contracts_hold()
-    {
-        UserService_LivesInHumansApplicationServicesUsersNamespace();
-        UserService_HasNoDbContextConstructorParameter();
-        UserService_HasNoIMemoryCacheConstructorParameter();
-        UserService_TakesRepository();
-        UserService_TakesFullProfileInvalidator();
-        UserService_ConstructorTakesNoStoreType();
-        UserService_HasNoOutboundEdgeToHigherLevelSections();
-        UserService_HasNoServiceProviderConstructorParameter();
-        IUserRepository_LivesInApplicationInterfacesRepositoriesNamespace();
-        UserRepository_IsSealed();
-        AccountProvisioningService_LivesInHumansApplicationServicesUsersNamespace();
-        AccountProvisioningService_HasNoDbContextConstructorParameter();
-        AccountProvisioningService_TakesRepositoryAndUserEmailRepository();
-        UnsubscribeService_LivesInHumansApplicationServicesUsersNamespace();
-        UnsubscribeService_HasNoDbContextConstructorParameter();
-        UnsubscribeService_TakesRepository();
-        NoOAuthTokenInUserEmailServiceOrRepositoryMethodNames();
-        User_HasNoCrossDomainNavigationProperties();
-    }
-
     // ── UserService ──────────────────────────────────────────────────────────
+
+    [HumansFact]
     public void UserService_LivesInHumansApplicationServicesUsersNamespace()
     {
         typeof(UserService).Namespace
             .Should().Be("Humans.Application.Services.Users",
                 because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
     }
+
+    [HumansFact]
     public void UserService_HasNoDbContextConstructorParameter()
     {
         var ctor = typeof(UserService).GetConstructors().Single();
@@ -69,6 +50,8 @@ public partial class ArchitectureShapeTests
                 p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
                 because: "services in Humans.Application must never take DbContext — use IUserRepository instead (design-rules §3)");
     }
+
+    [HumansFact]
     public void UserService_HasNoIMemoryCacheConstructorParameter()
     {
         var ctor = typeof(UserService).GetConstructors().Single();
@@ -79,6 +62,8 @@ public partial class ArchitectureShapeTests
         cachingParam.Should().BeNull(
             because: "canonical User data is not IMemoryCache-backed; cross-section invalidation goes through IFullProfileInvalidator (design-rules §5)");
     }
+
+    [HumansFact]
     public void UserService_TakesRepository()
     {
         var ctor = typeof(UserService).GetConstructors().Single();
@@ -86,6 +71,8 @@ public partial class ArchitectureShapeTests
 
         paramTypes.Should().Contain(typeof(IUserRepository));
     }
+
+    [HumansFact]
     public void UserService_TakesFullProfileInvalidator()
     {
         var ctor = typeof(UserService).GetConstructors().Single();
@@ -94,6 +81,8 @@ public partial class ArchitectureShapeTests
         paramTypes.Should().Contain(typeof(IFullProfileInvalidator),
             because: "UserService writes that change FullProfile-visible fields (DisplayName, GoogleEmail) must invalidate the Profile cache; the dependency proves the wire is in place so cache-staleness regressions fail at compile/test time rather than silently at runtime");
     }
+
+    [HumansFact]
     public void UserService_ConstructorTakesNoStoreType()
     {
         var ctor = typeof(UserService).GetConstructors().Single();
@@ -104,6 +93,8 @@ public partial class ArchitectureShapeTests
         storeParam.Should().BeNull(
             because: "Application services must not depend on store abstractions (design-rules §15); the User section's §15 migration went further and does not use a store at all");
     }
+
+    [HumansFact]
     public void UserService_HasNoOutboundEdgeToHigherLevelSections()
     {
         // Issue nobodies-collective/Humans#582: UserService is foundational. It must not inject
@@ -124,6 +115,8 @@ public partial class ArchitectureShapeTests
         paramTypes.Should().NotContain(typeof(IProfileService),
             because: "UserService is foundational — no outbound edge to Profile (issue nobodies-collective/Humans#582; Profile depends on User, never the reverse)");
     }
+
+    [HumansFact]
     public void UserService_HasNoServiceProviderConstructorParameter()
     {
         // Issue nobodies-collective/Humans#582: the IServiceProvider was a workaround for DI cycles that
@@ -140,12 +133,16 @@ public partial class ArchitectureShapeTests
     }
 
     // ── IUserRepository ──────────────────────────────────────────────────────
+
+    [HumansFact]
     public void IUserRepository_LivesInApplicationInterfacesRepositoriesNamespace()
     {
         typeof(IUserRepository).Namespace
             .Should().Be("Humans.Application.Interfaces.Repositories",
                 because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
     }
+
+    [HumansFact]
     public void UserRepository_IsSealed()
     {
         // Mirrors ProfileRepository — repository implementations are terminal; no subclass should
@@ -161,12 +158,16 @@ public partial class ArchitectureShapeTests
     }
 
     // ── AccountProvisioningService ───────────────────────────────────────────
+
+    [HumansFact]
     public void AccountProvisioningService_LivesInHumansApplicationServicesUsersNamespace()
     {
         typeof(AccountProvisioningService).Namespace
             .Should().Be("Humans.Application.Services.Users",
                 because: "AccountProvisioningService is part of the User section (issue #558) and must live with UserService in Application (design-rules §15i)");
     }
+
+    [HumansFact]
     public void AccountProvisioningService_HasNoDbContextConstructorParameter()
     {
         var ctor = typeof(AccountProvisioningService).GetConstructors().Single();
@@ -175,6 +176,8 @@ public partial class ArchitectureShapeTests
                 p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
                 because: "services in Humans.Application must never take DbContext — use IUserRepository / IUserEmailRepository (design-rules §3)");
     }
+
+    [HumansFact]
     public void AccountProvisioningService_TakesRepositoryAndUserEmailRepository()
     {
         var ctor = typeof(AccountProvisioningService).GetConstructors().Single();
@@ -185,12 +188,16 @@ public partial class ArchitectureShapeTests
     }
 
     // ── UnsubscribeService ───────────────────────────────────────────────────
+
+    [HumansFact]
     public void UnsubscribeService_LivesInHumansApplicationServicesUsersNamespace()
     {
         typeof(UnsubscribeService).Namespace
             .Should().Be("Humans.Application.Services.Users",
                 because: "UnsubscribeService operates on User state and is part of the User section (issue #558, design-rules §8 — Unsubscribe row)");
     }
+
+    [HumansFact]
     public void UnsubscribeService_HasNoDbContextConstructorParameter()
     {
         var ctor = typeof(UnsubscribeService).GetConstructors().Single();
@@ -199,6 +206,8 @@ public partial class ArchitectureShapeTests
                 p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
                 because: "services in Humans.Application must never take DbContext — use IUserRepository (design-rules §3)");
     }
+
+    [HumansFact]
     public void UnsubscribeService_TakesRepository()
     {
         var ctor = typeof(UnsubscribeService).GetConstructors().Single();
@@ -208,6 +217,8 @@ public partial class ArchitectureShapeTests
     }
 
     // ── UserEmail surface — Provider-parameterized naming (PR 4) ────────────
+
+    [HumansFact]
     public void NoOAuthTokenInUserEmailServiceOrRepositoryMethodNames()
     {
         var offenders = new List<string>();
@@ -253,6 +264,7 @@ public partial class ArchitectureShapeTests
     /// stripped. UserEmails stays — the User.Email override depends on it
     /// per AC. EventParticipations is owned by the Users section itself.
     /// </summary>
+    [HumansFact]
     public void User_HasNoCrossDomainNavigationProperties()
     {
         var userType = typeof(Humans.Domain.Entities.User);

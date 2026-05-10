@@ -18,29 +18,19 @@ namespace Humans.Application.Tests.Architecture;
 /// <see cref="IIssuesRepository"/> and invalidates the nav-badge cache via
 /// <see cref="INavBadgeCacheInvalidator"/> after successful writes.
 /// </summary>
-public partial class ArchitectureShapeTests
+public class IssuesArchitectureTests
 {
-    [HumansFact]
-    public void IssuesArchitecture_contracts_hold()
-    {
-        IssuesService_LivesInHumansApplicationServicesIssuesNamespace();
-        IssuesService_HasNoDbContextConstructorParameter();
-        IssuesService_TakesIssuesBadgeInvalidator();
-        IssuesService_TakesRepository();
-        IssuesService_TakesNavBadgeInvalidator();
-        IssuesService_TakesCrossSectionServiceInterfaces();
-        IssuesService_ConstructorTakesNoStoreType();
-        IIssuesRepository_LivesInApplicationInterfacesRepositoriesNamespace();
-        IssuesRepository_IsSealed();
-    }
-
     // ── IssuesService ────────────────────────────────────────────────────────
+
+    [HumansFact]
     public void IssuesService_LivesInHumansApplicationServicesIssuesNamespace()
     {
         typeof(IssuesService).Namespace
             .Should().Be("Humans.Application.Services.Issues",
                 because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
     }
+
+    [HumansFact]
     public void IssuesService_HasNoDbContextConstructorParameter()
     {
         var ctor = typeof(IssuesService).GetConstructors().Single();
@@ -49,6 +39,8 @@ public partial class ArchitectureShapeTests
                 p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
                 because: "services in Humans.Application must never take DbContext — use IIssuesRepository instead (design-rules §3)");
     }
+
+    [HumansFact]
     public void IssuesService_TakesIssuesBadgeInvalidator()
     {
         var ctor = typeof(IssuesService).GetConstructors().Single();
@@ -57,6 +49,8 @@ public partial class ArchitectureShapeTests
         paramTypes.Should().Contain(typeof(IIssuesBadgeCacheInvalidator),
             because: "IssuesService owns the per-user actionable-count cache surfaced by NavBadgesViewComponent and must explicitly evict each affected viewer's entry on every count-shifting mutation (memory/code/viewcomponent-no-cache.md + code-review-rules.md §Cache Invalidation)");
     }
+
+    [HumansFact]
     public void IssuesService_TakesRepository()
     {
         var ctor = typeof(IssuesService).GetConstructors().Single();
@@ -64,6 +58,8 @@ public partial class ArchitectureShapeTests
 
         paramTypes.Should().Contain(typeof(IIssuesRepository));
     }
+
+    [HumansFact]
     public void IssuesService_TakesNavBadgeInvalidator()
     {
         var ctor = typeof(IssuesService).GetConstructors().Single();
@@ -72,6 +68,8 @@ public partial class ArchitectureShapeTests
         paramTypes.Should().Contain(typeof(INavBadgeCacheInvalidator),
             because: "IssuesService invalidates the nav-badge count cache after writes that can change it (submit / status change / comment post / section change) — the dependency proves the wire is in place");
     }
+
+    [HumansFact]
     public void IssuesService_TakesCrossSectionServiceInterfaces()
     {
         var ctor = typeof(IssuesService).GetConstructors().Single();
@@ -84,6 +82,8 @@ public partial class ArchitectureShapeTests
         paramTypes.Should().Contain(typeof(IRoleAssignmentService),
             because: "Issues fans out comment notifications to section role-holders via IRoleAssignmentService.GetActiveUserIdsInRoleAsync — no direct query on the role_assignments table");
     }
+
+    [HumansFact]
     public void IssuesService_ConstructorTakesNoStoreType()
     {
         var ctor = typeof(IssuesService).GetConstructors().Single();
@@ -96,12 +96,16 @@ public partial class ArchitectureShapeTests
     }
 
     // ── IIssuesRepository ────────────────────────────────────────────────────
+
+    [HumansFact]
     public void IIssuesRepository_LivesInApplicationInterfacesRepositoriesNamespace()
     {
         typeof(IIssuesRepository).Namespace
             .Should().Be("Humans.Application.Interfaces.Repositories",
                 because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
     }
+
+    [HumansFact]
     public void IssuesRepository_IsSealed()
     {
         var repoType = typeof(IssuesRepository);

@@ -14,7 +14,7 @@ namespace Humans.Application.Tests.Architecture;
 /// and that the Application assembly does not drift back into a Google SDK
 /// dependency.
 /// </summary>
-public partial class ArchitectureShapeTests
+public class GoogleWorkspaceSyncBridgeArchitectureTests
 {
     /// <summary>
     /// Every bridge interface introduced by Part 2a — enforced below so

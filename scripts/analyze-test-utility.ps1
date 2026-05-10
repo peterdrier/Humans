@@ -83,7 +83,6 @@ $rows = foreach ($file in $testFiles) {
     $productionMatches = Find-ProductionMatches $subject
     $category = Get-Category $repoPath
     $isPolicyRatchet = $category -eq 'Architecture' -and $ratchetCount -gt 0
-    $isGroupedArchitectureContract = $category -eq 'Architecture' -and $text -match '_contracts_hold\s*\('
     $isDiCycleSafetyNet =
         $repoPath -match 'DependencyCycle|DiResolution' -or
         ($diCount -ge 3 -and $text -match 'cycle|Resolves_When|Resolve_When|validateScopes')
@@ -102,10 +101,6 @@ $rows = foreach ($file in $testFiles) {
         if ($isDiCycleSafetyNet) {
             $score += 8
             $reasons.Add('di-cycle-safety-net')
-        }
-        elseif ($isGroupedArchitectureContract) {
-            $score += 8
-            $reasons.Add('grouped-architecture-contract')
         }
         elseif ($isPolicyRatchet) {
             $score += 18
@@ -171,7 +166,7 @@ $rows = foreach ($file in $testFiles) {
         }
     }
 
-    if ($category -eq 'Architecture' -and -not $isPolicyRatchet -and -not $isGroupedArchitectureContract) {
+    if ($category -eq 'Architecture' -and -not $isPolicyRatchet) {
         $score += 8
         $reasons.Add('architecture-test-review-for-policy-value')
     }
@@ -208,7 +203,6 @@ $rows = foreach ($file in $testFiles) {
         ReflectionUses = $reflectionCount
         DiUses = $diCount
         IsDiCycleSafetyNet = $isDiCycleSafetyNet
-        IsGroupedArchitectureContract = $isGroupedArchitectureContract
         SnapshotUses = $snapshotCount
         RatchetUses = $ratchetCount
         AssertionsPerTest = if ($testCount -gt 0) { [math]::Round($assertionCount / $testCount, 2) } else { 0 }

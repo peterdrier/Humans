@@ -24,24 +24,17 @@ namespace Humans.Application.Tests.Architecture;
 /// Infrastructure.
 /// </para>
 /// </summary>
-public partial class ArchitectureShapeTests
+public class StripeConnectorArchitectureTests
 {
     [HumansFact]
-    public void StripeConnectorArchitecture_contracts_hold()
-    {
-        IStripeService_LivesInHumansApplicationInterfacesNamespace();
-        HumansApplicationAssembly_HasNoReferenceToStripeNet();
-        HumansWebAssembly_HasNoReferenceToStripeNet();
-        IStripeService_ExposesNoStripeSdkTypesOnItsPublicSurface();
-        StripeServiceImplementation_LivesInInfrastructureServicesNamespace();
-    }
-
     public void IStripeService_LivesInHumansApplicationInterfacesNamespace()
     {
         typeof(IStripeService).Namespace
             .Should().Be("Humans.Application.Interfaces",
                 because: "connector interfaces live in Humans.Application so Application-layer services depend only on the abstraction (design-rules §15i)");
     }
+
+    [HumansFact]
     public void HumansApplicationAssembly_HasNoReferenceToStripeNet()
     {
         var applicationAssembly = typeof(IStripeService).Assembly;
@@ -54,6 +47,8 @@ public partial class ArchitectureShapeTests
             name => name.StartsWith("Stripe", StringComparison.Ordinal),
             because: "Humans.Application must not reference the Stripe.net SDK — the connector implementation lives in Infrastructure (design-rules §15i)");
     }
+
+    [HumansFact]
     public void HumansWebAssembly_HasNoReferenceToStripeNet()
     {
         var webAssembly = typeof(Humans.Web.Controllers.StoreStripeWebhookController).Assembly;
@@ -66,6 +61,8 @@ public partial class ArchitectureShapeTests
             name => name.StartsWith("Stripe", StringComparison.Ordinal),
             because: "Humans.Web must not reference the Stripe.net SDK — controllers go through IStripeService, the connector seam (design-rules §15i)");
     }
+
+    [HumansFact]
     public void IStripeService_ExposesNoStripeSdkTypesOnItsPublicSurface()
     {
         var methodTypes = typeof(IStripeService).GetMethods()
@@ -104,6 +101,8 @@ public partial class ArchitectureShapeTests
                     stack.Push(arg);
         }
     }
+
+    [HumansFact]
     public void StripeServiceImplementation_LivesInInfrastructureServicesNamespace()
     {
         var impl = typeof(IStripeService).Assembly

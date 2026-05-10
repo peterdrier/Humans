@@ -22,30 +22,24 @@ namespace Humans.Application.Tests.Architecture;
 /// <c>DbContext</c> dependency.
 /// </para>
 /// </summary>
-public partial class ArchitectureShapeTests
+public class TeamPageArchitectureTests
 {
     [HumansFact]
-    public void TeamPageArchitecture_contracts_hold()
-    {
-        TeamPageService_LivesInHumansApplicationServicesTeamsNamespace();
-        TeamPageService_ImplementsITeamPageService();
-        TeamPageService_HasNoDbContextConstructorParameter();
-        TeamPageService_DependsOnlyOnSiblingServiceInterfaces();
-        TeamPageService_HasNoRepositoryDependencies();
-        TeamPageService_IsSealed();
-    }
-
     public void TeamPageService_LivesInHumansApplicationServicesTeamsNamespace()
     {
         typeof(TeamPageService).Namespace
             .Should().Be("Humans.Application.Services.Teams",
                 because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
     }
+
+    [HumansFact]
     public void TeamPageService_ImplementsITeamPageService()
     {
         typeof(ITeamPageService).IsAssignableFrom(typeof(TeamPageService))
             .Should().BeTrue();
     }
+
+    [HumansFact]
     public void TeamPageService_HasNoDbContextConstructorParameter()
     {
         var ctor = typeof(TeamPageService).GetConstructors().Single();
@@ -54,6 +48,8 @@ public partial class ArchitectureShapeTests
                 p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
                 because: "services in Humans.Application must never take DbContext — cross-domain reads route through sibling service interfaces (design-rules §2c, §3)");
     }
+
+    [HumansFact]
     public void TeamPageService_DependsOnlyOnSiblingServiceInterfaces()
     {
         var ctor = typeof(TeamPageService).GetConstructors().Single();
@@ -66,6 +62,8 @@ public partial class ArchitectureShapeTests
         paramTypes.Should().Contain(typeof(IUserService),
             because: "user display-name lookups route through IUserService instead of a direct AspNetUsers query (design-rules §2c)");
     }
+
+    [HumansFact]
     public void TeamPageService_HasNoRepositoryDependencies()
     {
         var ctor = typeof(TeamPageService).GetConstructors().Single();
@@ -76,6 +74,8 @@ public partial class ArchitectureShapeTests
         repoParam.Should().BeNull(
             because: "TeamPageService owns no tables — it is a composer that stitches sibling services (design-rules §2c)");
     }
+
+    [HumansFact]
     public void TeamPageService_IsSealed()
     {
         typeof(TeamPageService).IsSealed

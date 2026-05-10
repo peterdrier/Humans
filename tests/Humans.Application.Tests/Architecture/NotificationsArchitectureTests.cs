@@ -22,33 +22,19 @@ namespace Humans.Application.Tests.Architecture;
 /// City Planning (#543), and Audit Log (#552) when they skipped the decorator.
 /// </para>
 /// </summary>
-public partial class ArchitectureShapeTests
+public class NotificationsArchitectureTests
 {
-    [HumansFact]
-    public void NotificationsArchitecture_contracts_hold()
-    {
-        NotificationService_LivesInHumansApplicationServicesNotificationsNamespace();
-        NotificationService_HasNoDbContextConstructorParameter();
-        NotificationService_TakesRepository();
-        NotificationService_TakesRecipientResolver_NotDbContext();
-        NotificationInboxService_LivesInHumansApplicationServicesNotificationsNamespace();
-        NotificationInboxService_HasNoDbContextConstructorParameter();
-        NotificationInboxService_TakesRepositoryAndUserService();
-        NotificationMeterProvider_LivesInHumansApplicationServicesNotificationsNamespace();
-        NotificationMeterProvider_HasNoDbContextConstructorParameter();
-        NotificationMeterProvider_TakesCrossSectionInterfaces();
-        NotificationMeterProvider_TakesNoRepositoryDependency();
-        INotificationRepository_LivesInApplicationInterfacesRepositoriesNamespace();
-        NotificationRepository_IsSealed();
-    }
-
     // ── NotificationService ──────────────────────────────────────────────────
+
+    [HumansFact]
     public void NotificationService_LivesInHumansApplicationServicesNotificationsNamespace()
     {
         typeof(NotificationService).Namespace
             .Should().Be("Humans.Application.Services.Notifications",
                 because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
     }
+
+    [HumansFact]
     public void NotificationService_HasNoDbContextConstructorParameter()
     {
         var ctor = typeof(NotificationService).GetConstructors().Single();
@@ -57,6 +43,8 @@ public partial class ArchitectureShapeTests
                 p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
                 because: "services in Humans.Application must never take DbContext — use INotificationRepository instead (design-rules §3)");
     }
+
+    [HumansFact]
     public void NotificationService_TakesRepository()
     {
         var ctor = typeof(NotificationService).GetConstructors().Single();
@@ -64,6 +52,8 @@ public partial class ArchitectureShapeTests
 
         paramTypes.Should().Contain(typeof(INotificationRepository));
     }
+
+    [HumansFact]
     public void NotificationService_TakesRecipientResolver_NotDbContext()
     {
         // The NotificationService reaches teams and role holders via a thin
@@ -81,11 +71,15 @@ public partial class ArchitectureShapeTests
     }
 
     // ── NotificationInboxService ─────────────────────────────────────────────
+
+    [HumansFact]
     public void NotificationInboxService_LivesInHumansApplicationServicesNotificationsNamespace()
     {
         typeof(NotificationInboxService).Namespace
             .Should().Be("Humans.Application.Services.Notifications");
     }
+
+    [HumansFact]
     public void NotificationInboxService_HasNoDbContextConstructorParameter()
     {
         var ctor = typeof(NotificationInboxService).GetConstructors().Single();
@@ -94,6 +88,8 @@ public partial class ArchitectureShapeTests
                 p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
                 because: "services in Humans.Application must never take DbContext — use INotificationRepository instead");
     }
+
+    [HumansFact]
     public void NotificationInboxService_TakesRepositoryAndUserService()
     {
         // Display-name stitching runs through IUserService.GetByIdsAsync rather
@@ -106,11 +102,15 @@ public partial class ArchitectureShapeTests
     }
 
     // ── NotificationMeterProvider ────────────────────────────────────────────
+
+    [HumansFact]
     public void NotificationMeterProvider_LivesInHumansApplicationServicesNotificationsNamespace()
     {
         typeof(NotificationMeterProvider).Namespace
             .Should().Be("Humans.Application.Services.Notifications");
     }
+
+    [HumansFact]
     public void NotificationMeterProvider_HasNoDbContextConstructorParameter()
     {
         var ctor = typeof(NotificationMeterProvider).GetConstructors().Single();
@@ -119,6 +119,8 @@ public partial class ArchitectureShapeTests
                 p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
                 because: "the meter provider must reach every non-owned table via its owning section service (design-rules §2c)");
     }
+
+    [HumansFact]
     public void NotificationMeterProvider_TakesCrossSectionInterfaces()
     {
         // The meter provider computes badge counts by calling into each owning
@@ -135,6 +137,8 @@ public partial class ArchitectureShapeTests
         paramTypeNames.Should().Contain("ITicketSyncService");
         paramTypeNames.Should().Contain("IApplicationDecisionService");
     }
+
+    [HumansFact]
     public void NotificationMeterProvider_TakesNoRepositoryDependency()
     {
         // The meter provider does not own notifications/notification_recipients
@@ -150,12 +154,16 @@ public partial class ArchitectureShapeTests
     }
 
     // ── INotificationRepository ──────────────────────────────────────────────
+
+    [HumansFact]
     public void INotificationRepository_LivesInApplicationInterfacesRepositoriesNamespace()
     {
         typeof(INotificationRepository).Namespace
             .Should().Be("Humans.Application.Interfaces.Repositories",
                 because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
     }
+
+    [HumansFact]
     public void NotificationRepository_IsSealed()
     {
         var repoType = typeof(NotificationRepository);
