@@ -86,6 +86,42 @@ public sealed class EditLineInputModel
     public decimal Amount { get; set; }
 }
 
+// ─────────────────────────────── Coordinator queue ───────────────────────────
+
+public sealed class ExpenseCoordinatorViewModel
+{
+    public required IReadOnlyList<ExpenseReportDto> Reports { get; init; }
+}
+
+// ────────────────────────────── Coordinator actions ──────────────────────────
+
+public sealed class CoordinatorRejectInputModel
+{
+    [Required, StringLength(1000, MinimumLength = 1)]
+    public string Reason { get; set; } = "";
+}
+
+// ────────────────────────────────── Review queue ─────────────────────────────
+
+public sealed class ExpenseReviewViewModel
+{
+    public required IReadOnlyList<ExpenseReportDto> Reports { get; init; }
+}
+
+// ──────────────────────────── FinanceAdmin actions ───────────────────────────
+
+public sealed class ApproveInputModel
+{
+    /// <summary>Optional category override applied at approval time.</summary>
+    public Guid? OverrideCategoryId { get; set; }
+}
+
+public sealed class FinanceRejectInputModel
+{
+    [Required, StringLength(1000, MinimumLength = 1)]
+    public string Reason { get; set; } = "";
+}
+
 // ─────────────────────────────────── IBAN modal ──────────────────────────────
 
 public sealed class ExpenseIbanViewModel

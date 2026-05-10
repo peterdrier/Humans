@@ -3,9 +3,12 @@ using Humans.Application.Interfaces.Expenses;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Services.Expenses.Dtos;
+using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Domain.Helpers;
+using Humans.Web.Authorization;
+using Humans.Web.Authorization.Requirements;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -24,6 +27,7 @@ public sealed class ExpensesController : HumansControllerBase
     private readonly IProfileService _profileService;
     private readonly IExpenseRepository _repo;
     private readonly IClock _clock;
+    private readonly IAuthorizationService _authService;
     private readonly ILogger<ExpensesController> _logger;
 
     /// <summary>Max attachment size enforced before calling the storage service (20 MB).</summary>
@@ -55,6 +59,7 @@ public sealed class ExpensesController : HumansControllerBase
         IProfileService profileService,
         IExpenseRepository repo,
         IClock clock,
+        IAuthorizationService authService,
         ILogger<ExpensesController> logger)
         : base(userManager)
     {
@@ -64,6 +69,7 @@ public sealed class ExpensesController : HumansControllerBase
         _profileService = profileService;
         _repo = repo;
         _clock = clock;
+        _authService = authService;
         _logger = logger;
     }
 
@@ -170,9 +176,9 @@ public sealed class ExpensesController : HumansControllerBase
             var report = await _service.GetAsync(id);
             if (report is null) return NotFound();
 
-            // Phase 6: submitter-only access. Phase 7 will add coordinator + FinanceAdmin
-            // via ExpenseReportAuthorizationHandler.
-            if (report.SubmitterUserId != user.Id) return Forbid();
+            var authResult = await _authService.AuthorizeAsync(User, report,
+                new ExpenseReportOperationRequirement(ExpenseReportOperation.View));
+            if (!authResult.Succeeded) return Forbid();
 
             var profile = await _profileService.GetProfileAsync(user.Id);
             var category = await _budgetService.GetCategoryByIdAsync(report.BudgetCategoryId);
@@ -641,9 +647,8 @@ public sealed class ExpensesController : HumansControllerBase
             var attachment = await _repo.GetAttachmentByIdAsync(attachmentId);
             if (attachment is null) return NotFound();
 
-            // Re-check: only the submitter of the owning report may access.
-            // TODO Phase 7: also allow coordinator of the report's category and FinanceAdmin/Admin
-            // via ExpenseReportAuthorizationHandler.
+            // Locate the report that owns this attachment, then check View permission
+            // via ExpenseReportAuthorizationHandler (submitter / coordinator / FinanceAdmin / Admin).
             var owningReport = await FindReportOwningAttachmentAsync(attachmentId, user.Id);
             if (owningReport is null) return Forbid();
 
@@ -655,6 +660,195 @@ public sealed class ExpensesController : HumansControllerBase
             _logger.LogError(ex, "Error streaming attachment {AttachmentId}", attachmentId);
             return NotFound();
         }
+    }
+
+    // ───────────────────────────── 7.5  Coordinator queue ────────────────────
+
+    [HttpGet("Coordinator")]
+    public async Task<IActionResult> Coordinator()
+    {
+        try
+        {
+            var (errorResult, user) = await RequireCurrentUserAsync();
+            if (errorResult is not null) return errorResult;
+
+            var reports = await _service.GetCoordinatorQueueAsync(user.Id);
+            return View(new ExpenseCoordinatorViewModel { Reports = reports });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error loading coordinator queue");
+            SetError("Failed to load the coordinator queue.");
+            return RedirectToAction(nameof(Index));
+        }
+    }
+
+    // ───────────────────────────── 7.6  Endorse / CoordinatorReject ──────────
+
+    [HttpPost("{id:guid}/Endorse")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Endorse(Guid id)
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return errorResult;
+
+        var report = await _service.GetAsync(id);
+        if (report is null) return NotFound();
+
+        var authResult = await _authService.AuthorizeAsync(User, report,
+            new ExpenseReportOperationRequirement(ExpenseReportOperation.Endorse));
+        if (!authResult.Succeeded) return Forbid();
+
+        try
+        {
+            var ok = await _service.CoordinatorEndorseAsync(id, user.Id);
+            if (ok)
+                SetSuccess("Report endorsed.");
+            else
+                SetError("Could not endorse the report. It may no longer be in Submitted status.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error endorsing expense report {ReportId}", id);
+            SetError($"Endorsement failed: {ex.Message}");
+        }
+        return RedirectToAction(nameof(Coordinator));
+    }
+
+    [HttpPost("{id:guid}/CoordinatorReject")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CoordinatorReject(Guid id, CoordinatorRejectInputModel input)
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return errorResult;
+
+        var report = await _service.GetAsync(id);
+        if (report is null) return NotFound();
+
+        var authResult = await _authService.AuthorizeAsync(User, report,
+            new ExpenseReportOperationRequirement(ExpenseReportOperation.CoordinatorReject));
+        if (!authResult.Succeeded) return Forbid();
+
+        if (!ModelState.IsValid || string.IsNullOrWhiteSpace(input.Reason))
+        {
+            SetError("A rejection reason is required.");
+            return RedirectToAction(nameof(Coordinator));
+        }
+
+        try
+        {
+            var ok = await _service.CoordinatorRejectAsync(id, user.Id, input.Reason);
+            if (ok)
+                SetSuccess("Report rejected.");
+            else
+                SetError("Could not reject the report. It may no longer be in Submitted status.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error coordinator-rejecting expense report {ReportId}", id);
+            SetError($"Rejection failed: {ex.Message}");
+        }
+        return RedirectToAction(nameof(Coordinator));
+    }
+
+    // ───────────────────────────── 7.7  Review queue (FinanceAdmin) ──────────
+
+    [HttpGet("Review")]
+    [Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]
+    public async Task<IActionResult> Review()
+    {
+        try
+        {
+            var reports = await _service.GetReviewQueueAsync();
+            return View(new ExpenseReviewViewModel { Reports = reports });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error loading finance admin review queue");
+            SetError("Failed to load the review queue.");
+            return RedirectToAction(nameof(Index));
+        }
+    }
+
+    // ───────────────────────────── 7.8  Approve / Reject (FinanceAdmin) ──────
+
+    [HttpPost("{id:guid}/Approve")]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]
+    public async Task<IActionResult> Approve(Guid id, ApproveInputModel input)
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return errorResult;
+
+        var report = await _service.GetAsync(id);
+        if (report is null) return NotFound();
+
+        var authResult = await _authService.AuthorizeAsync(User, report,
+            new ExpenseReportOperationRequirement(ExpenseReportOperation.Approve));
+        if (!authResult.Succeeded) return Forbid();
+
+        try
+        {
+            var ok = await _service.ApproveAsync(id, user.Id, input.OverrideCategoryId);
+            if (ok)
+                SetSuccess("Report approved.");
+            else
+                SetError("Could not approve the report. It may not be in an approvable status.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error approving expense report {ReportId}", id);
+            SetError($"Approval failed: {ex.Message}");
+        }
+        return RedirectToAction(nameof(Review));
+    }
+
+    [HttpPost("{id:guid}/Reject")]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]
+    public async Task<IActionResult> Reject(Guid id, FinanceRejectInputModel input)
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return errorResult;
+
+        var report = await _service.GetAsync(id);
+        if (report is null) return NotFound();
+
+        var authResult = await _authService.AuthorizeAsync(User, report,
+            new ExpenseReportOperationRequirement(ExpenseReportOperation.FinanceReject));
+        if (!authResult.Succeeded) return Forbid();
+
+        if (!ModelState.IsValid || string.IsNullOrWhiteSpace(input.Reason))
+        {
+            SetError("A rejection reason is required.");
+            return RedirectToAction(nameof(Review));
+        }
+
+        try
+        {
+            var ok = await _service.FinanceRejectAsync(id, user.Id, input.Reason);
+            if (ok)
+                SetSuccess("Report rejected.");
+            else
+                SetError("Could not reject the report. It may not be in a rejectable status.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error finance-rejecting expense report {ReportId}", id);
+            SetError($"Rejection failed: {ex.Message}");
+        }
+        return RedirectToAction(nameof(Review));
+    }
+
+    // ─────────────────── Phase 9 stub — SEPA generation ──────────────────────
+
+    [HttpPost("Sepa/Generate")]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]
+    public IActionResult SepaGenerate()
+    {
+        // TODO Phase 9: generate pain.001 XML for selected Approved reports, mark SepaSent, stream file.
+        return BadRequest("not implemented");
     }
 
     // ──────────────────────────── Private helpers ─────────────────────────────
@@ -673,14 +867,29 @@ public sealed class ExpensesController : HumansControllerBase
     }
 
     /// <summary>
-    /// Returns the report if the given user is its submitter and the report
-    /// has a line whose attachment matches <paramref name="attachmentId"/>.
-    /// Returns null if no such match (access denied).
+    /// Returns the report if the given user may see an attachment belonging to it.
+    /// Checks submitter queue first, then (for FinanceAdmin/Admin) the review queue.
+    /// Returns null if no accessible report contains the attachment.
     /// </summary>
     private async Task<ExpenseReportDto?> FindReportOwningAttachmentAsync(Guid attachmentId, Guid userId)
     {
-        var reports = await _service.GetForSubmitterAsync(userId);
-        return reports.FirstOrDefault(r =>
+        // Check submitter's own reports first (most common case)
+        var submitterReports = await _service.GetForSubmitterAsync(userId);
+        var match = submitterReports.FirstOrDefault(r =>
+            r.Lines.Any(l => l.AttachmentId == attachmentId || l.Attachment?.Id == attachmentId));
+        if (match is not null) return match;
+
+        // For FinanceAdmin/Admin: scan the review queue (all non-Draft/non-Withdrawn)
+        if (RoleChecks.IsFinanceAdmin(User))
+        {
+            var reviewQueue = await _service.GetReviewQueueAsync();
+            return reviewQueue.FirstOrDefault(r =>
+                r.Lines.Any(l => l.AttachmentId == attachmentId || l.Attachment?.Id == attachmentId));
+        }
+
+        // For coordinators: scan coordinator queue (Submitted reports in their categories)
+        var coordinatorQueue = await _service.GetCoordinatorQueueAsync(userId);
+        return coordinatorQueue.FirstOrDefault(r =>
             r.Lines.Any(l => l.AttachmentId == attachmentId || l.Attachment?.Id == attachmentId));
     }
 }

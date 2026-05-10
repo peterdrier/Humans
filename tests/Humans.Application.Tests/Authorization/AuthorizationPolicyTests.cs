@@ -3,6 +3,7 @@ using AwesomeAssertions;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Camps;
+using Humans.Application.Interfaces.Expenses;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Stores;
 using Humans.Application.Interfaces.Teams;
@@ -36,7 +37,10 @@ public class AuthorizationPolicyTests : IDisposable
         services.AddScoped(_ => Substitute.For<ITeamService>());
         services.AddScoped(_ => Substitute.For<IAgentRateLimitStore>());
         services.AddScoped(_ => Substitute.For<IAgentSettingsService>());
-
+        // Expense resource-based handlers
+        services.AddScoped(_ => Substitute.For<IExpenseReportService>());
+        // IsAnyTeamManagerOrCoordinatorHandler reads team-coord ids through this service
+        // (cached path); register a single shared substitute so per-test setups stick.
         _shiftManagement = Substitute.For<IShiftManagementService>();
         _shiftManagement.GetCoordinatorTeamIdsAsync(Arg.Any<Guid>()).Returns(Array.Empty<Guid>());
         services.AddSingleton(_shiftManagement);

@@ -44,6 +44,10 @@ src/Humans.Web/Controllers/DevSeedController.cs:SeedBudget/1
 src/Humans.Web/Controllers/DevSeedController.cs:SeedCampRoles/1
 src/Humans.Web/Controllers/DevSeedController.cs:SeedDashboard/2
 src/Humans.Web/Controllers/EmailController.cs:EmailPreview/2
+src/Humans.Web/Controllers/ExpensesController.cs:Approve/2
+src/Humans.Web/Controllers/ExpensesController.cs:CoordinatorReject/2
+src/Humans.Web/Controllers/ExpensesController.cs:Endorse/1
+src/Humans.Web/Controllers/ExpensesController.cs:Reject/2
 src/Humans.Web/Controllers/ExpensesController.cs:AddLine/2
 src/Humans.Web/Controllers/ExpensesController.cs:AttachFile/3
 src/Humans.Web/Controllers/ExpensesController.cs:Detail/1
