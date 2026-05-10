@@ -82,7 +82,6 @@ public sealed class TeamRepository : ITeamRepository
         return await db.Teams
             .AsNoTracking()
             .Where(t => t.IsActive)
-            .OrderBy(t => t.Name)
             .Include(t => t.Members.Where(m => m.LeftAt == null))
             .Include(t => t.ChildTeams)
             .ToListAsync(ct);
@@ -104,7 +103,6 @@ public sealed class TeamRepository : ITeamRepository
         return await db.Teams
             .AsNoTracking()
             .Where(t => t.IsActive)
-            .OrderBy(t => t.Name)
             .Select(t => new TeamOptionDto(t.Id, t.Name))
             .ToListAsync(ct);
     }
@@ -115,7 +113,6 @@ public sealed class TeamRepository : ITeamRepository
         return await db.Teams
             .AsNoTracking()
             .Where(t => t.HasBudget && t.IsActive)
-            .OrderBy(t => t.Name)
             .Select(t => new TeamOptionDto(t.Id, t.Name))
             .ToListAsync(ct);
     }
@@ -184,17 +181,16 @@ public sealed class TeamRepository : ITeamRepository
     {
         await using var db = await _factory.CreateDbContextAsync(ct);
 
-        var baseQuery = db.Teams
+        var query = db.Teams
             .AsNoTracking()
             .Include(t => t.Members.Where(m => m.LeftAt == null))
             .Include(t => t.JoinRequests.Where(r => r.Status == TeamJoinRequestStatus.Pending))
-            .Include(t => t.RoleDefinitions)
-            .OrderBy(t => t.SystemTeamType)
-            .ThenBy(t => t.Name);
+            .Include(t => t.RoleDefinitions);
 
-        var totalCount = await baseQuery.CountAsync(ct);
-
-        var items = await baseQuery
+        var totalCount = await query.CountAsync(ct);
+        var items = await query
+            .OrderBy(t => t.SystemTeamType) // arch:db-sort-ok admin page window
+            .ThenBy(t => t.Name) // arch:db-sort-ok admin page window
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync(ct);
@@ -363,8 +359,6 @@ public sealed class TeamRepository : ITeamRepository
         return await db.TeamMembers
             .AsNoTracking()
             .Where(tm => tm.TeamId == teamId && tm.LeftAt == null)
-            .OrderBy(tm => tm.Role)
-            .ThenBy(tm => tm.JoinedAt)
             .ToListAsync(ct);
     }
 
@@ -585,7 +579,7 @@ public sealed class TeamRepository : ITeamRepository
             .AsNoTracking()
             .Include(r => r.Team)
             .Where(r => r.Status == TeamJoinRequestStatus.Pending)
-            .OrderBy(r => r.RequestedAt)
+            .OrderBy(r => r.RequestedAt) // arch:db-sort-ok aggregate chronology
             .ToListAsync(ct);
     }
 
@@ -600,7 +594,7 @@ public sealed class TeamRepository : ITeamRepository
             .AsNoTracking()
             .Include(r => r.Team)
             .Where(r => teamIds.Contains(r.TeamId) && r.Status == TeamJoinRequestStatus.Pending)
-            .OrderBy(r => r.RequestedAt)
+            .OrderBy(r => r.RequestedAt) // arch:db-sort-ok aggregate chronology
             .ToListAsync(ct);
     }
 
@@ -611,7 +605,7 @@ public sealed class TeamRepository : ITeamRepository
         return await db.TeamJoinRequests
             .AsNoTracking()
             .Where(r => r.TeamId == teamId && r.Status == TeamJoinRequestStatus.Pending)
-            .OrderBy(r => r.RequestedAt)
+            .OrderBy(r => r.RequestedAt) // arch:db-sort-ok aggregate chronology
             .ToListAsync(ct);
     }
 

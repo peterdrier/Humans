@@ -58,7 +58,7 @@ public interface ITeamRepository
     /// </summary>
     Task<bool> SlugExistsAsync(string slug, Guid? excludingTeamId, CancellationToken ct = default);
 
-    /// <summary>All active teams ordered by name, with active members and children.</summary>
+    /// <summary>All active teams with active members and children.</summary>
     Task<IReadOnlyList<Team>> GetAllActiveAsync(CancellationToken ct = default);
 
     /// <summary>
@@ -67,7 +67,7 @@ public interface ITeamRepository
     /// </summary>
     Task<IReadOnlyList<Team>> GetAllActiveWithMembersAsync(CancellationToken ct = default);
 
-    /// <summary>Active teams projected to id/name for dropdowns.</summary>
+    /// <summary>Active teams projected to id/name.</summary>
     Task<IReadOnlyList<TeamOptionDto>> GetActiveOptionsAsync(CancellationToken ct = default);
 
     /// <summary>Active teams with <c>HasBudget=true</c> projected to id/name.</summary>
@@ -88,8 +88,9 @@ public interface ITeamRepository
     Task<string?> GetNameByGoogleGroupPrefixAsync(string prefix, CancellationToken ct = default);
 
     /// <summary>
-    /// Paged list of teams (all active/inactive) with members, pending join
-    /// requests, and role definitions eagerly loaded for the admin table.
+    /// Page of all teams (active/inactive) with active members, pending join
+    /// requests, and role definitions eagerly loaded. Admin paging stays
+    /// DB-side because the include graph is too expensive to load wholesale.
     /// </summary>
     Task<(IReadOnlyList<Team> Items, int TotalCount)> GetAllForAdminAsync(
         int page, int pageSize, CancellationToken ct = default);

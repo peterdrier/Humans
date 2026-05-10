@@ -217,8 +217,11 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
         CancellationToken cancellationToken = default) =>
         _repo.GetNamesByIdsAsync(teamIds, cancellationToken);
 
-    public Task<IReadOnlyList<Team>> GetAllTeamsAsync(CancellationToken cancellationToken = default) =>
-        _repo.GetAllActiveAsync(cancellationToken);
+    public async Task<IReadOnlyList<Team>> GetAllTeamsAsync(CancellationToken cancellationToken = default)
+    {
+        var teams = await _repo.GetAllActiveAsync(cancellationToken);
+        return teams.ToList();
+    }
 
     public async Task<IReadOnlyList<TeamSearchHit>> SearchAsync(
         string query, int max,
@@ -231,12 +234,19 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
             .ToList();
     }
 
-    public Task<IReadOnlyList<TeamOptionDto>> GetActiveTeamOptionsAsync(CancellationToken cancellationToken = default) =>
-        _repo.GetActiveOptionsAsync(cancellationToken);
+    public async Task<IReadOnlyList<TeamOptionDto>> GetActiveTeamOptionsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var teams = await _repo.GetActiveOptionsAsync(cancellationToken);
+        return teams.ToList();
+    }
 
-    public Task<IReadOnlyList<TeamOptionDto>> GetBudgetableTeamsAsync(
-        CancellationToken cancellationToken = default) =>
-        _repo.GetBudgetableOptionsAsync(cancellationToken);
+    public async Task<IReadOnlyList<TeamOptionDto>> GetBudgetableTeamsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var teams = await _repo.GetBudgetableOptionsAsync(cancellationToken);
+        return teams.ToList();
+    }
 
     public async Task<IReadOnlyCollection<Guid>> GetEffectiveBudgetCoordinatorTeamIdsAsync(
         Guid userId, CancellationToken cancellationToken = default)
@@ -1833,9 +1843,11 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
         return result;
     }
 
-    public Task<(IReadOnlyList<Team> Items, int TotalCount)> GetAllTeamsForAdminAsync(
-        int page, int pageSize, CancellationToken cancellationToken = default) =>
-        _repo.GetAllForAdminAsync(page, pageSize, cancellationToken);
+    public async Task<(IReadOnlyList<Team> Items, int TotalCount)> GetAllTeamsForAdminAsync(
+        int page, int pageSize, CancellationToken cancellationToken = default)
+    {
+        return await _repo.GetAllForAdminAsync(page, pageSize, cancellationToken);
+    }
 
     public async Task<AdminTeamListResult> GetAdminTeamListAsync(
         int page,
