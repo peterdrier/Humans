@@ -133,6 +133,159 @@ public class VolunteerTrackingRepositoryTests : IClassFixture<HumansWebApplicati
         result[0].RotaName.Should().Be("BuildB");
     }
 
+    // ---------------------------------------------------------------------
+    // Day-off jsonb round-trips. These exercise the NodaTime-aware converter
+    // configured on VolunteerBuildStatusConfiguration; without it,
+    // DayOffEntry.MarkedAt would deserialize as Instant.MinValue and these
+    // assertions would fail.
+    // ---------------------------------------------------------------------
+
+    [HumansFact(Timeout = 30000)]
+    public async Task UpsertDayOffAsync_inserts_first_entry_and_creates_row_if_absent()
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var es = await SeedActiveEventAsync(db);
+        var userId = Guid.NewGuid();
+        var actor = Guid.NewGuid();
+        var markedAt = SystemClock.Instance.GetCurrentInstant();
+        var sut = new VolunteerTrackingRepository(db);
+
+        await sut.UpsertDayOffAsync(
+            userId, es.Id,
+            new DayOffEntry(DayOffset: -5, Reason: "doctor", MarkedByUserId: actor, MarkedAt: markedAt));
+
+        var fetched = await sut.GetAsync(userId, es.Id);
+        fetched.Should().NotBeNull();
+        fetched!.DayOffs.Should().HaveCount(1);
+        fetched.DayOffs[0].DayOffset.Should().Be(-5);
+        fetched.DayOffs[0].Reason.Should().Be("doctor");
+        fetched.DayOffs[0].MarkedByUserId.Should().Be(actor);
+        fetched.DayOffs[0].MarkedAt.Should().Be(markedAt);
+    }
+
+    [HumansFact(Timeout = 30000)]
+    public async Task UpsertDayOffAsync_replaces_entry_for_same_day_offset()
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var es = await SeedActiveEventAsync(db);
+        var userId = Guid.NewGuid();
+        var actor = Guid.NewGuid();
+        var t1 = SystemClock.Instance.GetCurrentInstant();
+        var t2 = t1 + Duration.FromMinutes(5);
+        var sut = new VolunteerTrackingRepository(db);
+
+        await sut.UpsertDayOffAsync(
+            userId, es.Id,
+            new DayOffEntry(-5, "doctor", actor, t1));
+        await sut.UpsertDayOffAsync(
+            userId, es.Id,
+            new DayOffEntry(-5, "family emergency", actor, t2));
+
+        var fetched = await sut.GetAsync(userId, es.Id);
+        fetched.Should().NotBeNull();
+        fetched!.DayOffs.Should().HaveCount(1);
+        fetched.DayOffs[0].DayOffset.Should().Be(-5);
+        fetched.DayOffs[0].Reason.Should().Be("family emergency");
+        fetched.DayOffs[0].MarkedAt.Should().Be(t2);
+    }
+
+    [HumansFact(Timeout = 30000)]
+    public async Task UpsertDayOffAsync_appends_entries_for_distinct_days_sorted_by_offset()
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var es = await SeedActiveEventAsync(db);
+        var userId = Guid.NewGuid();
+        var actor = Guid.NewGuid();
+        var t = SystemClock.Instance.GetCurrentInstant();
+        var sut = new VolunteerTrackingRepository(db);
+
+        // Insert out of order; persisted layout should sort ascending.
+        await sut.UpsertDayOffAsync(userId, es.Id, new DayOffEntry(-3, "a", actor, t));
+        await sut.UpsertDayOffAsync(userId, es.Id, new DayOffEntry(-7, "b", actor, t));
+        await sut.UpsertDayOffAsync(userId, es.Id, new DayOffEntry(-5, "c", actor, t));
+
+        var fetched = await sut.GetAsync(userId, es.Id);
+        fetched.Should().NotBeNull();
+        fetched!.DayOffs.Select(d => d.DayOffset).Should().Equal(-7, -5, -3);
+    }
+
+    [HumansFact(Timeout = 30000)]
+    public async Task RemoveDayOffAsync_drops_only_the_specified_day()
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var es = await SeedActiveEventAsync(db);
+        var userId = Guid.NewGuid();
+        var actor = Guid.NewGuid();
+        var t = SystemClock.Instance.GetCurrentInstant();
+        var sut = new VolunteerTrackingRepository(db);
+
+        await sut.UpsertDayOffAsync(userId, es.Id, new DayOffEntry(-5, "a", actor, t));
+        await sut.UpsertDayOffAsync(userId, es.Id, new DayOffEntry(-3, "b", actor, t));
+
+        var removed = await sut.RemoveDayOffAsync(userId, es.Id, -5);
+
+        removed.Should().BeTrue();
+        var fetched = await sut.GetAsync(userId, es.Id);
+        fetched.Should().NotBeNull();
+        fetched!.DayOffs.Should().HaveCount(1);
+        fetched.DayOffs[0].DayOffset.Should().Be(-3);
+    }
+
+    [HumansFact(Timeout = 30000)]
+    public async Task RemoveDayOffAsync_returns_false_when_entry_absent()
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var es = await SeedActiveEventAsync(db);
+        var userId = Guid.NewGuid();
+        var actor = Guid.NewGuid();
+        var t = SystemClock.Instance.GetCurrentInstant();
+        var sut = new VolunteerTrackingRepository(db);
+
+        // Row does not exist at all.
+        (await sut.RemoveDayOffAsync(userId, es.Id, -5)).Should().BeFalse();
+
+        // Row exists but no entry for that offset.
+        await sut.UpsertDayOffAsync(userId, es.Id, new DayOffEntry(-3, null, actor, t));
+        (await sut.RemoveDayOffAsync(userId, es.Id, -5)).Should().BeFalse();
+    }
+
+    [HumansFact(Timeout = 30000)]
+    public async Task UpsertCampSetupAsync_does_not_disturb_existing_DayOffs()
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+        var es = await SeedActiveEventAsync(db);
+        var userId = Guid.NewGuid();
+        var actor = Guid.NewGuid();
+        var t = SystemClock.Instance.GetCurrentInstant();
+        var sut = new VolunteerTrackingRepository(db);
+
+        // Seed three day-offs at offsets -8, -5, -3.
+        await sut.UpsertDayOffAsync(userId, es.Id, new DayOffEntry(-8, "a", actor, t));
+        await sut.UpsertDayOffAsync(userId, es.Id, new DayOffEntry(-5, "b", actor, t));
+        await sut.UpsertDayOffAsync(userId, es.Id, new DayOffEntry(-3, "c", actor, t));
+
+        // Camp setup at offset -4 → trim threshold is -4 (auto-clear day-offs >= -4).
+        // Only -3 should be auto-cleared; -8 and -5 stay.
+        var trimmed = await sut.UpsertCampSetupAsync(
+            userId, es.Id,
+            barrioSetupStartDate: new LocalDate(2026, 6, 27),
+            notes: null,
+            setByUserId: actor,
+            setAt: t,
+            setupOffsetThreshold: -4);
+
+        trimmed.Should().Equal(new[] { -3 });
+        var fetched = await sut.GetAsync(userId, es.Id);
+        fetched.Should().NotBeNull();
+        fetched!.DayOffs.Select(d => d.DayOffset).Should().Equal(-8, -5);
+    }
+
     /// <summary>
     /// Seeds a fresh <see cref="EventSettings"/> row with a unique name so each
     /// test gets an isolated event id (the test container is shared across

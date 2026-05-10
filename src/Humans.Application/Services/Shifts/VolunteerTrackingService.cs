@@ -314,7 +314,7 @@ public sealed class VolunteerTrackingService : IVolunteerTrackingService
         var removed = await _trackingRepo
             .RemoveDayOffAsync(targetUserId, es.Id, dayOffset, ct)
             .ConfigureAwait(false);
-        return new ClearDayOffResult(true, removed);
+        return new ClearDayOffResult(removed);
     }
 
     private async Task<EventSettings> RequireActiveEventAsync(CancellationToken ct) =>

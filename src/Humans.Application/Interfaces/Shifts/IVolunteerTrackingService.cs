@@ -50,4 +50,4 @@ public sealed record SetCampSetupResult(
 
 public sealed record SetDayOffResult(bool Ok, string? ErrorMessageKey);
 
-public sealed record ClearDayOffResult(bool Ok, bool Removed);
+public sealed record ClearDayOffResult(bool Removed);

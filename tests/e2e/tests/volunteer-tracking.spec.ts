@@ -97,6 +97,52 @@ test.describe('Volunteer Tracking (feature 47)', () => {
     await expect(unbookedSection.locator('tr', { hasText: /VolTrack-Unbooked-Volunteer/i })).toBeVisible();
   });
 
+  test('Day-off: VC marks day off via popover, cell renders striped-grey, gap count drops', async ({ page }) => {
+    test.fixme(true, 'blocked on dev seeder extension — needs a VolTrack-Gap volunteer with at least one Gap cell on the build window so the Mark-day-off form renders');
+
+    await loginAsVolunteerCoordinator(page);
+    await page.goto('/ShiftDashboard/VolunteerTracking');
+    await expect(page.getByRole('heading', { name: /volunteer tracking/i })).toBeVisible();
+
+    const gapRow = page.locator('tr', { hasText: /VolTrack-Gap-Volunteer/i });
+    await expect(gapRow).toBeVisible();
+    const gapBadgeBefore = gapRow.locator('.badge.bg-danger').first();
+    const gapsBefore = parseInt((await gapBadgeBefore.textContent())?.match(/\d+/)?.[0] ?? '0', 10);
+    expect(gapsBefore).toBeGreaterThan(0);
+
+    // Open the popover on a gap cell and submit the Mark-day-off form.
+    const gapCell = gapRow.locator('td.vt-cell.bg-danger').first();
+    await gapCell.locator('button[data-vt-popover]').click();
+    await page.locator('input[name="Reason"]').fill('doctor');
+    await page.getByRole('button', { name: /mark day off/i }).click();
+
+    // After redirect: that cell now renders with the day-off striped-grey class
+    // and gap count drops by one (day-offs do not count as gaps).
+    await expect(gapRow.locator('td.vt-cell.vt-dayoff').first()).toBeVisible();
+    const gapBadgeAfter = gapRow.locator('.badge.bg-danger').first();
+    const gapsAfter = (await gapBadgeAfter.count()) > 0
+      ? parseInt((await gapBadgeAfter.textContent())?.match(/\d+/)?.[0] ?? '0', 10)
+      : 0;
+    expect(gapsAfter).toBe(gapsBefore - 1);
+  });
+
+  test('Day-off: VC opens popover on confirmed signup cell, sees blocked message and no Mark button', async ({ page }) => {
+    test.fixme(true, 'blocked on dev seeder extension — needs a VolTrack-Confirmed volunteer with at least one Confirmed signup on the build window');
+
+    await loginAsVolunteerCoordinator(page);
+    await page.goto('/ShiftDashboard/VolunteerTracking');
+
+    const confirmedRow = page.locator('tr', { hasText: /VolTrack-Confirmed-Volunteer/i });
+    await expect(confirmedRow).toBeVisible();
+    const confirmedCell = confirmedRow.locator('td.vt-cell.bg-success').first();
+    await confirmedCell.locator('button[data-vt-popover]').click();
+
+    // Muted "bail this signup before marking a day off" message renders;
+    // the Mark-day-off form does NOT render.
+    await expect(page.getByText(/bail this signup before marking a day off/i)).toBeVisible();
+    await expect(page.getByRole('button', { name: /mark day off/i })).toHaveCount(0);
+  });
+
   test('US-47.2: volunteer self-blocks days, VC sees them yellow', async ({ page, browser }) => {
     test.fixme(true, 'blocked on local Playwright/Docker setup + dev seeder extension');
 

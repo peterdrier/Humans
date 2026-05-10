@@ -217,7 +217,7 @@ public sealed class ClearDayOffForm
 Both actions:
 - Resolve the current user via `GetCurrentUserAsync`; `Forbid` if absent.
 - Call the service.
-- On `SetDayOffAsync` returning `Ok = false`: surface the error key as a TempData error and `BadRequest` (no audit).
+- On `SetDayOffAsync` returning `Ok = false`: surface the error key as a TempData error and redirect to `Index` (no audit).
 - On `SetDayOffAsync` returning `Ok = true`: write one `VolunteerDayOffMarked` audit row, set success TempData, redirect to `Index`. Re-marking an already-marked day produces another `VolunteerDayOffMarked` row (no separate "edited" verb — the semantics are "this day is marked off as of now, last reason X, by Y").
 - On `ClearDayOffAsync` returning `Removed = true`: write one `VolunteerDayOffCleared` audit row, set success TempData, redirect to `Index`.
 - On `ClearDayOffAsync` returning `Removed = false`: redirect to `Index` with no audit and no success message (coord clicked clear on something that wasn't there; nothing changed).

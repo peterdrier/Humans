@@ -32,7 +32,17 @@ This feature adds:
 2. A second heatmap below it for the declared-but-unbooked cohort, pulled from `EventParticipation` + `GeneralAvailability`.
 3. Coordinator write actions: mark "went to camp set-up" from a given day.
 
-> **Note (May 2026):** an earlier iteration also shipped a "day off / blocked day" surface (coordinator single-day toggle + volunteer self-service multi-select on `/Shifts/Mine`). That feature was removed pending redesign; the underlying coordination need ("volunteer is unavailable for specific days but otherwise still on") is still open.
+### Day-off (single-day toggle, coord-only)
+
+A coordinator can mark any single build-window day as "day off" for a volunteer, with an optional reason. Day-offs are stored as a sorted jsonb list (`DayOffs`) on the same `VolunteerBuildStatus` row and render as striped-grey cells (`vt-dayoff`) on the heatmap. They do **not** count toward `GapCount`, so a volunteer who's e.g. at a doctor on day -5 is not flagged as a coverage gap that day.
+
+Negative-space rules:
+- Only Volunteer Coordinators can mark/clear day-offs (no volunteer self-service).
+- A day-off cannot be marked on a cell that already has a Confirmed/Pending signup — the popover surfaces a "Bail this signup before marking a day off" muted message instead of the Mark button.
+- A day-off cannot overlap an active camp-setup span; setting/extending camp-setup auto-clears any day-offs that fall on or after the new setup-start date (one `VolunteerDayOffCleared` audit row per cleared offset).
+- Re-marking the same offset replaces the entry (no duplicates); clearing a non-existent entry is a silent no-op.
+
+Audit actions: `VolunteerDayOffMarked`, `VolunteerDayOffCleared`. Full design spec: [`docs/superpowers/specs/2026-05-09-day-off-redesign-design.md`](../superpowers/specs/2026-05-09-day-off-redesign-design.md).
 
 ## User Stories
 
@@ -107,9 +117,9 @@ For the active event the service builds a `VolunteerTrackingViewModel` containin
 
 ### Write paths
 
-- `VolunteerTrackingController.SetCampSetup` / `ClearCampSetup` — gated by the `VolunteerTrackingWrite` policy (Admin or VolunteerCoordinator).
+- `VolunteerTrackingController.SetCampSetup` / `ClearCampSetup` / `SetDayOff` / `ClearDayOff` — all gated by the `VolunteerTrackingWrite` policy (Admin or VolunteerCoordinator).
 
-All write paths route through `IVolunteerTrackingService` → `IVolunteerTrackingRepository` and emit audit rows. Validation lives in the service: set-up date must be inside the build window and on/after the user's first build signup.
+All write paths route through `IVolunteerTrackingService` → `IVolunteerTrackingRepository` and emit audit rows. Validation lives in the service: set-up date must be inside the build window and on/after the user's first build signup; day-off offset must be inside the build window and not overlap an active signup.
 
 ## Routes
 
@@ -118,6 +128,8 @@ All write paths route through `IVolunteerTrackingService` → `IVolunteerTrackin
 | `/ShiftDashboard/VolunteerTracking` | GET | `VolunteerTrackingWrite` (read on the same gate) | Heatmap page |
 | `/ShiftDashboard/VolunteerTracking/SetCampSetup` | POST | `VolunteerTrackingWrite` | Set `BarrioSetupStartDate` for a volunteer |
 | `/ShiftDashboard/VolunteerTracking/ClearCampSetup` | POST | `VolunteerTrackingWrite` | Null `BarrioSetupStartDate` |
+| `/ShiftDashboard/VolunteerTracking/SetDayOff` | POST | `VolunteerTrackingWrite` | Mark a single day off for a volunteer (with optional reason) |
+| `/ShiftDashboard/VolunteerTracking/ClearDayOff` | POST | `VolunteerTrackingWrite` | Clear a previously-marked day off |
 
 ## Related
 
