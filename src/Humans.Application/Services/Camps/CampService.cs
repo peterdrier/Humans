@@ -1809,10 +1809,23 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         ];
     }
 
-    public Task SetEeStartDateAsync(
+    public async Task SetEeStartDateAsync(
         LocalDate? eeStartDate, Guid actorUserId,
         CancellationToken cancellationToken = default)
-        => throw new NotSupportedException("issue-490 Phase 3");
+    {
+        await _repo.SetEeStartDateAsync(eeStartDate, cancellationToken);
+        _cache.InvalidateCampSettings();
+
+        var settings = await _repo.GetSettingsReadOnlyAsync(cancellationToken)
+            ?? throw new InvalidOperationException("Camp settings not found.");
+        await _auditLog.LogAsync(
+            AuditAction.CampSettingsEeStartDateChanged,
+            nameof(CampSettings), settings.Id,
+            eeStartDate is null
+                ? "EE start date cleared."
+                : $"EE start date set to {eeStartDate.Value:yyyy-MM-dd}.",
+            actorUserId);
+    }
 
     public Task SetCampSeasonEeSlotCountAsync(
         Guid campSeasonId, int slotCount, Guid actorUserId,

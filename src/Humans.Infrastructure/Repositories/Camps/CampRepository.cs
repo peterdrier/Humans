@@ -650,6 +650,15 @@ public sealed class CampRepository : ICampRepository
         await ctx.SaveChangesAsync(ct);
     }
 
+    public async Task SetEeStartDateAsync(
+        LocalDate? eeStartDate, CancellationToken cancellationToken = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(cancellationToken);
+        var settings = await ctx.CampSettings.FirstAsync(cancellationToken);
+        settings.EeStartDate = eeStartDate;
+        await ctx.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task<bool> OpenSeasonAsync(int year, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);

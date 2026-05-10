@@ -344,6 +344,11 @@ public interface ICampRepository : IRepository
     Task SetPublicYearAsync(int year, CancellationToken ct = default);
 
     /// <summary>
+    /// Sets <c>EeStartDate</c> on the singleton settings row. Pass <c>null</c> to clear.
+    /// </summary>
+    Task SetEeStartDateAsync(LocalDate? eeStartDate, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Adds <paramref name="year"/> to <c>OpenSeasons</c> if not present.
     /// Returns true if the list changed.
     /// </summary>
