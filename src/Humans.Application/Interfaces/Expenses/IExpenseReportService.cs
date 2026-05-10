@@ -65,7 +65,7 @@ public interface IExpenseReportService
         Guid reportId, Guid actorUserId, Guid newCategoryId,
         CancellationToken ct = default);
 
-    Task<int> MarkSepaSentAsync(
+    Task<IReadOnlyList<Guid>> MarkSepaSentAsync(
         IReadOnlyCollection<Guid> reportIds, Guid actorUserId,
         CancellationToken ct = default);
 

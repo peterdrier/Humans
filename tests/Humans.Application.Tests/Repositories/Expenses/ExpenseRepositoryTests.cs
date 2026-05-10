@@ -194,9 +194,9 @@ public class ExpenseRepositoryTests
         var c = MakeReport(status: ExpenseReportStatus.Submitted); // not in batch
         await Seed(a, b, c);
 
-        var n = await _sut.MarkSepaSentAsync(new[] { a.Id, b.Id },
+        var flipped = await _sut.MarkSepaSentAsync(new[] { a.Id, b.Id },
             Instant.FromUtc(2026, 5, 4, 10, 0));
-        n.Should().Be(2);
+        flipped.Should().BeEquivalentTo(new[] { a.Id, b.Id });
 
         (await _sut.GetByIdAsync(a.Id))!.Status.Should().Be(ExpenseReportStatus.SepaSent);
         (await _sut.GetByIdAsync(b.Id))!.Status.Should().Be(ExpenseReportStatus.SepaSent);

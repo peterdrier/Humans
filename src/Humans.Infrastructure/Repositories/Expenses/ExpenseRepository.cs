@@ -325,11 +325,11 @@ public sealed class ExpenseRepository : IExpenseRepository
         return true;
     }
 
-    public async Task<int> MarkSepaSentAsync(
+    public async Task<IReadOnlyList<Guid>> MarkSepaSentAsync(
         IReadOnlyCollection<Guid> reportIds, Instant sepaSentAt,
         CancellationToken ct = default)
     {
-        if (reportIds.Count == 0) return 0;
+        if (reportIds.Count == 0) return [];
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         var rows = await ctx.ExpenseReports
             .Where(r => reportIds.Contains(r.Id) && r.Status == ExpenseReportStatus.Approved)
@@ -341,7 +341,7 @@ public sealed class ExpenseRepository : IExpenseRepository
             r.UpdatedAt = sepaSentAt;
         }
         await ctx.SaveChangesAsync(ct);
-        return rows.Count;
+        return rows.Select(r => r.Id).ToList();
     }
 
     public async Task<bool> MarkPaidAsync(

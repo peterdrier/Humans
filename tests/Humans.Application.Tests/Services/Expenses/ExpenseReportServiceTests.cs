@@ -536,8 +536,8 @@ public class ExpenseReportServiceTests
         await SeedReportWithStatus(id2, Guid.NewGuid(), category.Id, yearId, ExpenseReportStatus.Approved);
         await SeedReportWithStatus(id3, Guid.NewGuid(), category.Id, yearId, ExpenseReportStatus.Submitted); // not Approved
 
-        var count = await _sut.MarkSepaSentAsync(new[] { id1, id2 }, actor);
-        count.Should().Be(2);
+        var flipped = await _sut.MarkSepaSentAsync(new[] { id1, id2 }, actor);
+        flipped.Should().BeEquivalentTo(new[] { id1, id2 });
 
         (await _sut.GetAsync(id1))!.Status.Should().Be(ExpenseReportStatus.SepaSent);
         (await _sut.GetAsync(id2))!.Status.Should().Be(ExpenseReportStatus.SepaSent);
@@ -548,6 +548,30 @@ public class ExpenseReportServiceTests
             Arg.Any<string>(), actor);
         await _auditLogService.Received(1).LogAsync(
             AuditAction.ExpenseSepaSent, "ExpenseReport", id2,
+            Arg.Any<string>(), actor);
+    }
+
+    [HumansFact]
+    public async Task MarkSepaSentAsync_DoesNotAudit_NonApprovedIdsInInput()
+    {
+        var (_, category) = SetupActiveYear();
+        var actor = Guid.NewGuid();
+        var yearId = Guid.NewGuid();
+        var aId = Guid.NewGuid(); // Approved → will flip
+        var bId = Guid.NewGuid(); // Submitted → will be skipped by repo
+        await SeedReportWithStatus(aId, Guid.NewGuid(), category.Id, yearId, ExpenseReportStatus.Approved);
+        await SeedReportWithStatus(bId, Guid.NewGuid(), category.Id, yearId, ExpenseReportStatus.Submitted);
+
+        var flipped = await _sut.MarkSepaSentAsync(new[] { aId, bId }, actor);
+
+        flipped.Should().BeEquivalentTo(new[] { aId });
+        (await _sut.GetAsync(bId))!.Status.Should().Be(ExpenseReportStatus.Submitted);
+
+        await _auditLogService.Received(1).LogAsync(
+            AuditAction.ExpenseSepaSent, "ExpenseReport", aId,
+            Arg.Any<string>(), actor);
+        await _auditLogService.DidNotReceive().LogAsync(
+            AuditAction.ExpenseSepaSent, "ExpenseReport", bId,
             Arg.Any<string>(), actor);
     }
 

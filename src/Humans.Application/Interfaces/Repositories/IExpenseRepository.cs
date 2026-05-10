@@ -69,7 +69,7 @@ public interface IExpenseRepository
         Guid outboxEventId,
         CancellationToken ct = default);
 
-    Task<int> MarkSepaSentAsync(
+    Task<IReadOnlyList<Guid>> MarkSepaSentAsync(
         IReadOnlyCollection<Guid> reportIds,
         NodaTime.Instant sepaSentAt,
         CancellationToken ct = default);

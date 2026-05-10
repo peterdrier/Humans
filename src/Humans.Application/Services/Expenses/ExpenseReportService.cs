@@ -407,21 +407,18 @@ public sealed class ExpenseReportService : IExpenseReportService
 
     // ─────────────────────────── SEPA + Paid ─────────────────────────────────
 
-    public async Task<int> MarkSepaSentAsync(
+    public async Task<IReadOnlyList<Guid>> MarkSepaSentAsync(
         IReadOnlyCollection<Guid> reportIds, Guid actorUserId,
         CancellationToken ct = default)
     {
-        if (reportIds.Count == 0) return 0;
+        if (reportIds.Count == 0) return [];
 
         var now = _clock.GetCurrentInstant();
-        var count = await _repo.MarkSepaSentAsync(reportIds, now, ct);
+        var flippedIds = await _repo.MarkSepaSentAsync(reportIds, now, ct);
 
-        // Audit one entry per report (reports that actually flipped to SepaSent).
-        // We can only know the count, not which specific IDs succeeded, without re-querying.
-        // Per plan: "one audit per report" — fire for each ID in reportIds.
-        // The repo skips IDs not in Approved status; we fire audit for all requested IDs
-        // and let the count indicate how many actually flipped.
-        foreach (var id in reportIds)
+        // Audit one entry per report that actually flipped — never for ids the
+        // repo skipped (e.g. status != Approved).
+        foreach (var id in flippedIds)
         {
             await _auditLogService.LogAsync(
                 AuditAction.ExpenseSepaSent,
@@ -430,7 +427,7 @@ public sealed class ExpenseReportService : IExpenseReportService
                 actorUserId);
         }
 
-        return count;
+        return flippedIds;
     }
 
     public async Task<bool> MarkPaidAsync(
