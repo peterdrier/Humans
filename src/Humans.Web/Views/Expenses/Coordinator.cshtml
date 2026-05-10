@@ -85,7 +85,7 @@ else
                                     <form asp-action="Endorse" asp-route-id="@r.Id" method="post" class="d-inline">
                                         @Html.AntiForgeryToken()
                                         <button type="submit" class="btn btn-sm btn-success"
-                                                onclick="return confirm('Endorse this expense report?')">
+                                                data-confirm="Endorse this expense report?">
                                             <i class="fa-solid fa-check me-1"></i>Endorse
                                         </button>
                                     </form>
