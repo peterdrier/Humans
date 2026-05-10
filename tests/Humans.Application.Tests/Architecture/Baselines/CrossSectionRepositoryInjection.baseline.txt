@@ -2,3 +2,6 @@
 # New cross-section data access must go through the owning service boundary.
 Humans.Application.Services.Profile.DuplicateAccountService:IUserRepository
 Humans.Application.Services.Teams.TeamResourceService:IGoogleResourceRepository
+Humans.Application.Services.Users.AccountProvisioningService:IUserEmailRepository
+Humans.Application.Services.Users.UserEmailProviderBackfillService:IUserEmailRepository
+Humans.Application.Services.Users.UserService:IUserEmailRepository

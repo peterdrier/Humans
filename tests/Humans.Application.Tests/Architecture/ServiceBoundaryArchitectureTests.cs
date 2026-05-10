@@ -39,7 +39,7 @@ public class ServiceBoundaryArchitectureTests
             ["Store"] = ["Store"],
             ["Teams"] = ["Team"],
             ["Tickets"] = ["Ticket", "TicketingBudget"],
-            ["Users"] = ["User", "UserEmail"],
+            ["Users"] = ["UserRepository"],
         };
 
     [HumansFact]
@@ -179,7 +179,9 @@ public class ServiceBoundaryArchitectureTests
 
     private static IEnumerable<Type> ExposedTypes(Type type, HashSet<Type> visited)
     {
-        if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Task<>))
+        if (type.IsGenericType && (
+                type.GetGenericTypeDefinition() == typeof(Task<>) ||
+                type.GetGenericTypeDefinition() == typeof(ValueTask<>)))
         {
             foreach (var exposed in ExposedTypes(type.GetGenericArguments()[0], visited))
                 yield return exposed;
