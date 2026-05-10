@@ -75,6 +75,11 @@ public sealed class TicketTransferServiceTests
         _profileService.SearchProfilesAsync(
                 Arg.Any<string>(), Arg.Any<PersonSearchFields>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(Array.Empty<HumanSearchResult>());
+
+        // Default: no existing transfers from the sender (CreateRequestAsync's
+        // duplicate-pending guard hits this on every Submit).
+        _transferRepo.GetBySenderAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Array.Empty<TicketTransferRequest>());
     }
 
     // ============================================================================
@@ -311,6 +316,79 @@ public sealed class TicketTransferServiceTests
     }
 
     [HumansFact]
+    public async Task CreateRequestAsync_ThrowsWhenReceiverIsSuspended()
+    {
+        // Defense-in-depth: lookup layer filters suspended profiles; submit
+        // accepts a direct POST, so the service must re-check on the way in.
+        var attendee = MakeAttendee(_attendeeId, _orderId, _senderId, TicketAttendeeStatus.Valid);
+        _ticketRepo.GetAttendeeByIdAsync(_attendeeId, Arg.Any<CancellationToken>())
+            .Returns(attendee);
+        _profileService.GetProfileAsync(_receiverId, Arg.Any<CancellationToken>())
+            .Returns(new Profile { IsSuspended = true, IsApproved = true });
+
+        var dto = new TicketTransferRequestDto(_attendeeId, _receiverId, "test");
+
+        var act = () => _service.CreateRequestAsync(dto, _senderId);
+
+        // Wording mirrors the genuine not-found case so a tampered POST learns nothing.
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*Receiver user not found*");
+        await _transferRepo.DidNotReceive().AddAsync(
+            Arg.Any<TicketTransferRequest>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task CreateRequestAsync_ThrowsWhenReceiverIsUnapproved()
+    {
+        var attendee = MakeAttendee(_attendeeId, _orderId, _senderId, TicketAttendeeStatus.Valid);
+        _ticketRepo.GetAttendeeByIdAsync(_attendeeId, Arg.Any<CancellationToken>())
+            .Returns(attendee);
+        _profileService.GetProfileAsync(_receiverId, Arg.Any<CancellationToken>())
+            .Returns(new Profile { IsSuspended = false, IsApproved = false });
+
+        var dto = new TicketTransferRequestDto(_attendeeId, _receiverId, "test");
+
+        var act = () => _service.CreateRequestAsync(dto, _senderId);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*Receiver user not found*");
+        await _transferRepo.DidNotReceive().AddAsync(
+            Arg.Any<TicketTransferRequest>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task CreateRequestAsync_ThrowsWhenPendingTransferAlreadyExistsForAttendee()
+    {
+        var attendee = MakeAttendee(_attendeeId, _orderId, _senderId, TicketAttendeeStatus.Valid);
+        _ticketRepo.GetAttendeeByIdAsync(_attendeeId, Arg.Any<CancellationToken>())
+            .Returns(attendee);
+        _profileService.GetProfileAsync(_receiverId, Arg.Any<CancellationToken>())
+            .Returns(new Profile { IsSuspended = false, IsApproved = true });
+        _transferRepo.GetBySenderAsync(_senderId, Arg.Any<CancellationToken>())
+            .Returns(new[]
+            {
+                new TicketTransferRequest
+                {
+                    Id = Guid.NewGuid(),
+                    OriginalTicketAttendeeId = _attendeeId,
+                    SenderUserId = _senderId,
+                    ReceiverUserId = Guid.NewGuid(),
+                    Status = TicketTransferStatus.Pending,
+                    RequestedAt = _now,
+                },
+            });
+
+        var dto = new TicketTransferRequestDto(_attendeeId, _receiverId, "test");
+
+        var act = () => _service.CreateRequestAsync(dto, _senderId);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*pending transfer*");
+        await _transferRepo.DidNotReceive().AddAsync(
+            Arg.Any<TicketTransferRequest>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task CreateRequestAsync_SnapshotsReceiverLegalNameFromProfileFullName()
     {
         var attendee = MakeAttendee(_attendeeId, _orderId, _senderId, TicketAttendeeStatus.Valid);
@@ -319,7 +397,7 @@ public sealed class TicketTransferServiceTests
         _userService.GetByIdAsync(_senderId, Arg.Any<CancellationToken>())
             .Returns(MakeUser(_senderId, "Bob"));
         _profileService.GetProfileAsync(_receiverId, Arg.Any<CancellationToken>())
-            .Returns(new Profile { FirstName = "Alice", LastName = "Smith" });
+            .Returns(new Profile { FirstName = "Alice", LastName = "Smith", IsApproved = true });
 
         var dto = new TicketTransferRequestDto(_attendeeId, _receiverId, "Going abroad");
 
@@ -638,6 +716,47 @@ public sealed class TicketTransferServiceTests
 
         // Transferred-in attendee (we're the matched recipient, not the order owner) → cannot send
         rows.Single(r => r.AttendeeId == transferredInAttendeeId).CanSendTransfer.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task GetMyAttendeesAsync_DoesNotCrashOnDuplicatePendingRowsForSameAttendee()
+    {
+        // CreateRequestAsync now blocks duplicates, but the dashboard read should
+        // tolerate any pre-existing strays rather than throwing on the dictionary build.
+        var attendeeId = Guid.NewGuid();
+        var attendee = MakeAttendee(attendeeId, _orderId, _senderId, TicketAttendeeStatus.Valid);
+        _ticketRepo.GetAttendeesVisibleToUserAsync(_senderId, Arg.Any<CancellationToken>())
+            .Returns(new[] { attendee });
+        var firstId = Guid.NewGuid();
+        var secondId = Guid.NewGuid();
+        _transferRepo.GetBySenderAsync(_senderId, Arg.Any<CancellationToken>())
+            .Returns(new[]
+            {
+                new TicketTransferRequest
+                {
+                    Id = firstId,
+                    OriginalTicketAttendeeId = attendeeId,
+                    SenderUserId = _senderId,
+                    ReceiverUserId = _receiverId,
+                    Status = TicketTransferStatus.Pending,
+                    RequestedAt = _now,
+                },
+                new TicketTransferRequest
+                {
+                    Id = secondId,
+                    OriginalTicketAttendeeId = attendeeId,
+                    SenderUserId = _senderId,
+                    ReceiverUserId = Guid.NewGuid(),
+                    Status = TicketTransferStatus.Pending,
+                    RequestedAt = _now,
+                },
+            });
+
+        var rows = await _service.GetMyAttendeesAsync(_senderId);
+
+        rows.Should().HaveCount(1);
+        rows[0].HasPendingOutgoingTransfer.Should().BeTrue();
+        rows[0].CanSendTransfer.Should().BeFalse();
     }
 
     // ============================================================================

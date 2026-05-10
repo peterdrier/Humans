@@ -103,9 +103,13 @@ public sealed class TicketTransferService : ITicketTransferService
         Guid userId, CancellationToken ct = default)
     {
         var visible = await _ticketRepo.GetAttendeesVisibleToUserAsync(userId, ct);
+        // GroupBy + First — defensive against any pre-existing duplicate pending rows
+        // for the same attendee (CreateRequestAsync now blocks duplicates, but the
+        // dashboard read should never crash if a stray duplicate exists).
         var pendingByAttendee = (await _transferRepo.GetBySenderAsync(userId, ct))
             .Where(r => r.Status == TicketTransferStatus.Pending)
-            .ToDictionary(r => r.OriginalTicketAttendeeId, r => r.Id);
+            .GroupBy(r => r.OriginalTicketAttendeeId)
+            .ToDictionary(g => g.Key, g => g.First().Id);
 
         return visible
             .OrderBy(a => a.AttendeeName, StringComparer.OrdinalIgnoreCase)
@@ -144,6 +148,21 @@ public sealed class TicketTransferService : ITicketTransferService
         var receiverUser = await _userService.GetByIdAsync(dto.ReceiverUserId, ct)
             ?? throw new InvalidOperationException("Receiver user not found.");
         var receiverProfile = await _profileService.GetProfileAsync(dto.ReceiverUserId, ct);
+        // Defense-in-depth: BuildReceiverCardAsync filters suspended/unapproved at
+        // the lookup layer, but Submit accepts a direct POST with a crafted
+        // ReceiverUserId. Mirror the lookup behaviour (treat as not-found) so this
+        // path can't bypass the security gate. Wording matches the not-found case
+        // above so a tampered POST learns nothing about why the recipient was rejected.
+        if (receiverProfile is not null && (receiverProfile.IsSuspended || !receiverProfile.IsApproved))
+            throw new InvalidOperationException("Receiver user not found.");
+        // No double-submits: refuse if there's already a pending transfer from this
+        // sender for this attendee. ToDictionary in GetMyAttendeesAsync would crash
+        // on duplicates, and the legitimate UX hides the Send button while pending.
+        var existingPending = (await _transferRepo.GetBySenderAsync(senderUserId, ct))
+            .Any(r => r.OriginalTicketAttendeeId == dto.OriginalAttendeeId
+                && r.Status == TicketTransferStatus.Pending);
+        if (existingPending)
+            throw new InvalidOperationException("There is already a pending transfer request for this ticket.");
         var receiverLegalName = receiverProfile?.FullName is { Length: > 0 } legal
             ? legal
             : receiverUser.DisplayName;
