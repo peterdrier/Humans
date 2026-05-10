@@ -100,7 +100,7 @@ public sealed class CachingTeamService : ITeamService, IUserMerge
         var teamsById = await GetTeamsByIdAsync(cancellationToken);
         await using var scope = _scopeFactory.CreateAsyncScope();
         var roleAssignmentService = scope.ServiceProvider.GetRequiredService<IRoleAssignmentService>();
-        return await TeamService.BuildTeamDirectoryAsync(
+        return await TeamDirectoryBuilder.BuildAsync(
             teamsById,
             roleAssignmentService,
             userId,
@@ -553,18 +553,7 @@ public sealed class CachingTeamService : ITeamService, IUserMerge
 
     public void RemoveMemberFromAllTeamsCache(Guid userId)
     {
-        foreach (var kvp in _byTeamId)
-        {
-            if (kvp.Value.Members.Any(m => m.UserId == userId))
-            {
-                _byTeamId[kvp.Key] = kvp.Value with
-                {
-                    Members = kvp.Value.Members
-                        .Where(m => m.UserId != userId)
-                        .ToList()
-                };
-            }
-        }
+        InvalidateTeamsCache();
     }
 
     public void InvalidateActiveTeamsCache() => InvalidateTeamsCache();
