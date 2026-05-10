@@ -329,21 +329,22 @@ public interface IUserEmailService : IApplicationService
         string email, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Rewrites the user's <see cref="Domain.Entities.UserEmail"/> row
-    /// whose address matches <paramref name="oldEmail"/> (case-insensitive) to
-    /// <paramref name="newEmail"/> and stamps <c>UpdatedAt</c>. Used by the
-    /// admin rename-fix flow and by the OAuth rename detector.
+    /// The one and only way to rewrite an email address on an existing
+    /// <see cref="Domain.Entities.UserEmail"/> row. Matches on
+    /// <see cref="Domain.Entities.UserEmail.Provider"/>+
+    /// <see cref="Domain.Entities.UserEmail.ProviderKey"/> — the only
+    /// legitimate match key for the OAuth identity. Stamps <c>UpdatedAt</c>
+    /// and invalidates the affected user's <c>FullProfile</c> cache. Returns
+    /// true when a row was found and updated; false when no row matches the
+    /// pair.
     ///
-    /// Returns a <see cref="RewriteEmailAddressOutcome"/> describing what
-    /// happened (rewritten, merged into a same-user row, cross-user conflict,
-    /// or source row not found). Never throws on a unique-index conflict —
-    /// see <see cref="IUserEmailRepository.RewriteEmailAddressAsync"/> for the
-    /// branching contract. Cross-user conflicts are logged at
-    /// <c>LogWarning</c> with structured properties (no exception object) and
-    /// surfaced to admins via the duplicate-account detection flow.
+    /// Callable only by the OAuth sign-in callback in <c>AccountController</c>
+    /// per <c>memory/architecture/email-mutation-paths.md</c>. Cross-user
+    /// conflict on the partial unique <c>Email</c> index is allowed to
+    /// propagate as a Postgres 23505; the callback handles it.
     /// </summary>
-    Task<RewriteEmailAddressOutcome> RewriteEmailAddressAsync(
-        Guid userId, string oldEmail, string newEmail,
+    Task<bool> UpdateEmailAsync(
+        string provider, string providerKey, string newEmail,
         CancellationToken cancellationToken = default);
 
     /// <summary>

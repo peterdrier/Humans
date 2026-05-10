@@ -138,15 +138,15 @@ public class AccountControllerOAuthRenameDetectionTests
         };
         _userEmailService.FindByProviderKeyAsync(Provider, ProviderKey, Arg.Any<CancellationToken>())
             .Returns(new UserEmailProviderMatch(existingRow.Id, existingRow.UserId, existingRow.Email));
-        _userEmailService.RewriteEmailAddressAsync(
-                userId, oldEmail, newEmail, Arg.Any<CancellationToken>())
-            .Returns(RewriteEmailAddressOutcome.Rewritten);
+        _userEmailService.UpdateEmailAsync(
+                Provider, ProviderKey, newEmail, Arg.Any<CancellationToken>())
+            .Returns(true);
 
         var result = await _controller.ExternalLoginCallback(returnUrl: null, remoteError: null);
 
         result.Should().NotBeNull();
-        await _userEmailService.Received(1).RewriteEmailAddressAsync(
-            userId, oldEmail, newEmail, Arg.Any<CancellationToken>());
+        await _userEmailService.Received(1).UpdateEmailAsync(
+            Provider, ProviderKey, newEmail, Arg.Any<CancellationToken>());
         await _auditLogService.Received(1).LogAsync(
             AuditAction.GoogleEmailRenamed,
             nameof(User), userId,
@@ -156,12 +156,13 @@ public class AccountControllerOAuthRenameDetectionTests
     }
 
     [HumansFact]
-    public async Task SuccessBranch_CrossUserConflict_NoAuditAndCallbackContinues()
+    public async Task SuccessBranch_UpdateThrows_NoAuditAndCallbackContinues()
     {
-        // OAuth claim email already belongs to a DIFFERENT user. Service signals
-        // CrossUserConflict; the controller must NOT throw and must NOT write
-        // an audit row. The duplicate-account detection flow surfaces the
-        // collision to admins separately.
+        // OAuth claim email collides with another user's verified row → the
+        // Postgres partial unique index throws 23505 from UpdateEmailAsync.
+        // The controller's catch handles it (LogError), does NOT write an
+        // audit row, and continues — duplicate-account detection surfaces the
+        // conflict on its next sweep.
         var userId = Guid.NewGuid();
         var emailId = Guid.NewGuid();
         var oldEmail = "old@nobodies.team";
@@ -189,9 +190,9 @@ public class AccountControllerOAuthRenameDetectionTests
         };
         _userEmailService.FindByProviderKeyAsync(Provider, ProviderKey, Arg.Any<CancellationToken>())
             .Returns(new UserEmailProviderMatch(existingRow.Id, existingRow.UserId, existingRow.Email));
-        _userEmailService.RewriteEmailAddressAsync(
-                userId, oldEmail, newEmail, Arg.Any<CancellationToken>())
-            .Returns(RewriteEmailAddressOutcome.CrossUserConflict);
+        _userEmailService.UpdateEmailAsync(
+                Provider, ProviderKey, newEmail, Arg.Any<CancellationToken>())
+            .Returns<Task<bool>>(_ => throw new InvalidOperationException("simulated 23505"));
 
         var result = await _controller.ExternalLoginCallback(returnUrl: null, remoteError: null);
 
@@ -234,8 +235,8 @@ public class AccountControllerOAuthRenameDetectionTests
 
         await _controller.ExternalLoginCallback(returnUrl: null, remoteError: null);
 
-        await _userEmailService.DidNotReceive().RewriteEmailAddressAsync(
-            Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _userEmailService.DidNotReceive().UpdateEmailAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
         await _auditLogService.DidNotReceive().LogAsync(
             Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<string>(),
@@ -273,8 +274,8 @@ public class AccountControllerOAuthRenameDetectionTests
 
         await _controller.ExternalLoginCallback(returnUrl: null, remoteError: null);
 
-        await _userEmailService.DidNotReceive().RewriteEmailAddressAsync(
-            Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _userEmailService.DidNotReceive().UpdateEmailAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

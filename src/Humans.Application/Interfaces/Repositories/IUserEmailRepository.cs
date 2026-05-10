@@ -215,31 +215,23 @@ public interface IUserEmailRepository : IRepository
         string email, Guid excludeUserId, CancellationToken ct = default);
 
     /// <summary>
-    /// Rewrites the <c>Email</c> of the user's existing <see cref="UserEmail"/> row
-    /// (case-insensitive match on <paramref name="oldEmail"/>) to
-    /// <paramref name="newEmail"/> and stamps <c>UpdatedAt</c> with
-    /// <paramref name="updatedAt"/>. Used by the admin rename-fix flow and by
-    /// the OAuth rename detector.
+    /// The one and only primitive that rewrites <see cref="UserEmail.Email"/>
+    /// on an existing row. Matches on <see cref="UserEmail.Provider"/>+
+    /// <see cref="UserEmail.ProviderKey"/> — the only legitimate match key for
+    /// the OAuth identity. Updates <c>Email</c> and stamps <c>UpdatedAt</c>.
+    /// Returns the <see cref="UserEmail.UserId"/> of the updated row so the
+    /// service layer can invalidate that user's <c>FullProfile</c> cache;
+    /// returns null when no row matches <paramref name="provider"/>+
+    /// <paramref name="providerKey"/>.
     ///
-    /// Three-way pre-UPDATE conflict resolution on the unique <c>Email</c>
-    /// index:
-    /// <list type="bullet">
-    /// <item>No conflicting row → standard UPDATE
-    ///   (<see cref="RewriteEmailAddressOutcome.Rewritten"/>).</item>
-    /// <item>Conflicting row owned by the same user → drop the source row and
-    ///   mark the existing target row verified, in a single transaction
-    ///   (<see cref="RewriteEmailAddressOutcome.MergedIntoExistingRowForSameUser"/>).</item>
-    /// <item>Conflicting row owned by a DIFFERENT user → no UPDATE, no exception
-    ///   (<see cref="RewriteEmailAddressOutcome.CrossUserConflict"/>). The caller
-    ///   logs a warning and lets the duplicate-account detection flow surface
-    ///   the conflict to admins.</item>
-    /// </list>
-    ///
-    /// No-op if no row matches <paramref name="oldEmail"/> for this user
-    /// (<see cref="RewriteEmailAddressOutcome.SourceRowNotFound"/>).
+    /// Per <c>memory/architecture/email-mutation-paths.md</c>: this method is
+    /// callable only by the OAuth sign-in callback in <c>AccountController</c>.
+    /// Cross-user conflict on the partial unique <c>Email</c> index is allowed
+    /// to propagate as a Postgres 23505; the callback's existing try/catch
+    /// surfaces it.
     /// </summary>
-    Task<RewriteEmailAddressOutcome> RewriteEmailAddressAsync(
-        Guid userId, string oldEmail, string newEmail, Instant updatedAt,
+    Task<Guid?> UpdateEmailAsync(
+        string provider, string providerKey, string newEmail, Instant updatedAt,
         CancellationToken ct = default);
 
     /// <summary>

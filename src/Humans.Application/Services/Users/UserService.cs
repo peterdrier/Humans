@@ -186,20 +186,6 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
         return set;
     }
 
-    public async Task<(bool Updated, string? OldEmail)> ApplyEmailBackfillAsync(
-        Guid userId, string newEmail, CancellationToken ct = default)
-    {
-        var (updated, oldEmail) = await _repo.RewritePrimaryEmailAsync(userId, newEmail, ct);
-        if (!updated)
-            return (false, null);
-
-        // Keep the OAuth UserEmail row in lock-step so login against the new
-        // provider email continues to succeed (no-op if none exists).
-        await _userEmailRepo.RewriteLinkedEmailAsync(userId, newEmail, ct);
-        await _fullProfileInvalidator.InvalidateAsync(userId, ct);
-        return (true, oldEmail);
-    }
-
     public async Task UpdateDisplayNameAsync(Guid userId, string displayName, CancellationToken ct = default)
     {
         var updated = await _repo.UpdateDisplayNameAsync(userId, displayName, ct);

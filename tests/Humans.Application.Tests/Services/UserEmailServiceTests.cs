@@ -1181,81 +1181,43 @@ public class UserEmailServiceTests
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
-    // ─── RewriteEmailAddressAsync — issue nobodies-collective/Humans#622 ─────
-    // The service forwards the repository's three-way conflict outcome and
-    // additionally emits a structured LogWarning (no exception arg) on the
-    // CrossUserConflict branch. We assert the outcome forwarding here; the
-    // repository's actual conflict-detection logic (which uses
-    // EF.Functions.ILike) is verified end-to-end against Postgres in
-    // preview/QA, per the existing convention for ILike-using methods.
+    // ─── UpdateEmailAsync ───────────────────────────────────────────────────
+    // Per memory/architecture/email-mutation-paths.md, this is the only path
+    // that rewrites UserEmail.Email on an existing row. Matched on
+    // (Provider, ProviderKey). Service forwards to repo, invalidates the
+    // affected user's FullProfile cache on success.
 
     [HumansFact]
-    public async Task RewriteEmailAddressAsync_NoConflict_ForwardsRewrittenOutcome()
+    public async Task UpdateEmailAsync_RowFound_InvalidatesAndReturnsTrue()
     {
         var userId = Guid.NewGuid();
-        _repository.RewriteEmailAddressAsync(
-                userId, "old@x.test", "new@x.test", _clock.GetCurrentInstant(),
+        _repository.UpdateEmailAsync(
+                "Google", "sub-123", "new@x.test", _clock.GetCurrentInstant(),
                 Arg.Any<CancellationToken>())
-            .Returns(RewriteEmailAddressOutcome.Rewritten);
+            .Returns(userId);
 
-        var outcome = await _service.RewriteEmailAddressAsync(
-            userId, "old@x.test", "new@x.test");
+        var result = await _service.UpdateEmailAsync(
+            "Google", "sub-123", "new@x.test");
 
-        outcome.Should().Be(RewriteEmailAddressOutcome.Rewritten);
+        result.Should().BeTrue();
+        await _fullProfileInvalidator.Received(1).InvalidateAsync(
+            userId, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
     }
 
     [HumansFact]
-    public async Task RewriteEmailAddressAsync_SameUserConflict_ForwardsMergedOutcome()
+    public async Task UpdateEmailAsync_NoMatchingRow_ReturnsFalseAndDoesNotInvalidate()
     {
-        var userId = Guid.NewGuid();
-        _repository.RewriteEmailAddressAsync(
-                userId, "old@x.test", "new@x.test", _clock.GetCurrentInstant(),
+        _repository.UpdateEmailAsync(
+                "Google", "missing-sub", "new@x.test", _clock.GetCurrentInstant(),
                 Arg.Any<CancellationToken>())
-            .Returns(RewriteEmailAddressOutcome.MergedIntoExistingRowForSameUser);
+            .Returns((Guid?)null);
 
-        var outcome = await _service.RewriteEmailAddressAsync(
-            userId, "old@x.test", "new@x.test");
+        var result = await _service.UpdateEmailAsync(
+            "Google", "missing-sub", "new@x.test");
 
-        outcome.Should().Be(RewriteEmailAddressOutcome.MergedIntoExistingRowForSameUser);
-    }
-
-    [HumansFact]
-    public async Task RewriteEmailAddressAsync_CrossUserConflict_ForwardsOutcomeAndDoesNotThrow()
-    {
-        var userId = Guid.NewGuid();
-        var conflictUserId = Guid.NewGuid();
-        _repository.RewriteEmailAddressAsync(
-                userId, "old@x.test", "new@x.test", _clock.GetCurrentInstant(),
-                Arg.Any<CancellationToken>())
-            .Returns(RewriteEmailAddressOutcome.CrossUserConflict);
-        _repository.GetOtherUserIdHavingEmailAsync(
-                "new@x.test", userId, Arg.Any<CancellationToken>())
-            .Returns(conflictUserId);
-
-        var outcome = await _service.RewriteEmailAddressAsync(
-            userId, "old@x.test", "new@x.test");
-
-        outcome.Should().Be(RewriteEmailAddressOutcome.CrossUserConflict);
-        // Conflict-user lookup is invoked so the warning includes both IDs
-        // (logged through NullLogger here — the logging itself is verified at
-        // the controller level in the OAuth rename detection test).
-        await _repository.Received(1).GetOtherUserIdHavingEmailAsync(
-            "new@x.test", userId, Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task RewriteEmailAddressAsync_SourceRowNotFound_ForwardsOutcome()
-    {
-        var userId = Guid.NewGuid();
-        _repository.RewriteEmailAddressAsync(
-                userId, "missing@x.test", "new@x.test", _clock.GetCurrentInstant(),
-                Arg.Any<CancellationToken>())
-            .Returns(RewriteEmailAddressOutcome.SourceRowNotFound);
-
-        var outcome = await _service.RewriteEmailAddressAsync(
-            userId, "missing@x.test", "new@x.test");
-
-        outcome.Should().Be(RewriteEmailAddressOutcome.SourceRowNotFound);
+        result.Should().BeFalse();
+        await _fullProfileInvalidator.DidNotReceive().InvalidateAsync(
+            Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
     }
 
     // ─── VerifyEmailAsync row-Id disambiguation — issue #611 ──────────────
