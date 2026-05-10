@@ -140,7 +140,6 @@ public class TeamServiceTests : IDisposable
             Substitute.For<INotificationMeterCacheInvalidator>(),
             _shiftAuthInvalidator,
             serviceProvider,
-            _cache,
             _clock,
             NullLogger<TeamService>.Instance);
     }

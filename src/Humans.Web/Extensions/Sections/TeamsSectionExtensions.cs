@@ -7,6 +7,7 @@ using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Caching;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Repositories.Teams;
+using Humans.Infrastructure.Services.Teams;
 using TeamsTeamPageService = Humans.Application.Services.Teams.TeamPageService;
 using TeamsTeamService = Humans.Application.Services.Teams.TeamService;
 
@@ -20,24 +21,20 @@ internal static class TeamsSectionExtensions
         // every other §15 section.
         services.AddSingleton<ITeamRepository, TeamRepository>();
 
-        // Application-layer TeamService (§15 Part 1 — issue #540a). Scoped so
-        // constructor-injected Scoped dependencies (IAuditLogService,
-        // INotificationEmitter, IShiftManagementService, invalidators) resolve
-        // cleanly. The in-memory active-teams projection lives behind
-        // IMemoryCache with a 10-minute TTL — same shape as the pre-migration
-        // service, and the precedent set by CampService (§15i Camps entry).
-        // Revisiting this section's caching pattern is a separable follow-up:
-        // if profiling later shows it matters, a Singleton CachingTeamService
-        // decorator can replace the IMemoryCache entry without changing the
-        // ITeamService surface.
-        //
-        // Contributor-bearing: forward both ITeamService and
-        // IUserDataContributor to the same scoped instance so GDPR export
-        // assembles correctly.
-        services.AddScoped<TeamsTeamService>();
-        services.AddScoped<ITeamService>(sp => sp.GetRequiredService<TeamsTeamService>());
+        // TeamService (inner): Scoped — owns Teams behavior and has scoped
+        // cross-section dependencies. Registered under a keyed service so the
+        // singleton CachingTeamService decorator can resolve it per call without
+        // self-resolving ITeamService.
+        services.AddKeyedScoped<ITeamService, TeamsTeamService>(CachingTeamService.InnerServiceKey);
+        services.AddScoped<TeamsTeamService>(sp =>
+            (TeamsTeamService)sp.GetRequiredKeyedService<ITeamService>(CachingTeamService.InnerServiceKey));
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<TeamsTeamService>());
-        services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<TeamsTeamService>());
+
+        // CachingTeamService: Singleton transparent decorator. The decorator
+        // owns the process-local team read model and invalidates it after writes.
+        services.AddSingleton<CachingTeamService>();
+        services.AddSingleton<ITeamService>(sp => sp.GetRequiredService<CachingTeamService>());
+        services.AddSingleton<IUserMerge>(sp => sp.GetRequiredService<CachingTeamService>());
 
         services.AddScoped<ITeamPageService, TeamsTeamPageService>();
 

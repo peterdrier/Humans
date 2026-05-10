@@ -97,6 +97,15 @@ public sealed class TeamRepository : ITeamRepository
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<Team>> GetAllWithMembersAsync(CancellationToken ct = default)
+    {
+        await using var db = await _factory.CreateDbContextAsync(ct);
+        return await db.Teams
+            .AsNoTracking()
+            .Include(t => t.Members.Where(m => m.LeftAt == null))
+            .ToListAsync(ct);
+    }
+
     public async Task<IReadOnlyList<TeamOptionDto>> GetActiveOptionsAsync(CancellationToken ct = default)
     {
         await using var db = await _factory.CreateDbContextAsync(ct);
