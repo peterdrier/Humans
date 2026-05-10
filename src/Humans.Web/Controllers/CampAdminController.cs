@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using System.Text;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.CitiPlanning;
@@ -13,6 +14,7 @@ using Humans.Web.Models.CampAdmin;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using NodaTime;
 
 namespace Humans.Web.Controllers;
 
@@ -257,6 +259,70 @@ public class CampAdminController : HumansControllerBase
             _logger.LogError(ex, "Failed to set name lock date for {Year}", year);
             SetError($"Failed to set name lock date: {ex.Message}");
         }
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost("SetCampSeasonEeSlotCount/{seasonId:guid}")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SetCampSeasonEeSlotCount(
+        Guid seasonId, int slotCount, CancellationToken cancellationToken)
+    {
+        var actorIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+        if (actorIdClaim is null || !Guid.TryParse(actorIdClaim.Value, out var actorId))
+            return Forbid();
+
+        try
+        {
+            await _campService.SetCampSeasonEeSlotCountAsync(
+                seasonId, slotCount, actorId, cancellationToken);
+            SetSuccess($"EE slot count set to {slotCount}.");
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            SetError("EE slot count cannot be negative.");
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Failed to set EE slot count on season {SeasonId}", seasonId);
+            SetError(ex.Message);
+        }
+
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost("SetEeStartDate")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SetEeStartDate(string? eeStartDate, CancellationToken cancellationToken)
+    {
+        var actorIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+        if (actorIdClaim is null || !Guid.TryParse(actorIdClaim.Value, out var actorId))
+            return Forbid();
+
+        LocalDate? parsed = null;
+        if (!string.IsNullOrWhiteSpace(eeStartDate))
+        {
+            var parseResult = NodaTime.Text.LocalDatePattern.Iso.Parse(eeStartDate);
+            if (!parseResult.Success)
+            {
+                SetError("Invalid date format. Use yyyy-MM-dd.");
+                return RedirectToAction(nameof(Index));
+            }
+            parsed = parseResult.Value;
+        }
+
+        try
+        {
+            await _campService.SetEeStartDateAsync(parsed, actorId, cancellationToken);
+            SetSuccess(parsed.HasValue
+                ? $"EE start date set to {parsed.Value}."
+                : "EE start date cleared.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to set EE start date");
+            SetError($"Failed to set EE start date: {ex.Message}");
+        }
+
         return RedirectToAction(nameof(Index));
     }
 
