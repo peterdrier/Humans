@@ -13,12 +13,12 @@ public class HoldedArchitectureTests
     }
 
     [HumansFact]
-    public void HoldedClient_HasNoEFCoreReference()
+    public void HumansApplication_HasNoEFCoreReference()
     {
         var asm = typeof(IHoldedClient).Assembly;
         asm.GetReferencedAssemblies()
             .Should().NotContain(a => a.Name == "Microsoft.EntityFrameworkCore",
-                "Holded section is HTTP-only — must not depend on EF Core");
+                "Humans.Application must not depend on EF Core");
     }
 
     [HumansFact]
