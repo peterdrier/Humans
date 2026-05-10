@@ -1808,4 +1808,19 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             new UserDataSlice(GdprExportSections.CampRoleAssignments, shapedRoles)
         ];
     }
+
+    public Task SetEeStartDateAsync(
+        LocalDate? eeStartDate, Guid actorUserId,
+        CancellationToken cancellationToken = default)
+        => throw new NotSupportedException("issue-490 Phase 3");
+
+    public Task SetCampSeasonEeSlotCountAsync(
+        Guid campSeasonId, int slotCount, Guid actorUserId,
+        CancellationToken cancellationToken = default)
+        => throw new NotSupportedException("issue-490 Phase 3");
+
+    public Task<SetEarlyEntryOutcome> SetEarlyEntryAsync(
+        Guid campMemberId, bool granted, Guid actorUserId,
+        CancellationToken cancellationToken = default)
+        => throw new NotSupportedException("issue-490 Phase 3");
 }
