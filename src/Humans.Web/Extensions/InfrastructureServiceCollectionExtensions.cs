@@ -53,6 +53,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddAgentSection(configuration);
         services.AddSearchSection();
         services.AddHoldedSection(configuration);
+        services.AddExpensesSection(configuration);
 
         return services;
     }
