@@ -1,5 +1,6 @@
 # Baseline for application service read methods that still expose EF/domain entities.
 # New read methods on IApplicationService must return read models/snapshots instead of entities.
+Humans.Application.Interfaces.AuditLog.IAuditLogService.GetAuditLogPageAsync:Humans.Domain.Entities.AuditLogEntry
 Humans.Application.Interfaces.AuditLog.IAuditLogService.GetByResourceAsync:Humans.Domain.Entities.AuditLogEntry
 Humans.Application.Interfaces.AuditLog.IAuditLogService.GetByUserAsync:Humans.Domain.Entities.AuditLogEntry
 Humans.Application.Interfaces.AuditLog.IAuditLogService.GetFilteredAsync:Humans.Domain.Entities.AuditLogEntry
@@ -23,6 +24,8 @@ Humans.Application.Interfaces.Campaigns.ICampaignService.GetActiveOrCompletedGra
 Humans.Application.Interfaces.Campaigns.ICampaignService.GetAllAsync:Humans.Domain.Entities.Campaign
 Humans.Application.Interfaces.Campaigns.ICampaignService.GetAllGrantsForUserAsync:Humans.Domain.Entities.CampaignGrant
 Humans.Application.Interfaces.Campaigns.ICampaignService.GetByIdAsync:Humans.Domain.Entities.Campaign
+Humans.Application.Interfaces.Campaigns.ICampaignService.GetDetailPageAsync:Humans.Domain.Entities.Campaign
+Humans.Application.Interfaces.Campaigns.ICampaignService.GetSendWavePageAsync:Humans.Domain.Entities.Campaign
 Humans.Application.Interfaces.Camps.ICampRoleService.GetAssignmentByIdAsync:Humans.Domain.Entities.CampRoleAssignment
 Humans.Application.Interfaces.Camps.ICampRoleService.GetDefinitionByIdAsync:Humans.Domain.Entities.CampRoleDefinition
 Humans.Application.Interfaces.Camps.ICampRoleService.ListDefinitionsAsync:Humans.Domain.Entities.CampRoleDefinition
@@ -34,10 +37,19 @@ Humans.Application.Interfaces.Camps.ICampService.GetPendingSeasonsAsync:Humans.D
 Humans.Application.Interfaces.Camps.ICampService.GetSeasonMembersAsync:Humans.Domain.Entities.CampMember
 Humans.Application.Interfaces.Camps.ICampService.GetSettingsAsync:Humans.Domain.Entities.CampSettings
 Humans.Application.Interfaces.CitiPlanning.ICityPlanningService.GetSettingsAsync:Humans.Domain.Entities.CityPlanningSettings
+Humans.Application.Interfaces.Consent.IConsentService.GetConsentDashboardAsync:Humans.Domain.Entities.ConsentRecord
+Humans.Application.Interfaces.Consent.IConsentService.GetConsentDashboardAsync:Humans.Domain.Entities.DocumentVersion
 Humans.Application.Interfaces.Consent.IConsentService.GetConsentDashboardAsync:Humans.Domain.Entities.Team
+Humans.Application.Interfaces.Consent.IConsentService.GetConsentReviewDetailAsync:Humans.Domain.Entities.ConsentRecord
 Humans.Application.Interfaces.Consent.IConsentService.GetConsentReviewDetailAsync:Humans.Domain.Entities.DocumentVersion
 Humans.Application.Interfaces.Consent.IConsentService.GetUserConsentRecordsAsync:Humans.Domain.Entities.ConsentRecord
+Humans.Application.Interfaces.Dashboard.IDashboardService.GetMemberDashboardAsync:Humans.Domain.Entities.Application
+Humans.Application.Interfaces.Dashboard.IDashboardService.GetMemberDashboardAsync:Humans.Domain.Entities.EventSettings
+Humans.Application.Interfaces.Dashboard.IDashboardService.GetMemberDashboardAsync:Humans.Domain.Entities.Profile
+Humans.Application.Interfaces.Dashboard.IDashboardService.GetMemberDashboardAsync:Humans.Domain.Entities.Shift
+Humans.Application.Interfaces.Dashboard.IDashboardService.GetMemberDashboardAsync:Humans.Domain.Entities.ShiftSignup
 Humans.Application.Interfaces.Email.IEmailOutboxService.GetMessagesForUserAsync:Humans.Domain.Entities.EmailOutboxMessage
+Humans.Application.Interfaces.Email.IEmailOutboxService.GetOutboxStatsAsync:Humans.Domain.Entities.EmailOutboxMessage
 Humans.Application.Interfaces.Feedback.IFeedbackService.GetFeedbackByIdAsync:Humans.Domain.Entities.FeedbackReport
 Humans.Application.Interfaces.Feedback.IFeedbackService.GetFeedbackListAsync:Humans.Domain.Entities.FeedbackReport
 Humans.Application.Interfaces.Feedback.IFeedbackService.GetMessagesAsync:Humans.Domain.Entities.FeedbackMessage
@@ -51,6 +63,7 @@ Humans.Application.Interfaces.Governance.IApplicationDecisionService.GetUserAppl
 Humans.Application.Interfaces.IAgentService.GetConversationForAdminAsync:Humans.Domain.Entities.AgentConversation
 Humans.Application.Interfaces.IAgentService.GetConversationForUserAsync:Humans.Domain.Entities.AgentConversation
 Humans.Application.Interfaces.IAgentService.GetHistoryAsync:Humans.Domain.Entities.AgentConversation
+Humans.Application.Interfaces.IAgentService.GetMyConversationAsync:Humans.Domain.Entities.AgentConversation
 Humans.Application.Interfaces.IAgentService.ListAllConversationsForAdminAsync:Humans.Domain.Entities.AgentConversation
 Humans.Application.Interfaces.IAgentService.ListAllConversationsForAdminWithMessagesAsync:Humans.Domain.Entities.AgentConversation
 Humans.Application.Interfaces.Issues.IIssuesService.GetIssueByIdAsync:Humans.Domain.Entities.Issue
@@ -61,6 +74,9 @@ Humans.Application.Interfaces.Legal.ILegalDocumentSyncService.GetActiveRequiredD
 Humans.Application.Interfaces.Legal.ILegalDocumentSyncService.GetRequiredDocumentVersionsForTeamAsync:Humans.Domain.Entities.DocumentVersion
 Humans.Application.Interfaces.Legal.ILegalDocumentSyncService.GetRequiredVersionsAsync:Humans.Domain.Entities.DocumentVersion
 Humans.Application.Interfaces.Legal.ILegalDocumentSyncService.GetVersionByIdAsync:Humans.Domain.Entities.DocumentVersion
+Humans.Application.Interfaces.Onboarding.IOnboardingService.GetReviewDetailAsync:Humans.Domain.Entities.Application
+Humans.Application.Interfaces.Onboarding.IOnboardingService.GetReviewDetailAsync:Humans.Domain.Entities.Profile
+Humans.Application.Interfaces.Onboarding.IOnboardingService.GetReviewQueueAsync:Humans.Domain.Entities.Profile
 Humans.Application.Interfaces.Profiles.IAccountMergeService.GetByIdAsync:Humans.Domain.Entities.AccountMergeRequest
 Humans.Application.Interfaces.Profiles.IAccountMergeService.GetPendingRequestsAsync:Humans.Domain.Entities.AccountMergeRequest
 Humans.Application.Interfaces.Profiles.ICommunicationPreferenceService.GetPreferencesAsync:Humans.Domain.Entities.CommunicationPreference
@@ -75,6 +91,7 @@ Humans.Application.Interfaces.Shifts.IGeneralAvailabilityService.GetAvailableFor
 Humans.Application.Interfaces.Shifts.IGeneralAvailabilityService.GetByUserAsync:Humans.Domain.Entities.GeneralAvailability
 Humans.Application.Interfaces.Shifts.IShiftManagementService.GetActiveAsync:Humans.Domain.Entities.EventSettings
 Humans.Application.Interfaces.Shifts.IShiftManagementService.GetAllTagsAsync:Humans.Domain.Entities.ShiftTag
+Humans.Application.Interfaces.Shifts.IShiftManagementService.GetBrowseShiftsAsync:Humans.Domain.Entities.Shift
 Humans.Application.Interfaces.Shifts.IShiftManagementService.GetByIdAsync:Humans.Domain.Entities.EventSettings
 Humans.Application.Interfaces.Shifts.IShiftManagementService.GetOrCreateShiftProfileAsync:Humans.Domain.Entities.VolunteerEventProfile
 Humans.Application.Interfaces.Shifts.IShiftManagementService.GetOrCreateTagAsync:Humans.Domain.Entities.ShiftTag
@@ -83,6 +100,7 @@ Humans.Application.Interfaces.Shifts.IShiftManagementService.GetRotasByDepartmen
 Humans.Application.Interfaces.Shifts.IShiftManagementService.GetShiftByIdAsync:Humans.Domain.Entities.Shift
 Humans.Application.Interfaces.Shifts.IShiftManagementService.GetShiftProfileAsync:Humans.Domain.Entities.VolunteerEventProfile
 Humans.Application.Interfaces.Shifts.IShiftManagementService.GetShiftsByRotaAsync:Humans.Domain.Entities.Shift
+Humans.Application.Interfaces.Shifts.IShiftManagementService.GetUrgentShiftsAsync:Humans.Domain.Entities.Shift
 Humans.Application.Interfaces.Shifts.IShiftManagementService.GetVolunteerTagPreferencesAsync:Humans.Domain.Entities.ShiftTag
 Humans.Application.Interfaces.Shifts.IShiftManagementService.SearchTagsAsync:Humans.Domain.Entities.ShiftTag
 Humans.Application.Interfaces.Shifts.IShiftSignupService.GetActiveSignupsForUserAsync:Humans.Domain.Entities.ShiftSignup
@@ -92,6 +110,8 @@ Humans.Application.Interfaces.Shifts.IShiftSignupService.GetByIdAsync:Humans.Dom
 Humans.Application.Interfaces.Shifts.IShiftSignupService.GetByShiftAsync:Humans.Domain.Entities.ShiftSignup
 Humans.Application.Interfaces.Shifts.IShiftSignupService.GetByUserAsync:Humans.Domain.Entities.ShiftSignup
 Humans.Application.Interfaces.Shifts.IShiftSignupService.GetNoShowHistoryAsync:Humans.Domain.Entities.ShiftSignup
+Humans.Application.Interfaces.Teams.ITeamPageService.GetTeamPageDetailAsync:Humans.Domain.Entities.Team
+Humans.Application.Interfaces.Teams.ITeamPageService.GetTeamPageDetailAsync:Humans.Domain.Entities.TeamRoleDefinition
 Humans.Application.Interfaces.Teams.ITeamResourceService.GetActiveDriveFoldersAsync:Humans.Domain.Entities.GoogleResource
 Humans.Application.Interfaces.Teams.ITeamResourceService.GetResourceByIdAsync:Humans.Domain.Entities.GoogleResource
 Humans.Application.Interfaces.Teams.ITeamResourceService.GetResourcesByTeamIdsAsync:Humans.Domain.Entities.GoogleResource
@@ -109,9 +129,12 @@ Humans.Application.Interfaces.Teams.ITeamService.GetRoleDefinitionsAsync:Humans.
 Humans.Application.Interfaces.Teams.ITeamService.GetSystemTeamWithActiveMembersAsync:Humans.Domain.Entities.Team
 Humans.Application.Interfaces.Teams.ITeamService.GetTeamByIdAsync:Humans.Domain.Entities.Team
 Humans.Application.Interfaces.Teams.ITeamService.GetTeamBySlugAsync:Humans.Domain.Entities.Team
+Humans.Application.Interfaces.Teams.ITeamService.GetTeamDetailAsync:Humans.Domain.Entities.Team
+Humans.Application.Interfaces.Teams.ITeamService.GetTeamDetailAsync:Humans.Domain.Entities.TeamRoleDefinition
 Humans.Application.Interfaces.Teams.ITeamService.GetTeamMembersAsync:Humans.Domain.Entities.TeamMember
 Humans.Application.Interfaces.Teams.ITeamService.GetUserPendingRequestAsync:Humans.Domain.Entities.TeamJoinRequest
 Humans.Application.Interfaces.Teams.ITeamService.GetUserTeamsAsync:Humans.Domain.Entities.TeamMember
+Humans.Application.Interfaces.Users.IAccountProvisioningService.FindOrCreateUserByEmailAsync:Humans.Domain.Entities.User
 Humans.Application.Interfaces.Users.IUserService.GetAllParticipationsForYearAsync:Humans.Domain.Entities.EventParticipation
 Humans.Application.Interfaces.Users.IUserService.GetAllUsersAsync:Humans.Domain.Entities.User
 Humans.Application.Interfaces.Users.IUserService.GetByEmailOrAlternateAsync:Humans.Domain.Entities.User

@@ -119,10 +119,13 @@ public class ServiceBoundaryArchitectureTests
         {
             foreach (var method in serviceType.GetMethods().Where(IsReadMethod))
             {
-                var exposedEntity = ExposedTypes(method.ReturnType).FirstOrDefault(entityTypes.Contains);
-                if (exposedEntity is null) continue;
-
-                yield return $"{Display(serviceType)}.{method.Name}:{Display(exposedEntity)}";
+                foreach (var exposedEntity in ExposedTypes(method.ReturnType)
+                             .Where(entityTypes.Contains)
+                             .Distinct()
+                             .OrderBy(Display, StringComparer.Ordinal))
+                {
+                    yield return $"{Display(serviceType)}.{method.Name}:{Display(exposedEntity)}";
+                }
             }
         }
     }
@@ -168,39 +171,64 @@ public class ServiceBoundaryArchitectureTests
         method.Name.StartsWith("Load", StringComparison.Ordinal) ||
         method.Name.StartsWith("Resolve", StringComparison.Ordinal);
 
-    private static IEnumerable<Type> ExposedTypes(Type type)
+    private static IEnumerable<Type> ExposedTypes(Type type) =>
+        ExposedTypes(type, []);
+
+    private static IEnumerable<Type> ExposedTypes(Type type, HashSet<Type> visited)
     {
         if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Task<>))
         {
-            foreach (var exposed in ExposedTypes(type.GetGenericArguments()[0]))
+            foreach (var exposed in ExposedTypes(type.GetGenericArguments()[0], visited))
                 yield return exposed;
             yield break;
         }
 
         if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>))
         {
-            foreach (var exposed in ExposedTypes(type.GetGenericArguments()[0]))
+            foreach (var exposed in ExposedTypes(type.GetGenericArguments()[0], visited))
                 yield return exposed;
             yield break;
         }
 
         if (type.IsArray)
         {
-            foreach (var exposed in ExposedTypes(type.GetElementType()!))
+            foreach (var exposed in ExposedTypes(type.GetElementType()!, visited))
                 yield return exposed;
             yield break;
         }
 
         yield return type;
 
-        if (!type.IsGenericType) yield break;
-
-        foreach (var argument in type.GetGenericArguments())
+        if (type.IsGenericType)
         {
-            foreach (var exposed in ExposedTypes(argument))
+            foreach (var argument in type.GetGenericArguments())
+            {
+                foreach (var exposed in ExposedTypes(argument, visited))
+                    yield return exposed;
+            }
+        }
+
+        if (!IsApplicationReturnShape(type) || !visited.Add(type))
+            yield break;
+
+        foreach (var property in type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                     .Where(p => p.GetIndexParameters().Length == 0))
+        {
+            foreach (var exposed in ExposedTypes(property.PropertyType, visited))
+                yield return exposed;
+        }
+
+        foreach (var field in type.GetFields(BindingFlags.Public | BindingFlags.Instance))
+        {
+            foreach (var exposed in ExposedTypes(field.FieldType, visited))
                 yield return exposed;
         }
     }
+
+    private static bool IsApplicationReturnShape(Type type) =>
+        type is { IsPrimitive: false, IsEnum: false } &&
+        type != typeof(string) &&
+        type.Namespace?.StartsWith("Humans.Application.", StringComparison.Ordinal) == true;
 
     private static string Display(Type type) =>
         type.FullName?.Replace('+', '.') ?? type.Name;
