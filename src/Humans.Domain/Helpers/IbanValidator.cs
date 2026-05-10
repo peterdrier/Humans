@@ -46,7 +46,7 @@ public static class IbanValidator
     };
 
     public static string Normalize(string? iban) =>
-        (iban ?? "").Replace(" ", "").Replace(" ", "").ToUpperInvariant();
+        (iban ?? "").Replace(" ", "").Replace(" ", "").ToUpperInvariant();
 
     public static bool IsValid(string? iban)
     {

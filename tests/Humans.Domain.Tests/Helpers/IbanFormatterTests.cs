@@ -40,4 +40,10 @@ public class IbanFormatterTests
     {
         IbanFormatter.Mask("NL75AB").Should().Be("****");
     }
+
+    [HumansFact]
+    public void Mask_StripsNarrowNoBreakSpace()
+    {
+        IbanFormatter.Mask("NL75 ABNA 0123 4567 89").Should().Be("NL75****789");
+    }
 }

@@ -147,9 +147,6 @@ public class Profile
     [PersonalData]
     public string? BoardNotes { get; set; }
 
-    /// <summary>
-    /// Member's IBAN for expense reimbursements. Stored normalized (no spaces).
-    /// </summary>
     [PersonalData]
     public string? Iban { get; set; }
 

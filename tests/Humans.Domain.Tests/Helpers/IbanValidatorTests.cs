@@ -40,4 +40,10 @@ public class IbanValidatorTests
         IbanValidator.Normalize("es91 2100 0418 4502 0005 1332")
             .Should().Be("ES9121000418450200051332");
     }
+
+    [HumansFact]
+    public void IsValid_StripsNarrowNoBreakSpace()
+    {
+        IbanValidator.IsValid("ES91 2100 0418 4502 0005 1332").Should().BeTrue();
+    }
 }
