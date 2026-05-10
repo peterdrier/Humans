@@ -166,7 +166,8 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             $"Registered camp '{name}' for {year}",
             createdByUserId);
 
-        await _systemTeamSync.SyncBarrioLeadsMembershipForUserAsync(createdByUserId, cancellationToken);
+        await _systemTeamSync.SyncMembershipForUserAsync(
+            createdByUserId, SystemTeamType.BarrioLeads, cancellationToken);
         InvalidateCache(year);
 
         return camp;
@@ -1018,7 +1019,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             userId,
             relatedEntityId: campId, relatedEntityType: nameof(Camp));
 
-        await _systemTeamSync.SyncBarrioLeadsMembershipForUserAsync(userId, cancellationToken);
+        await _systemTeamSync.SyncMembershipForUserAsync(userId, SystemTeamType.BarrioLeads, cancellationToken);
 
         return lead;
     }
@@ -1044,7 +1045,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             lead.UserId,
             relatedEntityId: lead.CampId, relatedEntityType: nameof(Camp));
 
-        await _systemTeamSync.SyncBarrioLeadsMembershipForUserAsync(lead.UserId, cancellationToken);
+        await _systemTeamSync.SyncMembershipForUserAsync(lead.UserId, SystemTeamType.BarrioLeads, cancellationToken);
     }
 
     // ==========================================================================
@@ -1769,8 +1770,8 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         // for both source and target, and the per-lead pending-membership
         // nav badge depends on lead-camp ownership; refresh both for each
         // user. Plain CampRoleAssignment moves don't touch either cache.
-        await _systemTeamSync.SyncBarrioLeadsMembershipForUserAsync(sourceUserId, ct);
-        await _systemTeamSync.SyncBarrioLeadsMembershipForUserAsync(targetUserId, ct);
+        await _systemTeamSync.SyncMembershipForUserAsync(sourceUserId, SystemTeamType.BarrioLeads, ct);
+        await _systemTeamSync.SyncMembershipForUserAsync(targetUserId, SystemTeamType.BarrioLeads, ct);
         _leadBadgeInvalidator.Invalidate(sourceUserId);
         _leadBadgeInvalidator.Invalidate(targetUserId);
     }

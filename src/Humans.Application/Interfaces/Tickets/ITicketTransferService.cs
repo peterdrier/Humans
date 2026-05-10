@@ -1,9 +1,10 @@
 using Humans.Application.DTOs;
+using Humans.Application.Interfaces;
 using Humans.Domain.Enums;
 
 namespace Humans.Application.Interfaces.Tickets;
 
-public interface ITicketTransferService
+public interface ITicketTransferService : IApplicationService
 {
     /// <summary>
     /// Resolve Receiver candidates for a free-text query. Email queries

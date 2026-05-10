@@ -351,27 +351,6 @@ public sealed class TeamRepository : ITeamRepository
             .ToListAsync(ct);
     }
 
-    public async Task<IReadOnlyList<TeamMember>> GetActiveMembersAsync(
-        Guid teamId, CancellationToken ct = default)
-    {
-        await using var db = await _factory.CreateDbContextAsync(ct);
-        return await db.TeamMembers
-            .AsNoTracking()
-            .Where(tm => tm.TeamId == teamId && tm.LeftAt == null)
-            .ToListAsync(ct);
-    }
-
-    public async Task<IReadOnlyList<Guid>> GetActiveMemberUserIdsAsync(
-        Guid teamId, CancellationToken ct = default)
-    {
-        await using var db = await _factory.CreateDbContextAsync(ct);
-        return await db.TeamMembers
-            .AsNoTracking()
-            .Where(tm => tm.TeamId == teamId && tm.LeftAt == null)
-            .Select(tm => tm.UserId)
-            .ToListAsync(ct);
-    }
-
     public async Task<IReadOnlyList<Guid>> GetCoordinatorUserIdsAsync(
         Guid teamId, CancellationToken ct = default)
     {

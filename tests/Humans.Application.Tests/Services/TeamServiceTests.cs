@@ -1031,11 +1031,11 @@ public class TeamServiceTests : IDisposable
     }
 
     // ==========================================================================
-    // GetTeamMembersAsync
+    // GetTeamAsync
     // ==========================================================================
 
     [HumansFact]
-    public async Task GetTeamMembersAsync_ReturnsOnlyActiveMembers()
+    public async Task GetTeamAsync_ReturnsOnlyActiveMembers()
     {
         var team = SeedTeam("Alpha");
         var active = SeedUser(displayName: "Active");
@@ -1045,20 +1045,21 @@ public class TeamServiceTests : IDisposable
             leftAt: _clock.GetCurrentInstant() - Duration.FromDays(1));
         await _dbContext.SaveChangesAsync();
 
-        var result = await _service.GetTeamMembersAsync(team.Id);
+        var result = await _service.GetTeamAsync(team.Id);
 
-        result.Should().ContainSingle();
-        result[0].UserId.Should().Be(active.Id);
+        result.Should().NotBeNull();
+        result!.Members.Should().ContainSingle();
+        result.Members[0].UserId.Should().Be(active.Id);
     }
 
     [HumansFact]
-    public async Task GetTeamMembersAsync_OrderedByRoleThenJoinedAt()
+    public async Task GetTeamAsync_IncludesMemberRoleAndJoinedAt()
     {
         var team = SeedTeam("Alpha");
         var coordinator = SeedUser(displayName: "Coordinator");
         var memberEarly = SeedUser(displayName: "Early");
         var memberLate = SeedUser(displayName: "Late");
-        // Coordinator role (enum value 1 > Member 0) — OrderBy(Role) ascending means Member(0) first, Coordinator(1) second
+        // The active team read model preserves membership facts; presentation owns display ordering.
         var m1 = new TeamMember
         {
             Id = Guid.NewGuid(),
@@ -1086,41 +1087,39 @@ public class TeamServiceTests : IDisposable
         await _dbContext.TeamMembers.AddRangeAsync(m1, m2, m3);
         await _dbContext.SaveChangesAsync();
 
-        var result = await _service.GetTeamMembersAsync(team.Id);
+        var result = await _service.GetTeamAsync(team.Id);
 
-        result.Should().HaveCount(3);
-        // Ascending by Role: Member(0) before Coordinator(1)
-        result[0].Role.Should().Be(TeamMemberRole.Member);
-        result[1].Role.Should().Be(TeamMemberRole.Member);
-        result[2].Role.Should().Be(TeamMemberRole.Coordinator);
-        // Members ordered by JoinedAt ascending
-        result[0].UserId.Should().Be(memberEarly.Id);
-        result[1].UserId.Should().Be(memberLate.Id);
+        result.Should().NotBeNull();
+        result!.Members.Should().HaveCount(3);
+        result.Members.Count(m => m.Role == TeamMemberRole.Member).Should().Be(2);
+        result.Members.Count(m => m.Role == TeamMemberRole.Coordinator).Should().Be(1);
+        result.Members.Select(m => m.UserId).Should().Contain([memberEarly.Id, memberLate.Id]);
     }
 
     [HumansFact]
-    public async Task GetTeamMembersAsync_IncludesUserNavigation()
+    public async Task GetTeamAsync_IncludesUserSlice()
     {
         var team = SeedTeam("Alpha");
         var user = SeedUser(displayName: "Alice");
         SeedTeamMember(team.Id, user.Id);
         await _dbContext.SaveChangesAsync();
 
-        var result = await _service.GetTeamMembersAsync(team.Id);
+        var result = await _service.GetTeamAsync(team.Id);
 
-        result.Single().User.Should().NotBeNull();
-        result.Single().User.DisplayName.Should().Be("Alice");
+        var member = result!.Members.Should().ContainSingle().Subject;
+        member.DisplayName.Should().Be("Alice");
     }
 
     [HumansFact]
-    public async Task GetTeamMembersAsync_NoMembers_ReturnsEmpty()
+    public async Task GetTeamAsync_NoMembers_ReturnsEmpty()
     {
         var team = SeedTeam("Alpha");
         await _dbContext.SaveChangesAsync();
 
-        var result = await _service.GetTeamMembersAsync(team.Id);
+        var result = await _service.GetTeamAsync(team.Id);
 
-        result.Should().BeEmpty();
+        result.Should().NotBeNull();
+        result!.Members.Should().BeEmpty();
     }
 
     // ==========================================================================

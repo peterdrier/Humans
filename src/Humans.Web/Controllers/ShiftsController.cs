@@ -198,7 +198,7 @@ public class ShiftsController : HumansControllerBase
         }
 
         // Load all tags for filter UI and volunteer's preferred tags
-        var allTags = await _shiftMgmt.GetAllTagsAsync();
+        var allTags = await _shiftMgmt.GetTagsAsync();
         var userPreferredTags = await _shiftMgmt.GetVolunteerTagPreferencesAsync(user.Id);
 
         var model = new ShiftBrowseViewModel
@@ -219,7 +219,9 @@ public class ShiftsController : HumansControllerBase
             ShowSignups = true,
             Sort = isUrgencySort ? "urgency" : "department",
             UrgencyRankedRotas = urgencyRankedRotas,
-            AllTags = allTags.ToList(),
+            AllTags = allTags
+                .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
+                .ToList(),
             FilterTagIds = activeTagFilter,
             UserPreferredTagIds = userPreferredTags.Select(t => t.Id).ToHashSet(),
             MySignupCount = userSignups.Count(s => s.Status is SignupStatus.Confirmed or SignupStatus.Pending),

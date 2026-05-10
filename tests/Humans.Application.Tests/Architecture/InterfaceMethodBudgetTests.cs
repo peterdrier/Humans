@@ -63,7 +63,10 @@ public class InterfaceMethodBudgetTests
         // 71→73: team-cache decorator groundwork — added canonical
         // GetTeamAsync/GetTeamsAsync read-model methods. Follow-up passes should
         // consolidate member/name/option getters down onto those methods.
-        [typeof(ITeamService)] = 73,
+        // 73→71: tech-debt query consolidation — removed GetTeamMembersAsync
+        // and GetActiveMemberUserIdsAsync; callers project members/user IDs
+        // from GetTeamAsync/GetTeamsAsync read models.
+        [typeof(ITeamService)] = 71,
         // ICampService raised 53→57 for per-camp roles feature (peterdrier#489):
         // AddCampMemberAsLeadAsync, GetSeasonMembersAsync, GetCampMemberStatusAsync,
         // GetCampSeasonsForComplianceAsync — all needed by ICampRoleService and the
@@ -105,7 +108,12 @@ public class InterfaceMethodBudgetTests
         // 49→50: issue-682 global search — added SearchAsync(query, max).
         // Authorized exception (Peter, 2026-05-09): queries against rotas
         // must live in the owning section per design-rules §6.
-        [typeof(IShiftManagementService)] = 50,
+        // 50→49: tech-debt interface consolidation — collapsed
+        // GetShiftsSummaryAsync(single team) and GetShiftsSummaryForTeamsAsync
+        // into one GetShiftsSummaryAsync(eventId, teamIds) method.
+        // 49→48: collapsed GetAllTagsAsync and SearchTagsAsync into one
+        // GetTagsAsync(query) method.
+        [typeof(IShiftManagementService)] = 48,
         // +1 for SetProfilePictureAsync (nobodies-collective/Humans#532 — Google avatar import button needs a
         // narrow service write that owns its own cache invalidation; controllers can't reach
         // the FullProfile cache directly).

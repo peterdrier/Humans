@@ -10,11 +10,6 @@ using Xunit;
 
 namespace Humans.Application.Tests.Authorization;
 
-/// <summary>
-/// Unit tests for BudgetAuthorizationHandler — the first resource-based authorization handler.
-/// Tests cover: Admin override, FinanceAdmin override, department coordinator access,
-/// denial for non-coordinators, restricted groups, deleted years, null team, and edge cases.
-/// </summary>
 public sealed class BudgetAuthorizationHandlerTests
 {
     private readonly IBudgetService _budgetService = Substitute.For<IBudgetService>();
@@ -27,232 +22,110 @@ public sealed class BudgetAuthorizationHandlerTests
     public BudgetAuthorizationHandlerTests()
     {
         _handler = new BudgetAuthorizationHandler(_budgetService);
-
         _budgetService.GetEffectiveCoordinatorTeamIdsAsync(UserId)
             .Returns(new HashSet<Guid> { CoordinatorTeamId });
     }
 
-    // --- Admin override ---
-
-    [HumansFact]
-    public async Task Admin_CanEditAnyCategory()
+    public static TheoryData<string, string, bool, bool, bool, bool> BudgetAuthorizationCases => new()
     {
-        var user = CreateUserWithRoles(RoleNames.Admin);
-        var category = CreateCategory(OtherTeamId);
+        { "admin", "other", false, false, true, true },
+        { "admin", "other", true, false, true, true },
+        { "admin", "other", false, true, true, true },
+        { "finance-admin", "other", false, false, true, true },
+        { "finance-admin", "other", true, false, true, true },
+        { "finance-admin", "none", false, false, true, true },
+        { "coordinator", "coordinator", false, false, true, true },
+        { "coordinator", "other", false, false, true, false },
+        { "coordinator", "coordinator", true, false, true, false },
+        { "coordinator", "coordinator", false, true, true, false },
+        { "coordinator", "none", false, false, true, false },
+        { "regular", "coordinator", false, false, true, false },
+        { "anonymous", "coordinator", false, false, true, false },
+        { "invalid-id", "coordinator", false, false, true, false },
+        { "coordinator", "coordinator", false, false, false, true },
+    };
 
-        var result = await EvaluateAsync(user, category);
-
-        result.Should().BeTrue();
-    }
-
-    [HumansFact]
-    public async Task Admin_CanEditRestrictedGroupCategory()
+    [HumansTheory]
+    [MemberData(nameof(BudgetAuthorizationCases))]
+    public async Task Budget_edit_authorization_matches_expected_scenarios(
+        string userKind,
+        string teamKind,
+        bool isRestricted,
+        bool isDeleted,
+        bool hasBudgetGroup,
+        bool expected)
     {
-        var user = CreateUserWithRoles(RoleNames.Admin);
-        var category = CreateCategory(OtherTeamId, isRestricted: true);
-
-        var result = await EvaluateAsync(user, category);
-
-        result.Should().BeTrue();
-    }
-
-    [HumansFact]
-    public async Task Admin_CanEditDeletedYearCategory()
-    {
-        var user = CreateUserWithRoles(RoleNames.Admin);
-        var category = CreateCategory(OtherTeamId, isDeleted: true);
-
-        var result = await EvaluateAsync(user, category);
-
-        result.Should().BeTrue();
-    }
-
-    // --- FinanceAdmin override ---
-
-    [HumansFact]
-    public async Task FinanceAdmin_CanEditAnyCategory()
-    {
-        var user = CreateUserWithRoles(RoleNames.FinanceAdmin);
-        var category = CreateCategory(OtherTeamId);
-
-        var result = await EvaluateAsync(user, category);
-
-        result.Should().BeTrue();
-    }
-
-    [HumansFact]
-    public async Task FinanceAdmin_CanEditRestrictedGroupCategory()
-    {
-        var user = CreateUserWithRoles(RoleNames.FinanceAdmin);
-        var category = CreateCategory(OtherTeamId, isRestricted: true);
-
-        var result = await EvaluateAsync(user, category);
-
-        result.Should().BeTrue();
-    }
-
-    [HumansFact]
-    public async Task FinanceAdmin_CanEditCategoryWithNoTeam()
-    {
-        var user = CreateUserWithRoles(RoleNames.FinanceAdmin);
-        var category = CreateCategory(teamId: null);
-
-        var result = await EvaluateAsync(user, category);
-
-        result.Should().BeTrue();
-    }
-
-    // --- Department coordinator access ---
-
-    [HumansFact]
-    public async Task Coordinator_CanEditOwnDepartmentCategory()
-    {
-        var user = CreateUser(UserId);
-        var category = CreateCategory(CoordinatorTeamId);
-
-        var result = await EvaluateAsync(user, category);
-
-        result.Should().BeTrue();
-    }
-
-    [HumansFact]
-    public async Task Coordinator_CannotEditOtherDepartmentCategory()
-    {
-        var user = CreateUser(UserId);
-        var category = CreateCategory(OtherTeamId);
-
-        var result = await EvaluateAsync(user, category);
-
-        result.Should().BeFalse();
-    }
-
-    // --- Denial cases ---
-
-    [HumansFact]
-    public async Task Coordinator_DeniedOnRestrictedGroup()
-    {
-        var user = CreateUser(UserId);
-        var category = CreateCategory(CoordinatorTeamId, isRestricted: true);
-
-        var result = await EvaluateAsync(user, category);
-
-        result.Should().BeFalse();
-    }
-
-    [HumansFact]
-    public async Task Coordinator_DeniedOnDeletedYear()
-    {
-        var user = CreateUser(UserId);
-        var category = CreateCategory(CoordinatorTeamId, isDeleted: true);
-
-        var result = await EvaluateAsync(user, category);
-
-        result.Should().BeFalse();
-    }
-
-    [HumansFact]
-    public async Task Coordinator_DeniedOnCategoryWithNoTeam()
-    {
-        var user = CreateUser(UserId);
-        var category = CreateCategory(teamId: null);
-
-        var result = await EvaluateAsync(user, category);
-
-        result.Should().BeFalse();
-    }
-
-    [HumansFact]
-    public async Task RegularUser_DeniedOnAnyCategory()
-    {
-        var user = CreateUser(Guid.NewGuid());
-        _budgetService.GetEffectiveCoordinatorTeamIdsAsync(Arg.Any<Guid>())
-            .Returns(new HashSet<Guid>());
-        var category = CreateCategory(CoordinatorTeamId);
-
-        var result = await EvaluateAsync(user, category);
-
-        result.Should().BeFalse();
-    }
-
-    // --- Edge cases ---
-
-    [HumansFact]
-    public async Task UnauthenticatedUser_Denied()
-    {
-        var user = new ClaimsPrincipal(new ClaimsIdentity());
-        var category = CreateCategory(CoordinatorTeamId);
-
-        var result = await EvaluateAsync(user, category);
-
-        result.Should().BeFalse();
-    }
-
-    [HumansFact]
-    public async Task UserWithInvalidIdClaim_Denied()
-    {
-        var claims = new List<Claim>
+        if (string.Equals(userKind, "regular", StringComparison.Ordinal))
         {
-            new(ClaimTypes.NameIdentifier, "not-a-guid"),
-            new(ClaimTypes.Name, "test@example.com")
-        };
-        var user = new ClaimsPrincipal(new ClaimsIdentity(claims, "TestAuth"));
-        var category = CreateCategory(CoordinatorTeamId);
+            _budgetService.GetEffectiveCoordinatorTeamIdsAsync(Arg.Any<Guid>())
+                .Returns(new HashSet<Guid>());
+        }
+
+        var user = CreateUser(userKind);
+        var category = CreateCategory(teamKind, isRestricted, isDeleted, hasBudgetGroup);
 
         var result = await EvaluateAsync(user, category);
 
-        result.Should().BeFalse();
+        result.Should().Be(expected);
     }
-
-    [HumansFact]
-    public async Task NullBudgetGroup_CoordinatorStillAllowed()
-    {
-        // Category with a team but no BudgetGroup navigation loaded
-        var user = CreateUser(UserId);
-        var category = new BudgetCategory
-        {
-            Id = Guid.NewGuid(),
-            TeamId = CoordinatorTeamId,
-            BudgetGroup = null
-        };
-
-        var result = await EvaluateAsync(user, category);
-
-        result.Should().BeTrue();
-    }
-
-    // --- Helpers ---
 
     private async Task<bool> EvaluateAsync(ClaimsPrincipal user, BudgetCategory resource)
     {
         var requirement = BudgetOperationRequirement.Edit;
-        var context = new AuthorizationHandlerContext(
-            [requirement], user, resource);
+        var context = new AuthorizationHandlerContext([requirement], user, resource);
 
         await _handler.HandleAsync(context);
         return context.HasSucceeded;
     }
 
     private static BudgetCategory CreateCategory(
-        Guid? teamId,
+        string teamKind,
         bool isRestricted = false,
-        bool isDeleted = false)
+        bool isDeleted = false,
+        bool hasBudgetGroup = true)
     {
+        Guid? teamId = teamKind switch
+        {
+            "coordinator" => CoordinatorTeamId,
+            "other" => OtherTeamId,
+            "none" => null,
+            _ => throw new ArgumentOutOfRangeException(nameof(teamKind), teamKind, null)
+        };
+
         return new BudgetCategory
         {
             Id = Guid.NewGuid(),
             TeamId = teamId,
-            BudgetGroup = new BudgetGroup
-            {
-                Id = Guid.NewGuid(),
-                IsRestricted = isRestricted,
-                BudgetYear = new BudgetYear
+            BudgetGroup = hasBudgetGroup
+                ? new BudgetGroup
                 {
                     Id = Guid.NewGuid(),
-                    IsDeleted = isDeleted
+                    IsRestricted = isRestricted,
+                    BudgetYear = new BudgetYear
+                    {
+                        Id = Guid.NewGuid(),
+                        IsDeleted = isDeleted
+                    }
                 }
-            }
+                : null
         };
     }
+
+    private static ClaimsPrincipal CreateUser(string kind) =>
+        kind switch
+        {
+            "admin" => CreateUserWithRoles(RoleNames.Admin),
+            "finance-admin" => CreateUserWithRoles(RoleNames.FinanceAdmin),
+            "coordinator" => CreateUserWithId(UserId),
+            "regular" => CreateUserWithId(Guid.NewGuid()),
+            "anonymous" => new ClaimsPrincipal(new ClaimsIdentity()),
+            "invalid-id" => new ClaimsPrincipal(new ClaimsIdentity(
+            [
+                new Claim(ClaimTypes.NameIdentifier, "not-a-guid"),
+                new Claim(ClaimTypes.Name, "test@example.com")
+            ], "TestAuth")),
+            _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
+        };
 
     private static ClaimsPrincipal CreateUserWithRoles(params string[] roles)
     {
@@ -268,7 +141,7 @@ public sealed class BudgetAuthorizationHandlerTests
         return new ClaimsPrincipal(new ClaimsIdentity(claims, "TestAuth"));
     }
 
-    private static ClaimsPrincipal CreateUser(Guid userId)
+    private static ClaimsPrincipal CreateUserWithId(Guid userId)
     {
         var claims = new List<Claim>
         {

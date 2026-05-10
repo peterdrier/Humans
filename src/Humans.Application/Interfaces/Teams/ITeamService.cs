@@ -15,7 +15,7 @@ public record TeamInfo(
 
 public record TeamMemberInfo(
     Guid TeamMemberId, Guid UserId, string DisplayName,
-    string? ProfilePictureUrl, TeamMemberRole Role, Instant JoinedAt);
+    string? Email, string? ProfilePictureUrl, TeamMemberRole Role, Instant JoinedAt);
 
 public record TeamDirectorySummary(
     Guid Id,
@@ -352,13 +352,6 @@ public interface ITeamService : IApplicationService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Gets all members of a team.
-    /// </summary>
-    Task<IReadOnlyList<TeamMember>> GetTeamMembersAsync(
-        Guid teamId,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Gets pending request counts for multiple teams in a single query.
     /// </summary>
     /// <param name="teamIds">The team IDs to check.</param>
@@ -586,16 +579,6 @@ public interface ITeamService : IApplicationService
     /// </summary>
     Task<IReadOnlyList<TeamCoordinatorRef>> GetActiveCoordinatorsForTeamsAsync(
         IReadOnlyCollection<Guid> teamIds,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Returns the user IDs of every active (<see cref="TeamMember.LeftAt"/>
-    /// is null) member of the given team. Used by cross-section callers
-    /// (Tickets dashboard, coverage reporting) that need a set of member ids
-    /// without loading full <see cref="TeamMember"/> entities.
-    /// </summary>
-    Task<IReadOnlyList<Guid>> GetActiveMemberUserIdsAsync(
-        Guid teamId,
         CancellationToken cancellationToken = default);
 
     /// <summary>

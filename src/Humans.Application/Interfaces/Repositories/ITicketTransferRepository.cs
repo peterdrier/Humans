@@ -3,7 +3,7 @@ using Humans.Domain.Enums;
 
 namespace Humans.Application.Interfaces.Repositories;
 
-public interface ITicketTransferRepository
+public interface ITicketTransferRepository : IRepository
 {
     Task<TicketTransferRequest?> GetByIdAsync(Guid id, CancellationToken ct = default);
 

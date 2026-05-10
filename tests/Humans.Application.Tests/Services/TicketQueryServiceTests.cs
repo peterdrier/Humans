@@ -57,9 +57,8 @@ public sealed class TicketQueryServiceTests : IDisposable
             SystemClock.Instance);
 
         // Defaults for the Volunteers team lookup — tests that care override them.
-        _teamService.GetActiveMemberUserIdsAsync(
-                SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<Guid>());
+        _teamService.GetTeamAsync(SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
+            .Returns(VolunteersTeam([]));
 
         _userService.GetAllUsersAsync(Arg.Any<CancellationToken>())
             .Returns(Array.Empty<User>());
@@ -509,9 +508,8 @@ public sealed class TicketQueryServiceTests : IDisposable
         _userService.GetAllUsersAsync(Arg.Any<CancellationToken>())
             .Returns(allUsers);
 
-        _teamService.GetActiveMemberUserIdsAsync(
-                SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
-            .Returns(userIds);
+        _teamService.GetTeamAsync(SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
+            .Returns(VolunteersTeam(userIds));
 
         var profilesByUserId = users
             .Select(u => (UserId: u.Id, Profile: new Profile
@@ -620,4 +618,23 @@ public sealed class TicketQueryServiceTests : IDisposable
             VendorEventId = "ev_test",
             SyncedAt = Instant.FromUtc(2026, 3, 1, 10, 0),
         };
+
+    private static TeamInfo VolunteersTeam(IEnumerable<Guid> userIds) =>
+        new(
+            SystemTeamIds.Volunteers,
+            "Volunteers",
+            null,
+            "volunteers",
+            IsActive: true,
+            IsSystemTeam: true,
+            SystemTeamType.Volunteers,
+            RequiresApproval: false,
+            IsPublicPage: false,
+            IsHidden: false,
+            IsPromotedToDirectory: false,
+            Instant.FromUtc(2026, 1, 1, 0, 0),
+            userIds.Select(userId => new TeamMemberInfo(
+                    Guid.NewGuid(), userId, string.Empty, null, null,
+                    TeamMemberRole.Member, Instant.FromUtc(2026, 1, 1, 0, 0)))
+                .ToList());
 }

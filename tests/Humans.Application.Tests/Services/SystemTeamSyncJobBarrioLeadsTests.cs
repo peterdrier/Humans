@@ -23,7 +23,7 @@ using Xunit;
 namespace Humans.Application.Tests.Services;
 
 /// <summary>
-/// Regression tests for <see cref="SystemTeamSyncJob.SyncBarrioLeadsMembershipForUserAsync"/>.
+/// Regression tests for <see cref="SystemTeamSyncJob.SyncMembershipForUserAsync"/>.
 /// Covers #498: duplicate camp registration for a user who is already an active member of the
 /// Barrio Leads system team must not violate IX_team_members_active_unique.
 /// </summary>
@@ -97,7 +97,7 @@ public class SystemTeamSyncJobBarrioLeadsTests
     }
 
     [HumansFact]
-    public async Task SyncBarrioLeadsMembershipForUserAsync_UserAlreadyActiveMember_IsNoOp()
+    public async Task SyncMembershipForUserAsync_BarrioLeads_UserAlreadyActiveMember_IsNoOp()
     {
         // User is already an active member of Barrio Leads and is still a
         // lead of at least one camp — the guard in the job should short-circuit.
@@ -120,7 +120,7 @@ public class SystemTeamSyncJobBarrioLeadsTests
 
         // Act + Assert: should not throw and must not call the membership
         // delta apply path (otherwise a duplicate insert would surface).
-        var act = async () => await job.SyncBarrioLeadsMembershipForUserAsync(userId);
+        var act = async () => await job.SyncMembershipForUserAsync(userId, SystemTeamType.BarrioLeads);
         await act.Should().NotThrowAsync();
 
         await _teamService.DidNotReceive().ApplySystemTeamMembershipDeltaAsync(
@@ -132,7 +132,7 @@ public class SystemTeamSyncJobBarrioLeadsTests
     }
 
     [HumansFact]
-    public async Task SyncBarrioLeadsMembershipForUserAsync_UserBecomesLead_AddsMembership()
+    public async Task SyncMembershipForUserAsync_BarrioLeads_UserBecomesLead_AddsMembership()
     {
         // User is a new lead but not yet a team member — the job should
         // enqueue the add via the bulk-delta service call.
@@ -147,7 +147,7 @@ public class SystemTeamSyncJobBarrioLeadsTests
 
         var job = CreateJob();
 
-        await job.SyncBarrioLeadsMembershipForUserAsync(userId);
+        await job.SyncMembershipForUserAsync(userId, SystemTeamType.BarrioLeads);
 
         await _teamService.Received(1).ApplySystemTeamMembershipDeltaAsync(
             team.Id,
