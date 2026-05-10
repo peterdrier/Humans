@@ -39,6 +39,8 @@ public class ServiceBoundaryArchitectureTests
             ["Store"] = ["Store"],
             ["Teams"] = ["Team"],
             ["Tickets"] = ["Ticket", "TicketingBudget"],
+            // Full base name (not just "User") to prevent IUserEmailRepository
+            // (Profile section) from matching as an owned Users-section repository.
             ["Users"] = ["UserRepository"],
         };
 
