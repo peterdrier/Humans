@@ -15,34 +15,42 @@ public class ServiceBoundaryArchitectureTests
     private const string CrossSectionRepositoryInjectionBaselinePath =
         "tests/Humans.Application.Tests/Architecture/Baselines/CrossSectionRepositoryInjection.baseline.txt";
 
-    private static readonly IReadOnlyDictionary<string, string[]> RepositoryOwnershipPrefixes =
-        new Dictionary<string, string[]>(StringComparer.Ordinal)
+    private static readonly IReadOnlyDictionary<Type, string> RepositoryOwners =
+        new Dictionary<Type, string>
         {
-            ["Agent"] = ["Agent"],
-            ["AuditLog"] = ["AuditLog"],
-            ["Auth"] = ["RoleAssignment"],
-            ["Budget"] = ["Budget"],
-            ["Calendar"] = ["Calendar"],
-            ["Campaigns"] = ["Campaign"],
-            ["Camps"] = ["Camp", "CampRole"],
-            ["CityPlanning"] = ["CityPlanning"],
-            ["Consent"] = ["Consent"],
-            ["Email"] = ["EmailOutbox"],
-            ["Feedback"] = ["Feedback"],
-            ["GoogleIntegration"] = ["DriveActivityMonitor", "GoogleSyncOutbox", "SyncSettings"],
-            ["Governance"] = ["Application"],
-            ["Issues"] = ["Issues"],
-            ["Legal"] = ["LegalDocument"],
-            ["Notifications"] = ["Notification"],
-            ["Profile"] = ["AccountMerge", "CommunicationPreference", "ContactField", "Profile", "UserEmail"],
-            ["Profiles"] = ["AccountMerge", "CommunicationPreference", "ContactField", "Profile", "UserEmail"],
-            ["Shifts"] = ["GeneralAvailability", "Shift"],
-            ["Store"] = ["Store"],
-            ["Teams"] = ["GoogleResource", "Team"],
-            ["Tickets"] = ["Ticket", "TicketingBudget"],
-            // Full base name (not just "User") to prevent IUserEmailRepository
-            // (Profile section) from matching as an owned Users-section repository.
-            ["Users"] = ["UserRepository"],
+            [typeof(IAccountMergeRepository)] = "Profiles",
+            [typeof(IAgentRepository)] = "Agent",
+            [typeof(IApplicationRepository)] = "Governance",
+            [typeof(IAuditLogRepository)] = "AuditLog",
+            [typeof(IBudgetRepository)] = "Budget",
+            [typeof(ICalendarRepository)] = "Calendar",
+            [typeof(ICampaignRepository)] = "Campaigns",
+            [typeof(ICampRepository)] = "Camps",
+            [typeof(ICampRoleRepository)] = "Camps",
+            [typeof(ICityPlanningRepository)] = "CityPlanning",
+            [typeof(ICommunicationPreferenceRepository)] = "Profiles",
+            [typeof(IConsentRepository)] = "Consent",
+            [typeof(IContactFieldRepository)] = "Profiles",
+            [typeof(IDriveActivityMonitorRepository)] = "GoogleIntegration",
+            [typeof(IEmailOutboxRepository)] = "Email",
+            [typeof(IFeedbackRepository)] = "Feedback",
+            [typeof(IGeneralAvailabilityRepository)] = "Shifts",
+            [typeof(IGoogleResourceRepository)] = "Teams",
+            [typeof(IGoogleSyncOutboxRepository)] = "GoogleIntegration",
+            [typeof(IIssuesRepository)] = "Issues",
+            [typeof(ILegalDocumentRepository)] = "Legal",
+            [typeof(INotificationRepository)] = "Notifications",
+            [typeof(IProfileRepository)] = "Profiles",
+            [typeof(IRoleAssignmentRepository)] = "Auth",
+            [typeof(IShiftManagementRepository)] = "Shifts",
+            [typeof(IShiftSignupRepository)] = "Shifts",
+            [typeof(IStoreRepository)] = "Store",
+            [typeof(ISyncSettingsRepository)] = "GoogleIntegration",
+            [typeof(ITeamRepository)] = "Teams",
+            [typeof(ITicketingBudgetRepository)] = "Tickets",
+            [typeof(ITicketRepository)] = "Tickets",
+            [typeof(IUserEmailRepository)] = "Profiles",
+            [typeof(IUserRepository)] = "Users",
         };
 
     [HumansFact]
@@ -73,6 +81,20 @@ public class ServiceBoundaryArchitectureTests
 
         unmarked.Should().BeEmpty(
             because: "I*Repository interfaces are persistence boundaries and must be searchable/reforge-addressable via IRepository");
+    }
+
+    [HumansFact]
+    public void Repository_ownership_map_covers_all_repositories()
+    {
+        var missingOwnership = RepositoryInterfaceTypes()
+            .Where(t => t != typeof(IRepository))
+            .Where(t => !RepositoryOwners.ContainsKey(t))
+            .Select(Display)
+            .Order(StringComparer.Ordinal)
+            .ToList();
+
+        missingOwnership.Should().BeEmpty(
+            because: "cross-section repository injection checks must use exact repository ownership, not name prefixes");
     }
 
     [HumansFact]
@@ -139,19 +161,17 @@ public class ServiceBoundaryArchitectureTests
                      .Where(t => t.Namespace?.StartsWith("Humans.Application.Services.", StringComparison.Ordinal) == true)
                      .OrderBy(t => t.FullName, StringComparer.Ordinal))
         {
-            var section = serviceType.Namespace!.Split('.')[3];
-            var allowedPrefixes = RepositoryOwnershipPrefixes.GetValueOrDefault(section, []);
+            var section = ServiceSection(serviceType);
 
             foreach (var parameter in ConstructorParameters(serviceType)
                          .Where(p => typeof(IRepository).IsAssignableFrom(p.ParameterType))
                          .OrderBy(p => p.ParameterType.Name, StringComparer.Ordinal))
             {
-                var repositoryName = parameter.ParameterType.Name;
-                var owned = allowedPrefixes.Any(prefix =>
-                    repositoryName.StartsWith("I" + prefix, StringComparison.Ordinal));
-                if (owned) continue;
+                if (RepositoryOwners.TryGetValue(parameter.ParameterType, out var owner) &&
+                    string.Equals(owner, section, StringComparison.Ordinal))
+                    continue;
 
-                yield return $"{Display(serviceType)}:{repositoryName}";
+                yield return $"{Display(serviceType)}:{parameter.ParameterType.Name}";
             }
         }
     }
@@ -160,6 +180,16 @@ public class ServiceBoundaryArchitectureTests
         typeof(IApplicationService).Assembly.GetTypes()
             .Where(t => t.IsInterface)
             .Where(t => t.Namespace?.StartsWith("Humans.Application.Interfaces", StringComparison.Ordinal) == true);
+
+    private static IEnumerable<Type> RepositoryInterfaceTypes() =>
+        ApplicationInterfaceTypes()
+            .Where(t => typeof(IRepository).IsAssignableFrom(t));
+
+    private static string ServiceSection(Type serviceType)
+    {
+        var section = serviceType.Namespace!.Split('.')[3];
+        return string.Equals(section, "Profile", StringComparison.Ordinal) ? "Profiles" : section;
+    }
 
     private static IEnumerable<ParameterInfo> ConstructorParameters(Type type) =>
         type.GetConstructors(BindingFlags.Public | BindingFlags.Instance)
