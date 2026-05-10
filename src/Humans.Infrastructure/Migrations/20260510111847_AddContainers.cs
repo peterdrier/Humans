@@ -52,7 +52,7 @@ namespace Humans.Infrastructure.Migrations
                     ImageContentType = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: true),
                     ImageFileName = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
                     LocationGeoJson = table.Column<string>(type: "text", nullable: true),
-                    PlacementNotes = table.Column<string>(type: "text", nullable: true),
+                    PlacementNotes = table.Column<string>(type: "character varying(5000)", maxLength: 5000, nullable: true),
                     PlacementImageStoragePath = table.Column<string>(type: "character varying(512)", maxLength: 512, nullable: true),
                     PlacementImageContentType = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: true),
                     PlacementImageFileName = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),

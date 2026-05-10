@@ -1664,7 +1664,8 @@ namespace Humans.Infrastructure.Migrations
                         .HasColumnType("character varying(512)");
 
                     b.Property<string>("PlacementNotes")
-                        .HasColumnType("text");
+                        .HasMaxLength(5000)
+                        .HasColumnType("character varying(5000)");
 
                     b.Property<Instant>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");

@@ -1,10 +1,19 @@
 using Humans.Application.Interfaces.Containers;
+using Microsoft.Extensions.Hosting;
 
 namespace Humans.Infrastructure.Services;
 
 public sealed class ContainerImageStorage : IContainerImageStorage
 {
-    private static string Root => Path.Combine("wwwroot");
+    private readonly string _root;
+
+    public ContainerImageStorage(IHostEnvironment environment)
+    {
+        // Resolve wwwroot via ContentRootPath (Infrastructure does not
+        // reference Microsoft.AspNetCore.Hosting; same approach as
+        // FileSystemFileStorage).
+        _root = Path.Combine(environment.ContentRootPath, "wwwroot");
+    }
 
     public async Task<string> SaveImageAsync(
         Guid containerId,
@@ -30,7 +39,7 @@ public sealed class ContainerImageStorage : IContainerImageStorage
 
         var storedFileName = $"{prefix}-{Guid.NewGuid()}{ext}";
         var relativePath = Path.Combine("uploads", "containers", containerId.ToString(), storedFileName);
-        var fullPath = Path.Combine(Root, relativePath);
+        var fullPath = Path.Combine(_root, relativePath);
 
         Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
         await using var stream = new FileStream(fullPath, FileMode.Create);
@@ -41,7 +50,7 @@ public sealed class ContainerImageStorage : IContainerImageStorage
 
     public void DeleteImage(string storagePath)
     {
-        var fullPath = Path.Combine(Root, storagePath);
+        var fullPath = Path.Combine(_root, storagePath);
         if (File.Exists(fullPath))
         {
             File.Delete(fullPath);

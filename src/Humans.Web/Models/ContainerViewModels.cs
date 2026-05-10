@@ -40,6 +40,7 @@ public class ContainerFormModel
     [StringLength(2000)]
     public string? Description { get; set; }
 
+    [StringLength(5000)]
     public string? PlacementNotes { get; set; }
     public IFormFile? MainImage { get; set; }
     public IFormFile? PlacementImage { get; set; }

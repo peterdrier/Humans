@@ -13,7 +13,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Humans.Infrastructure.Migrations
 {
     [DbContext(typeof(HumansDbContext))]
-    [Migration("20260509222017_AddContainers")]
+    [Migration("20260510111847_AddContainers")]
     partial class AddContainers
     {
         /// <inheritdoc />
@@ -1667,7 +1667,8 @@ namespace Humans.Infrastructure.Migrations
                         .HasColumnType("character varying(512)");
 
                     b.Property<string>("PlacementNotes")
-                        .HasColumnType("text");
+                        .HasMaxLength(5000)
+                        .HasColumnType("character varying(5000)");
 
                     b.Property<Instant>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");

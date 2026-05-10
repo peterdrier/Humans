@@ -59,7 +59,7 @@ POST CityPlanning/BarrioMap/Admin/OpenContainerPlacement
 POST CityPlanning/BarrioMap/Admin/CloseContainerPlacement
 ```
 
-Both require `IsMapAdminAsync`. On success, redirect to `Containers` (the containers admin sub-page at `/CityPlanning/BarrioMap/Admin/Containers/{year}`) with a success message. (Route changed from spec — see containers-design.md "Decisions during implementation".)
+Both require `IsMapAdminAsync`. On success, redirect to `Containers` (the containers admin sub-page at `/CityPlanning/BarrioMap/Admin/Containers/{year}`) with a success message.
 
 **`ContainerController`** — changes to `Index` and all write actions as described above. `ICityPlanningService` is already injected.
 
