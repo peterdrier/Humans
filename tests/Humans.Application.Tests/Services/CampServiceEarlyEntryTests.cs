@@ -320,4 +320,28 @@ public class CampServiceEarlyEntryTests : IDisposable
             Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
+
+    [HumansFact]
+    public async Task SetEarlyEntryAsync_Grant_ReturnsMemberNotActive_WhenMemberIsPending()
+    {
+        await SeedSettingsAsync();
+        var (_, season) = await SeedCampWithSeasonAsync(initialEeSlotCount: 5);
+        var member = new CampMember
+        {
+            Id = Guid.NewGuid(),
+            CampSeasonId = season.Id,
+            UserId = Guid.NewGuid(),
+            Status = CampMemberStatus.Pending,
+            RequestedAt = _clock.GetCurrentInstant(),
+        };
+        _dbContext.CampMembers.Add(member);
+        await _dbContext.SaveChangesAsync();
+
+        var outcome = await _service.SetEarlyEntryAsync(member.Id, granted: true, Guid.NewGuid());
+
+        outcome.Should().Be(SetEarlyEntryOutcome.MemberNotActive);
+
+        var reloaded = await _dbContext.CampMembers.AsNoTracking().FirstAsync(m => m.Id == member.Id);
+        reloaded.HasEarlyEntry.Should().BeFalse();
+    }
 }
