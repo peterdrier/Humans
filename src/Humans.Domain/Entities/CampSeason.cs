@@ -50,6 +50,12 @@ public class CampSeason
     public string? ReviewNotes { get; set; }
     public Instant? ResolvedAt { get; set; }
 
+    /// <summary>
+    /// Number of Early Entry slots this season's camp may grant to its members.
+    /// CampAdmin-managed. 0 = no EE this season. See docs/sections/Camps.md.
+    /// </summary>
+    public int EeSlotCount { get; set; }
+
     public Instant CreatedAt { get; init; }
     public Instant UpdatedAt { get; set; }
 }
