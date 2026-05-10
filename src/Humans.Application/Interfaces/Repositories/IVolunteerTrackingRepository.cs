@@ -21,16 +21,25 @@ public interface IVolunteerTrackingRepository
 
     /// <summary>
     /// Upsert (UserId, EventSettingsId): mutate or insert the row's camp set-up
-    /// fields. The caller has already validated barrioSetupStartDate (or null
-    /// to clear).
+    /// fields and, in the same save, optionally trim day-off entries that the
+    /// new camp-setup span newly covers.
+    /// <para>
+    /// The caller has already validated <paramref name="barrioSetupStartDate"/>
+    /// (or null to clear). When <paramref name="setupOffsetThreshold"/> is set,
+    /// any <c>DayOffs</c> entries whose <c>DayOffset &gt;= threshold</c> are
+    /// removed; pass null to skip the trim.
+    /// </para>
+    /// <para>Returns the offsets that were trimmed, sorted ascending. Empty
+    /// list if no trim happened or no entries matched.</para>
     /// </summary>
-    Task<VolunteerBuildStatus> UpsertCampSetupAsync(
+    Task<IReadOnlyList<int>> UpsertCampSetupAsync(
         Guid userId,
         Guid eventSettingsId,
         LocalDate? barrioSetupStartDate,
         string? notes,
         Guid? setByUserId,
         Instant? setAt,
+        int? setupOffsetThreshold,
         CancellationToken ct = default);
 
     /// <summary>

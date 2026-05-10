@@ -20,7 +20,6 @@ namespace Humans.Infrastructure.Migrations
                     UserId = table.Column<Guid>(type: "uuid", nullable: false),
                     EventSettingsId = table.Column<Guid>(type: "uuid", nullable: false),
                     BarrioSetupStartDate = table.Column<LocalDate>(type: "date", nullable: true),
-                    BlockedDayOffsets = table.Column<string>(type: "jsonb", nullable: false),
                     Notes = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
                     SetByUserId = table.Column<Guid>(type: "uuid", nullable: true),
                     SetAt = table.Column<Instant>(type: "timestamp with time zone", nullable: true)

@@ -46,7 +46,7 @@ public interface IVolunteerTrackingService
 public sealed record SetCampSetupResult(
     bool Ok,
     string? ErrorMessageKey,
-    IReadOnlyList<int> AutoClearedDayOffs);
+    IReadOnlyList<int>? AutoClearedDayOffs);
 
 public sealed record SetDayOffResult(bool Ok, string? ErrorMessageKey);
 

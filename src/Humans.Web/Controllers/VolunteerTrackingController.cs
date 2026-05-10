@@ -134,7 +134,7 @@ public sealed class VolunteerTrackingController : HumansControllerBase
 
     private async Task EmitCampSetupAuditAsync(
         SetCampSetupForm form, Guid actorUserId,
-        IReadOnlyList<int> autoClearedDayOffs)
+        IReadOnlyList<int>? autoClearedDayOffs)
     {
         await _auditLogService.LogAsync(
             AuditAction.VolunteerCampSetupSet,
@@ -143,17 +143,17 @@ public sealed class VolunteerTrackingController : HumansControllerBase
             $"BarrioSetupStartDate set to {form.Date}; notes={form.Notes ?? "—"}",
             actorUserId);
 
-        // Fan-out one audit row per day-off entry that the new camp-setup
-        // span just shadowed (the service auto-cleared them).
-        foreach (var dayOffset in autoClearedDayOffs)
-        {
-            await _auditLogService.LogAsync(
+        if (autoClearedDayOffs is null || autoClearedDayOffs.Count == 0) return;
+
+        // IAuditLogRepository creates a fresh DbContext per call, so the
+        // fan-out can run concurrently without sharing change-tracker state.
+        await Task.WhenAll(autoClearedDayOffs.Select(dayOffset =>
+            _auditLogService.LogAsync(
                 AuditAction.VolunteerDayOffCleared,
                 nameof(VolunteerBuildStatus),
                 form.UserId,
                 $"DayOffset={dayOffset}; auto-cleared by camp-setup change",
-                actorUserId);
-        }
+                actorUserId)));
     }
 
     [HttpPost("ClearCampSetup")]

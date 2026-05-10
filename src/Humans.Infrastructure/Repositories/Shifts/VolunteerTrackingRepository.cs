@@ -36,67 +36,48 @@ public sealed class VolunteerTrackingRepository : IVolunteerTrackingRepository
             .Where(x => x.EventSettingsId == eventSettingsId)
             .ToListAsync(ct);
 
-    public async Task<VolunteerBuildStatus> UpsertCampSetupAsync(
+    public async Task<IReadOnlyList<int>> UpsertCampSetupAsync(
         Guid userId, Guid eventSettingsId, LocalDate? barrioSetupStartDate,
-        string? notes, Guid? setByUserId, Instant? setAt, CancellationToken ct = default)
+        string? notes, Guid? setByUserId, Instant? setAt,
+        int? setupOffsetThreshold, CancellationToken ct = default)
     {
-        var existing = await _db.VolunteerBuildStatuses
-            .FirstOrDefaultAsync(
-                x => x.UserId == userId && x.EventSettingsId == eventSettingsId,
-                ct);
+        var row = await GetOrCreateAsync(userId, eventSettingsId, ct);
 
-        if (existing is null)
+        row.BarrioSetupStartDate = barrioSetupStartDate;
+        row.Notes = notes;
+        row.SetByUserId = setByUserId;
+        row.SetAt = setAt;
+
+        IReadOnlyList<int> trimmed = Array.Empty<int>();
+        if (setupOffsetThreshold is { } threshold)
         {
-            var row = new VolunteerBuildStatus
+            // DayOffs is persisted sorted (see UpsertDayOffAsync), so the
+            // filter preserves canonical order — no resort needed.
+            var toTrim = row.DayOffs
+                .Where(d => d.DayOffset >= threshold)
+                .Select(d => d.DayOffset)
+                .ToArray();
+            if (toTrim.Length > 0)
             {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                EventSettingsId = eventSettingsId,
-                BarrioSetupStartDate = barrioSetupStartDate,
-                Notes = notes,
-                SetByUserId = setByUserId,
-                SetAt = setAt,
-            };
-            _db.VolunteerBuildStatuses.Add(row);
-            await _db.SaveChangesAsync(ct);
-            return row;
+                row.DayOffs.RemoveAll(d => d.DayOffset >= threshold);
+                trimmed = toTrim;
+            }
         }
 
-        existing.BarrioSetupStartDate = barrioSetupStartDate;
-        existing.Notes = notes;
-        existing.SetByUserId = setByUserId;
-        existing.SetAt = setAt;
         await _db.SaveChangesAsync(ct);
-        return existing;
+        return trimmed;
     }
 
     public async Task UpsertDayOffAsync(
         Guid userId, Guid eventSettingsId, DayOffEntry entry,
         CancellationToken ct = default)
     {
-        var existing = await _db.VolunteerBuildStatuses
-            .FirstOrDefaultAsync(
-                x => x.UserId == userId && x.EventSettingsId == eventSettingsId,
-                ct);
+        var row = await GetOrCreateAsync(userId, eventSettingsId, ct);
 
-        if (existing is null)
-        {
-            existing = new VolunteerBuildStatus
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                EventSettingsId = eventSettingsId,
-            };
-            existing.DayOffs.Add(entry);
-            _db.VolunteerBuildStatuses.Add(existing);
-            await _db.SaveChangesAsync(ct);
-            return;
-        }
-
-        existing.DayOffs.RemoveAll(d => d.DayOffset == entry.DayOffset);
-        existing.DayOffs.Add(entry);
+        row.DayOffs.RemoveAll(d => d.DayOffset == entry.DayOffset);
+        row.DayOffs.Add(entry);
         // arch:db-sort-ok normalization for canonical jsonb storage (sorted), not a display sort
-        existing.DayOffs.Sort((a, b) => a.DayOffset.CompareTo(b.DayOffset));
+        row.DayOffs.Sort((a, b) => a.DayOffset.CompareTo(b.DayOffset));
         await _db.SaveChangesAsync(ct);
     }
 
@@ -117,6 +98,30 @@ public sealed class VolunteerTrackingRepository : IVolunteerTrackingRepository
             await _db.SaveChangesAsync(ct);
         }
         return removed;
+    }
+
+    /// <summary>
+    /// Loads the row for (userId, eventSettingsId) or creates a tracked-but-
+    /// not-saved one with empty DayOffs. Either way the caller mutates the
+    /// returned row and SaveChangesAsync once.
+    /// </summary>
+    private async Task<VolunteerBuildStatus> GetOrCreateAsync(
+        Guid userId, Guid eventSettingsId, CancellationToken ct)
+    {
+        var existing = await _db.VolunteerBuildStatuses
+            .FirstOrDefaultAsync(
+                x => x.UserId == userId && x.EventSettingsId == eventSettingsId,
+                ct);
+        if (existing is not null) return existing;
+
+        var row = new VolunteerBuildStatus
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            EventSettingsId = eventSettingsId,
+        };
+        _db.VolunteerBuildStatuses.Add(row);
+        return row;
     }
 
     public async Task<IReadOnlyList<EligibleBuildSignup>> GetEligibleBuildSignupsAsync(

@@ -383,7 +383,7 @@ public class VolunteerTrackingControllerTests
         _service.SetCampSetupAsync(
                 target, Arg.Any<LocalDate>(), Arg.Any<string?>(),
                 current.Id, Arg.Any<CancellationToken>())
-            .Returns(new SetCampSetupResult(Ok: false, ErrorMessageKey: "VolTrack_Err_DateOutsideWindow", AutoClearedDayOffs: Array.Empty<int>()));
+            .Returns(new SetCampSetupResult(Ok: false, ErrorMessageKey: "VolTrack_Err_DateOutsideWindow", AutoClearedDayOffs: null));
         var ctrl = BuildSut(current);
         var form = new SetCampSetupForm { UserId = target, Date = "2026-06-14" };
 

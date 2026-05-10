@@ -46,7 +46,7 @@ public sealed class VolunteerTrackingService : IVolunteerTrackingService
 
         var zone = DateTimeZoneProviders.Tzdb[es.TimeZoneId];
         var today = _clock.GetCurrentInstant().InZone(zone).Date;
-        var todayOffset = Period.Between(es.GateOpeningDate, today, PeriodUnits.Days).Days;
+        var todayOffset = OffsetOf(es, today);
 
         var signups = await _trackingRepo.GetEligibleBuildSignupsAsync(es.Id, ct).ConfigureAwait(false);
         var participations = await _userService.GetAllParticipationsForYearAsync(es.Year, ct).ConfigureAwait(false);
@@ -86,7 +86,7 @@ public sealed class VolunteerTrackingService : IVolunteerTrackingService
             var lastEligibleSignupOffset = daySignups.Keys.Max();
             bsByUser.TryGetValue(userId, out var bs);
             int? setupOffset = bs?.BarrioSetupStartDate is { } d
-                ? Period.Between(es.GateOpeningDate, d, PeriodUnits.Days).Days
+                ? OffsetOf(es, d)
                 : null;
             var lastExpectedDay = Math.Min(setupOffset ?? int.MaxValue, 0);
             var dayOffSet = bs?.DayOffs.Select(x => x.DayOffset).ToHashSet() ?? new HashSet<int>();
@@ -125,8 +125,10 @@ public sealed class VolunteerTrackingService : IVolunteerTrackingService
                 cells.Add(new VolunteerCell(d2, s, rotaNames));
             }
 
+            // The repository persists DayOffs sorted by DayOffset (see
+            // VolunteerTrackingRepository.UpsertDayOffAsync), so no resort is
+            // needed here — the projection preserves order.
             var dayOffSummaries = (bs?.DayOffs ?? new List<DayOffEntry>())
-                .OrderBy(x => x.DayOffset)
                 .Select(x => new DayOffSummary(x.DayOffset, x.Reason))
                 .ToList();
 
@@ -173,7 +175,7 @@ public sealed class VolunteerTrackingService : IVolunteerTrackingService
             var firstAvailableDay = inBuild.Min();
             bsByUser.TryGetValue(userId, out var bs);
             int? setupOffset = bs?.BarrioSetupStartDate is { } d2
-                ? Period.Between(es.GateOpeningDate, d2, PeriodUnits.Days).Days
+                ? OffsetOf(es, d2)
                 : null;
 
             var cells = new List<VolunteerCell>(-es.BuildStartOffset);
@@ -223,13 +225,12 @@ public sealed class VolunteerTrackingService : IVolunteerTrackingService
         Guid targetUserId, LocalDate barrioSetupStartDate, string? notes,
         Guid coordinatorUserId, CancellationToken ct = default)
     {
-        var es = await _shiftManagement.GetActiveEventSettingsAsync(ct).ConfigureAwait(false)
-            ?? throw new InvalidOperationException("No active event");
-        var setupOffset = Period.Between(es.GateOpeningDate, barrioSetupStartDate, PeriodUnits.Days).Days;
+        var es = await RequireActiveEventAsync(ct).ConfigureAwait(false);
+        var setupOffset = OffsetOf(es, barrioSetupStartDate);
 
         if (setupOffset >= 0)
         {
-            return new SetCampSetupResult(false, "VolTrack_Err_SetupAtOrAfterGateOpen", Array.Empty<int>());
+            return new SetCampSetupResult(false, "VolTrack_Err_SetupAtOrAfterGateOpen", null);
         }
 
         var signups = await _trackingRepo.GetEligibleBuildSignupsAsync(es.Id, ct).ConfigureAwait(false);
@@ -240,42 +241,26 @@ public sealed class VolunteerTrackingService : IVolunteerTrackingService
             .Min();
         if (firstSignup.HasValue && setupOffset < firstSignup.Value)
         {
-            return new SetCampSetupResult(false, "VolTrack_Err_SetupBeforeFirstSignup", Array.Empty<int>());
+            return new SetCampSetupResult(false, "VolTrack_Err_SetupBeforeFirstSignup", null);
         }
 
-        // Snapshot existing day-offs that the new span would shadow so we can
-        // clean them up post-write. Read happens before the camp-setup write
-        // because UpsertCampSetupAsync may create the row.
-        var preWrite = await _trackingRepo.GetAsync(targetUserId, es.Id, ct).ConfigureAwait(false);
-        var toAutoClear = preWrite is null
-            ? Array.Empty<int>()
-            : preWrite.DayOffs
-                .Where(d => d.DayOffset >= setupOffset)
-                .Select(d => d.DayOffset)
-                .ToArray();
-
-        await _trackingRepo.UpsertCampSetupAsync(
+        var trimmed = await _trackingRepo.UpsertCampSetupAsync(
             targetUserId,
             es.Id,
             barrioSetupStartDate,
             notes,
             coordinatorUserId,
             _clock.GetCurrentInstant(),
+            setupOffsetThreshold: setupOffset,
             ct).ConfigureAwait(false);
 
-        foreach (var d in toAutoClear)
-        {
-            await _trackingRepo.RemoveDayOffAsync(targetUserId, es.Id, d, ct).ConfigureAwait(false);
-        }
-
-        return new SetCampSetupResult(true, null, toAutoClear);
+        return new SetCampSetupResult(true, null, trimmed);
     }
 
     public async Task ClearCampSetupAsync(
         Guid targetUserId, Guid coordinatorUserId, CancellationToken ct = default)
     {
-        var es = await _shiftManagement.GetActiveEventSettingsAsync(ct).ConfigureAwait(false)
-            ?? throw new InvalidOperationException("No active event");
+        var es = await RequireActiveEventAsync(ct).ConfigureAwait(false);
         await _trackingRepo.UpsertCampSetupAsync(
             targetUserId,
             es.Id,
@@ -283,6 +268,7 @@ public sealed class VolunteerTrackingService : IVolunteerTrackingService
             notes: null,
             setByUserId: null,
             setAt: null,
+            setupOffsetThreshold: null,
             ct).ConfigureAwait(false);
     }
 
@@ -290,8 +276,7 @@ public sealed class VolunteerTrackingService : IVolunteerTrackingService
         Guid targetUserId, int dayOffset, string? reason,
         Guid coordinatorUserId, CancellationToken ct = default)
     {
-        var es = await _shiftManagement.GetActiveEventSettingsAsync(ct).ConfigureAwait(false)
-            ?? throw new InvalidOperationException("No active event");
+        var es = await RequireActiveEventAsync(ct).ConfigureAwait(false);
 
         if (dayOffset < es.BuildStartOffset || dayOffset >= 0)
         {
@@ -324,12 +309,18 @@ public sealed class VolunteerTrackingService : IVolunteerTrackingService
     public async Task<ClearDayOffResult> ClearDayOffAsync(
         Guid targetUserId, int dayOffset, Guid coordinatorUserId, CancellationToken ct = default)
     {
-        var es = await _shiftManagement.GetActiveEventSettingsAsync(ct).ConfigureAwait(false)
-            ?? throw new InvalidOperationException("No active event");
+        var es = await RequireActiveEventAsync(ct).ConfigureAwait(false);
 
         var removed = await _trackingRepo
             .RemoveDayOffAsync(targetUserId, es.Id, dayOffset, ct)
             .ConfigureAwait(false);
         return new ClearDayOffResult(true, removed);
     }
+
+    private async Task<EventSettings> RequireActiveEventAsync(CancellationToken ct) =>
+        await _shiftManagement.GetActiveEventSettingsAsync(ct).ConfigureAwait(false)
+            ?? throw new InvalidOperationException("No active event");
+
+    private static int OffsetOf(EventSettings es, LocalDate date) =>
+        Period.Between(es.GateOpeningDate, date, PeriodUnits.Days).Days;
 }

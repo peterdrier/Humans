@@ -50,20 +50,21 @@ public class VolunteerTrackingRepositoryTests : IClassFixture<HumansWebApplicati
         var userId = Guid.NewGuid();
         var sut = new VolunteerTrackingRepository(db);
 
-        var result = await sut.UpsertCampSetupAsync(
+        var trimmed = await sut.UpsertCampSetupAsync(
             userId, es.Id,
             barrioSetupStartDate: new LocalDate(2026, 7, 1),
             notes: "left for barrio",
             setByUserId: Guid.NewGuid(),
-            setAt: SystemClock.Instance.GetCurrentInstant());
+            setAt: SystemClock.Instance.GetCurrentInstant(),
+            setupOffsetThreshold: null);
 
-        result.UserId.Should().Be(userId);
-        result.BarrioSetupStartDate.Should().Be(new LocalDate(2026, 7, 1));
-        result.Notes.Should().Be("left for barrio");
+        trimmed.Should().BeEmpty();
 
         var fetched = await sut.GetAsync(userId, es.Id);
         fetched.Should().NotBeNull();
-        fetched!.Id.Should().Be(result.Id);
+        fetched!.UserId.Should().Be(userId);
+        fetched.BarrioSetupStartDate.Should().Be(new LocalDate(2026, 7, 1));
+        fetched.Notes.Should().Be("left for barrio");
     }
 
     [HumansFact]
@@ -80,9 +81,9 @@ public class VolunteerTrackingRepositoryTests : IClassFixture<HumansWebApplicati
         var u3 = Guid.NewGuid();
 
         // Two rows on es1, one on es2.
-        await sut.UpsertCampSetupAsync(u1, es1.Id, new LocalDate(2026, 6, 30), null, null, null);
-        await sut.UpsertCampSetupAsync(u2, es1.Id, new LocalDate(2026, 7, 1), null, null, null);
-        await sut.UpsertCampSetupAsync(u3, es2.Id, new LocalDate(2026, 6, 25), null, null, null);
+        await sut.UpsertCampSetupAsync(u1, es1.Id, new LocalDate(2026, 6, 30), null, null, null, null);
+        await sut.UpsertCampSetupAsync(u2, es1.Id, new LocalDate(2026, 7, 1), null, null, null, null);
+        await sut.UpsertCampSetupAsync(u3, es2.Id, new LocalDate(2026, 6, 25), null, null, null, null);
 
         var rows = await sut.GetByEventAsync(es1.Id);
 

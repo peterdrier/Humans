@@ -736,9 +736,10 @@ public class VolunteerTrackingServiceTests
             => Task.FromResult<IReadOnlyList<VolunteerBuildStatus>>(
                 BuildStatuses.Where(b => b.EventSettingsId == eventSettingsId).ToList());
 
-        public Task<VolunteerBuildStatus> UpsertCampSetupAsync(
+        public Task<IReadOnlyList<int>> UpsertCampSetupAsync(
             Guid userId, Guid eventSettingsId, LocalDate? barrioSetupStartDate,
-            string? notes, Guid? setByUserId, Instant? setAt, CancellationToken ct = default)
+            string? notes, Guid? setByUserId, Instant? setAt,
+            int? setupOffsetThreshold, CancellationToken ct = default)
         {
             UpsertCalls.Add((userId, eventSettingsId, barrioSetupStartDate, notes, setByUserId, setAt));
             var existing = BuildStatuses.FirstOrDefault(b => b.UserId == userId && b.EventSettingsId == eventSettingsId);
@@ -756,7 +757,21 @@ public class VolunteerTrackingServiceTests
             existing.Notes = notes;
             existing.SetByUserId = setByUserId;
             existing.SetAt = setAt;
-            return Task.FromResult(existing);
+
+            IReadOnlyList<int> trimmed = Array.Empty<int>();
+            if (setupOffsetThreshold is { } threshold)
+            {
+                var toTrim = existing.DayOffs
+                    .Where(d => d.DayOffset >= threshold)
+                    .Select(d => d.DayOffset)
+                    .ToArray();
+                if (toTrim.Length > 0)
+                {
+                    existing.DayOffs.RemoveAll(d => d.DayOffset >= threshold);
+                    trimmed = toTrim;
+                }
+            }
+            return Task.FromResult(trimmed);
         }
 
         public Task UpsertDayOffAsync(

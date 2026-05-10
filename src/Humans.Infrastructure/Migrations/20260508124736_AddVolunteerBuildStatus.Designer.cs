@@ -4100,10 +4100,6 @@ namespace Humans.Infrastructure.Migrations
                     b.Property<LocalDate?>("BarrioSetupStartDate")
                         .HasColumnType("date");
 
-                    b.PrimitiveCollection<string>("BlockedDayOffsets")
-                        .IsRequired()
-                        .HasColumnType("jsonb");
-
                     b.Property<Guid>("EventSettingsId")
                         .HasColumnType("uuid");
 
