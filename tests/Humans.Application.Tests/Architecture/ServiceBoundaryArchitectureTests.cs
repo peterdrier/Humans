@@ -4,7 +4,6 @@ using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Tests.Architecture.Ratchet;
 using Humans.Web.Controllers;
-using Xunit;
 
 namespace Humans.Application.Tests.Architecture;
 
@@ -169,7 +168,11 @@ public class ServiceBoundaryArchitectureTests
         method.Name.StartsWith("Search", StringComparison.Ordinal) ||
         method.Name.StartsWith("Find", StringComparison.Ordinal) ||
         method.Name.StartsWith("Load", StringComparison.Ordinal) ||
-        method.Name.StartsWith("Resolve", StringComparison.Ordinal);
+        method.Name.StartsWith("Resolve", StringComparison.Ordinal) ||
+        method.Name.StartsWith("Fetch", StringComparison.Ordinal) ||
+        method.Name.StartsWith("Query", StringComparison.Ordinal) ||
+        method.Name.StartsWith("Retrieve", StringComparison.Ordinal) ||
+        method.Name.StartsWith("Lookup", StringComparison.Ordinal);
 
     private static IEnumerable<Type> ExposedTypes(Type type) =>
         ExposedTypes(type, []);
