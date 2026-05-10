@@ -51,10 +51,6 @@ public class CampSeasonConfiguration : IEntityTypeConfiguration<CampSeason>
 
         builder.Property(s => s.ReviewNotes).HasMaxLength(2000);
 
-        builder.Property(s => s.EeSlotCount)
-            .IsRequired()
-            .HasDefaultValue(0);
-
         builder.HasIndex(s => new { s.CampId, s.Year }).IsUnique();
         builder.HasIndex(s => s.Status);
 

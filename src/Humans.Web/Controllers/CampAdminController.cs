@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using System.Text;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.CitiPlanning;
@@ -272,14 +271,13 @@ public class CampAdminController : HumansControllerBase
     public async Task<IActionResult> SetCampSeasonEeSlotCount(
         Guid seasonId, int slotCount, CancellationToken cancellationToken)
     {
-        var actorIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-        if (actorIdClaim is null || !Guid.TryParse(actorIdClaim.Value, out var actorId))
-            return Forbid();
+        var user = await GetCurrentUserAsync();
+        if (user is null) return Unauthorized();
 
         try
         {
             await _campService.SetCampSeasonEeSlotCountAsync(
-                seasonId, slotCount, actorId, cancellationToken);
+                seasonId, slotCount, user.Id, cancellationToken);
             SetSuccess($"EE slot count set to {slotCount}.");
         }
         catch (ArgumentOutOfRangeException)
@@ -299,9 +297,8 @@ public class CampAdminController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SetEeStartDate(string? eeStartDate, CancellationToken cancellationToken)
     {
-        var actorIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-        if (actorIdClaim is null || !Guid.TryParse(actorIdClaim.Value, out var actorId))
-            return Forbid();
+        var user = await GetCurrentUserAsync();
+        if (user is null) return Unauthorized();
 
         var (ok, parsed, parseError) = TryParseEeStartDate(eeStartDate);
         if (!ok)
@@ -312,7 +309,7 @@ public class CampAdminController : HumansControllerBase
 
         try
         {
-            await _campService.SetEeStartDateAsync(parsed, actorId, cancellationToken);
+            await _campService.SetEeStartDateAsync(parsed, user.Id, cancellationToken);
             SetSuccess(EeStartDateSuccessMessage(parsed));
         }
         catch (Exception ex)

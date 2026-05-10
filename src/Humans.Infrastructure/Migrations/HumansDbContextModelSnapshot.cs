@@ -989,9 +989,7 @@ namespace Humans.Infrastructure.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<bool>("HasEarlyEntry")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false);
+                        .HasColumnType("boolean");
 
                     b.Property<Instant?>("RemovedAt")
                         .HasColumnType("timestamp with time zone");
@@ -1208,9 +1206,7 @@ namespace Humans.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<int>("EeSlotCount")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(0);
+                        .HasColumnType("integer");
 
                     b.Property<string>("ElectricalGrid")
                         .HasMaxLength(50)
@@ -4698,7 +4694,7 @@ namespace Humans.Infrastructure.Migrations
             modelBuilder.Entity("Humans.Domain.Entities.CampMember", b =>
                 {
                     b.HasOne("Humans.Domain.Entities.CampSeason", "CampSeason")
-                        .WithMany()
+                        .WithMany("Members")
                         .HasForeignKey("CampSeasonId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -5570,6 +5566,11 @@ namespace Humans.Infrastructure.Migrations
             modelBuilder.Entity("Humans.Domain.Entities.CampRoleDefinition", b =>
                 {
                     b.Navigation("Assignments");
+                });
+
+            modelBuilder.Entity("Humans.Domain.Entities.CampSeason", b =>
+                {
+                    b.Navigation("Members");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.Campaign", b =>

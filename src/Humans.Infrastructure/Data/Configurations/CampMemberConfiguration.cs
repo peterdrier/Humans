@@ -13,10 +13,6 @@ public class CampMemberConfiguration : IEntityTypeConfiguration<CampMember>
         builder.Property(m => m.Status).HasConversion<string>().HasMaxLength(50).IsRequired();
         builder.Property(m => m.RequestedAt).IsRequired();
 
-        builder.Property(m => m.HasEarlyEntry)
-            .IsRequired()
-            .HasDefaultValue(false);
-
         builder.HasOne(m => m.CampSeason)
             .WithMany(s => s.Members)
             .HasForeignKey(m => m.CampSeasonId)
