@@ -1,7 +1,7 @@
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
-using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Authorization;
@@ -29,20 +29,20 @@ namespace Humans.Web.Controllers;
 public sealed class VolunteerTrackingController : HumansControllerBase
 {
     private readonly IVolunteerTrackingService _service;
-    private readonly IUserService _userService;
+    private readonly IProfileService _profileService;
     private readonly IAuditLogService _auditLogService;
     private readonly IStringLocalizer<SharedResource> _localizer;
 
     public VolunteerTrackingController(
         IVolunteerTrackingService service,
-        IUserService userService,
+        IProfileService profileService,
         IAuditLogService auditLogService,
         UserManager<User> userManager,
         IStringLocalizer<SharedResource> localizer)
         : base(userManager)
     {
         _service = service;
-        _userService = userService;
+        _profileService = profileService;
         _auditLogService = auditLogService;
         _localizer = localizer;
     }
@@ -60,11 +60,21 @@ public sealed class VolunteerTrackingController : HumansControllerBase
             return View(VolunteerTrackingPageViewModel.Empty);
         }
 
+        // Resolve BurnerName-aware display names for the sort key. Per
+        // memory/architecture/burnername-is-the-display-name.md, never read
+        // user.DisplayName for rendering when a Profile exists. The cell-
+        // rendering path uses <vc:human> which fetches its own FullProfile;
+        // here we only need a stable string per user-id for the row sort.
         var displayUserIds = data.MainCohort.Select(r => r.UserId)
             .Concat(data.UnbookedCohort.Select(r => r.UserId))
             .Distinct()
             .ToArray();
-        var users = await _userService.GetByIdsAsync(displayUserIds, ct);
+        var nameByUserId = new Dictionary<Guid, string>(displayUserIds.Length);
+        foreach (var uid in displayUserIds)
+        {
+            var fp = await _profileService.GetFullProfileAsync(uid, ct);
+            nameByUserId[uid] = fp?.DisplayName ?? "";
+        }
 
         // Display sort in the controller (presentation concern).
         var mainSorted = data.MainCohort
@@ -72,7 +82,7 @@ public sealed class VolunteerTrackingController : HumansControllerBase
             .Where(r => !hideCampSetup || r.BarrioSetupStartDate is null)
             .OrderByDescending(r => r.GapCount)
             .ThenBy(r => r.LastEligibleSignupOffset)
-            .ThenBy(r => DisplayName(users, r.UserId), StringComparer.OrdinalIgnoreCase)
+            .ThenBy(r => nameByUserId.GetValueOrDefault(r.UserId, ""), StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         var unbookedSorted = hideUnbookedSection
@@ -80,7 +90,7 @@ public sealed class VolunteerTrackingController : HumansControllerBase
             : data.UnbookedCohort
                 .OrderByDescending(r => r.UnbookedCount)
                 .ThenBy(r => r.FirstAvailableDay)
-                .ThenBy(r => DisplayName(users, r.UserId), StringComparer.OrdinalIgnoreCase)
+                .ThenBy(r => nameByUserId.GetValueOrDefault(r.UserId, ""), StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
         var model = new VolunteerTrackingPageViewModel(
@@ -89,7 +99,6 @@ public sealed class VolunteerTrackingController : HumansControllerBase
             data.Today,
             mainSorted,
             unbookedSorted,
-            users,
             hideNoGaps,
             hideCampSetup,
             hideUnbookedSection);
@@ -243,7 +252,4 @@ public sealed class VolunteerTrackingController : HumansControllerBase
 
         return RedirectToAction(nameof(Index));
     }
-
-    private static string DisplayName(IReadOnlyDictionary<Guid, User> users, Guid id)
-        => users.TryGetValue(id, out var u) ? (u.DisplayName ?? "") : "";
 }

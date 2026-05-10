@@ -1,9 +1,11 @@
 @model Humans.Web.Models.UnbookedHeatmapPartialModel
 @using Humans.Application.DTOs
+@using Humans.Application.Interfaces.Profiles
 @using Humans.Web.Authorization
 @using Microsoft.AspNetCore.Authorization
 @using NodaTime
 @inject IAuthorizationService AuthService
+@inject IProfileService ProfileService
 
 @{
     var canWrite = (await AuthService.AuthorizeAsync(User, PolicyNames.VolunteerTrackingWrite)).Succeeded;
@@ -67,31 +69,31 @@
             <tbody>
                 @foreach (var row in Model.Rows)
                 {
-                    Model.Users.TryGetValue(row.UserId, out var user);
-                    var displayName = user?.DisplayName ?? Localizer["VolTrack_UnknownUser"].Value;
+                    // BurnerName-resolved name for tooltips/aria — see _VolunteerHeatmap.cshtml.
+                    var fullProfile = await ProfileService.GetFullProfileAsync(row.UserId);
+                    var displayName = fullProfile?.DisplayName ?? Localizer["VolTrack_UnknownUser"].Value;
                     var availableDays = row.Cells.Count(c => IsAvailable(c.State));
 
                     <tr data-vt-search-name="@displayName.ToLowerInvariant()">
                         <td class="vt-sticky-cell">
-                            <human-link user-id="@row.UserId" display-name="@displayName" mode="AvatarName" size="32" avatar-css-class="flex-shrink-0">
-                                <div class="small">
-                                    <span class="badge bg-secondary me-1" title="@Localizer["VolTrack_AvailableDaysTooltip"]">
-                                        <i class="fa-solid fa-calendar-check me-1"></i>@string.Format(Localizer["VolTrack_AvailableDaysBadge"].Value, availableDays)
+                            <vc:human user-id="@row.UserId" layout="AvatarName" size="32" />
+                            <div class="small">
+                                <span class="badge bg-secondary me-1" title="@Localizer["VolTrack_AvailableDaysTooltip"]">
+                                    <i class="fa-solid fa-calendar-check me-1"></i>@string.Format(Localizer["VolTrack_AvailableDaysBadge"].Value, availableDays)
+                                </span>
+                                @if (row.UnbookedCount > 0)
+                                {
+                                    <span class="badge bg-warning text-dark" title="@Localizer["VolTrack_UnbookedTooltip"]">
+                                        @string.Format(Localizer["VolTrack_UnbookedBadge"].Value, row.UnbookedCount)
                                     </span>
-                                    @if (row.UnbookedCount > 0)
-                                    {
-                                        <span class="badge bg-warning text-dark" title="@Localizer["VolTrack_UnbookedTooltip"]">
-                                            @string.Format(Localizer["VolTrack_UnbookedBadge"].Value, row.UnbookedCount)
-                                        </span>
-                                    }
-                                    @if (row.BarrioSetupStartDate.HasValue)
-                                    {
-                                        <span class="badge bg-primary ms-1">
-                                            <i class="fa-solid fa-campground me-1"></i>@row.BarrioSetupStartDate.Value.ToDisplayDate()
-                                        </span>
-                                    }
-                                </div>
-                            </human-link>
+                                }
+                                @if (row.BarrioSetupStartDate.HasValue)
+                                {
+                                    <span class="badge bg-primary ms-1">
+                                        <i class="fa-solid fa-campground me-1"></i>@row.BarrioSetupStartDate.Value.ToDisplayDate()
+                                    </span>
+                                }
+                            </div>
                         </td>
                         @foreach (var cell in row.Cells)
                         {

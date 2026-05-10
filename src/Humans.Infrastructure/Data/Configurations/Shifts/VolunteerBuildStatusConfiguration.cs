@@ -3,12 +3,22 @@ using Humans.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using NodaTime;
+using NodaTime.Serialization.SystemTextJson;
 
 namespace Humans.Infrastructure.Data.Configurations.Shifts;
 
 internal sealed class VolunteerBuildStatusConfiguration
     : IEntityTypeConfiguration<VolunteerBuildStatus>
 {
+    // DayOffEntry.MarkedAt is a NodaTime.Instant, which the default
+    // System.Text.Json converters do not understand — without these
+    // converters every read after a write would deserialize MarkedAt
+    // as Instant.MinValue. Configured once and reused for both
+    // directions of the HasConversion below.
+    private static readonly JsonSerializerOptions JsonOptions =
+        new JsonSerializerOptions().ConfigureForNodaTime(DateTimeZoneProviders.Tzdb);
+
     public void Configure(EntityTypeBuilder<VolunteerBuildStatus> builder)
     {
         builder.ToTable("volunteer_build_statuses");
@@ -41,10 +51,10 @@ internal sealed class VolunteerBuildStatusConfiguration
             .HasColumnType("jsonb")
             .HasDefaultValueSql("'[]'::jsonb")
             .HasConversion(
-                v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
+                v => JsonSerializer.Serialize(v, JsonOptions),
                 v => string.IsNullOrEmpty(v)
                     ? new List<DayOffEntry>()
-                    : (JsonSerializer.Deserialize<List<DayOffEntry>>(v, (JsonSerializerOptions?)null) ?? new List<DayOffEntry>()))
+                    : (JsonSerializer.Deserialize<List<DayOffEntry>>(v, JsonOptions) ?? new List<DayOffEntry>()))
             .Metadata.SetValueComparer(new ValueComparer<List<DayOffEntry>>(
                 (a, b) => a != null && b != null && a.SequenceEqual(b),
                 c => c.Aggregate(0, (a, v) => HashCode.Combine(a, v.GetHashCode())),

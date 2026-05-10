@@ -121,7 +121,7 @@
     else
     {
         @await Html.PartialAsync("_VolunteerHeatmap",
-            new HeatmapPartialModel(Model.MainCohort, Model.Users, Model.BuildStartOffset, Model.GateOpeningDate))
+            new HeatmapPartialModel(Model.MainCohort, Model.BuildStartOffset, Model.GateOpeningDate))
 
         @if (!Model.HideUnbookedSection)
         {
@@ -130,7 +130,7 @@
             <p class="text-muted small">@Localizer["VolTrack_Unbooked_Subtitle"]</p>
 
             @await Html.PartialAsync("_VolunteerUnbookedHeatmap",
-                new UnbookedHeatmapPartialModel(Model.UnbookedCohort, Model.Users, Model.BuildStartOffset, Model.GateOpeningDate))
+                new UnbookedHeatmapPartialModel(Model.UnbookedCohort, Model.BuildStartOffset, Model.GateOpeningDate))
         }
     }
 

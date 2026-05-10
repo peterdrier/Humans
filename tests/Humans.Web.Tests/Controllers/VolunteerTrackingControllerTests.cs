@@ -3,8 +3,8 @@ using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
-using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Testing;
@@ -46,7 +46,7 @@ public class VolunteerTrackingControllerTests
 {
     private readonly UserManager<User> _userManager;
     private readonly IVolunteerTrackingService _service = Substitute.For<IVolunteerTrackingService>();
-    private readonly IUserService _userService = Substitute.For<IUserService>();
+    private readonly IProfileService _profileService = Substitute.For<IProfileService>();
     private readonly IAuditLogService _auditLog = Substitute.For<IAuditLogService>();
     private readonly IStringLocalizer<Humans.Web.SharedResource> _localizer =
         Substitute.For<IStringLocalizer<Humans.Web.SharedResource>>();
@@ -68,7 +68,7 @@ public class VolunteerTrackingControllerTests
         }
 
         var ctrl = new VolunteerTrackingController(
-            _service, _userService, _auditLog, _userManager, _localizer);
+            _service, _profileService, _auditLog, _userManager, _localizer);
 
         var http = new DefaultHttpContext();
         if (currentUser is not null)
@@ -178,23 +178,23 @@ public class VolunteerTrackingControllerTests
     [HumansFact]
     public async Task Index_MainCohort_SortedByGapsThenLastSignupThenName()
     {
-        var alice = new User { Id = Guid.NewGuid(), DisplayName = "Alice" };
-        var bob = new User { Id = Guid.NewGuid(), DisplayName = "Bob" };
-        var carol = new User { Id = Guid.NewGuid(), DisplayName = "Carol" };
+        var aliceId = Guid.NewGuid();
+        var bobId = Guid.NewGuid();
+        var carolId = Guid.NewGuid();
 
         // Alice: 2 gaps. Bob: 3 gaps (should sort first). Carol: 2 gaps but
         // earlier last-signup → ties beat Alice.
         var rows = new List<VolunteerHeatmapRow>
         {
-            new(alice.Id, FirstSignupDay: -10, LastEligibleSignupOffset: -2,
+            new(aliceId, FirstSignupDay: -10, LastEligibleSignupOffset: -2,
                 BarrioSetupStartDate: null, GapCount: 2,
                 Cells: Array.Empty<VolunteerCell>(),
                 DayOffs: Array.Empty<DayOffSummary>()),
-            new(bob.Id, FirstSignupDay: -10, LastEligibleSignupOffset: -1,
+            new(bobId, FirstSignupDay: -10, LastEligibleSignupOffset: -1,
                 BarrioSetupStartDate: null, GapCount: 3,
                 Cells: Array.Empty<VolunteerCell>(),
                 DayOffs: Array.Empty<DayOffSummary>()),
-            new(carol.Id, FirstSignupDay: -10, LastEligibleSignupOffset: -5,
+            new(carolId, FirstSignupDay: -10, LastEligibleSignupOffset: -5,
                 BarrioSetupStartDate: null, GapCount: 2,
                 Cells: Array.Empty<VolunteerCell>(),
                 DayOffs: Array.Empty<DayOffSummary>()),
@@ -202,11 +202,12 @@ public class VolunteerTrackingControllerTests
         _service.GetTrackingDataAsync(Arg.Any<CancellationToken>())
             .Returns(new VolunteerTrackingViewModel(true, -10, new LocalDate(2026, 6, 24), new LocalDate(2026, 6, 15), rows,
                 Array.Empty<VolunteerCohortRow>()));
-        _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, User>
-            {
-                [alice.Id] = alice, [bob.Id] = bob, [carol.Id] = carol,
-            });
+        _profileService.GetFullProfileAsync(aliceId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<Humans.Application.FullProfile?>(StubFullProfile("Alice")));
+        _profileService.GetFullProfileAsync(bobId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<Humans.Application.FullProfile?>(StubFullProfile("Bob")));
+        _profileService.GetFullProfileAsync(carolId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<Humans.Application.FullProfile?>(StubFullProfile("Carol")));
 
         var ctrl = BuildSut(new User { Id = Guid.NewGuid() });
 
@@ -214,7 +215,7 @@ public class VolunteerTrackingControllerTests
 
         var view = Assert.IsType<ViewResult>(result);
         var model = Assert.IsType<VolunteerTrackingPageViewModel>(view.Model);
-        model.MainCohort.Select(r => r.UserId).Should().Equal(bob.Id, carol.Id, alice.Id);
+        model.MainCohort.Select(r => r.UserId).Should().Equal(bobId, carolId, aliceId);
     }
 
     [HumansFact]
@@ -229,9 +230,6 @@ public class VolunteerTrackingControllerTests
         _service.GetTrackingDataAsync(Arg.Any<CancellationToken>())
             .Returns(new VolunteerTrackingViewModel(true, -10, new LocalDate(2026, 6, 24), new LocalDate(2026, 6, 15), rows,
                 Array.Empty<VolunteerCohortRow>()));
-        _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, User>());
-
         var ctrl = BuildSut(new User { Id = Guid.NewGuid() });
 
         var result = await ctrl.Index(hideNoGaps: true, false, false, CancellationToken.None);
@@ -255,9 +253,6 @@ public class VolunteerTrackingControllerTests
         _service.GetTrackingDataAsync(Arg.Any<CancellationToken>())
             .Returns(new VolunteerTrackingViewModel(true, -10, new LocalDate(2026, 6, 24), new LocalDate(2026, 6, 15), rows,
                 Array.Empty<VolunteerCohortRow>()));
-        _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, User>());
-
         var ctrl = BuildSut(new User { Id = Guid.NewGuid() });
 
         var result = await ctrl.Index(false, hideCampSetup: true, false, CancellationToken.None);
@@ -280,9 +275,6 @@ public class VolunteerTrackingControllerTests
         _service.GetTrackingDataAsync(Arg.Any<CancellationToken>())
             .Returns(new VolunteerTrackingViewModel(true, -10, new LocalDate(2026, 6, 24), new LocalDate(2026, 6, 15),
                 Array.Empty<VolunteerHeatmapRow>(), unbooked));
-        _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, User>());
-
         var ctrl = BuildSut(new User { Id = Guid.NewGuid() });
 
         var result = await ctrl.Index(false, false, hideUnbookedSection: true, CancellationToken.None);
@@ -513,7 +505,7 @@ public class VolunteerTrackingControllerTests
         var current = new User { Id = Guid.NewGuid() };
         var target = Guid.NewGuid();
         _service.ClearDayOffAsync(target, -3, current.Id, Arg.Any<CancellationToken>())
-            .Returns(new ClearDayOffResult(Ok: true, Removed: true));
+            .Returns(new ClearDayOffResult(Removed: true));
         var ctrl = BuildSut(current);
         var form = new ClearDayOffForm { UserId = target, DayOffset = -3 };
 
@@ -537,7 +529,7 @@ public class VolunteerTrackingControllerTests
         var current = new User { Id = Guid.NewGuid() };
         var target = Guid.NewGuid();
         _service.ClearDayOffAsync(target, -3, current.Id, Arg.Any<CancellationToken>())
-            .Returns(new ClearDayOffResult(Ok: true, Removed: false));
+            .Returns(new ClearDayOffResult(Removed: false));
         var ctrl = BuildSut(current);
         var form = new ClearDayOffForm { UserId = target, DayOffset = -3 };
 
@@ -572,4 +564,14 @@ public class VolunteerTrackingControllerTests
             Arg.Any<string>(), current.Id, Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
+    private static Humans.Application.FullProfile StubFullProfile(string displayName) =>
+        new(
+            UserId: Guid.NewGuid(), DisplayName: displayName, ProfilePictureUrl: null,
+            HasCustomPicture: false, ProfileId: Guid.NewGuid(), UpdatedAtTicks: 0,
+            BurnerName: null, Bio: null, Pronouns: null, ContributionInterests: null,
+            City: null, CountryCode: null, Latitude: null, Longitude: null,
+            BirthdayDay: null, BirthdayMonth: null,
+            IsApproved: true, IsSuspended: false,
+            CVEntries: Array.Empty<Humans.Application.CVEntry>(),
+            PrimaryEmail: null);
 }
