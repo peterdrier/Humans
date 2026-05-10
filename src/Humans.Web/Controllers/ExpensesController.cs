@@ -888,6 +888,13 @@ public sealed class ExpensesController : HumansControllerBase
             return RedirectToAction(nameof(Review));
         }
 
+        // Build the XML BEFORE marking reports as SepaSent.
+        // If XML generation throws, reports stay in Approved and the treasurer can retry.
+        // If MarkSepaSentAsync fails after XML succeeds, the response is not sent
+        // and the treasurer can retry — no orphaned-XML problem.
+        var now = _clock.GetCurrentInstant();
+        var xml = _sepaBuilder.BuildPain001(_sepaConfig.Value, now, eligible);
+
         var flippedIds = await _service.MarkSepaSentAsync(
             eligible.Select(r => r.Id).ToList(), actorUserId, ct);
         if (flippedIds.Count == 0)
@@ -896,9 +903,6 @@ public sealed class ExpensesController : HumansControllerBase
             return RedirectToAction(nameof(Review));
         }
 
-        var sepaSentReports = await ReloadReportsAsync(flippedIds, ct);
-        var now = _clock.GetCurrentInstant();
-        var xml = _sepaBuilder.BuildPain001(_sepaConfig.Value, now, sepaSentReports);
         var fileName = $"sepa-{now.InUtc().LocalDateTime:yyyy-MM-dd-HHmm}.xml";
 
         _logger.LogInformation(
@@ -920,18 +924,6 @@ public sealed class ExpensesController : HumansControllerBase
             var authResult = await _authService.AuthorizeAsync(User, report,
                 new ExpenseReportOperationRequirement(ExpenseReportOperation.IncludeInSepaPayout));
             if (authResult.Succeeded) result.Add(report);
-        }
-        return result;
-    }
-
-    private async Task<List<ExpenseReportDto>> ReloadReportsAsync(
-        IReadOnlyList<Guid> ids, CancellationToken ct)
-    {
-        var result = new List<ExpenseReportDto>(ids.Count);
-        foreach (var id in ids)
-        {
-            var r = await _service.GetAsync(id, ct);
-            if (r is not null) result.Add(r);
         }
         return result;
     }

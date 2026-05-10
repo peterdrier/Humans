@@ -223,7 +223,20 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
         Guid lineId, Guid attachmentId,
         CancellationToken ct = default)
     {
-        var report = await RequireEditableReportAsync(reportId, submitterUserId, ct);
+        // Load with lines to (a) enforce editable status and (b) verify line ownership.
+        var report = await _repo.GetByIdWithLinesAsync(reportId, ct)
+            ?? throw new InvalidOperationException("Report not found.");
+        if (report.SubmitterUserId != submitterUserId)
+            throw new UnauthorizedAccessException("Only the submitter can edit lines.");
+        if (report.Status is not (ExpenseReportStatus.Draft
+                                  or ExpenseReportStatus.Submitted
+                                  or ExpenseReportStatus.CoordinatorEndorsed))
+            throw new InvalidOperationException(
+                $"Lines cannot be edited when the report is in status {report.Status}.");
+
+        // Verify the line belongs to this report to prevent cross-report attachment abuse.
+        if (!report.Lines.Any(l => l.Id == lineId))
+            throw new UnauthorizedAccessException("Line does not belong to the specified report.");
 
         await _repo.SetLineAttachmentAsync(lineId, attachmentId, ct);
     }
