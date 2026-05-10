@@ -1850,6 +1850,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             $"EE slot count changed from {oldValue} to {newValue}.",
             actorUserId,
             relatedEntityId: campId, relatedEntityType: nameof(Camp));
+        await InvalidateCampYearCachesAsync(campId, cancellationToken);
     }
 
     public async Task<SetEarlyEntryOutcome> SetEarlyEntryAsync(
