@@ -87,6 +87,37 @@ Sections must not reach across each other's persistence:
 
 Prefer typed foreign-key queries and narrow projections over navigation-property graph loading. A slower but explicit service call boundary is better than a hidden cross-section join.
 
+## Interface Consolidation Rules
+
+Large interfaces should not grow one convenience method per caller. Prefer smaller, composable contracts.
+
+Bad pattern:
+
+- `GetActiveProfilesAsync()`
+- `GetSuspendedProfilesAsync()`
+- `GetProfilesForDashboardAsync()`
+- `GetRecentOrdersAsync()`
+- `GetTopTicketsAsync()`
+
+Better pattern, when the result set is safe to materialize and the shaping is screen-specific:
+
+- `GetProfilesAsync()` plus caller-side `.Where(p => p.IsActive)`
+- `GetProfilesAsync()` plus caller-side `.Where(p => p.IsSuspended)`
+- `GetProfilesAsync()` plus controller/view `.OrderBy(...).Take(20)`
+
+Start interface-consolidation passes with the largest interfaces and work down by method count. This gives the best payoff and catches the contracts most likely to accumulate AI-generated helper methods.
+
+Fixing strategy:
+
+- Rank `src/Humans.Application/Interfaces/**/*.cs` interfaces by public method count.
+- Inspect the largest interfaces first.
+- Find method families that differ only by status, filter, sort, window, dashboard, or screen.
+- Collapse them into one broader section-owned method when behavior remains clear and result size is safe.
+- Move screen-specific `.Where(...)`, `.OrderBy(...)`, `.Take(...)`, grouping, and dashboard shaping to controllers/views.
+- Update callers and tests in the same commit.
+
+Do not collapse methods that represent real domain concepts, authorization boundaries, operational queue semantics, expensive server-side queries that cannot safely materialize, or intentionally bounded search/tool APIs.
+
 ## Safety Checks
 
 - Verify every change preserves behavior except for the intended simplification.
