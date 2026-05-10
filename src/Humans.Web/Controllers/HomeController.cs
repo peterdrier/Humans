@@ -4,12 +4,12 @@ using Microsoft.AspNetCore.Mvc;
 using Humans.Application.Configuration;
 using Humans.Application.Helpers;
 using Humans.Domain.Entities;
-using Humans.Domain.Enums;
 using Humans.Infrastructure.Services;
 using Humans.Web.Models;
 using Humans.Application.Interfaces.Dashboard;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
 
 namespace Humans.Web.Controllers;
@@ -23,6 +23,7 @@ public class HomeController : HumansControllerBase
     private readonly IConfiguration _configuration;
     private readonly ConfigurationRegistry _configRegistry;
     private readonly ILogger<HomeController> _logger;
+    private readonly ITicketTransferService _ticketTransferService;
 
     public HomeController(
         UserManager<User> userManager,
@@ -32,7 +33,8 @@ public class HomeController : HumansControllerBase
         IOnboardingWidgetState widgetState,
         IConfiguration configuration,
         ConfigurationRegistry configRegistry,
-        ILogger<HomeController> logger)
+        ILogger<HomeController> logger,
+        ITicketTransferService ticketTransferService)
         : base(userManager)
     {
         _dashboardService = dashboardService;
@@ -42,6 +44,7 @@ public class HomeController : HumansControllerBase
         _configuration = configuration;
         _configRegistry = configRegistry;
         _logger = logger;
+        _ticketTransferService = ticketTransferService;
     }
 
     public async Task<IActionResult> Index(CancellationToken cancellationToken)
@@ -155,6 +158,20 @@ public class HomeController : HumansControllerBase
                 .ToList(),
             PendingCount = data.PendingSignupCount,
         };
+
+        var attendeeRows = await _ticketTransferService.GetMyAttendeesAsync(user.Id, cancellationToken);
+
+        viewModel.MyAttendees = attendeeRows
+            .Select(a => new MyAttendeeRowVm(
+                AttendeeId: a.AttendeeId,
+                AttendeeName: a.AttendeeName,
+                TicketTypeName: a.TicketTypeName,
+                CanSendTransfer: a.CanSendTransfer,
+                HasPendingOutgoingTransfer: a.HasPendingOutgoingTransfer,
+                PendingTransferRequestId: a.PendingTransferRequestId))
+            .ToList();
+
+        viewModel.PendingTransferOutCount = attendeeRows.Count(a => a.HasPendingOutgoingTransfer);
 
         return View("Dashboard", viewModel);
     }

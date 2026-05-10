@@ -9,7 +9,8 @@ public sealed record AgentUserSnapshot(
     string Tier,
     bool IsApproved,
     IReadOnlyList<(string RoleName, string ExpiresIsoDate)> RoleAssignments,
-    IReadOnlyList<string> Teams,
+    IReadOnlyList<TeamMembership> Teams,
     IReadOnlyList<string> PendingConsentDocs,
     IReadOnlyList<Guid> OpenTicketIds,
-    IReadOnlyList<Guid> OpenFeedbackIds);
+    IReadOnlyList<Guid> OpenFeedbackIds,
+    IReadOnlyList<UpcomingShiftEntry> UpcomingShifts);

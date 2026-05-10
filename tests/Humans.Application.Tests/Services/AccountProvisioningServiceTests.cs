@@ -162,7 +162,8 @@ public class AccountProvisioningServiceTests
         public Task<bool> TrySetGoogleEmailAsync(Guid userId, string email, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<bool> SetDeletionPendingAsync(
-            Guid userId, Instant requestedAt, Instant scheduledFor, CancellationToken ct = default) =>
+            Guid userId, Instant requestedAt, Instant scheduledFor, Instant? eligibleAfter,
+            CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<bool> ClearDeletionAsync(Guid userId, CancellationToken ct = default) =>
             throw new NotSupportedException();

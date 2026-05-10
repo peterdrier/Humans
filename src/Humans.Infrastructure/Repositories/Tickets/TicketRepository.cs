@@ -165,6 +165,15 @@ public sealed class TicketRepository : ITicketRepository
 
     // ── TicketAttendee reads (detached) ──────────────────────────────────────
 
+    public async Task<TicketAttendee?> GetAttendeeByIdAsync(Guid attendeeId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.TicketAttendees
+            .AsNoTracking()
+            .Include(a => a.TicketOrder)
+            .FirstOrDefaultAsync(a => a.Id == attendeeId, ct);
+    }
+
     public async Task<IReadOnlyList<MatchedAttendeeRow>> GetMatchedAttendeesForEventAsync(
         string vendorEventId,
         CancellationToken ct = default)
@@ -252,6 +261,18 @@ public sealed class TicketRepository : ITicketRepository
             }
         }
 
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task UpsertAttendeeAsync(TicketAttendee attendee, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var existing = await ctx.TicketAttendees
+            .FirstOrDefaultAsync(a => a.VendorTicketId == attendee.VendorTicketId, ct);
+        if (existing is null)
+            ctx.TicketAttendees.Add(attendee);
+        else
+            ctx.Entry(existing).CurrentValues.SetValues(attendee);
         await ctx.SaveChangesAsync(ct);
     }
 
@@ -414,7 +435,6 @@ public sealed class TicketRepository : ITicketRepository
             .AsNoTracking()
             .Select(a => a.TicketTypeName)
             .Distinct()
-            .OrderBy(t => t)
             .ToListAsync(ct);
     }
 
@@ -443,6 +463,19 @@ public sealed class TicketRepository : ITicketRepository
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<Guid>> GetOpenOrderIdsMatchedToUserAsync(
+        Guid userId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.TicketOrders
+            .AsNoTracking()
+            .Where(o => o.MatchedUserId == userId
+                && (o.PaymentStatus == TicketPaymentStatus.Paid
+                    || o.PaymentStatus == TicketPaymentStatus.Pending))
+            .Select(o => o.Id)
+            .ToListAsync(ct);
+    }
+
     public async Task<IReadOnlyList<TicketAttendee>> GetAttendeesMatchedToUserAsync(
         Guid userId, CancellationToken ct = default)
     {
@@ -450,6 +483,17 @@ public sealed class TicketRepository : ITicketRepository
         return await ctx.TicketAttendees
             .AsNoTracking()
             .Where(a => a.MatchedUserId == userId)
+            .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<TicketAttendee>> GetAttendeesVisibleToUserAsync(
+        Guid userId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.TicketAttendees
+            .AsNoTracking()
+            .Include(a => a.TicketOrder)
+            .Where(a => a.TicketOrder.MatchedUserId == userId || a.MatchedUserId == userId)
             .ToListAsync(ct);
     }
 

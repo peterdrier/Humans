@@ -15,7 +15,7 @@
                 aria-expanded="false">
             @if (currentUser is not null)
             {
-                <vc:user-avatar user-id="@currentUser.Id" size="32" bg-color="bg-secondary" />
+                <vc:human user-id="@currentUser.Id" layout="Avatar" size="32" bg-color="bg-secondary" link="None" />
             }
             <span class="d-none d-md-inline profile-dropdown-name">@displayName</span>
         </button>

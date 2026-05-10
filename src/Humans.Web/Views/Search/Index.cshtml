@@ -1,0 +1,107 @@
+@using Humans.Application.DTOs
+@model Humans.Web.Models.GlobalSearchViewModel
+
+@{
+    ViewData["Title"] = "Search";
+
+    string ChipUrl(SearchResultType? filter)
+    {
+        var q = Model.Query ?? string.Empty;
+        return filter.HasValue
+            ? Url.Action("Index", "Search", new { q, filter = filter.Value })!
+            : Url.Action("Index", "Search", new { q })!;
+    }
+
+    string ChipClass(SearchResultType? filter) =>
+        Model.Filter == filter
+            ? "btn btn-primary btn-sm"
+            : "btn btn-outline-primary btn-sm";
+
+    bool ShowSection(SearchResultType type, int count) =>
+        count > 0 && (!Model.Filter.HasValue || Model.Filter == type);
+}
+
+<h2><i class="fa-solid fa-magnifying-glass me-2"></i>Search</h2>
+
+<form method="get" class="mb-4" asp-action="Index" asp-controller="Search">
+    @if (Model.Filter.HasValue)
+    {
+        <input type="hidden" name="filter" value="@Model.Filter.Value" />
+    }
+    <div class="input-group" style="max-width: 600px;">
+        <input type="text" name="q" class="form-control" value="@Model.Query"
+               placeholder="Search humans, teams, camps, shifts…"
+               autofocus aria-label="Search query" />
+        <button type="submit" class="btn btn-primary">
+            <i class="fa-solid fa-magnifying-glass me-1"></i>Search
+        </button>
+    </div>
+</form>
+
+@if (!Model.HasQuery)
+{
+    <div class="alert alert-info">
+        <i class="fa-solid fa-circle-info me-2"></i>
+        Type at least 2 characters to search across humans, teams, camps, and shifts.
+    </div>
+}
+else if (Model.QueryIsTooShort)
+{
+    <div class="alert alert-info">
+        <i class="fa-solid fa-circle-info me-2"></i>
+        Please enter at least 2 characters.
+    </div>
+}
+else
+{
+    <div class="d-flex flex-wrap gap-2 mb-3" role="group" aria-label="Filter results by type">
+        <a href="@ChipUrl(null)" class="@ChipClass(null)">
+            All (@Model.TotalCount)
+        </a>
+        <a href="@ChipUrl(SearchResultType.Human)" class="@ChipClass(SearchResultType.Human)">
+            <i class="fa-solid fa-user me-1"></i>Humans (@Model.HumanCount)
+        </a>
+        <a href="@ChipUrl(SearchResultType.Team)" class="@ChipClass(SearchResultType.Team)">
+            <i class="fa-solid fa-users me-1"></i>Teams (@Model.TeamCount)
+        </a>
+        <a href="@ChipUrl(SearchResultType.Camp)" class="@ChipClass(SearchResultType.Camp)">
+            <i class="fa-solid fa-campground me-1"></i>Camps (@Model.CampCount)
+        </a>
+        <a href="@ChipUrl(SearchResultType.Shift)" class="@ChipClass(SearchResultType.Shift)">
+            <i class="fa-solid fa-clock me-1"></i>Shifts (@Model.ShiftCount)
+        </a>
+    </div>
+
+    @if (!Model.HasResults)
+    {
+        <div class="alert alert-light">
+            No results for <strong>@Model.Query</strong>.
+        </div>
+    }
+    else
+    {
+        @if (ShowSection(SearchResultType.Human, Model.HumanCount))
+        {
+            <h3 class="h5 mt-4 mb-2"><i class="fa-solid fa-user me-2"></i>Humans</h3>
+            @await Html.PartialAsync("_HumanSearchResults", Model.HumanResults)
+        }
+
+        @if (ShowSection(SearchResultType.Team, Model.TeamCount))
+        {
+            <h3 class="h5 mt-4 mb-2"><i class="fa-solid fa-users me-2"></i>Teams</h3>
+            <partial name="_GlobalSearchSection" model="Model.TeamResults" view-data="@(new ViewDataDictionary(ViewData) { { "Icon", "fa-solid fa-users" } })" />
+        }
+
+        @if (ShowSection(SearchResultType.Camp, Model.CampCount))
+        {
+            <h3 class="h5 mt-4 mb-2"><i class="fa-solid fa-campground me-2"></i>Camps</h3>
+            <partial name="_GlobalSearchSection" model="Model.CampResults" view-data="@(new ViewDataDictionary(ViewData) { { "Icon", "fa-solid fa-campground" } })" />
+        }
+
+        @if (ShowSection(SearchResultType.Shift, Model.ShiftCount))
+        {
+            <h3 class="h5 mt-4 mb-2"><i class="fa-solid fa-clock me-2"></i>Shifts</h3>
+            <partial name="_GlobalSearchSection" model="Model.ShiftResults" view-data="@(new ViewDataDictionary(ViewData) { { "Icon", "fa-solid fa-clock" } })" />
+        }
+    }
+}

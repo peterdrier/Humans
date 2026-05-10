@@ -43,14 +43,13 @@
                         <div class="d-flex flex-wrap gap-3">
                             @foreach (var birthday in group)
                             {
-                                <human-link user-id="@birthday.UserId" display-name="@birthday.DisplayName"
-                                           mode="AvatarName" size="48" show-popover="true"
-                                           profile-picture-url="@birthday.EffectiveProfilePictureUrl">
+                                <div>
+                                    <vc:human user-id="@birthday.UserId" layout="AvatarName" size="48" />
                                     @if (birthday.TeamNames.Count > 0)
                                     {
-                                        <small class="text-muted">@string.Join(", ", birthday.TeamNames)</small>
+                                        <div><small class="text-muted">@string.Join(", ", birthday.TeamNames)</small></div>
                                     }
-                                </human-link>
+                                </div>
                             }
                         </div>
                     </div>

@@ -185,12 +185,7 @@ else
                                             }
                                             @if (nameDisplay is not null && m.UserId.HasValue)
                                             {
-                                                <a href="/Profile/@m.UserId/Admin"
-                                                   class="d-inline-flex align-items-center text-decoration-none text-reset"
-                                                   data-human-popover="true" data-user-id="@m.UserId">
-                                                    <vc:user-avatar user-id="@m.UserId.Value" size="24" css-class="me-2" />
-                                                    <span>@nameDisplay</span>
-                                                </a>
+                                                <vc:human user-id="@m.UserId.Value" layout="AvatarName" size="24" link="Admin" />
                                             }
                                             else if (nameDisplay is not null)
                                             {

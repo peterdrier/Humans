@@ -12,9 +12,9 @@
             <h1>@(Model.IsOwnProfile ? Localizer["Profile_Title"] : Model.DisplayName)</h1>
             <div class="d-flex gap-2">
                 <vc:access-matrix section="Profile" />
-                <human-link user-id="@Model.UserId" display-name="Admin" admin="true" class="btn btn-sm btn-outline-secondary" authorize-policy="HumanAdminBoardOrAdmin">
+                <a asp-controller="Profile" asp-action="AdminDetail" asp-route-id="@Model.UserId" class="btn btn-sm btn-outline-secondary" authorize-policy="HumanAdminBoardOrAdmin">
                     <i class="fa-solid fa-user-shield"></i> Admin <i class="fa-solid fa-lock auth-lock-icon"></i>
-                </human-link>
+                </a>
             </div>
         </div>
 

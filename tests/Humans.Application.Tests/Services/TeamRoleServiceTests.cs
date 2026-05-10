@@ -105,7 +105,6 @@ public class TeamRoleServiceTests : IDisposable
             Substitute.For<INotificationMeterCacheInvalidator>(),
             _shiftAuthInvalidator,
             serviceProvider,
-            cache,
             _clock,
             NullLogger<TeamService>.Instance);
     }

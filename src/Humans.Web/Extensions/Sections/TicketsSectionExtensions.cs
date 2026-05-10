@@ -6,6 +6,7 @@ using Humans.Infrastructure.Services;
 using TicketsTicketSyncService = Humans.Application.Services.Tickets.TicketSyncService;
 using TicketsTicketQueryService = Humans.Application.Services.Tickets.TicketQueryService;
 using Humans.Application.Interfaces.Tickets;
+using Humans.Application.Services.Tickets;
 using Humans.Infrastructure.Repositories.Tickets;
 
 namespace Humans.Web.Extensions.Sections;
@@ -28,6 +29,10 @@ internal static class TicketsSectionExtensions
         services.AddScoped<TicketsTicketQueryService>();
         services.AddScoped<ITicketQueryService>(sp => sp.GetRequiredService<TicketsTicketQueryService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<TicketsTicketQueryService>());
+
+        // TicketTransferService + repository (§15b: repo is Singleton; service is Scoped).
+        services.AddSingleton<ITicketTransferRepository, TicketTransferRepository>();
+        services.AddScoped<ITicketTransferService, TicketTransferService>();
 
         services.AddScoped<TicketSyncJob>();
         services.AddScoped<TicketingBudgetSyncJob>();

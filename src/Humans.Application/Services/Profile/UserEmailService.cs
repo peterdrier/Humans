@@ -543,6 +543,28 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         string email, CancellationToken cancellationToken = default) =>
         _repository.GetUserIdByVerifiedEmailAsync(email, cancellationToken);
 
+    public async Task<Guid?> GetUserIdByExactEmailAsync(string email, CancellationToken ct = default)
+    {
+        // Returns null on zero matches (unverified-only or unknown address) and
+        // on ambiguous matches (the same verified address appears on more than one
+        // user — an invariant violation, but we treat it safely). Only returns a
+        // non-null id when exactly one distinct UserId owns the verified address.
+        var userIds = await _repository.GetDistinctUserIdsByVerifiedEmailAsync(email, ct);
+        return userIds.Count == 1 ? userIds[0] : (Guid?)null;
+    }
+
+    public async Task<string?> GetPrimaryEmailAsync(Guid userId, CancellationToken ct = default)
+    {
+        var emails = await _repository.GetByUserIdReadOnlyAsync(userId, ct);
+        var primary = emails.FirstOrDefault(e => e.IsVerified && e.IsPrimary);
+        if (primary is not null) return primary.Email;
+        var anyVerified = emails.FirstOrDefault(e => e.IsVerified);
+        if (anyVerified is not null) return anyVerified.Email;
+        // Fall back to User.Email as last resort
+        var user = await _userService.GetByIdAsync(userId, ct);
+        return user?.Email;
+    }
+
     public async Task<IReadOnlyList<string>> GetVerifiedEmailsForUserAsync(
         Guid userId, CancellationToken cancellationToken = default)
     {
@@ -894,6 +916,13 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         var row = await _repository.GetByIdAndUserIdAsync(userEmailId, userId, cancellationToken);
         if (row is null || !row.IsGoogle) return false;
 
+        // Only allow clearing IsGoogle when the user has another row also
+        // carrying the flag (the duplicate-flag recovery scenario). Clearing
+        // the sole IsGoogle row would leave the user in the ZeroIsGoogle state
+        // EmailProblems flags as a bug.
+        var allEmails = await _repository.GetByUserIdReadOnlyAsync(userId, cancellationToken);
+        if (allEmails.Count(e => e.IsGoogle) <= 1) return false;
+
         row.IsGoogle = false;
         row.UpdatedAt = _clock.GetCurrentInstant();
         await _repository.UpdateAsync(row, cancellationToken);
@@ -917,12 +946,22 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         var row = await _repository.GetByIdAndUserIdAsync(userEmailId, userId, cancellationToken);
         if (row is null || !row.IsPrimary) return false;
 
+        // Only allow clearing IsPrimary when the user has another verified
+        // IsPrimary row (the duplicate-flag recovery scenario). The verified
+        // filter mirrors the view's `hasMultiplePrimary` and the scanner's
+        // notion of a primary (`verifiedPrimaryCount`); without it, a row
+        // in `IsPrimary=true,IsVerified=false` would count as a successor
+        // and clearing the verified primary would leave zero verified
+        // primaries — the ZeroIsPrimary state EmailProblems flags as a bug.
+        var allEmails = await _repository.GetByUserIdReadOnlyAsync(userId, cancellationToken);
+        if (allEmails.Count(e => e.IsPrimary && e.IsVerified) <= 1) return false;
+
         row.IsPrimary = false;
         row.UpdatedAt = _clock.GetCurrentInstant();
         await _repository.UpdateAsync(row, cancellationToken);
-        // Don't auto-promote a successor — the admin is using this path
-        // specifically to recover from a duplicate-IsPrimary state and may
-        // want to pick the new primary deliberately.
+        // Don't auto-promote a successor — the admin is resolving a
+        // duplicate-IsPrimary state and may want to pick the new primary
+        // deliberately.
         await _fullProfileInvalidator.InvalidateAsync(userId, cancellationToken);
 
         await _auditLogService.LogAsync(

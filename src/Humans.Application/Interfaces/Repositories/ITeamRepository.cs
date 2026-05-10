@@ -58,16 +58,15 @@ public interface ITeamRepository
     /// </summary>
     Task<bool> SlugExistsAsync(string slug, Guid? excludingTeamId, CancellationToken ct = default);
 
-    /// <summary>All active teams ordered by name, with active members and children.</summary>
+    /// <summary>All active teams with active members and children.</summary>
     Task<IReadOnlyList<Team>> GetAllActiveAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// All active teams with active members eagerly loaded (the shape consumed
-    /// by the in-service cache snapshot). Detached.
+    /// All teams with active members eagerly loaded. Detached.
     /// </summary>
-    Task<IReadOnlyList<Team>> GetAllActiveWithMembersAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<Team>> GetAllWithMembersAsync(CancellationToken ct = default);
 
-    /// <summary>Active teams projected to id/name for dropdowns.</summary>
+    /// <summary>Active teams projected to id/name.</summary>
     Task<IReadOnlyList<TeamOptionDto>> GetActiveOptionsAsync(CancellationToken ct = default);
 
     /// <summary>Active teams with <c>HasBudget=true</c> projected to id/name.</summary>
@@ -88,11 +87,22 @@ public interface ITeamRepository
     Task<string?> GetNameByGoogleGroupPrefixAsync(string prefix, CancellationToken ct = default);
 
     /// <summary>
-    /// Paged list of teams (all active/inactive) with members, pending join
-    /// requests, and role definitions eagerly loaded for the admin table.
+    /// Page of all teams (active/inactive) with active members, pending join
+    /// requests, and role definitions eagerly loaded. Admin paging stays
+    /// DB-side because the include graph is too expensive to load wholesale.
     /// </summary>
     Task<(IReadOnlyList<Team> Items, int TotalCount)> GetAllForAdminAsync(
         int page, int pageSize, CancellationToken ct = default);
+
+    /// <summary>
+    /// Active teams whose <c>Name</c> contains <paramref name="query"/>
+    /// (case-insensitive, Postgres ILike). When
+    /// <paramref name="includeHidden"/> is false, hidden teams are
+    /// filtered at the DB layer. Capped at <paramref name="max"/>;
+    /// ordering is unspecified (caller ranks). Read-only, no navs.
+    /// </summary>
+    Task<IReadOnlyList<Team>> SearchAsync(
+        string query, bool includeHidden, int max, CancellationToken ct = default);
 
     /// <summary>
     /// Load the requested team ids plus any referenced parent teams that

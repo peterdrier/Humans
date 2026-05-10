@@ -62,9 +62,11 @@ public sealed class EmailOutboxService : IEmailOutboxService
         return new EmailOutboxStats(totalCount, queuedCount, sentLast24H, failedCount, isPaused, messages);
     }
 
-    public Task<IReadOnlyList<EmailOutboxMessage>> GetMessagesForUserAsync(
-        Guid userId, CancellationToken cancellationToken = default) =>
-        _repo.GetForUserAsync(userId, cancellationToken);
+    public async Task<IReadOnlyList<EmailOutboxMessage>> GetMessagesForUserAsync(
+        Guid userId, CancellationToken cancellationToken = default)
+    {
+        return await _repo.GetForUserAsync(userId, cancellationToken);
+    }
 
     public Task<int> GetMessageCountForUserAsync(
         Guid userId, CancellationToken cancellationToken = default) =>

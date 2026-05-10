@@ -14,7 +14,7 @@
         @* Actor *@
         @if (Model.ActorUserId.HasValue)
         {
-            <human-link user-id="@Model.ActorUserId.Value" display-name="@(Model.ActorDisplayName ?? "Unknown")" mode="Text" />
+            <vc:human user-id="@Model.ActorUserId.Value" />
         }
         else
         {
@@ -32,7 +32,7 @@
         @* Subject (skip if same as actor) *@
         @if (Model.SubjectUserId.HasValue && !actorIsSubject)
         {
-            <human-link user-id="@Model.SubjectUserId.Value" display-name="@(Model.SubjectDisplayName ?? "Unknown")" mode="Text" />
+            <vc:human user-id="@Model.SubjectUserId.Value" />
         }
 
         @* Target team *@
@@ -54,7 +54,7 @@
         @* Unmapped action — render rough but fully attributed: actor · ActionName · subject · in team · "description" *@
         @if (Model.ActorUserId.HasValue)
         {
-            <human-link user-id="@Model.ActorUserId.Value" display-name="@(Model.ActorDisplayName ?? "Unknown")" mode="Text" />
+            <vc:human user-id="@Model.ActorUserId.Value" />
         }
         else
         {
@@ -65,7 +65,7 @@
         @if (Model.SubjectUserId.HasValue && !actorIsSubject)
         {
             <span class="text-muted">·</span>
-            <human-link user-id="@Model.SubjectUserId.Value" display-name="@(Model.SubjectDisplayName ?? "Unknown")" mode="Text" />
+            <vc:human user-id="@Model.SubjectUserId.Value" />
         }
         @if (Model.TargetTeamId.HasValue && !string.IsNullOrEmpty(Model.TargetTeamName))
         {

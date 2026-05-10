@@ -58,4 +58,18 @@ public class DashboardViewModel
     public bool HasTicket { get; set; }
     public int UserTicketCount { get; set; }
     public string? TicketPurchaseUrl { get; set; }
+
+    /// <summary>Attendees on the user's orders (rendered when count > 1).</summary>
+    public IReadOnlyList<MyAttendeeRowVm> MyAttendees { get; set; } = [];
+
+    /// <summary>How many transfer requests this user has currently in Pending state.</summary>
+    public int PendingTransferOutCount { get; set; }
 }
+
+public sealed record MyAttendeeRowVm(
+    Guid AttendeeId,
+    string AttendeeName,
+    string TicketTypeName,
+    bool CanSendTransfer,
+    bool HasPendingOutgoingTransfer,
+    Guid? PendingTransferRequestId);

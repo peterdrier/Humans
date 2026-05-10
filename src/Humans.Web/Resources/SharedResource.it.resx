@@ -200,6 +200,9 @@
   <data name="Dashboard_BuyTicket" xml:space="preserve"><value>Prendi il tuo biglietto</value></data>
   <data name="Dashboard_DifferentEmail" xml:space="preserve"><value>Comprato con un'altra email?</value></data>
   <data name="Dashboard_DeclareNotAttending" xml:space="preserve"><value>Non vengo quest'anno</value></data>
+  <data name="TicketTransfer_Pending" xml:space="preserve"><value>In attesa di revisione</value></data>
+  <data name="TicketTransfer_SendButton" xml:space="preserve"><value>Invia</value></data>
+  <data name="TicketTransfer_CancelButton" xml:space="preserve"><value>Annulla</value></data>
 
   <!-- Guest Dashboard -->
   <data name="Guest_Greeting" xml:space="preserve"><value>Ciao, {0}.</value></data>

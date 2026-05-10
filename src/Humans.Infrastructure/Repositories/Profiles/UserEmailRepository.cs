@@ -328,12 +328,26 @@ public sealed class UserEmailRepository : IUserEmailRepository
     public async Task<Guid?> GetUserIdByVerifiedEmailAsync(
         string email, CancellationToken ct = default)
     {
+        var escaped = EscapeLikePattern(email);
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.UserEmails
             .AsNoTracking()
-            .Where(ue => ue.Email == email && ue.IsVerified)
+            .Where(ue => EF.Functions.ILike(ue.Email, escaped, "\\") && ue.IsVerified)
             .Select(ue => (Guid?)ue.UserId)
             .FirstOrDefaultAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<Guid>> GetDistinctUserIdsByVerifiedEmailAsync(
+        string email, CancellationToken ct = default)
+    {
+        var escaped = EscapeLikePattern(email);
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.UserEmails
+            .AsNoTracking()
+            .Where(ue => EF.Functions.ILike(ue.Email, escaped, "\\") && ue.IsVerified)
+            .Select(ue => ue.UserId)
+            .Distinct()
+            .ToListAsync(ct);
     }
 
     public async Task<Guid?> GetOtherUserIdHavingEmailAsync(
