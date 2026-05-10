@@ -3,6 +3,7 @@ using System.Text;
 using Humans.Application.DTOs;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Teams;
 using Humans.Application.Configuration;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
@@ -40,6 +41,7 @@ public sealed class DevPersonaSeeder
     private readonly IProfileService _profileService;
     private readonly IUserEmailService _userEmailService;
     private readonly IFullProfileInvalidator _fullProfileInvalidator;
+    private readonly ITeamService _teamService;
     private readonly IClock _clock;
     private readonly IMemoryCache _cache;
     private readonly IOptions<CityPlanningOptions> _cityPlanningOptions;
@@ -51,6 +53,7 @@ public sealed class DevPersonaSeeder
         IProfileService profileService,
         IUserEmailService userEmailService,
         IFullProfileInvalidator fullProfileInvalidator,
+        ITeamService teamService,
         IClock clock,
         IMemoryCache cache,
         IOptions<CityPlanningOptions> cityPlanningOptions,
@@ -61,6 +64,7 @@ public sealed class DevPersonaSeeder
         _profileService = profileService;
         _userEmailService = userEmailService;
         _fullProfileInvalidator = fullProfileInvalidator;
+        _teamService = teamService;
         _clock = clock;
         _cache = cache;
         _cityPlanningOptions = cityPlanningOptions;
@@ -397,7 +401,7 @@ public sealed class DevPersonaSeeder
         if (changed)
         {
             await _db.SaveChangesAsync();
-            _cache.InvalidateActiveTeams();
+            _teamService.InvalidateActiveTeamsCache();
             _cache.InvalidateUserAccess(coordinatorUserId);
             // Team membership changes ripple into FullProfile (active-teams shape)
             // — InvalidateUserAccess only evicts ActiveTeams/role/shift caches,
@@ -508,7 +512,7 @@ public sealed class DevPersonaSeeder
         if (changed)
         {
             await _db.SaveChangesAsync();
-            _cache.InvalidateActiveTeams();
+            _teamService.InvalidateActiveTeamsCache();
             _cache.InvalidateUserAccess(userId);
             // Team membership changes ripple into FullProfile (active-teams shape)
             // — InvalidateUserAccess only evicts ActiveTeams/role/shift caches,

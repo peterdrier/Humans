@@ -60,7 +60,10 @@ public class InterfaceMethodBudgetTests
         // must live in the owning section per design-rules §6, and the
         // ratchet's "remove one to add one" rule doesn't apply when the
         // addition is a moved-in query rather than a new feature surface.
-        [typeof(ITeamService)] = 71,
+        // 71→73: team-cache decorator groundwork — added canonical
+        // GetTeamAsync/GetTeamsAsync read-model methods. Follow-up passes should
+        // consolidate member/name/option getters down onto those methods.
+        [typeof(ITeamService)] = 73,
         // ICampService raised 53→57 for per-camp roles feature (peterdrier#489):
         // AddCampMemberAsLeadAsync, GetSeasonMembersAsync, GetCampMemberStatusAsync,
         // GetCampSeasonsForComplianceAsync — all needed by ICampRoleService and the

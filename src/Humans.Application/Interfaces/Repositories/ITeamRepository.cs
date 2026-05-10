@@ -62,10 +62,9 @@ public interface ITeamRepository
     Task<IReadOnlyList<Team>> GetAllActiveAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// All active teams with active members eagerly loaded (the shape consumed
-    /// by the in-service cache snapshot). Detached.
+    /// All teams with active members eagerly loaded. Detached.
     /// </summary>
-    Task<IReadOnlyList<Team>> GetAllActiveWithMembersAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<Team>> GetAllWithMembersAsync(CancellationToken ct = default);
 
     /// <summary>Active teams projected to id/name.</summary>
     Task<IReadOnlyList<TeamOptionDto>> GetActiveOptionsAsync(CancellationToken ct = default);

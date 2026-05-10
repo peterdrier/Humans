@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Caching.Memory;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Caching;
+using Humans.Application.Interfaces.Teams;
 
 namespace Humans.Infrastructure.Caching;
 
@@ -60,7 +61,7 @@ public sealed class RoleAssignmentClaimsCacheInvalidator : IRoleAssignmentClaims
 
 public sealed class ActiveTeamsCacheInvalidator : IActiveTeamsCacheInvalidator
 {
-    private readonly IMemoryCache _cache;
-    public ActiveTeamsCacheInvalidator(IMemoryCache cache) => _cache = cache;
-    public void Invalidate() => _cache.InvalidateActiveTeams();
+    private readonly ITeamService _teamService;
+    public ActiveTeamsCacheInvalidator(ITeamService teamService) => _teamService = teamService;
+    public void Invalidate() => _teamService.InvalidateActiveTeamsCache();
 }
