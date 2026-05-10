@@ -119,14 +119,14 @@ public class ServiceBoundaryArchitectureTests
                      .Where(t => t != typeof(IApplicationService))
                      .OrderBy(t => t.FullName, StringComparer.Ordinal))
         {
-            foreach (var method in serviceType.GetMethods().Where(IsReadMethod))
+            foreach (var (memberName, returnType) in EntityReturnReadMembers(serviceType))
             {
-                foreach (var exposedEntity in ExposedTypes(method.ReturnType)
+                foreach (var exposedEntity in ExposedTypes(returnType)
                              .Where(entityTypes.Contains)
                              .Distinct()
                              .OrderBy(Display, StringComparer.Ordinal))
                 {
-                    yield return $"{Display(serviceType)}.{method.Name}:{Display(exposedEntity)}";
+                    yield return $"{Display(serviceType)}.{memberName}:{Display(exposedEntity)}";
                 }
             }
         }
@@ -165,6 +165,19 @@ public class ServiceBoundaryArchitectureTests
         type.GetConstructors(BindingFlags.Public | BindingFlags.Instance)
             .SelectMany(c => c.GetParameters());
 
+    private static IEnumerable<(string MemberName, Type ReturnType)> EntityReturnReadMembers(Type serviceType)
+    {
+        foreach (var method in serviceType.GetMethods().Where(IsReadMethod))
+            yield return (method.Name, method.ReturnType);
+
+        foreach (var property in serviceType.GetProperties().Where(p => p.GetMethod is not null))
+            yield return (property.Name, property.PropertyType);
+    }
+
+    // Note: Get*/Find* also match GetOrCreate*/FindOrCreate* upsert mutations.
+    // Per service-entity-boundary-ratchet.md, mutations that temporarily return entities
+    // are allowed as ratcheted debt. If a new GetOrCreate* method is flagged here,
+    // either use a result record (preferred) or add it to the baseline with a comment.
     private static bool IsReadMethod(MethodInfo method) =>
         method.Name.StartsWith("Get", StringComparison.Ordinal) ||
         method.Name.StartsWith("List", StringComparison.Ordinal) ||

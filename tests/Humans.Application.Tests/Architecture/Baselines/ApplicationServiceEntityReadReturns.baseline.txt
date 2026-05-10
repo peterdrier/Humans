@@ -1,5 +1,6 @@
 # Baseline for application service read methods that still expose EF/domain entities.
 # New read methods on IApplicationService must return read models/snapshots instead of entities.
+Humans.Application.Interfaces.IAgentSettingsService.Current:Humans.Domain.Entities.AgentSettings
 Humans.Application.Interfaces.AuditLog.IAuditLogService.GetAuditLogPageAsync:Humans.Domain.Entities.AuditLogEntry
 Humans.Application.Interfaces.AuditLog.IAuditLogService.GetByResourceAsync:Humans.Domain.Entities.AuditLogEntry
 Humans.Application.Interfaces.AuditLog.IAuditLogService.GetByUserAsync:Humans.Domain.Entities.AuditLogEntry
