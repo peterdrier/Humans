@@ -282,11 +282,16 @@ public class CampAdminController : HumansControllerBase
         }
         catch (ArgumentOutOfRangeException)
         {
+            _logger.LogWarning(
+                "EE slot count must be non-negative for season {SeasonId} (actor {UserId})",
+                seasonId, user.Id);
             SetError("EE slot count cannot be negative.");
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Failed to set EE slot count on season {SeasonId}", seasonId);
+            _logger.LogWarning(
+                "Failed to set EE slot count on season {SeasonId}: {Reason}",
+                seasonId, ex.Message);
             SetError(ex.Message);
         }
 
