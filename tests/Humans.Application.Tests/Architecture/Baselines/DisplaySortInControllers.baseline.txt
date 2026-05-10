@@ -68,6 +68,12 @@ src/Humans.Infrastructure/Repositories/Consent/ConsentRepository.cs:OrderByDesce
 src/Humans.Infrastructure/Repositories/Consent/ConsentRepository.cs:OrderByDescending#2
 src/Humans.Infrastructure/Repositories/Consent/ConsentRepository.cs:OrderByDescending#3
 src/Humans.Infrastructure/Repositories/Email/EmailOutboxRepository.cs:OrderBy#1
+src/Humans.Infrastructure/Repositories/Expenses/ExpenseRepository.cs:OrderBy#1
+src/Humans.Infrastructure/Repositories/Expenses/ExpenseRepository.cs:OrderBy#2
+src/Humans.Infrastructure/Repositories/Expenses/ExpenseRepository.cs:OrderBy#3
+src/Humans.Infrastructure/Repositories/Expenses/ExpenseRepository.cs:OrderByDescending#1
+src/Humans.Infrastructure/Repositories/Expenses/ExpenseRepository.cs:OrderByDescending#2
+src/Humans.Infrastructure/Repositories/Expenses/ExpenseRepository.cs:OrderByDescending#3
 src/Humans.Infrastructure/Repositories/Feedback/FeedbackRepository.cs:OrderBy#1
 src/Humans.Infrastructure/Repositories/Feedback/FeedbackRepository.cs:OrderBy#2
 src/Humans.Infrastructure/Repositories/GoogleIntegration/GoogleResourceRepository.cs:OrderBy#1
