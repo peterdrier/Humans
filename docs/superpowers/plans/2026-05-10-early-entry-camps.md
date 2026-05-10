@@ -902,17 +902,20 @@ git add tests/Humans.Application.Tests/Services/CampServiceEarlyEntryTests.cs
 git commit -m "issue-490: test SetEarlyEntryAsync idempotency"
 ```
 
-### Task 11: Member-removal cascade clears `HasEarlyEntry`
+### Task 11: Consolidate the four "transition to Removed" paths into one helper
 
 **Files:**
-- Modify: `tests/Humans.Application.Tests/Services/CampServiceEarlyEntryTests.cs`
 - Modify: `src/Humans.Application/Services/Camps/CampService.cs`
+- Modify: `tests/Humans.Application.Tests/Services/CampServiceEarlyEntryTests.cs`
+- Modify: `tests/Humans.Application.Tests/Services/CampServiceTests.cs` (for the Remove-now-cascades-roles test)
 
-`CampService` has three removal paths that transition members to `Removed`: `RemoveCampMemberAsync` (lead removes member), `WithdrawCampMembershipRequestAsync` (user withdraws own pending request), `LeaveCampAsync` (user leaves their own active membership). The Pending paths (`Withdraw`, `Reject`) cannot have HasEarlyEntry=true (Task 9 enforces this), so the meaningful cascade points are `RemoveCampMemberAsync` and `LeaveCampAsync`. We clear the flag anyway in all three paths for defense in depth.
+**Why this task exists:** `CampService` currently has **four** methods that all transition a `CampMember` to `Removed` (`RejectCampMemberAsync`, `RemoveCampMemberAsync`, `WithdrawCampMembershipRequestAsync`, `LeaveCampAsync`). Each one repeats the same five-step pattern: status guard → optional role cascade → set `Status = Removed` + `RemovedAt = now` + `RemovedByUserId = actor` → `SaveMemberAsync` → audit. Dropping `HasEarlyEntry = false` into each of the four would deepen the duplication, not unwind it. We extract a private helper so the EE clear lives in **one** place, and the four public methods shrink to their actual differences: status precondition, audit action enum value, and post-side-effects (notifications, badge invalidation).
 
-- [ ] **Step 1: Write failing tests**
+**Bug fix bundled in:** the section invariant doc (`docs/sections/Camps.md` line 210) states that Remove/Leave/Withdraw all cascade role assignments. The code only cascades in Leave (line 1624) and Withdraw (line 1595) — `RemoveCampMemberAsync` does not. Peter authorized fixing this here (2026-05-10) since the helper introduces a `cascadeRoleAssignments` parameter and routing Remove through it aligns code with docs at zero extra cost.
 
-Append three tests, one per removal path:
+- [ ] **Step 1: Write the failing EE-clear test for each removal path**
+
+In `CampServiceEarlyEntryTests.cs`, append:
 
 ```csharp
 [HumansFact]
@@ -941,76 +944,213 @@ public async Task LeaveCampAsync_ClearsHasEarlyEntry()
     var reloaded = await _dbContext.CampMembers.FirstAsync(m => m.Id == member.Id);
     reloaded.HasEarlyEntry.Should().BeFalse();
 }
+```
 
+- [ ] **Step 2: Write the failing Remove-now-cascades-roles test**
+
+In `CampServiceTests.cs` (the existing file, alongside other removal-path tests), append:
+
+```csharp
 [HumansFact]
-public async Task WithdrawCampMembershipRequestAsync_ClearsHasEarlyEntry_Defensively()
+public async Task RemoveCampMemberAsync_CascadesRoleAssignments()
 {
-    // A Pending member can't actually be granted EE (Task 9 enforces this),
-    // but the cascade clears the flag anyway so we never leave a true HasEarlyEntry
-    // on a Removed row.
-    await SeedSettingsAsync();
-    var (_, season) = await SeedCampWithSeasonAsync();
-    var member = new CampMember
-    {
-        Id = Guid.NewGuid(),
-        CampSeasonId = season.Id,
-        UserId = Guid.NewGuid(),
-        Status = CampMemberStatus.Pending,
-        RequestedAt = _clock.GetCurrentInstant(),
-        HasEarlyEntry = true, // synthetic: simulate a stale flag
-    };
-    _dbContext.CampMembers.Add(member);
-    await _dbContext.SaveChangesAsync();
+    // Bug fix bundled with issue-490: the section invariants doc says Remove
+    // cascades role assignments, but the code historically did not. Route
+    // through the new TransitionMemberToRemovedAsync helper closes that gap.
+    var memberId = Guid.NewGuid();
+    var camp = await SeedCampAsync(); // existing helper in this test class
+    var member = await SeedActiveMemberAsync(camp.Seasons.Single().Id, memberId);
 
-    await _service.WithdrawCampMembershipRequestAsync(member.Id, member.UserId);
+    await _service.RemoveCampMemberAsync(camp.Id, memberId, Guid.NewGuid());
 
-    var reloaded = await _dbContext.CampMembers.FirstAsync(m => m.Id == member.Id);
-    reloaded.HasEarlyEntry.Should().BeFalse();
+    await _campRoleService.Received(1).RemoveAllForMemberAsync(
+        memberId, Arg.Any<Guid>(), Arg.Any<CancellationToken>());
 }
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+If `SeedCampAsync` / `SeedActiveMemberAsync` don't already exist in `CampServiceTests`, use whichever existing helpers it does have to land a camp + active member; the assertion that matters is `_campRoleService.Received(1).RemoveAllForMemberAsync(...)`.
 
-Run: `dotnet test Humans.slnx -v quiet --filter "FullyQualifiedName~RemoveCampMemberAsync_ClearsHasEarlyEntry|FullyQualifiedName~LeaveCampAsync_ClearsHasEarlyEntry|FullyQualifiedName~WithdrawCampMembershipRequestAsync_ClearsHasEarlyEntry"`
-Expected: FAIL — current code does not touch `HasEarlyEntry`.
+- [ ] **Step 3: Run new tests to verify they fail**
 
-- [ ] **Step 3: Update `CampService` removal paths**
+Run: `dotnet test Humans.slnx -v quiet --filter "FullyQualifiedName~RemoveCampMemberAsync_ClearsHasEarlyEntry|FullyQualifiedName~LeaveCampAsync_ClearsHasEarlyEntry|FullyQualifiedName~RemoveCampMemberAsync_CascadesRoleAssignments"`
+Expected: FAIL — current code does not touch `HasEarlyEntry`, and Remove does not cascade roles.
 
-In `RemoveCampMemberAsync` (around line 1531 of `CampService.cs`), add right after `member.Status = CampMemberStatus.Removed;`:
+- [ ] **Step 4: Extract the helper**
 
-```csharp
-member.HasEarlyEntry = false;
-```
-
-In `WithdrawCampMembershipRequestAsync` (around line 1597), add right after `member.Status = CampMemberStatus.Removed;`:
+In `CampService.cs`, find a private-methods region (or add one) and add:
 
 ```csharp
-member.HasEarlyEntry = false;
+/// <summary>
+/// Single transition point for moving a CampMember to Removed. Handles the
+/// role-assignment cascade, the state/timestamp flip (including clearing
+/// HasEarlyEntry), and the audit-log entry. Callers handle status preconditions
+/// before invoking and any post-effects (notifications, lead-badge
+/// invalidation) afterward.
+/// </summary>
+private async Task TransitionMemberToRemovedAsync(
+    CampMember member,
+    Guid actorUserId,
+    AuditAction auditAction,
+    string auditMessage,
+    bool cascadeRoleAssignments,
+    CancellationToken cancellationToken)
+{
+    if (cascadeRoleAssignments)
+    {
+        await _campRoleService.Value.RemoveAllForMemberAsync(
+            member.Id, actorUserId, cancellationToken);
+    }
+
+    var now = _clock.GetCurrentInstant();
+    member.Status = CampMemberStatus.Removed;
+    member.RemovedAt = now;
+    member.RemovedByUserId = actorUserId;
+    member.HasEarlyEntry = false;
+    await _repo.SaveMemberAsync(member, cancellationToken);
+
+    await _auditLog.LogAsync(
+        auditAction, nameof(CampMember), member.Id,
+        auditMessage, actorUserId,
+        relatedEntityId: member.CampSeason.CampId, relatedEntityType: nameof(Camp),
+        cancellationToken: cancellationToken);
+}
 ```
 
-In `LeaveCampAsync` (around line 1626), add right after `member.Status = CampMemberStatus.Removed;`:
+- [ ] **Step 5: Route `RejectCampMemberAsync` through the helper**
+
+Replace the body of `RejectCampMemberAsync` (after the status guard) so that the manual status/timestamp/save/audit block becomes a single helper call. The rest of the method (loading the camp for the notification, sending the rejection notification, calling `InvalidateLeadBadgesAsync`) stays as-is.
 
 ```csharp
-member.HasEarlyEntry = false;
+public async Task RejectCampMemberAsync(
+    Guid scopedCampId, Guid campMemberId, Guid rejectedByUserId,
+    CancellationToken cancellationToken = default)
+{
+    var member = await _repo.GetMemberForCampMutationAsync(campMemberId, scopedCampId, cancellationToken)
+        ?? throw new InvalidOperationException("Camp member record not found.");
+
+    if (member.Status != CampMemberStatus.Pending)
+        throw new InvalidOperationException($"Cannot reject a camp member with status {member.Status}.");
+
+    var requesterUserId = member.UserId;
+    var seasonId = member.CampSeasonId;
+
+    await TransitionMemberToRemovedAsync(
+        member, rejectedByUserId,
+        AuditAction.CampMemberRejected,
+        $"Rejected camp membership request for season {member.CampSeason.Year}",
+        cascadeRoleAssignments: false,
+        cancellationToken);
+
+    await InvalidateLeadBadgesAsync(scopedCampId, cancellationToken);
+
+    var camp = await _repo.GetByIdAsync(scopedCampId, cancellationToken);
+    var campName = camp?.Seasons.FirstOrDefault(s => s.Id == seasonId)?.Name ?? camp?.Slug ?? "a camp";
+    try
+    {
+        await _notificationEmitter.SendAsync(
+            NotificationSource.CampMembershipRejected,
+            NotificationClass.Informational,
+            NotificationPriority.Normal,
+            $"Your request to join {campName} was not approved",
+            [requesterUserId],
+            cancellationToken: cancellationToken);
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Failed to notify requester {UserId} about rejected camp membership {MemberId}", requesterUserId, member.Id);
+    }
+}
 ```
 
-Note: `RejectCampMemberAsync` (around line 1500) handles a `Pending` member and could only have `HasEarlyEntry=true` via a bug. Add the same line there for symmetry and defense in depth.
+- [ ] **Step 6: Route `RemoveCampMemberAsync` through the helper — cascade ON (bug fix)**
 
-- [ ] **Step 4: Run tests to verify they pass**
+```csharp
+public async Task RemoveCampMemberAsync(
+    Guid scopedCampId, Guid campMemberId, Guid removedByUserId,
+    CancellationToken cancellationToken = default)
+{
+    var member = await _repo.GetMemberForCampMutationAsync(campMemberId, scopedCampId, cancellationToken)
+        ?? throw new InvalidOperationException("Camp member record not found.");
 
-Run: `dotnet test Humans.slnx -v quiet --filter "FullyQualifiedName~Camps.CampServiceEarlyEntryTests"`
-Expected: all EE tests pass (16 or so).
+    if (member.Status != CampMemberStatus.Active)
+        throw new InvalidOperationException($"Cannot remove a camp member with status {member.Status}.");
 
-Also run the broader Camp tests to confirm no regression:
-Run: `dotnet test Humans.slnx -v quiet --filter "FullyQualifiedName~CampServiceTests"`
+    await TransitionMemberToRemovedAsync(
+        member, removedByUserId,
+        AuditAction.CampMemberRemoved,
+        $"Removed camp member from season {member.CampSeason.Year}",
+        cascadeRoleAssignments: true,
+        cancellationToken);
+}
+```
+
+- [ ] **Step 7: Route `WithdrawCampMembershipRequestAsync` through the helper**
+
+```csharp
+public async Task WithdrawCampMembershipRequestAsync(
+    Guid campMemberId, Guid userId, CancellationToken cancellationToken = default)
+{
+    var member = await _repo.GetMemberForOwnMutationAsync(campMemberId, userId, cancellationToken)
+        ?? throw new InvalidOperationException("Camp member record not found.");
+
+    if (member.Status != CampMemberStatus.Pending)
+        throw new InvalidOperationException($"Cannot withdraw a camp member request with status {member.Status}.");
+
+    await TransitionMemberToRemovedAsync(
+        member, userId,
+        AuditAction.CampMemberWithdrawn,
+        $"Withdrew camp membership request for season {member.CampSeason.Year}",
+        cascadeRoleAssignments: true,
+        cancellationToken);
+
+    await InvalidateLeadBadgesAsync(member.CampSeason.CampId, cancellationToken);
+}
+```
+
+- [ ] **Step 8: Route `LeaveCampAsync` through the helper**
+
+```csharp
+public async Task LeaveCampAsync(
+    Guid campMemberId, Guid userId, CancellationToken cancellationToken = default)
+{
+    var member = await _repo.GetMemberForOwnMutationAsync(campMemberId, userId, cancellationToken)
+        ?? throw new InvalidOperationException("Camp member record not found.");
+
+    if (member.Status != CampMemberStatus.Active)
+        throw new InvalidOperationException($"Cannot leave a camp membership with status {member.Status}.");
+
+    await TransitionMemberToRemovedAsync(
+        member, userId,
+        AuditAction.CampMemberLeft,
+        $"Left camp season {member.CampSeason.Year}",
+        cascadeRoleAssignments: true,
+        cancellationToken);
+}
+```
+
+- [ ] **Step 9: Run new tests to verify they pass**
+
+Run: `dotnet test Humans.slnx -v quiet --filter "FullyQualifiedName~RemoveCampMemberAsync_ClearsHasEarlyEntry|FullyQualifiedName~LeaveCampAsync_ClearsHasEarlyEntry|FullyQualifiedName~RemoveCampMemberAsync_CascadesRoleAssignments"`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 10: Run the full Camp test suite to confirm no regression**
+
+Run: `dotnet test Humans.slnx -v quiet --filter "FullyQualifiedName~CampServiceTests|FullyQualifiedName~CampServiceEarlyEntryTests"`
+Expected: PASS — the existing approve/reject/remove/withdraw/leave tests should still pass because the observable behavior (status, RemovedAt, RemovedByUserId, audit action, notification) is unchanged. The only behavior change is Remove now cascades roles, covered by Step 2's test.
+
+- [ ] **Step 11: Commit**
 
 ```bash
 git add src/Humans.Application/Services/Camps/CampService.cs \
-        tests/Humans.Application.Tests/Services/CampServiceEarlyEntryTests.cs
-git commit -m "issue-490: clear HasEarlyEntry on member removal/leave/withdraw"
+        tests/Humans.Application.Tests/Services/CampServiceEarlyEntryTests.cs \
+        tests/Humans.Application.Tests/Services/CampServiceTests.cs
+git commit -m "issue-490: consolidate Removed-transition into helper; fix Remove cascade
+
+Four CampService methods (Reject/Remove/Withdraw/Leave) all transitioned
+members to Removed via the same five-step block. Extract a private
+TransitionMemberToRemovedAsync that handles cascade + state flip + save
++ audit. HasEarlyEntry now clears in one place; Remove now cascades role
+assignments per the section invariant doc (Peter-authorized bug fix)."
 ```
 
 ---
@@ -1536,7 +1676,7 @@ Expected: PR URL printed to stdout.
 - Migration ✓ (Task 2)
 - Audit values ✓ (Task 3)
 - Service surface ✓ (Task 4)
-- Service rules — overflow ✓ (Task 8), non-Active ✓ (Task 9), idempotency ✓ (Task 10), reduce-below allowed ✓ (Task 6), member-removal cascade ✓ (Task 11)
+- Service rules — overflow ✓ (Task 8), non-Active ✓ (Task 9), idempotency ✓ (Task 10), reduce-below allowed ✓ (Task 6), member-removal cascade ✓ (Task 11, via the new `TransitionMemberToRemovedAsync` helper that absorbs the four-way duplication and fixes the Remove-doesn't-cascade-roles bug as a side benefit)
 - Authz ✓ (Tasks 12, 13 — resource-based `Manage` for lead set, `[Authorize(Policy=CampAdminOrAdmin)]` for admin set, already on the controller)
 - UI Admin ✓ (Task 14)
 - UI Members ✓ (Task 15)
