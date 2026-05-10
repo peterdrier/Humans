@@ -84,6 +84,18 @@ public class BaselineSeeder
             "tests/Humans.Application.Tests/Architecture/Baselines/NoBusinessLogicInControllers.baseline.txt",
             NoBusinessLogicInControllersRule.Scan(repoRoot),
             "no business logic in controllers (memory/architecture/no-business-logic-in-controllers.md)");
+
+        WriteBaseline(
+            repoRoot,
+            "tests/Humans.Application.Tests/Architecture/Baselines/ApplicationServiceEntityReadReturns.baseline.txt",
+            ServiceBoundaryArchitectureTests.ScanApplicationServiceEntityReadReturns(),
+            "no new Application service read methods return EF/domain entities (docs/architecture/service-entity-boundary-ratchet.md)");
+
+        WriteBaseline(
+            repoRoot,
+            "tests/Humans.Application.Tests/Architecture/Baselines/CrossSectionRepositoryInjection.baseline.txt",
+            ServiceBoundaryArchitectureTests.ScanCrossSectionRepositoryInjections(),
+            "no new cross-section repository injections in Application services (docs/architecture/service-entity-boundary-ratchet.md)");
     }
 
     private static void WriteBaseline(string repoRoot, string relativePath, IEnumerable<string> violations, string ruleSummary)

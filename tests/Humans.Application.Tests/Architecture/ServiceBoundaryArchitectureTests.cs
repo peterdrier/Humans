@@ -106,7 +106,7 @@ public class ServiceBoundaryArchitectureTests
             ScanCrossSectionRepositoryInjections());
     }
 
-    private static IEnumerable<string> ScanApplicationServiceEntityReadReturns()
+    internal static IEnumerable<string> ScanApplicationServiceEntityReadReturns()
     {
         var entityTypes = typeof(Humans.Domain.Entities.Team).Assembly
             .GetTypes()
@@ -131,7 +131,7 @@ public class ServiceBoundaryArchitectureTests
         }
     }
 
-    private static IEnumerable<string> ScanCrossSectionRepositoryInjections()
+    internal static IEnumerable<string> ScanCrossSectionRepositoryInjections()
     {
         foreach (var serviceType in typeof(IApplicationService).Assembly.GetTypes()
                      .Where(t => t.IsClass && !t.IsAbstract)
