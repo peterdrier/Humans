@@ -85,6 +85,8 @@ Sections must not reach across each other's persistence:
 - call the other section's public service/interface by IDs instead
 - merge data in memory at the controller/application boundary when a screen needs multiple sections
 
+Users, Profiles, and UserEmail are one ownership section: Humans. Do not move code between `Services.Users` and `Services.Profile`, and do not add wrapper service methods, just to satisfy a section-boundary cleanup. Treat `IUserRepository`, `IProfileRepository`, and `IUserEmailRepository` as same-section repositories for this rule.
+
 Prefer typed foreign-key queries and narrow projections over navigation-property graph loading. A slower but explicit service call boundary is better than a hidden cross-section join.
 
 ## Interface Consolidation Rules

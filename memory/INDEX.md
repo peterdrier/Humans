@@ -34,6 +34,8 @@ Atomic rules. Fetch the body when the description's trigger matches your task. S
 - [`user-profile-foundational`](architecture/user-profile-foundational.md) — UserService/ProfileService are bottom of the stack; no outbound calls to higher-level sections
 - [Widget Pending → Confirmed promotion](architecture/widget-pending-promotion.md) — how mid-onboarding signups stay Pending until consents land
 
+- [`users-profiles-one-section`](architecture/users-profiles-one-section.md) — HARD RULE. Users, Profiles, and UserEmail are one ownership section: Humans. Do not move code between Users/Profile just to satisfy section-boundary cleanup.
+
 ## code/
 
 - [`admin-role-superset`](code/admin-role-superset.md) — Admin = global superset; TeamsAdmin/CampAdmin/TicketAdmin = supersets in their domain. Always include both.

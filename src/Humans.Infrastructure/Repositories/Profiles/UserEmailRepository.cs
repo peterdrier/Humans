@@ -366,20 +366,6 @@ public sealed class UserEmailRepository : IUserEmailRepository
             .FirstOrDefaultAsync(ct);
     }
 
-    public async Task<bool> RewriteLinkedEmailAsync(
-        Guid userId, string newEmail, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var oauth = await ctx.UserEmails
-            .FirstOrDefaultAsync(e => e.UserId == userId && e.Provider != null, ct);
-        if (oauth is null)
-            return false;
-
-        oauth.Email = newEmail;
-        await ctx.SaveChangesAsync(ct);
-        return true;
-    }
-
     public async Task<RewriteEmailAddressOutcome> RewriteEmailAddressAsync(
         Guid userId, string oldEmail, string newEmail, Instant updatedAt,
         CancellationToken ct = default)

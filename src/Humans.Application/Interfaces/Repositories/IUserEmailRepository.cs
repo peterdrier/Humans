@@ -215,14 +215,6 @@ public interface IUserEmailRepository : IRepository
         string email, Guid excludeUserId, CancellationToken ct = default);
 
     /// <summary>
-    /// Rewrites the <c>Email</c> of the user's OAuth-sourced <see cref="UserEmail"/>
-    /// row (if one exists) to <paramref name="newEmail"/>. Used by the admin
-    /// email-backfill workflow. Returns true when a row was updated. No-op if the
-    /// user has no OAuth email row.
-    /// </summary>
-    Task<bool> RewriteLinkedEmailAsync(Guid userId, string newEmail, CancellationToken ct = default);
-
-    /// <summary>
     /// Rewrites the <c>Email</c> of the user's existing <see cref="UserEmail"/> row
     /// (case-insensitive match on <paramref name="oldEmail"/>) to
     /// <paramref name="newEmail"/> and stamps <c>UpdatedAt</c> with
