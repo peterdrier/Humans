@@ -533,6 +533,28 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         string email, CancellationToken cancellationToken = default) =>
         _repository.GetUserIdByVerifiedEmailAsync(email, cancellationToken);
 
+    public async Task<Guid?> GetUserIdByExactEmailAsync(string email, CancellationToken ct = default)
+    {
+        // Returns null on zero matches (unverified-only or unknown address) and
+        // on ambiguous matches (the same verified address appears on more than one
+        // user — an invariant violation, but we treat it safely). Only returns a
+        // non-null id when exactly one distinct UserId owns the verified address.
+        var userIds = await _repository.GetDistinctUserIdsByVerifiedEmailAsync(email, ct);
+        return userIds.Count == 1 ? userIds[0] : (Guid?)null;
+    }
+
+    public async Task<string?> GetPrimaryEmailAsync(Guid userId, CancellationToken ct = default)
+    {
+        var emails = await _repository.GetByUserIdReadOnlyAsync(userId, ct);
+        var primary = emails.FirstOrDefault(e => e.IsVerified && e.IsPrimary);
+        if (primary is not null) return primary.Email;
+        var anyVerified = emails.FirstOrDefault(e => e.IsVerified);
+        if (anyVerified is not null) return anyVerified.Email;
+        // Fall back to User.Email as last resort
+        var user = await _userService.GetByIdAsync(userId, ct);
+        return user?.Email;
+    }
+
     public async Task<IReadOnlyList<string>> GetVerifiedEmailsForUserAsync(
         Guid userId, CancellationToken cancellationToken = default)
     {

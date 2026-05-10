@@ -200,6 +200,9 @@
   <data name="Dashboard_BuyTicket" xml:space="preserve"><value>Aconsegueix la teva entrada</value></data>
   <data name="Dashboard_DifferentEmail" xml:space="preserve"><value>Has comprat amb un altre email?</value></data>
   <data name="Dashboard_DeclareNotAttending" xml:space="preserve"><value>No hi vaig aquest any</value></data>
+  <data name="TicketTransfer_Pending" xml:space="preserve"><value>Pendent de revisió</value></data>
+  <data name="TicketTransfer_SendButton" xml:space="preserve"><value>Envia</value></data>
+  <data name="TicketTransfer_CancelButton" xml:space="preserve"><value>Cancel·la</value></data>
 
   <!-- Guest Dashboard -->
   <data name="Guest_Greeting" xml:space="preserve"><value>Hola, {0}.</value></data>

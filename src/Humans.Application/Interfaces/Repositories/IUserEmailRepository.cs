@@ -194,6 +194,18 @@ public interface IUserEmailRepository
         string email, CancellationToken ct = default);
 
     /// <summary>
+    /// Returns all distinct <c>UserId</c> values whose verified email rows
+    /// contain an address that matches <paramref name="email"/> exactly
+    /// (case-sensitive, no gmail/googlemail aliasing). The caller uses this
+    /// to detect ambiguous matches: a count of 0 means no match, a count
+    /// of 1 means an unambiguous match, and a count &gt; 1 means the same
+    /// address is verified for more than one user (invariant violation —
+    /// treat as ambiguous / return null to the caller).
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetDistinctUserIdsByVerifiedEmailAsync(
+        string email, CancellationToken ct = default);
+
+    /// <summary>
     /// Returns the id of any user, other than <paramref name="excludeUserId"/>,
     /// whose <c>user_emails</c> rows contain the given address (case-insensitive).
     /// Used by @nobodies.team provisioning to block a prefix that is already

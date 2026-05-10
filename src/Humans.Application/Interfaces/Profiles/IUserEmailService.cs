@@ -205,6 +205,17 @@ public interface IUserEmailService
         string email,
         CancellationToken cancellationToken = default);
 
+    /// <summary>Resolve a user by exact, case-insensitive email match against UserEmails. Returns null if zero or ambiguous matches.</summary>
+    Task<Guid?> GetUserIdByExactEmailAsync(string email, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the notification-target (IsPrimary=true, verified) email address for the user,
+    /// falling back to <c>User.Email</c> when no primary row exists. Returns <c>null</c> when
+    /// no email can be resolved. Used by transfer-request creation to snapshot the recipient's
+    /// preferred contact address.
+    /// </summary>
+    Task<string?> GetPrimaryEmailAsync(Guid userId, CancellationToken ct = default);
+
     /// <summary>
     /// Returns every verified email address belonging to the user. Used by
     /// cross-section callers (Tickets, matching) that need to compare incoming
