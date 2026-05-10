@@ -234,4 +234,67 @@ public class CampServiceEarlyEntryTests : IDisposable
         await _dbContext.SaveChangesAsync();
         return member;
     }
+
+    private async Task<CampMember> SeedActiveMemberAsync(Guid campSeasonId)
+    {
+        var member = new CampMember
+        {
+            Id = Guid.NewGuid(),
+            CampSeasonId = campSeasonId,
+            UserId = Guid.NewGuid(),
+            Status = CampMemberStatus.Active,
+            RequestedAt = _clock.GetCurrentInstant(),
+            ConfirmedAt = _clock.GetCurrentInstant(),
+            HasEarlyEntry = false,
+        };
+        _dbContext.CampMembers.Add(member);
+        await _dbContext.SaveChangesAsync();
+        return member;
+    }
+
+    // ==========================================================================
+    // SetEarlyEntryAsync
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task SetEarlyEntryAsync_Grant_SetsFlagAndAudits()
+    {
+        await SeedSettingsAsync();
+        var (camp, season) = await SeedCampWithSeasonAsync(initialEeSlotCount: 5);
+        var member = await SeedActiveMemberAsync(season.Id);
+        var actor = Guid.NewGuid();
+
+        var outcome = await _service.SetEarlyEntryAsync(member.Id, granted: true, actor);
+
+        outcome.Should().Be(SetEarlyEntryOutcome.Success);
+        var reloaded = await _dbContext.CampMembers.AsNoTracking().FirstAsync(m => m.Id == member.Id);
+        reloaded.HasEarlyEntry.Should().BeTrue();
+
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.CampEarlyEntryGranted,
+            nameof(CampMember), member.Id,
+            Arg.Any<string>(), actor,
+            camp.Id, nameof(Camp));
+    }
+
+    [HumansFact]
+    public async Task SetEarlyEntryAsync_Revoke_ClearsFlagAndAudits()
+    {
+        await SeedSettingsAsync();
+        var (camp, season) = await SeedCampWithSeasonAsync(initialEeSlotCount: 5);
+        var member = await SeedActiveMemberWithEarlyEntryAsync(season.Id);
+        var actor = Guid.NewGuid();
+
+        var outcome = await _service.SetEarlyEntryAsync(member.Id, granted: false, actor);
+
+        outcome.Should().Be(SetEarlyEntryOutcome.Success);
+        var reloaded = await _dbContext.CampMembers.AsNoTracking().FirstAsync(m => m.Id == member.Id);
+        reloaded.HasEarlyEntry.Should().BeFalse();
+
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.CampEarlyEntryRevoked,
+            nameof(CampMember), member.Id,
+            Arg.Any<string>(), actor,
+            camp.Id, nameof(Camp));
+    }
 }

@@ -1849,8 +1849,38 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             relatedEntityId: campId, relatedEntityType: nameof(Camp));
     }
 
-    public Task<SetEarlyEntryOutcome> SetEarlyEntryAsync(
+    public async Task<SetEarlyEntryOutcome> SetEarlyEntryAsync(
         Guid campMemberId, bool granted, Guid actorUserId,
         CancellationToken cancellationToken = default)
-        => throw new NotSupportedException("issue-490 Phase 3");
+    {
+        var member = await _repo.GetMemberWithSeasonAsync(campMemberId, cancellationToken);
+        if (member is null) return SetEarlyEntryOutcome.MemberNotFound;
+
+        if (member.HasEarlyEntry == granted)
+            return SetEarlyEntryOutcome.NoChange;
+
+        if (granted)
+        {
+            if (member.Status != CampMemberStatus.Active)
+                return SetEarlyEntryOutcome.MemberNotActive;
+
+            var current = await _repo.GetGrantedCountForSeasonAsync(member.CampSeasonId, cancellationToken);
+            if (current >= member.CampSeason.EeSlotCount)
+                return SetEarlyEntryOutcome.SlotCapExceeded;
+        }
+
+        member.HasEarlyEntry = granted;
+        await _repo.SaveMemberAsync(member, cancellationToken);
+
+        await _auditLog.LogAsync(
+            granted ? AuditAction.CampEarlyEntryGranted : AuditAction.CampEarlyEntryRevoked,
+            nameof(CampMember), member.Id,
+            granted
+                ? $"Granted Early Entry to member in season {member.CampSeason.Year}."
+                : $"Revoked Early Entry from member in season {member.CampSeason.Year}.",
+            actorUserId,
+            relatedEntityId: member.CampSeason.CampId, relatedEntityType: nameof(Camp));
+
+        return SetEarlyEntryOutcome.Success;
+    }
 }
