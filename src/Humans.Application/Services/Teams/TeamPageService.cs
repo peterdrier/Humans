@@ -178,7 +178,7 @@ public sealed class TeamPageService : ITeamPageService
             var allTeamIds = new List<Guid>(activeChildTeamIds.Count + 1) { team.Id };
             allTeamIds.AddRange(activeChildTeamIds);
 
-            var aggregatedData = await _shiftManagementService.GetShiftsSummaryForTeamsAsync(activeEvent.Id, allTeamIds);
+            var aggregatedData = await _shiftManagementService.GetShiftsSummaryAsync(activeEvent.Id, allTeamIds);
             if (aggregatedData is null)
             {
                 return new TeamPageShiftsSummary(0, 0, 0, 0, canManageShifts);
@@ -198,7 +198,7 @@ public sealed class TeamPageService : ITeamPageService
         }
 
         // Child team or standalone team: show only own shifts
-        var summaryData = await _shiftManagementService.GetShiftsSummaryAsync(activeEvent.Id, team.Id);
+        var summaryData = await _shiftManagementService.GetShiftsSummaryAsync(activeEvent.Id, [team.Id]);
         if (summaryData is null)
         {
             return new TeamPageShiftsSummary(0, 0, 0, 0, canManageShifts);

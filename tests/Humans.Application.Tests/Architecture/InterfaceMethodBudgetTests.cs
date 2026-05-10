@@ -102,7 +102,10 @@ public class InterfaceMethodBudgetTests
         // 49→50: issue-682 global search — added SearchAsync(query, max).
         // Authorized exception (Peter, 2026-05-09): queries against rotas
         // must live in the owning section per design-rules §6.
-        [typeof(IShiftManagementService)] = 50,
+        // 50→49: tech-debt interface consolidation — collapsed
+        // GetShiftsSummaryAsync(single team) and GetShiftsSummaryForTeamsAsync
+        // into one GetShiftsSummaryAsync(eventId, teamIds) method.
+        [typeof(IShiftManagementService)] = 49,
         // +1 for SetProfilePictureAsync (nobodies-collective/Humans#532 — Google avatar import button needs a
         // narrow service write that owns its own cache invalidation; controllers can't reach
         // the FullProfile cache directly).

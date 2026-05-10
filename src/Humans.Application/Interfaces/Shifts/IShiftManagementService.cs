@@ -202,16 +202,10 @@ public interface IShiftManagementService
         BuildSubPeriod? subPeriod = null);
 
     /// <summary>
-    /// Gets shifts summary for a department. Returns null if no rotas.
+    /// Gets shifts summary aggregated across one or more teams. Returns null if no rotas.
     /// </summary>
     Task<ShiftsSummaryData?> GetShiftsSummaryAsync(
-        Guid eventSettingsId, Guid departmentTeamId);
-
-    /// <summary>
-    /// Gets aggregated shifts summary across multiple teams. Returns null if no rotas.
-    /// </summary>
-    Task<ShiftsSummaryData?> GetShiftsSummaryForTeamsAsync(
-        Guid eventSettingsId, IReadOnlyList<Guid> teamIds);
+        Guid eventSettingsId, IReadOnlyCollection<Guid> teamIds);
 
     /// <summary>
     /// Gets all parent teams that have active rotas in the given event.
@@ -398,4 +392,3 @@ public record DailyStaffingHours(
     double EssentialHours,
     double ImportantHours,
     double NormalHours);
-
