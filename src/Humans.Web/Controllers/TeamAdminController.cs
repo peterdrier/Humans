@@ -362,7 +362,7 @@ public class TeamAdminController : HumansTeamControllerBase
 
         // Verify that the target user is actually a member of this team
         var teamInfo = await _teamService.GetTeamAsync(team.Id);
-        if (teamInfo?.Members.All(m => m.UserId != userId) != false)
+        if (teamInfo is null || teamInfo.Members.All(m => m.UserId != userId))
         {
             SetError("That human is not a member of this team.");
             return RedirectToAction(nameof(Members), new { slug });

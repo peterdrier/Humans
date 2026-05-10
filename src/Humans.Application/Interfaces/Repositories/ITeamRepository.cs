@@ -175,11 +175,6 @@ public interface ITeamRepository
     Task<IReadOnlyList<TeamMember>> GetActiveByUserIdAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
-    /// Get active members of a team with aggregate-local data, detached.
-    /// Cross-domain User data is not included — caller stitches via
-    /// <see cref="Users.IUserService"/>.
-    /// </summary>
-    /// <summary>
     /// Get active user ids with the <see cref="TeamMemberRole.Coordinator"/>
     /// role on the given team.
     /// </summary>

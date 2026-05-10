@@ -63,7 +63,7 @@ public class InterfaceMethodBudgetTests
         // 71→73: team-cache decorator groundwork — added canonical
         // GetTeamAsync/GetTeamsAsync read-model methods. Follow-up passes should
         // consolidate member/name/option getters down onto those methods.
-        // 73â†’71: tech-debt query consolidation â€” removed GetTeamMembersAsync
+        // 73→71: tech-debt query consolidation — removed GetTeamMembersAsync
         // and GetActiveMemberUserIdsAsync; callers project members/user IDs
         // from GetTeamAsync/GetTeamsAsync read models.
         [typeof(ITeamService)] = 71,
@@ -108,10 +108,10 @@ public class InterfaceMethodBudgetTests
         // 49→50: issue-682 global search — added SearchAsync(query, max).
         // Authorized exception (Peter, 2026-05-09): queries against rotas
         // must live in the owning section per design-rules §6.
-        // 50â†’49: tech-debt interface consolidation â€” collapsed
+        // 50→49: tech-debt interface consolidation — collapsed
         // GetShiftsSummaryAsync(single team) and GetShiftsSummaryForTeamsAsync
         // into one GetShiftsSummaryAsync(eventId, teamIds) method.
-        // 49â†’48: collapsed GetAllTagsAsync and SearchTagsAsync into one
+        // 49→48: collapsed GetAllTagsAsync and SearchTagsAsync into one
         // GetTagsAsync(query) method.
         [typeof(IShiftManagementService)] = 48,
         // +1 for SetProfilePictureAsync (nobodies-collective/Humans#532 — Google avatar import button needs a
