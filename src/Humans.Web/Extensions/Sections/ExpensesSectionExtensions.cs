@@ -1,6 +1,7 @@
 using Humans.Application.Interfaces.Expenses;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Services.Expenses;
+using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Repositories.Expenses;
 using Humans.Infrastructure.Services.Expenses;
 
@@ -17,6 +18,7 @@ internal static class ExpensesSectionExtensions
             ExpenseAttachmentFilesystemStorage>();
         services.AddSingleton<IExpenseRepository, ExpenseRepository>();
         services.AddScoped<IExpenseReportService, ExpenseReportService>();
+        services.AddScoped<HoldedExpenseOutboxJob>();
         return services;
     }
 }
