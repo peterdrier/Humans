@@ -2487,6 +2487,10 @@ namespace Humans.Infrastructure.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
 
+                    b.Property<string>("Iban")
+                        .HasMaxLength(34)
+                        .HasColumnType("character varying(34)");
+
                     b.Property<bool>("IsApproved")
                         .HasColumnType("boolean");
 
