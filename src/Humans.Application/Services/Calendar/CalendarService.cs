@@ -240,8 +240,11 @@ public sealed class CalendarService : ICalendarService
         return finalResults.OrderBy(o => o.OccurrenceStartUtc).ToList();
     }
 
-    public Task<CalendarEvent?> GetEventByIdAsync(Guid id, CancellationToken ct = default) =>
-        _repo.GetEventByIdAsync(id, ct);
+    public async Task<CalendarEventDetail?> GetEventByIdAsync(Guid id, CancellationToken ct = default)
+    {
+        var ev = await _repo.GetEventByIdAsync(id, ct);
+        return ev is null ? null : ToDetail(ev);
+    }
 
     public async Task<CalendarEvent> CreateEventAsync(CreateCalendarEventDto dto, Guid createdByUserId, CancellationToken ct = default)
     {
@@ -497,4 +500,19 @@ public sealed class CalendarService : ICalendarService
 
         InvalidateCache();
     }
+
+    private static CalendarEventDetail ToDetail(CalendarEvent ev) => new(
+        ev.Id,
+        ev.Title,
+        ev.Description,
+        ev.Location,
+        ev.LocationUrl,
+        ev.OwningTeamId,
+        ev.StartUtc,
+        ev.EndUtc,
+        ev.IsAllDay,
+        ev.RecurrenceRule,
+        ev.RecurrenceTimezone,
+        ev.CreatedAt,
+        ev.UpdatedAt);
 }
