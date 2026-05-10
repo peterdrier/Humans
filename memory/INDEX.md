@@ -9,10 +9,12 @@ Atomic rules. Fetch the body when the description's trigger matches your task. S
 ## architecture/
 
 - [`audit-log-as-concurrency-safety-net`](architecture/audit-log-as-concurrency-safety-net.md) — audit log catches admin-clobbers-admin races at this scale; don't reach for `IsConcurrencyToken` / row versioning
+- [`burnername-is-the-display-name`](architecture/burnername-is-the-display-name.md) — HARD RULE. When a Profile exists, `Profile.BurnerName` is the only name we render. `User.DisplayName` is a legacy field — fallback only. Use `FullProfile.DisplayName` or `<vc:human>`.
 - [`caching-transparent`](architecture/caching-transparent.md) — no `Cached*` types in domain surface; `Full<Section>` is the §15 stitched-DTO pattern
 - [`consent-record-immutable`](architecture/consent-record-immutable.md) — `consent_records` table: DB triggers block UPDATE/DELETE, INSERT only
 - [`db-enforcement-minimal`](architecture/db-enforcement-minimal.md) — service is the contract, not the DB; only audit-log immutability is doctrinal
 - [`display-sort-in-controllers`](architecture/display-sort-in-controllers.md) — display ordering belongs at the presentation layer (controllers / views / view-model assembly), not in services or repositories; repo-layer `OrderBy` allowed only for pagination tie-breakers, top-N, identity-ordered streams (mark with `// arch:db-sort-ok`)
+- [`interface-method-additions-are-debt`](architecture/interface-method-additions-are-debt.md) — every method added to any interface is durable tech debt; default is REUSE, not add. Audit existing methods first; inline a LINQ chain on a list-returning method when picking a field. STOP and ask Peter before adding to any interface, budgeted or not.
 - [`interface-method-budget-ratchet`](architecture/interface-method-budget-ratchet.md) — HARD RULE. Add a method to a budgeted interface → remove one from the SAME interface, same PR. No splits to dodge.
 - [`migration-regen-after-rebase`](architecture/migration-regen-after-rebase.md) — HARD RULE. Once main's migrations interleave with yours, `migrations remove` is broken for your branch-migrations. Stop and ask. Don't hand-edit snapshot. Regen BEFORE rebase, not after.
 - [`no-admin-url-section`](architecture/no-admin-url-section.md) — new admin pages live at `/<Section>/Admin/*`, never `/Admin/<Section>/*`
@@ -83,6 +85,8 @@ Atomic rules. Fetch the body when the description's trigger matches your task. S
 - [`no-anon-perf-guards`](process/no-anon-perf-guards.md) — don't flag cheap `[AllowAnonymous]` DB reads as perf issues; auth guard is dead defensive code at this scale
 - [`no-data-backfills`](process/no-data-backfills.md) — HARD RULE. No data-mutation SQL in EF migrations, no autonomous one-shot runners. Bulk fixes go through an admin screen with a review → confirm UX (model: `BackfillLegacyEmails`). Default scope on a new invariant: enforce on writes + surface via scanner.
 - [`no-direct-to-main`](process/no-direct-to-main.md) — HARD RULE. Feature branch + PR for code/docs/config; `memory/**`-only changes either bundle with the discovery PR or go direct to `origin/main` standalone
+- [`context-discipline`](process/context-discipline.md) — read narrow, build/test → file (read incrementally), Write beats >3 sequential Edits, /reforge for symbol queries, commit checkpoints during long refactors
+- [`model-tiering`](process/model-tiering.md) — Opus orchestrates judgment; Sonnet subagents do mechanical refactors via `Agent` with `model: "sonnet"`; Haiku for surgical one-shots. Dispatch right after design dialogue ends.
 - [`post-fix-doc-check`](process/post-fix-doc-check.md) — before final commit, scan `docs/features/` and `docs/sections/` for invariants the change touches; update inline
 - [`pr-codex-thread-replies`](process/pr-codex-thread-replies.md) — reply per Codex inline thread (`POST /pulls/{n}/comments/{id}/replies`), not as top-level PR comment
 - [`pr-done-means-codex-clean`](process/pr-done-means-codex-clean.md) — a PR isn't "done" until Codex returns no findings; pushed+green is mid-state

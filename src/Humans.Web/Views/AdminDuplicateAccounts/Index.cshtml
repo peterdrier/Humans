@@ -46,11 +46,7 @@ else
                             <div class="card mb-2 @(account.IsProfileComplete ? "border-success" : "border-secondary")">
                                 <div class="card-body">
                                     <div class="d-flex align-items-center mb-2">
-                                        <human-link user-id="@account.UserId" display-name="@account.DisplayName"
-                                                    mode="AvatarName" size="40"
-                                                    profile-picture-url="@account.ProfilePictureUrl" admin="true">
-                                            <small class="text-muted">@account.Email</small>
-                                        </human-link>
+                                        <vc:human user-id="@account.UserId" layout="AvatarName" size="40" link="Admin" />
                                     </div>
                                     <table class="table table-sm table-borderless mb-2">
                                         <tbody>

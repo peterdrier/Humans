@@ -349,8 +349,9 @@ public class UserEmailServiceTests
     [HumansFact]
     public async Task ClearGoogleAsync_FlaggedRow_ClearsAndAudits()
     {
-        // Issue 650: admin can clear IsGoogle from a row even when the user
-        // is in the duplicate-IsGoogle invariant-violation state.
+        // Issue 650: admin can clear IsGoogle from a row when the user is in
+        // the duplicate-IsGoogle invariant-violation state. Two rows carry
+        // IsGoogle, so the sole-row guard (issue 686) is satisfied.
         var userId = Guid.NewGuid();
         var actorId = Guid.NewGuid();
         var rowId = Guid.NewGuid();
@@ -362,8 +363,18 @@ public class UserEmailServiceTests
             IsVerified = true,
             IsGoogle = true,
         };
+        var sibling = new UserEmail
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Email = "b@x.test",
+            IsVerified = true,
+            IsGoogle = true,
+        };
         _repository.GetByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
             .Returns(row);
+        _repository.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new List<UserEmail> { row, sibling });
 
         var result = await _service.ClearGoogleAsync(userId, rowId, actorId);
 
@@ -403,6 +414,37 @@ public class UserEmailServiceTests
     }
 
     [HumansFact]
+    public async Task ClearGoogleAsync_SoleIsGoogleRow_ReturnsFalse()
+    {
+        // Issue 686: clearing the only IsGoogle row would leave the user in
+        // the ZeroIsGoogle state /Profile/Admin/EmailProblems flags as a bug.
+        // Reject the call so admins can't reach that state via direct form
+        // replay even after the view hides the button.
+        var userId = Guid.NewGuid();
+        var rowId = Guid.NewGuid();
+        var row = new UserEmail
+        {
+            Id = rowId,
+            UserId = userId,
+            Email = "a@x.test",
+            IsVerified = true,
+            IsGoogle = true,
+        };
+        _repository.GetByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
+            .Returns(row);
+        _repository.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new List<UserEmail> { row });
+
+        var result = await _service.ClearGoogleAsync(userId, rowId, userId);
+
+        result.Should().BeFalse();
+        row.IsGoogle.Should().BeTrue();
+        await _repository.DidNotReceive().UpdateAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
+        await _fullProfileInvalidator.DidNotReceive().InvalidateAsync(
+            Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
+    }
+
+    [HumansFact]
     public async Task ClearGoogleAsync_OnlyClearsTargetRow_LeavesOtherFlagAlone()
     {
         // Critical for the duplicate-IsGoogle remediation: clearing one row
@@ -418,8 +460,18 @@ public class UserEmailServiceTests
             IsVerified = true,
             IsGoogle = true,
         };
+        var rowB = new UserEmail
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Email = "b@x.test",
+            IsVerified = true,
+            IsGoogle = true,
+        };
         _repository.GetByIdAndUserIdAsync(rowAId, userId, Arg.Any<CancellationToken>())
             .Returns(rowA);
+        _repository.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new List<UserEmail> { rowA, rowB });
 
         var result = await _service.ClearGoogleAsync(userId, rowAId, userId);
 
@@ -434,6 +486,8 @@ public class UserEmailServiceTests
     [HumansFact]
     public async Task ClearPrimaryAsync_FlaggedRow_ClearsAndAudits()
     {
+        // Two rows carry IsPrimary (the duplicate-flag recovery scenario);
+        // the sole-row guard (issue 686) is satisfied.
         var userId = Guid.NewGuid();
         var actorId = Guid.NewGuid();
         var rowId = Guid.NewGuid();
@@ -445,8 +499,18 @@ public class UserEmailServiceTests
             IsVerified = true,
             IsPrimary = true,
         };
+        var sibling = new UserEmail
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Email = "b@x.test",
+            IsVerified = true,
+            IsPrimary = true,
+        };
         _repository.GetByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
             .Returns(row);
+        _repository.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new List<UserEmail> { row, sibling });
 
         var result = await _service.ClearPrimaryAsync(userId, rowId, actorId);
 
@@ -462,11 +526,12 @@ public class UserEmailServiceTests
     }
 
     [HumansFact]
-    public async Task ClearPrimaryAsync_DoesNotAutoPromoteSuccessor()
+    public async Task ClearPrimaryAsync_SoleIsPrimaryRow_ReturnsFalse()
     {
-        // Admin-recovery semantics: after Clear, the user is left with zero
-        // primary. The admin is expected to call SetPrimary explicitly. The
-        // service must not call EnsurePrimaryInvariantAsync on this path.
+        // Issue 686: clearing the only IsPrimary row would leave the user in
+        // the ZeroIsPrimary state /Profile/Admin/EmailProblems flags as a bug.
+        // Reject the call so admins can't reach that state via direct form
+        // replay even after the view hides the button.
         var userId = Guid.NewGuid();
         var rowId = Guid.NewGuid();
         var row = new UserEmail
@@ -479,11 +544,91 @@ public class UserEmailServiceTests
         };
         _repository.GetByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
             .Returns(row);
+        _repository.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new List<UserEmail> { row });
+
+        var result = await _service.ClearPrimaryAsync(userId, rowId, userId);
+
+        result.Should().BeFalse();
+        row.IsPrimary.Should().BeTrue();
+        await _repository.DidNotReceive().UpdateAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
+        await _fullProfileInvalidator.DidNotReceive().InvalidateAsync(
+            Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
+    }
+
+    [HumansFact]
+    public async Task ClearPrimaryAsync_OnlyUnverifiedSuccessor_ReturnsFalse()
+    {
+        // Issue 686 hardening: an unverified row carrying IsPrimary doesn't
+        // count as a valid successor — clearing the sole verified IsPrimary
+        // row would still leave the user in a zero-verified-primary state
+        // EmailProblems flags as a bug. The guard mirrors the view's
+        // `hasMultiplePrimary` (verified-only) and the scanner's
+        // `verifiedPrimaryCount` semantics.
+        var userId = Guid.NewGuid();
+        var rowId = Guid.NewGuid();
+        var row = new UserEmail
+        {
+            Id = rowId,
+            UserId = userId,
+            Email = "a@x.test",
+            IsVerified = true,
+            IsPrimary = true,
+        };
+        var unverifiedSibling = new UserEmail
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Email = "b@x.test",
+            IsVerified = false,
+            IsPrimary = true,
+        };
+        _repository.GetByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
+            .Returns(row);
+        _repository.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new List<UserEmail> { row, unverifiedSibling });
+
+        var result = await _service.ClearPrimaryAsync(userId, rowId, userId);
+
+        result.Should().BeFalse();
+        row.IsPrimary.Should().BeTrue();
+        await _repository.DidNotReceive().UpdateAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ClearPrimaryAsync_DoesNotAutoPromoteSuccessor()
+    {
+        // Admin-recovery semantics: after Clear, the user is left with the
+        // remaining IsPrimary row(s) untouched. The service must NOT call
+        // EnsurePrimaryInvariantAsync on this path — that helper would
+        // demote the sibling and re-pick a winner. Use GetByUserIdForMutationAsync
+        // (which the helper alone calls; the new sole-row guard reads via
+        // GetByUserIdReadOnlyAsync) as the witness that the helper didn't run.
+        var userId = Guid.NewGuid();
+        var rowId = Guid.NewGuid();
+        var row = new UserEmail
+        {
+            Id = rowId,
+            UserId = userId,
+            Email = "a@x.test",
+            IsVerified = true,
+            IsPrimary = true,
+        };
+        var sibling = new UserEmail
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Email = "b@x.test",
+            IsVerified = true,
+            IsPrimary = true,
+        };
+        _repository.GetByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
+            .Returns(row);
+        _repository.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new List<UserEmail> { row, sibling });
 
         await _service.ClearPrimaryAsync(userId, rowId, userId);
 
-        // EnsurePrimaryInvariantAsync would fetch all emails for the user via
-        // GetByUserIdForMutationAsync — proving it didn't run is enough here.
         await _repository.DidNotReceive().GetByUserIdForMutationAsync(
             userId, Arg.Any<CancellationToken>());
     }

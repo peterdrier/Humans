@@ -1,3 +1,4 @@
+using Humans.Application.DTOs;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Domain.ValueObjects;
@@ -174,6 +175,18 @@ public interface ITeamService
     /// Gets all active teams.
     /// </summary>
     Task<IReadOnlyList<Team>> GetAllTeamsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Active, non-hidden teams whose <c>Name</c> contains
+    /// <paramref name="query"/> (case-insensitive). Capped at
+    /// <paramref name="max"/>; returned in unspecified order — the global
+    /// search orchestrator scores and ranks. Used by the global /Search
+    /// page (<c>SearchService</c>); every caller sees the public surface
+    /// regardless of role.
+    /// </summary>
+    Task<IReadOnlyList<TeamSearchHit>> SearchAsync(
+        string query, int max,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets the summarized team directory for anonymous or authenticated viewers.
@@ -527,10 +540,12 @@ public interface ITeamService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Gets the names of all active (non-Volunteers) teams the user belongs to,
-    /// ordered alphabetically. Used for profile popover display.
+    /// Returns the active (non-Volunteers) teams the user belongs to with the
+    /// user's role on each team. Callers that only need names project via
+    /// <c>.Select(m =&gt; m.TeamName)</c>. Display ordering is the caller's
+    /// responsibility (rendering layer).
     /// </summary>
-    Task<IReadOnlyList<string>> GetActiveTeamNamesForUserAsync(
+    Task<IReadOnlyList<Humans.Application.Models.TeamMembership>> GetActiveTeamMembershipsForUserAsync(
         Guid userId, CancellationToken cancellationToken = default);
 
     /// <summary>

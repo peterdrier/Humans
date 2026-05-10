@@ -155,7 +155,7 @@
                                     @* — admins could not recover from the duplicate-IsPrimary state.   *@
                                     @{
                                         var showClearPrimary = !isLockedRow && row.IsPrimary
-                                            && (Model.IsAdminContext || hasMultiplePrimary);
+                                            && hasMultiplePrimary;
                                     }
                                     @if (primaryChecked)
                                     {
@@ -201,7 +201,7 @@
                                     }
                                     @{
                                         var showClearGoogle = !isLockedRow && row.IsGoogle
-                                            && (Model.IsAdminContext || hasMultipleGoogle);
+                                            && hasMultipleGoogle;
                                     }
                                     @if (googleChecked)
                                     {

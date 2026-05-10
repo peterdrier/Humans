@@ -1,4 +1,5 @@
 using Humans.Application;
+using Humans.Application.DTOs;
 using Humans.Application.Extensions;
 using Humans.Application.Helpers;
 using Humans.Application.Interfaces;
@@ -383,6 +384,25 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
     {
         var seasons = await _repo.GetPendingSeasonsAsync(cancellationToken);
         return seasons.ToList();
+    }
+
+    public async Task<IReadOnlyList<CampSearchHit>> SearchAsync(
+        string query, int max,
+        CancellationToken cancellationToken = default)
+    {
+        var settings = await GetSettingsAsync(cancellationToken);
+        var year = settings.PublicYear;
+        var camps = await _repo.SearchForYearAsync(
+            query, year, onlyPublicStatus: true, max, cancellationToken);
+
+        var hits = new List<CampSearchHit>(camps.Count);
+        foreach (var camp in camps)
+        {
+            var season = camp.Seasons.FirstOrDefault(s => s.Year == year);
+            var name = season?.Name ?? camp.Slug;
+            hits.Add(new CampSearchHit(camp.Slug, name));
+        }
+        return hits;
     }
 
     private static IEnumerable<CampDirectoryCard> ApplyCampDirectoryFilter(

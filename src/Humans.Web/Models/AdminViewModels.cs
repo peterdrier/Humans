@@ -322,6 +322,13 @@ public class ProfileSummaryViewModel
     public bool IsSuspended { get; set; }
     public List<string> Teams { get; set; } = [];
     public IReadOnlyList<ProfileLanguageDisplayViewModel> Languages { get; set; } = [];
+
+    /// <summary>
+    /// False when the user exists (AspNetUsers row) but has no Profile row —
+    /// e.g. mailing-list / ticketing imports. The popover renders a sparse
+    /// "imported account" card in that case instead of 404'ing.
+    /// </summary>
+    public bool HasProfile { get; set; } = true;
 }
 
 public class EmailOutboxViewModel

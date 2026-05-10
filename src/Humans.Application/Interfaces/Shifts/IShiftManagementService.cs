@@ -91,6 +91,21 @@ public interface IShiftManagementService
     /// </summary>
     Task<IReadOnlyList<Rota>> GetRotasByDepartmentAsync(Guid teamId, Guid eventSettingsId);
 
+    /// <summary>
+    /// Volunteer-visible rotas in the active event whose <c>Name</c>
+    /// contains <paramref name="query"/> (case-insensitive). The owning
+    /// team's display name is stitched in via <c>ITeamService</c>
+    /// (cross-domain — this service does not navigate the rota's team
+    /// navigation property). Capped at <paramref name="max"/>; returned
+    /// in unspecified order — the global search orchestrator scores and
+    /// ranks. Returns an empty list when no event is active. Used by the
+    /// global /Search page (<c>SearchService</c>); every caller sees the
+    /// public surface regardless of role.
+    /// </summary>
+    Task<IReadOnlyList<RotaSearchHit>> SearchAsync(
+        string query, int max,
+        CancellationToken cancellationToken = default);
+
     // === Bulk Shift Creation ===
 
     /// <summary>

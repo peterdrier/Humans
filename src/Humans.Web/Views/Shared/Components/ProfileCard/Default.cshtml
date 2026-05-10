@@ -16,8 +16,10 @@
         @* Photo + Name + Pronouns + Status + Teams *@
         <div class="row mb-3">
             <div class="col-auto">
-                <vc:user-avatar user-id="@Model.UserId"
-                                size="160" />
+                <vc:human user-id="@Model.UserId"
+                          layout="Avatar"
+                          size="160"
+                          link="None" />
             </div>
             <div class="col">
                 <h4>@(string.IsNullOrEmpty(Model.BurnerName) ? Model.DisplayName : Model.BurnerName)</h4>
