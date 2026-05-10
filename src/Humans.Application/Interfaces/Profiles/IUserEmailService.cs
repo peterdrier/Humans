@@ -127,9 +127,42 @@ public interface IUserEmailService : IApplicationService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// If the user has a verified @nobodies.team email but GoogleEmail is null, sets it.
-    /// Returns true if GoogleEmail was updated.
+    /// Idempotent verified-email add for the import-flow account-creation path
+    /// (<c>AccountProvisioningService</c>): on a freshly created User the row
+    /// is added through <see cref="UserEmailService"/> rather than the
+    /// repository directly so it goes through the same orchestrator
+    /// (Primary + Google invariants, FullProfile invalidation) as every
+    /// other UserEmail-add path. Issue nobodies-collective/Humans#687.
+    /// Skips if the email already exists for this user (idempotent).
     /// </summary>
+    Task AddProvisionedEmailAsync(
+        Guid userId,
+        string email,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Looks up the owning userId for any UserEmail row matching the given
+    /// address (case-insensitive normalized, including the gmail/googlemail
+    /// alternate). Returns the userId of any matching row regardless of
+    /// verification state — used by import-flow account provisioning to
+    /// detect existing accounts before creating a new one. Returns null when
+    /// no row matches. Orphan detection (matched row pointing at a missing
+    /// user) is the caller's responsibility — see
+    /// <see cref="Humans.Application.Services.Users.AccountProvisioningService"/>.
+    /// </summary>
+    Task<Guid?> FindAnyUserIdByEmailAsync(
+        string email,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Legacy backfill that wrote the verified @nobodies.team email into the
+    /// <c>User.GoogleEmail</c> shadow column. With the column deprecated and
+    /// the new <c>EnsureGoogleInvariantAsync</c> running on every UserEmail
+    /// row creation, the shadow column no longer participates in the Google
+    /// identity invariant. Method body is now a no-op kept temporarily so
+    /// tests and callers compile through the obsolete transition.
+    /// </summary>
+    [Obsolete("Issue nobodies-collective/Humans#687: User.GoogleEmail is being deprecated. UserEmailService.EnsureGoogleInvariantAsync now stamps IsGoogle on the canonical row whenever a UserEmail is added; no separate backfill is needed.")]
     Task<bool> TryBackfillGoogleEmailAsync(
         Guid userId,
         CancellationToken cancellationToken = default);
@@ -465,13 +498,16 @@ public record UserEmailMatch(
 /// <param name="DisplayName">Display name (for the admin grid). May be null
 /// if the User row is missing or has no display name.</param>
 /// <param name="IsGoogleCount">How many rows have <c>IsGoogle = true</c>.
-/// A healthy value is 0 or 1; values &gt; 1 are violations.</param>
+/// A healthy value is 1 (when verified rows exist); 0 with verified rows is
+/// a violation, as are values &gt; 1.</param>
 /// <param name="VerifiedCount">How many rows are verified.</param>
 /// <param name="VerifiedPrimaryCount">How many verified rows have
 /// <c>IsPrimary = true</c>. A healthy value is 1 (when verified rows exist)
 /// or 0 (when no verified rows exist).</param>
 /// <param name="HasMultipleGoogle">Convenience flag — true when
 /// <see cref="IsGoogleCount"/> &gt; 1.</param>
+/// <param name="HasZeroGoogle">Convenience flag — true when verified rows
+/// exist and <see cref="IsGoogleCount"/> is 0.</param>
 /// <param name="HasPrimaryProblem">Convenience flag — true when verified
 /// rows exist and <see cref="VerifiedPrimaryCount"/> is not exactly 1.</param>
 public record UserEmailFlagViolation(
@@ -481,4 +517,5 @@ public record UserEmailFlagViolation(
     int VerifiedCount,
     int VerifiedPrimaryCount,
     bool HasMultipleGoogle,
+    bool HasZeroGoogle,
     bool HasPrimaryProblem);

@@ -4,7 +4,6 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Domain.Helpers;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 using NodaTime;
@@ -18,7 +17,10 @@ namespace Humans.Application.Services.Users;
 /// </summary>
 /// <remarks>
 /// Application-layer implementation — goes through <see cref="IUserRepository"/>
-/// and <see cref="IUserEmailRepository"/>, never injects <c>DbContext</c>.
+/// for User reads/writes and <see cref="IUserEmailService"/> for UserEmail
+/// row creation (issue nobodies-collective/Humans#687: every UserEmail-add
+/// path must go through the orchestrator that runs the Primary + Google
+/// invariants). Never injects <c>DbContext</c>.
 /// <para>
 /// User creation itself still goes through <see cref="UserManager{TUser}"/>
 /// because ASP.NET Identity owns the password hashing / concurrency stamp /
@@ -29,7 +31,7 @@ namespace Humans.Application.Services.Users;
 public sealed class AccountProvisioningService : IAccountProvisioningService
 {
     private readonly IUserRepository _userRepository;
-    private readonly IUserEmailRepository _userEmailRepository;
+    private readonly IUserEmailService _userEmailService;
     private readonly IProfileService _profileService;
     private readonly UserManager<User> _userManager;
     private readonly IAuditLogService _auditLogService;
@@ -38,7 +40,7 @@ public sealed class AccountProvisioningService : IAccountProvisioningService
 
     public AccountProvisioningService(
         IUserRepository userRepository,
-        IUserEmailRepository userEmailRepository,
+        IUserEmailService userEmailService,
         IProfileService profileService,
         UserManager<User> userManager,
         IAuditLogService auditLogService,
@@ -46,7 +48,7 @@ public sealed class AccountProvisioningService : IAccountProvisioningService
         ILogger<AccountProvisioningService> logger)
     {
         _userRepository = userRepository;
-        _userEmailRepository = userEmailRepository;
+        _userEmailService = userEmailService;
         _profileService = profileService;
         _userManager = userManager;
         _auditLogService = auditLogService;
@@ -60,21 +62,20 @@ public sealed class AccountProvisioningService : IAccountProvisioningService
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(email);
 
-        var normalizedEmail = EmailNormalization.NormalizeForComparison(email);
-        var alternateEmail = GetAlternateEmail(normalizedEmail);
+        // 1. Check UserEmail records (includes OAuth, verified, and unverified
+        //    emails). Issue nobodies-collective/Humans#687: routed through
+        //    IUserEmailService rather than IUserEmailRepository so the orchestrator
+        //    + invariants own all UserEmail mutations.
+        var matchingUserId = await _userEmailService.FindAnyUserIdByEmailAsync(email, ct);
 
-        // 1. Check UserEmail records (includes OAuth, verified, and unverified emails)
-        var matchingUserEmail = await _userEmailRepository.FindByNormalizedEmailAsync(
-            normalizedEmail, alternateEmail, ct);
-
-        if (matchingUserEmail is not null)
+        if (matchingUserId is not null)
         {
-            var existingUser = await _userRepository.GetByIdAsync(matchingUserEmail.UserId, ct);
+            var existingUser = await _userRepository.GetByIdAsync(matchingUserId.Value, ct);
             if (existingUser is null)
             {
                 _logger.LogWarning(
-                    "Orphan UserEmail {UserEmailId} references missing user {UserId} during lookup for {Email}",
-                    matchingUserEmail.Id, matchingUserEmail.UserId, email);
+                    "Orphan UserEmail references missing user {UserId} during lookup for {Email}",
+                    matchingUserId.Value, email);
             }
             else
             {
@@ -117,20 +118,12 @@ public sealed class AccountProvisioningService : IAccountProvisioningService
             throw new InvalidOperationException($"Failed to create account for {email}: {errors}");
         }
 
-        var userEmail = new UserEmail
-        {
-            Id = Guid.NewGuid(),
-            UserId = newUser.Id,
-            Email = email,
-            IsVerified = true,
-            IsPrimary = true,
-            Visibility = null,
-            CreatedAt = now,
-            UpdatedAt = now,
-        };
-        // AddAsync persists the UserEmail in its own context. The business save
-        // (User + UserEmail) is complete before the audit-after-save log call.
-        await _userEmailRepository.AddAsync(userEmail, ct);
+        // Issue nobodies-collective/Humans#687: route the UserEmail row creation
+        // through the orchestrator on IUserEmailService instead of writing to
+        // IUserEmailRepository directly. The orchestrator runs
+        // EnsurePrimaryInvariantAsync + EnsureGoogleInvariantAsync so the new
+        // user gets exactly one IsPrimary row and exactly one IsGoogle row.
+        await _userEmailService.AddProvisionedEmailAsync(newUser.Id, email, ct);
 
         // Issue #635 (§15i): Stub Profile invariant. Every newly provisioned
         // user gets a Profile row in the Stub state so cross-section reads
@@ -152,13 +145,5 @@ public sealed class AccountProvisioningService : IAccountProvisioningService
             newUser.Id, email, source, resolvedDisplayName);
 
         return new AccountProvisioningResult(newUser, Created: true);
-    }
-
-    private static string? GetAlternateEmail(string normalizedEmail)
-    {
-        if (normalizedEmail.EndsWith("@gmail.com", StringComparison.Ordinal))
-            return $"{normalizedEmail[..^"@gmail.com".Length]}@googlemail.com";
-
-        return null;
     }
 }
