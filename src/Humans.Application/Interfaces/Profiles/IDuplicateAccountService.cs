@@ -1,10 +1,11 @@
+using Humans.Application.Interfaces;
 namespace Humans.Application.Interfaces.Profiles;
 
 /// <summary>
 /// Service for detecting and resolving duplicate user accounts
 /// where the same email address appears on multiple User records.
 /// </summary>
-public interface IDuplicateAccountService
+public interface IDuplicateAccountService : IApplicationService
 {
     /// <summary>
     /// Scans for email conflicts: multiple Users whose emails overlap

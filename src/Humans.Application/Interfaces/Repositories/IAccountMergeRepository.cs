@@ -16,7 +16,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// "display-info" DTO and the merge table sits alongside user identity in the
 /// table ownership map (§8, Users/Identity section).
 /// </remarks>
-public interface IAccountMergeRepository
+public interface IAccountMergeRepository : IRepository
 {
     /// <summary>
     /// Returns all pending merge requests for admin review, ordered by

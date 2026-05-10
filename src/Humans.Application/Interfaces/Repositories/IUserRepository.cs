@@ -16,7 +16,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// <see cref="Humans.Application.Services.Users.UserService"/> can apply the
 /// status/source business rules before persisting.
 /// </remarks>
-public interface IUserRepository
+public interface IUserRepository : IRepository
 {
     // ==========================================================================
     // Reads — User

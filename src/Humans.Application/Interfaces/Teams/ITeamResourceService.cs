@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces;
 using Humans.Application.DTOs;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -34,7 +35,7 @@ public record UserTeamGoogleResource(
 /// never access <c>DbSet&lt;GoogleResource&gt;</c> directly and must go through the
 /// read methods on this interface instead.
 /// </summary>
-public interface ITeamResourceService
+public interface ITeamResourceService : IApplicationService
 {
     /// <summary>
     /// Gets all active Google resources linked to a single team, ordered by provision time.

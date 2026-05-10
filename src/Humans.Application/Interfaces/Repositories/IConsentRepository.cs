@@ -22,7 +22,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// <c>HumansDbContext</c> remains Scoped.
 /// </para>
 /// </remarks>
-public interface IConsentRepository
+public interface IConsentRepository : IRepository
 {
     // ==========================================================================
     // Writes — append-only

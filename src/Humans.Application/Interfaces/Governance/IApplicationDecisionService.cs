@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces;
 using Humans.Application.DTOs;
 using Humans.Application.DTOs.Governance;
 using Humans.Domain.Enums;
@@ -18,7 +19,7 @@ namespace Humans.Application.Interfaces.Governance;
 /// resolved via <c>IUserService</c>, because the entity no longer carries
 /// cross-domain navigation properties (design-rules §6).
 /// </remarks>
-public interface IApplicationDecisionService
+public interface IApplicationDecisionService : IApplicationService
 {
     Task<ApplicationDecisionResult> ApproveAsync(
         Guid applicationId,

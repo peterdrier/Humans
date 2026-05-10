@@ -30,7 +30,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// things that evolve on very different cadences.
 /// </para>
 /// </remarks>
-public interface ITicketRepository
+public interface ITicketRepository : IRepository
 {
     // ── TicketSyncState (singleton row, Id == 1) ─────────────────────────────
 

@@ -17,7 +17,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// <c>HumansDbContext</c> remains Scoped. Each method creates and disposes
 /// its own short-lived context.
 /// </remarks>
-public interface IEmailOutboxRepository
+public interface IEmailOutboxRepository : IRepository
 {
     // ==========================================================================
     // Reads — admin dashboard and profile views

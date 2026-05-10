@@ -27,7 +27,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// both commit inside the same <c>SaveChanges</c>.
 /// </para>
 /// </remarks>
-public interface IBudgetRepository
+public interface IBudgetRepository : IRepository
 {
     // ==========================================================================
     // Budget Years — reads

@@ -23,7 +23,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// <see cref="Users.IUserService"/>. See design-rules §6.
 /// </para>
 /// </summary>
-public interface ITeamRepository
+public interface ITeamRepository : IRepository
 {
     // ==========================================================================
     // Team reads

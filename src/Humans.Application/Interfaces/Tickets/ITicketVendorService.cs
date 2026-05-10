@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces;
 using Humans.Application.DTOs;
 using NodaTime;
 
@@ -7,7 +8,7 @@ namespace Humans.Application.Interfaces.Tickets;
 /// Vendor-agnostic interface for ticket platform operations.
 /// Implementations wrap vendor-specific APIs (e.g. TicketTailor).
 /// </summary>
-public interface ITicketVendorService
+public interface ITicketVendorService : IApplicationService
 {
     /// <summary>Fetch orders, optionally since a given timestamp.</summary>
     Task<IReadOnlyList<VendorOrderDto>> GetOrdersAsync(

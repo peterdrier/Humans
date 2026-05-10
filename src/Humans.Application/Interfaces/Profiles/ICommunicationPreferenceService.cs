@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -25,7 +26,7 @@ public enum TokenValidationStatus
 /// <summary>
 /// Manages per-user communication preferences and unsubscribe tokens.
 /// </summary>
-public interface ICommunicationPreferenceService
+public interface ICommunicationPreferenceService : IApplicationService
 {
     /// <summary>
     /// Returns all preferences for a user, creating defaults for any missing categories.

@@ -23,7 +23,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// via <see cref="Teams.ITeamService"/> per design-rules §6.
 /// </para>
 /// </remarks>
-public interface ICalendarRepository
+public interface ICalendarRepository : IRepository
 {
     // ==========================================================================
     // Reads

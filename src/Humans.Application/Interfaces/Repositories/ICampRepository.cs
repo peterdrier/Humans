@@ -19,7 +19,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// repository; the application service stitches display names from
 /// <see cref="Users.IUserService"/> per design-rules §6.
 /// </remarks>
-public interface ICampRepository
+public interface ICampRepository : IRepository
 {
     // ==========================================================================
     // Reads — Camp

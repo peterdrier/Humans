@@ -25,7 +25,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// <c>IBudgetService</c> — unchanged by this migration.
 /// </para>
 /// </remarks>
-public interface ITicketingBudgetRepository
+public interface ITicketingBudgetRepository : IRepository
 {
     /// <summary>
     /// Returns one summary row per ticket order whose

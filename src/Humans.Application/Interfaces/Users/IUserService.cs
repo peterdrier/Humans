@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -8,7 +9,7 @@ namespace Humans.Application.Interfaces.Users;
 /// <summary>
 /// Service owning user-level concerns. Currently focused on event participation.
 /// </summary>
-public interface IUserService
+public interface IUserService : IApplicationService
 {
     /// <summary>
     /// Fetches a single user by id. Returns null if the user does not exist.

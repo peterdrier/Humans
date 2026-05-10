@@ -1,0 +1,4 @@
+# Baseline for application services that inject repositories outside their owning section.
+# New cross-section data access must go through the owning service boundary.
+Humans.Application.Services.Profile.DuplicateAccountService:IUserRepository
+Humans.Application.Services.Teams.TeamResourceService:IGoogleResourceRepository

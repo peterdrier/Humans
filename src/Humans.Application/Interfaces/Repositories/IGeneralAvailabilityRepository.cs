@@ -24,7 +24,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// <c>docs/sections/Shifts.md</c>.
 /// </para>
 /// </remarks>
-public interface IGeneralAvailabilityRepository
+public interface IGeneralAvailabilityRepository : IRepository
 {
     /// <summary>
     /// Returns the single <see cref="GeneralAvailability"/> row for the given

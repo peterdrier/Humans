@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces;
 using Humans.Application.DTOs;
 using Humans.Domain.Enums;
 using NodaTime;
@@ -7,7 +8,7 @@ namespace Humans.Application.Interfaces.Profiles;
 /// <summary>
 /// Service for managing contact fields with visibility controls.
 /// </summary>
-public interface IContactFieldService
+public interface IContactFieldService : IApplicationService
 {
     /// <summary>
     /// Gets contact fields visible to the viewer for a given profile.

@@ -1,9 +1,10 @@
+using Humans.Application.Interfaces;
 using Humans.Application.Services.Camps;
 using Humans.Domain.Entities;
 
 namespace Humans.Application.Interfaces.Camps;
 
-public interface ICampRoleService
+public interface ICampRoleService : IApplicationService
 {
     // Definitions
 

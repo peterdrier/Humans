@@ -9,7 +9,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// Repository for the <c>user_emails</c> table.
 /// The only non-test file that may write to this DbSet.
 /// </summary>
-public interface IUserEmailRepository
+public interface IUserEmailRepository : IRepository
 {
     /// <summary>
     /// Returns all emails for a user, read-only, ordered by

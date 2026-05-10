@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces;
 using Humans.Domain.Enums;
 
 namespace Humans.Application.Interfaces.GoogleIntegration;
@@ -38,7 +39,7 @@ namespace Humans.Application.Interfaces.GoogleIntegration;
 /// which is the desired behavior.
 /// </para>
 /// </remarks>
-public interface IGoogleRemovalNotificationService
+public interface IGoogleRemovalNotificationService : IApplicationService
 {
     /// <summary>
     /// Notifies the owner of <paramref name="removedEmail"/> that they

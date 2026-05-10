@@ -8,7 +8,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// Repository for the <c>contact_fields</c> table.
 /// The only non-test file that may write to this DbSet.
 /// </summary>
-public interface IContactFieldRepository
+public interface IContactFieldRepository : IRepository
 {
     /// <summary>
     /// Returns all contact fields for a profile, read-only, ordered by

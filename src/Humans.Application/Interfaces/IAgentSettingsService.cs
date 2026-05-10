@@ -2,7 +2,7 @@ using Humans.Domain.Entities;
 
 namespace Humans.Application.Interfaces;
 
-public interface IAgentSettingsService
+public interface IAgentSettingsService : IApplicationService
 {
     AgentSettings Current { get; }
     Task LoadAsync(CancellationToken cancellationToken);

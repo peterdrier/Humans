@@ -17,6 +17,8 @@ The target pattern is already visible in Profiles and Teams:
 
 ## Policy
 
+- `I*Service` interfaces must implement `IApplicationService`.
+- `I*Repository` interfaces must implement `IRepository`.
 - No new `I<Section>Service` read method may return an owned EF/domain entity.
 - New read methods should first be challenged under `memory/architecture/interface-method-additions-are-debt.md`.
 - Existing entity-returning service methods are allowed only as ratcheted debt.
@@ -24,6 +26,23 @@ The target pattern is already visible in Profiles and Teams:
 - Mutation methods may temporarily return entities when changing the command shape would create unnecessary churn, but new command result records are preferred.
 - Controllers/views may sort/filter/page finite read models during view-model assembly.
 - Cross-section callers must never use repositories to bypass the service boundary.
+- Web classes must not inject repositories.
+- Application services must not inject another section's repository; cross-section calls go through the owning service.
+
+## Enforcement
+
+The marker interfaces make the boundary searchable by humans, reforge, and tests:
+
+- `IApplicationService`: application service boundary; read methods must not expose EF/domain entities.
+- `IRepository`: persistence boundary; repositories may expose owned entities to their owning service.
+
+`ServiceBoundaryArchitectureTests` pins the current state:
+
+- all `I*Service` interfaces are marked as `IApplicationService`;
+- all `I*Repository` interfaces are marked as `IRepository`;
+- Web classes do not inject repositories;
+- service read methods that already expose entities are baselined and must ratchet down;
+- existing cross-section repository injections are baselined and must ratchet down.
 
 ## Audit Command
 

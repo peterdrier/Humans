@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces;
 using Humans.Application.DTOs;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -8,7 +9,7 @@ namespace Humans.Application.Interfaces.Profiles;
 /// <summary>
 /// Service for managing user email addresses.
 /// </summary>
-public interface IUserEmailService
+public interface IUserEmailService : IApplicationService
 {
     /// <summary>
     /// Gets all emails for a user, ordered by display order.

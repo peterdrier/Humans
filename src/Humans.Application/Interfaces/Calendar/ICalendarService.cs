@@ -1,10 +1,11 @@
+using Humans.Application.Interfaces;
 using Humans.Application.DTOs.Calendar;
 using Humans.Domain.Entities;
 using NodaTime;
 
 namespace Humans.Application.Interfaces.Calendar;
 
-public interface ICalendarService
+public interface ICalendarService : IApplicationService
 {
     Task<IReadOnlyList<CalendarOccurrence>> GetOccurrencesInWindowAsync(
         Instant from,

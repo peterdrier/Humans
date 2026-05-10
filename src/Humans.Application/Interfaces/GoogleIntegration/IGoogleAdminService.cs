@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces;
 using Humans.Application.DTOs;
 
 namespace Humans.Application.Interfaces.GoogleIntegration;
@@ -7,7 +8,7 @@ namespace Humans.Application.Interfaces.GoogleIntegration;
 /// workspace account management, group linking, email backfill, account linking.
 /// Owns all mutation orchestration and SaveChangesAsync calls for these workflows.
 /// </summary>
-public interface IGoogleAdminService
+public interface IGoogleAdminService : IApplicationService
 {
     /// <summary>
     /// Builds the workspace accounts list view model with matched user data.

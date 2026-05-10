@@ -9,7 +9,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// <c>campaign_codes</c>, and <c>campaign_grants</c>. The only non-test file
 /// that writes to these DbSets after the Campaigns migration lands.
 /// </summary>
-public interface ICampaignRepository
+public interface ICampaignRepository : IRepository
 {
     // ==========================================================================
     // Campaigns
