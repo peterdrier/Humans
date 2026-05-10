@@ -2290,24 +2290,21 @@ public class ProfileController : HumansControllerBase
     public async Task<IActionResult> RevealIban(Guid id, CancellationToken ct)
     {
         var actor = await GetCurrentUserAsync();
-        if (actor is null)
-            return Forbid();
+        if (actor is null) return Forbid();
+        return await RevealIbanCoreAsync(id, actor.Id, ct);
+    }
 
+    private async Task<IActionResult> RevealIbanCoreAsync(Guid id, Guid actorId, CancellationToken ct)
+    {
         var profile = await _profileService.GetProfileAsync(id, ct);
         if (profile?.Iban is null)
         {
             SetError("No IBAN on record for this user.");
             return RedirectToAction(nameof(AdminDetail), new { id });
         }
-
-        // Write audit entry — actor is the Admin, entity is the target user
         await _auditLogService.LogAsync(
-            AuditAction.IbanReveal,
-            entityType: "User",
-            entityId: id,
-            description: $"Admin revealed IBAN for user {id}",
-            actorUserId: actor.Id);
-
+            AuditAction.IbanReveal, "User", id,
+            $"Admin revealed IBAN for user {id}", actorId);
         TempData["RevealedIban"] = profile.Iban;
         return RedirectToAction(nameof(AdminDetail), new { id });
     }

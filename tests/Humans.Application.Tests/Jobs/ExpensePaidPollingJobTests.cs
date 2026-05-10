@@ -55,16 +55,16 @@ public class ExpensePaidPollingJobTests
     private static HoldedPurchaseDocumentDto MakeDoc(
         decimal paymentsPending = 0,
         Instant? approvedAt = null) => new()
-    {
-        Id = "holded-doc-1",
-        DocNumber = "DOC-001",
-        Subtotal = 100,
-        Tax = 0,
-        Total = 100,
-        PaymentsTotal = 100,
-        PaymentsPending = paymentsPending,
-        ApprovedAt = approvedAt ?? Instant.FromUtc(2026, 5, 8, 8, 0),
-    };
+        {
+            Id = "holded-doc-1",
+            DocNumber = "DOC-001",
+            Subtotal = 100,
+            Tax = 0,
+            Total = 100,
+            PaymentsTotal = 100,
+            PaymentsPending = paymentsPending,
+            ApprovedAt = approvedAt ?? Instant.FromUtc(2026, 5, 8, 8, 0),
+        };
 
     // ─── empty queue ──────────────────────────────────────────────────────────
 
