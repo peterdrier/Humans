@@ -52,6 +52,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddGuideSection(configuration);
         services.AddAgentSection(configuration);
         services.AddSearchSection();
+        services.AddHoldedSection(configuration);
 
         return services;
     }
