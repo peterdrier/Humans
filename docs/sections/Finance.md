@@ -10,7 +10,7 @@
   src/Humans.Web/Controllers/FinanceController.cs
 -->
 <!-- freshness:flag-on-change
-  Holded sync, match-status semantics, manual-reassignment flow, or sync-state singleton may have changed — review when Finance services/entities/job/auth change.
+  FinanceController routes, auth policy (FinanceAdminOrAdmin), or budget-delegation correctness — review when FinanceController or its Budget/Tickets service dependencies change. Holded-specific review guidance lives in the "Planned" sections below; promote it here once Holded services land.
 -->
 
 # Finance — Section Invariants
