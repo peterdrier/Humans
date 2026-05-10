@@ -29,7 +29,7 @@ public class ServiceBoundaryArchitectureTests
             ["Consent"] = ["Consent"],
             ["Email"] = ["EmailOutbox"],
             ["Feedback"] = ["Feedback"],
-            ["GoogleIntegration"] = ["DriveActivityMonitor", "Google", "SyncSettings"],
+            ["GoogleIntegration"] = ["DriveActivityMonitor", "GoogleSyncOutbox", "SyncSettings"],
             ["Governance"] = ["Application"],
             ["Issues"] = ["Issues"],
             ["Legal"] = ["LegalDocument"],
@@ -38,7 +38,7 @@ public class ServiceBoundaryArchitectureTests
             ["Profiles"] = ["AccountMerge", "CommunicationPreference", "ContactField", "Profile", "UserEmail"],
             ["Shifts"] = ["GeneralAvailability", "Shift"],
             ["Store"] = ["Store"],
-            ["Teams"] = ["Team"],
+            ["Teams"] = ["GoogleResource", "Team"],
             ["Tickets"] = ["Ticket", "TicketingBudget"],
             // Full base name (not just "User") to prevent IUserEmailRepository
             // (Profile section) from matching as an owned Users-section repository.
