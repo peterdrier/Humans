@@ -36,7 +36,6 @@ Humans.Application.Interfaces.Camps.ICampService.GetCampsWithLeadsForYearAsync:H
 Humans.Application.Interfaces.Camps.ICampService.GetPendingSeasonsAsync:Humans.Domain.Entities.CampSeason
 Humans.Application.Interfaces.Camps.ICampService.GetSeasonMembersAsync:Humans.Domain.Entities.CampMember
 Humans.Application.Interfaces.Camps.ICampService.GetSettingsAsync:Humans.Domain.Entities.CampSettings
-Humans.Application.Interfaces.CitiPlanning.ICityPlanningService.GetSettingsAsync:Humans.Domain.Entities.CityPlanningSettings
 Humans.Application.Interfaces.Consent.IConsentService.GetConsentDashboardAsync:Humans.Domain.Entities.ConsentRecord
 Humans.Application.Interfaces.Consent.IConsentService.GetConsentDashboardAsync:Humans.Domain.Entities.DocumentVersion
 Humans.Application.Interfaces.Consent.IConsentService.GetConsentDashboardAsync:Humans.Domain.Entities.Team
