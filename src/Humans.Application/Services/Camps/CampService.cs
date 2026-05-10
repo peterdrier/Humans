@@ -1853,10 +1853,10 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
     }
 
     public async Task<SetEarlyEntryOutcome> SetEarlyEntryAsync(
-        Guid campMemberId, bool granted, Guid actorUserId,
+        Guid scopedCampId, Guid campMemberId, bool granted, Guid actorUserId,
         CancellationToken cancellationToken = default)
     {
-        var member = await _repo.GetMemberWithSeasonAsync(campMemberId, cancellationToken);
+        var member = await _repo.GetMemberForCampMutationAsync(campMemberId, scopedCampId, cancellationToken);
         if (member is null) return SetEarlyEntryOutcome.MemberNotFound;
 
         if (member.HasEarlyEntry == granted)

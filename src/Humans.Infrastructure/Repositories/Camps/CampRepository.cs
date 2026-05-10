@@ -962,15 +962,6 @@ public sealed class CampRepository : ICampRepository
     // Early Entry
     // ==========================================================================
 
-    public async Task<CampMember?> GetMemberWithSeasonAsync(
-        Guid campMemberId, CancellationToken cancellationToken = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(cancellationToken);
-        return await ctx.CampMembers
-            .Include(m => m.CampSeason)
-            .FirstOrDefaultAsync(m => m.Id == campMemberId, cancellationToken);
-    }
-
     public async Task<int> GetGrantedCountForSeasonAsync(
         Guid campSeasonId, CancellationToken cancellationToken = default)
     {

@@ -203,12 +203,14 @@ public interface ICampService : IApplicationService
     /// <summary>
     /// Grants or revokes Early Entry for a CampMember. Camp lead, CoLead, CampAdmin,
     /// or Admin only; authorization enforced at the controller layer.
+    /// <paramref name="scopedCampId"/> must match the camp the member belongs to;
+    /// returns MemberNotFound when the member does not exist or belongs to a different camp.
     /// Rejects when granting would push the season's active-granted count above
     /// CampSeason.EeSlotCount, or when the member is not Status=Active.
     /// Idempotent: writes no audit row when the value is already at the requested state.
     /// </summary>
     Task<SetEarlyEntryOutcome> SetEarlyEntryAsync(
-        Guid campMemberId, bool granted, Guid actorUserId,
+        Guid scopedCampId, Guid campMemberId, bool granted, Guid actorUserId,
         CancellationToken cancellationToken = default);
 }
 

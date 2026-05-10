@@ -1029,7 +1029,7 @@ public class CampController : HumansCampControllerBase
         if (errorResult is not null) return errorResult;
 
         var outcome = await _campService.SetEarlyEntryAsync(
-            campMemberId, granted, user.Id, cancellationToken);
+            camp.Id, campMemberId, granted, user.Id, cancellationToken);
 
         if (outcome == SetEarlyEntryOutcome.MemberNotFound) return NotFound();
         ApplyEarlyEntryFlash(outcome, granted);

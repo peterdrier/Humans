@@ -264,7 +264,7 @@ public class CampServiceEarlyEntryTests : IDisposable
         var member = await SeedActiveMemberAsync(season.Id);
         var actor = Guid.NewGuid();
 
-        var outcome = await _service.SetEarlyEntryAsync(member.Id, granted: true, actor);
+        var outcome = await _service.SetEarlyEntryAsync(camp.Id, member.Id, granted: true, actor);
 
         outcome.Should().Be(SetEarlyEntryOutcome.Success);
         var reloaded = await _dbContext.CampMembers.AsNoTracking().FirstAsync(m => m.Id == member.Id);
@@ -285,7 +285,7 @@ public class CampServiceEarlyEntryTests : IDisposable
         var member = await SeedActiveMemberWithEarlyEntryAsync(season.Id);
         var actor = Guid.NewGuid();
 
-        var outcome = await _service.SetEarlyEntryAsync(member.Id, granted: false, actor);
+        var outcome = await _service.SetEarlyEntryAsync(camp.Id, member.Id, granted: false, actor);
 
         outcome.Should().Be(SetEarlyEntryOutcome.Success);
         var reloaded = await _dbContext.CampMembers.AsNoTracking().FirstAsync(m => m.Id == member.Id);
@@ -302,12 +302,12 @@ public class CampServiceEarlyEntryTests : IDisposable
     public async Task SetEarlyEntryAsync_Grant_ReturnsSlotCapExceeded_WhenCapWouldBeBreached()
     {
         await SeedSettingsAsync();
-        var (_, season) = await SeedCampWithSeasonAsync(initialEeSlotCount: 2);
+        var (camp, season) = await SeedCampWithSeasonAsync(initialEeSlotCount: 2);
         await SeedActiveMemberWithEarlyEntryAsync(season.Id);
         await SeedActiveMemberWithEarlyEntryAsync(season.Id);
         var newMember = await SeedActiveMemberAsync(season.Id);
 
-        var outcome = await _service.SetEarlyEntryAsync(newMember.Id, granted: true, Guid.NewGuid());
+        var outcome = await _service.SetEarlyEntryAsync(camp.Id, newMember.Id, granted: true, Guid.NewGuid());
 
         outcome.Should().Be(SetEarlyEntryOutcome.SlotCapExceeded);
 
@@ -325,7 +325,7 @@ public class CampServiceEarlyEntryTests : IDisposable
     public async Task SetEarlyEntryAsync_Grant_ReturnsMemberNotActive_WhenMemberIsPending()
     {
         await SeedSettingsAsync();
-        var (_, season) = await SeedCampWithSeasonAsync(initialEeSlotCount: 5);
+        var (camp, season) = await SeedCampWithSeasonAsync(initialEeSlotCount: 5);
         var member = new CampMember
         {
             Id = Guid.NewGuid(),
@@ -337,7 +337,7 @@ public class CampServiceEarlyEntryTests : IDisposable
         _dbContext.CampMembers.Add(member);
         await _dbContext.SaveChangesAsync();
 
-        var outcome = await _service.SetEarlyEntryAsync(member.Id, granted: true, Guid.NewGuid());
+        var outcome = await _service.SetEarlyEntryAsync(camp.Id, member.Id, granted: true, Guid.NewGuid());
 
         outcome.Should().Be(SetEarlyEntryOutcome.MemberNotActive);
 
@@ -349,10 +349,10 @@ public class CampServiceEarlyEntryTests : IDisposable
     public async Task SetEarlyEntryAsync_Idempotent_ReturnsNoChangeAndWritesNoAudit()
     {
         await SeedSettingsAsync();
-        var (_, season) = await SeedCampWithSeasonAsync(initialEeSlotCount: 5);
+        var (camp, season) = await SeedCampWithSeasonAsync(initialEeSlotCount: 5);
         var member = await SeedActiveMemberWithEarlyEntryAsync(season.Id);
 
-        var outcome = await _service.SetEarlyEntryAsync(member.Id, granted: true, Guid.NewGuid());
+        var outcome = await _service.SetEarlyEntryAsync(camp.Id, member.Id, granted: true, Guid.NewGuid());
 
         outcome.Should().Be(SetEarlyEntryOutcome.NoChange);
 
@@ -361,6 +361,25 @@ public class CampServiceEarlyEntryTests : IDisposable
             Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task SetEarlyEntryAsync_ReturnsMemberNotFound_WhenMemberBelongsToDifferentCamp()
+    {
+        await SeedSettingsAsync();
+        var (campA, _) = await SeedCampWithSeasonAsync(initialEeSlotCount: 5);
+        var (_, seasonB) = await SeedCampWithSeasonAsync(initialEeSlotCount: 5);
+        var memberInB = await SeedActiveMemberAsync(seasonB.Id);
+
+        // Attacker scopes the call to campA but targets campB's member.
+        var outcome = await _service.SetEarlyEntryAsync(
+            campA.Id, memberInB.Id, granted: true, Guid.NewGuid());
+
+        outcome.Should().Be(SetEarlyEntryOutcome.MemberNotFound);
+
+        var reloaded = await _dbContext.CampMembers.AsNoTracking()
+            .FirstAsync(m => m.Id == memberInB.Id);
+        reloaded.HasEarlyEntry.Should().BeFalse();
     }
 
     // ==========================================================================

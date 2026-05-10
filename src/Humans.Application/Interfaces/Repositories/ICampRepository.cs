@@ -460,14 +460,6 @@ public interface ICampRepository : IRepository
     Task<(int OldValue, int NewValue, Guid CampId)?> SetCampSeasonEeSlotCountAsync(
         Guid campSeasonId, int slotCount, CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Loads the CampMember with its CampSeason (needed for season + camp navigation
-    /// when computing overflow checks and writing audit context). Returns null when
-    /// the member does not exist.
-    /// </summary>
-    Task<CampMember?> GetMemberWithSeasonAsync(
-        Guid campMemberId, CancellationToken cancellationToken = default);
-
     Task<int> GetGrantedCountForSeasonAsync(
         Guid campSeasonId, CancellationToken cancellationToken = default);
 
