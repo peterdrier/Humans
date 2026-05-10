@@ -290,6 +290,43 @@
             </div>
         </div>
 
+        @* Payment details — Admin only. Masked by default; reveal logs IbanReveal audit entry. *@
+        @if (User.IsInRole(Humans.Domain.Constants.RoleNames.Admin))
+        {
+            <div class="card mb-4">
+                <div class="card-header">Payment Details</div>
+                <div class="card-body">
+                    @if (Model.MaskedIban is not null)
+                    {
+                        <dl class="row mb-0">
+                            <dt class="col-5">IBAN</dt>
+                            <dd class="col-7">
+                                @if (Model.RevealedIban is not null)
+                                {
+                                    <code>@Model.RevealedIban</code>
+                                    <small class="d-block text-muted mt-1">Visible this page load only.</small>
+                                }
+                                else
+                                {
+                                    <code>@Model.MaskedIban</code>
+                                    <form asp-action="RevealIban" asp-route-id="@Model.UserId" method="post" class="mt-1">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-sm btn-outline-secondary">
+                                            <i class="fa-solid fa-eye me-1"></i> Reveal
+                                        </button>
+                                    </form>
+                                }
+                            </dd>
+                        </dl>
+                    }
+                    else
+                    {
+                        <span class="text-muted">No IBAN on record.</span>
+                    }
+                </div>
+            </div>
+        }
+
         <div class="card mb-4">
             <div class="card-header">@@nobodies.team Email</div>
             <div class="card-body">
