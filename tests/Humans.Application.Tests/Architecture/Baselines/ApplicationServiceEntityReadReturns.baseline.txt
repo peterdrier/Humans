@@ -47,8 +47,6 @@ Humans.Application.Interfaces.Dashboard.IDashboardService.GetMemberDashboardAsyn
 Humans.Application.Interfaces.Dashboard.IDashboardService.GetMemberDashboardAsync:Humans.Domain.Entities.Profile
 Humans.Application.Interfaces.Dashboard.IDashboardService.GetMemberDashboardAsync:Humans.Domain.Entities.Shift
 Humans.Application.Interfaces.Dashboard.IDashboardService.GetMemberDashboardAsync:Humans.Domain.Entities.ShiftSignup
-Humans.Application.Interfaces.Email.IEmailOutboxService.GetMessagesForUserAsync:Humans.Domain.Entities.EmailOutboxMessage
-Humans.Application.Interfaces.Email.IEmailOutboxService.GetOutboxStatsAsync:Humans.Domain.Entities.EmailOutboxMessage
 Humans.Application.Interfaces.Feedback.IFeedbackService.GetFeedbackByIdAsync:Humans.Domain.Entities.FeedbackReport
 Humans.Application.Interfaces.Feedback.IFeedbackService.GetFeedbackListAsync:Humans.Domain.Entities.FeedbackReport
 Humans.Application.Interfaces.Feedback.IFeedbackService.GetMessagesAsync:Humans.Domain.Entities.FeedbackMessage
