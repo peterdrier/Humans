@@ -3,7 +3,7 @@ using NodaTime;
 
 namespace Humans.Application.Interfaces.Shifts;
 
-public interface IVolunteerTrackingService
+public interface IVolunteerTrackingService : IApplicationService
 {
     Task<VolunteerTrackingViewModel> GetTrackingDataAsync(CancellationToken ct = default);
 

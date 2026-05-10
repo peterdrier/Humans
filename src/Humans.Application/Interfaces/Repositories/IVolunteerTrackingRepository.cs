@@ -9,7 +9,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// scoped Build-period signup read used by the gap detector. All methods
 /// return materialized lists / nullable rows — no IQueryable leaks.
 /// </summary>
-public interface IVolunteerTrackingRepository
+public interface IVolunteerTrackingRepository : IRepository
 {
     /// <summary>Fetch the row for (userId, eventSettingsId), or null.</summary>
     Task<VolunteerBuildStatus?> GetAsync(
