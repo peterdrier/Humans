@@ -1,6 +1,8 @@
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Expenses;
+using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
@@ -8,6 +10,7 @@ using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Expenses.Dtos;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Domain.Helpers;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 
@@ -18,7 +21,7 @@ namespace Humans.Application.Services.Expenses;
 /// <see cref="IExpenseRepository"/>, audit logging, IBAN snapshots, and
 /// cross-section reads via interfaces — never imports EF Core directly.
 /// </summary>
-public sealed class ExpenseReportService : IExpenseReportService
+public sealed class ExpenseReportService : IExpenseReportService, IUserDataContributor
 {
     private readonly IExpenseRepository _repo;
     private readonly IBudgetService _budgetService;
@@ -546,4 +549,121 @@ public sealed class ExpenseReportService : IExpenseReportService
         UploadedByUserId = a.UploadedByUserId,
         UploadedAt = a.UploadedAt
     };
+
+    // ─────────────────────── IUserDataContributor (GDPR) ─────────────────────
+
+    /// <summary>
+    /// Returns the user's expense reports (with lines and attachment metadata —
+    /// no bytes), a masked IBAN snapshot, and expense-related audit-log entries.
+    /// Chain-follows merge tombstones so a fold-target's export includes reports
+    /// submitted under merged source ids.
+    /// </summary>
+    public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(
+        Guid userId, CancellationToken ct)
+    {
+        var sourceIds = await _userService.GetMergedSourceIdsAsync(userId, ct);
+
+        // Collect all ids whose reports we should include
+        var allIds = new List<Guid>(sourceIds.Count + 1);
+        allIds.AddRange(sourceIds);
+        allIds.Add(userId);
+
+        // Fetch reports for all ids, then re-fetch each with lines + attachments.
+        // GDPR export is infrequent, so N+1 is acceptable here.
+        var reportIds = new List<Guid>();
+        foreach (var id in allIds)
+        {
+            var reports = await _repo.GetForSubmitterAsync(id, ct);
+            reportIds.AddRange(reports.Select(r => r.Id));
+        }
+
+        var allReports = new List<ExpenseReport>();
+        foreach (var reportId in reportIds)
+        {
+            var full = await _repo.GetByIdWithLinesAsync(reportId, ct);
+            if (full is not null)
+                allReports.Add(full);
+        }
+
+        // Fetch current IBAN from profile (masked per spec)
+        var profile = await _profileService.GetProfileAsync(userId, ct);
+        var maskedIban = string.IsNullOrEmpty(profile?.Iban)
+            ? null
+            : IbanFormatter.Mask(profile.Iban);
+
+        // Expense-related audit actions (this user as actor or subject)
+        var expenseActions = new List<AuditAction>
+        {
+            AuditAction.ExpenseSubmit,
+            AuditAction.ExpenseEndorse,
+            AuditAction.ExpenseCoordinatorReject,
+            AuditAction.ExpenseApprove,
+            AuditAction.ExpenseReject,
+            AuditAction.ExpenseWithdraw,
+            AuditAction.ExpenseCategoryOverride,
+            AuditAction.ExpenseSepaSent,
+            AuditAction.ExpensePaid,
+            AuditAction.IbanSet,
+            AuditAction.IbanRemove,
+            AuditAction.IbanReveal,
+        };
+
+        var auditEntries = await _auditLogService.GetFilteredEntriesAsync(
+            userId: userId,
+            actions: expenseActions,
+            limit: 10_000,
+            ct: ct);
+
+        var shapedReports = allReports
+            .OrderBy(r => r.CreatedAt)
+            .Select(r => new
+            {
+                r.Id,
+                r.Status,
+                r.Note,
+                r.PayeeName,
+                PayeeIban = IbanFormatter.Mask(r.PayeeIban),
+                r.Total,
+                r.SubmittedAt,
+                r.ApprovedAt,
+                r.SepaSentAt,
+                r.PaidAt,
+                r.CreatedAt,
+                Lines = r.Lines.Select(l => new
+                {
+                    l.Id,
+                    l.Description,
+                    l.Amount,
+                    l.SortOrder,
+                    Attachment = l.Attachment is null
+                        ? null
+                        : new
+                        {
+                            l.Attachment.OriginalFileName,
+                            l.Attachment.ContentType,
+                            l.Attachment.SizeBytes,
+                        }
+                }).ToList()
+            }).ToList();
+
+        var shapedAudit = auditEntries
+            .Select(e => new
+            {
+                e.Action,
+                e.EntityType,
+                e.EntityId,
+                e.Description,
+                OccurredAt = e.OccurredAt.ToInvariantInstantString()
+            }).ToList();
+
+        return
+        [
+            new UserDataSlice(GdprExportSections.ExpenseReports,
+                shapedReports.Count > 0 ? shapedReports : null),
+            new UserDataSlice(GdprExportSections.ExpenseAuditLog,
+                shapedAudit.Count > 0
+                    ? new { MaskedIban = maskedIban, Entries = shapedAudit }
+                    : (object?)null),
+        ];
+    }
 }

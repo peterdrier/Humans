@@ -1,10 +1,12 @@
 using Humans.Application.Interfaces.Expenses;
+using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Services.Expenses;
 using Humans.Application.Services.Expenses.Dtos;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Repositories.Expenses;
 using Humans.Infrastructure.Services.Expenses;
+using ExpensesExpenseReportService = Humans.Application.Services.Expenses.ExpenseReportService;
 
 namespace Humans.Web.Extensions.Sections;
 
@@ -18,7 +20,10 @@ internal static class ExpensesSectionExtensions
         services.AddSingleton<IExpenseAttachmentStorageService,
             ExpenseAttachmentFilesystemStorage>();
         services.AddSingleton<IExpenseRepository, ExpenseRepository>();
-        services.AddScoped<IExpenseReportService, ExpenseReportService>();
+        // Dual-register: IExpenseReportService and IUserDataContributor resolve to the same instance.
+        services.AddScoped<ExpensesExpenseReportService>();
+        services.AddScoped<IExpenseReportService>(sp => sp.GetRequiredService<ExpensesExpenseReportService>());
+        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<ExpensesExpenseReportService>());
         services.AddScoped<HoldedExpenseOutboxJob>();
         services.AddScoped<ExpensePaidPollingJob>();
 
