@@ -3,6 +3,8 @@
     ViewData["Title"] = Localizer["Dashboard_Title"].Value;
 }
 
+<vc:temp-data-alerts />
+
 @* ─── Header ─── *@
 <div class="row justify-content-center mb-4">
     <div class="col-lg-8">
@@ -177,6 +179,42 @@
                             }
                         </div>
                     </div>
+                    @if (Model.MyAttendees.Count > 0)
+                    {
+                        <ul class="list-group list-group-flush mt-2">
+                            @foreach (var att in Model.MyAttendees)
+                            {
+                                <li class="list-group-item d-flex align-items-center justify-content-between">
+                                    <div>
+                                        <div>@att.AttendeeName</div>
+                                        <small class="text-muted">@att.TicketTypeName</small>
+                                    </div>
+                                    <div class="d-flex align-items-center gap-2">
+                                        @if (att.HasPendingOutgoingTransfer)
+                                        {
+                                            <span class="badge bg-warning">@Localizer["TicketTransfer_Pending"]</span>
+                                            @if (att.PendingTransferRequestId is Guid pendingId)
+                                            {
+                                                <form asp-controller="TicketTransfer" asp-action="Cancel" method="post" class="m-0">
+                                                    @Html.AntiForgeryToken()
+                                                    <input type="hidden" name="id" value="@pendingId" />
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger">@Localizer["TicketTransfer_CancelButton"]</button>
+                                                </form>
+                                            }
+                                        }
+                                        else if (att.CanSendTransfer)
+                                        {
+                                            <a class="btn btn-sm btn-outline-secondary"
+                                               asp-controller="TicketTransfer" asp-action="Send"
+                                               asp-route-attendeeId="@att.AttendeeId">
+                                                @Localizer["TicketTransfer_SendButton"]
+                                            </a>
+                                        }
+                                    </div>
+                                </li>
+                            }
+                        </ul>
+                    }
                 }
                 else if (Model.ParticipationStatus == ParticipationStatus.NotAttending)
                 {

@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces;
 using Humans.Application.DTOs;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -125,7 +126,7 @@ public record TeamCoordinatorRef(Guid TeamId, Guid UserId);
 /// <summary>
 /// Service for managing teams and team membership.
 /// </summary>
-public interface ITeamService
+public interface ITeamService : IApplicationService
 {
     /// <summary>
     /// Creates a new team.

@@ -6,6 +6,7 @@ using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Constants;
+using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Campaigns;
@@ -874,4 +875,14 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
 
     private static bool ContainsIgnoreCase(string? source, string value) =>
         source?.Contains(value, StringComparison.OrdinalIgnoreCase) == true;
+
+    public void InvalidateAfterTransfer(Guid senderUserId, Guid? receiverUserId)
+    {
+        _cache.InvalidateTicketCaches();
+        _cache.InvalidateUserTicketCount(senderUserId);
+        if (receiverUserId is { } receiver)
+        {
+            _cache.InvalidateUserTicketCount(receiver);
+        }
+    }
 }

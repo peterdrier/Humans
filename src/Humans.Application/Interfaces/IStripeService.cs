@@ -4,7 +4,7 @@ namespace Humans.Application.Interfaces;
 /// Stripe connector. Fee/PI reads (Tickets account) and Checkout Session creation (Store account).
 /// SDK types do not cross this seam — see <c>StripeConnectorArchitectureTests</c>.
 /// </summary>
-public interface IStripeService
+public interface IStripeService : IApplicationService
 {
     /// <summary>True when the Tickets-account key is set (fee enrichment available).</summary>
     bool IsConfigured { get; }

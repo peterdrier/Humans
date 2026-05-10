@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces;
 using System.ComponentModel.DataAnnotations;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -5,7 +6,7 @@ using NodaTime;
 
 namespace Humans.Application.Interfaces.CitiPlanning;
 
-public interface ICityPlanningService
+public interface ICityPlanningService : IApplicationService
 {
     // Queries
     Task<List<CampPolygonDto>> GetCampPolygonsAsync(int year, CancellationToken cancellationToken = default);

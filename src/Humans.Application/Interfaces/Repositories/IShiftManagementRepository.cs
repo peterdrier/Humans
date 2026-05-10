@@ -33,7 +33,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// contexts per call.
 /// </para>
 /// </summary>
-public interface IShiftManagementRepository
+public interface IShiftManagementRepository : IRepository
 {
     // ==========================================================================
     // EventSettings

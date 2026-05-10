@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 
@@ -6,7 +7,7 @@ namespace Humans.Application.Interfaces.GoogleIntegration;
 /// <summary>
 /// Manages per-service sync mode settings.
 /// </summary>
-public interface ISyncSettingsService
+public interface ISyncSettingsService : IApplicationService
 {
     /// <summary>Get all sync settings.</summary>
     Task<List<SyncServiceSettings>> GetAllAsync(CancellationToken ct = default);

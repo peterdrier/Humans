@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 
@@ -13,7 +14,7 @@ namespace Humans.Application.Interfaces.AuditLog;
 /// <em>after</em> the business save so a business rollback never leaves a
 /// ghost audit row.
 /// </summary>
-public interface IAuditLogService
+public interface IAuditLogService : IApplicationService
 {
     /// <summary>
     /// Logs an action performed by a background job (no human actor).

@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces;
 using Humans.Application.DTOs;
 using Humans.Application.Enums;
 using Humans.Domain.Entities;
@@ -10,7 +11,7 @@ namespace Humans.Application.Interfaces.Shifts;
 /// Consolidated service for shift management: authorization, event settings,
 /// rotas, shifts, and urgency scoring.
 /// </summary>
-public interface IShiftManagementService
+public interface IShiftManagementService : IApplicationService
 {
     // === Authorization ===
 

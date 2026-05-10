@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces;
 using Humans.Application.DTOs;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -7,7 +8,7 @@ namespace Humans.Application.Interfaces.GoogleIntegration;
 /// <summary>
 /// Service for provisioning and syncing Google resources.
 /// </summary>
-public interface IGoogleSyncService
+public interface IGoogleSyncService : IApplicationService
 {
     /// <summary>
     /// Provisions a new Google Drive folder for a team.

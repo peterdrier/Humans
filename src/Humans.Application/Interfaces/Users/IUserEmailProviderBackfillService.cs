@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces;
 namespace Humans.Application.Interfaces.Users;
 
 /// <summary>
@@ -13,7 +14,7 @@ namespace Humans.Application.Interfaces.Users;
 /// <see cref="Domain.Entities.UserEmail"/> row updated.
 /// </para>
 /// </summary>
-public interface IUserEmailProviderBackfillService
+public interface IUserEmailProviderBackfillService : IApplicationService
 {
     Task<UserEmailProviderBackfillResult> RunAsync(CancellationToken cancellationToken = default);
 }

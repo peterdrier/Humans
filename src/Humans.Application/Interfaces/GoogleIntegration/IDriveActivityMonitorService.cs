@@ -1,10 +1,11 @@
+using Humans.Application.Interfaces;
 namespace Humans.Application.Interfaces.GoogleIntegration;
 
 /// <summary>
 /// Service for monitoring Google Drive Activity API for anomalous permission changes
 /// on managed resources (Shared Drive folders and Google Groups).
 /// </summary>
-public interface IDriveActivityMonitorService
+public interface IDriveActivityMonitorService : IApplicationService
 {
     /// <summary>
     /// Checks Drive Activity API for permission changes not initiated by the system's

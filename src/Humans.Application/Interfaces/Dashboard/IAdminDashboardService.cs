@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces;
 using Humans.Application.DTOs;
 
 namespace Humans.Application.Interfaces.Dashboard;
@@ -9,7 +10,7 @@ namespace Humans.Application.Interfaces.Dashboard;
 /// (single-user view vs. global aggregates) so they don't share a budget
 /// or a service implementation.
 /// </summary>
-public interface IAdminDashboardService
+public interface IAdminDashboardService : IApplicationService
 {
     /// <summary>
     /// Aggregates member counts (by membership partition), tier-application

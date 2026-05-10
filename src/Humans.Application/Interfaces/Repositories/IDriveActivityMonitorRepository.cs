@@ -32,7 +32,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// pre-migration behavior.
 /// </para>
 /// </remarks>
-public interface IDriveActivityMonitorRepository
+public interface IDriveActivityMonitorRepository : IRepository
 {
     /// <summary>
     /// Reads the last successful run timestamp, or <c>null</c> when no row

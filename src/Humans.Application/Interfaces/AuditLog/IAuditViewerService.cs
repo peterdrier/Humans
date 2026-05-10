@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces;
 using Humans.Application.Services.AuditLog;
 
 namespace Humans.Application.Interfaces.AuditLog;
@@ -16,7 +17,7 @@ namespace Humans.Application.Interfaces.AuditLog;
 /// with "You"), and entries whose action has no verb mapping render as
 /// <c>null</c> so callers can filter rather than dump raw descriptions.
 /// </remarks>
-public interface IAuditViewerService
+public interface IAuditViewerService : IApplicationService
 {
     /// <summary>Most recent audit events, resolved.</summary>
     Task<IReadOnlyList<AuditEvent>> GetRecentAsync(int count, CancellationToken ct = default);

@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
@@ -7,7 +8,7 @@ namespace Humans.Application.Interfaces.Shifts;
 /// <summary>
 /// Manages the shift signup state machine with invariant enforcement.
 /// </summary>
-public interface IShiftSignupService
+public interface IShiftSignupService : IApplicationService
 {
     /// <summary>
     /// Creates a signup for a user on a shift. Auto-confirms for Public policy.

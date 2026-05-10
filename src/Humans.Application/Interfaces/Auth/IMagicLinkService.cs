@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 
 namespace Humans.Application.Interfaces.Auth;
@@ -6,7 +7,7 @@ namespace Humans.Application.Interfaces.Auth;
 /// Service for magic link authentication — login via emailed link.
 /// Supports login for existing users (via any verified email) and signup for new users.
 /// </summary>
-public interface IMagicLinkService
+public interface IMagicLinkService : IApplicationService
 {
     /// <summary>
     /// Sends a magic link login email to an existing user, or a signup link if no user exists.

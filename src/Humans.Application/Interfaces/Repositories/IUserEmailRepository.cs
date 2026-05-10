@@ -9,7 +9,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// Repository for the <c>user_emails</c> table.
 /// The only non-test file that may write to this DbSet.
 /// </summary>
-public interface IUserEmailRepository
+public interface IUserEmailRepository : IRepository
 {
     /// <summary>
     /// Returns all emails for a user, read-only, ordered by
@@ -191,6 +191,18 @@ public interface IUserEmailRepository
     /// <c>null</c> if no verified row matches.
     /// </summary>
     Task<Guid?> GetUserIdByVerifiedEmailAsync(
+        string email, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns all distinct <c>UserId</c> values whose verified email rows
+    /// contain an address that matches <paramref name="email"/> exactly
+    /// (case-sensitive, no gmail/googlemail aliasing). The caller uses this
+    /// to detect ambiguous matches: a count of 0 means no match, a count
+    /// of 1 means an unambiguous match, and a count &gt; 1 means the same
+    /// address is verified for more than one user (invariant violation —
+    /// treat as ambiguous / return null to the caller).
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetDistinctUserIdsByVerifiedEmailAsync(
         string email, CancellationToken ct = default);
 
     /// <summary>

@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces;
 using NodaTime;
 
 namespace Humans.Application.Interfaces.Tickets;
@@ -6,7 +7,7 @@ namespace Humans.Application.Interfaces.Tickets;
 /// Orchestrates syncing ticket data from the vendor into local entities.
 /// Handles upsert, email matching, and campaign code redemption tracking.
 /// </summary>
-public interface ITicketSyncService
+public interface ITicketSyncService : IApplicationService
 {
     /// <summary>
     /// Run a full sync cycle: fetch orders and attendees from vendor,

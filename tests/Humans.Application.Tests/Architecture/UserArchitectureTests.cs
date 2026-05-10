@@ -26,12 +26,17 @@ public class UserArchitectureTests
         typeof(UnsubscribeService),
     };
 
-    public static TheoryData<Type, Type> RequiredRepositoryEdges => new()
+    public static TheoryData<Type, Type> RequiredConstructorEdges => new()
     {
         { typeof(UserService), typeof(IUserRepository) },
         { typeof(AccountProvisioningService), typeof(IUserRepository) },
-        { typeof(AccountProvisioningService), typeof(IUserEmailRepository) },
+        { typeof(AccountProvisioningService), typeof(IUserEmailService) },
         { typeof(UnsubscribeService), typeof(IUserRepository) },
+    };
+
+    public static TheoryData<Type, Type> ForbiddenConstructorEdges => new()
+    {
+        { typeof(AccountProvisioningService), typeof(IUserEmailRepository) },
     };
 
     [HumansTheory]
@@ -56,13 +61,23 @@ public class UserArchitectureTests
     }
 
     [HumansTheory]
-    [MemberData(nameof(RequiredRepositoryEdges))]
-    public void User_services_take_required_repositories(Type serviceType, Type repositoryType)
+    [MemberData(nameof(RequiredConstructorEdges))]
+    public void User_services_take_required_constructor_edges(Type serviceType, Type dependencyType)
     {
         var ctor = serviceType.GetConstructors().Single();
         var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
 
-        paramTypes.Should().Contain(repositoryType);
+        paramTypes.Should().Contain(dependencyType);
+    }
+
+    [HumansTheory]
+    [MemberData(nameof(ForbiddenConstructorEdges))]
+    public void User_services_do_not_take_forbidden_constructor_edges(Type serviceType, Type dependencyType)
+    {
+        var ctor = serviceType.GetConstructors().Single();
+        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
+
+        paramTypes.Should().NotContain(dependencyType);
     }
 
     [HumansFact]
@@ -135,6 +150,7 @@ public class UserArchitectureTests
                 if (m.Name.Contains("OAuth", StringComparison.OrdinalIgnoreCase))
                     offenders.Add($"{t.Name}.{m.Name} (method)");
             }
+
             foreach (var p in t.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
             {
                 if (p.Name.Contains("OAuth", StringComparison.OrdinalIgnoreCase))

@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Users;
@@ -8,7 +9,7 @@ using NodaTime;
 
 namespace Humans.Application.Interfaces.Profiles;
 
-public interface IProfileService : IUserMerge
+public interface IProfileService : IApplicationService, IUserMerge
 {
     Task<Profile?> GetProfileAsync(Guid userId, CancellationToken ct = default);
 

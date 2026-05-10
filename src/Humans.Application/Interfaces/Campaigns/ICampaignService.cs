@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces;
 using Humans.Application.DTOs;
 using Humans.Domain.Entities;
 using NodaTime;
@@ -17,7 +18,7 @@ public record WaveSendPreview(
 /// </summary>
 public record DiscountCodeRedemption(string Code, Instant RedeemedAt);
 
-public interface ICampaignService
+public interface ICampaignService : IApplicationService
 {
     Task<Campaign> CreateAsync(string title, string? description,
         string emailSubject, string emailBodyTemplate, string? replyToAddress,

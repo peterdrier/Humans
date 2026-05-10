@@ -21,7 +21,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// <c>IUserService.GetByIdsAsync</c> and stitch them in memory.
 /// </para>
 /// </remarks>
-public interface INotificationRepository
+public interface INotificationRepository : IRepository
 {
     // ==========================================================================
     // Writes — notifications

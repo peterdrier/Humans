@@ -1,10 +1,11 @@
+using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Domain.Entities;
 using NodaTime;
 
 namespace Humans.Application.Interfaces.Auth;
 
-public interface IRoleAssignmentService
+public interface IRoleAssignmentService : IApplicationService
 {
     Task<bool> HasOverlappingAssignmentAsync(
         Guid userId,

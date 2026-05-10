@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces;
 using Humans.Application.DTOs;
 
 namespace Humans.Application.Interfaces.GoogleIntegration;
@@ -7,7 +8,7 @@ namespace Humans.Application.Interfaces.GoogleIntegration;
 /// workspace account management, group linking, email backfill, account linking.
 /// Owns all mutation orchestration and SaveChangesAsync calls for these workflows.
 /// </summary>
-public interface IGoogleAdminService
+public interface IGoogleAdminService : IApplicationService
 {
     /// <summary>
     /// Builds the workspace accounts list view model with matched user data.
@@ -85,15 +86,18 @@ public interface IGoogleAdminService
         CancellationToken ct = default);
 
     /// <summary>
-    /// Detects @nobodies.team email renames by comparing stored GoogleEmail
-    /// against current primaryEmail from Google Directory API.
+    /// Detects @nobodies.team email renames by comparing the stored Google
+    /// identity (the verified <c>UserEmail</c> row tagged
+    /// <see cref="UserEmail.IsGoogle"/>) against the current
+    /// <c>primaryEmail</c> from the Google Directory API.
     /// </summary>
     Task<EmailRenameDetectionResult> DetectEmailRenamesAsync(
         CancellationToken ct = default);
 
     /// <summary>
-    /// Fixes a detected email rename by updating User.GoogleEmail and the
-    /// corresponding UserEmail record to the new primary email.
+    /// Fixes a detected email rename by rewriting the corresponding
+    /// <see cref="UserEmail"/> record to the new primary email and resetting
+    /// the user's <c>GoogleEmailStatus</c> so reconciliation resumes.
     /// </summary>
     Task<EmailRenameFixResult> FixEmailRenameAsync(
         Guid userId, string newEmail, Guid actorUserId,

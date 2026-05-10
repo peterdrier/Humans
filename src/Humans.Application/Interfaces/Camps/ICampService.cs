@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces;
 using Humans.Application.DTOs;
 using Humans.Application.Services.Camps;
 using Humans.Domain.Entities;
@@ -7,7 +8,7 @@ using NodaTime;
 
 namespace Humans.Application.Interfaces.Camps;
 
-public interface ICampService
+public interface ICampService : IApplicationService
 {
     // Registration
     Task<Camp> CreateCampAsync(

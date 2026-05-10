@@ -16,7 +16,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// but never cross-domain navs — those are FK-only after the migration.
 /// See <c>docs/architecture/design-rules.md</c> §3 for the canonical shape.
 /// </remarks>
-public interface IApplicationRepository
+public interface IApplicationRepository : IRepository
 {
     /// <summary>
     /// Loads a single application by id, including its aggregate-local

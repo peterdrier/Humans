@@ -27,7 +27,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// <see cref="Humans.Domain.Entities.LegalDocument.TeamId"/>.
 /// </para>
 /// </remarks>
-public interface ILegalDocumentRepository
+public interface ILegalDocumentRepository : IRepository
 {
     // ==========================================================================
     // Reads — LegalDocument

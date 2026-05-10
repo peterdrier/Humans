@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces;
 using Humans.Application.DTOs;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -8,7 +9,7 @@ namespace Humans.Application.Interfaces.Budget;
 /// <summary>
 /// Service for managing budget years, groups, categories, and line items.
 /// </summary>
-public interface IBudgetService
+public interface IBudgetService : IApplicationService
 {
     // Budget Years
     Task<IReadOnlyList<BudgetYear>> GetAllYearsAsync(bool includeArchived = false);

@@ -8,7 +8,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// Repository for the <c>communication_preferences</c> table.
 /// The only non-test file that may write to this DbSet.
 /// </summary>
-public interface ICommunicationPreferenceRepository
+public interface ICommunicationPreferenceRepository : IRepository
 {
     /// <summary>
     /// Returns all preferences for a user, tracked for modification.
