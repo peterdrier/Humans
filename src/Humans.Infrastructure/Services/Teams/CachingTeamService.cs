@@ -109,7 +109,6 @@ public sealed class CachingTeamService : ITeamService, IUserMerge
                     && t.IsActive
                     && ((t.ParentTeamId is null && t.IsPublicPage)
                         || (t.ParentTeamId is not null && t.IsPromotedToDirectory)))
-                .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
                 .Select(t => CreateDirectorySummary(t, teamsById, userId))
                 .ToList();
 
@@ -145,19 +144,15 @@ public sealed class CachingTeamService : ITeamService, IUserMerge
             CanCreateTeam: canCreateTeam,
             MyTeams: summaries
                 .Where(t => t.IsCurrentUserMember)
-                .OrderBy(t => t.SortKey, StringComparer.OrdinalIgnoreCase)
                 .ToList(),
             Departments: summaries
                 .Where(t => !t.IsCurrentUserMember && !t.IsSystemTeam && !t.IsHidden)
-                .OrderBy(t => t.SortKey, StringComparer.OrdinalIgnoreCase)
                 .ToList(),
             SystemTeams: summaries
                 .Where(t => !t.IsCurrentUserMember && t.IsSystemTeam && !t.IsHidden)
-                .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
                 .ToList(),
             HiddenTeams: summaries
                 .Where(t => !t.IsCurrentUserMember && t.IsHidden)
-                .OrderBy(t => t.SortKey, StringComparer.OrdinalIgnoreCase)
                 .ToList());
     }
 

@@ -88,10 +88,22 @@ public class TeamController : HumansControllerBase
 
         var viewModel = new TeamIndexViewModel
         {
-            MyTeams = directory.MyTeams.Select(MapTeamSummary).ToList(),
-            Departments = directory.Departments.Select(MapTeamSummary).ToList(),
-            SystemTeams = directory.SystemTeams.Select(MapTeamSummary).ToList(),
-            HiddenTeams = directory.HiddenTeams.Select(MapTeamSummary).ToList(),
+            MyTeams = directory.MyTeams
+                .OrderBy(t => t.SortKey, StringComparer.OrdinalIgnoreCase)
+                .Select(MapTeamSummary)
+                .ToList(),
+            Departments = directory.Departments
+                .OrderBy(t => t.SortKey, StringComparer.OrdinalIgnoreCase)
+                .Select(MapTeamSummary)
+                .ToList(),
+            SystemTeams = directory.SystemTeams
+                .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
+                .Select(MapTeamSummary)
+                .ToList(),
+            HiddenTeams = directory.HiddenTeams
+                .OrderBy(t => t.SortKey, StringComparer.OrdinalIgnoreCase)
+                .Select(MapTeamSummary)
+                .ToList(),
             CanCreateTeam = directory.CanCreateTeam,
             IsAuthenticated = directory.IsAuthenticated
         };
