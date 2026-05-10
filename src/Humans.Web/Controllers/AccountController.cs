@@ -111,7 +111,7 @@ public class AccountController : HumansControllerBase
                 await _userManager.UpdateAsync(existingUser);
             }
 
-            await DetectAndApplyRenameAsync(info);
+            await DetectAndApplyRenameAsync(info, existingUser?.Id);
 
             _logger.LogInformation("User logged in with {Provider}", info.LoginProvider);
             return RedirectToLocal(returnUrl);
@@ -366,18 +366,45 @@ public class AccountController : HumansControllerBase
         return RedirectToLocal(returnUrl);
     }
 
-    private async Task DetectAndApplyRenameAsync(ExternalLoginInfo info)
+    private async Task DetectAndApplyRenameAsync(ExternalLoginInfo info, Guid? userId)
     {
         try
         {
-            var match = await _userEmailService.FindByProviderKeyAsync(
-                info.LoginProvider, info.ProviderKey);
-            if (match is null)
-                return;
-
             var claimEmail = info.Principal.FindFirstValue(ClaimTypes.Email);
             if (string.IsNullOrEmpty(claimEmail))
                 return;
+
+            var match = await _userEmailService.FindByProviderKeyAsync(
+                info.LoginProvider, info.ProviderKey);
+
+            if (match is null)
+            {
+                // No UserEmail row exists for this OAuth identity. The AspNetUserLogins
+                // row exists (sign-in succeeded) but the UserEmail mirror is missing —
+                // e.g. a user provisioned before LinkAsync was wired into signup, or a
+                // row that got dropped by an older account-merge path. Backfill it now
+                // using the same LinkAsync primitive the signup paths use (find-or-create
+                // with provider-key tagging). Cross-user collisions on the partial unique
+                // Email index surface as exceptions and are caught below.
+                if (userId is null)
+                {
+                    _logger.LogWarning(
+                        "OAuth backfill skipped: ExternalLoginSignInAsync succeeded but FindByLoginAsync returned null for {Provider} sub={Sub}.",
+                        info.LoginProvider, info.ProviderKey);
+                    return;
+                }
+
+                await _userEmailService.LinkAsync(
+                    userId.Value,
+                    info.LoginProvider,
+                    info.ProviderKey,
+                    claimEmail,
+                    actorUserId: userId.Value);
+                _logger.LogInformation(
+                    "OAuth backfill: created UserEmail row for user {UserId} ({Provider}, sub={Sub}, email={Email}).",
+                    userId.Value, info.LoginProvider, info.ProviderKey, claimEmail);
+                return;
+            }
 
             if (string.Equals(match.Email, claimEmail, StringComparison.OrdinalIgnoreCase))
                 return;
@@ -412,12 +439,12 @@ public class AccountController : HumansControllerBase
         catch (Exception ex)
         {
             // Cross-user collision on the partial unique Email index (Postgres
-            // 23505) surfaces here — UpdateEmailAsync is intentionally a thin
-            // primitive and lets DB constraints propagate. Duplicate-account
-            // detection runs as a separate sweep and will surface the conflict
-            // to admins on its next pass.
+            // 23505) surfaces here — UpdateEmailAsync and LinkAsync both let
+            // DB constraints propagate. Duplicate-account detection runs as a
+            // separate sweep and will surface the conflict to admins on its
+            // next pass.
             _logger.LogError(ex,
-                "OAuth rename detection failed for {Provider} sub={Sub}",
+                "OAuth rename/backfill failed for {Provider} sub={Sub}",
                 info.LoginProvider, info.ProviderKey);
         }
     }

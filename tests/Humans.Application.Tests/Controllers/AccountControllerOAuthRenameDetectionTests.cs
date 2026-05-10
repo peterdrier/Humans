@@ -204,6 +204,46 @@ public class AccountControllerOAuthRenameDetectionTests
     }
 
     [HumansFact]
+    public async Task SuccessBranch_NoUserEmailRow_BackfillsViaLinkAsync()
+    {
+        // The AspNetUserLogins row exists (sign-in succeeded) but no UserEmail
+        // row is tagged with this (Provider, ProviderKey) — e.g. a pre-LinkAsync
+        // provisioned user. The callback must call LinkAsync to backfill the
+        // missing row using the same find-or-create primitive the signup paths
+        // use. No audit row (creation is logged at Information level only).
+        var userId = Guid.NewGuid();
+        var claimEmail = "backfill@nobodies.team";
+        var info = MakeInfo(claimEmail);
+
+        _signInManager.GetExternalLoginInfoAsync().Returns(info);
+        _signInManager.ExternalLoginSignInAsync(Provider, ProviderKey, false, true)
+            .Returns(SignInResult.Success);
+
+        var existingUser = new User { Id = userId };
+        _userManager.FindByLoginAsync(Provider, ProviderKey).Returns(existingUser);
+        _userManager.UpdateAsync(Arg.Any<User>()).Returns(IdentityResult.Success);
+
+        _userEmailService.FindByProviderKeyAsync(Provider, ProviderKey, Arg.Any<CancellationToken>())
+            .Returns((UserEmailProviderMatch?)null);
+        _userEmailService.LinkAsync(
+                userId, Provider, ProviderKey, claimEmail, userId,
+                Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        await _controller.ExternalLoginCallback(returnUrl: null, remoteError: null);
+
+        await _userEmailService.Received(1).LinkAsync(
+            userId, Provider, ProviderKey, claimEmail, userId,
+            Arg.Any<CancellationToken>());
+        await _userEmailService.DidNotReceive().UpdateEmailAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _auditLogService.DidNotReceive().LogAsync(
+            Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
     public async Task SuccessBranch_EmailsMatch_NoRewriteNoAudit()
     {
         var userId = Guid.NewGuid();
