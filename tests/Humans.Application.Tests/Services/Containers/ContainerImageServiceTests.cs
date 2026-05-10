@@ -22,6 +22,7 @@ public class ContainerImageServiceTests : IDisposable
     private readonly IContainerImageStorage _imageStorage;
     private readonly ContainerService _sut;
     private readonly Instant _startTime = Instant.FromUtc(2026, 5, 8, 10, 0, 0);
+    private static readonly Guid CampId = Guid.Parse("00000000-0000-0000-0099-000000000001");
 
     public ContainerImageServiceTests()
     {
@@ -47,24 +48,17 @@ public class ContainerImageServiceTests : IDisposable
     private static ContainerImageUpload FakeImage(string kind = "main") =>
         new(Stream.Null, "image/jpeg", $"{kind}-sketch.jpg", 1024);
 
-    private async Task<Container> SeedContainerAsync(
-        string? imagePath = null,
-        string? placementImagePath = null,
-        string? placementNotes = null)
+    private async Task<Container> SeedContainerAsync(string? imagePath = null)
     {
         await using var ctx = new HumansDbContext(_dbOptions);
         var container = new Container
         {
             Id = Guid.NewGuid(),
-            Year = 2026,
+            CampId = CampId,
             Name = "Container A",
             ImageStoragePath = imagePath,
             ImageContentType = imagePath is not null ? "image/jpeg" : null,
             ImageFileName = imagePath is not null ? "main.jpg" : null,
-            PlacementImageStoragePath = placementImagePath,
-            PlacementImageContentType = placementImagePath is not null ? "image/jpeg" : null,
-            PlacementImageFileName = placementImagePath is not null ? "placement.jpg" : null,
-            PlacementNotes = placementNotes,
             CreatedAt = _startTime,
             UpdatedAt = _startTime,
         };
@@ -74,69 +68,36 @@ public class ContainerImageServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task CreateAsync_WithBothImages_SavesBothImages()
+    public async Task CreateAsync_WithMainImage_SavesMainImage()
     {
         _imageStorage.SaveImageAsync(Arg.Any<Guid>(), Arg.Any<Stream>(), "image/jpeg", ContainerImageKind.Main, Arg.Any<CancellationToken>())
             .Returns("uploads/containers/id/main-guid.jpg");
-        _imageStorage.SaveImageAsync(Arg.Any<Guid>(), Arg.Any<Stream>(), "image/jpeg", ContainerImageKind.Placement, Arg.Any<CancellationToken>())
-            .Returns("uploads/containers/id/placement-guid.jpg");
 
         var result = await _sut.CreateAsync(new ContainerData(
-            CampId: null,
-            Year: 2026,
+            CampId: CampId,
             Name: "Test",
             Description: null,
-            PlacementNotes: "Near the gate",
-            MainImage: FakeImage("main"),
-            PlacementImage: FakeImage("placement")));
+            MainImage: FakeImage("main")));
 
         result.ImageStoragePath.Should().Be("/uploads/containers/id/main-guid.jpg");
-        result.PlacementImageStoragePath.Should().Be("/uploads/containers/id/placement-guid.jpg");
-        result.PlacementNotes.Should().Be("Near the gate");
+        result.CampId.Should().Be(CampId);
     }
 
     [HumansFact]
-    public async Task UpdateAsync_RemoveMainImage_DeletesMainImageOnly()
+    public async Task UpdateAsync_RemoveMainImage_DeletesMainImage()
     {
-        var container = await SeedContainerAsync(
-            imagePath: "uploads/containers/id/main-guid.jpg",
-            placementImagePath: "uploads/containers/id/placement-guid.jpg");
+        var container = await SeedContainerAsync(imagePath: "uploads/containers/id/main-guid.jpg");
 
         await _sut.UpdateAsync(container.Id, new ContainerData(
-            CampId: null,
-            Year: container.Year,
+            CampId: container.CampId,
             Name: container.Name,
             Description: null,
             RemoveMainImage: true));
 
         _imageStorage.Received(1).DeleteImage("uploads/containers/id/main-guid.jpg");
-        _imageStorage.DidNotReceive().DeleteImage("uploads/containers/id/placement-guid.jpg");
 
         var updated = await _sut.GetByIdAsync(container.Id);
         updated!.ImageStoragePath.Should().BeNull();
-        updated.PlacementImageStoragePath.Should().Be("/uploads/containers/id/placement-guid.jpg");
-    }
-
-    [HumansFact]
-    public async Task UpdateAsync_RemovePlacementImage_DeletesPlacementImageOnly()
-    {
-        var container = await SeedContainerAsync(
-            imagePath: "uploads/containers/id/main-guid.jpg",
-            placementImagePath: "uploads/containers/id/placement-guid.jpg");
-
-        await _sut.UpdateAsync(container.Id, new ContainerData(
-            CampId: null,
-            Year: container.Year,
-            Name: container.Name,
-            Description: null,
-            RemovePlacementImage: true));
-
-        _imageStorage.Received(1).DeleteImage("uploads/containers/id/placement-guid.jpg");
-        _imageStorage.DidNotReceive().DeleteImage("uploads/containers/id/main-guid.jpg");
-
-        var updated = await _sut.GetByIdAsync(container.Id);
-        updated!.PlacementImageStoragePath.Should().BeNull();
-        updated.ImageStoragePath.Should().Be("/uploads/containers/id/main-guid.jpg");
     }
 
     [HumansFact]
@@ -147,8 +108,7 @@ public class ContainerImageServiceTests : IDisposable
             .Returns("uploads/containers/id/main-new.jpg");
 
         await _sut.UpdateAsync(container.Id, new ContainerData(
-            CampId: null,
-            Year: container.Year,
+            CampId: container.CampId,
             Name: container.Name,
             Description: null,
             MainImage: FakeImage("main")));
@@ -160,54 +120,57 @@ public class ContainerImageServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task UpdateAsync_RemoveBothImages_DeletesBoth()
+    public async Task DeleteAsync_RemovesMainImage()
     {
-        var container = await SeedContainerAsync(
-            imagePath: "uploads/containers/id/main.jpg",
-            placementImagePath: "uploads/containers/id/placement.jpg");
-
-        await _sut.UpdateAsync(container.Id, new ContainerData(
-            CampId: null,
-            Year: container.Year,
-            Name: container.Name,
-            Description: null,
-            RemoveMainImage: true,
-            RemovePlacementImage: true));
-
-        _imageStorage.Received(1).DeleteImage("uploads/containers/id/main.jpg");
-        _imageStorage.Received(1).DeleteImage("uploads/containers/id/placement.jpg");
-
-        var updated = await _sut.GetByIdAsync(container.Id);
-        updated!.ImageStoragePath.Should().BeNull();
-        updated.PlacementImageStoragePath.Should().BeNull();
-    }
-
-    [HumansFact]
-    public async Task UpdateAsync_ClearPlacementNotes_SetsToNull()
-    {
-        var container = await SeedContainerAsync(placementNotes: "Old notes");
-
-        await _sut.UpdateAsync(container.Id, new ContainerData(
-            CampId: null,
-            Year: container.Year,
-            Name: container.Name,
-            Description: null,
-            PlacementNotes: null));
-
-        var updated = await _sut.GetByIdAsync(container.Id);
-        updated!.PlacementNotes.Should().BeNull();
-    }
-
-    [HumansFact]
-    public async Task DeleteAsync_RemovesBothImages()
-    {
-        var container = await SeedContainerAsync(
-            imagePath: "uploads/containers/id/main.jpg",
-            placementImagePath: "uploads/containers/id/placement.jpg");
+        var container = await SeedContainerAsync(imagePath: "uploads/containers/id/main.jpg");
 
         await _sut.DeleteAsync(container.Id);
 
         _imageStorage.Received(1).DeleteImage("uploads/containers/id/main.jpg");
-        _imageStorage.Received(1).DeleteImage("uploads/containers/id/placement.jpg");
+    }
+
+    [HumansFact]
+    public async Task UpsertPlacementMetadataAsync_WithImage_SavesPlacementImage()
+    {
+        var container = await SeedContainerAsync();
+        _imageStorage.SaveImageAsync(Arg.Any<Guid>(), Arg.Any<Stream>(), "image/jpeg", ContainerImageKind.Placement, Arg.Any<CancellationToken>())
+            .Returns("uploads/containers/id/placement-guid.jpg");
+
+        var result = await _sut.UpsertPlacementMetadataAsync(new ContainerPlacementData(
+            ContainerId: container.Id,
+            Year: 2026,
+            LocationGeoJson: null,
+            PlacementNotes: "Near the gate",
+            PlacementImage: FakeImage("placement")));
+
+        result.PlacementImageStoragePath.Should().Be("/uploads/containers/id/placement-guid.jpg");
+        result.PlacementNotes.Should().Be("Near the gate");
+    }
+
+    [HumansFact]
+    public async Task UpsertPlacementMetadataAsync_RemovePlacementImage_DeletesImage()
+    {
+        var container = await SeedContainerAsync();
+        // Seed a placement with an image
+        _imageStorage.SaveImageAsync(Arg.Any<Guid>(), Arg.Any<Stream>(), "image/jpeg", ContainerImageKind.Placement, Arg.Any<CancellationToken>())
+            .Returns("uploads/containers/id/placement-guid.jpg");
+        await _sut.UpsertPlacementMetadataAsync(new ContainerPlacementData(
+            ContainerId: container.Id,
+            Year: 2026,
+            LocationGeoJson: null,
+            PlacementNotes: null,
+            PlacementImage: FakeImage("placement")));
+
+        await _sut.UpsertPlacementMetadataAsync(new ContainerPlacementData(
+            ContainerId: container.Id,
+            Year: 2026,
+            LocationGeoJson: null,
+            PlacementNotes: null,
+            RemovePlacementImage: true));
+
+        _imageStorage.Received(1).DeleteImage("uploads/containers/id/placement-guid.jpg");
+
+        var placement = await _sut.GetPlacementAsync(container.Id, 2026);
+        placement!.PlacementImageStoragePath.Should().BeNull();
     }
 }

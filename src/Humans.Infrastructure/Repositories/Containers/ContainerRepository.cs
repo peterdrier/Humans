@@ -14,30 +14,20 @@ public sealed class ContainerRepository : IContainerRepository
         _factory = factory;
     }
 
-    public async Task<IReadOnlyList<Container>> GetByCampAsync(Guid campId, int year, CancellationToken ct = default)
+    public async Task<IReadOnlyList<Container>> GetByCampAsync(Guid campId, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.Containers
             .AsNoTracking()
-            .Where(c => c.CampId == campId && c.Year == year)
+            .Where(c => c.CampId == campId)
             .ToListAsync(ct);
     }
 
-    public async Task<IReadOnlyList<Container>> GetOrgByYearAsync(int year, CancellationToken ct = default)
+    public async Task<IReadOnlyList<Container>> GetAllAsync(CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.Containers
             .AsNoTracking()
-            .Where(c => c.CampId == null && c.Year == year)
-            .ToListAsync(ct);
-    }
-
-    public async Task<IReadOnlyList<Container>> GetAllByYearAsync(int year, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.Containers
-            .AsNoTracking()
-            .Where(c => c.Year == year)
             .ToListAsync(ct);
     }
 
@@ -73,7 +63,65 @@ public sealed class ContainerRepository : IContainerRepository
         {
             return;
         }
+
+        // No FK constraint on ContainerPlacement.ContainerId — delete placements explicitly.
+        var placements = await ctx.ContainerPlacements
+            .Where(p => p.ContainerId == id)
+            .ToListAsync(ct);
+        if (placements.Count > 0)
+        {
+            ctx.ContainerPlacements.RemoveRange(placements);
+        }
+
         ctx.Containers.Remove(container);
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task<ContainerPlacement?> GetPlacementAsync(Guid containerId, int year, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.ContainerPlacements
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.ContainerId == containerId && p.Year == year, ct);
+    }
+
+    public async Task<IReadOnlyList<ContainerPlacement>> GetPlacementsByYearAsync(int year, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.ContainerPlacements
+            .AsNoTracking()
+            .Where(p => p.Year == year)
+            .ToListAsync(ct);
+    }
+
+    public async Task UpsertPlacementAsync(ContainerPlacement placement, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var existing = await ctx.ContainerPlacements
+            .FirstOrDefaultAsync(p => p.ContainerId == placement.ContainerId && p.Year == placement.Year, ct);
+        if (existing is null)
+        {
+            ctx.ContainerPlacements.Add(placement);
+        }
+        else
+        {
+            existing.LocationGeoJson = placement.LocationGeoJson;
+            existing.PlacementNotes = placement.PlacementNotes;
+            existing.PlacementImageStoragePath = placement.PlacementImageStoragePath;
+            existing.PlacementImageContentType = placement.PlacementImageContentType;
+            existing.PlacementImageFileName = placement.PlacementImageFileName;
+            existing.UpdatedAt = placement.UpdatedAt;
+        }
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task DeletePlacementAsync(Guid containerId, int year, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var placement = await ctx.ContainerPlacements
+            .FirstOrDefaultAsync(p => p.ContainerId == containerId && p.Year == year, ct);
+        if (placement is null) return;
+        ctx.ContainerPlacements.Remove(placement);
         await ctx.SaveChangesAsync(ct);
     }
 }

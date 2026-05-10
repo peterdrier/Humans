@@ -1,6 +1,7 @@
 @model Humans.Web.Models.ContainerCardModel
 @{
     var c = Model.Container;
+    var p = Model.Placement;
 }
 @if (c.ImageUrl is not null)
 {
@@ -19,7 +20,7 @@
     </div>
 }
 
-@if (c.HasPlacementInfo)
+@if (Model.HasPlacementInfo && p is not null)
 {
     <div class="modal fade" id="placementInfoModal-@c.Id" tabindex="-1">
         <div class="modal-dialog modal-lg modal-dialog-centered">
@@ -29,14 +30,14 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    @if (!string.IsNullOrEmpty(c.PlacementNotes))
+                    @if (!string.IsNullOrEmpty(p.PlacementNotes))
                     {
-                        <div style="white-space: pre-wrap">@c.PlacementNotes</div>
+                        <div style="white-space: pre-wrap">@p.PlacementNotes</div>
                     }
-                    @if (c.PlacementImageUrl is not null)
+                    @if (p.PlacementImageUrl is not null)
                     {
                         <div class="mt-3">
-                            <img src="@c.PlacementImageUrl" alt="@c.PlacementImageFileName" class="img-fluid" style="cursor:pointer;" data-bs-dismiss="modal" />
+                            <img src="@p.PlacementImageUrl" alt="@p.PlacementImageFileName" class="img-fluid" style="cursor:pointer;" data-bs-dismiss="modal" />
                         </div>
                     }
                 </div>

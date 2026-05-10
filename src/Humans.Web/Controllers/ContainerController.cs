@@ -12,7 +12,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Humans.Web.Controllers;
 
 [Authorize]
-[Route("Camp/{slug}/Season/{year}/Containers")]
+[Route("Camp/{slug}/Containers")]
 public class ContainerController : HumansControllerBase
 {
     private readonly ICampService _campService;
@@ -34,7 +34,7 @@ public class ContainerController : HumansControllerBase
         _authorizationService = authorizationService;
     }
 
-    private sealed record CampContext(Camp Camp, CampSeason Season, bool CanManage, bool IsPrivileged);
+    private sealed record CampContext(Camp Camp, bool CanManage, bool IsPrivileged);
 
     private async Task<bool> CanManageAsync(Guid userId, Guid campId, CancellationToken ct)
     {
@@ -51,62 +51,62 @@ public class ContainerController : HumansControllerBase
     }
 
     private async Task<(IActionResult? Error, CampContext? Ctx)> ResolveCampContextAsync(
-        string slug, int year, Guid userId, CancellationToken ct)
+        string slug, Guid userId, CancellationToken ct)
     {
         var camp = await _campService.GetCampBySlugAsync(slug, ct);
         if (camp is null) return (NotFound(), null);
-
-        var season = camp.Seasons.FirstOrDefault(s => s.Year == year);
-        if (season is null) return (NotFound(), null);
 
         var canManage = await CanManageAsync(userId, camp.Id, ct);
         if (!canManage) return (Forbid(), null);
 
         var isPrivileged = await IsPrivilegedAsync(userId, ct);
-        return (null, new CampContext(camp, season, canManage, isPrivileged));
+        return (null, new CampContext(camp, canManage, isPrivileged));
     }
 
     private async Task<IActionResult?> CheckPlacementPhaseAsync(
-        Guid userId, string slug, int year, CancellationToken ct)
+        Guid userId, string slug, CancellationToken ct)
     {
         if (await IsPrivilegedAsync(userId, ct)) return null;
         var settings = await _cityPlanningService.GetSettingsAsync(ct);
         if (settings.IsContainerPlacementOpen) return null;
         SetError("Container placement is currently closed.");
-        return RedirectToAction(nameof(Index), new { slug, year });
+        return RedirectToAction(nameof(Index), new { slug });
     }
 
     [HttpGet("")]
-    public async Task<IActionResult> Index(string slug, int year, CancellationToken ct)
+    public async Task<IActionResult> Index(string slug, CancellationToken ct)
     {
         var (userError, user) = await RequireCurrentUserAsync();
         if (userError is not null) return userError;
 
-        var (resolveError, ctx) = await ResolveCampContextAsync(slug, year, user.Id, ct);
+        var (resolveError, ctx) = await ResolveCampContextAsync(slug, user.Id, ct);
         if (resolveError is not null) return resolveError;
 
         var settings = await _cityPlanningService.GetSettingsAsync(ct);
-        var containers = await _containerService.GetByCampAsync(ctx!.Camp.Id, year, ct);
+        var containers = await _containerService.GetByCampAsync(ctx!.Camp.Id, ct);
         var sortedContainers = containers
             .OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        var vm = BuildIndexViewModel(ctx, year, settings.IsContainerPlacementOpen, sortedContainers);
+        var vm = BuildIndexViewModel(ctx, settings.Year, settings.IsContainerPlacementOpen, sortedContainers);
         return View(vm);
     }
 
     private static ContainerIndexViewModel BuildIndexViewModel(
-        CampContext ctx, int year, bool isPlacementOpen, IReadOnlyList<ContainerDto> containers)
+        CampContext ctx, int currentYear, bool isPlacementOpen, IReadOnlyList<ContainerDto> containers)
     {
         var isLead = ctx.CanManage && !ctx.IsPrivileged;
+        var displayName = ctx.Camp.Seasons
+            .OrderByDescending(s => s.Year)
+            .FirstOrDefault()?.Name
+            ?? ctx.Camp.Slug;
         return new ContainerIndexViewModel
         {
             CampSlug = ctx.Camp.Slug,
-            CampName = ctx.Season.Name,
-            Year = year,
-            SeasonId = ctx.Season.Id,
+            CampName = displayName,
             CampId = ctx.Camp.Id,
-            CanManage = ctx.CanManage && (ctx.IsPrivileged || isPlacementOpen),
+            CurrentYear = currentYear,
+            CanManage = ctx.CanManage,
             IsPlacementOpen = isPlacementOpen,
             IsLeadButPhaseClosed = isLead && !isPlacementOpen,
             Containers = containers.Select(ToContainerViewModel).ToList()
@@ -120,40 +120,36 @@ public class ContainerController : HumansControllerBase
         Description = c.Description,
         ImageUrl = c.ImageStoragePath,
         ImageFileName = c.ImageFileName,
-        IsPlaced = c.LocationGeoJson is not null,
-        PlacementNotes = c.PlacementNotes,
-        PlacementImageUrl = c.PlacementImageStoragePath,
-        PlacementImageFileName = c.PlacementImageFileName,
     };
 
     [HttpPost("Create")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create(string slug, int year, ContainerFormModel model, CancellationToken ct)
+    public async Task<IActionResult> Create(string slug, ContainerFormModel model, CancellationToken ct)
     {
         var (userError, user) = await RequireCurrentUserAsync();
         if (userError is not null) return userError;
 
-        var (resolveError, ctx) = await ResolveCampContextAsync(slug, year, user.Id, ct);
+        var (resolveError, ctx) = await ResolveCampContextAsync(slug, user.Id, ct);
         if (resolveError is not null) return resolveError;
 
-        var blockResult = await CheckPlacementPhaseAsync(user.Id, slug, year, ct);
+        var blockResult = await CheckPlacementPhaseAsync(user.Id, slug, ct);
         if (blockResult is not null) return blockResult;
 
         if (!ModelState.IsValid)
         {
             SetError("Please correct the validation errors.");
-            return RedirectToAction(nameof(Index), new { slug, year });
+            return RedirectToAction(nameof(Index), new { slug });
         }
 
         return await TryRunContainerWriteAsync(
-            () => _containerService.CreateAsync(model.ToContainerData(ctx!.Camp.Id, year), ct),
-            slug, year,
+            () => _containerService.CreateAsync(model.ToContainerData(ctx!.Camp.Id), ct),
+            slug,
             "Container added.");
     }
 
     [HttpPost("{id}/Edit")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(string slug, int year, Guid id, ContainerFormModel model, CancellationToken ct)
+    public async Task<IActionResult> Edit(string slug, Guid id, ContainerFormModel model, CancellationToken ct)
     {
         var (userError, user) = await RequireCurrentUserAsync();
         if (userError is not null) return userError;
@@ -161,18 +157,18 @@ public class ContainerController : HumansControllerBase
         var (authError, entity) = await AuthorizeContainerOpAsync(id, ct);
         if (authError is not null) return authError;
 
-        var blockResult = await CheckPlacementPhaseAsync(user.Id, slug, year, ct);
+        var blockResult = await CheckPlacementPhaseAsync(user.Id, slug, ct);
         if (blockResult is not null) return blockResult;
 
         if (!ModelState.IsValid)
         {
             SetError("Please correct the validation errors.");
-            return RedirectToAction(nameof(Index), new { slug, year });
+            return RedirectToAction(nameof(Index), new { slug });
         }
 
         return await TryRunContainerWriteAsync(
-            () => _containerService.UpdateAsync(id, model.ToContainerData(entity!.CampId, entity.Year), ct),
-            slug, year,
+            () => _containerService.UpdateAsync(id, model.ToContainerData(entity!.CampId), ct),
+            slug,
             "Container updated.");
     }
 
@@ -189,7 +185,7 @@ public class ContainerController : HumansControllerBase
 
     [HttpPost("{id}/Delete")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Delete(string slug, int year, Guid id, CancellationToken ct)
+    public async Task<IActionResult> Delete(string slug, Guid id, CancellationToken ct)
     {
         var entity = await GetContainerEntityAsync(id, ct);
         if (entity is null) return NotFound();
@@ -200,16 +196,16 @@ public class ContainerController : HumansControllerBase
         var authResult = await _authorizationService.AuthorizeAsync(User, entity, ContainerOperationRequirement.Manage);
         if (!authResult.Succeeded) return Forbid();
 
-        var blockResult = await CheckPlacementPhaseAsync(user.Id, slug, year, ct);
+        var blockResult = await CheckPlacementPhaseAsync(user.Id, slug, ct);
         if (blockResult is not null) return blockResult;
 
         await _containerService.DeleteAsync(id, ct);
         SetSuccess("Container deleted.");
-        return RedirectToAction(nameof(Index), new { slug, year });
+        return RedirectToAction(nameof(Index), new { slug });
     }
 
     private async Task<IActionResult> TryRunContainerWriteAsync(
-        Func<Task> write, string slug, int year, string successMessage)
+        Func<Task> write, string slug, string successMessage)
     {
         try
         {
@@ -218,11 +214,11 @@ public class ContainerController : HumansControllerBase
         catch (InvalidOperationException ex)
         {
             SetError(ex.Message);
-            return RedirectToAction(nameof(Index), new { slug, year });
+            return RedirectToAction(nameof(Index), new { slug });
         }
 
         SetSuccess(successMessage);
-        return RedirectToAction(nameof(Index), new { slug, year });
+        return RedirectToAction(nameof(Index), new { slug });
     }
 
     private async Task<Container?> GetContainerEntityAsync(Guid id, CancellationToken ct)
@@ -236,7 +232,6 @@ public class ContainerController : HumansControllerBase
         {
             Id = dto.Id,
             CampId = dto.CampId,
-            Year = dto.Year
         };
     }
 }

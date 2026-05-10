@@ -8,11 +8,10 @@ public class ContainerIndexViewModel
 {
     public string CampSlug { get; set; } = string.Empty;
     public string CampName { get; set; } = string.Empty;
-    public int Year { get; set; }
-    public Guid SeasonId { get; set; }
     public Guid CampId { get; set; }
     public List<ContainerViewModel> Containers { get; set; } = new();
     public bool CanManage { get; set; }
+    public int CurrentYear { get; set; }
     public bool IsPlacementOpen { get; set; }
     public bool IsLeadButPhaseClosed { get; set; }
 }
@@ -24,11 +23,26 @@ public class ContainerViewModel
     public string? Description { get; set; }
     public string? ImageUrl { get; set; }
     public string? ImageFileName { get; set; }
-    public bool IsPlaced { get; set; }
+}
+
+public class ContainerPlacementViewModel
+{
+    public Guid ContainerId { get; set; }
+    public int Year { get; set; }
+    public string? LocationGeoJson { get; set; }
     public string? PlacementNotes { get; set; }
     public string? PlacementImageUrl { get; set; }
     public string? PlacementImageFileName { get; set; }
+    public bool IsPlaced => LocationGeoJson is not null;
     public bool HasPlacementInfo => !string.IsNullOrEmpty(PlacementNotes) || PlacementImageUrl is not null;
+}
+
+public class ContainerWithPlacementViewModel
+{
+    public ContainerViewModel Container { get; set; } = new();
+    public ContainerPlacementViewModel? Placement { get; set; }
+    public bool IsPlaced => Placement?.IsPlaced ?? false;
+    public bool HasPlacementInfo => Placement?.HasPlacementInfo ?? false;
 }
 
 public class ContainerFormModel
@@ -40,26 +54,35 @@ public class ContainerFormModel
     [StringLength(2000)]
     public string? Description { get; set; }
 
-    [StringLength(5000)]
-    public string? PlacementNotes { get; set; }
     public IFormFile? MainImage { get; set; }
-    public IFormFile? PlacementImage { get; set; }
     public bool RemoveMainImage { get; set; }
-    public bool RemovePlacementImage { get; set; }
 
-    public ContainerData ToContainerData(Guid? campId, int year) => new(
+    public ContainerData ToContainerData(Guid campId) => new(
         CampId: campId,
-        Year: year,
         Name: Name,
         Description: Description,
-        PlacementNotes: PlacementNotes,
         MainImage: MainImage is { Length: > 0 }
             ? new ContainerImageUpload(MainImage.OpenReadStream(), MainImage.ContentType, MainImage.FileName, MainImage.Length)
             : null,
+        RemoveMainImage: RemoveMainImage);
+}
+
+public class ContainerPlacementFormModel
+{
+    [StringLength(5000)]
+    public string? PlacementNotes { get; set; }
+
+    public IFormFile? PlacementImage { get; set; }
+    public bool RemovePlacementImage { get; set; }
+
+    public ContainerPlacementData ToPlacementData(Guid containerId, int year, string? existingLocationGeoJson) => new(
+        ContainerId: containerId,
+        Year: year,
+        LocationGeoJson: existingLocationGeoJson,
+        PlacementNotes: PlacementNotes,
         PlacementImage: PlacementImage is { Length: > 0 }
             ? new ContainerImageUpload(PlacementImage.OpenReadStream(), PlacementImage.ContentType, PlacementImage.FileName, PlacementImage.Length)
             : null,
-        RemoveMainImage: RemoveMainImage,
         RemovePlacementImage: RemovePlacementImage);
 }
 
@@ -67,7 +90,7 @@ public class OrgContainerIndexViewModel
 {
     public int Year { get; set; }
     public bool IsContainerPlacementOpen { get; set; }
-    public List<ContainerViewModel> OrgContainers { get; set; } = new();
+    public List<ContainerWithPlacementViewModel> OrgContainers { get; set; } = new();
     public List<BarrioContainerGroup> BarrioGroups { get; set; } = new();
 }
 
@@ -76,7 +99,7 @@ public class BarrioContainerGroup
     public Guid CampId { get; set; }
     public string CampName { get; set; } = string.Empty;
     public string CampSlug { get; set; } = string.Empty;
-    public List<ContainerViewModel> Containers { get; set; } = new();
+    public List<ContainerWithPlacementViewModel> Containers { get; set; } = new();
 }
 
 public class ContainerMapViewModel

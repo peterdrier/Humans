@@ -2,9 +2,10 @@
 @{
     ViewData["Title"] = $"{Localizer["Container_Breadcrumb"]} {Model.Year}";
 
-    Humans.Web.Models.ContainerCardModel CardFor(Humans.Web.Models.ContainerViewModel c) => new()
+    Humans.Web.Models.ContainerCardModel CardFor(Humans.Web.Models.ContainerWithPlacementViewModel c) => new()
     {
-        Container = c,
+        Container = c.Container,
+        Placement = c.Placement,
         CanManage = true,
         FormController = "CityPlanning",
         EditAction = "EditOrgContainer",
@@ -124,7 +125,7 @@ else
                 <h5 class="modal-title">@Localizer["CityPlanning_Admin_AddOrgContainer"]</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <form asp-action="CreateOrgContainer" asp-route-year="@Model.Year"
+            <form asp-action="CreateOrgContainer"
                   method="post" enctype="multipart/form-data">
                 @Html.AntiForgeryToken()
                 <div class="modal-body">
@@ -148,7 +149,7 @@ else
                     <h5 class="modal-title">@string.Format(Localizer["CityPlanning_Admin_AddBarrioContainer"], group.CampName)</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-                <form asp-action="CreateBarrioContainer" asp-route-year="@Model.Year" asp-route-campId="@group.CampId"
+                <form asp-action="CreateBarrioContainer" asp-route-campId="@group.CampId"
                       method="post" enctype="multipart/form-data">
                     @Html.AntiForgeryToken()
                     <div class="modal-body">

@@ -10,8 +10,8 @@ export async function loadContainers(year) {
     return res.json();
 }
 
-export async function savePlacement(id, geoJson) {
-    const res = await fetch(`/api/city-planning/containers/${id}/placement`, {
+export async function savePlacement(id, year, geoJson) {
+    const res = await fetch(`/api/city-planning/containers/${id}/placement/${year}`, {
         method: 'PUT',
         headers: {
             'Content-Type': 'application/json',
@@ -26,8 +26,8 @@ export async function savePlacement(id, geoJson) {
     return res.json();
 }
 
-export async function clearPlacement(id) {
-    const res = await fetch(`/api/city-planning/containers/${id}/placement`, {
+export async function clearPlacement(id, year) {
+    const res = await fetch(`/api/city-planning/containers/${id}/placement/${year}`, {
         method: 'DELETE',
         headers: { 'RequestVerificationToken': antiforgeryToken() },
     });

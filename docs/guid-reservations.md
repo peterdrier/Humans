@@ -13,6 +13,7 @@ This project uses a small number of hand-chosen GUID ranges for seed data. The r
 | `0002` | Sync service settings seeds | [SyncServiceSettingsConfiguration.cs](../src/Humans.Infrastructure/Data/Configurations/SyncServiceSettingsConfiguration.cs) |
 | `0003` | Shift tag seeds | [ShiftTagConfiguration.cs](../src/Humans.Infrastructure/Data/Configurations/Shifts/ShiftTagConfiguration.cs) |
 | `0010` | Camp settings seed | [CampSettingsConfiguration.cs](../src/Humans.Infrastructure/Data/Configurations/Camps/CampSettingsConfiguration.cs) |
+| `0011` | System-managed camps (e.g., Organization holder for org-level containers) | [SystemCampIds.cs](../src/Humans.Domain/Constants/SystemCampIds.cs) |
 
 ## Rules
 

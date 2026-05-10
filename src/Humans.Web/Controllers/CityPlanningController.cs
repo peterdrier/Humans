@@ -1,6 +1,7 @@
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.CitiPlanning;
 using Humans.Application.Interfaces.Containers;
+using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Web.Authorization;
 using Humans.Web.Models;
@@ -394,8 +395,8 @@ public class CityPlanningController : HumansControllerBase
             Year = year,
             IsContainerPlacementOpen = settings.IsContainerPlacementOpen,
             OrgContainers = overview.OrgContainers
-                .OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase)
-                .Select(ToContainerViewModel)
+                .OrderBy(c => c.Container.Name, StringComparer.OrdinalIgnoreCase)
+                .Select(ToContainerWithPlacementViewModel)
                 .ToList(),
             BarrioGroups = overview.CampGroups
                 .OrderBy(g => g.CampName, StringComparer.OrdinalIgnoreCase)
@@ -405,8 +406,8 @@ public class CityPlanningController : HumansControllerBase
                     CampName = g.CampName,
                     CampSlug = g.CampSlug,
                     Containers = g.Containers
-                        .OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase)
-                        .Select(ToContainerViewModel)
+                        .OrderBy(c => c.Container.Name, StringComparer.OrdinalIgnoreCase)
+                        .Select(ToContainerWithPlacementViewModel)
                         .ToList()
                 })
                 .ToList()
@@ -422,36 +423,51 @@ public class CityPlanningController : HumansControllerBase
         Description = c.Description,
         ImageUrl = c.ImageStoragePath,
         ImageFileName = c.ImageFileName,
-        IsPlaced = c.LocationGeoJson is not null,
-        PlacementNotes = c.PlacementNotes,
-        PlacementImageUrl = c.PlacementImageStoragePath,
-        PlacementImageFileName = c.PlacementImageFileName,
     };
 
-    [HttpPost("BarrioMap/Admin/Containers/{year}/Barrios/{campId}/Create")]
+    private static ContainerPlacementViewModel? ToPlacementViewModel(ContainerPlacementDto? p) =>
+        p is null ? null : new ContainerPlacementViewModel
+        {
+            ContainerId = p.ContainerId,
+            Year = p.Year,
+            LocationGeoJson = p.LocationGeoJson,
+            PlacementNotes = p.PlacementNotes,
+            PlacementImageUrl = p.PlacementImageStoragePath,
+            PlacementImageFileName = p.PlacementImageFileName,
+        };
+
+    private static ContainerWithPlacementViewModel ToContainerWithPlacementViewModel(ContainerWithPlacement cwp) => new()
+    {
+        Container = ToContainerViewModel(cwp.Container),
+        Placement = ToPlacementViewModel(cwp.Placement),
+    };
+
+    [HttpPost("BarrioMap/Admin/Containers/Barrios/{campId}/Create")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> CreateBarrioContainer(int year, Guid campId, ContainerFormModel model, CancellationToken cancellationToken)
+    public async Task<IActionResult> CreateBarrioContainer(Guid campId, ContainerFormModel model, CancellationToken cancellationToken)
     {
         var (error, user) = await RequireCurrentUserAsync();
         if (error != null) return error;
 
         if (!await IsMapAdminAsync(user.Id, cancellationToken)) return Forbid();
 
+        var settings = await _cityPlanningService.GetSettingsAsync(cancellationToken);
+
         if (!ModelState.IsValid)
         {
             SetError("Please correct the validation errors.");
-            return RedirectToAction(nameof(Containers), new { year });
+            return RedirectToAction(nameof(Containers), new { year = settings.Year });
         }
 
-        return await TryCreateContainerAsync(model, campId, year, cancellationToken);
+        return await TryCreateContainerAsync(model, campId, settings.Year, cancellationToken);
     }
 
     private async Task<IActionResult> TryCreateContainerAsync(
-        ContainerFormModel model, Guid? campId, int year, CancellationToken ct)
+        ContainerFormModel model, Guid campId, int year, CancellationToken ct)
     {
         try
         {
-            await _containerService.CreateAsync(model.ToContainerData(campId, year), ct);
+            await _containerService.CreateAsync(model.ToContainerData(campId), ct);
         }
         catch (InvalidOperationException ex)
         {
@@ -463,22 +479,24 @@ public class CityPlanningController : HumansControllerBase
         return RedirectToAction(nameof(Containers), new { year });
     }
 
-    [HttpPost("BarrioMap/Admin/Containers/{year}/Create")]
+    [HttpPost("BarrioMap/Admin/Containers/Create")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> CreateOrgContainer(int year, ContainerFormModel model, CancellationToken cancellationToken)
+    public async Task<IActionResult> CreateOrgContainer(ContainerFormModel model, CancellationToken cancellationToken)
     {
         var (error, user) = await RequireCurrentUserAsync();
         if (error != null) return error;
 
         if (!await IsMapAdminAsync(user.Id, cancellationToken)) return Forbid();
 
+        var settings = await _cityPlanningService.GetSettingsAsync(cancellationToken);
+
         if (!ModelState.IsValid)
         {
             SetError("Please correct the validation errors.");
-            return RedirectToAction(nameof(Containers), new { year });
+            return RedirectToAction(nameof(Containers), new { year = settings.Year });
         }
 
-        return await TryCreateContainerAsync(model, null, year, cancellationToken);
+        return await TryCreateContainerAsync(model, SystemCampIds.Organization, settings.Year, cancellationToken);
     }
 
     [HttpPost("BarrioMap/Admin/Containers/{id}/Edit")]
@@ -493,21 +511,23 @@ public class CityPlanningController : HumansControllerBase
         var container = await _containerService.GetByIdAsync(id, cancellationToken);
         if (container is null) return NotFound();
 
+        var settings = await _cityPlanningService.GetSettingsAsync(cancellationToken);
+
         if (!ModelState.IsValid)
         {
             SetError("Please correct the validation errors.");
-            return RedirectToAction(nameof(Containers), new { year = container.Year });
+            return RedirectToAction(nameof(Containers), new { year = settings.Year });
         }
 
-        return await TryUpdateContainerAsync(id, model, container.CampId, container.Year, cancellationToken);
+        return await TryUpdateContainerAsync(id, model, container.CampId, settings.Year, cancellationToken);
     }
 
     private async Task<IActionResult> TryUpdateContainerAsync(
-        Guid id, ContainerFormModel model, Guid? campId, int year, CancellationToken ct)
+        Guid id, ContainerFormModel model, Guid campId, int year, CancellationToken ct)
     {
         try
         {
-            await _containerService.UpdateAsync(id, model.ToContainerData(campId, year), ct);
+            await _containerService.UpdateAsync(id, model.ToContainerData(campId), ct);
         }
         catch (InvalidOperationException ex)
         {
@@ -534,10 +554,10 @@ public class CityPlanningController : HumansControllerBase
         var container = await _containerService.GetByIdAsync(id, cancellationToken);
         if (container is null) return NotFound();
 
-        var year = container.Year;
+        var settings = await _cityPlanningService.GetSettingsAsync(cancellationToken);
         await _containerService.DeleteAsync(id, cancellationToken);
         SetSuccess("Container deleted.");
-        return RedirectToAction(nameof(Containers), new { year });
+        return RedirectToAction(nameof(Containers), new { year = settings.Year });
     }
 
     private static bool IsValidJson(string value)

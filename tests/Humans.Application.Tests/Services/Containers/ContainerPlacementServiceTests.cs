@@ -17,6 +17,9 @@ namespace Humans.Application.Tests.Services.Containers;
 
 public class ContainerPlacementServiceTests : IDisposable
 {
+    private const int Year = 2026;
+    private static readonly Guid CampId = Guid.Parse("00000000-0000-0000-0099-000000000002");
+
     private readonly DbContextOptions<HumansDbContext> _dbOptions;
     private readonly FakeClock _clock;
     private readonly ContainerService _sut;
@@ -42,14 +45,13 @@ public class ContainerPlacementServiceTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    private async Task<Container> SeedContainerAsync(Guid? campId = null)
+    private async Task<Container> SeedContainerAsync()
     {
         await using var ctx = new HumansDbContext(_dbOptions);
         var container = new Container
         {
             Id = Guid.NewGuid(),
-            CampId = campId,
-            Year = 2026,
+            CampId = CampId,
             Name = "Container A",
             CreatedAt = _startTime,
             UpdatedAt = _startTime,
@@ -66,42 +68,93 @@ public class ContainerPlacementServiceTests : IDisposable
         var geoJson = """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[]]},"properties":{"center_lng":-0.137,"center_lat":41.699,"rotation_degrees":0}}""";
         _clock.AdvanceSeconds(60);
 
-        var result = await _sut.SavePlacementAsync(container.Id, geoJson);
+        var result = await _sut.SavePlacementAsync(container.Id, Year, geoJson);
 
         result.LocationGeoJson.Should().Be(geoJson);
         result.UpdatedAt.Should().Be(_clock.GetCurrentInstant());
+        result.Year.Should().Be(Year);
     }
 
     [HumansFact]
     public async Task SavePlacementAsync_ThrowsWhenContainerNotFound()
     {
-        var act = async () => await _sut.SavePlacementAsync(Guid.NewGuid(), "{}");
+        var act = async () => await _sut.SavePlacementAsync(Guid.NewGuid(), Year, "{}");
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("Container not found.");
     }
 
     [HumansFact]
-    public async Task ClearPlacementAsync_SetsLocationGeoJsonToNull()
+    public async Task SavePlacementAsync_PreservesExistingNotesAndImageOnReSave()
     {
         var container = await SeedContainerAsync();
-        var geoJson = """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[]]},"properties":{"center_lng":-0.137,"center_lat":41.699,"rotation_degrees":0}}""";
-        await _sut.SavePlacementAsync(container.Id, geoJson);
-        _clock.AdvanceSeconds(60);
+        await _sut.UpsertPlacementMetadataAsync(new ContainerPlacementData(
+            ContainerId: container.Id,
+            Year: Year,
+            LocationGeoJson: null,
+            PlacementNotes: "important note"));
 
-        await _sut.ClearPlacementAsync(container.Id);
+        var geoJson = """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[]]},"properties":{"center_lng":0,"center_lat":0,"rotation_degrees":0}}""";
+        var result = await _sut.SavePlacementAsync(container.Id, Year, geoJson);
 
-        var updated = await _sut.GetByIdAsync(container.Id);
-        updated!.LocationGeoJson.Should().BeNull();
-        updated.UpdatedAt.Should().Be(_clock.GetCurrentInstant());
+        result.PlacementNotes.Should().Be("important note");
+        result.LocationGeoJson.Should().Be(geoJson);
     }
 
     [HumansFact]
-    public async Task ClearPlacementAsync_ThrowsWhenContainerNotFound()
+    public async Task ClearPlacementAsync_DeletesRowWhenNoMetadata()
     {
-        var act = async () => await _sut.ClearPlacementAsync(Guid.NewGuid());
+        var container = await SeedContainerAsync();
+        var geoJson = """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[]]},"properties":{"center_lng":0,"center_lat":0,"rotation_degrees":0}}""";
+        await _sut.SavePlacementAsync(container.Id, Year, geoJson);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("Container not found.");
+        await _sut.ClearPlacementAsync(container.Id, Year);
+
+        var placement = await _sut.GetPlacementAsync(container.Id, Year);
+        placement.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task ClearPlacementAsync_KeepsRowWithNullGeoJsonWhenNotesPresent()
+    {
+        var container = await SeedContainerAsync();
+        await _sut.UpsertPlacementMetadataAsync(new ContainerPlacementData(
+            ContainerId: container.Id,
+            Year: Year,
+            LocationGeoJson: null,
+            PlacementNotes: "keep me"));
+        var geoJson = """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[]]},"properties":{"center_lng":0,"center_lat":0,"rotation_degrees":0}}""";
+        await _sut.SavePlacementAsync(container.Id, Year, geoJson);
+
+        await _sut.ClearPlacementAsync(container.Id, Year);
+
+        var placement = await _sut.GetPlacementAsync(container.Id, Year);
+        placement.Should().NotBeNull();
+        placement!.LocationGeoJson.Should().BeNull();
+        placement.PlacementNotes.Should().Be("keep me");
+    }
+
+    [HumansFact]
+    public async Task ClearPlacementAsync_NoOpWhenContainerHasNoPlacement()
+    {
+        var container = await SeedContainerAsync();
+
+        var act = async () => await _sut.ClearPlacementAsync(container.Id, Year);
+
+        await act.Should().NotThrowAsync();
+    }
+
+    [HumansFact]
+    public async Task DeleteAsync_AlsoRemovesAssociatedPlacements()
+    {
+        var container = await SeedContainerAsync();
+        var geoJson = """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[]]},"properties":{"center_lng":0,"center_lat":0,"rotation_degrees":0}}""";
+        await _sut.SavePlacementAsync(container.Id, Year, geoJson);
+        await _sut.SavePlacementAsync(container.Id, Year + 1, geoJson);
+
+        await _sut.DeleteAsync(container.Id);
+
+        (await _sut.GetPlacementAsync(container.Id, Year)).Should().BeNull();
+        (await _sut.GetPlacementAsync(container.Id, Year + 1)).Should().BeNull();
     }
 }

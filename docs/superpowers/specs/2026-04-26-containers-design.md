@@ -189,6 +189,13 @@ Nav link: added to the City Planning BarrioMap admin page.
 
 - **`GetAllByYearAsync` added to `IContainerService`.** Not in this spec; added to support the City Planning container map and admin page loading all containers for a year regardless of barrio.
 
+- **Camp-only redesign — Container/ContainerPlacement split (2026-05-10, pre-merge).** The originally-shipped shape had `Container.CampSeasonId?` (nullable) + `Year` on the container, with placement fields on the same row. This conflated two concerns: containers as physical assets that persist year-over-year, and per-year placement state. The redesign:
+  - `Container` is year-agnostic and owned by a `Camp` (non-null `CampId`). Containers persist across seasons; deleting a season does not delete its containers.
+  - A new `ContainerPlacement` entity carries the per-year state: composite PK on `(ContainerId, Year)`, with `LocationGeoJson`, `PlacementNotes`, and `PlacementImage*` fields.
+  - `Container.CampId` is non-nullable. The "no owner" / "org-level" case is represented by a real `Camp` row with the well-known id `SystemCampIds.Organization` (`00000000-0000-0000-0011-000000000001`, GUID block 0011 — see `docs/guid-reservations.md`). The row is created manually in production; no migration data seed.
+  - Service surface collapses: no `GetOrg*` / `GetAllByYear*` variants — one method set with the Organization id used inline where needed.
+  - Authorization helpers compare `CampId != SystemCampIds.Organization` instead of `CampId.HasValue`.
+
 ## Out of Scope (Phase 2)
 
 - Map placement: GeoJSON polygon/coordinates on the city planning map (implemented in PR peterdrier/Humans#389 via the container placement phase spec)

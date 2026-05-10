@@ -13,7 +13,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Humans.Infrastructure.Migrations
 {
     [DbContext(typeof(HumansDbContext))]
-    [Migration("20260510111847_AddContainers")]
+    [Migration("20260510131333_AddContainers")]
     partial class AddContainers
     {
         /// <inheritdoc />
@@ -1624,7 +1624,7 @@ namespace Humans.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<Guid?>("CampId")
+                    b.Property<Guid>("CampId")
                         .HasColumnType("uuid");
 
                     b.Property<Instant>("CreatedAt")
@@ -1646,13 +1646,34 @@ namespace Humans.Infrastructure.Migrations
                         .HasMaxLength(512)
                         .HasColumnType("character varying(512)");
 
-                    b.Property<string>("LocationGeoJson")
-                        .HasColumnType("text");
-
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
+
+                    b.Property<Instant>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CampId");
+
+                    b.ToTable("containers", (string)null);
+                });
+
+            modelBuilder.Entity("Humans.Domain.Entities.ContainerPlacement", b =>
+                {
+                    b.Property<Guid>("ContainerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("integer");
+
+                    b.Property<Instant>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LocationGeoJson")
+                        .HasColumnType("text");
 
                     b.Property<string>("PlacementImageContentType")
                         .HasMaxLength(64)
@@ -1673,16 +1694,11 @@ namespace Humans.Infrastructure.Migrations
                     b.Property<Instant>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<int>("Year")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CampId");
+                    b.HasKey("ContainerId", "Year");
 
                     b.HasIndex("Year");
 
-                    b.ToTable("containers", (string)null);
+                    b.ToTable("container_placements", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.DocumentVersion", b =>

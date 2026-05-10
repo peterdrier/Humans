@@ -1,16 +1,16 @@
 @model Humans.Web.Models.ContainerIndexViewModel
 @{
-    ViewData["Title"] = $"Containers — {Model.CampName} {Model.Year}";
+    ViewData["Title"] = $"Containers — {Model.CampName}";
 
     var routeValues = new Dictionary<string, string>(StringComparer.Ordinal)
     {
         ["slug"] = Model.CampSlug,
-        ["year"] = Model.Year.ToString(),
     };
 
     Humans.Web.Models.ContainerCardModel CardFor(Humans.Web.Models.ContainerViewModel c) => new()
     {
         Container = c,
+        Placement = null,
         CanManage = Model.CanManage,
         FormController = "Container",
         EditAction = "Edit",
@@ -28,7 +28,7 @@
 </nav>
 
 <div class="d-flex align-items-center gap-2 mb-4">
-    <h1 class="mb-0">@Localizer["Container_Breadcrumb"] <small class="text-muted">@Model.CampName @Model.Year</small></h1>
+    <h1 class="mb-0">@Localizer["Container_Breadcrumb"] <small class="text-muted">@Model.CampName</small></h1>
     @if (Model.CanManage)
     {
         <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addContainerModal">
@@ -37,7 +37,7 @@
     }
     @if (Model.CanManage || Model.IsPlacementOpen)
     {
-        <a asp-controller="CityPlanning" asp-action="ContainerMap" asp-route-year="@Model.Year"
+        <a asp-controller="CityPlanning" asp-action="ContainerMap" asp-route-year="@Model.CurrentYear"
            class="btn btn-outline-primary btn-sm ms-auto">
             <i class="fa-solid fa-map-location-dot me-1"></i> @Localizer["ContainerMap_PlaceOnMap"]
         </a>
@@ -79,7 +79,7 @@ else
                     <h5 class="modal-title">@Localizer["Container_AddModal_Title"]</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-                <form asp-action="Create" asp-route-slug="@Model.CampSlug" asp-route-year="@Model.Year"
+                <form asp-action="Create" asp-route-slug="@Model.CampSlug"
                       method="post" enctype="multipart/form-data">
                     @Html.AntiForgeryToken()
                     <div class="modal-body">

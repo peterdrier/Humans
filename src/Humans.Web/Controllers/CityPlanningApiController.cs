@@ -180,7 +180,7 @@ public class CityPlanningApiController : ControllerBase
         return Content(geoJson, "application/geo+json");
     }
 
-    /// <summary>Returns all containers for a year with canEdit flag per caller.</summary>
+    /// <summary>Returns all containers and their placements for a year, with canEdit flag per caller.</summary>
     [HttpGet("containers/{year:int}")]
     public async Task<IActionResult> GetContainers(int year, CancellationToken cancellationToken)
     {
@@ -189,18 +189,24 @@ public class CityPlanningApiController : ControllerBase
         var settings = await _cityPlanningService.GetSettingsAsync(cancellationToken);
         var userCampId = await _campService.GetCampLeadCampIdForYearAsync(userId, year, cancellationToken);
 
-        var containers = await _containerService.GetAllByYearAsync(year, cancellationToken);
+        var containers = await _containerService.GetAllAsync(cancellationToken);
+        var placements = await _containerService.GetPlacementsByYearAsync(year, cancellationToken);
+        var placementByContainerId = placements.ToDictionary(p => p.ContainerId, p => p);
 
-        var result = containers.Select(c => new ContainerPlacementDto(
-            c.Id,
-            c.Name,
-            c.Description,
-            c.CampId,
-            c.LocationGeoJson,
-            isMapAdmin ||
-                (settings.IsContainerPlacementOpen &&
-                 userCampId.HasValue &&
-                 c.CampId == userCampId)));
+        var result = containers.Select(c =>
+        {
+            placementByContainerId.TryGetValue(c.Id, out var placement);
+            return new ContainerWithPlacementApiDto(
+                c.Id,
+                c.Name,
+                c.Description,
+                c.CampId,
+                placement?.LocationGeoJson,
+                isMapAdmin ||
+                    (settings.IsContainerPlacementOpen &&
+                     userCampId.HasValue &&
+                     c.CampId == userCampId));
+        });
 
         return Ok(result);
     }
@@ -218,21 +224,25 @@ public class CityPlanningApiController : ControllerBase
             return Forbid();
         }
 
-        var allContainers = await _containerService.GetAllByYearAsync(year, cancellationToken);
+        var allContainers = await _containerService.GetAllAsync(cancellationToken);
+        var placements = await _containerService.GetPlacementsByYearAsync(year, cancellationToken);
+        var containersById = allContainers.ToDictionary(c => c.Id, c => c);
 
-        var placed = allContainers
-            .Where(c => c.LocationGeoJson is not null)
-            .Where(c => isMapAdmin || c.CampId == userCampId)
+        var placed = placements
+            .Where(p => p.LocationGeoJson is not null)
+            .Where(p => containersById.ContainsKey(p.ContainerId))
+            .Select(p => (Placement: p, Container: containersById[p.ContainerId]))
+            .Where(t => isMapAdmin || t.Container.CampId == userCampId)
             .ToList();
 
-        var features = placed.Select(c =>
+        var features = placed.Select(t =>
         {
-            var f = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.Nodes.JsonObject>(c.LocationGeoJson!);
+            var f = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.Nodes.JsonObject>(t.Placement.LocationGeoJson!);
             var props = f?["properties"]?.AsObject();
             if (props != null)
             {
-                props["containerId"] = c.Id.ToString();
-                props["containerName"] = c.Name;
+                props["containerId"] = t.Container.Id.ToString();
+                props["containerName"] = t.Container.Name;
                 props["type"] = "Container";
             }
             return f;
@@ -248,11 +258,12 @@ public class CityPlanningApiController : ControllerBase
         return File(System.Text.Encoding.UTF8.GetBytes(collection.ToJsonString()), "application/geo+json", fileName);
     }
 
-    /// <summary>Save or update the placement GeoJSON for a container.</summary>
-    [HttpPut("containers/{id:guid}/placement")]
+    /// <summary>Save or update the placement GeoJSON for a container in the given year.</summary>
+    [HttpPut("containers/{id:guid}/placement/{year:int}")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SaveContainerPlacement(
         Guid id,
+        int year,
         [FromBody] SaveContainerPlacementRequest request,
         CancellationToken cancellationToken)
     {
@@ -271,14 +282,14 @@ public class CityPlanningApiController : ControllerBase
             return UnprocessableEntity("Invalid container placement GeoJSON.");
         }
 
-        var updated = await _containerService.SavePlacementAsync(id, request.GeoJson, cancellationToken);
-        return Ok(new { id = updated.Id, locationGeoJson = updated.LocationGeoJson });
+        var updated = await _containerService.SavePlacementAsync(id, year, request.GeoJson, cancellationToken);
+        return Ok(new { id = updated.ContainerId, year = updated.Year, locationGeoJson = updated.LocationGeoJson });
     }
 
-    /// <summary>Clear the placement GeoJSON for a container.</summary>
-    [HttpDelete("containers/{id:guid}/placement")]
+    /// <summary>Clear the placement GeoJSON for a container in the given year.</summary>
+    [HttpDelete("containers/{id:guid}/placement/{year:int}")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ClearContainerPlacement(Guid id, CancellationToken cancellationToken)
+    public async Task<IActionResult> ClearContainerPlacement(Guid id, int year, CancellationToken cancellationToken)
     {
         var userId = CurrentUserId();
         var container = await _containerService.GetByIdAsync(id, cancellationToken);
@@ -290,7 +301,7 @@ public class CityPlanningApiController : ControllerBase
             return Forbid();
         }
 
-        await _containerService.ClearPlacementAsync(id, cancellationToken);
+        await _containerService.ClearPlacementAsync(id, year, cancellationToken);
         return NoContent();
     }
 
@@ -331,10 +342,10 @@ public class CityPlanningApiController : ControllerBase
 
 public record SaveContainerPlacementRequest(string GeoJson);
 
-public record ContainerPlacementDto(
+public record ContainerWithPlacementApiDto(
     Guid Id,
     string Name,
     string? Description,
-    Guid? CampId,
+    Guid CampId,
     string? LocationGeoJson,
     bool CanEdit);

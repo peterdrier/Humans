@@ -18,7 +18,7 @@
     <div class="flex-grow-1 min-width-0">
         <div class="fw-semibold d-flex align-items-center gap-2">
             @c.Name
-            @if (c.IsPlaced)
+            @if (Model.IsPlaced)
             {
                 <span class="badge bg-success fw-normal" style="font-size:10px;">@Localizer["ContainerMap_Placed"]</span>
             }
@@ -29,7 +29,7 @@
         }
     </div>
     <div class="d-flex gap-1 flex-shrink-0">
-        @if (c.HasPlacementInfo)
+        @if (Model.HasPlacementInfo)
         {
             <button type="button" class="btn btn-outline-info btn-sm"
                     data-bs-toggle="modal" data-bs-target="#placementInfoModal-@c.Id"

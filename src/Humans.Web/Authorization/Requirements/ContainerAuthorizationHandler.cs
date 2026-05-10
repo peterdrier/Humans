@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.CitiPlanning;
+using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 
@@ -50,8 +51,8 @@ public class ContainerAuthorizationHandler : AuthorizationHandler<ContainerOpera
         }
 
         // Camp leads can manage barrio containers (not org-level)
-        if (resource.CampId.HasValue
-            && await _campService.IsUserCampLeadAsync(userId, resource.CampId.Value))
+        if (resource.CampId != SystemCampIds.Organization
+            && await _campService.IsUserCampLeadAsync(userId, resource.CampId))
         {
             context.Succeed(requirement);
         }
