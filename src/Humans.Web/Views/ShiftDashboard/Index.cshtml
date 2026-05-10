@@ -256,7 +256,7 @@
             .ThenBy(g => g.Key.DepartmentName, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        <div class="accordion" id="urgencyAccordion">
+        <div class="accordion" id="urgencyAccordion" style="scroll-margin-top: 1rem;">
         @foreach (var group in grouped)
         {
             var groupId = "urgrp-" + group.Key.RotaId.ToString("N");
@@ -356,6 +356,25 @@
 <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"
         integrity="sha384-5JqMv4L/Xa0hfvtF06qboNdhvuYXUku9ZrhZh3bSk8VXF0A/RuSLHpLsSV9Zqhl6"
         crossorigin="anonymous"></script>
+<script>
+// Re-scroll to URL hash after window.load: the dashboard renders multiple
+// Chart.js canvases above the urgency accordion, and their final layout
+// settles after DOMContentLoaded. The browser's initial hash-jump lands
+// on the right element but subsequent layout shifts push it offscreen.
+// Two rAF ticks let chart resize observers settle before we scroll.
+(function () {
+    if (!window.location.hash) return;
+    var hash = window.location.hash;
+    window.addEventListener('load', function () {
+        requestAnimationFrame(function () {
+            requestAnimationFrame(function () {
+                var el = document.querySelector(hash);
+                if (el) el.scrollIntoView({ behavior: 'instant', block: 'start' });
+            });
+        });
+    });
+})();
+</script>
 <script>
 @await Html.PartialAsync("~/Views/Shared/_EscapeHtmlScript.cshtml")
 @await Html.PartialAsync("~/Views/Shared/_VolunteerSearchScript.cshtml", new ViewDataDictionary(ViewData)

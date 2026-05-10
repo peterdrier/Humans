@@ -24,6 +24,7 @@
         VolunteerCellState.Pending => "bg-success-subtle",
         VolunteerCellState.Gap => "bg-danger",
         VolunteerCellState.CampSetup => "bg-primary",
+        VolunteerCellState.DayOff => "vt-dayoff",
         VolunteerCellState.Outside => "bg-secondary-subtle",
         VolunteerCellState.Expected => "bg-secondary-subtle",
         _ => "bg-light",
@@ -35,6 +36,7 @@
         VolunteerCellState.Pending => Localizer["VolTrack_State_Pending"].Value,
         VolunteerCellState.Gap => Localizer["VolTrack_State_Gap"].Value,
         VolunteerCellState.CampSetup => Localizer["VolTrack_State_CampSetup"].Value,
+        VolunteerCellState.DayOff => Localizer["VolTrack_State_DayOff"].Value,
         VolunteerCellState.Outside => Localizer["VolTrack_State_Outside"].Value,
         VolunteerCellState.Expected => Localizer["VolTrack_State_Expected"].Value,
         _ => "",
@@ -45,7 +47,9 @@
     <div class="card-header d-flex align-items-center">
         <strong><i class="fa-solid fa-table-cells me-2"></i>@Localizer["VolTrack_Main_Title"]</strong>
         <span class="text-muted small ms-2">@string.Format(Localizer["VolTrack_Main_Subtitle"].Value, Model.Rows.Count)</span>
-        <div class="btn-group btn-group-sm ms-auto" role="group" aria-label="Heatmap horizontal scroll">
+        @* Scroll arrows: kept hidden by default; the page-level script unhides
+           the group only when the table has horizontal overflow. *@
+        <div class="btn-group btn-group-sm ms-auto" role="group" aria-label="Heatmap horizontal scroll" data-vt-scroll-group hidden>
             <button type="button" class="btn btn-outline-secondary" data-vt-scroll="left" aria-label="@Localizer["VolTrack_Scroll_Left"]"><i class="fa-solid fa-chevron-left"></i></button>
             <button type="button" class="btn btn-outline-secondary" data-vt-scroll="right" aria-label="@Localizer["VolTrack_Scroll_Right"]"><i class="fa-solid fa-chevron-right"></i></button>
         </div>
@@ -71,6 +75,12 @@
                     Model.Users.TryGetValue(row.UserId, out var user);
                     var displayName = user?.DisplayName ?? Localizer["VolTrack_UnknownUser"].Value;
 
+                    // Build the day-off tooltip ("Wed 24 Jun — doctor; Fri 26 Jun") for the row badge.
+                    var dayOffTooltip = string.Join("; ", row.DayOffs
+                        .Select(d => Model.GateOpeningDate.PlusDays(d.DayOffset).ToDisplayDate()
+                            + (string.IsNullOrWhiteSpace(d.Reason) ? "" : " — " + d.Reason)));
+                    // Lookup map: cell DayOffset → reason (for popover render).
+                    var reasonByDay = row.DayOffs.ToDictionary(d => d.DayOffset, d => d.Reason);
                     <tr data-vt-search-name="@displayName.ToLowerInvariant()">
                         <td class="vt-sticky-cell">
                             <human-link user-id="@row.UserId" display-name="@displayName" mode="AvatarName" size="32" avatar-css-class="flex-shrink-0">
@@ -78,6 +88,12 @@
                                     @if (row.GapCount > 0)
                                     {
                                         <span class="badge bg-danger me-1">@string.Format(Localizer["VolTrack_GapBadge"].Value, row.GapCount)</span>
+                                    }
+                                    @if (row.DayOffs.Count > 0)
+                                    {
+                                        <span class="badge bg-secondary-subtle border text-dark me-1" title="@dayOffTooltip">
+                                            <i class="fa-solid fa-calendar-xmark me-1"></i>@string.Format(Localizer["VolTrack_DayOffBadge"].Value, row.DayOffs.Count)
+                                        </span>
                                     }
                                     @if (row.BarrioSetupStartDate.HasValue)
                                     {
@@ -127,14 +143,91 @@
                                     @if (canWrite)
                                     {
                                         <hr class="my-2" />
-                                        <form method="post" asp-action="SetCampSetup" class="mb-2">
-                                            @Html.AntiForgeryToken()
-                                            <input type="hidden" name="UserId" value="@row.UserId" />
-                                            <input type="hidden" name="Date" value="@date.ToString("yyyy-MM-dd", null)" />
-                                            <button type="submit" class="btn btn-sm btn-primary w-100">
-                                                <i class="fa-solid fa-campground me-1"></i>@Localizer["VolTrack_Popover_MarkCampSetup"]
-                                            </button>
-                                        </form>
+                                        @* Camp set-up section is state-driven:
+                                             - Non-CampSetup cell: "Mark camp set-up" (sets start to this day)
+                                             - CampSetup cell: "Move start to this day" (only if not already the start)
+                                                              + "Clear camp set-up" (null the field) *@
+                                        @if (cell.State != VolunteerCellState.CampSetup)
+                                        {
+                                            <form method="post" asp-action="SetCampSetup" class="mb-2">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="UserId" value="@row.UserId" />
+                                                <input type="hidden" name="Date" value="@date.ToString("yyyy-MM-dd", null)" />
+                                                <button type="submit" class="btn btn-sm btn-primary w-100">
+                                                    <i class="fa-solid fa-campground me-1"></i>@Localizer["VolTrack_Popover_MarkCampSetup"]
+                                                </button>
+                                            </form>
+                                        }
+                                        else
+                                        {
+                                            // setupOffset is non-null whenever cell.State == CampSetup.
+                                            var setupOffset = row.BarrioSetupStartDate is { } setupDate
+                                                ? Period.Between(Model.GateOpeningDate, setupDate, PeriodUnits.Days).Days
+                                                : (int?)null;
+                                            if (setupOffset.HasValue && cell.DayOffset != setupOffset.Value)
+                                            {
+                                                <form method="post" asp-action="SetCampSetup" class="mb-2">
+                                                    @Html.AntiForgeryToken()
+                                                    <input type="hidden" name="UserId" value="@row.UserId" />
+                                                    <input type="hidden" name="Date" value="@date.ToString("yyyy-MM-dd", null)" />
+                                                    <button type="submit" class="btn btn-sm btn-outline-primary w-100">
+                                                        <i class="fa-solid fa-arrows-left-right me-1"></i>@Localizer["VolTrack_Popover_MoveCampSetup"]
+                                                    </button>
+                                                </form>
+                                            }
+                                            <form method="post" asp-action="ClearCampSetup" class="mb-2">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="userId" value="@row.UserId" />
+                                                <button type="submit" class="btn btn-sm btn-outline-warning w-100">
+                                                    <i class="fa-solid fa-rotate-left me-1"></i>@Localizer["VolTrack_Popover_ClearCampSetup"]
+                                                </button>
+                                            </form>
+                                        }
+
+                                        @* Day-off section: state-driven render. CampSetup cells render nothing. *@
+                                        @if (cell.State == VolunteerCellState.DayOff)
+                                        {
+                                            var existingReason = reasonByDay.TryGetValue(cell.DayOffset, out var r) ? r : null;
+                                            <div class="small text-muted mb-2">
+                                                @if (!string.IsNullOrWhiteSpace(existingReason))
+                                                {
+                                                    <em>@existingReason</em>
+                                                }
+                                                else
+                                                {
+                                                    <em class="opacity-75">— @Localizer["VolTrack_State_DayOff"]</em>
+                                                }
+                                            </div>
+                                            <form method="post" asp-action="ClearDayOff">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="UserId" value="@row.UserId" />
+                                                <input type="hidden" name="DayOffset" value="@cell.DayOffset" />
+                                                <button type="submit" class="btn btn-sm btn-outline-warning w-100">
+                                                    <i class="fa-solid fa-rotate-left me-1"></i>@Localizer["VolTrack_Popover_CancelDayOff"]
+                                                </button>
+                                            </form>
+                                        }
+                                        else if (cell.State == VolunteerCellState.Confirmed || cell.State == VolunteerCellState.Pending)
+                                        {
+                                            <div class="small text-muted">
+                                                <i class="fa-solid fa-circle-info me-1"></i>@Localizer["VolTrack_Popover_DayOffBlockedBySignups"]
+                                            </div>
+                                        }
+                                        else if (cell.State == VolunteerCellState.Gap)
+                                        {
+                                            <form method="post" asp-action="SetDayOff">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="UserId" value="@row.UserId" />
+                                                <input type="hidden" name="DayOffset" value="@cell.DayOffset" />
+                                                <input type="text" name="Reason" maxlength="200"
+                                                       class="form-control form-control-sm mb-2"
+                                                       placeholder="@Localizer["VolTrack_Popover_ReasonLabel"]" />
+                                                <button type="submit" class="btn btn-sm btn-outline-secondary w-100">
+                                                    <i class="fa-solid fa-calendar-xmark me-1"></i>@Localizer["VolTrack_Popover_MarkDayOff"]
+                                                </button>
+                                            </form>
+                                        }
+                                        @* CampSetup and Outside: nothing rendered. *@
                                     }
                                 </div>
                             </td>

@@ -2139,15 +2139,18 @@
   <data name="VolTrack_AllClear" xml:space="preserve"><value>Everyone is on track.</value></data>
   <data name="VolTrack_UnknownUser" xml:space="preserve"><value>(unknown)</value></data>
 
-  <data name="VolTrack_Counts_MainTotal" xml:space="preserve"><value>{0} volunteers tracked</value><comment>{0} = count</comment></data>
-  <data name="VolTrack_Counts_WithGaps" xml:space="preserve"><value>{0} with gaps</value><comment>{0} = count</comment></data>
-  <data name="VolTrack_Counts_OnCampSetup" xml:space="preserve"><value>{0} on camp set-up</value><comment>{0} = count</comment></data>
-  <data name="VolTrack_Counts_Unbooked" xml:space="preserve"><value>{0} declared but unbooked</value><comment>{0} = count</comment></data>
+  <data name="VolTrack_AsOfToday" xml:space="preserve"><value>As of {0}</value><comment>{0} = today's date</comment></data>
+  <data name="VolTrack_Counts_MainTotal" xml:space="preserve"><value>Volunteers tracked</value></data>
+  <data name="VolTrack_Counts_WithGaps" xml:space="preserve"><value>With gaps</value></data>
+  <data name="VolTrack_Counts_OnCampSetup" xml:space="preserve"><value>On camp set-up today</value></data>
+  <data name="VolTrack_Counts_Unbooked" xml:space="preserve"><value>Declared but unbooked</value></data>
 
   <data name="VolTrack_Filter_HideNoGaps" xml:space="preserve"><value>Hide volunteers with no gaps</value></data>
-  <data name="VolTrack_Filter_HideCampSetup" xml:space="preserve"><value>Hide volunteers already on camp set-up</value></data>
+  <data name="VolTrack_Filter_HideCampSetup" xml:space="preserve"><value>Hide volunteers with a camp set-up date</value></data>
   <data name="VolTrack_Filter_HideUnbookedSection" xml:space="preserve"><value>Hide declared-but-unbooked section</value></data>
   <data name="VolTrack_Filter_Apply" xml:space="preserve"><value>Apply</value></data>
+  <data name="VolTrack_Filter_Active" xml:space="preserve"><value>Filters active</value></data>
+  <data name="VolTrack_Filter_Clear" xml:space="preserve"><value>Clear filters</value></data>
 
   <data name="VolTrack_Main_Title" xml:space="preserve"><value>Schedule gaps</value></data>
   <data name="VolTrack_Main_Subtitle" xml:space="preserve"><value>{0} volunteers shown</value><comment>{0} = count</comment></data>
@@ -2168,6 +2171,19 @@
   <data name="VolTrack_UnbookedBadge" xml:space="preserve"><value>{0} unbooked</value><comment>{0} = count</comment></data>
   <data name="VolTrack_UnbookedTooltip" xml:space="preserve"><value>Available days that aren't booked</value></data>
 
+  <data name="VolTrack_State_DayOff" xml:space="preserve"><value>Day off</value></data>
+  <data name="VolTrack_Legend_DayOff" xml:space="preserve"><value>Day off (acknowledged)</value></data>
+  <data name="VolTrack_Popover_MarkDayOff" xml:space="preserve"><value>Mark day off</value></data>
+  <data name="VolTrack_Popover_CancelDayOff" xml:space="preserve"><value>Cancel day off</value></data>
+  <data name="VolTrack_Popover_ReasonLabel" xml:space="preserve"><value>Reason (optional)</value></data>
+  <data name="VolTrack_Popover_DayOffBlockedBySignups" xml:space="preserve"><value>Bail this signup before marking a day off</value></data>
+  <data name="VolTrack_Msg_DayOffMarked" xml:space="preserve"><value>Day off marked.</value></data>
+  <data name="VolTrack_Msg_DayOffCleared" xml:space="preserve"><value>Day off cleared.</value></data>
+  <data name="VolTrack_DayOffBadge" xml:space="preserve"><value>{0} day off</value></data>
+  <data name="VolTrack_Err_DayOffWithSignups" xml:space="preserve"><value>Volunteer has signups on that day — bail them first.</value></data>
+  <data name="VolTrack_Err_DayOffOutsideBuild" xml:space="preserve"><value>Day off must be inside the build period.</value></data>
+  <data name="VolTrack_AuditAction_DayOffMarked" xml:space="preserve"><value>Day off marked</value></data>
+  <data name="VolTrack_AuditAction_DayOffCleared" xml:space="preserve"><value>Day off cleared</value></data>
   <data name="VolTrack_State_Confirmed" xml:space="preserve"><value>Confirmed</value></data>
   <data name="VolTrack_State_Pending" xml:space="preserve"><value>Pending</value></data>
   <data name="VolTrack_State_Gap" xml:space="preserve"><value>Gap</value></data>
@@ -2181,6 +2197,8 @@
   <data name="VolTrack_Popover_Rotas" xml:space="preserve"><value>Rotas:</value></data>
   <data name="VolTrack_Popover_Available" xml:space="preserve"><value>Volunteer marked available</value></data>
   <data name="VolTrack_Popover_MarkCampSetup" xml:space="preserve"><value>Mark went to camp set-up from this day</value></data>
+  <data name="VolTrack_Popover_MoveCampSetup" xml:space="preserve"><value>Move camp set-up to this day</value></data>
+  <data name="VolTrack_Popover_ClearCampSetup" xml:space="preserve"><value>Clear camp set-up</value></data>
   <data name="VolTrack_Popover_OpenDashboard" xml:space="preserve"><value>Find shifts to voluntell</value></data>
   <data name="VolTrack_Scroll_Left" xml:space="preserve"><value>Scroll left</value></data>
   <data name="VolTrack_Scroll_Right" xml:space="preserve"><value>Scroll right</value></data>

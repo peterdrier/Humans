@@ -118,6 +118,8 @@ public class VolunteerTrackingControllerTests
     [HumansTheory]
     [InlineData(nameof(VolunteerTrackingController.SetCampSetup))]
     [InlineData(nameof(VolunteerTrackingController.ClearCampSetup))]
+    [InlineData(nameof(VolunteerTrackingController.SetDayOff))]
+    [InlineData(nameof(VolunteerTrackingController.ClearDayOff))]
     public void WriteActions_Require_VolunteerTrackingWrite_Policy(string actionName)
     {
         var method = typeof(VolunteerTrackingController)
@@ -131,6 +133,8 @@ public class VolunteerTrackingControllerTests
     [HumansTheory]
     [InlineData(nameof(VolunteerTrackingController.SetCampSetup))]
     [InlineData(nameof(VolunteerTrackingController.ClearCampSetup))]
+    [InlineData(nameof(VolunteerTrackingController.SetDayOff))]
+    [InlineData(nameof(VolunteerTrackingController.ClearDayOff))]
     public void WriteActions_Have_AntiForgery_Validation(string actionName)
     {
         var method = typeof(VolunteerTrackingController)
@@ -153,6 +157,7 @@ public class VolunteerTrackingControllerTests
                 HasActiveEvent: false,
                 BuildStartOffset: 0,
                 GateOpeningDate: default,
+                Today: default,
                 MainCohort: Array.Empty<VolunteerHeatmapRow>(),
                 UnbookedCohort: Array.Empty<VolunteerCohortRow>()));
         var ctrl = BuildSut(current);
@@ -183,16 +188,19 @@ public class VolunteerTrackingControllerTests
         {
             new(alice.Id, FirstSignupDay: -10, LastEligibleSignupOffset: -2,
                 BarrioSetupStartDate: null, GapCount: 2,
-                Cells: Array.Empty<VolunteerCell>()),
+                Cells: Array.Empty<VolunteerCell>(),
+                DayOffs: Array.Empty<DayOffSummary>()),
             new(bob.Id, FirstSignupDay: -10, LastEligibleSignupOffset: -1,
                 BarrioSetupStartDate: null, GapCount: 3,
-                Cells: Array.Empty<VolunteerCell>()),
+                Cells: Array.Empty<VolunteerCell>(),
+                DayOffs: Array.Empty<DayOffSummary>()),
             new(carol.Id, FirstSignupDay: -10, LastEligibleSignupOffset: -5,
                 BarrioSetupStartDate: null, GapCount: 2,
-                Cells: Array.Empty<VolunteerCell>()),
+                Cells: Array.Empty<VolunteerCell>(),
+                DayOffs: Array.Empty<DayOffSummary>()),
         };
         _service.GetTrackingDataAsync(Arg.Any<CancellationToken>())
-            .Returns(new VolunteerTrackingViewModel(true, -10, new LocalDate(2026, 6, 24), rows,
+            .Returns(new VolunteerTrackingViewModel(true, -10, new LocalDate(2026, 6, 24), new LocalDate(2026, 6, 15), rows,
                 Array.Empty<VolunteerCohortRow>()));
         _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, User>
@@ -215,11 +223,11 @@ public class VolunteerTrackingControllerTests
         var a = Guid.NewGuid(); var b = Guid.NewGuid();
         var rows = new List<VolunteerHeatmapRow>
         {
-            new(a, -10, -2, null, GapCount: 0, Array.Empty<VolunteerCell>()),
-            new(b, -10, -2, null, GapCount: 1, Array.Empty<VolunteerCell>()),
+            new(a, -10, -2, null, GapCount: 0, Array.Empty<VolunteerCell>(), Array.Empty<DayOffSummary>()),
+            new(b, -10, -2, null, GapCount: 1, Array.Empty<VolunteerCell>(), Array.Empty<DayOffSummary>()),
         };
         _service.GetTrackingDataAsync(Arg.Any<CancellationToken>())
-            .Returns(new VolunteerTrackingViewModel(true, -10, new LocalDate(2026, 6, 24), rows,
+            .Returns(new VolunteerTrackingViewModel(true, -10, new LocalDate(2026, 6, 24), new LocalDate(2026, 6, 15), rows,
                 Array.Empty<VolunteerCohortRow>()));
         _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, User>());
@@ -241,11 +249,11 @@ public class VolunteerTrackingControllerTests
         var rows = new List<VolunteerHeatmapRow>
         {
             new(a, -10, -2, BarrioSetupStartDate: new LocalDate(2026, 6, 14),
-                GapCount: 5, Array.Empty<VolunteerCell>()),
-            new(b, -10, -2, null, GapCount: 5, Array.Empty<VolunteerCell>()),
+                GapCount: 5, Array.Empty<VolunteerCell>(), Array.Empty<DayOffSummary>()),
+            new(b, -10, -2, null, GapCount: 5, Array.Empty<VolunteerCell>(), Array.Empty<DayOffSummary>()),
         };
         _service.GetTrackingDataAsync(Arg.Any<CancellationToken>())
-            .Returns(new VolunteerTrackingViewModel(true, -10, new LocalDate(2026, 6, 24), rows,
+            .Returns(new VolunteerTrackingViewModel(true, -10, new LocalDate(2026, 6, 24), new LocalDate(2026, 6, 15), rows,
                 Array.Empty<VolunteerCohortRow>()));
         _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, User>());
@@ -270,7 +278,7 @@ public class VolunteerTrackingControllerTests
                 UnbookedCount: 2, Cells: Array.Empty<VolunteerCell>()),
         };
         _service.GetTrackingDataAsync(Arg.Any<CancellationToken>())
-            .Returns(new VolunteerTrackingViewModel(true, -10, new LocalDate(2026, 6, 24),
+            .Returns(new VolunteerTrackingViewModel(true, -10, new LocalDate(2026, 6, 24), new LocalDate(2026, 6, 15),
                 Array.Empty<VolunteerHeatmapRow>(), unbooked));
         _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, User>());
@@ -297,7 +305,7 @@ public class VolunteerTrackingControllerTests
         _service.SetCampSetupAsync(
                 target, Arg.Any<LocalDate>(), Arg.Any<string?>(),
                 current.Id, Arg.Any<CancellationToken>())
-            .Returns(new SetCampSetupResult(Ok: true, ErrorMessageKey: null));
+            .Returns(new SetCampSetupResult(Ok: true, ErrorMessageKey: null, AutoClearedDayOffs: Array.Empty<int>()));
         var ctrl = BuildSut(current);
         var form = new SetCampSetupForm { UserId = target, Date = "2026-06-14", Notes = "early" };
 
@@ -375,7 +383,7 @@ public class VolunteerTrackingControllerTests
         _service.SetCampSetupAsync(
                 target, Arg.Any<LocalDate>(), Arg.Any<string?>(),
                 current.Id, Arg.Any<CancellationToken>())
-            .Returns(new SetCampSetupResult(Ok: false, ErrorMessageKey: "VolTrack_Err_DateOutsideWindow"));
+            .Returns(new SetCampSetupResult(Ok: false, ErrorMessageKey: "VolTrack_Err_DateOutsideWindow", AutoClearedDayOffs: Array.Empty<int>()));
         var ctrl = BuildSut(current);
         var form = new SetCampSetupForm { UserId = target, Date = "2026-06-14" };
 
@@ -448,6 +456,120 @@ public class VolunteerTrackingControllerTests
             Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<Guid?>(), Arg.Any<string?>());
         ctrl.TempData[TempDataKeys.ErrorMessage].Should().Be("VolTrack_Err_BadRequest");
+    }
+
+    // ---------------------------------------------------------------------
+    // SetDayOff / ClearDayOff
+    // ---------------------------------------------------------------------
+
+    [HumansFact]
+    public async Task SetDayOff_HappyPath_RedirectsAndAuditsMarkedAction()
+    {
+        var current = new User { Id = Guid.NewGuid() };
+        var target = Guid.NewGuid();
+        _service.SetDayOffAsync(target, -3, "doctor", current.Id, Arg.Any<CancellationToken>())
+            .Returns(new SetDayOffResult(Ok: true, ErrorMessageKey: null));
+        var ctrl = BuildSut(current);
+        var form = new SetDayOffForm { UserId = target, DayOffset = -3, Reason = "doctor" };
+
+        var result = await ctrl.SetDayOff(form, CancellationToken.None);
+
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        redirect.ActionName.Should().Be(nameof(VolunteerTrackingController.Index));
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.VolunteerDayOffMarked,
+            nameof(VolunteerBuildStatus),
+            target,
+            Arg.Any<string>(),
+            current.Id,
+            Arg.Any<Guid?>(),
+            Arg.Any<string?>());
+        ctrl.TempData[TempDataKeys.SuccessMessage].Should().Be("VolTrack_Msg_DayOffMarked");
+    }
+
+    [HumansFact]
+    public async Task SetDayOff_ServiceRejects_RedirectsWithErrorTempData_NoAudit()
+    {
+        var current = new User { Id = Guid.NewGuid() };
+        var target = Guid.NewGuid();
+        _service.SetDayOffAsync(target, -3, Arg.Any<string?>(), current.Id, Arg.Any<CancellationToken>())
+            .Returns(new SetDayOffResult(Ok: false, ErrorMessageKey: "VolTrack_Err_DayOffWithSignups"));
+        var ctrl = BuildSut(current);
+        var form = new SetDayOffForm { UserId = target, DayOffset = -3, Reason = null };
+
+        var result = await ctrl.SetDayOff(form, CancellationToken.None);
+
+        Assert.IsType<RedirectToActionResult>(result);
+        ctrl.TempData[TempDataKeys.ErrorMessage].Should().Be("VolTrack_Err_DayOffWithSignups");
+        await _auditLog.DidNotReceive().LogAsync(
+            Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task ClearDayOff_HappyPath_RedirectsAndAuditsClearedAction()
+    {
+        var current = new User { Id = Guid.NewGuid() };
+        var target = Guid.NewGuid();
+        _service.ClearDayOffAsync(target, -3, current.Id, Arg.Any<CancellationToken>())
+            .Returns(new ClearDayOffResult(Ok: true, Removed: true));
+        var ctrl = BuildSut(current);
+        var form = new ClearDayOffForm { UserId = target, DayOffset = -3 };
+
+        var result = await ctrl.ClearDayOff(form, CancellationToken.None);
+
+        Assert.IsType<RedirectToActionResult>(result);
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.VolunteerDayOffCleared,
+            nameof(VolunteerBuildStatus),
+            target,
+            Arg.Any<string>(),
+            current.Id,
+            Arg.Any<Guid?>(),
+            Arg.Any<string?>());
+        ctrl.TempData[TempDataKeys.SuccessMessage].Should().Be("VolTrack_Msg_DayOffCleared");
+    }
+
+    [HumansFact]
+    public async Task ClearDayOff_NoEntryToRemove_RedirectsWithoutAudit()
+    {
+        var current = new User { Id = Guid.NewGuid() };
+        var target = Guid.NewGuid();
+        _service.ClearDayOffAsync(target, -3, current.Id, Arg.Any<CancellationToken>())
+            .Returns(new ClearDayOffResult(Ok: true, Removed: false));
+        var ctrl = BuildSut(current);
+        var form = new ClearDayOffForm { UserId = target, DayOffset = -3 };
+
+        var result = await ctrl.ClearDayOff(form, CancellationToken.None);
+
+        Assert.IsType<RedirectToActionResult>(result);
+        await _auditLog.DidNotReceive().LogAsync(
+            Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task SetCampSetup_FansOutOneAuditPerAutoClearedDayOff()
+    {
+        var current = new User { Id = Guid.NewGuid() };
+        var target = Guid.NewGuid();
+        _service.SetCampSetupAsync(target, Arg.Any<LocalDate>(), Arg.Any<string?>(), current.Id, Arg.Any<CancellationToken>())
+            .Returns(new SetCampSetupResult(
+                Ok: true, ErrorMessageKey: null,
+                AutoClearedDayOffs: new[] { -6, -4 }));
+        var ctrl = BuildSut(current);
+        var form = new SetCampSetupForm { UserId = target, Date = "2026-06-30", Notes = null };
+
+        await ctrl.SetCampSetup(form, CancellationToken.None);
+
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.VolunteerCampSetupSet, Arg.Any<string>(), target,
+            Arg.Any<string>(), current.Id, Arg.Any<Guid?>(), Arg.Any<string?>());
+        await _auditLog.Received(2).LogAsync(
+            AuditAction.VolunteerDayOffCleared, Arg.Any<string>(), target,
+            Arg.Any<string>(), current.Id, Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
 }

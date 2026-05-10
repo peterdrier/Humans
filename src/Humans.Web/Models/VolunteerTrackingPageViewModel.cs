@@ -17,6 +17,7 @@ public sealed class VolunteerTrackingPageViewModel
     public bool HasActiveEvent { get; init; }
     public int BuildStartOffset { get; init; }
     public LocalDate GateOpeningDate { get; init; }
+    public LocalDate Today { get; init; }
     public IReadOnlyList<VolunteerHeatmapRow> MainCohort { get; init; } = Array.Empty<VolunteerHeatmapRow>();
     public IReadOnlyList<VolunteerCohortRow> UnbookedCohort { get; init; } = Array.Empty<VolunteerCohortRow>();
     public IReadOnlyDictionary<Guid, User> Users { get; init; } = new Dictionary<Guid, User>();
@@ -30,6 +31,7 @@ public sealed class VolunteerTrackingPageViewModel
     public VolunteerTrackingPageViewModel(
         int buildStartOffset,
         LocalDate gateOpeningDate,
+        LocalDate today,
         IReadOnlyList<VolunteerHeatmapRow> mainCohort,
         IReadOnlyList<VolunteerCohortRow> unbookedCohort,
         IReadOnlyDictionary<Guid, User> users,
@@ -40,6 +42,7 @@ public sealed class VolunteerTrackingPageViewModel
         HasActiveEvent = true;
         BuildStartOffset = buildStartOffset;
         GateOpeningDate = gateOpeningDate;
+        Today = today;
         MainCohort = mainCohort;
         UnbookedCohort = unbookedCohort;
         Users = users;

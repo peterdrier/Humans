@@ -86,6 +86,7 @@ public sealed class VolunteerTrackingController : HumansControllerBase
         var model = new VolunteerTrackingPageViewModel(
             data.BuildStartOffset,
             data.GateOpeningDate,
+            data.Today,
             mainSorted,
             unbookedSorted,
             users,
@@ -125,15 +126,34 @@ public sealed class VolunteerTrackingController : HumansControllerBase
             return RedirectToAction(nameof(Index));
         }
 
+        await EmitCampSetupAuditAsync(form, current.Id, result.AutoClearedDayOffs);
+
+        SetSuccess(_localizer["VolTrack_Msg_CampSetupSaved"]);
+        return RedirectToAction(nameof(Index));
+    }
+
+    private async Task EmitCampSetupAuditAsync(
+        SetCampSetupForm form, Guid actorUserId,
+        IReadOnlyList<int> autoClearedDayOffs)
+    {
         await _auditLogService.LogAsync(
             AuditAction.VolunteerCampSetupSet,
             nameof(VolunteerBuildStatus),
             form.UserId,
             $"BarrioSetupStartDate set to {form.Date}; notes={form.Notes ?? "—"}",
-            current.Id);
+            actorUserId);
 
-        SetSuccess(_localizer["VolTrack_Msg_CampSetupSaved"]);
-        return RedirectToAction(nameof(Index));
+        // Fan-out one audit row per day-off entry that the new camp-setup
+        // span just shadowed (the service auto-cleared them).
+        foreach (var dayOffset in autoClearedDayOffs)
+        {
+            await _auditLogService.LogAsync(
+                AuditAction.VolunteerDayOffCleared,
+                nameof(VolunteerBuildStatus),
+                form.UserId,
+                $"DayOffset={dayOffset}; auto-cleared by camp-setup change",
+                actorUserId);
+        }
     }
 
     [HttpPost("ClearCampSetup")]
@@ -160,6 +180,67 @@ public sealed class VolunteerTrackingController : HumansControllerBase
             current.Id);
 
         SetSuccess(_localizer["VolTrack_Msg_CampSetupCleared"]);
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost("SetDayOff")]
+    [Authorize(Policy = PolicyNames.VolunteerTrackingWrite)]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SetDayOff(SetDayOffForm form, CancellationToken ct)
+    {
+        if (!ModelState.IsValid)
+        {
+            SetError(_localizer["VolTrack_Err_BadRequest"]);
+            return RedirectToAction(nameof(Index));
+        }
+
+        var current = await GetCurrentUserAsync();
+        if (current is null) return Forbid();
+
+        var result = await _service.SetDayOffAsync(form.UserId, form.DayOffset, form.Reason, current.Id, ct);
+        if (!result.Ok)
+        {
+            SetError(_localizer[result.ErrorMessageKey ?? "VolTrack_Err_Unknown"]);
+            return RedirectToAction(nameof(Index));
+        }
+
+        await _auditLogService.LogAsync(
+            AuditAction.VolunteerDayOffMarked,
+            nameof(VolunteerBuildStatus),
+            form.UserId,
+            $"DayOffset={form.DayOffset}; reason={(string.IsNullOrWhiteSpace(form.Reason) ? "—" : form.Reason)}",
+            current.Id);
+
+        SetSuccess(_localizer["VolTrack_Msg_DayOffMarked"]);
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost("ClearDayOff")]
+    [Authorize(Policy = PolicyNames.VolunteerTrackingWrite)]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ClearDayOff(ClearDayOffForm form, CancellationToken ct)
+    {
+        if (!ModelState.IsValid)
+        {
+            SetError(_localizer["VolTrack_Err_BadRequest"]);
+            return RedirectToAction(nameof(Index));
+        }
+
+        var current = await GetCurrentUserAsync();
+        if (current is null) return Forbid();
+
+        var result = await _service.ClearDayOffAsync(form.UserId, form.DayOffset, current.Id, ct);
+        if (result.Removed)
+        {
+            await _auditLogService.LogAsync(
+                AuditAction.VolunteerDayOffCleared,
+                nameof(VolunteerBuildStatus),
+                form.UserId,
+                $"DayOffset={form.DayOffset}; cleared by coordinator",
+                current.Id);
+            SetSuccess(_localizer["VolTrack_Msg_DayOffCleared"]);
+        }
+
         return RedirectToAction(nameof(Index));
     }
 

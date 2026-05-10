@@ -4,10 +4,11 @@ namespace Humans.Domain.Entities;
 
 /// <summary>
 /// Per-user, per-event Shifts-owned coordination state used by the Volunteer
-/// Tracking page: optional camp-set-up start date.
+/// Tracking page: optional camp-set-up start date plus a sparse list of
+/// day-off entries (coord-only "we know they're not here that day").
 ///
 /// One row per (UserId, EventSettingsId). A row with BarrioSetupStartDate=null
-/// is functionally equivalent to no row.
+/// and DayOffs empty is functionally equivalent to no row.
 /// </summary>
 public class VolunteerBuildStatus
 {
@@ -42,4 +43,23 @@ public class VolunteerBuildStatus
 
     /// <summary>When BarrioSetupStartDate was last modified.</summary>
     public Instant? SetAt { get; set; }
+
+    /// <summary>
+    /// Sparse list of "day off" annotations, one per calendar day inside the
+    /// build window where the coord has acknowledged the volunteer is
+    /// off-site. Stored as a jsonb collection; one entry per DayOffset by
+    /// app-side normalization. See
+    /// <see href="../../docs/superpowers/specs/2026-05-09-day-off-redesign-design.md"/>.
+    /// </summary>
+    public List<DayOffEntry> DayOffs { get; set; } = new();
 }
+
+/// <summary>
+/// One day-off annotation on a <see cref="VolunteerBuildStatus"/>.
+/// Persisted inside the row's <c>DayOffs</c> jsonb column.
+/// </summary>
+public sealed record DayOffEntry(
+    int DayOffset,
+    string? Reason,
+    Guid MarkedByUserId,
+    Instant MarkedAt);

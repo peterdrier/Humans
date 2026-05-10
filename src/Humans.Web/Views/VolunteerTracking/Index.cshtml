@@ -9,8 +9,13 @@
 
     var mainTotal = Model.MainCohort.Count;
     var mainWithGaps = Model.MainCohort.Count(r => r.GapCount > 0);
-    var onCampSetup = Model.MainCohort.Count(r => r.BarrioSetupStartDate.HasValue);
+    // "On camp set-up" reflects today's state: a volunteer is counted only
+    // if their BarrioSetupStartDate is on or before today (i.e., they've
+    // actually moved to camp set-up by now). Future-dated camp-setup plans
+    // don't count toward today's number.
+    var onCampSetup = Model.MainCohort.Count(r => r.BarrioSetupStartDate is { } d && d <= Model.Today);
     var unbookedTotal = Model.UnbookedCohort.Count;
+    var anyFilterActive = Model.HideNoGaps || Model.HideCampSetup || Model.HideUnbookedSection;
 }
 
 <div class="container py-4">
@@ -39,6 +44,10 @@
     @* Counts + filter toggles. *@
     <div class="card mb-4">
         <div class="card-body">
+            <div class="text-muted small mb-2">
+                <i class="fa-regular fa-calendar-day me-1"></i>
+                @string.Format(Localizer["VolTrack_AsOfToday"].Value, Model.Today.ToDisplayDate())
+            </div>
             <div class="row g-3 align-items-center mb-3">
                 <div class="col-md-3">
                     <div class="text-muted small text-uppercase">@Localizer["VolTrack_Counts_MainTotal"]</div>
@@ -69,26 +78,37 @@
                            autocomplete="off" />
                 </div>
             </div>
+            @* CSP blocks inline event handlers, so use js-auto-submit (handler
+               in site.js) — auto-submits the parent form on any change inside. *@
             <form method="get" asp-action="Index" class="d-flex flex-wrap gap-3 align-items-center">
                 <div class="form-check">
-                    <input class="form-check-input" type="checkbox" name="hideNoGaps" value="true" id="vt-hide-no-gaps"
-                           @(Model.HideNoGaps ? "checked" : "") onchange="this.form.submit()" />
+                    <input class="form-check-input js-auto-submit" type="checkbox" name="hideNoGaps" value="true" id="vt-hide-no-gaps"
+                           @(Model.HideNoGaps ? "checked" : "") />
                     <label class="form-check-label" for="vt-hide-no-gaps">@Localizer["VolTrack_Filter_HideNoGaps"]</label>
                 </div>
                 <div class="form-check">
-                    <input class="form-check-input" type="checkbox" name="hideCampSetup" value="true" id="vt-hide-camp-setup"
-                           @(Model.HideCampSetup ? "checked" : "") onchange="this.form.submit()" />
+                    <input class="form-check-input js-auto-submit" type="checkbox" name="hideCampSetup" value="true" id="vt-hide-camp-setup"
+                           @(Model.HideCampSetup ? "checked" : "") />
                     <label class="form-check-label" for="vt-hide-camp-setup">@Localizer["VolTrack_Filter_HideCampSetup"]</label>
                 </div>
                 <div class="form-check">
-                    <input class="form-check-input" type="checkbox" name="hideUnbookedSection" value="true" id="vt-hide-unbooked"
-                           @(Model.HideUnbookedSection ? "checked" : "") onchange="this.form.submit()" />
+                    <input class="form-check-input js-auto-submit" type="checkbox" name="hideUnbookedSection" value="true" id="vt-hide-unbooked"
+                           @(Model.HideUnbookedSection ? "checked" : "") />
                     <label class="form-check-label" for="vt-hide-unbooked">@Localizer["VolTrack_Filter_HideUnbookedSection"]</label>
                 </div>
                 <noscript>
                     <button type="submit" class="btn btn-sm btn-primary">@Localizer["VolTrack_Filter_Apply"]</button>
                 </noscript>
             </form>
+            @if (anyFilterActive)
+            {
+                <div class="mt-3 small">
+                    <span class="badge bg-info-subtle text-dark border me-2">
+                        <i class="fa-solid fa-filter me-1"></i>@Localizer["VolTrack_Filter_Active"]
+                    </span>
+                    <a asp-action="Index" class="text-decoration-none">@Localizer["VolTrack_Filter_Clear"]</a>
+                </div>
+            }
         </div>
     </div>
 
@@ -122,6 +142,7 @@
                 <span><span class="legend-swatch bg-success"></span> @Localizer["VolTrack_Legend_Confirmed"]</span>
                 <span><span class="legend-swatch bg-success-subtle border"></span> @Localizer["VolTrack_Legend_Pending"]</span>
                 <span><span class="legend-swatch bg-danger"></span> @Localizer["VolTrack_Legend_Gap"]</span>
+                <span><span class="legend-swatch vt-dayoff border"></span> @Localizer["VolTrack_Legend_DayOff"]</span>
                 <span><span class="legend-swatch bg-warning"></span> @Localizer["VolTrack_Legend_AvailableUnbooked"]</span>
                 <span><span class="legend-swatch bg-primary"></span> @Localizer["VolTrack_Legend_CampSetup"]</span>
                 <span><span class="legend-swatch bg-secondary-subtle border"></span> @Localizer["VolTrack_Legend_OutsideOrExpected"]</span>
@@ -140,7 +161,25 @@
         margin-right: 0.25rem;
         border-radius: 0.2rem;
     }
-    .vt-heatmap-table { table-layout: fixed; }
+    /* Day-off cell: striped grey, signals "we know about this, intentionally
+       not-here" without competing with the green/red/blue signals. */
+    .vt-dayoff {
+        background: #f8f9fa;
+        background-image: repeating-linear-gradient(
+            45deg,
+            rgba(0, 0, 0, 0.18) 0,
+            rgba(0, 0, 0, 0.18) 2px,
+            transparent 2px,
+            transparent 6px);
+    }
+    /* Force the table to be at least as wide as its declared column widths so
+       narrow viewports get a horizontal scroll inside .table-responsive instead
+       of compressing the columns past min-width. */
+    .vt-heatmap-table {
+        table-layout: fixed;
+        width: max-content;
+        min-width: 100%;
+    }
     .vt-heatmap-table th.vt-sticky-head,
     .vt-heatmap-table td.vt-sticky-cell {
         position: sticky;
@@ -167,6 +206,23 @@
         background: transparent;
         padding: 0;
     }
+    /* Mobile: shrink sticky volunteer column + cells so more days are visible
+       per scroll page. The sticky column drops from 220 to 140; cell width 32
+       to 28. With 22 build days that's still 22*28 + 140 = 756px, larger than
+       any phone viewport, so horizontal scroll will engage and the
+       header-arrow group will appear. */
+    @@media (max-width: 768px) {
+        .vt-heatmap-table th.vt-sticky-head,
+        .vt-heatmap-table td.vt-sticky-cell {
+            min-width: 140px;
+            width: 140px;
+        }
+        .vt-heatmap-table td.vt-cell {
+            min-width: 28px;
+            width: 28px;
+            height: 28px;
+        }
+    }
 </style>
 }
 
@@ -191,20 +247,44 @@
 })();
 
 // Wire `<` `>` arrows in each heatmap card-header to scroll the table
-// horizontally. The scroll target is the card's .vt-heatmap-scroll element;
-// step size is one sticky-cell width (~220px) so each click pages by roughly
-// 6-7 day cells.
+// horizontally. The button group is `hidden` server-side and unhidden here
+// only when the table actually overflows. Each click pages by one sticky-
+// cell width (~220px), roughly 6-7 day cells. Buttons get disabled at the
+// scroll edges and the group hides again if a window resize means everything
+// fits in the viewport.
 (function () {
     var STEP = 220;
-    document.querySelectorAll('[data-vt-scroll]').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-            var card = btn.closest('.card');
-            if (!card) return;
-            var scroller = card.querySelector('.vt-heatmap-scroll');
-            if (!scroller) return;
-            var dir = btn.getAttribute('data-vt-scroll') === 'left' ? -1 : 1;
-            scroller.scrollBy({ left: dir * STEP, behavior: 'smooth' });
+
+    function syncGroup(scroller, group) {
+        if (!scroller || !group) return;
+        var hasOverflow = scroller.scrollWidth > scroller.clientWidth + 1;
+        group.hidden = !hasOverflow;
+        if (!hasOverflow) return;
+        var atStart = scroller.scrollLeft <= 0;
+        var atEnd = scroller.scrollLeft >= scroller.scrollWidth - scroller.clientWidth - 1;
+        var leftBtn = group.querySelector('[data-vt-scroll="left"]');
+        var rightBtn = group.querySelector('[data-vt-scroll="right"]');
+        if (leftBtn) leftBtn.disabled = atStart;
+        if (rightBtn) rightBtn.disabled = atEnd;
+    }
+
+    document.querySelectorAll('[data-vt-scroll-group]').forEach(function (group) {
+        var card = group.closest('.card');
+        var scroller = card && card.querySelector('.vt-heatmap-scroll');
+        if (!scroller) return;
+
+        group.querySelectorAll('[data-vt-scroll]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var dir = btn.getAttribute('data-vt-scroll') === 'left' ? -1 : 1;
+                scroller.scrollBy({ left: dir * STEP, behavior: 'smooth' });
+            });
         });
+
+        scroller.addEventListener('scroll', function () { syncGroup(scroller, group); });
+        window.addEventListener('resize', function () { syncGroup(scroller, group); });
+
+        // Initial state — defer one frame so layout has settled.
+        requestAnimationFrame(function () { syncGroup(scroller, group); });
     });
 })();
 

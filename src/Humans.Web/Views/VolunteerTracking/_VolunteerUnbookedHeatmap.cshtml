@@ -44,7 +44,7 @@
     <div class="card-header d-flex align-items-center">
         <strong><i class="fa-solid fa-table-cells me-2"></i>@Localizer["VolTrack_Unbooked_Title"]</strong>
         <span class="text-muted small ms-2">@string.Format(Localizer["VolTrack_Unbooked_Subtitle_Count"].Value, Model.Rows.Count)</span>
-        <div class="btn-group btn-group-sm ms-auto" role="group" aria-label="Heatmap horizontal scroll">
+        <div class="btn-group btn-group-sm ms-auto" role="group" aria-label="Heatmap horizontal scroll" data-vt-scroll-group hidden>
             <button type="button" class="btn btn-outline-secondary" data-vt-scroll="left" aria-label="@Localizer["VolTrack_Scroll_Left"]"><i class="fa-solid fa-chevron-left"></i></button>
             <button type="button" class="btn btn-outline-secondary" data-vt-scroll="right" aria-label="@Localizer["VolTrack_Scroll_Right"]"><i class="fa-solid fa-chevron-right"></i></button>
         </div>

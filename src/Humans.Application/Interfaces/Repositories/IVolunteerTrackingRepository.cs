@@ -34,6 +34,29 @@ public interface IVolunteerTrackingRepository
         CancellationToken ct = default);
 
     /// <summary>
+    /// Insert or replace a single day-off entry on the row's <c>DayOffs</c>
+    /// collection. Creates the row if absent. Replaces any existing entry for
+    /// the same <c>DayOffset</c> so there is at most one entry per day.
+    /// Persists with the list sorted by <c>DayOffset</c> ascending.
+    /// </summary>
+    Task UpsertDayOffAsync(
+        Guid userId,
+        Guid eventSettingsId,
+        DayOffEntry entry,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Remove the entry for (userId, eventSettingsId, dayOffset) from the
+    /// row's <c>DayOffs</c> collection. Returns whether an entry was actually
+    /// removed (false when no row exists or the offset wasn't present).
+    /// </summary>
+    Task<bool> RemoveDayOffAsync(
+        Guid userId,
+        Guid eventSettingsId,
+        int dayOffset,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// All eligible Build-period signups for the event: rows where
     /// Shift.DayOffset ∈ [BuildStartOffset, 0), the rota's period
     /// is Build or All, and Status ∈ {Confirmed, Pending}.
