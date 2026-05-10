@@ -297,7 +297,8 @@ public sealed class CachingTeamService : ITeamService, IUserMerge
         CancellationToken cancellationToken = default)
     {
         var teamsById = await GetTeamsByIdAsync(cancellationToken);
-        return await IsUserCoordinatorOfTeamAsync(teamsById, teamId, userId, cancellationToken);
+        var coordinatorTeamIds = await _teamRepository.GetUserCoordinatorTeamIdsAsync(userId, cancellationToken);
+        return IsUserCoordinatorOfActiveTeam(teamsById, coordinatorTeamIds, teamId, userId);
     }
 
     public async Task<bool> RemoveMemberAsync(
@@ -733,13 +734,13 @@ public sealed class CachingTeamService : ITeamService, IUserMerge
         }) ?? new();
     }
 
-    private async Task<bool> IsUserCoordinatorOfTeamAsync(
+    private bool IsUserCoordinatorOfActiveTeam(
         IReadOnlyDictionary<Guid, TeamInfo> teams,
+        IReadOnlyCollection<Guid> coordinatorTeamIds,
         Guid teamId,
-        Guid userId,
-        CancellationToken ct)
+        Guid userId)
     {
-        if (!teams.TryGetValue(teamId, out var team))
+        if (!teams.TryGetValue(teamId, out var team) || !team.IsActive)
         {
             _logger.LogDebug("Coordinator check: team {TeamId} not found in team cache for user {UserId}", teamId, userId);
             return false;
@@ -748,12 +749,11 @@ public sealed class CachingTeamService : ITeamService, IUserMerge
         if (team.Members.Any(m => m.UserId == userId && m.Role == TeamMemberRole.Coordinator))
             return true;
 
-        var coordinatorTeamIds = await _teamRepository.GetUserCoordinatorTeamIdsAsync(userId, ct);
         if (coordinatorTeamIds.Contains(teamId))
             return true;
 
         return team.ParentTeamId.HasValue
-            && await IsUserCoordinatorOfTeamAsync(teams, team.ParentTeamId.Value, userId, ct);
+            && IsUserCoordinatorOfActiveTeam(teams, coordinatorTeamIds, team.ParentTeamId.Value, userId);
     }
 
     private static TeamInfo BuildTeamInfo(Team team, IReadOnlyDictionary<Guid, User> users) => new(

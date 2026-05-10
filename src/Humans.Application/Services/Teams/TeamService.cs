@@ -1006,6 +1006,16 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
         CancellationToken cancellationToken = default)
     {
         var teamsById = await LoadTeamsByIdAsync(cancellationToken);
+        var coordinatorTeamIds = await _repo.GetUserCoordinatorTeamIdsAsync(userId, cancellationToken);
+        return IsUserCoordinatorOfActiveTeam(teamsById, coordinatorTeamIds, teamId, userId);
+    }
+
+    private bool IsUserCoordinatorOfActiveTeam(
+        IReadOnlyDictionary<Guid, TeamInfo> teamsById,
+        IReadOnlyCollection<Guid> coordinatorTeamIds,
+        Guid teamId,
+        Guid userId)
+    {
         if (!teamsById.TryGetValue(teamId, out var team) || !team.IsActive)
         {
             _logger.LogDebug("Coordinator check: team {TeamId} not found in cache for user {UserId}", teamId, userId);
@@ -1019,7 +1029,6 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
             return true;
         }
 
-        var coordinatorTeamIds = await _repo.GetUserCoordinatorTeamIdsAsync(userId, cancellationToken);
         if (coordinatorTeamIds.Contains(teamId))
         {
             _logger.LogDebug("Coordinator check: user {UserId} has IsManagement role on team {TeamName} ({TeamId})",
@@ -1031,7 +1040,7 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
         {
             _logger.LogDebug("Coordinator check: checking parent team {ParentTeamId} for user {UserId} on team {TeamName} ({TeamId})",
                 team.ParentTeamId.Value, userId, team.Name, teamId);
-            return await IsUserCoordinatorOfTeamAsync(team.ParentTeamId.Value, userId, cancellationToken);
+            return IsUserCoordinatorOfActiveTeam(teamsById, coordinatorTeamIds, team.ParentTeamId.Value, userId);
         }
 
         _logger.LogDebug("Coordinator check: user {UserId} is NOT coordinator of team {TeamName} ({TeamId})",
