@@ -37,10 +37,10 @@
         }
         @if (Model.CanWithdraw)
         {
-            <form asp-action="Withdraw" asp-route-id="@r.Id" method="post" class="d-inline"
-                  onsubmit="return confirm('Withdraw this report? This cannot be undone.');">
+            <form asp-action="Withdraw" asp-route-id="@r.Id" method="post" class="d-inline">
                 @Html.AntiForgeryToken()
-                <button type="submit" class="btn btn-outline-danger">Withdraw</button>
+                <button type="submit" class="btn btn-outline-danger"
+                        data-confirm="Withdraw this report? This cannot be undone.">Withdraw</button>
             </form>
         }
     </div>
@@ -170,3 +170,15 @@
         }
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('[data-confirm]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            if (!confirm(this.getAttribute('data-confirm'))) {
+                e.preventDefault();
+            }
+        });
+    });
+});
+</script>

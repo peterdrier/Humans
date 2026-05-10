@@ -86,10 +86,10 @@
                         @if (Model.CanEditLines)
                         {
                             <form asp-action="RemoveLine" asp-route-id="@r.Id" asp-route-lineId="@line.Id"
-                                  method="post" class="d-inline"
-                                  onsubmit="return confirm('Remove this line and its attachment?');">
+                                  method="post" class="d-inline">
                                 @Html.AntiForgeryToken()
-                                <button type="submit" class="btn btn-sm btn-outline-danger">Remove line</button>
+                                <button type="submit" class="btn btn-sm btn-outline-danger"
+                                        data-confirm="Remove this line and its attachment?">Remove line</button>
                             </form>
                         }
                     </div>
@@ -197,3 +197,15 @@
 <div class="d-flex gap-2">
     <a asp-action="Detail" asp-route-id="@r.Id" class="btn btn-outline-secondary">Back to report</a>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('[data-confirm]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            if (!confirm(this.getAttribute('data-confirm'))) {
+                e.preventDefault();
+            }
+        });
+    });
+});
+</script>
