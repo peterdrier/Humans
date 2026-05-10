@@ -35,6 +35,7 @@ public class ServiceBoundaryArchitectureTests
             ["Legal"] = ["LegalDocument"],
             ["Notifications"] = ["Notification"],
             ["Profile"] = ["AccountMerge", "CommunicationPreference", "ContactField", "Profile", "UserEmail"],
+            ["Profiles"] = ["AccountMerge", "CommunicationPreference", "ContactField", "Profile", "UserEmail"],
             ["Shifts"] = ["GeneralAvailability", "Shift"],
             ["Store"] = ["Store"],
             ["Teams"] = ["Team"],
@@ -45,10 +46,10 @@ public class ServiceBoundaryArchitectureTests
         };
 
     [HumansFact]
-    public void Service_named_interfaces_are_marked_as_application_services()
+    public void Application_boundary_interfaces_are_marked_as_application_services()
     {
         var unmarked = ApplicationInterfaceTypes()
-            .Where(t => t.Name.EndsWith("Service", StringComparison.Ordinal))
+            .Where(IsApplicationServiceBoundaryName)
             .Where(t => t != typeof(IApplicationService))
             .Where(t => !typeof(IApplicationService).IsAssignableFrom(t))
             .Select(t => t.FullName)
@@ -56,7 +57,7 @@ public class ServiceBoundaryArchitectureTests
             .ToList();
 
         unmarked.Should().BeEmpty(
-            because: "I*Service interfaces are application service boundaries and must be searchable/reforge-addressable via IApplicationService");
+            because: "I*Service, I*Query, and I*Calculator interfaces are application service boundaries and must be searchable/reforge-addressable via IApplicationService");
     }
 
     [HumansFact]
@@ -175,6 +176,11 @@ public class ServiceBoundaryArchitectureTests
         method.Name.StartsWith("Query", StringComparison.Ordinal) ||
         method.Name.StartsWith("Retrieve", StringComparison.Ordinal) ||
         method.Name.StartsWith("Lookup", StringComparison.Ordinal);
+
+    private static bool IsApplicationServiceBoundaryName(Type type) =>
+        type.Name.EndsWith("Service", StringComparison.Ordinal) ||
+        type.Name.EndsWith("Query", StringComparison.Ordinal) ||
+        type.Name.EndsWith("Calculator", StringComparison.Ordinal);
 
     private static IEnumerable<Type> ExposedTypes(Type type) =>
         ExposedTypes(type, []);
