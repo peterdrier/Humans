@@ -49,6 +49,7 @@ public class ServiceBoundaryArchitectureTests
             [typeof(ITeamRepository)] = "Teams",
             [typeof(ITicketingBudgetRepository)] = "Tickets",
             [typeof(ITicketRepository)] = "Tickets",
+            [typeof(ITicketTransferRepository)] = "Tickets",
             [typeof(IUserEmailRepository)] = "Profiles",
             [typeof(IUserRepository)] = "Users",
         };
