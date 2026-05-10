@@ -297,4 +297,27 @@ public class CampServiceEarlyEntryTests : IDisposable
             Arg.Any<string>(), actor,
             camp.Id, nameof(Camp));
     }
+
+    [HumansFact]
+    public async Task SetEarlyEntryAsync_Grant_ReturnsSlotCapExceeded_WhenCapWouldBeBreached()
+    {
+        await SeedSettingsAsync();
+        var (_, season) = await SeedCampWithSeasonAsync(initialEeSlotCount: 2);
+        await SeedActiveMemberWithEarlyEntryAsync(season.Id);
+        await SeedActiveMemberWithEarlyEntryAsync(season.Id);
+        var newMember = await SeedActiveMemberAsync(season.Id);
+
+        var outcome = await _service.SetEarlyEntryAsync(newMember.Id, granted: true, Guid.NewGuid());
+
+        outcome.Should().Be(SetEarlyEntryOutcome.SlotCapExceeded);
+
+        var reloaded = await _dbContext.CampMembers.AsNoTracking().FirstAsync(m => m.Id == newMember.Id);
+        reloaded.HasEarlyEntry.Should().BeFalse();
+
+        await _auditLog.DidNotReceive().LogAsync(
+            AuditAction.CampEarlyEntryGranted,
+            Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
 }
