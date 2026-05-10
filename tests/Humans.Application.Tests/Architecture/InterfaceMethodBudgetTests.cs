@@ -105,7 +105,9 @@ public class InterfaceMethodBudgetTests
         // 50→49: tech-debt interface consolidation — collapsed
         // GetShiftsSummaryAsync(single team) and GetShiftsSummaryForTeamsAsync
         // into one GetShiftsSummaryAsync(eventId, teamIds) method.
-        [typeof(IShiftManagementService)] = 49,
+        // 49→48: collapsed GetAllTagsAsync and SearchTagsAsync into one
+        // GetTagsAsync(query) method.
+        [typeof(IShiftManagementService)] = 48,
         // +1 for SetProfilePictureAsync (nobodies-collective/Humans#532 — Google avatar import button needs a
         // narrow service write that owns its own cache invalidation; controllers can't reach
         // the FullProfile cache directly).

@@ -198,7 +198,7 @@ public class ShiftsController : HumansControllerBase
         }
 
         // Load all tags for filter UI and volunteer's preferred tags
-        var allTags = await _shiftMgmt.GetAllTagsAsync();
+        var allTags = await _shiftMgmt.GetTagsAsync();
         var userPreferredTags = await _shiftMgmt.GetVolunteerTagPreferencesAsync(user.Id);
 
         var model = new ShiftBrowseViewModel

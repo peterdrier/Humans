@@ -1632,11 +1632,8 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
     // Shift Tags
     // ============================================================
 
-    public Task<IReadOnlyList<ShiftTag>> GetAllTagsAsync() =>
-        _repo.GetAllTagsAsync();
-
-    public Task<IReadOnlyList<ShiftTag>> SearchTagsAsync(string query) =>
-        _repo.SearchTagsAsync(query);
+    public Task<IReadOnlyList<ShiftTag>> GetTagsAsync(string? query = null) =>
+        _repo.GetTagsAsync(query);
 
     public async Task<ShiftTag> GetOrCreateTagAsync(string name)
     {

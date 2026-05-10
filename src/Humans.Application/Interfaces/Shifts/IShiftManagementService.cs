@@ -287,14 +287,9 @@ public interface IShiftManagementService
     // === Shift Tags ===
 
     /// <summary>
-    /// Gets all shift tags, ordered by name.
+    /// Gets shift tags, optionally filtered by name (case-insensitive contains).
     /// </summary>
-    Task<IReadOnlyList<ShiftTag>> GetAllTagsAsync();
-
-    /// <summary>
-    /// Searches tags by name (case-insensitive prefix/contains).
-    /// </summary>
-    Task<IReadOnlyList<ShiftTag>> SearchTagsAsync(string query);
+    Task<IReadOnlyList<ShiftTag>> GetTagsAsync(string? query = null);
 
     /// <summary>
     /// Gets or creates a tag by name. Returns existing if name already exists (case-insensitive).

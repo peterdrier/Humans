@@ -625,21 +625,15 @@ public sealed class ShiftManagementRepository : IShiftManagementRepository
     // Shift tags
     // ==========================================================================
 
-    public async Task<IReadOnlyList<ShiftTag>> GetAllTagsAsync(CancellationToken ct = default)
+    public async Task<IReadOnlyList<ShiftTag>> GetTagsAsync(string? query = null, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.ShiftTags
-            .AsNoTracking()
-            .OrderBy(t => t.Name)
-            .ToListAsync(ct);
-    }
+        var tags = ctx.ShiftTags.AsNoTracking();
 
-    public async Task<IReadOnlyList<ShiftTag>> SearchTagsAsync(string query, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.ShiftTags
-            .AsNoTracking()
-            .Where(t => EF.Functions.ILike(t.Name, $"%{query}%"))
+        if (!string.IsNullOrWhiteSpace(query))
+            tags = tags.Where(t => EF.Functions.ILike(t.Name, $"%{query}%"));
+
+        return await tags
             .OrderBy(t => t.Name)
             .ToListAsync(ct);
     }

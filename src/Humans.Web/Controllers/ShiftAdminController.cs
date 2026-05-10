@@ -126,7 +126,7 @@ public class ShiftAdminController : HumansTeamControllerBase
                 .ToList();
         }
 
-        var allTags = await _shiftMgmt.GetAllTagsAsync();
+        var allTags = await _shiftMgmt.GetTagsAsync();
 
         return View(new ShiftAdminViewModel
         {
@@ -745,9 +745,7 @@ public class ShiftAdminController : HumansTeamControllerBase
         var (teamError, _, _) = await ResolveDepartmentManagementAsync(slug);
         if (teamError is not null) return Forbid();
 
-        var tags = string.IsNullOrWhiteSpace(q)
-            ? await _shiftMgmt.GetAllTagsAsync()
-            : await _shiftMgmt.SearchTagsAsync(q);
+        var tags = await _shiftMgmt.GetTagsAsync(q);
 
         return Json(tags.Select(t => new { t.Id, t.Name }));
     }
