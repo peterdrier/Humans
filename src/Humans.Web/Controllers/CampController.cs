@@ -1016,6 +1016,39 @@ public class CampController : HumansCampControllerBase
     }
 
     [Authorize]
+    [HttpPost("{slug}/Members/{campMemberId:guid}/EarlyEntry")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SetMemberEarlyEntry(
+        string slug, Guid campMemberId, bool granted, CancellationToken cancellationToken)
+    {
+        var (errorResult, user, camp) = await ResolveCampManagementAsync(slug);
+        if (errorResult is not null) return errorResult;
+
+        var outcome = await _campService.SetEarlyEntryAsync(
+            campMemberId, granted, user.Id, cancellationToken);
+
+        switch (outcome)
+        {
+            case SetEarlyEntryOutcome.Success:
+                SetSuccess(granted ? "Early Entry granted." : "Early Entry revoked.");
+                break;
+            case SetEarlyEntryOutcome.NoChange:
+                // Silent — UI already reflected the state.
+                break;
+            case SetEarlyEntryOutcome.SlotCapExceeded:
+                SetError("Cannot grant Early Entry: slot cap reached for this camp.");
+                break;
+            case SetEarlyEntryOutcome.MemberNotActive:
+                SetError("Only Active camp members can hold Early Entry.");
+                break;
+            case SetEarlyEntryOutcome.MemberNotFound:
+                return NotFound();
+        }
+
+        return RedirectToAction(nameof(Members), new { slug });
+    }
+
+    [Authorize]
     [HttpPost("{slug}/Members/Add")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AddMember(string slug, Guid userId, CancellationToken ct)
