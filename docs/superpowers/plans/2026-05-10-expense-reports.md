@@ -2967,11 +2967,25 @@ Commit: `feat(expenses): service submit + withdraw with validation`.
 
 **Task 4.5 — `CategoryRequiresCoordinatorEndorsementAsync`**
 
-Loads the category via `IBudgetService.GetCategoryByIdAsync(categoryId)`, returns `false` if `TeamId is null`, otherwise returns `(await _teamService.GetEffectiveBudgetCoordinatorTeamIdsAsync(actorId)).Contains(category.TeamId.Value)` is **not** the right semantic — that asks "does this user coordinate this team?" The correct check: `category.TeamId.HasValue && (any user coordinates that team)`. Since `ITeamService` doesn't have a "does this team have any coordinators" method, the cheapest available shortcut is to load the team's `BudgetCoordinatorUserId`s (verify the `Team` entity exposes this). If not directly available, the spec semantic is: "the team has at least one budget coordinator" — implement via a new narrow `ITeamService.HasBudgetCoordinatorsAsync(Guid teamId)` method **only after Peter approves** the addition. Until then, use a near-equivalent: load the team via existing surface, count coordinators in-memory.
+Loads the category via `IBudgetService.GetCategoryByIdAsync(categoryId)`. Returns `false` if `category.TeamId is null`, otherwise returns whether the team has at least one coordinator.
 
-> **Pause-point for the executor:** before implementing this method, confirm with Peter whether `ITeamService.HasBudgetCoordinatorsAsync` may be added. If not, find an existing path; if no path exists, return `true` (over-conservative — every category routes through coordinator) and flag for follow-up.
+**Resolution path (per Peter's direction):** by the time this task is reached, `ITeamService` will already have a `TeamInfo` object on its surface (the team-side equivalent of `FullProfile`). Add a `Coordinators` collection (returning coordinator user `Guid`s) to `TeamInfo` rather than introducing a new `ITeamService.HasBudgetCoordinatorsAsync` method.
 
-Commit: `feat(expenses): coordinator-required determination`.
+Implementation:
+```csharp
+public async Task<bool> CategoryRequiresCoordinatorEndorsementAsync(
+    Guid categoryId, CancellationToken ct = default)
+{
+    var category = await _budgetService.GetCategoryByIdAsync(categoryId, ct);
+    if (category?.TeamId is null) return false;
+    var teamInfo = await _teamService.GetTeamInfoAsync(category.TeamId.Value, ct);
+    return teamInfo?.Coordinators.Count > 0;
+}
+```
+
+If `TeamInfo` is not yet on `ITeamService` when this task runs, **stop and confirm with Peter** before either adding it or extending it. The `TeamInfo.Coordinators` field is the agreed extension point.
+
+Commit: `feat(expenses): coordinator-required determination via TeamInfo`.
 
 **Task 4.6 — `CoordinatorEndorseAsync` + `CoordinatorRejectAsync`**
 
