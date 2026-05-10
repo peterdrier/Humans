@@ -633,9 +633,7 @@ public sealed class ShiftManagementRepository : IShiftManagementRepository
         if (!string.IsNullOrWhiteSpace(query))
             tags = tags.Where(t => EF.Functions.ILike(t.Name, $"%{query}%"));
 
-        return await tags
-            .OrderBy(t => t.Name)
-            .ToListAsync(ct);
+        return await tags.ToListAsync(ct);
     }
 
     public async Task<ShiftTag?> FindTagByNameAsync(string name, CancellationToken ct = default)

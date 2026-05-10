@@ -145,7 +145,9 @@ public class ShiftAdminController : HumansTeamControllerBase
             StaffingHours = staffingHours.ToList(),
             Now = _clock.GetCurrentInstant(),
             AllDepartments = allDepartments,
-            AllTags = allTags.ToList(),
+            AllTags = allTags
+                .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
+                .ToList(),
             IncompleteOnboardingFilter = incompleteOnboarding
         });
     }
@@ -747,7 +749,9 @@ public class ShiftAdminController : HumansTeamControllerBase
 
         var tags = await _shiftMgmt.GetTagsAsync(q);
 
-        return Json(tags.Select(t => new { t.Id, t.Name }));
+        return Json(tags
+            .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(t => new { t.Id, t.Name }));
     }
 
     [HttpPost("Tags/Create")]

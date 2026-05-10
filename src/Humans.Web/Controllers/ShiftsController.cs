@@ -219,7 +219,9 @@ public class ShiftsController : HumansControllerBase
             ShowSignups = true,
             Sort = isUrgencySort ? "urgency" : "department",
             UrgencyRankedRotas = urgencyRankedRotas,
-            AllTags = allTags.ToList(),
+            AllTags = allTags
+                .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
+                .ToList(),
             FilterTagIds = activeTagFilter,
             UserPreferredTagIds = userPreferredTags.Select(t => t.Id).ToHashSet(),
             MySignupCount = userSignups.Count(s => s.Status is SignupStatus.Confirmed or SignupStatus.Pending),
