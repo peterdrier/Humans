@@ -634,7 +634,7 @@ public sealed class ShiftManagementRepository : IShiftManagementRepository
             tags = tags.Where(t => EF.Functions.ILike(t.Name, $"%{query}%"));
 
         return await tags
-            .OrderBy(t => t.Name) // arch:db-sort-ok alphabetical tag list for autocomplete/filter UI
+            .OrderBy(t => t.Name)
             .ToListAsync(ct);
     }
 

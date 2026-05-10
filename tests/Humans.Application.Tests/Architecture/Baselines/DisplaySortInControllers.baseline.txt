@@ -102,6 +102,7 @@ src/Humans.Infrastructure/Repositories/Shifts/ShiftManagementRepository.cs:Order
 src/Humans.Infrastructure/Repositories/Shifts/ShiftManagementRepository.cs:OrderBy#3
 src/Humans.Infrastructure/Repositories/Shifts/ShiftManagementRepository.cs:OrderBy#4
 src/Humans.Infrastructure/Repositories/Shifts/ShiftManagementRepository.cs:OrderBy#5
+src/Humans.Infrastructure/Repositories/Shifts/ShiftManagementRepository.cs:OrderBy#6
 src/Humans.Infrastructure/Repositories/Shifts/ShiftManagementRepository.cs:ThenBy#1
 src/Humans.Infrastructure/Repositories/Shifts/ShiftSignupRepository.cs:OrderBy#1
 src/Humans.Infrastructure/Repositories/Shifts/ShiftSignupRepository.cs:OrderBy#2
