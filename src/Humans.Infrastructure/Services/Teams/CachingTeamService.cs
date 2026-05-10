@@ -1,10 +1,12 @@
 using System.Collections.Concurrent;
 using Humans.Application;
 using Humans.Application.DTOs;
+using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
+using Humans.Application.Services.Teams;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Domain.ValueObjects;
@@ -91,10 +93,19 @@ public sealed class CachingTeamService : ITeamService, IUserMerge
         CancellationToken cancellationToken = default) =>
         WithInner(inner => inner.SearchAsync(query, max, cancellationToken));
 
-    public Task<TeamDirectoryResult> GetTeamDirectoryAsync(
+    public async Task<TeamDirectoryResult> GetTeamDirectoryAsync(
         Guid? userId,
-        CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetTeamDirectoryAsync(userId, cancellationToken));
+        CancellationToken cancellationToken = default)
+    {
+        var teamsById = await GetTeamsByIdAsync(cancellationToken);
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var roleAssignmentService = scope.ServiceProvider.GetRequiredService<IRoleAssignmentService>();
+        return await TeamService.BuildTeamDirectoryAsync(
+            teamsById,
+            roleAssignmentService,
+            userId,
+            cancellationToken);
+    }
 
     public Task<TeamDetailResult?> GetTeamDetailAsync(
         string slug,
@@ -560,8 +571,16 @@ public sealed class CachingTeamService : ITeamService, IUserMerge
 
     private void InvalidateTeamsCache()
     {
-        _byTeamId.Clear();
-        _isLoaded = false;
+        _loadLock.Wait();
+        try
+        {
+            _byTeamId.Clear();
+            _isLoaded = false;
+        }
+        finally
+        {
+            _loadLock.Release();
+        }
     }
 
     public async Task<int> RevokeAllMembershipsAsync(

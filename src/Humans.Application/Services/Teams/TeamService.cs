@@ -269,7 +269,15 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
         CancellationToken cancellationToken = default)
     {
         var teamsById = await LoadTeamsByIdAsync(cancellationToken);
+        return await BuildTeamDirectoryAsync(teamsById, RoleAssignmentService, userId, cancellationToken);
+    }
 
+    public static async Task<TeamDirectoryResult> BuildTeamDirectoryAsync(
+        IReadOnlyDictionary<Guid, TeamInfo> teamsById,
+        IRoleAssignmentService roleAssignmentService,
+        Guid? userId,
+        CancellationToken cancellationToken = default)
+    {
         if (!userId.HasValue)
         {
             var publicDepartments = teamsById.Values
@@ -289,9 +297,9 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
                 HiddenTeams: []);
         }
 
-        var isBoardMember = await RoleAssignmentService.IsUserBoardMemberAsync(userId.Value, cancellationToken);
-        var isAdmin = await RoleAssignmentService.IsUserAdminAsync(userId.Value, cancellationToken);
-        var isTeamsAdmin = await RoleAssignmentService.IsUserTeamsAdminAsync(userId.Value, cancellationToken);
+        var isBoardMember = await roleAssignmentService.IsUserBoardMemberAsync(userId.Value, cancellationToken);
+        var isAdmin = await roleAssignmentService.IsUserAdminAsync(userId.Value, cancellationToken);
+        var isTeamsAdmin = await roleAssignmentService.IsUserTeamsAdminAsync(userId.Value, cancellationToken);
         var canCreateTeam = isBoardMember || isAdmin || isTeamsAdmin;
         var canSeeHiddenTeams = canCreateTeam;
 
