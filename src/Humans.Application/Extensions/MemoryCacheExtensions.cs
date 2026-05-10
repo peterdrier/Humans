@@ -58,13 +58,9 @@ public static class MemoryCacheExtensions
     public static void InvalidateNotificationMeters(this IMemoryCache cache) =>
         cache.Remove(CacheKeys.NotificationMeters);
 
-    public static void InvalidateTeams(this IMemoryCache cache) =>
-        cache.Remove(CacheKeys.Teams);
-
     public static void InvalidateActiveTeams(this IMemoryCache cache)
     {
         cache.Remove(CacheKeys.ActiveTeams);
-        cache.Remove(CacheKeys.Teams);
     }
 
     public static void InvalidateCampSeasonsByYear(this IMemoryCache cache, int year) =>

@@ -564,14 +564,19 @@ Implemented by `CachingProfileService`. External sections inject `IFullProfileIn
 
 **CRITICAL:** `IFullProfileInvalidator` must resolve to the **same Singleton instance** as `IProfileService`. Both registrations point to the single `CachingProfileService` instance. If two instances were created, the dict would diverge and invalidations would be silently lost.
 
-### 15f. Projection DTO Naming
+### 15f. Canonical Read-Model Naming
 
 | Type | Name |
 |------|------|
-| Projection DTO | `Full<Section>` (e.g., `FullProfile`) |
-| Read method | `GetFull<Section>Async` (e.g., `GetFullProfileAsync`) |
-| Invalidator interface | `IFull<Section>Invalidator` (e.g., `IFullProfileInvalidator`) |
+| Canonical section read model | Prefer `<Section>Info` for section-owned read models (e.g., `TeamInfo`). `Full<Section>` remains valid for established stitched models (e.g., `FullProfile`). |
+| Read method | Match the read model name when returning one item (e.g., `GetTeamAsync` for `TeamInfo`, `GetFullProfileAsync` for `FullProfile`). Plural collection methods may use the natural plural (e.g., `GetTeamsAsync`). |
+| Invalidator interface | Name the canonical model being invalidated when one exists (e.g., `IFullProfileInvalidator`). |
 | Sub-aggregate collections | Natural plural on the DTO (e.g., `CVEntries` — not `VolunteerHistory`) |
+
+Do not force every section into `Full<Section>`. The name should make the
+service boundary obvious without implying EF entity identity. For Teams,
+`TeamInfo` is the canonical read model; `Team` remains the EF/domain entity and
+should not be exposed by new `ITeamService` read APIs.
 
 Old names that no longer exist: `CachedProfile`, `IProfileStore`, `ProfileStore`, `ProfileStoreWarmupHostedService`, `IVolunteerHistoryService`, `VolunteerHistoryService`.
 
