@@ -140,7 +140,6 @@ public class TeamServiceTests : IDisposable
             Substitute.For<INotificationMeterCacheInvalidator>(),
             _shiftAuthInvalidator,
             serviceProvider,
-            _cache,
             _clock,
             NullLogger<TeamService>.Instance);
     }
@@ -1032,11 +1031,11 @@ public class TeamServiceTests : IDisposable
     }
 
     // ==========================================================================
-    // GetActiveTeamAsync
+    // GetTeamAsync
     // ==========================================================================
 
     [HumansFact]
-    public async Task GetActiveTeamAsync_ReturnsOnlyActiveMembers()
+    public async Task GetTeamAsync_ReturnsOnlyActiveMembers()
     {
         var team = SeedTeam("Alpha");
         var active = SeedUser(displayName: "Active");
@@ -1046,7 +1045,7 @@ public class TeamServiceTests : IDisposable
             leftAt: _clock.GetCurrentInstant() - Duration.FromDays(1));
         await _dbContext.SaveChangesAsync();
 
-        var result = await _service.GetActiveTeamAsync(team.Id);
+        var result = await _service.GetTeamAsync(team.Id);
 
         result.Should().NotBeNull();
         result!.Members.Should().ContainSingle();
@@ -1054,7 +1053,7 @@ public class TeamServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task GetActiveTeamAsync_IncludesMemberRoleAndJoinedAt()
+    public async Task GetTeamAsync_IncludesMemberRoleAndJoinedAt()
     {
         var team = SeedTeam("Alpha");
         var coordinator = SeedUser(displayName: "Coordinator");
@@ -1088,7 +1087,7 @@ public class TeamServiceTests : IDisposable
         await _dbContext.TeamMembers.AddRangeAsync(m1, m2, m3);
         await _dbContext.SaveChangesAsync();
 
-        var result = await _service.GetActiveTeamAsync(team.Id);
+        var result = await _service.GetTeamAsync(team.Id);
 
         result.Should().NotBeNull();
         result!.Members.Should().HaveCount(3);
@@ -1098,51 +1097,26 @@ public class TeamServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task GetActiveTeamAsync_IncludesUserSlice()
+    public async Task GetTeamAsync_IncludesUserSlice()
     {
         var team = SeedTeam("Alpha");
         var user = SeedUser(displayName: "Alice");
         SeedTeamMember(team.Id, user.Id);
         await _dbContext.SaveChangesAsync();
 
-        var result = await _service.GetActiveTeamAsync(team.Id);
+        var result = await _service.GetTeamAsync(team.Id);
 
         var member = result!.Members.Should().ContainSingle().Subject;
         member.DisplayName.Should().Be("Alice");
     }
 
     [HumansFact]
-    public async Task GetActiveTeamAsync_IncludesCanonicalUserEmail()
-    {
-        var team = SeedTeam("Alpha");
-        var user = SeedUser(displayName: "Alice");
-        user.Email = null;
-        _dbContext.UserEmails.Add(new UserEmail
-        {
-            Id = Guid.NewGuid(),
-            UserId = user.Id,
-            Email = "alice@example.test",
-            IsVerified = true,
-            IsPrimary = true,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
-        });
-        SeedTeamMember(team.Id, user.Id);
-        await _dbContext.SaveChangesAsync();
-
-        var result = await _service.GetActiveTeamAsync(team.Id);
-
-        var member = result!.Members.Should().ContainSingle().Subject;
-        member.Email.Should().Be("alice@example.test");
-    }
-
-    [HumansFact]
-    public async Task GetActiveTeamAsync_NoMembers_ReturnsEmpty()
+    public async Task GetTeamAsync_NoMembers_ReturnsEmpty()
     {
         var team = SeedTeam("Alpha");
         await _dbContext.SaveChangesAsync();
 
-        var result = await _service.GetActiveTeamAsync(team.Id);
+        var result = await _service.GetTeamAsync(team.Id);
 
         result.Should().NotBeNull();
         result!.Members.Should().BeEmpty();

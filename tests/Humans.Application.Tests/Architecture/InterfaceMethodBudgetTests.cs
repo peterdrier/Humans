@@ -60,11 +60,13 @@ public class InterfaceMethodBudgetTests
         // must live in the owning section per design-rules §6, and the
         // ratchet's "remove one to add one" rule doesn't apply when the
         // addition is a moved-in query rather than a new feature surface.
-        // 71â†’70: tech-debt query consolidation â€” replaced
-        // GetTeamMembersAsync and GetActiveMemberUserIdsAsync with
-        // GetActiveTeamAsync. Dropped the speculative GetActiveTeamsAsync
-        // surface after PR review because it had no production callers.
-        [typeof(ITeamService)] = 70,
+        // 71→73: team-cache decorator groundwork — added canonical
+        // GetTeamAsync/GetTeamsAsync read-model methods. Follow-up passes should
+        // consolidate member/name/option getters down onto those methods.
+        // 73â†’71: tech-debt query consolidation â€” removed GetTeamMembersAsync
+        // and GetActiveMemberUserIdsAsync; callers project members/user IDs
+        // from GetTeamAsync/GetTeamsAsync read models.
+        [typeof(ITeamService)] = 71,
         // ICampService raised 53→57 for per-camp roles feature (peterdrier#489):
         // AddCampMemberAsLeadAsync, GetSeasonMembersAsync, GetCampMemberStatusAsync,
         // GetCampSeasonsForComplianceAsync — all needed by ICampRoleService and the
@@ -106,10 +108,10 @@ public class InterfaceMethodBudgetTests
         // 49→50: issue-682 global search — added SearchAsync(query, max).
         // Authorized exception (Peter, 2026-05-09): queries against rotas
         // must live in the owning section per design-rules §6.
-        // 50→49: tech-debt interface consolidation — collapsed
+        // 50â†’49: tech-debt interface consolidation â€” collapsed
         // GetShiftsSummaryAsync(single team) and GetShiftsSummaryForTeamsAsync
         // into one GetShiftsSummaryAsync(eventId, teamIds) method.
-        // 49→48: collapsed GetAllTagsAsync and SearchTagsAsync into one
+        // 49â†’48: collapsed GetAllTagsAsync and SearchTagsAsync into one
         // GetTagsAsync(query) method.
         [typeof(IShiftManagementService)] = 48,
         // +1 for SetProfilePictureAsync (nobodies-collective/Humans#532 — Google avatar import button needs a

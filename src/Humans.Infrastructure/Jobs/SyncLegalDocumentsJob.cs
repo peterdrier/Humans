@@ -104,7 +104,7 @@ public class SyncLegalDocumentsJob : IRecurringJob
         var activeUserIds = new HashSet<Guid>();
         foreach (var teamId in teamIds)
         {
-            var team = await _teamService.GetActiveTeamAsync(teamId, cancellationToken);
+            var team = await _teamService.GetTeamAsync(teamId, cancellationToken);
             if (team is null)
                 continue;
 

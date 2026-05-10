@@ -8,7 +8,7 @@ namespace Humans.Application.Interfaces.Teams;
 
 public record TeamInfo(
     Guid Id, string Name, string? Description, string Slug,
-    bool IsSystemTeam, SystemTeamType SystemTeamType, bool RequiresApproval,
+    bool IsActive, bool IsSystemTeam, SystemTeamType SystemTeamType, bool RequiresApproval,
     bool IsPublicPage, bool IsHidden, bool IsPromotedToDirectory, Instant CreatedAt, List<TeamMemberInfo> Members,
     Guid? ParentTeamId = null);
 
@@ -150,9 +150,14 @@ public interface ITeamService
     Task<Team?> GetTeamByIdAsync(Guid teamId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Gets the active team read model by ID, including active members.
+    /// Gets the team read model by ID, including active members.
     /// </summary>
-    Task<TeamInfo?> GetActiveTeamAsync(Guid teamId, CancellationToken cancellationToken = default);
+    Task<TeamInfo?> GetTeamAsync(Guid teamId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets team read models keyed by ID, including active members.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, TeamInfo>> GetTeamsAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Returns the display name of the team whose <c>GoogleGroupPrefix</c> matches

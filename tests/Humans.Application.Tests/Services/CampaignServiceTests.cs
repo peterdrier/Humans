@@ -46,7 +46,7 @@ public class CampaignServiceTests : IDisposable
         // Default stubs: fetch data from the in-memory DbContext so the existing
         // seed helpers still drive the scenarios end-to-end.
         _teamService
-            .GetActiveTeamAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .GetTeamAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(async call =>
             {
                 var teamId = call.ArgAt<Guid>(0);
@@ -72,7 +72,7 @@ public class CampaignServiceTests : IDisposable
                     .ToList();
                 return new TeamInfo(
                     team.Id, team.Name, team.Description, team.Slug,
-                    team.IsSystemTeam, team.SystemTeamType, team.RequiresApproval,
+                    team.IsActive, team.IsSystemTeam, team.SystemTeamType, team.RequiresApproval,
                     team.IsPublicPage, team.IsHidden, team.IsPromotedToDirectory,
                     team.CreatedAt, members, team.ParentTeamId);
             });

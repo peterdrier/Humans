@@ -57,7 +57,7 @@ public sealed class TicketQueryServiceTests : IDisposable
             SystemClock.Instance);
 
         // Defaults for the Volunteers team lookup — tests that care override them.
-        _teamService.GetActiveTeamAsync(SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
+        _teamService.GetTeamAsync(SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
             .Returns(VolunteersTeam([]));
 
         _userService.GetAllUsersAsync(Arg.Any<CancellationToken>())
@@ -508,7 +508,7 @@ public sealed class TicketQueryServiceTests : IDisposable
         _userService.GetAllUsersAsync(Arg.Any<CancellationToken>())
             .Returns(allUsers);
 
-        _teamService.GetActiveTeamAsync(SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
+        _teamService.GetTeamAsync(SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
             .Returns(VolunteersTeam(userIds));
 
         var profilesByUserId = users
@@ -625,6 +625,7 @@ public sealed class TicketQueryServiceTests : IDisposable
             "Volunteers",
             null,
             "volunteers",
+            IsActive: true,
             IsSystemTeam: true,
             SystemTeamType.Volunteers,
             RequiresApproval: false,

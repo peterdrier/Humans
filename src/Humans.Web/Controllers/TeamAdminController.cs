@@ -176,7 +176,7 @@ public class TeamAdminController : HumansTeamControllerBase
             return teamError;
         }
 
-        var teamInfo = await _teamService.GetActiveTeamAsync(team.Id);
+        var teamInfo = await _teamService.GetTeamAsync(team.Id);
         var allMembers = teamInfo?.Members
             .OrderBy(m => m.Role)
             .ThenBy(m => m.DisplayName, StringComparer.OrdinalIgnoreCase)
@@ -361,7 +361,7 @@ public class TeamAdminController : HumansTeamControllerBase
         }
 
         // Verify that the target user is actually a member of this team
-        var teamInfo = await _teamService.GetActiveTeamAsync(team.Id);
+        var teamInfo = await _teamService.GetTeamAsync(team.Id);
         if (teamInfo?.Members.All(m => m.UserId != userId) != false)
         {
             SetError("That human is not a member of this team.");
@@ -414,7 +414,7 @@ public class TeamAdminController : HumansTeamControllerBase
             q, PersonSearchFields.Name, limit: 50);
 
         // Exclude existing team members.
-        var teamInfo = await _teamService.GetActiveTeamAsync(team.Id);
+        var teamInfo = await _teamService.GetTeamAsync(team.Id);
         var existingMemberIds = teamInfo?.Members.Select(m => m.UserId).ToHashSet() ?? [];
 
         // Display ordering at the controller per
@@ -719,7 +719,7 @@ public class TeamAdminController : HumansTeamControllerBase
         }
 
         var definitions = await _teamService.GetRoleDefinitionsAsync(team.Id);
-        var teamInfo = await _teamService.GetActiveTeamAsync(team.Id);
+        var teamInfo = await _teamService.GetTeamAsync(team.Id);
         var members = teamInfo?.Members
             .OrderBy(m => m.Role)
             .ThenBy(m => m.DisplayName, StringComparer.OrdinalIgnoreCase)
@@ -940,7 +940,7 @@ public class TeamAdminController : HumansTeamControllerBase
         try
         {
             // Look up the member's UserId before unassigning
-            var teamInfo = await _teamService.GetActiveTeamAsync(team.Id);
+            var teamInfo = await _teamService.GetTeamAsync(team.Id);
             var member = teamInfo?.Members.FirstOrDefault(m => m.TeamMemberId == memberId);
             var userId = member?.UserId;
 
@@ -1053,7 +1053,7 @@ public class TeamAdminController : HumansTeamControllerBase
             return Json(Array.Empty<RoleAssignmentSearchResult>());
         }
 
-        var teamInfo = await _teamService.GetActiveTeamAsync(team.Id);
+        var teamInfo = await _teamService.GetTeamAsync(team.Id);
         var teamMembers = teamInfo?.Members ?? [];
         var teamMemberUserIds = teamMembers
             .Select(m => m.UserId)

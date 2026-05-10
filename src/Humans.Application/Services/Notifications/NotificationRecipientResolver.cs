@@ -34,7 +34,7 @@ public sealed class NotificationRecipientResolver : INotificationRecipientResolv
         Guid teamId,
         CancellationToken cancellationToken = default)
     {
-        var team = await _teamService.GetActiveTeamAsync(teamId, cancellationToken);
+        var team = await _teamService.GetTeamAsync(teamId, cancellationToken);
         if (team is null)
         {
             return null;
