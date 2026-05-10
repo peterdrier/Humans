@@ -22,7 +22,8 @@ namespace Humans.Infrastructure.Migrations
                     BarrioSetupStartDate = table.Column<LocalDate>(type: "date", nullable: true),
                     Notes = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
                     SetByUserId = table.Column<Guid>(type: "uuid", nullable: true),
-                    SetAt = table.Column<Instant>(type: "timestamp with time zone", nullable: true)
+                    SetAt = table.Column<Instant>(type: "timestamp with time zone", nullable: true),
+                    DayOffs = table.Column<string>(type: "jsonb", nullable: false, defaultValueSql: "'[]'::jsonb")
                 },
                 constraints: table =>
                 {
