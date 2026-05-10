@@ -218,7 +218,7 @@ Stored as string via `HasConversion<string>()`.
 | CoordinatorEndorsed | Reject | Draft | as above. |
 | Approved | EditCategory | Approved | FinanceAdmin only. INSERT outbox row (`UpdateIncomingDocTag`). |
 | Approved | IncludeInSepaPayout | SepaSent | FinanceAdmin/Admin only. Atomic across the multi-selected set: stamp `SepaSentAt`, audit-log per report. |
-| SepaSent | (system) HoldedConfirmedPaid | Paid | back-flow step appended to `HoldedSyncJob`. Stamps `PaidAt`. |
+| SepaSent | (system) HoldedConfirmedPaid | Paid | `ExpensePaidPollingJob` polls Holded for the report's `HoldedDocId`. Stamps `PaidAt`. |
 
 **Notes**
 
@@ -273,7 +273,7 @@ Stored as string via `HasConversion<string>()`.
 - Once `Approved`, the report is immutable to the submitter. The only edits allowed thereafter are FinanceAdmin category-override (which queues an `UpdateIncomingDocTag` outbox event) and the system-driven status transitions to `SepaSent` and `Paid`.
 - Approval and outbox-event creation happen in a single DB transaction.
 - `SepaSent` is set atomically across the multi-selected set inside the same transaction that emits the pain.001 XML. If the transaction fails, no report is moved and no XML is streamed.
-- `Paid` is set only by the back-flow step appended to `HoldedSyncJob`, when a `HoldedTransaction` matches `expense_reports.HoldedDocId` and has `PaymentsPending == 0` and `ApprovedAt IS NOT NULL`.
+- `Paid` is set only by `ExpensePaidPollingJob`, when `IHoldedClient.GetPurchaseDocumentAsync(HoldedDocId)` returns a document with `paymentsPending == 0` and `approvedAt != null`.
 - Every state transition writes one `AuditLogEntry` via `IAuditLogService` with actor, from-state, to-state, and (for rejects) the rejection comment. Category-override-on-approval writes an additional entry recording from-category and to-category.
 - `expense_attachments` rows and their on-disk files are append-only after a report leaves `Draft`. Withdrawal does not delete files. Draft-state delete of a line or attachment removes the on-disk file as well as the row.
 - Currency is EUR-only. Reports do not carry a currency field; the SEPA file and Holded incoming-doc both assume EUR. Submitter notes original currency in the line description when applicable.
@@ -299,8 +299,8 @@ Stored as string via `HasConversion<string>()`.
 - Every state transition (Submit, Endorse, CoordinatorReject, Approve, Reject, Withdraw, IncludeInSepaPayout, HoldedConfirmedPaid) writes an append-only `AuditLogEntry` recording actor, timestamp, from-state, to-state, and (for rejects) the rejection comment.
 - Category-override-on-approval writes an additional `AuditLogEntry` recording from-category and to-category.
 - Approval (and post-approval category override) inserts a row into `holded_expense_outbox_events` in the same DB transaction.
-- `HoldedExpenseOutboxJob` (Hangfire recurring, `0 * * * * *` — every minute at second 0) pulls unprocessed rows, calls Holded's purchase-document API, uploads attachments, stores the returned `HoldedDocId`, and marks `ProcessedAt`. Transient errors bump `RetryCount`. 4xx errors set `FailedPermanently`.
-- `HoldedSyncJob`'s existing pull is followed by a back-flow step: any `expense_reports` row with `Status = SepaSent` whose linked `HoldedTransaction` (matched on `HoldedDocId`) now has `PaymentsPending == 0` and `ApprovedAt IS NOT NULL` flips to `Paid` with `PaidAt = ht.LastSyncedAt`.
+- `HoldedExpenseOutboxJob` (Hangfire recurring, `*/1 * * * *` — every minute, 5-field cron matching the codebase pattern) pulls unprocessed rows, calls Holded's purchase-document API, uploads attachments, stores the returned `HoldedDocId`, and marks `ProcessedAt`. Transient errors bump `RetryCount`. 4xx errors set `FailedPermanently`.
+- `ExpensePaidPollingJob` (Hangfire recurring, `*/15 * * * *`) pulls all `SepaSent` reports, calls `IHoldedClient.GetPurchaseDocumentAsync(HoldedDocId)` for each, and transitions any whose Holded document reports `paymentsPending == 0` and `approvedAt != null` to `Paid` (`PaidAt = clock.GetCurrentInstant()`, one audit-log entry per transition).
 - Admin's "Reveal IBAN" action writes an `AuditLogEntry` recording actor, target user, and timestamp.
 - `ExpenseService.ContributeForUserAsync` (GDPR contributor) chain-follows merge tombstones via `IUserService.GetMergedSourceIdsAsync`.
 
@@ -309,10 +309,10 @@ Stored as string via `HasConversion<string>()`.
 - **Budget:** `IBudgetService.GetActiveYearAsync()`, `IBudgetService.GetCategoriesByYearAsync(yearId)`, `IBudgetService.GetCategoryAsync(id)` — read-only category lookups.
 - **Teams:** `ITeamService.GetEffectiveBudgetCoordinatorTeamIdsAsync(userId)`, `ITeamService.IsCoordinatorOfBudgetCategoryAsync(userId, categoryId)` *(new narrow method)* — coordinator resolution and authz.
 - **Users/Identity:** `IUserService.GetByIdsAsync(...)` — display names for queues. `IUserService.GetMergedSourceIdsAsync(...)` — merge-tombstone follow-through on GDPR export.
-- **Finance:** `IFinanceService.GetTransactionByHoldedDocIdAsync(holdedDocId)` *(new narrow method)* — used by the back-flow step appended to `HoldedSyncJob`. Existing `IHoldedClient` is extended with `CreatePurchaseDocumentAsync`, `UpdatePurchaseDocumentTagsAsync`, and an attachment-upload variant.
+- **Holded** (new sibling section — see "Sibling section: Holded" below): `IHoldedClient.CreatePurchaseDocumentAsync`, `IHoldedClient.UpdatePurchaseDocumentTagsAsync`, `IHoldedClient.UploadAttachmentAsync`, `IHoldedClient.GetPurchaseDocumentAsync`. Holded ships its own section doc and its own narrow surface; Expenses is its first consumer.
 - **Audit Log:** `IAuditLogService.LogAsync(...)` — every state transition + category override + IBAN reveal.
 
-Budget, Teams, Users, and Finance never call into Expenses.
+Budget, Teams, Users, and Holded never call into Expenses.
 
 ## Architecture
 
@@ -326,13 +326,13 @@ Budget, Teams, Users, and Finance never call into Expenses.
 - `IExpenseRepository` (impl `Humans.Infrastructure/Repositories/ExpenseRepository.cs`, §15b Singleton + `IDbContextFactory`) is the only file that touches Expense tables via `DbContext`. Atomic per-method operations; multi-entity mutations (e.g., approve + outbox-insert) are single repository methods inside one short-lived `DbContext`.
 - `IExpenseAttachmentStorageService` (impl `Humans.Infrastructure/Services/ExpenseAttachmentFilesystemStorage.cs`) handles filesystem reads/writes under a configured root (`ExpenseAttachments:Root`). API: `Task<Guid> StoreAsync(Stream, string ext, string contentType)`, `Task<Stream> OpenReadAsync(Guid id, string ext)`, `Task DeleteAsync(Guid id, string ext)`. No DB access.
 - `ISepaPaymentFileBuilder` (impl in `Humans.Application` — pure XML composition, no IO) — generates pain.001.001.09 XML from a list of approved reports plus org-level config (creditor IBAN, BIC, name, NIF). Unit-testable in isolation.
-- `IHoldedClient` is extended with `CreatePurchaseDocumentAsync(...)`, `UpdatePurchaseDocumentTagsAsync(...)`, and `UploadAttachmentAsync(...)`. Lives in `Humans.Infrastructure/Services/HoldedClient.cs` (existing typed `HttpClient`).
-- `HoldedExpenseOutboxJob` is a Hangfire recurring job at `0 * * * * *` (every minute at second 0). Idempotent: processes only `ProcessedAt IS NULL AND FailedPermanently = false` rows; bounded retry with `RetryCount`-driven exponential backoff.
-- `HoldedSyncJob` is extended with a final step (the back-flow) that scans for `SepaSent` reports whose Holded transaction is now fully paid, transitions them to `Paid`, and writes audit-log entries. Same job, same cadence.
+- `IHoldedClient` is **owned by the new `Holded` sibling section**, not by Expenses (see "Sibling section: Holded" below). Expenses is the first consumer; future Finance/Holded sync work extends the same surface. Interface lives at `Humans.Application/Interfaces/Holded/IHoldedClient.cs`; impl at `Humans.Infrastructure/Services/Holded/HoldedClient.cs` (typed `HttpClient`). API key from `HOLDED_API_KEY` env var only; never logged.
+- `HoldedExpenseOutboxJob` is a Hangfire recurring job at `*/1 * * * *` (every minute, 5-field cron). Idempotent: processes only `ProcessedAt IS NULL AND FailedPermanently = false` rows; bounded retry with `RetryCount`-driven exponential backoff. Lives in Expenses (`Humans.Infrastructure/Jobs/HoldedExpenseOutboxJob.cs`) since the outbox table is owned by Expenses; the job consumes the Holded section's `IHoldedClient` like any other caller.
+- `ExpensePaidPollingJob` is a Hangfire recurring job at `*/15 * * * *`. Pulls all `SepaSent` reports, polls Holded per-report via `IHoldedClient.GetPurchaseDocumentAsync`, transitions to `Paid`. Bounded by a per-run cap (50 reports) to keep API load reasonable. Lives in Expenses for the same reason as the outbox job.
 - `IbanFormatter` (`Humans.Application.Helpers.IbanFormatter`) — static helper with `Mask(string iban)` returning `NL75****123` format. Centralizes the masking pattern for logs/error/audit. A code-review rule (project-rule atom) forbids logging raw IBANs.
 - **Decorator decision — no caching decorator.** Member-facing routes are scoped to one user's own reports (cheap query). Coordinator and FinanceAdmin queues are admin-only, low-traffic. Same rationale as Budget / Finance / Governance.
 - **Cross-domain navs:** none. `BudgetCategoryId`, `SubmitterUserId`, `*ByUserId` are FK-only with no navigation properties.
-- **Cross-section calls** route through `IBudgetService` (read-only), `ITeamService` (read-only), `IUserService` (read-only), `IFinanceService` (read-only), and `IAuditLogService` (write-only).
+- **Cross-section calls** route through `IBudgetService` (read-only), `ITeamService` (read-only), `IUserService` (read-only), `IHoldedClient` (read + write — sibling section), and `IAuditLogService` (write-only).
 - **Architecture test** — `tests/Humans.Application.Tests/Architecture/ExpensesArchitectureTests.cs` pins the shape: no EF Core import in service, no cross-section repositories injected, no direct foreign-table access.
 - **Authorization** — resource-based (design-rules §11): `ExpenseReportAuthorizationHandler` + `ExpenseReportOperationRequirement` gate every per-report action against the report (submitter? coordinator of the report's category? FinanceAdmin? Admin?). The IBAN read/write is its own narrow handler (`IbanAccessHandler`) covering self / FinanceAdmin-in-report-context / Admin-on-admin-page.
 - **GDPR** — `ExpenseService.ContributeForUserAsync` registered as `IUserDataContributor`. Returns the user's reports, lines, attachment metadata (filename, size, content-type — bytes referenced via attachment URLs, not inlined), `Profile.Iban`, and audit-log entries where they're the actor or subject. Chain-follows merge tombstones.
@@ -366,20 +366,34 @@ Budget, Teams, Users, and Finance never call into Expenses.
 ### Holded → Paid back-flow
 
 ```
-[HoldedSyncJob existing pull completes]
-  ↓ follow-up step:
-  SELECT er.Id, ht.LastSyncedAt
-  FROM expense_reports er
-  JOIN holded_transactions ht ON ht.HoldedDocId = er.HoldedDocId
-  WHERE er.Status = 'SepaSent'
-    AND ht.PaymentsPending = 0
-    AND ht.ApprovedAt IS NOT NULL
+[ExpensePaidPollingJob — every 15 min, capped at 50 reports per run]
+  pulls expense_reports where Status = 'SepaSent' (oldest SepaSentAt first)
   ↓
-  for each match:
-    expense_reports.Status = Paid
-    expense_reports.PaidAt = ht.LastSyncedAt
-    AuditLogEntry written
+  for each row:
+    GET Holded /api/invoicing/v1/documents/purchase/{HoldedDocId}
+    if response.paymentsPending == 0 AND response.approvedAt != null:
+      ↓ (single DB transaction)
+      expense_reports.Status = Paid
+      expense_reports.PaidAt = clock.GetCurrentInstant()
+      AuditLogEntry written
+    else:
+      no-op; will be polled again next cycle
+  on transient error (5xx, network) → log + continue (next cycle retries)
+  on 404 (Holded doc deleted) → log warning, leave SepaSent for manual review
 ```
+
+## Sibling section: Holded
+
+Expenses depends on a thin **`Holded`** section that owns the HTTP client surface and configuration for the Holded API. Expenses is the first consumer; the broader Finance/Holded reconciliation described in `docs/sections/Finance.md` is a future evolution that will extend the same `IHoldedClient` surface (and may add tables of its own — `holded_transactions`, etc.) without breaking Expenses' contract.
+
+**Owning section:** `Holded` (new top-level)
+**Owned tables:** none in v1.
+**Owning services:** `IHoldedClient` (impl `HoldedClient`).
+**Status:** (A) New section.
+
+In v1, `Holded` ships exactly four methods on `IHoldedClient` — those needed by Expenses: `CreatePurchaseDocumentAsync`, `UpdatePurchaseDocumentTagsAsync`, `UploadAttachmentAsync`, `GetPurchaseDocumentAsync`. API base URL and auth header are configured from `HOLDED_API_KEY` env var (no `appsettings.json` fallback). Errors are surfaced as a small `HoldedApiException` hierarchy distinguishing transient (retry-eligible) vs permanent (4xx) failures so consumers can choose retry policy.
+
+A separate `docs/sections/Holded.md` invariant doc captures: API key handling, retry semantics, EUR-only assumption, and the explicit out-of-scope statement that v1 has no transaction-pull / sync job (that lives in the future Finance section).
 
 ## Future cleanup (out of v1)
 
