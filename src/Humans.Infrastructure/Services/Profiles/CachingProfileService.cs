@@ -677,4 +677,14 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
         }
         return downgrades;
     }
+
+    public async Task<bool> SetIbanAsync(Guid userId, string? iban, CancellationToken ct = default)
+    {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
+        var result = await inner.SetIbanAsync(userId, iban, ct);
+        if (result)
+            await RefreshEntryAsync(userId, ct);
+        return result;
+    }
 }

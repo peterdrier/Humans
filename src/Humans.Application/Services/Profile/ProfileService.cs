@@ -949,4 +949,29 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         CancellationToken ct) =>
         _profileRepository.ReassignSubAggregatesToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
 
+    public async Task<bool> SetIbanAsync(Guid userId, string? iban, CancellationToken ct = default)
+    {
+        var profile = await _profileRepository.GetByUserIdAsync(userId, ct);
+        if (profile is null)
+            return false;
+
+        var normalized = string.IsNullOrWhiteSpace(iban) ? null : iban.Replace(" ", "").Replace(" ", "").ToUpperInvariant();
+        var isClearing = normalized is null;
+
+        profile.Iban = normalized;
+        profile.UpdatedAt = _clock.GetCurrentInstant();
+        await _profileRepository.UpdateAsync(profile, ct);
+
+        await _auditLogService.LogAsync(
+            isClearing ? AuditAction.IbanRemove : AuditAction.IbanSet,
+            nameof(Domain.Entities.Profile), userId,
+            isClearing ? "IBAN removed" : "IBAN set",
+            userId);
+
+        _logger.LogInformation(
+            "IBAN {Action} for user {UserId}", isClearing ? "removed" : "set", userId);
+
+        return true;
+    }
+
 }
