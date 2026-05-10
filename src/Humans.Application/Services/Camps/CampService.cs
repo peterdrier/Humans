@@ -1690,6 +1690,8 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             .Distinct()
             .ToList();
         var users = await _userService.GetByIdsAsync(userIds, cancellationToken);
+        // User.DisplayName ≡ Profile.BurnerName post-write-through-sync (issue #692) —
+        // see memory/architecture/burnername-is-the-display-name.md.
         var userMap = users.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.DisplayName);
 
         static string ResolveBurnerName(Guid userId, IReadOnlyDictionary<Guid, string> names) =>

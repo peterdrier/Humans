@@ -439,6 +439,8 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
         return rows
             .Select(r =>
             {
+                // User.DisplayName ≡ Profile.BurnerName post-write-through-sync (issue #692) —
+                // see memory/architecture/burnername-is-the-display-name.md.
                 var name = users.TryGetValue(r.UserId, out var u) ? u.DisplayName : r.UserId.ToString();
                 return (r.UserId, BurnerName: name, r.Count);
             })

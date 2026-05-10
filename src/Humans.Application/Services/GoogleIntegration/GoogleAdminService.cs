@@ -141,6 +141,9 @@ public sealed class GoogleAdminService : IGoogleAdminService
                     CreationTime: account.CreationTime,
                     LastLoginTime: account.LastLoginTime,
                     MatchedUserId: matched?.UserId,
+                    // User.DisplayName ≡ Profile.BurnerName post-write-through-sync (issue #692);
+                    // skipping per-account profile lookup in this bulk list — see
+                    // memory/architecture/burnername-is-the-display-name.md.
                     MatchedBurnerName: matchedUser?.DisplayName,
                     IsUsedAsPrimary: isUsedAsPrimary,
                     IsEnrolledIn2Sv: account.IsEnrolledIn2Sv,
