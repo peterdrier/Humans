@@ -9,7 +9,6 @@ using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Teams;
 using Humans.Infrastructure.Services.Teams;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
@@ -24,7 +23,6 @@ public sealed class CachingTeamServiceTests : IDisposable
     private readonly DbContextOptions<HumansDbContext> _options;
     private readonly HumansDbContext _dbContext;
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 3, 1, 12, 0));
-    private readonly IMemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
     private readonly ServiceProvider _serviceProvider;
     private readonly CachingTeamService _service;
 
@@ -61,7 +59,6 @@ public sealed class CachingTeamServiceTests : IDisposable
         ITeamRepository teamRepository = new TeamRepository(new TestDbContextFactory(_options));
         _service = new CachingTeamService(
             teamRepository,
-            _cache,
             _serviceProvider.GetRequiredService<IServiceScopeFactory>(),
             NullLogger<CachingTeamService>.Instance);
     }
@@ -141,7 +138,6 @@ public sealed class CachingTeamServiceTests : IDisposable
     public void Dispose()
     {
         _dbContext.Dispose();
-        _cache.Dispose();
         _serviceProvider.Dispose();
     }
 }

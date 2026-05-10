@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
 using Humans.Application;
 using Humans.Application.DTOs;
-using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
@@ -9,7 +8,6 @@ using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Domain.ValueObjects;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NodaTime;
@@ -25,21 +23,19 @@ public sealed class CachingTeamService : ITeamService, IUserMerge
 {
     public const string InnerServiceKey = "team-inner";
 
-    private static readonly TimeSpan TeamsTtl = TimeSpan.FromMinutes(10);
-
     private readonly ITeamRepository _teamRepository;
-    private readonly IMemoryCache _cache;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<CachingTeamService> _logger;
+    private readonly ConcurrentDictionary<Guid, TeamInfo> _byTeamId = new();
+    private readonly SemaphoreSlim _loadLock = new(1, 1);
+    private volatile bool _isLoaded;
 
     public CachingTeamService(
         ITeamRepository teamRepository,
-        IMemoryCache cache,
         IServiceScopeFactory scopeFactory,
         ILogger<CachingTeamService> logger)
     {
         _teamRepository = teamRepository;
-        _cache = cache;
         _scopeFactory = scopeFactory;
         _logger = logger;
     }
@@ -546,28 +542,27 @@ public sealed class CachingTeamService : ITeamService, IUserMerge
 
     public void RemoveMemberFromAllTeamsCache(Guid userId)
     {
-        _cache.TryUpdateExistingValue<ConcurrentDictionary<Guid, TeamInfo>>(
-            CacheKeys.Teams,
-            teams =>
+        foreach (var kvp in _byTeamId)
+        {
+            if (kvp.Value.Members.Any(m => m.UserId == userId))
             {
-                foreach (var kvp in teams)
+                _byTeamId[kvp.Key] = kvp.Value with
                 {
-                    if (kvp.Value.Members.Any(m => m.UserId == userId))
-                    {
-                        teams[kvp.Key] = kvp.Value with
-                        {
-                            Members = kvp.Value.Members
-                                .Where(m => m.UserId != userId)
-                                .ToList()
-                        };
-                    }
-                }
-            });
+                    Members = kvp.Value.Members
+                        .Where(m => m.UserId != userId)
+                        .ToList()
+                };
+            }
+        }
     }
 
     public void InvalidateActiveTeamsCache() => InvalidateTeamsCache();
 
-    private void InvalidateTeamsCache() => _cache.InvalidateTeams();
+    private void InvalidateTeamsCache()
+    {
+        _byTeamId.Clear();
+        _isLoaded = false;
+    }
 
     public async Task<int> RevokeAllMembershipsAsync(
         Guid userId,
@@ -652,9 +647,23 @@ public sealed class CachingTeamService : ITeamService, IUserMerge
 
     private async Task<ConcurrentDictionary<Guid, TeamInfo>> GetTeamsByIdAsync(CancellationToken ct)
     {
-        return await _cache.GetOrCreateAsync(CacheKeys.Teams, async entry =>
+        if (_isLoaded)
+            return _byTeamId;
+
+        await WarmAllAsync(ct);
+        return _byTeamId;
+    }
+
+    public async Task WarmAllAsync(CancellationToken ct = default)
+    {
+        if (_isLoaded)
+            return;
+
+        await _loadLock.WaitAsync(ct);
+        try
         {
-            entry.AbsoluteExpirationRelativeToNow = TeamsTtl;
+            if (_isLoaded)
+                return;
 
             var teams = await _teamRepository.GetAllWithMembersAsync(ct);
             var allUserIds = teams
@@ -668,9 +677,16 @@ public sealed class CachingTeamService : ITeamService, IUserMerge
                 ? new Dictionary<Guid, User>()
                 : await userService.GetByIdsAsync(allUserIds, ct);
 
-            return new ConcurrentDictionary<Guid, TeamInfo>(
-                teams.ToDictionary(t => t.Id, t => BuildTeamInfo(t, users)));
-        }) ?? new();
+            _byTeamId.Clear();
+            foreach (var team in teams)
+                _byTeamId[team.Id] = BuildTeamInfo(team, users);
+
+            _isLoaded = true;
+        }
+        finally
+        {
+            _loadLock.Release();
+        }
     }
 
     private bool IsUserCoordinatorOfActiveTeam(

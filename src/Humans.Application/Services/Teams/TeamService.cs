@@ -277,7 +277,6 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
                     && t.IsActive
                     && ((t.ParentTeamId is null && t.IsPublicPage)
                         || (t.ParentTeamId is not null && t.IsPromotedToDirectory)))
-                .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
                 .Select(t => CreateDirectorySummary(t, teamsById, userId))
                 .ToList();
 
@@ -310,22 +309,18 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
 
         var myTeams = summaries
             .Where(t => t.IsCurrentUserMember)
-            .OrderBy(t => t.SortKey, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         var departments = summaries
             .Where(t => !t.IsCurrentUserMember && !t.IsSystemTeam && !t.IsHidden)
-            .OrderBy(t => t.SortKey, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         var systemTeams = summaries
             .Where(t => !t.IsCurrentUserMember && t.IsSystemTeam && !t.IsHidden)
-            .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         var hiddenTeams = summaries
             .Where(t => !t.IsCurrentUserMember && t.IsHidden)
-            .OrderBy(t => t.SortKey, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         return new TeamDirectoryResult(

@@ -5,6 +5,7 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Caching;
+using Humans.Infrastructure.HostedServices;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Repositories.Teams;
 using Humans.Infrastructure.Services.Teams;
@@ -35,6 +36,7 @@ internal static class TeamsSectionExtensions
         services.AddSingleton<CachingTeamService>();
         services.AddSingleton<ITeamService>(sp => sp.GetRequiredService<CachingTeamService>());
         services.AddSingleton<IUserMerge>(sp => sp.GetRequiredService<CachingTeamService>());
+        services.AddHostedService<TeamsWarmupHostedService>();
 
         services.AddScoped<ITeamPageService, TeamsTeamPageService>();
 
