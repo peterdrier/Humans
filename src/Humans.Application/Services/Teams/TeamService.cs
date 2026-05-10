@@ -605,7 +605,8 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
         if (becomingChild && usersNeedingShiftAuthorizationInvalidation.Count > 0)
         {
             foreach (var userId in usersNeedingShiftAuthorizationInvalidation)
-                await SystemTeamSync.SyncCoordinatorsMembershipForUserAsync(userId, cancellationToken);
+                await SystemTeamSync.SyncMembershipForUserAsync(
+                    userId, SystemTeamType.Coordinators, cancellationToken);
         }
 
         _logger.LogInformation("Updated team {TeamId} ({TeamName})", teamId, name);

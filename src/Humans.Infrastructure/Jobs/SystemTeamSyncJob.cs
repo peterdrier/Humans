@@ -394,11 +394,27 @@ public class SystemTeamSyncJob : ISystemTeamSync
         report?.Steps.Add(step);
     }
 
+    public Task SyncMembershipForUserAsync(
+        Guid userId,
+        SystemTeamType teamType,
+        CancellationToken cancellationToken = default) =>
+        teamType switch
+        {
+            SystemTeamType.Volunteers => SyncVolunteersMembershipForUserAsync(userId, cancellationToken),
+            SystemTeamType.Coordinators => SyncCoordinatorsMembershipForUserAsync(userId, cancellationToken),
+            SystemTeamType.Colaboradors => SyncTierMembershipForUserAsync(
+                userId, MembershipTier.Colaborador, SystemTeamType.Colaboradors, SystemTeamIds.Colaboradors, cancellationToken),
+            SystemTeamType.Asociados => SyncTierMembershipForUserAsync(
+                userId, MembershipTier.Asociado, SystemTeamType.Asociados, SystemTeamIds.Asociados, cancellationToken),
+            SystemTeamType.BarrioLeads => SyncBarrioLeadsMembershipForUserAsync(userId, cancellationToken),
+            _ => throw new ArgumentOutOfRangeException(nameof(teamType), teamType, "System team does not support per-user sync.")
+        };
+
     /// <summary>
     /// Syncs Volunteers team membership for a single user. Call this after approving
     /// a volunteer or after they complete their required consents.
     /// </summary>
-    public async Task SyncVolunteersMembershipForUserAsync(Guid userId, CancellationToken cancellationToken = default)
+    private async Task SyncVolunteersMembershipForUserAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         var team = await _teamService.GetSystemTeamWithActiveMembersAsync(
             SystemTeamType.Volunteers, cancellationToken);
@@ -430,7 +446,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
     /// Syncs Coordinators team membership for a single user. Call this after changing
     /// a team member's role to/from Coordinator.
     /// </summary>
-    public async Task SyncCoordinatorsMembershipForUserAsync(Guid userId, CancellationToken cancellationToken = default)
+    private async Task SyncCoordinatorsMembershipForUserAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         var team = await _teamService.GetSystemTeamWithActiveMembersAsync(
             SystemTeamType.Coordinators, cancellationToken);
@@ -453,12 +469,6 @@ public class SystemTeamSyncJob : ISystemTeamSync
     /// Syncs Colaboradors team membership for a single user. Call this after approving
     /// a Colaborador application or after a user's Colaborador status changes.
     /// </summary>
-    public Task SyncColaboradorsMembershipForUserAsync(Guid userId, CancellationToken cancellationToken = default) =>
-        SyncTierMembershipForUserAsync(userId, MembershipTier.Colaborador, SystemTeamType.Colaboradors, SystemTeamIds.Colaboradors, cancellationToken);
-
-    public Task SyncAsociadosMembershipForUserAsync(Guid userId, CancellationToken cancellationToken = default) =>
-        SyncTierMembershipForUserAsync(userId, MembershipTier.Asociado, SystemTeamType.Asociados, SystemTeamIds.Asociados, cancellationToken);
-
     private async Task SyncTierMembershipForUserAsync(Guid userId, MembershipTier tier,
         SystemTeamType teamType, Guid teamId, CancellationToken cancellationToken)
     {
@@ -514,7 +524,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
     /// Syncs Barrio Leads team membership for a single user. Call this after adding
     /// or removing a camp lead assignment.
     /// </summary>
-    public async Task SyncBarrioLeadsMembershipForUserAsync(Guid userId, CancellationToken cancellationToken = default)
+    private async Task SyncBarrioLeadsMembershipForUserAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         var team = await _teamService.GetSystemTeamWithActiveMembersAsync(
             SystemTeamType.BarrioLeads, cancellationToken);

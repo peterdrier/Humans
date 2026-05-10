@@ -661,7 +661,8 @@ public interface ITeamRepository
     /// <summary>
     /// Does the user currently hold <see cref="TeamMemberRole.Coordinator"/>
     /// on any active department team (<see cref="Team.ParentTeamId"/> is null)?
-    /// Used by <c>SystemTeamSyncJob.SyncCoordinatorsMembershipForUserAsync</c>.
+    /// Used by <c>SystemTeamSyncJob.SyncMembershipForUserAsync</c> for the
+    /// Coordinators system team.
     /// </summary>
     Task<bool> IsActiveDepartmentCoordinatorAsync(
         Guid userId, CancellationToken ct = default);

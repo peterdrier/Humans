@@ -303,7 +303,7 @@ public class TeamAdminController : HumansTeamControllerBase
             var wasCoordinator = await _teamService.RemoveMemberAsync(team.Id, userId, user.Id);
             if (wasCoordinator)
             {
-                await _systemTeamSyncJob.SyncCoordinatorsMembershipForUserAsync(userId);
+                await _systemTeamSyncJob.SyncMembershipForUserAsync(userId, SystemTeamType.Coordinators);
             }
             SetSuccess(_localizer["TeamAdmin_MemberRemoved"].Value);
         }
@@ -909,7 +909,7 @@ public class TeamAdminController : HumansTeamControllerBase
         try
         {
             await _teamService.AssignToRoleAsync(roleId, model.UserId, user.Id);
-            await _systemTeamSyncJob.SyncCoordinatorsMembershipForUserAsync(model.UserId);
+            await _systemTeamSyncJob.SyncMembershipForUserAsync(model.UserId, SystemTeamType.Coordinators);
             SetSuccess("Member assigned to role.");
         }
         catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
@@ -942,7 +942,7 @@ public class TeamAdminController : HumansTeamControllerBase
 
             if (userId.HasValue)
             {
-                await _systemTeamSyncJob.SyncCoordinatorsMembershipForUserAsync(userId.Value);
+                await _systemTeamSyncJob.SyncMembershipForUserAsync(userId.Value, SystemTeamType.Coordinators);
             }
 
             SetSuccess("Member unassigned from role.");
