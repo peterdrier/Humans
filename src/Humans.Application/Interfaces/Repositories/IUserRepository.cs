@@ -188,6 +188,18 @@ public interface IUserRepository : IRepository
     Task<int> DeleteAllExternalLoginsForUserAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
+    /// Returns every <c>AspNetUserLogins</c> <c>(LoginProvider, ProviderKey)</c>
+    /// row for each of the given users, grouped by <c>UserId</c>. Users without
+    /// any external login are absent from the dictionary. Used by the legacy
+    /// email backfill to pick a <c>(Provider, ProviderKey)</c> pair so the
+    /// inserted <c>UserEmail</c> row can be linked via
+    /// <c>IUserEmailService.LinkAsync</c> in one step instead of two.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, IReadOnlyList<(string Provider, string ProviderKey)>>>
+        GetExternalLoginsByUserIdsAsync(
+            IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
+
+    /// <summary>
     /// Migrates every <c>AspNetUserLogins</c> row from
     /// <paramref name="sourceUserId"/> to <paramref name="targetUserId"/>.
     /// <c>IdentityUserLogin&lt;Guid&gt;</c>'s primary key is

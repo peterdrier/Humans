@@ -401,4 +401,9 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
 
     public Task<int> DeleteAllExternalLoginsForUserAsync(Guid userId, CancellationToken ct = default) =>
         _repo.DeleteAllExternalLoginsForUserAsync(userId, ct);
+
+    public Task<IReadOnlyDictionary<Guid, IReadOnlyList<(string Provider, string ProviderKey)>>>
+        GetExternalLoginsByUserIdsAsync(
+            IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
+        _repo.GetExternalLoginsByUserIdsAsync(userIds, ct);
 }

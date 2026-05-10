@@ -1023,6 +1023,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         public Task<IReadOnlySet<Guid>> GetMergedSourceIdsAsync(Guid targetUserId, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<IReadOnlyList<Guid>> GetUsersWithLoginsButNoEmailsAsync(CancellationToken ct = default) => throw new NotSupportedException();
         public Task<int> DeleteAllExternalLoginsForUserAsync(Guid userId, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<IReadOnlyDictionary<Guid, IReadOnlyList<(string Provider, string ProviderKey)>>> GetExternalLoginsByUserIdsAsync(IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) => throw new NotSupportedException();
     }
 
     private sealed class FakeTeamService : ITeamService

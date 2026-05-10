@@ -412,7 +412,7 @@ public class EmailProblemsServiceTests
     }
 
     [HumansFact]
-    public async Task BackfillLegacyIdentityEmails_FlaggedUser_CallsAddVerifiedAndReturnsPair()
+    public async Task BackfillLegacyIdentityEmails_FlaggedUser_NoExternalLogin_CallsAddVerifiedAndReturnsPair()
     {
         var userId = Guid.NewGuid();
         var user = MakeUser(userId, "legacy@x.com");
@@ -424,6 +424,35 @@ public class EmailProblemsServiceTests
             .Which.Should().Be((userId, "legacy@x.com"));
         await _userEmailService.Received(1).AddVerifiedEmailAsync(
             userId, "legacy@x.com", Arg.Any<CancellationToken>());
+        await _userEmailService.DidNotReceive().LinkAsync(
+            Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task BackfillLegacyIdentityEmails_FlaggedUser_WithExternalLogin_CallsLinkAsync()
+    {
+        var userId = Guid.NewGuid();
+        var user = MakeUser(userId, "legacy@x.com");
+        SetUsersWithProfiles((user, MakeProfile(userId)));
+
+        var logins = new Dictionary<Guid, IReadOnlyList<(string Provider, string ProviderKey)>>
+        {
+            [userId] = new List<(string, string)> { ("Google", "google-sub-42") }
+        };
+        _userService.GetExternalLoginsByUserIdsAsync(
+                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(logins);
+
+        var result = await Sut.BackfillLegacyIdentityEmailsAsync();
+
+        result.Should().ContainSingle()
+            .Which.Should().Be((userId, "legacy@x.com"));
+        await _userEmailService.Received(1).LinkAsync(
+            userId, "Google", "google-sub-42", "legacy@x.com", userId,
+            Arg.Any<CancellationToken>());
+        await _userEmailService.DidNotReceive().AddVerifiedEmailAsync(
+            Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

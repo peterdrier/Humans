@@ -304,48 +304,6 @@ public class GoogleController : HumansControllerBase
         return RedirectToAction(nameof(AllGroups));
     }
 
-    // --- Email Backfill (from AdminController) ---
-
-    [HttpPost("CheckEmailMismatches")]
-    [Authorize(Policy = PolicyNames.AdminOnly)]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> CheckEmailMismatches()
-    {
-        try
-        {
-            var result = await _googleSyncService.GetEmailMismatchesAsync();
-            TempData[TempDataKeys.EmailBackfillResult] = System.Text.Json.JsonSerializer.Serialize(result);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to check email mismatches");
-            SetError($"Email mismatch check failed: {ex.Message}");
-            return RedirectToAction(nameof(Index));
-        }
-
-        return RedirectToAction(nameof(EmailBackfillReview));
-    }
-
-    [HttpGet("EmailBackfillReview")]
-    [Authorize(Policy = PolicyNames.AdminOnly)]
-    public IActionResult EmailBackfillReview()
-    {
-        EmailBackfillResult? result = null;
-        if (TempData[TempDataKeys.EmailBackfillResult] is string json)
-        {
-            result = System.Text.Json.JsonSerializer.Deserialize<EmailBackfillResult>(json);
-        }
-
-        if (result is null)
-        {
-            SetInfo("No email mismatch results to display. Run the check first.");
-            return RedirectToAction(nameof(Index));
-        }
-
-        return View(result);
-    }
-
-
     // --- Resource Sync Dashboard (from TeamController) ---
 
     [HttpGet("Sync")]
