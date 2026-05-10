@@ -362,4 +362,35 @@ public class CampServiceEarlyEntryTests : IDisposable
             Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
+
+    // ==========================================================================
+    // Removal-path HasEarlyEntry cascade (issue nobodies-collective#490)
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task RemoveCampMemberAsync_ClearsHasEarlyEntry()
+    {
+        await SeedSettingsAsync();
+        var (camp, season) = await SeedCampWithSeasonAsync(initialEeSlotCount: 5);
+        var member = await SeedActiveMemberWithEarlyEntryAsync(season.Id);
+
+        await _service.RemoveCampMemberAsync(camp.Id, member.Id, Guid.NewGuid());
+
+        var reloaded = await _dbContext.CampMembers.AsNoTracking().FirstAsync(m => m.Id == member.Id);
+        reloaded.HasEarlyEntry.Should().BeFalse();
+        reloaded.Status.Should().Be(CampMemberStatus.Removed);
+    }
+
+    [HumansFact]
+    public async Task LeaveCampAsync_ClearsHasEarlyEntry()
+    {
+        await SeedSettingsAsync();
+        var (_, season) = await SeedCampWithSeasonAsync(initialEeSlotCount: 5);
+        var member = await SeedActiveMemberWithEarlyEntryAsync(season.Id);
+
+        await _service.LeaveCampAsync(member.Id, member.UserId);
+
+        var reloaded = await _dbContext.CampMembers.AsNoTracking().FirstAsync(m => m.Id == member.Id);
+        reloaded.HasEarlyEntry.Should().BeFalse();
+    }
 }

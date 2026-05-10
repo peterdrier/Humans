@@ -1398,6 +1398,40 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         }
     }
 
+    /// <summary>
+    /// Single transition point for moving a CampMember to Removed. Handles the
+    /// role-assignment cascade, the state/timestamp flip (including clearing
+    /// HasEarlyEntry), and the audit-log entry. Callers handle status preconditions
+    /// before invoking and any post-effects (notifications, lead-badge
+    /// invalidation) afterward.
+    /// </summary>
+    private async Task TransitionMemberToRemovedAsync(
+        CampMember member,
+        Guid actorUserId,
+        AuditAction auditAction,
+        string auditMessage,
+        bool cascadeRoleAssignments,
+        CancellationToken cancellationToken)
+    {
+        if (cascadeRoleAssignments)
+        {
+            await _campRoleService.Value.RemoveAllForMemberAsync(
+                member.Id, actorUserId, cancellationToken);
+        }
+
+        var now = _clock.GetCurrentInstant();
+        member.Status = CampMemberStatus.Removed;
+        member.RemovedAt = now;
+        member.RemovedByUserId = actorUserId;
+        member.HasEarlyEntry = false;
+        await _repo.SaveMemberAsync(member, cancellationToken);
+
+        await _auditLog.LogAsync(
+            auditAction, nameof(CampMember), member.Id,
+            auditMessage, actorUserId,
+            relatedEntityId: member.CampSeason.CampId, relatedEntityType: nameof(Camp));
+    }
+
     public async Task<CampMemberRequestResult> RequestCampMembershipAsync(
         Guid campId, Guid userId, CancellationToken cancellationToken = default)
     {
@@ -1489,24 +1523,17 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             ?? throw new InvalidOperationException("Camp member record not found.");
 
         if (member.Status != CampMemberStatus.Pending)
-        {
             throw new InvalidOperationException($"Cannot reject a camp member with status {member.Status}.");
-        }
 
         var requesterUserId = member.UserId;
         var seasonId = member.CampSeasonId;
 
-        var now = _clock.GetCurrentInstant();
-        member.Status = CampMemberStatus.Removed;
-        member.RemovedAt = now;
-        member.RemovedByUserId = rejectedByUserId;
-        await _repo.SaveMemberAsync(member, cancellationToken);
-
-        await _auditLog.LogAsync(
-            AuditAction.CampMemberRejected, nameof(CampMember), member.Id,
+        await TransitionMemberToRemovedAsync(
+            member, rejectedByUserId,
+            AuditAction.CampMemberRejected,
             $"Rejected camp membership request for season {member.CampSeason.Year}",
-            rejectedByUserId,
-            relatedEntityId: scopedCampId, relatedEntityType: nameof(Camp));
+            cascadeRoleAssignments: false,
+            cancellationToken);
 
         await InvalidateLeadBadgesAsync(scopedCampId, cancellationToken);
 
@@ -1536,21 +1563,14 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             ?? throw new InvalidOperationException("Camp member record not found.");
 
         if (member.Status != CampMemberStatus.Active)
-        {
             throw new InvalidOperationException($"Cannot remove a camp member with status {member.Status}.");
-        }
 
-        var now = _clock.GetCurrentInstant();
-        member.Status = CampMemberStatus.Removed;
-        member.RemovedAt = now;
-        member.RemovedByUserId = removedByUserId;
-        await _repo.SaveMemberAsync(member, cancellationToken);
-
-        await _auditLog.LogAsync(
-            AuditAction.CampMemberRemoved, nameof(CampMember), member.Id,
+        await TransitionMemberToRemovedAsync(
+            member, removedByUserId,
+            AuditAction.CampMemberRemoved,
             $"Removed camp member from season {member.CampSeason.Year}",
-            removedByUserId,
-            relatedEntityId: scopedCampId, relatedEntityType: nameof(Camp));
+            cascadeRoleAssignments: true,
+            cancellationToken);
     }
 
     public async Task<Guid> AddCampMemberAsLeadAsync(Guid campSeasonId, Guid userId, Guid actorUserId, CancellationToken cancellationToken = default)
@@ -1587,24 +1607,14 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             ?? throw new InvalidOperationException("Camp member record not found.");
 
         if (member.Status != CampMemberStatus.Pending)
-        {
             throw new InvalidOperationException($"Cannot withdraw a camp member request with status {member.Status}.");
-        }
 
-        // Cascade role-assignment cleanup before soft-delete (C1 fix).
-        await _campRoleService.Value.RemoveAllForMemberAsync(campMemberId, userId, cancellationToken);
-
-        var now = _clock.GetCurrentInstant();
-        member.Status = CampMemberStatus.Removed;
-        member.RemovedAt = now;
-        member.RemovedByUserId = userId;
-        await _repo.SaveMemberAsync(member, cancellationToken);
-
-        await _auditLog.LogAsync(
-            AuditAction.CampMemberWithdrawn, nameof(CampMember), member.Id,
+        await TransitionMemberToRemovedAsync(
+            member, userId,
+            AuditAction.CampMemberWithdrawn,
             $"Withdrew camp membership request for season {member.CampSeason.Year}",
-            userId,
-            relatedEntityId: member.CampSeason.CampId, relatedEntityType: nameof(Camp));
+            cascadeRoleAssignments: true,
+            cancellationToken);
 
         await InvalidateLeadBadgesAsync(member.CampSeason.CampId, cancellationToken);
     }
@@ -1616,24 +1626,14 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             ?? throw new InvalidOperationException("Camp member record not found.");
 
         if (member.Status != CampMemberStatus.Active)
-        {
             throw new InvalidOperationException($"Cannot leave a camp membership with status {member.Status}.");
-        }
 
-        // Cascade role-assignment cleanup before soft-delete (C1 fix).
-        await _campRoleService.Value.RemoveAllForMemberAsync(campMemberId, userId, cancellationToken);
-
-        var now = _clock.GetCurrentInstant();
-        member.Status = CampMemberStatus.Removed;
-        member.RemovedAt = now;
-        member.RemovedByUserId = userId;
-        await _repo.SaveMemberAsync(member, cancellationToken);
-
-        await _auditLog.LogAsync(
-            AuditAction.CampMemberLeft, nameof(CampMember), member.Id,
+        await TransitionMemberToRemovedAsync(
+            member, userId,
+            AuditAction.CampMemberLeft,
             $"Left camp season {member.CampSeason.Year}",
-            userId,
-            relatedEntityId: member.CampSeason.CampId, relatedEntityType: nameof(Camp));
+            cascadeRoleAssignments: true,
+            cancellationToken);
     }
 
     public async Task<CampMembershipState> GetMembershipStateForCampAsync(
