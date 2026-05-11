@@ -350,23 +350,6 @@ public sealed class ExpensesController : HumansControllerBase
 
         try
         {
-            // Service.RemoveLineAsync handles line + attachment row removal.
-            // Delete the on-disk file separately (storage is not a repository).
-            var line = report.Lines.FirstOrDefault(l => l.Id == lineId);
-            if (line?.Attachment is not null)
-            {
-                try
-                {
-                    await _storage.DeleteAsync(line.Attachment.Id, line.Attachment.Extension);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex,
-                        "Could not delete attachment file {AttachmentId} while removing line {LineId}",
-                        line.Attachment.Id, lineId);
-                }
-            }
-
             await _service.RemoveLineAsync(id, user.Id, lineId);
             SetSuccess("Line removed.");
         }
@@ -392,9 +375,15 @@ public sealed class ExpensesController : HumansControllerBase
         if (report is null) return NotFound();
         if (report.SubmitterUserId != user.Id) return Forbid();
 
+        if (file is null || file.Length == 0)
+        {
+            SetError("Please select a file.");
+            return RedirectToAction(nameof(Edit), new { id });
+        }
+
         try
         {
-            await using var stream = file!.OpenReadStream();
+            await using var stream = file.OpenReadStream();
             await _service.AttachFileToLineAsync(id, user.Id, lineId, file.FileName, file.ContentType, stream);
             SetSuccess("Attachment uploaded.");
         }
