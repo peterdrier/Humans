@@ -2,7 +2,6 @@ using System.Text;
 using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Expenses;
 using Humans.Application.Interfaces.Profiles;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Services.Expenses.Dtos;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
@@ -27,7 +26,6 @@ public sealed class ExpensesController : HumansControllerBase
     private readonly IExpenseAttachmentStorageService _storage;
     private readonly IBudgetService _budgetService;
     private readonly IProfileService _profileService;
-    private readonly IExpenseRepository _repo;
     private readonly IClock _clock;
     private readonly IAuthorizationService _authService;
     private readonly ISepaPaymentFileBuilder _sepaBuilder;
@@ -40,7 +38,6 @@ public sealed class ExpensesController : HumansControllerBase
         IExpenseAttachmentStorageService storage,
         IBudgetService budgetService,
         IProfileService profileService,
-        IExpenseRepository repo,
         IClock clock,
         IAuthorizationService authService,
         ISepaPaymentFileBuilder sepaBuilder,
@@ -52,7 +49,6 @@ public sealed class ExpensesController : HumansControllerBase
         _storage = storage;
         _budgetService = budgetService;
         _profileService = profileService;
-        _repo = repo;
         _clock = clock;
         _authService = authService;
         _sepaBuilder = sepaBuilder;
@@ -582,13 +578,17 @@ public sealed class ExpensesController : HumansControllerBase
             var (errorResult, user) = await RequireCurrentUserAsync();
             if (errorResult is not null) return errorResult;
 
-            var attachment = await _repo.GetAttachmentByIdAsync(attachmentId);
-            if (attachment is null) return NotFound();
-
-            // Locate the report that owns this attachment, then check View permission
-            // via ExpenseReportAuthorizationHandler (submitter / coordinator / FinanceAdmin / Admin).
+            // Locate the report that owns this attachment, then pull the attachment from
+            // its lines. View permission is enforced by FindReportOwningAttachmentAsync
+            // (submitter / coordinator / FinanceAdmin / Admin); reports outside that scope
+            // simply don't surface, so we return NotFound rather than leaking existence.
             var owningReport = await FindReportOwningAttachmentAsync(attachmentId, user.Id);
-            if (owningReport is null) return Forbid();
+            if (owningReport is null) return NotFound();
+
+            var attachment = owningReport.Lines
+                .Select(l => l.Attachment)
+                .FirstOrDefault(a => a?.Id == attachmentId);
+            if (attachment is null) return NotFound();
 
             var stream = await _storage.OpenReadAsync(attachment.Id, attachment.Extension);
             return File(stream, attachment.ContentType, attachment.OriginalFileName);
