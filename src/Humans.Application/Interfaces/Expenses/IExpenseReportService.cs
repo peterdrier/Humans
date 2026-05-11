@@ -96,4 +96,17 @@ public interface IExpenseReportService : IApplicationService
     /// (so the Submitted -> CoordinatorEndorsed step is required).</summary>
     Task<bool> CategoryRequiresCoordinatorEndorsementAsync(
         Guid categoryId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Drains the Holded expense outbox: creates or updates purchase documents in Holded
+    /// for each approved expense report. Called by the recurring job.
+    /// </summary>
+    Task DrainHoldedOutboxAsync(int batchSize, CancellationToken ct = default);
+
+    /// <summary>
+    /// Polls Holded for payment status on SepaSent expense reports and marks them Paid
+    /// when their Holded purchase document shows PaymentsPending == 0 and ApprovedAt != null.
+    /// Called by the recurring job.
+    /// </summary>
+    Task PollHoldedPaidStatusAsync(int batchSize, CancellationToken ct = default);
 }

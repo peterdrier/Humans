@@ -116,11 +116,13 @@ public sealed class ExpenseReportAuthorizationHandlerTests
     }
 
     [HumansFact]
-    public async Task Submitter_CannotWithdraw_ApprovedReport()
+    public async Task Submitter_CanWithdraw_ApprovedReport()
     {
+        // Per docs/sections/Expenses.md invariants: terminal alternates include
+        // Withdrawn from Approved (before SEPA payout is sent).
         var report = MakeReport(SubmitterId, ExpenseReportStatus.Approved);
         var result = await EvaluateAsync(CreateUser(SubmitterId), report, ExpenseReportOperation.Withdraw);
-        result.Should().BeFalse();
+        result.Should().BeTrue();
     }
 
     // ─── Submitter cannot approve/endorse/coordinatorreject ──────────────────
@@ -256,11 +258,13 @@ public sealed class ExpenseReportAuthorizationHandlerTests
     }
 
     [HumansFact]
-    public async Task FinanceAdmin_CannotEndorse_AnyReport()
+    public async Task FinanceAdmin_CanEndorse_SubmittedReport()
     {
+        // Per docs/sections/Expenses.md actors table: FinanceAdmin has all coordinator
+        // capabilities, including Endorse (gated to Submitted status).
         var report = MakeReport(SubmitterId, ExpenseReportStatus.Submitted);
         var result = await EvaluateAsync(CreateUserWithRole(RoleNames.FinanceAdmin), report, ExpenseReportOperation.Endorse);
-        result.Should().BeFalse();
+        result.Should().BeTrue();
     }
 
     // ─── Admin × all privileged operations ────────────────────────────────────

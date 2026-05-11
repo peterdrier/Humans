@@ -2,6 +2,7 @@ using AwesomeAssertions;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Expenses;
+using Humans.Application.Interfaces.Holded;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
@@ -58,6 +59,7 @@ public class ExpenseReportServiceTests
             _userService,
             _profileService,
             _auditLogService,
+            Substitute.For<IHoldedClient>(),
             new FakeClock(FakeNow),
             NullLogger<ExpenseReportService>.Instance);
     }

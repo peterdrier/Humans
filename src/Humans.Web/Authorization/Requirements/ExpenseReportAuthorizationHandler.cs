@@ -35,12 +35,14 @@ public sealed class ExpenseReportAuthorizationHandler
             return;
 
         var op = requirement.Operation;
-        var isAdmin = RoleChecks.IsAdmin(context.User);
         var isFinanceAdmin = RoleChecks.IsFinanceAdmin(context.User); // includes Admin
         var isSubmitter = resource.SubmitterUserId == userId.Value;
 
-        // ─── Admin: broad access ───────────────────────────────────────────────
-        if (isAdmin)
+        // ─── FinanceAdmin + Admin: broad access ────────────────────────────────
+        // Per docs/sections/Expenses.md actors table, FinanceAdmin has all coordinator
+        // capabilities (Endorse, CoordinatorReject — gated to Submitted) plus the
+        // finance-only operations. Admin is a superset of FinanceAdmin.
+        if (isFinanceAdmin)
         {
             if (op is ExpenseReportOperation.View
                     or ExpenseReportOperation.Approve
@@ -51,16 +53,9 @@ public sealed class ExpenseReportAuthorizationHandler
                 context.Succeed(requirement);
                 return;
             }
-        }
 
-        // ─── FinanceAdmin (non-Admin): approve/reject/override/sepa ───────────
-        if (isFinanceAdmin && !isAdmin)
-        {
-            if (op is ExpenseReportOperation.View
-                    or ExpenseReportOperation.Approve
-                    or ExpenseReportOperation.FinanceReject
-                    or ExpenseReportOperation.CategoryOverride
-                    or ExpenseReportOperation.IncludeInSepaPayout)
+            if (op is ExpenseReportOperation.Endorse or ExpenseReportOperation.CoordinatorReject
+                && resource.Status == ExpenseReportStatus.Submitted)
             {
                 context.Succeed(requirement);
                 return;
@@ -93,11 +88,13 @@ public sealed class ExpenseReportAuthorizationHandler
                 return;
             }
 
-            // Submitter can withdraw while in non-final statuses
+            // Submitter can withdraw from any non-terminal post-Draft status.
+            // Per docs/sections/Expenses.md invariant: terminal alternates include
+            // Withdrawn from Submitted/CoordinatorEndorsed/Approved.
             if (op == ExpenseReportOperation.Withdraw &&
-                resource.Status is ExpenseReportStatus.Draft
-                    or ExpenseReportStatus.Submitted
-                    or ExpenseReportStatus.CoordinatorEndorsed)
+                resource.Status is ExpenseReportStatus.Submitted
+                    or ExpenseReportStatus.CoordinatorEndorsed
+                    or ExpenseReportStatus.Approved)
             {
                 context.Succeed(requirement);
                 return;

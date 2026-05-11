@@ -170,7 +170,7 @@ public sealed class ExpensesController : HumansControllerBase
                 : "(unknown category)";
 
             var editableStatuses = new[] { ExpenseReportStatus.Draft, ExpenseReportStatus.Submitted, ExpenseReportStatus.CoordinatorEndorsed };
-            var withdrawableStatuses = new[] { ExpenseReportStatus.Draft, ExpenseReportStatus.Submitted, ExpenseReportStatus.CoordinatorEndorsed };
+            var withdrawableStatuses = new[] { ExpenseReportStatus.Submitted, ExpenseReportStatus.CoordinatorEndorsed, ExpenseReportStatus.Approved };
 
             var model = new ExpenseDetailViewModel
             {

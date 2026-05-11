@@ -955,7 +955,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         if (profile is null)
             return false;
 
-        var normalized = string.IsNullOrWhiteSpace(iban) ? null : iban.Replace(" ", "").Replace(" ", "").ToUpperInvariant();
+        var normalized = string.IsNullOrWhiteSpace(iban) ? null : iban.Replace(" ", "").ToUpperInvariant();
         var isClearing = normalized is null;
 
         profile.Iban = normalized;

@@ -1,8 +1,10 @@
 using Humans.Application.Extensions;
+using Humans.Application.Helpers;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Expenses;
 using Humans.Application.Interfaces.Gdpr;
+using Humans.Application.Interfaces.Holded;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
@@ -30,6 +32,7 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
     private readonly IUserService _userService;
     private readonly IProfileService _profileService;
     private readonly IAuditLogService _auditLogService;
+    private readonly IHoldedClient _holdedClient;
     private readonly IClock _clock;
     private readonly ILogger<ExpenseReportService> _logger;
 
@@ -41,6 +44,7 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
         IUserService userService,
         IProfileService profileService,
         IAuditLogService auditLogService,
+        IHoldedClient holdedClient,
         IClock clock,
         ILogger<ExpenseReportService> logger)
     {
@@ -51,6 +55,7 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
         _userService = userService;
         _profileService = profileService;
         _auditLogService = auditLogService;
+        _holdedClient = holdedClient;
         _clock = clock;
         _logger = logger;
     }
@@ -538,6 +543,223 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
         // TODO: Wire up real coordinator detection once ITeamService exposes TeamInfo with Coordinators.
         // For now returns false — submitter→FinanceAdmin path is the only active workflow.
         return Task.FromResult(false);
+    }
+
+    // ─────────────────────────── Holded Outbox ───────────────────────────────
+
+    /// <inheritdoc/>
+    public async Task DrainHoldedOutboxAsync(int batchSize, CancellationToken ct = default)
+    {
+        var events = await _repo
+            .GetUnprocessedOutboxAsync(batchSize, ct);
+
+        if (events.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var outboxEvent in events)
+        {
+            try
+            {
+                var report = await _repo
+                    .GetByIdAsync(outboxEvent.ExpenseReportId, ct);
+
+                if (report is null)
+                {
+                    _logger.LogWarning(
+                        "Outbox event {OutboxEventId} references missing report {ReportId} — marking permanently failed",
+                        outboxEvent.Id, outboxEvent.ExpenseReportId);
+                    await _repo.MarkOutboxFailedPermanentlyAsync(
+                        outboxEvent.Id,
+                        "Report not found",
+                        _clock.GetCurrentInstant(),
+                        ct);
+                    continue;
+                }
+
+                var category = await _budgetService.GetCategoryByIdAsync(report.BudgetCategoryId);
+                var tag = BuildHoldedTag(category?.BudgetGroup?.Name, category?.Name);
+
+                var users = await _userService.GetByIdsAsync(
+                    [report.SubmitterUserId], ct);
+                var submitterName = users.TryGetValue(report.SubmitterUserId, out var user)
+                    ? user.DisplayName
+                    : "Unknown";
+
+                var now = _clock.GetCurrentInstant();
+
+                switch (outboxEvent.EventType)
+                {
+                    case HoldedExpenseOutboxEventType.CreateIncomingDoc:
+                        await ProcessHoldedCreateAsync(
+                            outboxEvent.Id, report, tag, submitterName, now, ct);
+                        break;
+
+                    case HoldedExpenseOutboxEventType.UpdateIncomingDocTag:
+                        await ProcessHoldedUpdateTagAsync(
+                            outboxEvent.Id, report, tag, now, ct);
+                        break;
+
+                    default:
+                        throw new InvalidOperationException(
+                            $"Unknown outbox event type '{outboxEvent.EventType}'.");
+                }
+            }
+            catch (HoldedTransientException ex)
+            {
+                _logger.LogWarning(
+                    ex,
+                    "Transient error processing Holded outbox event {OutboxEventId} — will retry",
+                    outboxEvent.Id);
+                await _repo.IncrementOutboxRetryAsync(
+                    outboxEvent.Id, ex.Message, ct);
+            }
+            catch (HoldedPermanentException ex)
+            {
+                _logger.LogError(
+                    ex,
+                    "Permanent error processing Holded outbox event {OutboxEventId} — HTTP {StatusCode}",
+                    outboxEvent.Id, ex.StatusCode);
+                await _repo.MarkOutboxFailedPermanentlyAsync(
+                    outboxEvent.Id, ex.Message, _clock.GetCurrentInstant(), ct);
+            }
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task PollHoldedPaidStatusAsync(int batchSize, CancellationToken ct = default)
+    {
+        var reports = await _repo.GetByStatusAsync(ExpenseReportStatus.SepaSent, ct);
+
+        var batch = reports
+            .OrderBy(r => r.SepaSentAt ?? r.CreatedAt)
+            .Take(batchSize)
+            .ToList();
+
+        if (batch.Count == 0)
+            return;
+
+        foreach (var report in batch)
+        {
+            if (report.HoldedDocId is null)
+            {
+                _logger.LogWarning(
+                    "SepaSent report {ReportId} has no HoldedDocId — skipping",
+                    report.Id);
+                continue;
+            }
+
+            try
+            {
+                var doc = await _holdedClient.GetPurchaseDocumentAsync(report.HoldedDocId, ct);
+
+                if (doc.PaymentsPending == 0 && doc.ApprovedAt is not null)
+                {
+                    await this.MarkPaidAsync(report.Id, ct);
+                    _logger.LogInformation(
+                        "Marked expense report {ReportId} as Paid (HoldedDocId={HoldedDocId})",
+                        report.Id, report.HoldedDocId);
+                }
+            }
+            catch (HoldedPermanentException ex) when (ex.StatusCode == 404)
+            {
+                _logger.LogWarning(
+                    "Holded doc {HoldedDocId} for report {ReportId} deleted out-of-band — skipping",
+                    report.HoldedDocId, report.Id);
+            }
+            catch (HoldedTransientException ex)
+            {
+                _logger.LogWarning(
+                    ex,
+                    "Transient error polling Holded for report {ReportId} (HoldedDocId={HoldedDocId}) — will retry next run",
+                    report.Id, report.HoldedDocId);
+            }
+        }
+    }
+
+    private async Task ProcessHoldedCreateAsync(
+        Guid outboxEventId,
+        ExpenseReportDto report,
+        string tag,
+        string submitterName,
+        Instant now,
+        CancellationToken ct)
+    {
+        var input = new HoldedPurchaseDocumentInput
+        {
+            ContactName = submitterName,
+            Date = report.SubmittedAt ?? report.CreatedAt,
+            Description = report.Note ?? "",
+            Tags = [tag],
+            Lines = report.Lines
+                .OrderBy(l => l.SortOrder)
+                .Select(l => new HoldedPurchaseDocumentLineInput
+                {
+                    Description = l.Description,
+                    Amount = l.Amount,
+                    Tags = [tag],
+                })
+                .ToList(),
+        };
+
+        var holdedDocId = await _holdedClient.CreatePurchaseDocumentAsync(input, ct);
+
+        foreach (var line in report.Lines.OrderBy(l => l.SortOrder))
+        {
+            if (line.AttachmentId is null || line.Attachment is null)
+            {
+                continue;
+            }
+
+            var stream = await _storage.OpenReadAsync(
+                line.Attachment.Id, line.Attachment.Extension, ct);
+            try
+            {
+                await _holdedClient.UploadAttachmentAsync(
+                    holdedDocId,
+                    new HoldedAttachmentInput
+                    {
+                        FileName = line.Attachment.OriginalFileName,
+                        ContentType = line.Attachment.ContentType,
+                        Content = stream,
+                    },
+                    ct);
+            }
+            finally
+            {
+                await stream.DisposeAsync();
+            }
+        }
+
+        await _repo.SetHoldedDocIdAsync(
+            report.Id, holdedDocId, outboxEventId, now, ct);
+    }
+
+    private async Task ProcessHoldedUpdateTagAsync(
+        Guid outboxEventId,
+        ExpenseReportDto report,
+        string tag,
+        Instant now,
+        CancellationToken ct)
+    {
+        await _holdedClient.UpdatePurchaseDocumentTagsAsync(
+            report.HoldedDocId!,
+            [tag],
+            ct);
+
+        await _repo.MarkOutboxProcessedAsync(outboxEventId, now, ct);
+    }
+
+    private static string BuildHoldedTag(string? groupName, string? categoryName)
+    {
+        var groupSlug = string.IsNullOrWhiteSpace(groupName)
+            ? "unknown"
+            : SlugHelper.GenerateSlug(groupName);
+        var categorySlug = string.IsNullOrWhiteSpace(categoryName)
+            ? "unknown"
+            : SlugHelper.GenerateSlug(categoryName);
+        return $"{groupSlug}-{categorySlug}";
     }
 
     // ─────────────────────────── Private Helpers ─────────────────────────────
