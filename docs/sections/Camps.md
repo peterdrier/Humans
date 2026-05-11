@@ -229,7 +229,7 @@ Admin pages live under `/Camps/Admin/*` — never `/Admin/Camps/*` (per `docs/ar
 - Anonymous visitors **cannot** register camps or edit any camp data.
 - Anonymous visitors **cannot** see role assignments — the public Camp Details page does not render the roles section.
 - Camp leads **cannot** manage the role-definition catalogue (create, edit, deactivate). Only CampAdmin or Admin can.
-- A camp lead **cannot** assign or unassign roles on a camp other than their own (controller verifies `assignment.CampSeason.CampId == camp.Id` before delegating to the service).
+- A camp lead **cannot** assign or unassign roles on a camp other than their own (controller verifies `assignment.CampSeasonId` is in the set of season IDs on the resolved `CampLookup` before delegating to the service).
 - Anyone **cannot** assign a role to a human who is not an Active CampMember of the same season — service rejects with `MemberNotActive` / `MemberSeasonMismatch`.
 - Camp leads **cannot** edit `EeSlotCount` (CampAdmin/Admin only).
 - Anyone **cannot** grant EE to a non-Active member (service rejects with `MemberNotActive`).
