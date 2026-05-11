@@ -77,7 +77,7 @@ public class CampAdminController : HumansControllerBase
 
             // Resolve lead display names via IUserService — CampLead.User nav is forbidden cross-domain.
             var leadUserIds = campsWithLeads
-                .SelectMany(c => c.Leads.Where(l => l.IsActive).Select(l => l.UserId))
+                .SelectMany(c => (c.Leads ?? []).Where(l => l.IsActive).Select(l => l.UserId))
                 .Distinct()
                 .ToList();
             var leadUsers = await _userService.GetByIdsAsync(leadUserIds);
@@ -94,7 +94,7 @@ public class CampAdminController : HumansControllerBase
                     Zone = season?.SoundZone?.ToString() ?? "—",
                     SpaceRequirement = season?.SpaceRequirement?.ToString() ?? "—",
                     YearsParticipating = c.TimesAtNowhere,
-                    Leads = c.Leads
+                    Leads = (c.Leads ?? [])
                         .Where(l => l.IsActive)
                         .Select(l => new CampLeadViewModel
                         {
@@ -292,7 +292,7 @@ public class CampAdminController : HumansControllerBase
 
             // Resolve lead display names + emails via IUserService.
             var leadUserIds = camps
-                .SelectMany(c => c.Leads.Where(l => l.IsActive).Select(l => l.UserId))
+                .SelectMany(c => (c.Leads ?? []).Where(l => l.IsActive).Select(l => l.UserId))
                 .Distinct()
                 .ToList();
             var leadUsers = await _userService.GetByIdsAsync(leadUserIds);
@@ -310,7 +310,7 @@ public class CampAdminController : HumansControllerBase
                 var season = camp.Seasons.FirstOrDefault();
                 if (season is null) continue;
 
-                var leads = string.Join("; ", camp.Leads
+                var leads = string.Join("; ", (camp.Leads ?? [])
                     .Where(l => l.IsActive)
                     .Select(l =>
                     {

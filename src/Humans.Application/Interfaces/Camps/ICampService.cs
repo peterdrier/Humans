@@ -44,7 +44,7 @@ public interface ICampService : IApplicationService
     /// Gets camps for a year without lead data.
     /// </summary>
     /// <remarks>
-    /// <see cref="CampInfo.Leads"/> is always empty; leads are not loaded by
+    /// <see cref="CampInfo.Leads"/> is always null; leads are not loaded by
     /// the year-directory query. Use <see cref="GetCampsWithLeadsForYearAsync"/>
     /// when lead data is needed.
     /// </remarks>
@@ -198,7 +198,7 @@ public sealed record CampInfo(
     bool IsSwissCamp,
     int TimesAtNowhere,
     IReadOnlyList<CampSeasonInfo> Seasons,
-    IReadOnlyList<CampLeadInfo> Leads);
+    IReadOnlyList<CampLeadInfo>? Leads);
 
 public sealed record CampSeasonInfo(
     Guid Id,

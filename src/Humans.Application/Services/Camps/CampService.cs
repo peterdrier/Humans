@@ -309,7 +309,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         int year, CancellationToken cancellationToken = default)
     {
         var camps = await GetCampEntitiesForYearAsync(year, cancellationToken);
-        return camps.Select(CreateCampInfo).ToList();
+        return camps.Select(camp => CreateCampInfo(camp, includeLeads: false)).ToList();
     }
 
     private async Task<List<Camp>> GetCampEntitiesForYearAsync(
@@ -372,7 +372,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
     {
         var camps = await _repo.GetCampsWithLeadsForYearAsync(
             year, statusFilter, cancellationToken);
-        return camps.Select(CreateCampInfo).ToList();
+        return camps.Select(camp => CreateCampInfo(camp, includeLeads: true)).ToList();
     }
 
     public async Task<CampSettings> GetSettingsAsync(CancellationToken cancellationToken = default)
@@ -468,7 +468,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             camp.TimesAtNowhere);
     }
 
-    private static CampInfo CreateCampInfo(Camp camp)
+    private static CampInfo CreateCampInfo(Camp camp, bool includeLeads)
     {
         return new CampInfo(
             camp.Id,
@@ -478,7 +478,9 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             camp.IsSwissCamp,
             camp.TimesAtNowhere,
             camp.Seasons.Select(s => CreateCampSeasonInfo(s, camp.Slug)).ToList(),
-            camp.Leads.Select(l => new CampLeadInfo(l.Id, l.UserId, l.IsActive)).ToList());
+            includeLeads
+                ? camp.Leads.Select(l => new CampLeadInfo(l.Id, l.UserId, l.IsActive)).ToList()
+                : null);
     }
 
     private static CampSeasonInfo CreateCampSeasonInfo(CampSeason season, string campSlug)
