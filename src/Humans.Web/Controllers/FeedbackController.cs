@@ -128,7 +128,7 @@ public class FeedbackController : HumansControllerBase
                 Category = r.Category,
                 Status = r.Status,
                 Description = r.Description.Length > 100 ? r.Description[..100] + "..." : r.Description,
-                ReporterName = r.User.DisplayName,
+                ReporterName = r.ReporterName,
                 ReporterUserId = r.UserId,
                 PageUrl = r.PageUrl,
                 CreatedAt = r.CreatedAt.ToDateTimeUtc(),
@@ -138,9 +138,9 @@ public class FeedbackController : HumansControllerBase
                 NeedsReply = (r.LastReporterMessageAt.HasValue &&
                     (!r.LastAdminMessageAt.HasValue || r.LastReporterMessageAt > r.LastAdminMessageAt)) ||
                     (r.Status == FeedbackStatus.Open && !r.LastAdminMessageAt.HasValue),
-                AssignedToName = r.AssignedToUser?.DisplayName,
+                AssignedToName = r.AssignedToName,
                 AssignedToUserId = r.AssignedToUserId,
-                AssignedToTeamName = r.AssignedToTeam?.Name,
+                AssignedToTeamName = r.AssignedToTeamName,
                 AssignedToTeamId = r.AssignedToTeamId
             }).ToList()
         };
@@ -332,7 +332,7 @@ public class FeedbackController : HumansControllerBase
         return RedirectToAction(nameof(Index), new { selected = id });
     }
 
-    private static FeedbackDetailViewModel MapDetailViewModel(FeedbackReport report, bool isAdmin)
+    private static FeedbackDetailViewModel MapDetailViewModel(FeedbackReportInfo report, bool isAdmin)
     {
         return new FeedbackDetailViewModel
         {
@@ -345,22 +345,22 @@ public class FeedbackController : HumansControllerBase
             AdditionalContext = report.AdditionalContext,
             ScreenshotUrl = report.ScreenshotStoragePath is not null
                 ? $"/{report.ScreenshotStoragePath}" : null,
-            ReporterName = report.User.DisplayName,
+            ReporterName = report.ReporterName,
             ReporterUserId = report.UserId,
             GitHubIssueNumber = report.GitHubIssueNumber,
             CreatedAt = report.CreatedAt.ToDateTimeUtc(),
             UpdatedAt = report.UpdatedAt.ToDateTimeUtc(),
             ResolvedAt = report.ResolvedAt?.ToDateTimeUtc(),
-            ResolvedByName = report.ResolvedByUser?.DisplayName,
+            ResolvedByName = report.ResolvedByName,
             IsAdmin = isAdmin,
             AssignedToUserId = report.AssignedToUserId,
-            AssignedToName = report.AssignedToUser?.DisplayName,
+            AssignedToName = report.AssignedToName,
             AssignedToTeamId = report.AssignedToTeamId,
-            AssignedToTeamName = report.AssignedToTeam?.Name,
+            AssignedToTeamName = report.AssignedToTeamName,
             Messages = report.Messages.Select(m => new FeedbackMessageViewModel
             {
                 Id = m.Id,
-                SenderName = m.SenderUser?.DisplayName ?? "Unknown",
+                SenderName = m.SenderName ?? "Unknown",
                 SenderUserId = m.SenderUserId,
                 Content = m.Content,
                 CreatedAt = m.CreatedAt.ToDateTimeUtc(),

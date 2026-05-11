@@ -146,17 +146,17 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
         return report;
     }
 
-    public async Task<FeedbackReport?> GetFeedbackByIdAsync(
+    public async Task<FeedbackReportInfo?> GetFeedbackByIdAsync(
         Guid id, CancellationToken cancellationToken = default)
     {
         var report = await _repository.GetByIdAsync(id, cancellationToken);
         if (report is null) return null;
 
         await StitchCrossDomainNavsAsync([report], cancellationToken);
-        return report;
+        return CreateFeedbackReportInfo(report);
     }
 
-    public async Task<IReadOnlyList<FeedbackReport>> GetFeedbackListAsync(
+    public async Task<IReadOnlyList<FeedbackReportInfo>> GetFeedbackListAsync(
         FeedbackStatus? status = null, FeedbackCategory? category = null,
         Guid? reporterUserId = null, Guid? assignedToUserId = null,
         Guid? assignedToTeamId = null, bool? unassignedOnly = null,
@@ -168,7 +168,7 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
             unassignedOnly, limit, cancellationToken);
 
         await StitchCrossDomainNavsAsync(reports, cancellationToken);
-        return reports;
+        return reports.Select(CreateFeedbackReportInfo).ToList();
     }
 
     public async Task UpdateStatusAsync(
@@ -330,12 +330,12 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
         }
     }
 
-    public async Task<IReadOnlyList<FeedbackMessage>> GetMessagesAsync(
+    public async Task<IReadOnlyList<FeedbackMessageInfo>> GetMessagesAsync(
         Guid reportId, CancellationToken cancellationToken = default)
     {
         var messages = await _repository.GetMessagesAsync(reportId, cancellationToken);
         await StitchMessageSendersAsync(messages, cancellationToken);
-        return messages;
+        return messages.Select(CreateFeedbackMessageInfo).ToList();
     }
 
     public async Task UpdateAssignmentAsync(
@@ -580,6 +580,43 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
             }
         }
     }
+
+    private static FeedbackReportInfo CreateFeedbackReportInfo(FeedbackReport report) =>
+        new(
+            report.Id,
+            report.UserId,
+            report.Category,
+            report.Description,
+            report.PageUrl,
+            report.UserAgent,
+            report.AdditionalContext,
+            report.ScreenshotStoragePath,
+            report.Status,
+            report.GitHubIssueNumber,
+            report.LastReporterMessageAt,
+            report.LastAdminMessageAt,
+            report.CreatedAt,
+            report.UpdatedAt,
+            report.ResolvedAt,
+            report.ResolvedByUserId,
+            report.AssignedToUserId,
+            report.AssignedToTeamId,
+            report.User?.DisplayName ?? report.UserId.ToString(),
+            report.User?.Email,
+            report.User?.PreferredLanguage ?? "en",
+            report.ResolvedByUser?.DisplayName,
+            report.AssignedToUser?.DisplayName,
+            report.AssignedToTeam?.Name,
+            report.Messages.Select(CreateFeedbackMessageInfo).ToList());
+
+    private static FeedbackMessageInfo CreateFeedbackMessageInfo(FeedbackMessage message) =>
+        new(
+            message.Id,
+            message.FeedbackReportId,
+            message.SenderUserId,
+            message.SenderUser?.DisplayName,
+            message.Content,
+            message.CreatedAt);
 
 #pragma warning restore CS0618
 }

@@ -188,7 +188,7 @@ public class FeedbackServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task GetFeedbackListAsync_StitchesReporterNav()
+    public async Task GetFeedbackListAsync_ReturnsReporterInfo()
     {
         var userId = Guid.NewGuid();
         _dbContext.Users.Add(new User { Id = userId, DisplayName = "Alice", Email = "a@a.com" });
@@ -200,10 +200,8 @@ public class FeedbackServiceTests : IDisposable
         var results = await _service.GetFeedbackListAsync();
 
         results.Should().ContainSingle();
-#pragma warning disable CS0618
-        results[0].User.Should().NotBeNull();
-        results[0].User.DisplayName.Should().Be("Alice");
-#pragma warning restore CS0618
+        results[0].ReporterName.Should().Be("Alice");
+        results[0].ReporterEmail.Should().Be("a@a.com");
     }
 
     [HumansFact]
