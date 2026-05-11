@@ -1227,6 +1227,8 @@ public sealed class TeamRepository : ITeamRepository
         if (team is null)
             return false;
 
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
+
         var memberIds = await db.TeamMembers
             .Where(tm => tm.TeamId == teamId)
             .Select(tm => tm.Id)
@@ -1253,6 +1255,7 @@ public sealed class TeamRepository : ITeamRepository
 
         db.Teams.Remove(team);
         await db.SaveChangesAsync(ct);
+        await tx.CommitAsync(ct);
 
         return true;
     }

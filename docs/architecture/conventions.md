@@ -58,7 +58,7 @@ See [`design-rules.md`](design-rules.md) §11 for the resource-based authorizati
 Two general rules apply at this layer:
 
 1. Web boundary protection for routes/pages/API endpoints via `[Authorize]` attributes or resource-based authorization handlers.
-2. Service/domain enforcement when violating the rule would create invalid state or bypass workflow policy — but service methods are otherwise auth-free; they trust the caller.
+2. Service/domain enforcement when violating the rule would create invalid state or bypass workflow policy — but service methods are otherwise auth-free; they trust the caller. The only auth exception is the §11 full-Admin destructive-delete guard.
 
 Do not rely on hidden buttons or view-only checks for anything important.
 

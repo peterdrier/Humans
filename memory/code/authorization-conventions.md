@@ -24,4 +24,6 @@ Prefer centralized authorization declarations and shared role-check helpers over
 
 **No `isPrivileged` booleans.** Don't pass auth decisions as parameters to services. Services are auth-free — authorization happens before the service is called.
 
+**Exception:** full-Admin destructive delete/reset service methods may use the shared `IAdminAuthorizationService.RequireCurrentUserIsAdminAsync` belt-and-suspenders guard. The route still needs `[Authorize(Roles = RoleNames.Admin)]`; this exception is not for resource-scoped auth or ordinary edits.
+
 **Related:** [`admin-role-superset`](admin-role-superset.md).
