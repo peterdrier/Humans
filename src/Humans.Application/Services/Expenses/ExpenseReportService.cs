@@ -73,16 +73,6 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
         CancellationToken ct = default)
         => _repo.GetForReviewQueueAsync(ct);
 
-    public async Task<IReadOnlyList<ExpenseReportDto>> GetApprovedUnpaidAsync(
-        CancellationToken ct = default)
-    {
-        var approved = await _repo.GetByStatusAsync(ExpenseReportStatus.Approved, ct);
-        var sepaSent = await _repo.GetByStatusAsync(ExpenseReportStatus.SepaSent, ct);
-        return approved.Concat(sepaSent)
-            .OrderBy(r => r.ApprovedAt ?? r.CreatedAt)
-            .ToList();
-    }
-
     public async Task<ExpenseReportDto?> GetReportOwningAttachmentAsync(
         Guid attachmentId, CancellationToken ct = default)
     {
@@ -243,21 +233,6 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
 
         var ok = await _repo.RemoveLineAsync(reportId, lineId, ct);
         if (!ok) throw new InvalidOperationException("Failed to remove line.");
-    }
-
-    public async Task AttachToLineAsync(
-        Guid reportId, Guid submitterUserId,
-        Guid lineId, Guid attachmentId,
-        CancellationToken ct = default)
-    {
-        // RequireEditableReportAsync loads with lines and enforces submitter + editable status.
-        var report = await RequireEditableReportAsync(reportId, submitterUserId, ct);
-
-        // Verify the line belongs to this report to prevent cross-report attachment abuse.
-        if (!report.Lines.Any(l => l.Id == lineId))
-            throw new UnauthorizedAccessException("Line does not belong to the specified report.");
-
-        await _repo.SetLineAttachmentAsync(lineId, attachmentId, ct);
     }
 
     /// <summary>Max attachment size validated at the service layer (20 MB).</summary>
@@ -508,27 +483,6 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
             AuditAction.ExpenseReject,
             "ExpenseReport", reportId,
             $"Finance rejected expense report: {reason}",
-            actorUserId);
-
-        return true;
-    }
-
-    public async Task<bool> CategoryOverrideAsync(
-        Guid reportId, Guid actorUserId, Guid newCategoryId,
-        CancellationToken ct = default)
-    {
-        var report = await _repo.GetByIdAsync(reportId, ct);
-        if (report is null) return false;
-
-        var outboxEventId = Guid.NewGuid();
-        var now = _clock.GetCurrentInstant();
-        var ok = await _repo.CategoryOverrideAsync(reportId, actorUserId, newCategoryId, now, outboxEventId, ct);
-        if (!ok) return false;
-
-        await _auditLogService.LogAsync(
-            AuditAction.ExpenseCategoryOverride,
-            "ExpenseReport", reportId,
-            $"Category overridden post-approval to {newCategoryId}.",
             actorUserId);
 
         return true;

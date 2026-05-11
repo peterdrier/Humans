@@ -201,23 +201,6 @@ public class ExpenseReportServiceTests
         loaded.Lines[0].Description.Should().Be("A updated");
     }
 
-    [HumansFact]
-    public async Task AttachToLineAsync_Links_Attachment()
-    {
-        var (_, category) = SetupActiveYear();
-        var submitter = Guid.NewGuid();
-        var id = await _sut.CreateDraftAsync(submitter, category.Id, null);
-        var lineId = await _sut.AddLineAsync(id, submitter, "A", 10m);
-
-        // Seed attachment directly through repo
-        var attachId = await _expenseRepo.AddAttachmentAsync(MakeAttachment(submitter));
-
-        await _sut.AttachToLineAsync(id, submitter, lineId, attachId);
-
-        var loaded = await _sut.GetAsync(id);
-        loaded!.Lines[0].AttachmentId.Should().Be(attachId);
-    }
-
     // ─────────────────── AttachFileToLineAsync / RemoveAttachmentFromLineAsync ───
 
     [HumansFact]
@@ -288,7 +271,7 @@ public class ExpenseReportServiceTests
         // Seed attachment directly through repo
         var attach = MakeAttachment(submitter);
         await _expenseRepo.AddAttachmentAsync(attach);
-        await _sut.AttachToLineAsync(id, submitter, lineId, attach.Id);
+        await _expenseRepo.SetLineAttachmentAsync(lineId, attach.Id);
 
         await _sut.RemoveAttachmentFromLineAsync(id, submitter, lineId);
 
@@ -328,7 +311,7 @@ public class ExpenseReportServiceTests
 
         var lineId = await _sut.AddLineAsync(id, submitter, "Item", 100m);
         var attachId = await _expenseRepo.AddAttachmentAsync(MakeAttachment(submitter));
-        await _sut.AttachToLineAsync(id, submitter, lineId, attachId);
+        await _expenseRepo.SetLineAttachmentAsync(lineId, attachId);
 
         SetupUserAndProfile(submitter, "Alice Tester", "ES9121000418450200051332");
 
@@ -377,7 +360,7 @@ public class ExpenseReportServiceTests
         var id = await _sut.CreateDraftAsync(submitter, category.Id, null);
         var lineId = await _sut.AddLineAsync(id, submitter, "Item", 50m);
         var attachId = await _expenseRepo.AddAttachmentAsync(MakeAttachment(submitter));
-        await _sut.AttachToLineAsync(id, submitter, lineId, attachId);
+        await _expenseRepo.SetLineAttachmentAsync(lineId, attachId);
 
         // Profile with no IBAN
         _profileService.GetProfileAsync(submitter, Arg.Any<CancellationToken>())
@@ -396,7 +379,7 @@ public class ExpenseReportServiceTests
         var id = await _sut.CreateDraftAsync(submitter, category.Id, null);
         var lineId = await _sut.AddLineAsync(id, submitter, "Item", 100m);
         var attachId = await _expenseRepo.AddAttachmentAsync(MakeAttachment(submitter));
-        await _sut.AttachToLineAsync(id, submitter, lineId, attachId);
+        await _expenseRepo.SetLineAttachmentAsync(lineId, attachId);
         SetupUserAndProfile(submitter, "Alice", "ES9121000418450200051332");
 
         await _sut.SubmitAsync(id, submitter);
@@ -604,28 +587,6 @@ public class ExpenseReportServiceTests
             Arg.Any<string>(), actor);
     }
 
-    [HumansFact]
-    public async Task CategoryOverrideAsync_UpdatesCategory_AndAudits()
-    {
-        var (_, category) = SetupActiveYear();
-        var actor = Guid.NewGuid();
-        var reportId = Guid.NewGuid();
-        var newCatId = Guid.NewGuid();
-        await SeedReportWithStatus(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
-            ExpenseReportStatus.Approved);
-
-        var ok = await _sut.CategoryOverrideAsync(reportId, actor, newCatId);
-        ok.Should().BeTrue();
-
-        var loaded = await _sut.GetAsync(reportId);
-        loaded!.BudgetCategoryId.Should().Be(newCatId);
-
-        await _auditLogService.Received(1).LogAsync(
-            AuditAction.ExpenseCategoryOverride,
-            "ExpenseReport", reportId,
-            Arg.Any<string>(), actor);
-    }
-
     // ─────────────────────────────── 4.8 ─────────────────────────────────────
 
     [HumansFact]
@@ -712,19 +673,6 @@ public class ExpenseReportServiceTests
         queue.Should().HaveCount(2);
         queue.Should().OnlyContain(r =>
             r.Status != ExpenseReportStatus.Draft && r.Status != ExpenseReportStatus.Withdrawn);
-    }
-
-    [HumansFact]
-    public async Task GetApprovedUnpaidAsync_ReturnsBothApprovedAndSepaSent()
-    {
-        var (_, category) = SetupActiveYear();
-        var yearId = Guid.NewGuid();
-        await SeedReportWithStatus(Guid.NewGuid(), Guid.NewGuid(), category.Id, yearId, ExpenseReportStatus.Approved);
-        await SeedReportWithStatus(Guid.NewGuid(), Guid.NewGuid(), category.Id, yearId, ExpenseReportStatus.SepaSent);
-        await SeedReportWithStatus(Guid.NewGuid(), Guid.NewGuid(), category.Id, yearId, ExpenseReportStatus.Draft);
-
-        var result = await _sut.GetApprovedUnpaidAsync();
-        result.Should().HaveCount(2);
     }
 
     [HumansFact]

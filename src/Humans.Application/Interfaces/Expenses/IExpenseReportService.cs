@@ -21,7 +21,6 @@ public interface IExpenseReportService : IApplicationService
     Task<IReadOnlyList<ExpenseReportDto>> GetCoordinatorQueueAsync(
         Guid coordinatorUserId, CancellationToken ct = default);
     Task<IReadOnlyList<ExpenseReportDto>> GetReviewQueueAsync(CancellationToken ct = default);
-    Task<IReadOnlyList<ExpenseReportDto>> GetApprovedUnpaidAsync(CancellationToken ct = default);
 
     Task<Guid> CreateDraftAsync(
         Guid submitterUserId, Guid budgetCategoryId, string? note,
@@ -44,11 +43,6 @@ public interface IExpenseReportService : IApplicationService
 
     Task RemoveLineAsync(
         Guid reportId, Guid submitterUserId, Guid lineId,
-        CancellationToken ct = default);
-
-    Task AttachToLineAsync(
-        Guid reportId, Guid submitterUserId,
-        Guid lineId, Guid attachmentId,
         CancellationToken ct = default);
 
     /// <summary>
@@ -89,10 +83,6 @@ public interface IExpenseReportService : IApplicationService
 
     Task<bool> FinanceRejectAsync(
         Guid reportId, Guid actorUserId, string reason,
-        CancellationToken ct = default);
-
-    Task<bool> CategoryOverrideAsync(
-        Guid reportId, Guid actorUserId, Guid newCategoryId,
         CancellationToken ct = default);
 
     Task<IReadOnlyList<Guid>> MarkSepaSentAsync(

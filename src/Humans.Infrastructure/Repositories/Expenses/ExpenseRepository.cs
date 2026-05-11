@@ -313,29 +313,6 @@ public sealed class ExpenseRepository : IExpenseRepository
         return true;
     }
 
-    public async Task<bool> CategoryOverrideAsync(
-        Guid reportId, Guid actorUserId, Guid newCategoryId,
-        Instant overriddenAt, Guid outboxEventId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var r = await ctx.ExpenseReports
-            .FirstOrDefaultAsync(x => x.Id == reportId, ct);
-        if (r is null || r.Status != ExpenseReportStatus.Approved) return false;
-        r.BudgetCategoryId = newCategoryId;
-        r.UpdatedAt = overriddenAt;
-
-        ctx.HoldedExpenseOutboxEvents.Add(new HoldedExpenseOutboxEvent
-        {
-            Id = outboxEventId,
-            ExpenseReportId = r.Id,
-            EventType = HoldedExpenseOutboxEventType.UpdateIncomingDocTag,
-            OccurredAt = overriddenAt
-        });
-
-        await ctx.SaveChangesAsync(ct);
-        return true;
-    }
-
     public async Task<IReadOnlyList<Guid>> MarkSepaSentAsync(
         IReadOnlyCollection<Guid> reportIds, Instant sepaSentAt,
         CancellationToken ct = default)

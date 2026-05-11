@@ -68,13 +68,6 @@ public interface IExpenseRepository : IRepository
         Guid reportId, Guid actorUserId,
         string reason, NodaTime.Instant rejectedAt, CancellationToken ct = default);
 
-    Task<bool> CategoryOverrideAsync(
-        Guid reportId, Guid actorUserId,
-        Guid newCategoryId,
-        NodaTime.Instant overriddenAt,
-        Guid outboxEventId,
-        CancellationToken ct = default);
-
     Task<IReadOnlyList<Guid>> MarkSepaSentAsync(
         IReadOnlyCollection<Guid> reportIds,
         NodaTime.Instant sepaSentAt,
