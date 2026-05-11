@@ -54,25 +54,16 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
 
     // ─────────────────────────────── Reads ───────────────────────────────────
 
-    public async Task<ExpenseReportDto?> GetAsync(Guid id, CancellationToken ct = default)
-    {
-        var report = await _repo.GetByIdWithLinesAsync(id, ct);
-        return report is null ? null : ToDto(report);
-    }
+    public Task<ExpenseReportDto?> GetAsync(Guid id, CancellationToken ct = default)
+        => _repo.GetByIdAsync(id, ct);
 
-    public async Task<IReadOnlyList<ExpenseReportDto>> GetForSubmitterAsync(
+    public Task<IReadOnlyList<ExpenseReportDto>> GetForSubmitterAsync(
         Guid submitterUserId, CancellationToken ct = default)
-    {
-        var reports = await _repo.GetForSubmitterAsync(submitterUserId, ct);
-        return reports.Select(ToDto).ToList();
-    }
+        => _repo.GetForSubmitterAsync(submitterUserId, ct);
 
-    public async Task<IReadOnlyList<ExpenseReportDto>> GetReviewQueueAsync(
+    public Task<IReadOnlyList<ExpenseReportDto>> GetReviewQueueAsync(
         CancellationToken ct = default)
-    {
-        var reports = await _repo.GetForReviewQueueAsync(ct);
-        return reports.Select(ToDto).ToList();
-    }
+        => _repo.GetForReviewQueueAsync(ct);
 
     public async Task<IReadOnlyList<ExpenseReportDto>> GetApprovedUnpaidAsync(
         CancellationToken ct = default)
@@ -81,7 +72,6 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
         var sepaSent = await _repo.GetByStatusAsync(ExpenseReportStatus.SepaSent, ct);
         return approved.Concat(sepaSent)
             .OrderBy(r => r.ApprovedAt ?? r.CreatedAt)
-            .Select(ToDto)
             .ToList();
     }
 
@@ -95,7 +85,6 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
         var year = await _budgetService.GetActiveYearAsync();
         if (year is null) return [];
 
-
         var categoryIds = year.Groups
             .SelectMany(g => g.Categories)
             .Where(c => c.TeamId.HasValue && teamIds.Contains(c.TeamId.Value))
@@ -104,9 +93,8 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
 
         if (categoryIds.Count == 0) return [];
 
-        var reports = await _repo.GetByCategoryIdsAndStatusAsync(categoryIds,
+        return await _repo.GetByCategoryIdsAndStatusAsync(categoryIds,
             ExpenseReportStatus.Submitted, ct);
-        return reports.Select(ToDto).ToList();
     }
 
     // ──────────────────────────── Draft CRUD ─────────────────────────────────
@@ -145,8 +133,8 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
         Guid budgetCategoryId, string? note,
         CancellationToken ct = default)
     {
-        var existing = await _repo.GetByIdAsync(reportId, ct);
-        if (existing is null) throw new InvalidOperationException("Report not found.");
+        var existing = await _repo.GetByIdAsync(reportId, ct)
+            ?? throw new InvalidOperationException("Report not found.");
         if (existing.SubmitterUserId != submitterUserId)
             throw new UnauthorizedAccessException("Only the submitter can update a draft.");
         if (existing.Status != ExpenseReportStatus.Draft)
@@ -223,16 +211,8 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
         Guid lineId, Guid attachmentId,
         CancellationToken ct = default)
     {
-        // Load with lines to (a) enforce editable status and (b) verify line ownership.
-        var report = await _repo.GetByIdWithLinesAsync(reportId, ct)
-            ?? throw new InvalidOperationException("Report not found.");
-        if (report.SubmitterUserId != submitterUserId)
-            throw new UnauthorizedAccessException("Only the submitter can edit lines.");
-        if (report.Status is not (ExpenseReportStatus.Draft
-                                  or ExpenseReportStatus.Submitted
-                                  or ExpenseReportStatus.CoordinatorEndorsed))
-            throw new InvalidOperationException(
-                $"Lines cannot be edited when the report is in status {report.Status}.");
+        // RequireEditableReportAsync loads with lines and enforces submitter + editable status.
+        var report = await RequireEditableReportAsync(reportId, submitterUserId, ct);
 
         // Verify the line belongs to this report to prevent cross-report attachment abuse.
         if (!report.Lines.Any(l => l.Id == lineId))
@@ -246,7 +226,7 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
     public async Task<bool> SubmitAsync(
         Guid reportId, Guid submitterUserId, CancellationToken ct = default)
     {
-        var report = await _repo.GetByIdWithLinesAsync(reportId, ct);
+        var report = await _repo.GetByIdAsync(reportId, ct);
         if (report is null) return false;
         if (report.SubmitterUserId != submitterUserId)
             throw new UnauthorizedAccessException("Only the submitter can submit.");
@@ -476,11 +456,11 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
     // ─────────────────────────── Private Helpers ─────────────────────────────
 
     /// <summary>
-    /// Loads the report and enforces that: the caller is the submitter, and
+    /// Loads the report (with lines) and enforces that: the caller is the submitter, and
     /// the report is in a state that allows line/attachment edits
     /// ({Draft, Submitted, CoordinatorEndorsed}).
     /// </summary>
-    private async Task<ExpenseReport> RequireEditableReportAsync(
+    private async Task<ExpenseReportDto> RequireEditableReportAsync(
         Guid reportId, Guid submitterUserId, CancellationToken ct)
     {
         var report = await _repo.GetByIdAsync(reportId, ct)
@@ -514,55 +494,6 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
             throw new UnauthorizedAccessException("Actor is not a coordinator of the category's team.");
     }
 
-    private static ExpenseReportDto ToDto(ExpenseReport r) => new()
-    {
-        Id = r.Id,
-        SubmitterUserId = r.SubmitterUserId,
-        BudgetCategoryId = r.BudgetCategoryId,
-        BudgetYearId = r.BudgetYearId,
-        Status = r.Status,
-        Note = r.Note,
-        PayeeName = r.PayeeName,
-        PayeeIban = r.PayeeIban,
-        Total = r.Total,
-        SubmittedAt = r.SubmittedAt,
-        CoordinatorEndorsedByUserId = r.CoordinatorEndorsedByUserId,
-        CoordinatorEndorsedAt = r.CoordinatorEndorsedAt,
-        ApprovedByUserId = r.ApprovedByUserId,
-        ApprovedAt = r.ApprovedAt,
-        SepaSentAt = r.SepaSentAt,
-        PaidAt = r.PaidAt,
-        LastRejectionReason = r.LastRejectionReason,
-        LastRejectedByUserId = r.LastRejectedByUserId,
-        LastRejectedAt = r.LastRejectedAt,
-        HoldedDocId = r.HoldedDocId,
-        CreatedAt = r.CreatedAt,
-        UpdatedAt = r.UpdatedAt,
-        Lines = r.Lines.Select(ToDto).ToList()
-    };
-
-    private static ExpenseLineDto ToDto(ExpenseLine l) => new()
-    {
-        Id = l.Id,
-        ExpenseReportId = l.ExpenseReportId,
-        Description = l.Description,
-        Amount = l.Amount,
-        AttachmentId = l.AttachmentId,
-        Attachment = l.Attachment is null ? null : ToDto(l.Attachment),
-        SortOrder = l.SortOrder
-    };
-
-    private static ExpenseAttachmentDto ToDto(ExpenseAttachment a) => new()
-    {
-        Id = a.Id,
-        OriginalFileName = a.OriginalFileName,
-        Extension = a.Extension,
-        ContentType = a.ContentType,
-        SizeBytes = a.SizeBytes,
-        UploadedByUserId = a.UploadedByUserId,
-        UploadedAt = a.UploadedAt
-    };
-
     // ─────────────────────── IUserDataContributor (GDPR) ─────────────────────
 
     /// <summary>
@@ -581,21 +512,12 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
         allIds.AddRange(sourceIds);
         allIds.Add(userId);
 
-        // Fetch reports for all ids, then re-fetch each with lines + attachments.
-        // GDPR export is infrequent, so N+1 is acceptable here.
-        var reportIds = new List<Guid>();
+        // GetForSubmitterAsync already returns fully-populated DTOs (lines + attachments).
+        var allReports = new List<ExpenseReportDto>();
         foreach (var id in allIds)
         {
             var reports = await _repo.GetForSubmitterAsync(id, ct);
-            reportIds.AddRange(reports.Select(r => r.Id));
-        }
-
-        var allReports = new List<ExpenseReport>();
-        foreach (var reportId in reportIds)
-        {
-            var full = await _repo.GetByIdWithLinesAsync(reportId, ct);
-            if (full is not null)
-                allReports.Add(full);
+            allReports.AddRange(reports);
         }
 
         // Fetch current IBAN from profile (masked per spec)

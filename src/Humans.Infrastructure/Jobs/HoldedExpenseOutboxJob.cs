@@ -8,6 +8,7 @@ using Humans.Application.Interfaces.Expenses;
 using Humans.Application.Interfaces.Holded;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
+using Humans.Application.Services.Expenses.Dtos;
 using Humans.Domain.Enums;
 
 namespace Humans.Infrastructure.Jobs;
@@ -62,7 +63,7 @@ public class HoldedExpenseOutboxJob : IRecurringJob
             try
             {
                 var report = await _expenseRepository
-                    .GetByIdWithLinesAsync(outboxEvent.ExpenseReportId, cancellationToken);
+                    .GetByIdAsync(outboxEvent.ExpenseReportId, cancellationToken);
 
                 if (report is null)
                 {
@@ -128,7 +129,7 @@ public class HoldedExpenseOutboxJob : IRecurringJob
 
     private async Task ProcessCreateAsync(
         Guid outboxEventId,
-        Domain.Entities.ExpenseReport report,
+        ExpenseReportDto report,
         string tag,
         string submitterName,
         Instant now,
@@ -186,7 +187,7 @@ public class HoldedExpenseOutboxJob : IRecurringJob
 
     private async Task ProcessUpdateTagAsync(
         Guid outboxEventId,
-        Domain.Entities.ExpenseReport report,
+        ExpenseReportDto report,
         string tag,
         Instant now,
         CancellationToken ct)

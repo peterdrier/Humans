@@ -7,7 +7,7 @@ using NSubstitute.ExceptionExtensions;
 using Humans.Application.Interfaces.Expenses;
 using Humans.Application.Interfaces.Holded;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Domain.Entities;
+using Humans.Application.Services.Expenses.Dtos;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Jobs;
 using Xunit;
@@ -41,15 +41,21 @@ public class ExpensePaidPollingJobTests
 
     // ─── helpers ──────────────────────────────────────────────────────────────
 
-    private static ExpenseReport MakeReport(string holdedDocId = "holded-doc-1") => new()
+    private static ExpenseReportDto MakeReport(string holdedDocId = "holded-doc-1") => new()
     {
         Id = Guid.NewGuid(),
         SubmitterUserId = Guid.NewGuid(),
         BudgetCategoryId = Guid.NewGuid(),
+        BudgetYearId = Guid.NewGuid(),
         Status = ExpenseReportStatus.SepaSent,
+        PayeeName = "",
+        PayeeIban = "",
+        Total = 0m,
         HoldedDocId = holdedDocId,
         SepaSentAt = Instant.FromUtc(2026, 5, 9, 10, 0),
         CreatedAt = Instant.FromUtc(2026, 5, 1, 9, 0),
+        UpdatedAt = Instant.FromUtc(2026, 5, 1, 9, 0),
+        Lines = [],
     };
 
     private static HoldedPurchaseDocumentDto MakeDoc(
@@ -186,15 +192,21 @@ public class ExpensePaidPollingJobTests
     {
         // Create 55 reports with distinct SepaSentAt
         var reports = Enumerable.Range(0, 55)
-            .Select(i => new ExpenseReport
+            .Select(i => new ExpenseReportDto
             {
                 Id = Guid.NewGuid(),
                 SubmitterUserId = Guid.NewGuid(),
                 BudgetCategoryId = Guid.NewGuid(),
+                BudgetYearId = Guid.NewGuid(),
                 Status = ExpenseReportStatus.SepaSent,
+                PayeeName = "",
+                PayeeIban = "",
+                Total = 0m,
                 HoldedDocId = $"doc-{i}",
                 SepaSentAt = Instant.FromUtc(2026, 5, 1, 0, 0) + Duration.FromHours(i),
                 CreatedAt = Instant.FromUtc(2026, 4, 1, 9, 0),
+                UpdatedAt = Instant.FromUtc(2026, 4, 1, 9, 0),
+                Lines = [],
             })
             .ToList();
 

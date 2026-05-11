@@ -1,3 +1,4 @@
+using Humans.Application.Services.Expenses.Dtos;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 
@@ -5,19 +6,19 @@ namespace Humans.Application.Interfaces.Repositories;
 
 public interface IExpenseRepository : IRepository
 {
-    // Reads
-    Task<ExpenseReport?> GetByIdAsync(Guid id, CancellationToken ct = default);
-    Task<ExpenseReport?> GetByIdWithLinesAsync(Guid id, CancellationToken ct = default);
-    Task<IReadOnlyList<ExpenseReport>> GetForSubmitterAsync(
+    // Reads — all return fully-populated DTOs (Lines + Attachment metadata always included).
+    // EF entity types stay inside Infrastructure; the Application layer sees only DTOs.
+    Task<ExpenseReportDto?> GetByIdAsync(Guid id, CancellationToken ct = default);
+    Task<IReadOnlyList<ExpenseReportDto>> GetForSubmitterAsync(
         Guid submitterUserId, CancellationToken ct = default);
-    Task<IReadOnlyList<ExpenseReport>> GetByStatusAsync(
+    Task<IReadOnlyList<ExpenseReportDto>> GetByStatusAsync(
         ExpenseReportStatus status, CancellationToken ct = default);
-    Task<IReadOnlyList<ExpenseReport>> GetByCategoryIdsAndStatusAsync(
+    Task<IReadOnlyList<ExpenseReportDto>> GetByCategoryIdsAndStatusAsync(
         IReadOnlyCollection<Guid> categoryIds,
         ExpenseReportStatus status,
         CancellationToken ct = default);
-    Task<IReadOnlyList<ExpenseReport>> GetForReviewQueueAsync(CancellationToken ct = default);
-    Task<ExpenseAttachment?> GetAttachmentByIdAsync(Guid id, CancellationToken ct = default);
+    Task<IReadOnlyList<ExpenseReportDto>> GetForReviewQueueAsync(CancellationToken ct = default);
+    Task<ExpenseAttachmentDto?> GetAttachmentByIdAsync(Guid id, CancellationToken ct = default);
 
     // Writes — atomic per-method, all inside one short-lived DbContext.
     Task AddDraftAsync(ExpenseReport report, CancellationToken ct = default);

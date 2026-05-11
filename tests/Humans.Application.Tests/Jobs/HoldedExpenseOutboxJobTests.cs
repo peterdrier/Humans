@@ -8,6 +8,7 @@ using Humans.Application.Interfaces.Expenses;
 using Humans.Application.Interfaces.Holded;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
+using Humans.Application.Services.Expenses.Dtos;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Jobs;
@@ -75,16 +76,22 @@ public class HoldedExpenseOutboxJobTests
 
     // ─── helpers ──────────────────────────────────────────────────────────────
 
-    private static ExpenseReport MakeReport(string? holdedDocId = null) => new()
+    private static ExpenseReportDto MakeReport(string? holdedDocId = null) => new()
     {
         Id = Guid.NewGuid(),
         SubmitterUserId = SubmitterId,
         BudgetCategoryId = CategoryId,
+        BudgetYearId = Guid.NewGuid(),
+        Status = ExpenseReportStatus.Approved,
+        PayeeName = "Alice Smith",
+        PayeeIban = "",
+        Total = 0m,
         SubmittedAt = Instant.FromUtc(2026, 5, 1, 10, 0),
         CreatedAt = Instant.FromUtc(2026, 5, 1, 9, 0),
+        UpdatedAt = Instant.FromUtc(2026, 5, 1, 9, 0),
         Note = "Team expenses",
         HoldedDocId = holdedDocId,
-        Lines = new List<ExpenseLine>(),
+        Lines = new List<ExpenseLineDto>(),
     };
 
     private static HoldedExpenseOutboxEvent MakeEvent(
@@ -123,7 +130,7 @@ public class HoldedExpenseOutboxJobTests
 
         _repo.GetUnprocessedOutboxAsync(100, Arg.Any<CancellationToken>())
             .Returns([outboxEvent]);
-        _repo.GetByIdWithLinesAsync(report.Id, Arg.Any<CancellationToken>())
+        _repo.GetByIdAsync(report.Id, Arg.Any<CancellationToken>())
             .Returns(report);
         _holdedClient.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
             .Returns(holdedDocId);
@@ -149,7 +156,7 @@ public class HoldedExpenseOutboxJobTests
 
         _repo.GetUnprocessedOutboxAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns([outboxEvent]);
-        _repo.GetByIdWithLinesAsync(report.Id, Arg.Any<CancellationToken>())
+        _repo.GetByIdAsync(report.Id, Arg.Any<CancellationToken>())
             .Returns(report);
         _holdedClient.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
             .Returns("doc-1");
@@ -167,26 +174,34 @@ public class HoldedExpenseOutboxJobTests
     [HumansFact]
     public async Task CreateIncomingDoc_AttachmentsUploadedInOrder()
     {
-        var attachment1 = new ExpenseAttachment
+        var attachment1 = new ExpenseAttachmentDto
         {
             Id = Guid.NewGuid(),
             OriginalFileName = "receipt1.pdf",
             Extension = ".pdf",
             ContentType = "application/pdf",
+            SizeBytes = 100,
+            UploadedByUserId = Guid.NewGuid(),
+            UploadedAt = Instant.FromUtc(2026, 5, 1, 0, 0),
         };
-        var attachment2 = new ExpenseAttachment
+        var attachment2 = new ExpenseAttachmentDto
         {
             Id = Guid.NewGuid(),
             OriginalFileName = "receipt2.jpg",
             Extension = ".jpg",
             ContentType = "image/jpeg",
+            SizeBytes = 200,
+            UploadedByUserId = Guid.NewGuid(),
+            UploadedAt = Instant.FromUtc(2026, 5, 1, 0, 0),
         };
 
-        var report = MakeReport();
-        report.Lines = new List<ExpenseLine>
+        var report = MakeReport() with
         {
-            new() { Id = Guid.NewGuid(), Description = "Line A", Amount = 10m, SortOrder = 1, AttachmentId = attachment1.Id, Attachment = attachment1 },
-            new() { Id = Guid.NewGuid(), Description = "Line B", Amount = 20m, SortOrder = 2, AttachmentId = attachment2.Id, Attachment = attachment2 },
+            Lines = new List<ExpenseLineDto>
+            {
+                new() { Id = Guid.NewGuid(), ExpenseReportId = Guid.NewGuid(), Description = "Line A", Amount = 10m, SortOrder = 1, AttachmentId = attachment1.Id, Attachment = attachment1 },
+                new() { Id = Guid.NewGuid(), ExpenseReportId = Guid.NewGuid(), Description = "Line B", Amount = 20m, SortOrder = 2, AttachmentId = attachment2.Id, Attachment = attachment2 },
+            }
         };
 
         var outboxEvent = MakeEvent(report.Id, HoldedExpenseOutboxEventType.CreateIncomingDoc);
@@ -194,7 +209,7 @@ public class HoldedExpenseOutboxJobTests
 
         _repo.GetUnprocessedOutboxAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns([outboxEvent]);
-        _repo.GetByIdWithLinesAsync(report.Id, Arg.Any<CancellationToken>())
+        _repo.GetByIdAsync(report.Id, Arg.Any<CancellationToken>())
             .Returns(report);
         _holdedClient.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
             .Returns(holdedDocId);
@@ -225,17 +240,19 @@ public class HoldedExpenseOutboxJobTests
     [HumansFact]
     public async Task CreateIncomingDoc_LinesWithoutAttachments_SkippedCleanly()
     {
-        var report = MakeReport();
-        report.Lines = new List<ExpenseLine>
+        var report = MakeReport() with
         {
-            new() { Id = Guid.NewGuid(), Description = "No receipt", Amount = 5m, SortOrder = 1, AttachmentId = null, Attachment = null },
+            Lines = new List<ExpenseLineDto>
+            {
+                new() { Id = Guid.NewGuid(), ExpenseReportId = Guid.NewGuid(), Description = "No receipt", Amount = 5m, SortOrder = 1, AttachmentId = null, Attachment = null },
+            }
         };
 
         var outboxEvent = MakeEvent(report.Id, HoldedExpenseOutboxEventType.CreateIncomingDoc);
 
         _repo.GetUnprocessedOutboxAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns([outboxEvent]);
-        _repo.GetByIdWithLinesAsync(report.Id, Arg.Any<CancellationToken>())
+        _repo.GetByIdAsync(report.Id, Arg.Any<CancellationToken>())
             .Returns(report);
         _holdedClient.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
             .Returns("doc-no-att");
@@ -258,7 +275,7 @@ public class HoldedExpenseOutboxJobTests
 
         _repo.GetUnprocessedOutboxAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns([outboxEvent]);
-        _repo.GetByIdWithLinesAsync(report.Id, Arg.Any<CancellationToken>())
+        _repo.GetByIdAsync(report.Id, Arg.Any<CancellationToken>())
             .Returns(report);
 
         await _job.ExecuteAsync();
@@ -285,7 +302,7 @@ public class HoldedExpenseOutboxJobTests
 
         _repo.GetUnprocessedOutboxAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns([outboxEvent]);
-        _repo.GetByIdWithLinesAsync(report.Id, Arg.Any<CancellationToken>())
+        _repo.GetByIdAsync(report.Id, Arg.Any<CancellationToken>())
             .Returns(report);
         _holdedClient.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromException<string>(new HoldedTransientException("timeout")));
@@ -310,7 +327,7 @@ public class HoldedExpenseOutboxJobTests
 
         _repo.GetUnprocessedOutboxAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns([outboxEvent]);
-        _repo.GetByIdWithLinesAsync(report.Id, Arg.Any<CancellationToken>())
+        _repo.GetByIdAsync(report.Id, Arg.Any<CancellationToken>())
             .Returns(report);
         _holdedClient.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromException<string>(new HoldedPermanentException(422, "body", "Unprocessable entity")));
@@ -337,14 +354,13 @@ public class HoldedExpenseOutboxJobTests
         var job = new HoldedExpenseOutboxJob(
             _repo, _budgetService, _userService, _holdedClient, _attachmentStorage, _clock, logger);
 
-        var report = MakeReport();
-        report.PayeeIban = "ES9121000418450200051332";
+        var report = MakeReport() with { PayeeIban = "ES9121000418450200051332" };
 
         var outboxEvent = MakeEvent(report.Id, HoldedExpenseOutboxEventType.CreateIncomingDoc);
 
         _repo.GetUnprocessedOutboxAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns([outboxEvent]);
-        _repo.GetByIdWithLinesAsync(report.Id, Arg.Any<CancellationToken>())
+        _repo.GetByIdAsync(report.Id, Arg.Any<CancellationToken>())
             .Returns(report);
         _holdedClient.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
             .Returns("doc-iban-test");

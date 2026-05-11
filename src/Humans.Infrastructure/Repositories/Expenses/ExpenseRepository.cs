@@ -1,4 +1,5 @@
 using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Services.Expenses.Dtos;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
@@ -21,72 +22,74 @@ public sealed class ExpenseRepository : IExpenseRepository
         _logger = logger;
     }
 
-    public async Task<ExpenseReport?> GetByIdAsync(Guid id, CancellationToken ct = default)
+    public async Task<ExpenseReportDto?> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.ExpenseReports.AsNoTracking()
-            .FirstOrDefaultAsync(r => r.Id == id, ct);
-    }
-
-    public async Task<ExpenseReport?> GetByIdWithLinesAsync(
-        Guid id, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.ExpenseReports.AsNoTracking()
+        var entity = await ctx.ExpenseReports.AsNoTracking()
             .Include(r => r.Lines).ThenInclude(l => l.Attachment)
             .FirstOrDefaultAsync(r => r.Id == id, ct);
+        return entity is null ? null : ExpenseReportMapper.ToDto(entity);
     }
 
-    public async Task<IReadOnlyList<ExpenseReport>> GetForSubmitterAsync(
+    public async Task<IReadOnlyList<ExpenseReportDto>> GetForSubmitterAsync(
         Guid submitterUserId, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.ExpenseReports.AsNoTracking()
+        var entities = await ctx.ExpenseReports.AsNoTracking()
+            .Include(r => r.Lines).ThenInclude(l => l.Attachment)
             .Where(r => r.SubmitterUserId == submitterUserId)
             .OrderByDescending(r => r.CreatedAt)
             .ToListAsync(ct);
+        return entities.Select(ExpenseReportMapper.ToDto).ToList();
     }
 
-    public async Task<IReadOnlyList<ExpenseReport>> GetByStatusAsync(
+    public async Task<IReadOnlyList<ExpenseReportDto>> GetByStatusAsync(
         ExpenseReportStatus status, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.ExpenseReports.AsNoTracking()
+        var entities = await ctx.ExpenseReports.AsNoTracking()
+            .Include(r => r.Lines).ThenInclude(l => l.Attachment)
             .Where(r => r.Status == status)
             .OrderBy(r => r.SubmittedAt ?? r.CreatedAt)
             .ToListAsync(ct);
+        return entities.Select(ExpenseReportMapper.ToDto).ToList();
     }
 
-    public async Task<IReadOnlyList<ExpenseReport>> GetByCategoryIdsAndStatusAsync(
+    public async Task<IReadOnlyList<ExpenseReportDto>> GetByCategoryIdsAndStatusAsync(
         IReadOnlyCollection<Guid> categoryIds,
         ExpenseReportStatus status,
         CancellationToken ct = default)
     {
         if (categoryIds.Count == 0) return [];
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.ExpenseReports.AsNoTracking()
+        var entities = await ctx.ExpenseReports.AsNoTracking()
+            .Include(r => r.Lines).ThenInclude(l => l.Attachment)
             .Where(r => r.Status == status && categoryIds.Contains(r.BudgetCategoryId))
             .OrderBy(r => r.SubmittedAt ?? r.CreatedAt)
             .ToListAsync(ct);
+        return entities.Select(ExpenseReportMapper.ToDto).ToList();
     }
 
-    public async Task<IReadOnlyList<ExpenseReport>> GetForReviewQueueAsync(
+    public async Task<IReadOnlyList<ExpenseReportDto>> GetForReviewQueueAsync(
         CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.ExpenseReports.AsNoTracking()
+        var entities = await ctx.ExpenseReports.AsNoTracking()
+            .Include(r => r.Lines).ThenInclude(l => l.Attachment)
             .Where(r => r.Status != ExpenseReportStatus.Draft
                      && r.Status != ExpenseReportStatus.Withdrawn)
             .OrderByDescending(r => r.SubmittedAt ?? r.CreatedAt)
             .ToListAsync(ct);
+        return entities.Select(ExpenseReportMapper.ToDto).ToList();
     }
 
-    public async Task<ExpenseAttachment?> GetAttachmentByIdAsync(
+    public async Task<ExpenseAttachmentDto?> GetAttachmentByIdAsync(
         Guid id, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.ExpenseAttachments.AsNoTracking()
+        var entity = await ctx.ExpenseAttachments.AsNoTracking()
             .FirstOrDefaultAsync(a => a.Id == id, ct);
+        return entity is null ? null : ExpenseReportMapper.ToAttachmentDto(entity);
     }
 
     public async Task AddDraftAsync(ExpenseReport report, CancellationToken ct = default)

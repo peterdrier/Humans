@@ -92,7 +92,7 @@ public class ExpenseRepositoryTests
             new ExpenseLine { Id = Guid.NewGuid(), Description = "x", Amount = 12.50m });
         ok.Should().BeTrue();
 
-        var loaded = await _sut.GetByIdWithLinesAsync(report.Id);
+        var loaded = await _sut.GetByIdAsync(report.Id);
         loaded!.Lines.Should().HaveCount(1);
         loaded.Total.Should().Be(12.50m);
     }
@@ -111,7 +111,7 @@ public class ExpenseRepositoryTests
         var ok = await _sut.RemoveLineAsync(report.Id, lineId);
         ok.Should().BeTrue();
 
-        var loaded = await _sut.GetByIdWithLinesAsync(report.Id);
+        var loaded = await _sut.GetByIdAsync(report.Id);
         loaded!.Lines.Should().HaveCount(1);
         loaded.Total.Should().Be(20m);
     }
@@ -138,7 +138,7 @@ public class ExpenseRepositoryTests
 
         await _sut.SetLineAttachmentAsync(lineId, attachId);
 
-        var loaded = await _sut.GetByIdWithLinesAsync(report.Id);
+        var loaded = await _sut.GetByIdAsync(report.Id);
         loaded!.Lines.First().AttachmentId.Should().Be(attachId);
         loaded.Lines.First().Attachment.Should().NotBeNull();
     }
@@ -151,7 +151,7 @@ public class ExpenseRepositoryTests
         await _sut.AddLineAsync(r.Id,
             new ExpenseLine { Id = Guid.NewGuid(), Description = "x", Amount = 5m });
         var attachId = await _sut.AddAttachmentAsync(NewAttachment());
-        var line = (await _sut.GetByIdWithLinesAsync(r.Id))!.Lines.First();
+        var line = (await _sut.GetByIdAsync(r.Id))!.Lines.First();
         await _sut.SetLineAttachmentAsync(line.Id, attachId);
 
         var ok = await _sut.SubmitAsync(r.Id, "Alice", "ES9121000418450200051332",

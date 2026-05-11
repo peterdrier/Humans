@@ -7,6 +7,7 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Expenses;
+using Humans.Application.Services.Expenses.Dtos;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -61,7 +62,7 @@ public class ExpenseReportServiceGdprTests
 
     // ─── helpers ──────────────────────────────────────────────────────────────
 
-    private static ExpenseReport MakeReport(Guid submitterId) => new()
+    private static ExpenseReportDto MakeReport(Guid submitterId) => new()
     {
         Id = Guid.NewGuid(),
         SubmitterUserId = submitterId,
@@ -72,11 +73,13 @@ public class ExpenseReportServiceGdprTests
         PayeeIban = "ES1234567890123456789012",
         Total = 100m,
         CreatedAt = Instant.FromUtc(2026, 4, 1, 10, 0),
-        Lines = new List<ExpenseLine>
+        UpdatedAt = Instant.FromUtc(2026, 4, 1, 10, 0),
+        Lines = new List<ExpenseLineDto>
         {
             new()
             {
                 Id = Guid.NewGuid(),
+                ExpenseReportId = Guid.NewGuid(),
                 Description = "Flight ticket",
                 Amount = 100m,
                 SortOrder = 1,
@@ -94,8 +97,6 @@ public class ExpenseReportServiceGdprTests
         var report = MakeReport(UserId);
         _repo.GetForSubmitterAsync(UserId, Arg.Any<CancellationToken>())
             .Returns([report]);
-        _repo.GetByIdWithLinesAsync(report.Id, Arg.Any<CancellationToken>())
-            .Returns(report);
 
         _profileService.GetProfileAsync(UserId, Arg.Any<CancellationToken>())
             .Returns(new Profile { Id = Guid.NewGuid(), Iban = "ES1234567890123456789012" });
@@ -118,8 +119,6 @@ public class ExpenseReportServiceGdprTests
         var report = MakeReport(UserId);
         _repo.GetForSubmitterAsync(UserId, Arg.Any<CancellationToken>())
             .Returns([report]);
-        _repo.GetByIdWithLinesAsync(report.Id, Arg.Any<CancellationToken>())
-            .Returns(report);
         _profileService.GetProfileAsync(UserId, Arg.Any<CancellationToken>())
             .Returns((Profile?)null);
 
@@ -193,11 +192,6 @@ public class ExpenseReportServiceGdprTests
             .Returns([sourceReport]);
         _repo.GetForSubmitterAsync(UserId, Arg.Any<CancellationToken>())
             .Returns([ownReport]);
-
-        _repo.GetByIdWithLinesAsync(ownReport.Id, Arg.Any<CancellationToken>())
-            .Returns(ownReport);
-        _repo.GetByIdWithLinesAsync(sourceReport.Id, Arg.Any<CancellationToken>())
-            .Returns(sourceReport);
 
         _profileService.GetProfileAsync(UserId, Arg.Any<CancellationToken>())
             .Returns((Profile?)null);
