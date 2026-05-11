@@ -58,7 +58,7 @@ In-app notification fan-out (stored events + per-user inbox) and live meter coun
 
 ### NotificationSource
 
-The originating system for a notification, mapped to a `MessageCategory` for preference checks. Defined in `Humans.Domain.Enums.NotificationSource`. Current values: `TeamMemberAdded`, `ShiftCoverageGap`, `ShiftSignupChange`, `ConsentReviewNeeded`, `ApplicationSubmitted`, `SyncError`, `TermRenewalReminder`, `ApplicationApproved`, `ApplicationRejected`, `VolunteerApproved`, `ProfileRejected`, `AccessSuspended`, `ReConsentRequired`, `TeamJoinRequestSubmitted`, `TeamJoinRequestDecided`, `FeedbackResponse`, `WorkspaceCredentialsReady`, `RoleAssignmentChanged`, `CampaignReceived`, `TeamMemberRemoved`, `ShiftAssigned`, `GoogleDriftDetected`, `FacilitatedMessageReceived`, `LegalDocumentPublished`, `CampMembershipApproved`, `CampMembershipRejected`, `CampMembershipSeasonClosed`.
+The originating system for a notification, mapped to a `MessageCategory` for preference checks. Defined in `Humans.Domain.Enums.NotificationSource`. Current values: `TeamMemberAdded`, `ShiftCoverageGap`, `ShiftSignupChange`, `ConsentReviewNeeded`, `ApplicationSubmitted`, `SyncError`, `TermRenewalReminder`, `ApplicationApproved`, `ApplicationRejected`, `VolunteerApproved`, `ProfileRejected`, `AccessSuspended`, `ReConsentRequired`, `TeamJoinRequestSubmitted`, `TeamJoinRequestDecided`, `FeedbackResponse`, `WorkspaceCredentialsReady`, `RoleAssignmentChanged`, `CampaignReceived`, `TeamMemberRemoved`, `ShiftAssigned`, `GoogleDriftDetected`, `FacilitatedMessageReceived`, `LegalDocumentPublished`, `CampMembershipApproved`, `CampMembershipRejected`, `CampMembershipSeasonClosed`, `CampRoleAssigned`, `IssueComment`, `IssueStatusChanged`, `IssueAssigned`, `IssueSubmitted`.
 
 ### NotificationClass
 
@@ -127,6 +127,8 @@ This section is **fan-in**: almost every other section calls in, but this sectio
 Inbound (other sections → Notifications):
 
 - **Profiles:** Called by `IAccountMergeService` (Profiles section) — `INotificationService.ReassignRecipientsToUserAsync` re-FKs `NotificationRecipient` rows during account merge fold.
+- **Camps:** `CampService` and `CampRoleService` inject `INotificationEmitter` to emit `CampMembershipApproved`, `CampMembershipRejected`, `CampMembershipSeasonClosed`, and `CampRoleAssigned` notifications.
+- **Issues:** `IssuesService` injects `INotificationService` to emit `IssueComment`, `IssueStatusChanged`, `IssueAssigned`, and `IssueSubmitted` notifications.
 
 ## Architecture
 

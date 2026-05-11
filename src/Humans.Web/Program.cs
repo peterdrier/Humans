@@ -216,6 +216,12 @@ builder.Services.AddAuthentication()
         options.Scope.Add("profile");
         options.Scope.Add("email");
         options.SaveTokens = false;
+        // Issue nobodies-collective/Humans#697: surface Google's `email_verified`
+        // boolean as a claim so `AccountController.ExternalLoginCallback` can
+        // pass it to `IUserEmailService.ReconcileOAuthIdentityAsync`. Without
+        // the explicit MapJsonKey, the GoogleHandler discards the JSON field.
+        Microsoft.AspNetCore.Authentication.ClaimActionCollectionMapExtensions
+            .MapJsonKey(options.ClaimActions, "email_verified", "email_verified", "boolean");
         options.Events = new Microsoft.AspNetCore.Authentication.OAuth.OAuthEvents
         {
             OnRemoteFailure = context =>

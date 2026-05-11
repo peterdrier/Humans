@@ -16,7 +16,7 @@ namespace Humans.Application.Services.Search;
 /// shape; this orchestrator scores each hit by name-match strength and
 /// returns four type-grouped buckets. There is no cross-modal / relational
 /// expansion and no matching beyond the name field on the entity itself
-/// (see <c>docs/features/global-search.md</c>).
+/// (see <c>docs/features/global/global-search.md</c>).
 /// </summary>
 /// <remarks>
 /// Display ordering is a presentation concern and lives in

@@ -31,24 +31,95 @@ Legal documents synced from GitHub, per-version consent records (append-only), t
 
 **Table:** `legal_documents`
 
-Team-scoped (documents on the Volunteers system team are effectively global). Fields: `Id`, `Name`, `TeamId`, `GracePeriodDays` (default 7), `GitHubFolderPath`, `CurrentCommitSha`, `IsRequired` (default true), `IsActive` (default true), `CreatedAt`, `LastSyncedAt`. Aggregate-local nav `LegalDocument.Versions` kept. Cross-domain nav `LegalDocument.Team` is **still declared** on the entity for read-side stitching (`ConsentService` reads `g.First().Team` when grouping the consent dashboard); strip is deferred until callers move to a stitched DTO.
+| Property | Type | Notes |
+|----------|------|-------|
+| Id | Guid | PK |
+| Name | string (256) | |
+| TeamId | Guid | FK → Teams section |
+| GracePeriodDays | int | Default 7 |
+| GitHubFolderPath | string? (512) | Folder path; sync discovers translations by naming convention |
+| CurrentCommitSha | string (40) | |
+| IsRequired | bool | Default true |
+| IsActive | bool | Default true |
+| CreatedAt | Instant | |
+| LastSyncedAt | Instant | |
+
+Aggregate-local nav `LegalDocument.Versions` kept. Cross-domain nav `LegalDocument.Team` is still declared on the entity (`LegalDocument.cs:30`); `LegalDocumentRepository.GetActiveRequiredDocumentsForTeamsAsync` still emits `.Include(d => d.Team)` (`LegalDocumentRepository.cs:101`) because `ConsentService.GetConsentDashboardAsync` reads `g.First().Team` to group dashboard rows by team. Strip is deferred until callers move to a stitched DTO.
+
+**Cross-domain FK:** `TeamId` → Teams section. `Team.LegalDocuments` reverse nav also exists (`Team.cs:160`) — cross-domain collection on the Teams entity. Both sides are on borrowed time; the FK scalar is the canonical reference.
 
 ### DocumentVersion
 
 **Table:** `document_versions`
 
-Fields: `Id`, `LegalDocumentId`, `VersionNumber`, `CommitSha`, `Content` (jsonb dictionary keyed by language code; Spanish `"es"` is canonical/legally binding), `EffectiveFrom`, `RequiresReConsent`, `CreatedAt`, `ChangesSummary`. Aggregate-local nav `DocumentVersion.LegalDocument` kept.
+| Property | Type | Notes |
+|----------|------|-------|
+| Id | Guid | PK |
+| LegalDocumentId | Guid | FK → `legal_documents` |
+| VersionNumber | string (50) | Display label |
+| CommitSha | string (40) | |
+| Content | jsonb | `Dictionary<string, string>` keyed by language code; `"es"` is canonical/legally binding |
+| EffectiveFrom | Instant | |
+| RequiresReConsent | bool | |
+| CreatedAt | Instant | |
+| ChangesSummary | string? (2000) | |
+
+Aggregate-local nav `DocumentVersion.LegalDocument` kept. Aggregate-local nav `DocumentVersion.ConsentRecords` declared on the entity (`DocumentVersion.cs:65`) and configured in `DocumentVersionConfiguration.cs:46`; not currently walked by the service layer.
 
 ### ConsentRecord
 
-Append-only per design-rules §12. **DB triggers** (`prevent_consent_record_update` / `prevent_consent_record_delete`, both calling `prevent_consent_record_modification()`) raise an exception on any UPDATE or DELETE against `consent_records`; only INSERT is allowed, to maintain GDPR audit-trail integrity.
+Append-only per design-rules §12. **DB triggers** (`prevent_consent_record_update` / `prevent_consent_record_delete`, both calling `prevent_consent_record_modification()`) raise an exception on any UPDATE or DELETE against `consent_records`; only INSERT is allowed, to maintain GDPR audit-trail integrity. Architecture test `ConsentArchitectureTests.IConsentRepository_HasNoUpdateOrDeleteOrRemoveMethods` (`tests/Humans.Application.Tests/Architecture/ConsentArchitectureTests.cs`) pins the interface-level constraint.
 
 **Table:** `consent_records`
 
-Fields: `Id`, `UserId`, `DocumentVersionId`, `ConsentedAt`, `IpAddress` (max 45 chars, IPv6), `UserAgent` (max 1024 chars; service truncates to 500 before persisting), `ContentHash` (SHA-256 hex of the canonical Spanish content at consent time), `ExplicitConsent`. Unique index on `(UserId, DocumentVersionId)` prevents duplicate consents for the same version.
+| Property | Type | Notes |
+|----------|------|-------|
+| Id | Guid | PK |
+| UserId | Guid | FK → Users section |
+| DocumentVersionId | Guid | FK → `document_versions` |
+| ConsentedAt | Instant | |
+| IpAddress | string (45) | IPv6-capable; service passes value through unchanged |
+| UserAgent | string (1024) | Service truncates to 500 chars before persisting |
+| ContentHash | string (64) | SHA-256 hex of canonical Spanish content at consent time |
+| ExplicitConsent | bool | Always true for valid records |
 
-Cross-domain nav `ConsentRecord.User` — still declared on the entity but no longer navigated by `ConsentService`; strip is a follow-up.
-Cross-aggregate nav `ConsentRecord.DocumentVersion` — still declared and walked by `ConsentRepository.GetAllForUserAsync` (the only remaining `.Include` on this side, scoped to the consent-history read).
+**Unique index:** `(UserId, DocumentVersionId)` — prevents duplicate consents for the same version.
+
+Cross-domain nav `ConsentRecord.User` — still declared on the entity (`ConsentRecord.cs:24`); no current `.Include` walks it in the Application layer. Strip is a follow-up.
+Cross-aggregate nav `ConsentRecord.DocumentVersion` — still declared (`ConsentRecord.cs:34`) and walked by `ConsentRepository.GetAllForUserAsync` / `GetAllForUserIdsAsync` (`.Include(c => c.DocumentVersion).ThenInclude(v => v.LegalDocument)`, `ConsentRepository.cs:95–96`, `ConsentRepository.cs:111–112`) to surface document name + version number on the user's consent-history view.
+
+Per-user reads on `consent_records` chain-follow merge tombstones via `IUserService.GetMergedSourceIdsAsync(userId)` so consents signed under a now-merged source id surface for the fold target. Consent records stay at source after merge by design — DB triggers make any rewrite physically impossible, so `AnonymizeForMergeAsync` cannot move them.
+
+## Routing
+
+Three controllers serve this section.
+
+| Controller | Route prefix | Auth |
+|------------|-------------|------|
+| `LegalController` | `/Legal/{slug?}` | `[AllowAnonymous]` — Statutes page only |
+| `ConsentController` | `/Consent` (conventional) | `[Authorize]` |
+| `AdminLegalDocumentsController` | `/Admin/LegalDocuments` | `[Authorize(Policy = PolicyNames.BoardOrAdmin)]` |
+
+**Consent routes:**
+
+| Route | Method | Action |
+|-------|--------|--------|
+| `/Consent` | GET | Dashboard (team-grouped document status) |
+| `/Consent/Review?id={versionId}` | GET | Document review before consent |
+| `/Consent/Submit` | POST | Record consent |
+
+**Admin routes:**
+
+| Route | Method | Action |
+|-------|--------|--------|
+| `/Admin/LegalDocuments` | GET | List all documents (optional `teamId` filter) |
+| `/Admin/LegalDocuments/Create` | GET | Create form |
+| `/Admin/LegalDocuments/Create` | POST | Create handler |
+| `/Admin/LegalDocuments/{id}/Edit` | GET | Edit form (includes version list) |
+| `/Admin/LegalDocuments/{id}/Edit` | POST | Update handler |
+| `/Admin/LegalDocuments/{id}/Archive` | POST | Soft-delete (`IsActive = false`) |
+| `/Admin/LegalDocuments/{id}/Sync` | POST | Trigger single-document sync |
+| `/Admin/LegalDocuments/{id}/Versions/{versionId}/Summary` | POST | Edit version changes summary |
 
 ## Actors & Roles
 
@@ -62,18 +133,18 @@ Cross-aggregate nav `ConsentRecord.DocumentVersion` — still declared and walke
 
 ## Invariants
 
-- Consent records are immutable. Database triggers prevent UPDATE and DELETE operations on consent records. Only INSERT is allowed to maintain GDPR audit trail integrity (§12).
+- Consent records are immutable. Database triggers prevent UPDATE and DELETE operations on `consent_records`. Only INSERT is allowed to maintain GDPR audit trail integrity (§12). Architecture test: `ConsentArchitectureTests.IConsentRepository_HasNoUpdateOrDeleteOrRemoveMethods`.
 - Legal documents can be global (required of all humans) or team-scoped (required when joining a specific team).
 - When all required global documents have active consent, the human's consent check status transitions from unset to Pending.
 - Legal documents are synced from a GitHub repository by a background job.
 - When a new document version is published, existing consents for the old version become stale and re-consent is required.
-- Per-user reads on `consent_records` chain-follow merge tombstones via `IUserService.GetMergedSourceIdsAsync(userId)` so consents signed under a now-merged source id surface for the fold target. Consent records stay at source after merge by design — DB triggers (`prevent_consent_record_update`, `prevent_consent_record_delete`) make any rewrite physically impossible, so `AnonymizeForMergeAsync` cannot move them. Applies to `ConsentService.GetUserConsentsAsync`, `HasAllRequiredConsentsAsync`, the consent dashboard, and `ContributeForUserAsync` (GDPR).
+- Per-user reads on `consent_records` chain-follow merge tombstones via `IUserService.GetMergedSourceIdsAsync(userId)` so consents signed under a now-merged source id surface for the fold target. Consent records stay at source after merge — DB triggers (`prevent_consent_record_update`, `prevent_consent_record_delete`) make any rewrite physically impossible.
 
 ## Negative Access Rules
 
 - Regular humans **cannot** manage legal documents or document versions.
 - ConsentCoordinator **cannot** manage legal documents or versions — they can only review and clear/flag consent checks.
-- No one can update or delete consent records. They are permanently immutable.
+- No one **can** update or delete consent records. They are permanently immutable.
 
 ## Triggers
 
@@ -87,7 +158,7 @@ Cross-aggregate nav `ConsentRecord.DocumentVersion` — still declared and walke
 
 - **Profiles:** `IProfileService` — consent-check status lives on the profile (read by `ConsentService` for the review-detail view); `IProfileService.GetActiveApprovedUserIdsAsync` is the fan-out target list when `LegalDocumentSyncService` notifies on a new published / re-consent-required version.
 - **Onboarding:** `IOnboardingService.SetConsentCheckPendingIfEligibleAsync` — narrow callback after a consent submit when all required consents are satisfied.
-- **Teams:** `ITeamService` — `AdminLegalDocumentService` stitches team names; legal documents are team-scoped (Volunteers team = global).
+- **Teams:** `ITeamService` — `AdminLegalDocumentService` stitches team names in memory (replaces `.Include(d => d.Team)`); legal documents are team-scoped (Volunteers team = global).
 - **Notifications:** `INotificationService` (in-app fan-out from `LegalDocumentSyncService`) and `INotificationInboxService.ResolveBySourceAsync` (auto-resolve `AccessSuspended` notifications from `ConsentService` once all required consents are complete).
 - **Google Integration:** `ISystemTeamSync.SyncVolunteersMembershipForUserAsync` / `SyncCoordinatorsMembershipForUserAsync` — `ConsentService` re-syncs system team membership after each consent submit.
 - **Governance:** `IMembershipCalculator.GetRequiredTeamIdsForUserAsync` / `HasAllRequiredConsentsAsync` — `ConsentService` resolves which teams' documents apply to a given user and whether all required consents are complete.
@@ -99,25 +170,24 @@ Cross-aggregate nav `ConsentRecord.DocumentVersion` — still declared and walke
 
 **Owning services:** `LegalDocumentService`, `AdminLegalDocumentService`, `LegalDocumentSyncService` (document-side), `ConsentService` (consent-side) — all in `Humans.Application.Services.Legal` / `Humans.Application.Services.Consent`.
 **Owned tables:** `legal_documents`, `document_versions`, `consent_records`
-**Status:** (A) Migrated, with one cross-domain nav strip deferred (`LegalDocument.Team` — see Repositories block below for details). Both halves of the section live in `Humans.Application.Services.*` and route persistence through owning-section repositories.
+**Status:** (A) Migrated — all four owning services live in `Humans.Application`; all table access routes through owning-section repositories. One cross-domain nav strip deferred (`LegalDocument.Team` — details below).
 
-### Repositories
-
-- **`ILegalDocumentRepository`** — owns `legal_documents`, `document_versions`.
-  - Aggregate-local navs kept: `LegalDocument.Versions`, `DocumentVersion.LegalDocument`.
-  - Cross-domain nav `LegalDocument.Team` is still declared on the entity; `ConsentService.GetConsentDashboardAsync` reads it to group consent rows by team. Strip is a follow-up that requires moving to a stitched DTO.
-- **`IConsentRepository`** — owns `consent_records`.
-  - `consent_records` is append-only per §12 (DB triggers block UPDATE/DELETE) — repository exposes `AddAsync` and `GetXxxAsync` but no `UpdateAsync`/`DeleteAsync`.
-  - The lone remaining `.Include` is `GetAllForUserAsync` walking `c.DocumentVersion.LegalDocument` to surface document name + version on the user's consent-history view.
-  - Cross-domain navs `ConsentRecord.User` and `ConsentRecord.DocumentVersion` are still declared on the entity; strip is a follow-up.
-
-`LegalDocumentService` (`/Legal` content provider for the Statutes page) has zero `DbContext` usage; it is a thin GitHub-content provider with `IMemoryCache` plus `IGitHubLegalDocumentConnector` for I/O.
-
-`LegalDocumentSyncService` consumes `ILegalDocumentRepository` and delegates all GitHub I/O to `IGitHubLegalDocumentConnector`. Notification fan-out routes the active-approved user lookup through `IProfileService.GetActiveApprovedUserIdsAsync`.
-
-`ConsentService` consumes `IConsentRepository` for all consent-record I/O, calls `ILegalDocumentSyncService` for document/version reads, `IProfileService` for cross-section profile reads, `IOnboardingService` for the consent-pending callback, and `ISystemTeamSync` for post-consent team-membership sync. It also implements `IUserDataContributor` so the GDPR export orchestrator can assemble the per-user consent slice without crossing the section boundary.
+- Services live in `Humans.Application.Services.Legal/` and `Humans.Application.Services.Consent/` and never import `Microsoft.EntityFrameworkCore`.
+- `ILegalDocumentRepository` (impl `LegalDocumentRepository` in `Humans.Infrastructure/Repositories/Legal/`) is the only code path that touches `legal_documents` and `document_versions` via `DbContext`.
+- `IConsentRepository` (impl `ConsentRepository` in `Humans.Infrastructure/Repositories/Consent/`) is the only code path that touches `consent_records` via `DbContext`. Exposes `AddAsync` and `GetXxxAsync` only — no `UpdateAsync`/`DeleteAsync`.
+- **Decorator decision** — No caching decorators on either side. `LegalDocumentService` (Statutes page) uses `IMemoryCache` directly for the GitHub-fetched statutes content (zero DB access, pure I/O cache). `ConsentService` has no cache layer at all — append-only semantics and per-user reads do not justify one (`ConsentArchitectureTests.ConsentService_HasNoIMemoryCacheConstructorParameter`).
+- **Cross-domain navs still declared (strip deferred):**
+  - `LegalDocument.Team` (`LegalDocument.cs:30`) — walked by `LegalDocumentRepository.GetActiveRequiredDocumentsForTeamsAsync` (`.Include(d => d.Team)`, `LegalDocumentRepository.cs:101`) because `ConsentService.GetConsentDashboardAsync` groups by `g.First().Team`. Strip requires moving to a stitched DTO via `ITeamService`.
+  - `Team.LegalDocuments` (`Team.cs:160`) — reverse collection on the Teams entity; not walked by this section. Strip follows the `LegalDocument.Team` strip.
+  - `ConsentRecord.User` (`ConsentRecord.cs:24`) — declared but no current `.Include` walks it in the Application layer.
+  - `ConsentRecord.DocumentVersion` (`ConsentRecord.cs:34`) — walked by `ConsentRepository.GetAllForUserAsync` / `GetAllForUserIdsAsync` (`.ThenInclude(v => v.LegalDocument)`, `ConsentRepository.cs:95–96`, `111–112`) to surface document name + version on the consent-history view. This is aggregate-local for `consent_records` → `document_versions` → `legal_documents`; not a cross-section nav.
+  - `DocumentVersion.ConsentRecords` (`DocumentVersion.cs:65`) — declared and configured (`DocumentVersionConfiguration.cs:46`); not navigated by any current service path.
+- **Cross-section calls:** `IProfileService`, `IOnboardingService`, `ITeamService`, `INotificationService`, `INotificationInboxService`, `ISystemTeamSync`, `IMembershipCalculator`, `IUserService`.
+- **Architecture tests:** `tests/Humans.Application.Tests/Architecture/LegalArchitectureTests.cs` (Legal services, repository, connector), `tests/Humans.Application.Tests/Architecture/ConsentArchitectureTests.cs` (ConsentService, IConsentRepository append-only shape).
 
 ### Touch-and-clean guidance
 
-- Never add `UpdateAsync`/`DeleteAsync` paths for `consent_records` — the §12 DB triggers (`prevent_consent_record_update`, `prevent_consent_record_delete`) will raise at runtime. Only `AddAsync` and `GetXxxAsync` are valid on the consent side.
-- When editing `ConsentService.GetConsentDashboardAsync`, prefer to plumb a Teams DTO through `ITeamService` rather than re-introducing more `LegalDocument.Team` nav reads — the `.Team` nav is on borrowed time.
+- `LegalDocumentRepository.cs:101` — `.Include(d => d.Team)` inside `GetActiveRequiredDocumentsForTeamsAsync`. When fixing, load team names via `ITeamService.GetTeamNamesByIdsAsync` in `ConsentService.GetConsentDashboardAsync` instead of relying on the nav. Then drop `LegalDocument.Team`, `Team.LegalDocuments`, and remove the Include.
+- `ConsentRecord.User` (`ConsentRecord.cs:24`) — declared but unused. Can be stripped in isolation; no callers need updating.
+- `DocumentVersion.ConsentRecords` (`DocumentVersion.cs:65`) — declared but not navigated by any service. Can be stripped once confirmed no callers in views or tests depend on it.
+- `ConsentArchitectureTests.cs` summary comment (lines 28–32) says Legal services "remain in Infrastructure" — this is stale; all four services are in Application post-migration. Update or remove when next touching that file.

@@ -23,11 +23,10 @@ public sealed class SyncSettingsService : ISyncSettingsService
         _clock = clock;
     }
 
-    public async Task<List<SyncServiceSettings>> GetAllAsync(CancellationToken ct = default)
+    public async Task<IReadOnlyList<SyncServiceSettingsInfo>> GetAllAsync(CancellationToken ct = default)
     {
         var rows = await _repository.GetAllAsync(ct);
-        // Return a mutable List<T> to preserve the pre-migration contract.
-        return rows.ToList();
+        return rows.Select(CreateSyncServiceSettingsInfo).ToList();
     }
 
     public Task<SyncMode> GetModeAsync(SyncServiceType serviceType, CancellationToken ct = default)
@@ -43,4 +42,12 @@ public sealed class SyncSettingsService : ISyncSettingsService
             throw new InvalidOperationException($"No sync setting found for {serviceType}");
         }
     }
+
+    private static SyncServiceSettingsInfo CreateSyncServiceSettingsInfo(SyncServiceSettings settings) =>
+        new(
+            settings.Id,
+            settings.ServiceType,
+            settings.SyncMode,
+            settings.UpdatedAt,
+            settings.UpdatedByUserId);
 }

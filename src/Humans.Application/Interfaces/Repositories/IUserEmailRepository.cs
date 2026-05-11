@@ -215,41 +215,40 @@ public interface IUserEmailRepository : IRepository
         string email, Guid excludeUserId, CancellationToken ct = default);
 
     /// <summary>
-    /// The one and only primitive that writes <see cref="UserEmail.Email"/> on
-    /// the OAuth-linked row. Upsert on <see cref="UserEmail.Provider"/>+
-    /// <see cref="UserEmail.ProviderKey"/> — the only legitimate match key for
-    /// the OAuth identity — for the given <paramref name="userId"/>. Inserts a
-    /// verified row if the pair is missing; updates <c>Email</c> and stamps
-    /// <c>UpdatedAt</c> if present. Removes any OTHER row for the same user
-    /// that already holds <paramref name="newEmail"/> (case-insensitive) so
-    /// the partial unique <c>Email</c> index does not throw on the upsert.
-    /// Reconciles <see cref="UserEmail.IsPrimary"/> on the surviving rows:
-    /// 0 primaries — set the current login primary; exactly 1 — leave alone;
-    /// 2+ — current login stays primary, others demoted.
-    ///
-    /// Per <c>memory/architecture/email-mutation-paths.md</c>: the sole
-    /// legitimate caller is <c>UserEmailService.UpdateEmailAsync</c>, which is
-    /// itself callable only by the OAuth sign-in callback in
-    /// <c>AccountController</c>. Cross-user collision (Postgres 23505 on the
-    /// partial unique <c>Email</c> index — another user already holds
-    /// <paramref name="newEmail"/>) is caught inside the implementation,
-    /// logged at Warning, and surfaced as a <c>false</c> return so EF types
-    /// do not leak into the Application or Web layers.
+    /// Issue nobodies-collective/Humans#697. Returns the first verified
+    /// <see cref="UserEmail"/> row whose <c>Email</c> matches
+    /// <paramref name="normalizedEmail"/> or <paramref name="alternateEmail"/>
+    /// (case-insensitive) and whose <c>UserId</c> is NOT
+    /// <paramref name="excludeUserId"/>. Returns <c>null</c> when no other
+    /// user verified-holds the address. The caller is expected to have
+    /// already normalised the claim email via
+    /// <c>EmailNormalization.NormalizeForComparison</c> so this read uses
+    /// the same comparison rules as every other <c>UserEmail</c> lookup
+    /// (gmail/googlemail alternate, lowercase, trimmed). Sole legitimate
+    /// caller: <c>UserEmailService.ReconcileOAuthIdentityAsync</c>.
     /// </summary>
-    Task<bool> UpdateEmailAsync(
-        Guid userId, string provider, string providerKey, string newEmail, Instant updatedAt,
+    Task<UserEmail?> FindOtherUsersVerifiedRowAsync(
+        string normalizedEmail, string? alternateEmail, Guid excludeUserId,
         CancellationToken ct = default);
 
     /// <summary>
-    /// Returns every <see cref="UserEmail"/> row with matching
-    /// <paramref name="provider"/> / <paramref name="providerKey"/>.
-    /// Read-only (AsNoTracking). Used by
-    /// <c>UserEmailService.FindByProviderKeyAsync</c> for OAuth-callback rename
-    /// detection. The single-row-per-pair invariant is service-enforced; a
-    /// healthy database returns 0 or 1 rows.
+    /// Issue nobodies-collective/Humans#697. Applies a single OAuth-reconcile
+    /// data change inside one <see cref="DbContext"/> + one
+    /// <see cref="Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction"/>.
+    /// Atomicity guarantee: when the plan includes a cross-user displaced
+    /// row alongside the signing user's mutation, either every operation
+    /// commits or none of them do — the displaced user's verified row can
+    /// never be deleted while the signing user's mutation is left undone.
+    /// Sole legitimate caller:
+    /// <c>UserEmailService.ReconcileOAuthIdentityAsync</c>. All parameters
+    /// are optional; a no-op call is allowed but pointless.
     /// </summary>
-    Task<IReadOnlyList<UserEmail>> FindAllByProviderKeyAsync(
-        string provider, string providerKey, CancellationToken ct = default);
+    Task ApplyReconcilePlanAsync(
+        UserEmail? displacedRowToDelete,
+        UserEmail? rowToDelete,
+        UserEmail? rowToUpdate,
+        UserEmail? rowToInsert,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Single-transaction flip: sets <see cref="UserEmail.IsGoogle"/> = true
