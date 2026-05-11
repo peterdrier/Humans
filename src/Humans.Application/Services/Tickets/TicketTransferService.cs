@@ -445,7 +445,7 @@ public sealed class TicketTransferService : ITicketTransferService
         if (user is null) return null;
         var profile = await _profileService.GetProfileAsync(userId, ct);
         // Security gate: filter suspended or unapproved profiles at the lookup layer
-        // (per docs/features/42-ticket-transfer.md — Receiver Lookup Contract). Gates
+        // (per docs/features/tickets/ticket-transfer.md — Receiver Lookup Contract). Gates
         // both lookup paths (exact-email + burner-name) and the detail-fetch used by
         // the confirm-card render.
         if (profile is not null && (profile.IsSuspended || !profile.IsApproved))

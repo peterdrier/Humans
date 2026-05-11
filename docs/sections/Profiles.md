@@ -43,13 +43,9 @@ User is owned by the **Users/Identity** section; the properties below are the pr
 
 #### Google email preference
 
-| Property | Type | Default | Purpose |
-|----------|------|---------|---------|
-| GoogleEmail | string? (256) | null | Preferred email for Google services (Groups, Drive). Auto-set to @nobodies.team when provisioned/linked. Falls back to OAuth email when null. |
+`User.GoogleEmail` C# property has been removed (issue #635 §15i). The `GoogleEmail` column is kept on disk as an EF shadow property (`UserConfiguration.cs:27`) pending a deferred column-drop PR per `memory/architecture/no-drops-until-prod-verified.md`. The canonical read path is `FullProfile.GoogleEmail` (derived from `UserEmail.IsGoogle` rows). The `GetGoogleServiceEmail()` and `GetEffectiveEmail()` methods have been removed from `User`; callers use `FullProfile.GoogleEmail` and `FullProfile.PrimaryEmail` / `FullProfile.NotificationEmail` respectively.
 
-Methods:
-- `GetGoogleServiceEmail()` → `GoogleEmail ?? Email` (for Google resource sync)
-- `GetEffectiveEmail()` → notification target email or OAuth email (for system notifications)
+`User.GoogleEmailStatus` (`GoogleEmailStatus` enum stored as string, default `Unknown`) remains on the entity. Set to `Rejected` on a permanent Google API error; reset to `Unknown` on email change via `IUserService.SetGoogleEmailAsync`.
 
 #### Contact-import properties
 
@@ -172,10 +168,10 @@ Per-user email addresses (login, verified, notifications). Cross-domain nav `Use
 |----------|------|-------|
 | Id | Guid | PK |
 | UserId | Guid | FK → User (Cascade) — **FK only**, no nav |
-| Email | string (256) | Required |
+| Email | string (256) | Required. **Mutation has exactly one path:** `UserEmailRepository.UpdateEmailAsync(provider, providerKey, newEmail, ...)`, called only by the OAuth sign-in callback in `AccountController`. See [`memory/architecture/email-mutation-paths.md`](../../memory/architecture/email-mutation-paths.md). No admin flow, profile UI flow, or sync job rewrites this field; renames self-heal on the user's next Google sign-in |
 | IsVerified | bool | Required |
-| Provider | string? (50) | OAuth provider that owns this row when the user signed in via OIDC ("Google" today; future Apple/Microsoft). Null when no OAuth identity is linked. Single-row-per-(Provider, ProviderKey) is service-enforced |
-| ProviderKey | string? (256) | OAuth subject/key (OIDC `sub`) for the linked identity. Stable across Google Workspace email renames; OAuth callback updates `Email` when claims diverge. Same-user merge in `UserEmailRepository.RewriteEmailAddressAsync` propagates `Provider`/`ProviderKey` to the surviving row to preserve OAuth linkage |
+| Provider | string? (64) | OAuth provider that owns this row when the user signed in via OIDC ("Google" today; future Apple/Microsoft). Null when no OAuth identity is linked. Single-row-per-(Provider, ProviderKey) is service-enforced |
+| ProviderKey | string? (256) | OAuth subject/key (OIDC `sub`) for the linked identity. Stable across Google Workspace email renames. `(Provider, ProviderKey)` is the only legitimate match key for rewriting `Email` (via `UserEmailRepository.UpdateEmailAsync`) |
 | IsGoogle | bool | Canonical Google Workspace identity row (used by Google sync and Workspace admin). Auto-maintained by `EnsureGoogleInvariantAsync` on every UserEmail mutation — precedence is @nobodies.team row > existing IsGoogle row (Id-stable) > most-recent verified. Admin can override via the Profile email grid (`SetGoogle`/`ClearGoogle`). At-most-one-true-per-UserId is service-enforced |
 | IsPrimary | bool | Exactly one verified email per user is the system-notification target. Service-enforced via `EnsurePrimaryInvariantAsync`; column persists under legacy name `IsNotificationTarget` per `no-column-drops-for-decoupling.md` |
 | Visibility | ContactFieldVisibility? | Stored as string (max 50); null hides the email from profile view |
@@ -183,6 +179,8 @@ Per-user email addresses (login, verified, notifications). Cross-domain nav `Use
 | CreatedAt / UpdatedAt | Instant | Maintained by `UserEmailService` |
 
 **Indexes:** `UserId`; **unique partial index** on `Email` filtered to `IsVerified = true` (Postgres `"IsVerified" = true`) — prevents email squatting across accounts.
+
+**Shadow properties (column-only, no C# surface):** `IsOAuth` (bool) and `DisplayOrder` (int) columns remain on disk pending a deferred drop PR per `memory/architecture/no-drops-until-prod-verified.md`. `UserEmailConfiguration.cs:57–62`.
 
 ### CommunicationPreference
 
@@ -327,8 +325,9 @@ All profile-related functionality lives under `/Profile`:
 | `/Profile/Search` | People search |
 | `/Profile/Picture` | Profile picture endpoint |
 | `/api/profiles/search` | API search endpoint |
+| `/Profile/Admin/Backfill` | Stub-Profile backfill tool — idempotent count-and-bulk-create for profile-less users (`ProfileBackfillAdminController`, `AdminOnly`) |
 
-Admin-only flows for the section's cross-account hygiene:
+Admin-only flows for the section's cross-account hygiene (routes pre-date `memory/architecture/no-admin-url-section.md` — not yet moved to `/<Section>/Admin/*`):
 
 | Route | Purpose |
 |-------|---------|
@@ -364,7 +363,7 @@ Admin-only flows for the section's cross-account hygiene:
 - Consent check status on the profile gates Volunteer activation: unset until all consents are signed, then Pending, Cleared, or Flagged.
 - Profile deletion request sets `User.DeletionRequestedAt` and `User.DeletionScheduledFor = now + 30 days` on the User record. Team memberships and governance role assignments are revoked immediately. Actual data purge is deferred to a background job.
 - Data export returns all personal data as a JSON download (GDPR Article 15). `ProfileService` and `AccountMergeService` are this section's `IUserDataContributor` implementations per design-rules §8a; the orchestration lives in `GdprExportService`.
-- Profile pictures are stored in the database on `Profile.ProfilePictureData` (~500-user scale). Uploaded images are validated against an allowed-content-type set (JPEG, PNG, WebP, HEIC/HEIF, AVIF) and a 20 MB upload cap, then resized by `ProfilePictureProcessor` to a long-side of 1000 px and re-encoded as JPEG before persistence.
+- Profile pictures are stored on the filesystem via `IFileStorage` (key `uploads/profile-pictures/{profileId}{.ext}`), with `Profile.ProfilePictureData` retained as a phase-1 DB fallback (issue nobodies-collective#527). `GetProfilePictureAsync` checks `ProfilePictureContentType` as the GDPR gate: null → 404, even if a stale file exists on disk. Filesystem-first; DB fallback triggers migrate-on-read. Saves and deletions dual-write. Uploaded images are validated against an allowed-content-type set (JPEG, PNG, WebP, HEIC/HEIF, AVIF) and a 20 MB upload cap, then resized by `ProfilePictureProcessor` to a long-side of 1000 px and re-encoded as JPEG before persistence.
 - `CachingProfileService` (Singleton) and `IFullProfileInvalidator` must resolve to the **same** instance — both registrations point to the single decorator. Two instances would split the `ConcurrentDictionary<Guid, FullProfile>` cache and silently lose invalidations.
 - Purging a human permanently deletes the account and all associated data, including severing the OAuth link so the next Google login creates a fresh account. Purge is disabled in production environments. No one can purge their own account.
 - Duplicate account detection applies gmail/googlemail equivalence when scanning for address collisions.
@@ -408,7 +407,7 @@ Admin-only flows for the section's cross-account hygiene:
 **Status:** (A) Migrated — canonical §15 reference implementation (peterdrier/Humans PR #235, 2026-04-20). `AccountMergeService` / `DuplicateAccountService` moved into `Humans.Application/Services/Profile/` after the original migration (they now live alongside the other Profile-section services in the code tree; design-rules §8 ownership updated accordingly).
 
 - Services live in `Humans.Application.Services.Profile/` and never import `Microsoft.EntityFrameworkCore`.
-- `IProfileRepository`, `IUserEmailRepository`, `IContactFieldRepository`, `ICommunicationPreferenceRepository` (impls in `Humans.Infrastructure/Repositories/`) are the only code paths that touch this section's tables via `DbContext`. Repositories are Singleton, using `IDbContextFactory<HumansDbContext>` and short-lived contexts per method.
+- `IProfileRepository`, `IUserEmailRepository`, `IContactFieldRepository`, `ICommunicationPreferenceRepository`, `IAccountMergeRepository` (impls in `Humans.Infrastructure/Repositories/Profiles/`) are the only code paths that touch this section's tables via `DbContext`. Repositories are Singleton, using `IDbContextFactory<HumansDbContext>` and short-lived contexts per method.
 - **Decorator decision — caching decorator.** `CachingProfileService` is a Singleton owning `ConcurrentDictionary<Guid, FullProfile> _byUserId`. Warmup via `FullProfileWarmupHostedService`. See design-rules §15d.
 - **`FullProfile` is canonical (issue #635 §15i, 2026-05-04).** Three derived properties — `PrimaryEmail`, `AllVerifiedEmails`, `GoogleEmail` — replace the old `User.UserEmails` / `User.GetEffectiveEmail()` / `User.GoogleEmail` reader sites. `CachingProfileService` populates them from already-loaded `UserEmail` rows (no new repo lookups). `FullProfile.NotificationEmail` is kept as a get-only alias for `PrimaryEmail` for backward compat. The lifecycle marker `Profile.State` (Stub/Active/Suspended) flows through `FullProfile.State` and is lazily computed-and-written-back when the persisted value is `null` (see `CachingProfileService.ComputeProfileState`).
 - **Stub Profile invariant (issue #635 §15i).** Every newly created User materializes a `ProfileState.Stub` Profile inline at the User-creation call site (`AccountController.ExternalLoginCallback`/`CompleteSignup`, `AccountProvisioningService.FindOrCreateUserByEmailAsync`). `ProfileService.SaveProfileAsync` promotes the row to `Active` once `BurnerName`/`FirstName`/`LastName` are all populated. Legacy profile-less users (contact imports pre-§15i) are reconciled through the `/Profile/Admin/Backfill` admin tool — idempotent count-and-bulk-create page; no-op when N=0. Until the backfill is run, `GET /Profile/{id}/Popover` (issue #690) renders a sparse fallback card for these users so `<human-link>` hovers don't 404 — see the Invariants section bullet.
@@ -418,7 +417,7 @@ Admin-only flows for the section's cross-account hygiene:
 - **Cross-domain navs stripped:** `Profile.User`, `UserEmail.User`, `CommunicationPreference.User`. Display stitching routes through `IUserService.GetByIdsAsync`.
 - **GDPR:** `ProfileService` and `AccountMergeService` both implement `IUserDataContributor` (design-rules §8a). `ProfileService` emits the `Profile`, `ContactFields`, `UserEmails`, `VolunteerHistory`, `Languages`, and `CommunicationPreferences` slices; `AccountMergeService` emits the `AccountMergeRequests` slice. Section keys are constants on `GdprExportSections`. The `ExpectedContributorTypes` in `GdprExportDependencyInjectionTests` enforces registration.
 - **Account merge & duplicates** — `AccountMergeService` and `DuplicateAccountService` live in `Humans.Application.Services.Profile/`. `AccountMergeService` is backed by `IAccountMergeRepository` (Singleton) for `account_merge_requests` and orchestrates the actual merge via `IUserEmailService`, `IContactFieldService`, `IProfileService`, and `IUserService`. `DuplicateAccountService` is stateless — no repository, just cross-section reads via those same interfaces. Neither service reads `DbContext` directly.
-- **Architecture tests** — `tests/Humans.Application.Tests/Architecture/ProfileArchitectureTests.cs` + `GdprExportDependencyInjectionTests.cs`.
+- **Architecture tests** — `tests/Humans.Application.Tests/Architecture/ProfileArchitectureTests.cs` + `tests/Humans.Application.Tests/Architecture/ProfileStateAndIsSuspendedTests.cs` + `tests/Humans.Application.Tests/Services/Gdpr/GdprExportDependencyInjectionTests.cs`.
 
 ### Account deletion cascade
 

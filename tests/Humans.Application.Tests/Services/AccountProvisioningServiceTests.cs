@@ -203,8 +203,6 @@ public class AccountProvisioningServiceTests
             throw new NotSupportedException();
         public Task<bool> SetGoogleEmailStatusAsync(Guid userId, GoogleEmailStatus status, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<(bool Updated, string? OldEmail)> RewritePrimaryEmailAsync(Guid userId, string newEmail, CancellationToken ct = default) =>
-            throw new NotSupportedException();
         public Task<IReadOnlyList<(string Language, int Count)>>
             GetLanguageDistributionForUserIdsAsync(
                 IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
@@ -225,6 +223,9 @@ public class AccountProvisioningServiceTests
         public Task<IReadOnlyList<Guid>> GetUsersWithLoginsButNoEmailsAsync(CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<int> DeleteAllExternalLoginsForUserAsync(Guid userId, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<IReadOnlyDictionary<Guid, IReadOnlyList<(string Provider, string ProviderKey)>>>
+            GetExternalLoginsByUserIdsAsync(IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
             throw new NotSupportedException();
     }
 

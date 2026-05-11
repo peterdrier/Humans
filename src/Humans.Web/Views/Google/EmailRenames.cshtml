@@ -30,7 +30,7 @@
         <div class="alert alert-warning">
             <i class="fa-solid fa-triangle-exclamation me-1"></i>
             Found <strong>@Model.Renames.Count</strong> renamed email(s) out of <strong>@Model.TotalUsersChecked</strong> @@nobodies.team users checked.
-            Review each rename and click <strong>Fix</strong> to update the stored email.
+            No admin action available — renames self-heal on the user's next Google sign-in.
         </div>
 
         <div class="card mb-4">
@@ -46,7 +46,6 @@
                             <th></th>
                             <th>New Email</th>
                             <th>Affected Resources</th>
-                            <th style="width: 100px;"></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -67,21 +66,13 @@
                                         <span class="text-muted">0</span>
                                     }
                                 </td>
-                                <td>
-                                    <form asp-action="FixEmailRename" method="post" class="d-inline">
-                                        @Html.AntiForgeryToken()
-                                        <input type="hidden" name="userId" value="@rename.UserId" />
-                                        <input type="hidden" name="newEmail" value="@rename.NewEmail" />
-                                        <button type="submit" class="btn btn-sm btn-outline-primary"
-                                                data-confirm="Update email for @rename.DisplayName from @rename.OldEmail to @rename.NewEmail?">
-                                            <i class="fa-solid fa-wrench me-1"></i>Fix
-                                        </button>
-                                    </form>
-                                </td>
                             </tr>
                         }
                     </tbody>
                 </table>
+                <div class="card-body small text-muted">
+                    <i class="fa-solid fa-circle-info me-1"></i>Read-only diagnostic. Renames self-heal on the user's next Google sign-in via the OAuth callback — no admin action available.
+                </div>
             </div>
         </div>
 
