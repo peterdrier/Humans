@@ -249,13 +249,15 @@ public class AccountControllerOAuthRenameDetectionTests
     }
 
     [HumansFact]
-    public async Task SuccessBranch_NoUserEmailRow_BackfillsViaUpsert()
+    public async Task SuccessBranch_NoUserEmailRow_BackfillsViaUpsertAndAudits()
     {
         // The AspNetUserLogins row exists (sign-in succeeded) but no UserEmail
         // row is tagged with this (Provider, ProviderKey) — e.g. a pre-LinkAsync
         // provisioned user. The callback calls UpdateEmailAsync, which upserts
         // (insert when missing) per memory/architecture/email-mutation-paths.md.
-        // No audit row (creation is logged at Warning per always-log-problems.md).
+        // Writes UserEmailLinked audit (matching LinkAsync's pattern) so the
+        // Board/Admin trail records when the row first appeared, plus a
+        // Warning log for real-time ops visibility.
         var userId = Guid.NewGuid();
         var claimEmail = "backfill@nobodies.team";
         var info = MakeInfo(claimEmail);
@@ -278,9 +280,11 @@ public class AccountControllerOAuthRenameDetectionTests
 
         await _userEmailService.Received(1).UpdateEmailAsync(
             userId, Provider, ProviderKey, claimEmail, Arg.Any<CancellationToken>());
-        await _auditLogService.DidNotReceive().LogAsync(
-            Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
-            Arg.Any<string>(), Arg.Any<string>(),
+        await _auditLogService.Received(1).LogAsync(
+            AuditAction.UserEmailLinked,
+            nameof(User), userId,
+            Arg.Is<string>(s => s.Contains(claimEmail) && s.Contains(ProviderKey)),
+            nameof(AccountController),
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 

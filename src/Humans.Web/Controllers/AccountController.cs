@@ -399,6 +399,11 @@ public class AccountController : HumansControllerBase
             }
             else
             {
+                await _auditLogService.LogAsync(
+                    AuditAction.UserEmailLinked,
+                    nameof(User), userId.Value,
+                    $"OAuth backfill: created UserEmail row ({info.LoginProvider}, sub={info.ProviderKey}, email={claimEmail}) on sign-in.",
+                    nameof(AccountController));
                 _logger.LogWarning(
                     "OAuth backfill: created UserEmail row for user {UserId} ({Provider}, sub={Sub}, email={Email}).",
                     userId.Value, info.LoginProvider, info.ProviderKey, claimEmail);
