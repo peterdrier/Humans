@@ -26,7 +26,16 @@ public class AgentConversationRetentionJobTests
         await db.SaveChangesAsync();
 
         var settings = Substitute.For<IAgentSettingsService>();
-        settings.Current.Returns(new AgentSettings { RetentionDays = 90 });
+        settings.Current.Returns(new AgentSettingsInfo(
+            Id: 1,
+            Enabled: true,
+            Model: "test-model",
+            PreloadConfig: default,
+            DailyMessageCap: 30,
+            HourlyMessageCap: 10,
+            DailyTokenCap: 50_000,
+            RetentionDays: 90,
+            UpdatedAt: now));
 
         var clock = new FakeClock(now);
         var repo = new AgentRepository(db, clock);

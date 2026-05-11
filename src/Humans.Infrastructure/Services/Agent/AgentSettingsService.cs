@@ -19,7 +19,7 @@ public sealed class AgentSettingsService : IAgentSettingsService
         _clock = clock;
     }
 
-    public AgentSettings Current => _store.Current;
+    public AgentSettingsInfo Current => CreateAgentSettingsInfo(_store.Current);
 
     public async Task LoadAsync(CancellationToken cancellationToken)
     {
@@ -33,4 +33,16 @@ public sealed class AgentSettingsService : IAgentSettingsService
         var row = await _repo.UpdateSettingsAsync(mutator, _clock.GetCurrentInstant(), cancellationToken);
         _store.Set(row);
     }
+
+    private static AgentSettingsInfo CreateAgentSettingsInfo(AgentSettings settings) =>
+        new(
+            settings.Id,
+            settings.Enabled,
+            settings.Model,
+            settings.PreloadConfig,
+            settings.DailyMessageCap,
+            settings.HourlyMessageCap,
+            settings.DailyTokenCap,
+            settings.RetentionDays,
+            settings.UpdatedAt);
 }
