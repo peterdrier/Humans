@@ -1,5 +1,5 @@
 <!-- freshness:flag-on-change
-  Forward-looking inventory of Roslyn analyzer candidates beyond HUM0001-HUM0006.
+  Forward-looking inventory of Roslyn analyzer candidates beyond HUM0001-HUM0006/HUM0008.
   Flag if a new analyzer ships (move that entry from Tier 1 → catalogue in code-analysis.md),
   if a new atom lands with call-site shape, or if a recent clamp-fix commit would have been
   prevented by a not-yet-shipped analyzer.
@@ -8,7 +8,7 @@
 # Roslyn Analyzer Candidates
 
 Forward-looking inventory of *additional* in-repo analyzer rules beyond the
-shipped `HUM0001`–`HUM0006` (catalogued in
+shipped `HUM0001`–`HUM0006` / `HUM0008` (catalogued in
 [`code-analysis.md`](code-analysis.md)). This file is the queue we draw from
 when adding the next analyzer; do not start writing one without checking here
 first.
@@ -56,23 +56,6 @@ project at least one fix commit.
   gives Peter a build-break the moment someone adds one, in-editor, with the
   atom link in the diagnostic message.
 - Current coverage: `NoConcurrencyTokensRule` (ratchet). Migrate it.
-
-### HUM0008 — Controllers may not inject `HumansDbContext`
-
-- Rule: a class deriving from `Controller` / `ControllerBase` may not have a
-  constructor parameter typed `HumansDbContext`.
-- Source: [`memory/architecture/repository-required-for-db-access.md`](../../memory/architecture/repository-required-for-db-access.md)
-  + design-rules §2a.
-- Call-site shape: `INamedTypeSymbol` derives transitively from `ControllerBase`,
-  scan constructors for `HumansDbContext` parameter type. No baseline needed
-  if we keep the two grandfathered exceptions (`AdminController`,
-  `DevLoginController`) as a hardcoded allowlist by `ContainingTopLevelType`
-  metadata name — exactly the pattern HUM0005 already uses for
-  `AccountController`.
-- Why analyzer, not ratchet: caller-allowlist pattern is the same as
-  HUM0005/HUM0006. Diagnostic at the constructor parameter is dramatically
-  clearer than a regex hit reported by line number.
-- Current coverage: `NoControllerInjectsDbContextRule` (ratchet, baselined).
 
 ### HUM0009 — Application services may not inject `HumansDbContext`
 
@@ -236,7 +219,6 @@ shaped for ratchet / marker / filesystem-aware enforcement, not for an
 analyzer.
 
 - `NoServiceInjectsDbContextRule` (`tests/.../Rules/NoServiceInjectsDbContextRule.cs`) — promoted in Tier 1 as HUM0009, kept here until the analyzer ships.
-- `NoControllerInjectsDbContextRule` (`tests/.../Rules/NoControllerInjectsDbContextRule.cs`) — promoted in Tier 1 as HUM0008.
 - `NoConcurrencyTokensRule` (`tests/.../Rules/NoConcurrencyTokensRule.cs`) — promoted in Tier 1 as HUM0007.
 - `NoCrossSectionEfJoinsRule` (`tests/.../Rules/NoCrossSectionEfJoinsRule.cs`) — section ownership is encoded in the `Configurations/<Section>/` folder layout; filesystem-aware. Stay as ratchet.
 - `NoLinqAtDbLayerRule` (`tests/.../Rules/NoLinqAtDbLayerRule.cs`) — accumulated debt across services; baseline-ratcheted. Stay as ratchet.

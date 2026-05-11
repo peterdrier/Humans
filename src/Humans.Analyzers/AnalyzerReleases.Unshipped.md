@@ -8,3 +8,4 @@ HUM0003 | Humans.Architecture   | Error    | UserManager.FindByEmailAsync / Find
 HUM0004 | Humans.Architecture   | Error    | Profile.IsSuspended written outside allowlisted dual-writers
 HUM0005 | Humans.Architecture   | Error    | IUserEmailService.UpdateEmailAsync called from outside AccountController
 HUM0006 | Humans.Architecture   | Error    | IUserEmailRepository.UpdateEmailAsync called from outside UserEmailService
+HUM0008 | Humans.Architecture   | Error    | Controller constructor injects HumansDbContext
