@@ -12,6 +12,13 @@ namespace Humans.Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.AddColumn<string>(
+                name: "Iban",
+                table: "profiles",
+                type: "character varying(34)",
+                maxLength: 34,
+                nullable: true);
+
             migrationBuilder.CreateTable(
                 name: "expense_attachments",
                 columns: table => new
@@ -162,6 +169,10 @@ namespace Humans.Infrastructure.Migrations
 
             migrationBuilder.DropTable(
                 name: "expense_reports");
+
+            migrationBuilder.DropColumn(
+                name: "Iban",
+                table: "profiles");
         }
     }
 }
