@@ -1610,20 +1610,21 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
         return member;
     }
 
-    public Task<int> DeleteTeamsByNameSuffixAsync(
-        string nameSuffix,
+    public async Task<bool> PermanentlyDeleteTeamAsync(
+        Guid teamId,
         CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrEmpty(nameSuffix))
-            throw new ArgumentException("nameSuffix must be a non-empty marker", nameof(nameSuffix));
+        var team = await _repo.GetByIdAsync(teamId, cancellationToken)
+            ?? throw new InvalidOperationException($"Team {teamId} not found");
 
-        return DeleteByNameSuffixAndRemoveFromCacheAsync(nameSuffix, cancellationToken);
-    }
+        if (team.IsSystemTeam)
+            throw new InvalidOperationException("Cannot permanently delete system team");
 
-    private async Task<int> DeleteByNameSuffixAndRemoveFromCacheAsync(string nameSuffix, CancellationToken ct)
-    {
-        var count = await _repo.DeleteByNameSuffixAsync(nameSuffix, ct);
-        return count;
+        var hasActiveChildren = await _repo.HasActiveChildrenAsync(teamId, cancellationToken);
+        if (hasActiveChildren)
+            throw new InvalidOperationException("Cannot permanently delete a team that has active sub-teams. Remove or reassign sub-teams first.");
+
+        return await _repo.PermanentlyDeleteTeamAsync(teamId, cancellationToken);
     }
 
     public Task<IReadOnlyDictionary<Guid, int>> GetPendingRequestCountsByTeamIdsAsync(

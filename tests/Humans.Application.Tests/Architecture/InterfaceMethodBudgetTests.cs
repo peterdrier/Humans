@@ -118,10 +118,9 @@ public class InterfaceMethodBudgetTests
         // into one GetShiftsSummaryAsync(eventId, teamIds) method.
         // 49→48: collapsed GetAllTagsAsync and SearchTagsAsync into one
         // GetTagsAsync(query) method.
-        // 48->50: HUM0009 Web seeder cleanup. Added EventExistsAsync and
-        // DeleteEventByNameAsync so dev reset/seed orchestration goes through
-        // the Shifts API instead of HumansDbContext.
-        [typeof(IShiftManagementService)] = 50,
+        // 48->49: HUM0009 Web seeder cleanup. Added DeleteEventAsync(id) so
+        // dev reset goes through the Shifts API instead of HumansDbContext.
+        [typeof(IShiftManagementService)] = 49,
         // +1 for SetProfilePictureAsync (nobodies-collective/Humans#532 — Google avatar import button needs a
         // narrow service write that owns its own cache invalidation; controllers can't reach
         // the FullProfile cache directly).

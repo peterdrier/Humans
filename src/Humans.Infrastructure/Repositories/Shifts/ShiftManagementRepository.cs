@@ -52,14 +52,6 @@ public sealed class ShiftManagementRepository : IShiftManagementRepository
             .FirstOrDefaultAsync(e => e.Id == id, ct);
     }
 
-    public async Task<bool> EventSettingsExistsByNameAsync(string eventName, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.EventSettings
-            .AsNoTracking()
-            .AnyAsync(e => e.EventName == eventName, ct);
-    }
-
     public async Task<bool> AnyOtherActiveEventSettingsAsync(Guid? excludingId, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
@@ -83,19 +75,12 @@ public sealed class ShiftManagementRepository : IShiftManagementRepository
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task<int> DeleteEventCascadeByNameAsync(string eventName, CancellationToken ct = default)
+    public async Task<int> DeleteEventCascadeAsync(Guid eventSettingsId, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
 
-        var eventSettingsId = await ctx.EventSettings
-            .Where(e => e.EventName == eventName)
-            .Select(e => (Guid?)e.Id)
-            .FirstOrDefaultAsync(ct);
-        if (eventSettingsId is null)
-            return 0;
-
         var rotaIds = await ctx.Rotas
-            .Where(r => r.EventSettingsId == eventSettingsId.Value)
+            .Where(r => r.EventSettingsId == eventSettingsId)
             .Select(r => r.Id)
             .ToListAsync(ct);
 
@@ -123,7 +108,7 @@ public sealed class ShiftManagementRepository : IShiftManagementRepository
         }
 
         return await ctx.EventSettings
-            .Where(e => e.Id == eventSettingsId.Value)
+            .Where(e => e.Id == eventSettingsId)
             .ExecuteDeleteAsync(ct);
     }
 

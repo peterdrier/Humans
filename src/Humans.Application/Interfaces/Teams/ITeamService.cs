@@ -606,13 +606,11 @@ public interface ITeamService : IApplicationService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Permanently deletes every team whose <see cref="Team.Name"/> ends with
-    /// <paramref name="nameSuffix"/>, along with its <see cref="TeamMember"/>
-    /// and <see cref="TeamJoinRequest"/> rows. Caller is responsible for full
-    /// Admin authorization.
+    /// Permanently deletes a team and its Teams-owned child rows. Caller is
+    /// responsible for full Admin authorization.
     /// </summary>
-    Task<int> DeleteTeamsByNameSuffixAsync(
-        string nameSuffix,
+    Task<bool> PermanentlyDeleteTeamAsync(
+        Guid teamId,
         CancellationToken cancellationToken = default);
 
     // ==========================================================================

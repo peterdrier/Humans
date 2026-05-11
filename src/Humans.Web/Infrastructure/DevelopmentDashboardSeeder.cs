@@ -1,3 +1,4 @@
+using Humans.Application.Helpers;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
@@ -31,6 +32,8 @@ public sealed record DashboardResetResult(
 /// </summary>
 public sealed class DevelopmentDashboardSeeder
 {
+    private static readonly Guid SeededEventId = Guid.Parse("2f38bf0c-46fd-4f7d-a05b-7ec9e26d8e6b");
+
     private const string SeededEventName = "Seeded Elsewhere 2026 (dev)";
     private const string DevTeamNameSuffix = " (dev)";
     private const string DevUserEmailSuffix = "@seed.local";
@@ -94,8 +97,8 @@ public sealed class DevelopmentDashboardSeeder
 
     public async Task<DashboardSeedResult> SeedAsync(CancellationToken cancellationToken)
     {
-        var existing = await _shiftManagementService.EventExistsAsync(SeededEventName, cancellationToken);
-        if (existing)
+        var existing = await _shiftManagementService.GetByIdAsync(SeededEventId);
+        if (existing is not null)
         {
             _logger.LogInformation("Dashboard seed already applied (event '{EventName}' exists).", SeededEventName);
             return new DashboardSeedResult(AlreadySeeded: true, 0, 0, 0, 0);
@@ -114,7 +117,7 @@ public sealed class DevelopmentDashboardSeeder
 
         var es = new EventSettings
         {
-            Id = Guid.NewGuid(),
+            Id = SeededEventId,
             EventName = SeededEventName,
             Year = todayUtc.Year,
             TimeZoneId = "Europe/Madrid",
@@ -395,8 +398,8 @@ public sealed class DevelopmentDashboardSeeder
 
     /// <summary>
     /// Deletes all data previously created by <see cref="SeedAsync"/>: the seeded
-    /// event (with its rotas/shifts/signups), dev teams (name suffix "<c> (dev)</c>"),
-    /// and dev users (email pattern <c>dev-human-*@seed.local</c>). Safe to call on
+    /// event (with its rotas/shifts/signups), known seeded dev teams, and dev
+    /// users (email pattern <c>dev-human-*@seed.local</c>). Safe to call on
     /// a DB where no seed has ever run.
     ///
     /// Deletion goes through the owning section services. The caller is responsible
@@ -404,9 +407,7 @@ public sealed class DevelopmentDashboardSeeder
     /// </summary>
     public async Task<DashboardResetResult> ResetAsync(CancellationToken cancellationToken)
     {
-        var eventsDeleted = await _shiftManagementService.DeleteEventByNameAsync(
-            SeededEventName,
-            cancellationToken);
+        var eventsDeleted = await _shiftManagementService.DeleteEventAsync(SeededEventId, cancellationToken);
 
         // Dev users - match the seed marker on UserEmails.
         var devUserIds = await _userEmailService.GetUserIdsByEmailPrefixAndSuffixAsync(
@@ -417,7 +418,16 @@ public sealed class DevelopmentDashboardSeeder
             await _shiftSignupService.DeleteAllForUsersAsync(devUserIds, cancellationToken);
         }
 
-        var teamsDeleted = await _teamService.DeleteTeamsByNameSuffixAsync(DevTeamNameSuffix, cancellationToken);
+        var teamsDeleted = 0;
+        foreach (var slug in SeededTeamSlugsForDelete())
+        {
+            var team = await _teamService.GetTeamBySlugAsync(slug, cancellationToken);
+            if (team is null)
+                continue;
+
+            if (await _teamService.PermanentlyDeleteTeamAsync(team.Id, cancellationToken))
+                teamsDeleted++;
+        }
 
         var usersDeleted = devUserIds.Count == 0
             ? 0
@@ -428,5 +438,21 @@ public sealed class DevelopmentDashboardSeeder
             eventsDeleted, teamsDeleted, usersDeleted);
 
         return new DashboardResetResult(eventsDeleted, teamsDeleted, usersDeleted);
+    }
+
+    private static IEnumerable<string> SeededTeamSlugsForDelete()
+    {
+        foreach (var (_, subteams) in Subteams)
+        {
+            foreach (var subteam in subteams)
+            {
+                yield return SlugHelper.GenerateSlug($"{subteam}{DevTeamNameSuffix}");
+            }
+        }
+
+        foreach (var parentTeam in ParentTeamNames)
+        {
+            yield return SlugHelper.GenerateSlug($"{parentTeam}{DevTeamNameSuffix}");
+        }
     }
 }

@@ -45,9 +45,6 @@ public interface IShiftManagementRepository : IRepository
     /// <summary>Loads an <see cref="EventSettings"/> by id (read-only).</summary>
     Task<EventSettings?> GetEventSettingsByIdAsync(Guid id, CancellationToken ct = default);
 
-    /// <summary>Loads an <see cref="EventSettings"/> by exact event name (read-only).</summary>
-    Task<bool> EventSettingsExistsByNameAsync(string eventName, CancellationToken ct = default);
-
     /// <summary>Returns true if any other <see cref="EventSettings"/> (excluding <paramref name="excludingId"/>) is active.</summary>
     Task<bool> AnyOtherActiveEventSettingsAsync(Guid? excludingId, CancellationToken ct = default);
 
@@ -61,7 +58,7 @@ public interface IShiftManagementRepository : IRepository
     /// Deletes an <see cref="EventSettings"/> row and all Shifts-owned rows beneath it.
     /// Returns the number of event rows deleted.
     /// </summary>
-    Task<int> DeleteEventCascadeByNameAsync(string eventName, CancellationToken ct = default);
+    Task<int> DeleteEventCascadeAsync(Guid eventSettingsId, CancellationToken ct = default);
 
     // ==========================================================================
     // Rota
