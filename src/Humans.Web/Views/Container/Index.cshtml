@@ -61,7 +61,7 @@
 else
 {
     <ul class="list-group">
-        @foreach (var c in Model.Containers.OrderBy(x => x.Name))
+        @foreach (var c in Model.Containers)
         {
             <partial name="_ContainerCardRow" model="@CardFor(c)" />
         }
