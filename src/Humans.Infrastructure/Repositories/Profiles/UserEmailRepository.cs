@@ -619,4 +619,9 @@ public sealed class UserEmailRepository : IUserEmailRepository
             .Where(e => e.Provider == provider && e.ProviderKey == providerKey)
             .ToListAsync(ct);
     }
+
+    public Task<UserEmail?> FindOtherUsersVerifiedRowAsync(
+        string email, Guid excludeUserId, CancellationToken ct = default)
+        => throw new NotSupportedException(
+            "Issue nobodies-collective/Humans#697 step 2 implements this; this stub exists so the step-1 TDD commit compiles.");
 }

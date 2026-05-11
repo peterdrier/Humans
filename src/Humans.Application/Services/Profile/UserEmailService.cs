@@ -1206,4 +1206,15 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         var first = matches[0];
         return new UserEmailProviderMatch(first.Id, first.UserId, first.Email);
     }
+
+    /// <inheritdoc />
+    public Task<OAuthReconcileResult> ReconcileOAuthIdentityAsync(
+        Guid userId,
+        string provider,
+        string providerKey,
+        string claimEmail,
+        bool claimEmailVerified,
+        CancellationToken cancellationToken = default)
+        => throw new NotSupportedException(
+            "Issue nobodies-collective/Humans#697 step 3 implements this; this stub exists so the step-1 TDD commit compiles.");
 }

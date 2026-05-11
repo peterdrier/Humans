@@ -472,7 +472,108 @@ public interface IUserEmailService : IApplicationService
     Task<UserEmailProviderMatch?> FindByProviderKeyAsync(
         string provider, string providerKey,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Issue nobodies-collective/Humans#697. The single OAuth-callback entry
+    /// point that mutates <see cref="Domain.Entities.UserEmail"/> rows. Called
+    /// once per OAuth-success path in <c>AccountController</c> after Identity's
+    /// <c>AspNetUserLogins</c> row points at <paramref name="userId"/>. Policy
+    /// ladder (all inside a single transaction):
+    /// <list type="number">
+    /// <item>Tagged row at <paramref name="claimEmail"/> → <see cref="ReconcileOutcome.NoChange"/>.</item>
+    /// <item>Tagged row at a different email + another row of this user holds
+    /// the claim email → tag-move (union <c>IsGoogle</c>/<c>IsPrimary</c>,
+    /// force verify, delete old) → <see cref="ReconcileOutcome.TagMoved"/>.</item>
+    /// <item>Tagged row at a different email + no other row of this user holds
+    /// the claim email → rewrite → <see cref="ReconcileOutcome.EmailRewritten"/>.</item>
+    /// <item>No tagged row + another row of this user holds the claim email →
+    /// tag-move → <see cref="ReconcileOutcome.TagMoved"/>.</item>
+    /// <item>No tagged row + no row of this user holds the claim email → insert
+    /// a verified tagged row → <see cref="ReconcileOutcome.NewRowCreated"/>.</item>
+    /// </list>
+    /// Before any insert/rewrite that would place a verified row at
+    /// <paramref name="claimEmail"/>, a cross-user collision check runs. If
+    /// another user already verified-holds the claim email:
+    /// <list type="bullet">
+    /// <item>When <paramref name="claimEmailVerified"/> is <c>true</c> → Google
+    /// wins. Delete the other user's row, write paired audits, proceed →
+    /// <see cref="ReconcileOutcome.CrossUserDisplaced"/>.</item>
+    /// <item>When <paramref name="claimEmailVerified"/> is <c>false</c> →
+    /// block. No mutation. Audit the attempt →
+    /// <see cref="ReconcileOutcome.CrossUserBlocked"/>.</item>
+    /// </list>
+    /// Audit rows for every outcome are written by this method inside the same
+    /// transaction as the data change; callers must not write their own audit
+    /// rows on the OAuth path. Sign-in must NEVER block on this call —
+    /// exceptions propagate but the caller is required to swallow them and
+    /// continue the sign-in.
+    /// </summary>
+    Task<OAuthReconcileResult> ReconcileOAuthIdentityAsync(
+        Guid userId,
+        string provider,
+        string providerKey,
+        string claimEmail,
+        bool claimEmailVerified,
+        CancellationToken cancellationToken = default);
 }
+
+/// <summary>
+/// Outcome of <see cref="IUserEmailService.ReconcileOAuthIdentityAsync"/>.
+/// </summary>
+public enum ReconcileOutcome
+{
+    /// <summary>User's tagged row already holds the claim email.</summary>
+    NoChange,
+    /// <summary>Tagged row's email was rewritten in place.</summary>
+    EmailRewritten,
+    /// <summary>Provider tag moved onto another row of the same user holding
+    /// the claim email; flags unioned, old row deleted.</summary>
+    TagMoved,
+    /// <summary>No tagged row existed; created a new verified tagged row.</summary>
+    NewRowCreated,
+    /// <summary>Another user already verified-held the claim email; that
+    /// user's row was deleted (Google wins) because the provider's claim
+    /// asserted email verification.</summary>
+    CrossUserDisplaced,
+    /// <summary>Another user already verified-held the claim email and the
+    /// provider's claim did not assert email verification. No mutation
+    /// performed.</summary>
+    CrossUserBlocked,
+}
+
+/// <summary>
+/// Informational record describing the reconcile outcome. Audit rows are
+/// written by the service itself; this record exists for tests, admin
+/// diagnostics, and any non-audit observers in the caller.
+/// </summary>
+/// <param name="Outcome">The reconcile outcome that occurred.</param>
+/// <param name="PreviousEmail">For <see cref="ReconcileOutcome.EmailRewritten"/>
+/// or <see cref="ReconcileOutcome.TagMoved"/>, the email value previously
+/// held by the signing user's tagged row. <c>null</c> otherwise.</param>
+/// <param name="AffectedRowId">The <see cref="UserEmail.Id"/> of the signing
+/// user's row that now carries the tag at the claim email, or that was
+/// determined to already be in the correct state. <c>null</c> for
+/// <see cref="ReconcileOutcome.CrossUserBlocked"/>.</param>
+/// <param name="DisplacedUserId">For <see cref="ReconcileOutcome.CrossUserDisplaced"/>
+/// or <see cref="ReconcileOutcome.CrossUserBlocked"/>, the id of the other
+/// user that held / holds the claim email.</param>
+/// <param name="DisplacedRowId">For <see cref="ReconcileOutcome.CrossUserDisplaced"/>,
+/// the id of the row that was deleted. For
+/// <see cref="ReconcileOutcome.CrossUserBlocked"/>, the id of the row that
+/// blocked the mutation.</param>
+/// <param name="DisplacedEmail">The email value on the displaced (or blocking)
+/// row.</param>
+/// <param name="DisplacedUserLeftWithoutVerifiedEmail"><c>true</c> when
+/// <see cref="ReconcileOutcome.CrossUserDisplaced"/> deleted the displaced
+/// user's only remaining verified email row.</param>
+public record OAuthReconcileResult(
+    ReconcileOutcome Outcome,
+    string? PreviousEmail,
+    Guid? AffectedRowId,
+    Guid? DisplacedUserId,
+    Guid? DisplacedRowId,
+    string? DisplacedEmail,
+    bool DisplacedUserLeftWithoutVerifiedEmail);
 
 /// <summary>
 /// Narrow projection of a UserEmail row matched by (Provider, ProviderKey).
