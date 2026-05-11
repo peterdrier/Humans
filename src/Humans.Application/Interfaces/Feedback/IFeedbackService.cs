@@ -35,9 +35,6 @@ public interface IFeedbackService : IApplicationService
         Guid reportId, Guid? senderUserId, string content, bool isAdmin,
         CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<FeedbackMessageInfo>> GetMessagesAsync(
-        Guid reportId, CancellationToken cancellationToken = default);
-
     Task UpdateAssignmentAsync(
         Guid id, Guid? assignedToUserId, Guid? assignedToTeamId, Guid? actorUserId,
         CancellationToken cancellationToken = default);

@@ -326,14 +326,6 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
         }
     }
 
-    public async Task<IReadOnlyList<FeedbackMessageInfo>> GetMessagesAsync(
-        Guid reportId, CancellationToken cancellationToken = default)
-    {
-        var messages = await _repository.GetMessagesAsync(reportId, cancellationToken);
-        var displayNames = await StitchMessageSendersAsync(messages, cancellationToken);
-        return messages.Select(m => CreateFeedbackMessageInfo(m, displayNames)).ToList();
-    }
-
     public async Task UpdateAssignmentAsync(
         Guid id, Guid? assignedToUserId, Guid? assignedToTeamId, Guid? actorUserId,
         CancellationToken cancellationToken = default)
@@ -538,22 +530,6 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
             }
         }
 
-        return await BuildDisplayNamesAsync(userIds, users, ct);
-    }
-
-    private async Task<IReadOnlyDictionary<Guid, string>> StitchMessageSendersAsync(
-        IReadOnlyList<FeedbackMessage> messages, CancellationToken ct)
-    {
-        if (messages.Count == 0) return EmptyDisplayNames;
-
-        var userIds = messages
-            .Where(m => m.SenderUserId.HasValue)
-            .Select(m => m.SenderUserId!.Value)
-            .ToHashSet();
-
-        if (userIds.Count == 0) return EmptyDisplayNames;
-
-        var users = await _userService.GetByIdsAsync(userIds, ct);
         return await BuildDisplayNamesAsync(userIds, users, ct);
     }
 

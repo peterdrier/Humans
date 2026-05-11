@@ -58,9 +58,16 @@ public class FeedbackController : HumansControllerBase
         if (activeIds.Count == 0) return new List<AssigneeOption>();
 
         var users = await _userService.GetByIdsAsync(activeIds, ct);
+        var profiles = await _profileService.GetByUserIdsAsync(activeIds, ct);
+
         return users.Values
-            .OrderBy(u => u.DisplayName, StringComparer.OrdinalIgnoreCase)
-            .Select(u => new AssigneeOption { Id = u.Id, DisplayName = u.DisplayName })
+            .Select(u =>
+            {
+                var burnerName = profiles.TryGetValue(u.Id, out var p) ? p.BurnerName : null;
+                var displayName = !string.IsNullOrWhiteSpace(burnerName) ? burnerName : u.DisplayName;
+                return new AssigneeOption { Id = u.Id, DisplayName = displayName };
+            })
+            .OrderBy(o => o.DisplayName, StringComparer.OrdinalIgnoreCase)
             .ToList();
     }
 
