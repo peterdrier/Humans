@@ -200,7 +200,7 @@ public class ProfileAdminController : HumansControllerBase
         var (error, currentUser) = await RequireCurrentUserAsync();
         if (error is not null) return error;
 
-        var backfilled = await _emailProblems.BackfillLegacyIdentityEmailsAsync(ct);
+        var backfilled = await _emailProblems.BackfillLegacyIdentityEmailsAsync(currentUser.Id, ct);
         foreach (var (userId, email) in backfilled)
         {
             await _audit.LogAsync(

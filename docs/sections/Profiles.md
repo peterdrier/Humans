@@ -172,11 +172,11 @@ Per-user email addresses (login, verified, notifications). Cross-domain nav `Use
 |----------|------|-------|
 | Id | Guid | PK |
 | UserId | Guid | FK → User (Cascade) — **FK only**, no nav |
-| Email | string (256) | Required |
+| Email | string (256) | Required. **Mutation has exactly one path:** `UserEmailRepository.UpdateEmailAsync(provider, providerKey, newEmail, ...)`, called only by the OAuth sign-in callback in `AccountController`. See [`memory/architecture/email-mutation-paths.md`](../../memory/architecture/email-mutation-paths.md). No admin flow, profile UI flow, or sync job rewrites this field; renames self-heal on the user's next Google sign-in |
 | IsVerified | bool | Required |
 | Provider | string? (50) | OAuth provider that owns this row when the user signed in via OIDC ("Google" today; future Apple/Microsoft). Null when no OAuth identity is linked. Single-row-per-(Provider, ProviderKey) is service-enforced |
-| ProviderKey | string? (256) | OAuth subject/key (OIDC `sub`) for the linked identity. Stable across Google Workspace email renames; OAuth callback updates `Email` when claims diverge. Same-user merge in `UserEmailRepository.RewriteEmailAddressAsync` propagates `Provider`/`ProviderKey` to the surviving row to preserve OAuth linkage |
-| IsGoogle | bool | Canonical Google Workspace identity row (used by Google sync and Workspace admin). Auto-maintained by `EnsureGoogleInvariantAsync` on every UserEmail mutation — precedence is @nobodies.team row > existing IsGoogle row (Id-stable) > most-recent verified. Admin can override via the Profile email grid (`SetGoogle`/`ClearGoogle`). At-most-one-true-per-UserId is service-enforced |
+| ProviderKey | string? (256) | OAuth subject/key (OIDC `sub`) for the linked identity. Stable across Google Workspace email renames. `(Provider, ProviderKey)` is the only legitimate match key for rewriting `Email` |
+| IsGoogle | bool | Canonical Google Workspace identity row (used by Google sync and Workspace admin). Auto-maintained by `EnsureGoogleInvariantAsync` on every UserEmail mutation - precedence is @nobodies.team row > existing IsGoogle row (Id-stable) > most-recent verified. Admin can override via the Profile email grid (`SetGoogle`/`ClearGoogle`). At-most-one-true-per-UserId is service-enforced |
 | IsPrimary | bool | Exactly one verified email per user is the system-notification target. Service-enforced via `EnsurePrimaryInvariantAsync`; column persists under legacy name `IsNotificationTarget` per `no-column-drops-for-decoupling.md` |
 | Visibility | ContactFieldVisibility? | Stored as string (max 50); null hides the email from profile view |
 | VerificationSentAt | Instant? | Last time a verification email was sent (rate limiting) |

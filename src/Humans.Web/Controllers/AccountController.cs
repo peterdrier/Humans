@@ -111,7 +111,7 @@ public class AccountController : HumansControllerBase
                 await _userManager.UpdateAsync(existingUser);
             }
 
-            await DetectAndApplyRenameAsync(info);
+            await DetectAndApplyRenameAsync(info, existingUser?.Id);
 
             _logger.LogInformation("User logged in with {Provider}", info.LoginProvider);
             return RedirectToLocal(returnUrl);
@@ -366,51 +366,48 @@ public class AccountController : HumansControllerBase
         return RedirectToLocal(returnUrl);
     }
 
-    private async Task DetectAndApplyRenameAsync(ExternalLoginInfo info)
+    private async Task DetectAndApplyRenameAsync(ExternalLoginInfo info, Guid? userId)
     {
+        if (userId is null)
+            return;
+
         try
         {
-            var match = await _userEmailService.FindByProviderKeyAsync(
-                info.LoginProvider, info.ProviderKey);
-            if (match is null)
-                return;
-
             var claimEmail = info.Principal.FindFirstValue(ClaimTypes.Email);
             if (string.IsNullOrEmpty(claimEmail))
                 return;
 
-            if (string.Equals(match.Email, claimEmail, StringComparison.OrdinalIgnoreCase))
+            var match = await _userEmailService.FindByProviderKeyAsync(
+                info.LoginProvider, info.ProviderKey);
+            if (match is not null &&
+                match.UserId == userId.Value &&
+                string.Equals(match.Email, claimEmail, StringComparison.OrdinalIgnoreCase))
                 return;
 
-            var oldEmail = match.Email;
-            var outcome = await _userEmailService.RewriteEmailAddressAsync(
-                match.UserId, oldEmail, claimEmail);
+            var written = await _userEmailService.UpdateEmailAsync(
+                userId.Value, info.LoginProvider, info.ProviderKey, claimEmail);
+            if (!written)
+                return;
 
-            switch (outcome)
+            if (match is not null && match.UserId == userId.Value)
             {
-                case RewriteEmailAddressOutcome.Rewritten:
-                case RewriteEmailAddressOutcome.MergedIntoExistingRowForSameUser:
-                    await _auditLogService.LogAsync(
-                        AuditAction.GoogleEmailRenamed,
-                        nameof(User), match.UserId,
-                        $"email rename detected: {oldEmail} -> {claimEmail}, sub={info.ProviderKey}, outcome={outcome}",
-                        nameof(AccountController),
-                        relatedEntityId: match.Id, relatedEntityType: nameof(UserEmail));
-                    break;
-                case RewriteEmailAddressOutcome.CrossUserConflict:
-                    // Already logged at Warning by UserEmailService with both
-                    // user IDs; no audit row (we didn't actually rewrite).
-                    break;
-                case RewriteEmailAddressOutcome.SourceRowNotFound:
-                    // FindByProviderKeyAsync just confirmed the row existed with
-                    // oldEmail; getting SourceRowNotFound here means the row
-                    // disappeared between the two calls — surface at Warning so
-                    // the prod log viewer shows the discrepancy. No audit (no
-                    // rewrite happened).
-                    _logger.LogWarning(
-                        "OAuth rename: source row not found for user {UserId} oldEmail {OldEmail} (sub={Sub}) — row may have been removed concurrently between FindByProviderKey and rewrite.",
-                        match.UserId, oldEmail, info.ProviderKey);
-                    break;
+                await _auditLogService.LogAsync(
+                    AuditAction.GoogleEmailRenamed,
+                    nameof(User), userId.Value,
+                    $"email rename detected: {match.Email} -> {claimEmail}, sub={info.ProviderKey}",
+                    nameof(AccountController),
+                    relatedEntityId: match.Id, relatedEntityType: nameof(UserEmail));
+            }
+            else
+            {
+                await _auditLogService.LogAsync(
+                    AuditAction.UserEmailLinked,
+                    nameof(User), userId.Value,
+                    $"OAuth backfill: created UserEmail row ({info.LoginProvider}, sub={info.ProviderKey}, email={claimEmail}) on sign-in.",
+                    nameof(AccountController));
+                _logger.LogWarning(
+                    "OAuth backfill: created UserEmail row for user {UserId} ({Provider}, sub={Sub}, email={Email}).",
+                    userId.Value, info.LoginProvider, info.ProviderKey, claimEmail);
             }
         }
         catch (OperationCanceledException) when (HttpContext.RequestAborted.IsCancellationRequested)
@@ -419,13 +416,8 @@ public class AccountController : HumansControllerBase
         }
         catch (Exception ex)
         {
-            // Cross-user / same-user collisions are now handled as classified
-            // outcomes above. Anything reaching this catch is unexpected and
-            // stays at LogError. (The historical 23505 noise from
-            // nobodies-collective/Humans#622 is now suppressed by the
-            // pre-UPDATE conflict check in the repository.)
             _logger.LogError(ex,
-                "OAuth rename detection failed for {Provider} sub={Sub}",
+                "OAuth rename/backfill failed for {Provider} sub={Sub}",
                 info.LoginProvider, info.ProviderKey);
         }
     }
