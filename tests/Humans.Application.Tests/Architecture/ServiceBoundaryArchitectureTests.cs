@@ -53,6 +53,7 @@ public class ServiceBoundaryArchitectureTests
             [typeof(ITicketTransferRepository)] = "Tickets",
             [typeof(IUserEmailRepository)] = "Profiles",
             [typeof(IUserRepository)] = "Users",
+            [typeof(IVolunteerTrackingRepository)] = "Shifts",
         };
 
     [HumansFact]
