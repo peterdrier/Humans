@@ -49,13 +49,11 @@ src/Humans.Web/Controllers/ExpensesController.cs:CoordinatorReject/2
 src/Humans.Web/Controllers/ExpensesController.cs:Endorse/1
 src/Humans.Web/Controllers/ExpensesController.cs:Reject/2
 src/Humans.Web/Controllers/ExpensesController.cs:AddLine/2
-src/Humans.Web/Controllers/ExpensesController.cs:AttachFile/3
 src/Humans.Web/Controllers/ExpensesController.cs:Detail/1
 src/Humans.Web/Controllers/ExpensesController.cs:Edit/1
 src/Humans.Web/Controllers/ExpensesController.cs:Edit/2
 src/Humans.Web/Controllers/ExpensesController.cs:Iban/1
 src/Humans.Web/Controllers/ExpensesController.cs:Iban/2
-src/Humans.Web/Controllers/ExpensesController.cs:RemoveAttachment/2
 src/Humans.Web/Controllers/ExpensesController.cs:RemoveLine/2
 src/Humans.Web/Controllers/ExpensesController.cs:Submit/1
 src/Humans.Web/Controllers/ExpensesController.cs:UpdateLine/2

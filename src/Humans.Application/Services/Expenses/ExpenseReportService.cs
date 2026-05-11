@@ -24,6 +24,7 @@ namespace Humans.Application.Services.Expenses;
 public sealed class ExpenseReportService : IExpenseReportService, IUserDataContributor
 {
     private readonly IExpenseRepository _repo;
+    private readonly IExpenseAttachmentStorageService _storage;
     private readonly IBudgetService _budgetService;
     private readonly ITeamService _teamService;
     private readonly IUserService _userService;
@@ -34,6 +35,7 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
 
     public ExpenseReportService(
         IExpenseRepository repo,
+        IExpenseAttachmentStorageService storage,
         IBudgetService budgetService,
         ITeamService teamService,
         IUserService userService,
@@ -43,6 +45,7 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
         ILogger<ExpenseReportService> logger)
     {
         _repo = repo;
+        _storage = storage;
         _budgetService = budgetService;
         _teamService = teamService;
         _userService = userService;
@@ -219,6 +222,90 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
             throw new UnauthorizedAccessException("Line does not belong to the specified report.");
 
         await _repo.SetLineAttachmentAsync(lineId, attachmentId, ct);
+    }
+
+    /// <summary>Max attachment size validated at the service layer (20 MB).</summary>
+    private const long AttachmentMaxBytes = 20 * 1024 * 1024;
+
+    private static readonly HashSet<string> AllowedContentTypes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "application/pdf", "image/jpeg", "image/jpg", "image/png", "image/heic"
+    };
+
+    public async Task<Guid> AttachFileToLineAsync(
+        Guid reportId, Guid submitterUserId,
+        Guid lineId, string originalFileName, string contentType,
+        Stream content, CancellationToken ct = default)
+    {
+        if (content is null || content.Length == 0)
+            throw new InvalidOperationException("Please select a file.");
+        if (content.Length > AttachmentMaxBytes)
+            throw new InvalidOperationException($"File too large. Maximum size is {AttachmentMaxBytes / (1024 * 1024)} MB.");
+        if (!AllowedContentTypes.Contains(contentType))
+            throw new InvalidOperationException("Unsupported file type. Upload PDF, JPEG, PNG, or HEIC.");
+
+        var report = await RequireEditableReportAsync(reportId, submitterUserId, ct);
+
+        if (!report.Lines.Any(l => l.Id == lineId))
+            throw new UnauthorizedAccessException("Line does not belong to the specified report.");
+
+        var extension = Path.GetExtension(originalFileName).ToLowerInvariant();
+        var attachmentId = await _storage.StoreAsync(content, extension, contentType, ct);
+
+        var attachment = new ExpenseAttachment
+        {
+            Id = attachmentId,
+            OriginalFileName = Path.GetFileName(originalFileName),
+            Extension = extension,
+            ContentType = contentType,
+            SizeBytes = content.Length,
+            UploadedByUserId = submitterUserId,
+            UploadedAt = _clock.GetCurrentInstant()
+        };
+        await _repo.AddAttachmentAsync(attachment, ct);
+        await _repo.SetLineAttachmentAsync(lineId, attachmentId, ct);
+
+        await _auditLogService.LogAsync(
+            AuditAction.ExpenseAttachmentUploaded,
+            "ExpenseReport", reportId,
+            $"Attachment uploaded to line {lineId}.",
+            submitterUserId);
+
+        return attachmentId;
+    }
+
+    public async Task RemoveAttachmentFromLineAsync(
+        Guid reportId, Guid submitterUserId,
+        Guid lineId, CancellationToken ct = default)
+    {
+        var report = await RequireEditableReportAsync(reportId, submitterUserId, ct);
+
+        var line = report.Lines.FirstOrDefault(l => l.Id == lineId);
+        if (line is null)
+            throw new UnauthorizedAccessException("Line does not belong to the specified report.");
+
+        if (line.Attachment is null) return; // idempotent
+
+        // Unlink first, then delete the row, then delete the file.
+        await _repo.SetLineAttachmentAsync(lineId, null, ct);
+        await _repo.RemoveAttachmentAsync(line.Attachment.Id, ct);
+
+        try
+        {
+            await _storage.DeleteAsync(line.Attachment.Id, line.Attachment.Extension, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex,
+                "Could not delete attachment file {AttachmentId} for line {LineId}",
+                line.Attachment.Id, lineId);
+        }
+
+        await _auditLogService.LogAsync(
+            AuditAction.ExpenseAttachmentRemoved,
+            "ExpenseReport", reportId,
+            $"Attachment removed from line {lineId}.",
+            submitterUserId);
     }
 
     // ───────────────────────── Submit / Withdraw ──────────────────────────────

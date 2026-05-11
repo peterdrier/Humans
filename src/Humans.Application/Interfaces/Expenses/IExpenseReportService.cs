@@ -41,6 +41,25 @@ public interface IExpenseReportService : IApplicationService
         Guid lineId, Guid attachmentId,
         CancellationToken ct = default);
 
+    /// <summary>
+    /// Stores the file bytes, creates the attachment row, and links it to the line.
+    /// Authorizes: submitter ownership + editable status + line belongs to report.
+    /// Returns the new attachment id.
+    /// </summary>
+    Task<Guid> AttachFileToLineAsync(
+        Guid reportId, Guid submitterUserId,
+        Guid lineId, string originalFileName, string contentType,
+        Stream content, CancellationToken ct = default);
+
+    /// <summary>
+    /// Removes the file, unlinks the attachment from the line, and deletes the attachment row.
+    /// Authorizes: submitter ownership + editable status + line belongs to report.
+    /// Idempotent — no-op if the line has no attachment.
+    /// </summary>
+    Task RemoveAttachmentFromLineAsync(
+        Guid reportId, Guid submitterUserId,
+        Guid lineId, CancellationToken ct = default);
+
     Task<bool> SubmitAsync(
         Guid reportId, Guid submitterUserId, CancellationToken ct = default);
 

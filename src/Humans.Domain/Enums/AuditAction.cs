@@ -147,4 +147,6 @@ public enum AuditAction
     IbanSet,
     IbanRemove,
     IbanReveal,
+    ExpenseAttachmentUploaded,
+    ExpenseAttachmentRemoved,
 }

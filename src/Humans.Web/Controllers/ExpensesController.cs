@@ -34,27 +34,6 @@ public sealed class ExpensesController : HumansControllerBase
     private readonly IOptions<SepaConfig> _sepaConfig;
     private readonly ILogger<ExpensesController> _logger;
 
-    /// <summary>Max attachment size enforced before calling the storage service (20 MB).</summary>
-    private const long AttachmentMaxBytes = 20 * 1024 * 1024;
-
-    private static readonly HashSet<string> AllowedContentTypes = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "application/pdf",
-        "image/jpeg",
-        "image/jpg",
-        "image/png",
-        "image/heic"
-    };
-
-    private static readonly Dictionary<string, string> ExtensionByContentType = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["application/pdf"] = ".pdf",
-        ["image/jpeg"] = ".jpg",
-        ["image/jpg"] = ".jpg",
-        ["image/png"] = ".png",
-        ["image/heic"] = ".heic"
-    };
-
     public ExpensesController(
         UserManager<User> userManager,
         IExpenseReportService service,
@@ -403,7 +382,7 @@ public sealed class ExpensesController : HumansControllerBase
 
     [HttpPost("{id:guid}/Lines/{lineId:guid}/Attach")]
     [ValidateAntiForgeryToken]
-    [RequestSizeLimit(25 * 1024 * 1024)] // 25 MB limit on request; storage service enforces 20 MB
+    [RequestSizeLimit(25 * 1024 * 1024)] // 25 MB limit on request; service enforces 20 MB + content type
     public async Task<IActionResult> AttachFile(Guid id, Guid lineId, IFormFile? file)
     {
         var (errorResult, user) = await RequireCurrentUserAsync();
@@ -413,50 +392,16 @@ public sealed class ExpensesController : HumansControllerBase
         if (report is null) return NotFound();
         if (report.SubmitterUserId != user.Id) return Forbid();
 
-        if (file is null || file.Length == 0)
-        {
-            SetError("Please select a file.");
-            return RedirectToAction(nameof(Edit), new { id });
-        }
-
-        if (file.Length > AttachmentMaxBytes)
-        {
-            SetError($"File too large. Maximum size is {AttachmentMaxBytes / (1024 * 1024)} MB.");
-            return RedirectToAction(nameof(Edit), new { id });
-        }
-
-        if (!AllowedContentTypes.Contains(file.ContentType))
-        {
-            SetError("Unsupported file type. Upload PDF, JPEG, PNG, or HEIC.");
-            return RedirectToAction(nameof(Edit), new { id });
-        }
-
-        if (!ExtensionByContentType.TryGetValue(file.ContentType, out var extension))
-            extension = Path.GetExtension(file.FileName).ToLowerInvariant();
-
         try
         {
-            await using var stream = file.OpenReadStream();
-            var attachmentId = await _storage.StoreAsync(stream, extension, file.ContentType);
-
-            var attachment = new ExpenseAttachment
-            {
-                Id = attachmentId,
-                OriginalFileName = Path.GetFileName(file.FileName),
-                Extension = extension,
-                ContentType = file.ContentType,
-                SizeBytes = file.Length,
-                UploadedByUserId = user.Id,
-                UploadedAt = _clock.GetCurrentInstant()
-            };
-            await _repo.AddAttachmentAsync(attachment);
-            await _service.AttachToLineAsync(id, user.Id, lineId, attachmentId);
+            await using var stream = file!.OpenReadStream();
+            await _service.AttachFileToLineAsync(id, user.Id, lineId, file.FileName, file.ContentType, stream);
             SetSuccess("Attachment uploaded.");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error uploading attachment for line {LineId} on report {ReportId}", lineId, id);
-            SetError($"Failed to upload attachment: {ex.Message}");
+            _logger.LogError(ex, "Error uploading attachment to line {LineId} on report {ReportId}", lineId, id);
+            SetError(ex.Message);
         }
         return RedirectToAction(nameof(Edit), new { id });
     }
@@ -474,22 +419,7 @@ public sealed class ExpensesController : HumansControllerBase
 
         try
         {
-            var line = report.Lines.FirstOrDefault(l => l.Id == lineId);
-            if (line?.Attachment is not null)
-            {
-                try
-                {
-                    await _storage.DeleteAsync(line.Attachment.Id, line.Attachment.Extension);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex,
-                        "Could not delete attachment file {AttachmentId}", line.Attachment.Id);
-                }
-                // Unlink first, then delete the row
-                await _repo.SetLineAttachmentAsync(lineId, null);
-                await _repo.RemoveAttachmentAsync(line.Attachment.Id);
-            }
+            await _service.RemoveAttachmentFromLineAsync(id, user.Id, lineId);
             SetSuccess("Attachment removed.");
         }
         catch (Exception ex)
