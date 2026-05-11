@@ -72,7 +72,6 @@ src/Humans.Web/Controllers/OnboardingReviewController.cs:Reject/2
 src/Humans.Web/Controllers/ProfileController.cs:AddEmail/1
 src/Humans.Web/Controllers/ProfileController.cs:AddRole/2
 src/Humans.Web/Controllers/ProfileController.cs:AdminAddEmail/3
-src/Humans.Web/Controllers/ProfileController.cs:AdminAddVerifiedEmail/3
 src/Humans.Web/Controllers/ProfileController.cs:AdminClearGoogle/3
 src/Humans.Web/Controllers/ProfileController.cs:AdminClearPrimary/3
 src/Humans.Web/Controllers/ProfileController.cs:AdminDeleteEmail/3
