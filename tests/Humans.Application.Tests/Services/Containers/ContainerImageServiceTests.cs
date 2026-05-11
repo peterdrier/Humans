@@ -128,49 +128,4 @@ public class ContainerImageServiceTests : IDisposable
 
         _imageStorage.Received(1).DeleteImage("uploads/containers/id/main.jpg");
     }
-
-    [HumansFact]
-    public async Task UpsertPlacementMetadataAsync_WithImage_SavesPlacementImage()
-    {
-        var container = await SeedContainerAsync();
-        _imageStorage.SaveImageAsync(Arg.Any<Guid>(), Arg.Any<Stream>(), "image/jpeg", ContainerImageKind.Placement, Arg.Any<CancellationToken>())
-            .Returns("uploads/containers/id/placement-guid.jpg");
-
-        var result = await _sut.UpsertPlacementMetadataAsync(new ContainerPlacementData(
-            ContainerId: container.Id,
-            Year: 2026,
-            LocationGeoJson: null,
-            PlacementNotes: "Near the gate",
-            PlacementImage: FakeImage("placement")));
-
-        result.PlacementImageStoragePath.Should().Be("/uploads/containers/id/placement-guid.jpg");
-        result.PlacementNotes.Should().Be("Near the gate");
-    }
-
-    [HumansFact]
-    public async Task UpsertPlacementMetadataAsync_RemovePlacementImage_DeletesImage()
-    {
-        var container = await SeedContainerAsync();
-        // Seed a placement with an image
-        _imageStorage.SaveImageAsync(Arg.Any<Guid>(), Arg.Any<Stream>(), "image/jpeg", ContainerImageKind.Placement, Arg.Any<CancellationToken>())
-            .Returns("uploads/containers/id/placement-guid.jpg");
-        await _sut.UpsertPlacementMetadataAsync(new ContainerPlacementData(
-            ContainerId: container.Id,
-            Year: 2026,
-            LocationGeoJson: null,
-            PlacementNotes: null,
-            PlacementImage: FakeImage("placement")));
-
-        await _sut.UpsertPlacementMetadataAsync(new ContainerPlacementData(
-            ContainerId: container.Id,
-            Year: 2026,
-            LocationGeoJson: null,
-            PlacementNotes: null,
-            RemovePlacementImage: true));
-
-        _imageStorage.Received(1).DeleteImage("uploads/containers/id/placement-guid.jpg");
-
-        var placement = await _sut.GetPlacementAsync(container.Id, 2026);
-        placement!.PlacementImageStoragePath.Should().BeNull();
-    }
 }

@@ -85,24 +85,7 @@ public class ContainerPlacementServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task SavePlacementAsync_PreservesExistingNotesAndImageOnReSave()
-    {
-        var container = await SeedContainerAsync();
-        await _sut.UpsertPlacementMetadataAsync(new ContainerPlacementData(
-            ContainerId: container.Id,
-            Year: Year,
-            LocationGeoJson: null,
-            PlacementNotes: "important note"));
-
-        var geoJson = """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[]]},"properties":{"center_lng":0,"center_lat":0,"rotation_degrees":0}}""";
-        var result = await _sut.SavePlacementAsync(container.Id, Year, geoJson);
-
-        result.PlacementNotes.Should().Be("important note");
-        result.LocationGeoJson.Should().Be(geoJson);
-    }
-
-    [HumansFact]
-    public async Task ClearPlacementAsync_DeletesRowWhenNoMetadata()
+    public async Task ClearPlacementAsync_DeletesRow()
     {
         var container = await SeedContainerAsync();
         var geoJson = """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[]]},"properties":{"center_lng":0,"center_lat":0,"rotation_degrees":0}}""";
@@ -112,26 +95,6 @@ public class ContainerPlacementServiceTests : IDisposable
 
         var placement = await _sut.GetPlacementAsync(container.Id, Year);
         placement.Should().BeNull();
-    }
-
-    [HumansFact]
-    public async Task ClearPlacementAsync_KeepsRowWithNullGeoJsonWhenNotesPresent()
-    {
-        var container = await SeedContainerAsync();
-        await _sut.UpsertPlacementMetadataAsync(new ContainerPlacementData(
-            ContainerId: container.Id,
-            Year: Year,
-            LocationGeoJson: null,
-            PlacementNotes: "keep me"));
-        var geoJson = """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[]]},"properties":{"center_lng":0,"center_lat":0,"rotation_degrees":0}}""";
-        await _sut.SavePlacementAsync(container.Id, Year, geoJson);
-
-        await _sut.ClearPlacementAsync(container.Id, Year);
-
-        var placement = await _sut.GetPlacementAsync(container.Id, Year);
-        placement.Should().NotBeNull();
-        placement!.LocationGeoJson.Should().BeNull();
-        placement.PlacementNotes.Should().Be("keep me");
     }
 
     [HumansFact]

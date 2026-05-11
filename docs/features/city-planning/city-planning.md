@@ -57,7 +57,7 @@ City Planning organizes the physical layout of the event site across three disti
 
 ### Containers
 - **US-38.17: Manage Containers (admin)** — Map admins create, edit, and delete containers for the whole event year via `/CityPlanning/BarrioMap/Admin/Containers/{year}`. Each container has a name, description, and an optional photo.
-- **US-38.18: Manage Containers (barrio lead)** — Barrio leads manage the containers assigned to their camp via `/Camp/{slug}/Season/{year}/Containers`. Same fields; scoped to own camp season.
+- **US-38.18: Manage Containers (barrio lead)** — Barrio leads manage the containers owned by their camp via `/Camp/{slug}/Containers`. Same fields; scoped to own camp. Containers persist year-over-year; per-year placements are separate.
 - **US-38.19: Container Photos** — Each container can have one image uploaded/replaced/deleted. Stored on the filesystem with DB fallback.
 - **US-38.20: Placed Badge** — Container list views show a "Placed" badge next to containers that have a location set.
 - **US-38.21: Export Containers as GeoJSON** — Map admins can download all placed containers for the year as a GeoJSON FeatureCollection. Barrio leads download only their own camp's containers.
@@ -220,12 +220,12 @@ Map admin = `RoleChecks.IsCampAdmin(User)` **or** member of the City Planning te
 | `POST /CityPlanning/BarrioMap/Admin/Containers/{id}/Image/Upload` | Upload container image |
 | `POST /CityPlanning/BarrioMap/Admin/Containers/{id}/Image/Delete` | Delete container image |
 | `GET /CityPlanning/ContainerMap/{year}` | Container placement map |
-| `GET /Camp/{slug}/Season/{year}/Containers` | Barrio lead container list |
-| `POST /Camp/{slug}/Season/{year}/Containers/Create` | Create container (barrio lead) |
-| `POST /Camp/{slug}/Season/{year}/Containers/{id}/Edit` | Edit container (barrio lead) |
-| `POST /Camp/{slug}/Season/{year}/Containers/{id}/Delete` | Delete container (barrio lead) |
-| `POST /Camp/{slug}/Season/{year}/Containers/{id}/Image/Upload` | Upload image (barrio lead) |
-| `POST /Camp/{slug}/Season/{year}/Containers/{id}/Image/Delete` | Delete image (barrio lead) |
+| `GET /Camp/{slug}/Containers` | Barrio lead container list |
+| `POST /Camp/{slug}/Containers/Create` | Create container (barrio lead) |
+| `POST /Camp/{slug}/Containers/{id}/Edit` | Edit container (barrio lead) |
+| `POST /Camp/{slug}/Containers/{id}/Delete` | Delete container (barrio lead) |
+| `POST /Camp/{slug}/Containers/{id}/Image/Upload` | Upload image (barrio lead) |
+| `POST /Camp/{slug}/Containers/{id}/Image/Delete` | Delete image (barrio lead) |
 
 ### API Routes
 

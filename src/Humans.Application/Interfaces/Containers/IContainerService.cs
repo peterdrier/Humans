@@ -16,7 +16,6 @@ public interface IContainerService : IApplicationService
     Task<IReadOnlyList<ContainerPlacementDto>> GetPlacementsByYearAsync(int year, CancellationToken ct = default);
     Task<ContainerPlacementDto> SavePlacementAsync(Guid containerId, int year, string geoJson, CancellationToken ct = default);
     Task ClearPlacementAsync(Guid containerId, int year, CancellationToken ct = default);
-    Task<ContainerPlacementDto> UpsertPlacementMetadataAsync(ContainerPlacementData data, CancellationToken ct = default);
 
     /// <summary>
     /// Org-wide admin overview of containers for a year, grouped by camp.
@@ -89,13 +88,4 @@ public record ContainerData(
     string? Description,
     ContainerImageUpload? MainImage = null,
     bool RemoveMainImage = false
-);
-
-public record ContainerPlacementData(
-    Guid ContainerId,
-    int Year,
-    string? LocationGeoJson,
-    string? PlacementNotes,
-    ContainerImageUpload? PlacementImage = null,
-    bool RemovePlacementImage = false
 );

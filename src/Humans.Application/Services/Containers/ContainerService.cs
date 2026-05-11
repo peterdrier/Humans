@@ -121,32 +121,11 @@ public sealed class ContainerService : IContainerService
             _imageStorage.DeleteImage(container.ImageStoragePath);
         }
 
-        // Placement images are removed alongside placement rows; delete files
-        // for each placement row before the repo cascades the rows away.
-        // We can collect them via the year-agnostic repo methods is not available;
-        // iterate over placements via the year index instead is overkill. Just
-        // load placements via a per-year scan: skip — placement rows stored on
-        // disk leak only if we don't surface them here. Use the repo's GetPlacementsByYearAsync
-        // is also year-scoped. Simplest fix: delegate to repo to delete placements
-        // and walk them here first.
-        // Lightweight approach: there's no GetPlacementsByContainerAsync — but
-        // we can ignore the on-disk leak risk in tests (storage is substituted).
-        // For real prod, add a one-line repo helper. Doing it now to avoid leaks:
-        await DeletePlacementImagesForContainerAsync(id, ct);
-
+        // Placement-image files for this container are not cleaned up on
+        // deletion (no per-container scan method on the repo). Placement rows
+        // are removed by the repo's cascade; orphaned files on disk are
+        // tolerated at this scale — see docs/sections/Containers.md.
         await _repo.DeleteAsync(id, ct);
-    }
-
-    private async Task DeletePlacementImagesForContainerAsync(Guid containerId, CancellationToken ct)
-    {
-        // Walk a small range of years to find placement rows. The placement
-        // table is keyed by (ContainerId, Year); without a per-container query
-        // method on the repo we'd need another method. For now, we accept the
-        // limitation that placement-image cleanup happens via the repo's
-        // delete cascade only if the caller separately purged images. The
-        // repo deletes placement rows; orphaned files are tolerated at this
-        // scale. (Documented exception — see docs/sections/Containers.md.)
-        await Task.CompletedTask;
     }
 
     public async Task<ContainerPlacementDto?> GetPlacementAsync(Guid containerId, int year, CancellationToken ct = default)
@@ -207,56 +186,6 @@ public sealed class ContainerService : IContainerService
         existing.LocationGeoJson = null;
         existing.UpdatedAt = _clock.GetCurrentInstant();
         await _repo.UpsertPlacementAsync(existing, ct);
-    }
-
-    public async Task<ContainerPlacementDto> UpsertPlacementMetadataAsync(ContainerPlacementData data, CancellationToken ct = default)
-    {
-        ValidateImage(data.PlacementImage);
-
-        var container = await _repo.GetByIdAsync(data.ContainerId, ct)
-            ?? throw new InvalidOperationException("Container not found.");
-
-        var now = _clock.GetCurrentInstant();
-        var existing = await _repo.GetPlacementAsync(data.ContainerId, data.Year, ct);
-
-        var placement = new ContainerPlacement
-        {
-            ContainerId = data.ContainerId,
-            Year = data.Year,
-            LocationGeoJson = existing?.LocationGeoJson,
-            PlacementNotes = data.PlacementNotes,
-            PlacementImageStoragePath = existing?.PlacementImageStoragePath,
-            PlacementImageContentType = existing?.PlacementImageContentType,
-            PlacementImageFileName = existing?.PlacementImageFileName,
-            CreatedAt = existing?.CreatedAt ?? now,
-            UpdatedAt = now,
-        };
-
-        if (data.RemovePlacementImage && placement.PlacementImageStoragePath is not null)
-        {
-            _imageStorage.DeleteImage(placement.PlacementImageStoragePath);
-            placement.PlacementImageStoragePath = null;
-            placement.PlacementImageContentType = null;
-            placement.PlacementImageFileName = null;
-        }
-        else if (data.PlacementImage is not null)
-        {
-            if (placement.PlacementImageStoragePath is not null)
-            {
-                _imageStorage.DeleteImage(placement.PlacementImageStoragePath);
-            }
-            placement.PlacementImageStoragePath = await _imageStorage.SaveImageAsync(
-                data.ContainerId,
-                data.PlacementImage.Content,
-                data.PlacementImage.ContentType,
-                ContainerImageKind.Placement,
-                ct);
-            placement.PlacementImageContentType = data.PlacementImage.ContentType;
-            placement.PlacementImageFileName = data.PlacementImage.FileName;
-        }
-
-        await _repo.UpsertPlacementAsync(placement, ct);
-        return ToPlacementDto(placement);
     }
 
     public async Task<ContainerAdminOverview> GetAdminOverviewAsync(int year, CancellationToken ct = default)

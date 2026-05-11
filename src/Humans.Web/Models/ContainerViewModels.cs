@@ -67,25 +67,6 @@ public class ContainerFormModel
         RemoveMainImage: RemoveMainImage);
 }
 
-public class ContainerPlacementFormModel
-{
-    [StringLength(5000)]
-    public string? PlacementNotes { get; set; }
-
-    public IFormFile? PlacementImage { get; set; }
-    public bool RemovePlacementImage { get; set; }
-
-    public ContainerPlacementData ToPlacementData(Guid containerId, int year, string? existingLocationGeoJson) => new(
-        ContainerId: containerId,
-        Year: year,
-        LocationGeoJson: existingLocationGeoJson,
-        PlacementNotes: PlacementNotes,
-        PlacementImage: PlacementImage is { Length: > 0 }
-            ? new ContainerImageUpload(PlacementImage.OpenReadStream(), PlacementImage.ContentType, PlacementImage.FileName, PlacementImage.Length)
-            : null,
-        RemovePlacementImage: RemovePlacementImage);
-}
-
 public class OrgContainerIndexViewModel
 {
     public int Year { get; set; }
