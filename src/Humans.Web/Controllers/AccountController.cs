@@ -1,7 +1,6 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using NodaTime;
 using Humans.Domain.Entities;
@@ -347,15 +346,14 @@ public class AccountController : HumansControllerBase
                     "claim is false.");
             }
         }
-        catch (DbUpdateException dbex)
-            when (dbex.InnerException is Npgsql.PostgresException { SqlState: "23505" })
+        catch (OAuthReconcileConcurrencyException race)
         {
-            _logger.LogError(dbex,
-                "OAuth signup race (Postgres 23505) on UserEmail unique index " +
-                "for new user {UserId} (provider={Provider}, sub={Sub}, " +
-                "claimEmail={Email}); rolling back user + login. The partial " +
-                "unique index caught a concurrent insert past the reconcile " +
-                "pre-check — investigate via /Profile/Admin/EmailProblems.",
+            _logger.LogError(race,
+                "OAuth signup race on UserEmail unique index for new user " +
+                "{UserId} (provider={Provider}, sub={Sub}, claimEmail={Email}); " +
+                "rolling back user + login. The verified-email partial unique " +
+                "index caught a concurrent insert past the reconcile pre-check " +
+                "— investigate via /Profile/Admin/EmailProblems.",
                 user.Id, info.LoginProvider, info.ProviderKey, email);
             await TryDeleteOrphanUserAsync(user);
             ModelState.AddModelError(string.Empty,
@@ -412,15 +410,14 @@ public class AccountController : HumansControllerBase
         {
             throw;
         }
-        catch (DbUpdateException dbex)
-            when (dbex.InnerException is Npgsql.PostgresException { SqlState: "23505" })
+        catch (OAuthReconcileConcurrencyException race)
         {
             // The verified-email partial unique index caught a concurrent
             // insert that beat the reconcile pre-check. Rare race; surface a
-            // structured log so admins can investigate via the
-            // EmailProblems scanner. Sign-in continues (never blocks).
-            _logger.LogError(dbex,
-                "OAuth reconcile race (Postgres 23505) for user {UserId} " +
+            // structured log so admins can investigate via the EmailProblems
+            // scanner. Sign-in continues (never blocks).
+            _logger.LogError(race,
+                "OAuth reconcile race for user {UserId} " +
                 "(provider={Provider}, sub={Sub}, claimEmail={Email}); " +
                 "sign-in continues — investigate via /Profile/Admin/EmailProblems.",
                 userId, info.LoginProvider, info.ProviderKey, claimEmail);

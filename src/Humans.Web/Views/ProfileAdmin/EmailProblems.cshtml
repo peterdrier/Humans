@@ -129,7 +129,10 @@ else
                             @* table and disagreement flags are visible side-by-side with the user's *@
                             @* UserEmail rows. No inline action button. *@
                             <a class="btn btn-sm btn-outline-secondary"
-                               href="/Profile/@row.UserId/Admin/Emails#external-logins">Investigate ▸</a>
+                               asp-controller="Profile"
+                               asp-action="AdminEmails"
+                               asp-route-id="@row.UserId"
+                               asp-fragment="external-logins">Investigate ▸</a>
                         }
                     </td>
                 </tr>

@@ -468,6 +468,22 @@ public interface IUserEmailService : IApplicationService
 }
 
 /// <summary>
+/// Thrown by <see cref="IUserEmailService.ReconcileOAuthIdentityAsync"/>
+/// (via the underlying repository) when the verified-email partial unique
+/// index catches a concurrent cross-user collision past the in-service
+/// pre-check — the race backstop. Surfaced as a domain exception so the
+/// Web layer never imports Postgres / Npgsql types
+/// (<c>docs/architecture/design-rules.md §1</c>: clean architecture).
+/// </summary>
+public sealed class OAuthReconcileConcurrencyException : Exception
+{
+    public OAuthReconcileConcurrencyException() { }
+    public OAuthReconcileConcurrencyException(string message) : base(message) { }
+    public OAuthReconcileConcurrencyException(string message, Exception inner)
+        : base(message, inner) { }
+}
+
+/// <summary>
 /// Outcome of <see cref="IUserEmailService.ReconcileOAuthIdentityAsync"/>.
 /// </summary>
 public enum ReconcileOutcome

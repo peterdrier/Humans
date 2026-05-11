@@ -1129,11 +1129,18 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         //    provider's claim is unverified → no mutation, audit the attempt.
         if (blocker is not null && !claimEmailVerified)
         {
+            // CrossUserBlocked needs the displaced user's rows for the
+            // diagnostic only — load them here on the rare blocked path.
+            var blockerRows = await _repository.GetByUserIdForMutationAsync(
+                blocker.UserId, cancellationToken);
+
             var blockedDescription = await BuildCrossUserDiagnosticAsync(
                 kind: "BLOCKED (unverified provider claim)",
-                userId, provider, providerKey, claimEmail, claimEmailVerified,
+                userId, signingRows: rows,
+                provider, providerKey, claimEmail, claimEmailVerified,
                 previousEmail: tagged?.Email,
                 displaced: blocker,
+                displacedRows: blockerRows,
                 displacedUserLeftWithoutVerifiedEmail: false,
                 cancellationToken);
 
@@ -1182,9 +1189,11 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
 
             collisionDiagnostic = await BuildCrossUserDiagnosticAsync(
                 kind: "DISPLACED",
-                userId, provider, providerKey, claimEmail, claimEmailVerified,
+                userId, signingRows: rows,
+                provider, providerKey, claimEmail, claimEmailVerified,
                 previousEmail: tagged?.Email,
                 displaced: blocker,
+                displacedRows: displacedUsersRows,
                 displacedUserLeftWithoutVerifiedEmail: displacedUserLeftWithoutVerifiedEmail,
                 cancellationToken);
         }
@@ -1373,18 +1382,17 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
     private async Task<string> BuildCrossUserDiagnosticAsync(
         string kind,
         Guid signingUserId,
+        IReadOnlyList<UserEmail> signingRows,
         string provider,
         string providerKey,
         string claimEmail,
         bool claimEmailVerified,
         string? previousEmail,
         UserEmail displaced,
+        IReadOnlyList<UserEmail> displacedRows,
         bool displacedUserLeftWithoutVerifiedEmail,
         CancellationToken ct)
     {
-        var signingRows = await _repository.GetByUserIdForMutationAsync(signingUserId, ct);
-        var displacedRows = await _repository.GetByUserIdForMutationAsync(displaced.UserId, ct);
-
         var loginsByUser = await _userService.GetExternalLoginsByUserIdsAsync(
             new[] { signingUserId, displaced.UserId }, ct);
         var signingLogins = loginsByUser.TryGetValue(signingUserId, out var sl) ? sl : Array.Empty<(string, string)>();

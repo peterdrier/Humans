@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using Humans.Application.DTOs;
+using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -563,7 +564,25 @@ public sealed class UserEmailRepository : IUserEmailRepository
             ctx.UserEmails.Add(rowToInsert);
         }
 
-        await ctx.SaveChangesAsync(ct);
-        await tx.CommitAsync(ct);
+        try
+        {
+            await ctx.SaveChangesAsync(ct);
+            await tx.CommitAsync(ct);
+        }
+        catch (DbUpdateException dbex)
+            when (dbex.InnerException is Npgsql.PostgresException { SqlState: "23505" })
+        {
+            // The verified-email partial unique index caught a concurrent
+            // cross-user insert that beat the in-service pre-check. Translate
+            // here so the Web layer never imports Npgsql / Postgres types
+            // (clean architecture per design-rules §1). Sole catcher in the
+            // Web layer is AccountController.TryReconcileOAuthIdentityAsync
+            // (and the new-user inline catch) — both swallow + log so sign-in
+            // never blocks.
+            throw new OAuthReconcileConcurrencyException(
+                "OAuth reconcile race: a concurrent insert violated the " +
+                "verified-email partial unique index (Postgres 23505).",
+                dbex);
+        }
     }
 }
