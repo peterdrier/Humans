@@ -32,7 +32,7 @@ public interface ICityPlanningService : IApplicationService
     Task<bool> IsCityPlanningTeamMemberAsync(Guid userId, CancellationToken cancellationToken = default);
 
     // Settings (creates row on demand for PublicYear)
-    Task<CityPlanningSettings> GetSettingsAsync(CancellationToken cancellationToken = default);
+    Task<CityPlanningSettingsInfo> GetSettingsAsync(CancellationToken cancellationToken = default);
     Task OpenPlacementAsync(Guid userId, CancellationToken cancellationToken = default);
     Task ClosePlacementAsync(Guid userId, CancellationToken cancellationToken = default);
     Task UpdateLimitZoneAsync(string geoJson, Guid userId, CancellationToken cancellationToken = default);
@@ -75,3 +75,16 @@ public record SaveCampPolygonRequest(
     string GeoJson,
     double AreaSqm,
     [StringLength(512, ErrorMessage = "Note cannot exceed 512 characters")] string? Note = null);
+
+public record CityPlanningSettingsInfo(
+    Guid Id,
+    int Year,
+    bool IsPlacementOpen,
+    Instant? OpenedAt,
+    Instant? ClosedAt,
+    LocalDateTime? PlacementOpensAt,
+    LocalDateTime? PlacementClosesAt,
+    string? RegistrationInfo,
+    string? LimitZoneGeoJson,
+    string? OfficialZonesGeoJson,
+    Instant UpdatedAt);

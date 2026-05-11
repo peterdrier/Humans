@@ -215,12 +215,13 @@ public sealed class CityPlanningService : ICityPlanningService
     // Settings
     // ==========================================================================
 
-    public async Task<CityPlanningSettings> GetSettingsAsync(
+    public async Task<CityPlanningSettingsInfo> GetSettingsAsync(
         CancellationToken cancellationToken = default)
     {
         var campSettings = await _campService.GetSettingsAsync(cancellationToken);
-        return await _repo.GetOrCreateSettingsAsync(
+        var settings = await _repo.GetOrCreateSettingsAsync(
             campSettings.PublicYear, _clock.GetCurrentInstant(), cancellationToken);
+        return CreateCityPlanningSettingsInfo(settings);
     }
 
     public async Task OpenPlacementAsync(Guid userId, CancellationToken cancellationToken = default)
@@ -341,6 +342,20 @@ public sealed class CityPlanningService : ICityPlanningService
             ? campSettings.OpenSeasons.Max()
             : campSettings.PublicYear;
     }
+
+    private static CityPlanningSettingsInfo CreateCityPlanningSettingsInfo(CityPlanningSettings settings) =>
+        new(
+            settings.Id,
+            settings.Year,
+            settings.IsPlacementOpen,
+            settings.OpenedAt,
+            settings.ClosedAt,
+            settings.PlacementOpensAt,
+            settings.PlacementClosesAt,
+            settings.RegistrationInfo,
+            settings.LimitZoneGeoJson,
+            settings.OfficialZonesGeoJson,
+            settings.UpdatedAt);
 
     // ==========================================================================
     // Export
