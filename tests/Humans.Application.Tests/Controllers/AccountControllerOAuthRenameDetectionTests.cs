@@ -138,15 +138,12 @@ public class AccountControllerOAuthRenameDetectionTests
         };
         _userEmailService.FindByProviderKeyAsync(Provider, ProviderKey, Arg.Any<CancellationToken>())
             .Returns(new UserEmailProviderMatch(existingRow.Id, existingRow.UserId, existingRow.Email));
-        _userEmailService.UpdateEmailAsync(
-                Provider, ProviderKey, newEmail, Arg.Any<CancellationToken>())
-            .Returns(true);
 
         var result = await _controller.ExternalLoginCallback(returnUrl: null, remoteError: null);
 
         result.Should().NotBeNull();
         await _userEmailService.Received(1).UpdateEmailAsync(
-            Provider, ProviderKey, newEmail, Arg.Any<CancellationToken>());
+            userId, Provider, ProviderKey, newEmail, Arg.Any<CancellationToken>());
         await _auditLogService.Received(1).LogAsync(
             AuditAction.GoogleEmailRenamed,
             nameof(User), userId,
@@ -191,8 +188,8 @@ public class AccountControllerOAuthRenameDetectionTests
         _userEmailService.FindByProviderKeyAsync(Provider, ProviderKey, Arg.Any<CancellationToken>())
             .Returns(new UserEmailProviderMatch(existingRow.Id, existingRow.UserId, existingRow.Email));
         _userEmailService.UpdateEmailAsync(
-                Provider, ProviderKey, newEmail, Arg.Any<CancellationToken>())
-            .Returns<Task<bool>>(_ => throw new InvalidOperationException("simulated 23505"));
+                userId, Provider, ProviderKey, newEmail, Arg.Any<CancellationToken>())
+            .Returns(_ => throw new InvalidOperationException("simulated 23505"));
 
         var result = await _controller.ExternalLoginCallback(returnUrl: null, remoteError: null);
 
@@ -204,13 +201,13 @@ public class AccountControllerOAuthRenameDetectionTests
     }
 
     [HumansFact]
-    public async Task SuccessBranch_NoUserEmailRow_BackfillsViaLinkAsync()
+    public async Task SuccessBranch_NoUserEmailRow_BackfillsViaUpsert()
     {
         // The AspNetUserLogins row exists (sign-in succeeded) but no UserEmail
         // row is tagged with this (Provider, ProviderKey) — e.g. a pre-LinkAsync
-        // provisioned user. The callback must call LinkAsync to backfill the
-        // missing row using the same find-or-create primitive the signup paths
-        // use. No audit row (creation is logged at Information level only).
+        // provisioned user. The callback calls UpdateEmailAsync, which upserts
+        // (insert when missing) per memory/architecture/email-mutation-paths.md.
+        // No audit row (creation is logged at Information level only).
         var userId = Guid.NewGuid();
         var claimEmail = "backfill@nobodies.team";
         var info = MakeInfo(claimEmail);
@@ -225,18 +222,11 @@ public class AccountControllerOAuthRenameDetectionTests
 
         _userEmailService.FindByProviderKeyAsync(Provider, ProviderKey, Arg.Any<CancellationToken>())
             .Returns((UserEmailProviderMatch?)null);
-        _userEmailService.LinkAsync(
-                userId, Provider, ProviderKey, claimEmail, userId,
-                Arg.Any<CancellationToken>())
-            .Returns(true);
 
         await _controller.ExternalLoginCallback(returnUrl: null, remoteError: null);
 
-        await _userEmailService.Received(1).LinkAsync(
-            userId, Provider, ProviderKey, claimEmail, userId,
-            Arg.Any<CancellationToken>());
-        await _userEmailService.DidNotReceive().UpdateEmailAsync(
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _userEmailService.Received(1).UpdateEmailAsync(
+            userId, Provider, ProviderKey, claimEmail, Arg.Any<CancellationToken>());
         await _auditLogService.DidNotReceive().LogAsync(
             Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<string>(),
@@ -276,7 +266,7 @@ public class AccountControllerOAuthRenameDetectionTests
         await _controller.ExternalLoginCallback(returnUrl: null, remoteError: null);
 
         await _userEmailService.DidNotReceive().UpdateEmailAsync(
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+            Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
         await _auditLogService.DidNotReceive().LogAsync(
             Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<string>(),
@@ -315,7 +305,7 @@ public class AccountControllerOAuthRenameDetectionTests
         await _controller.ExternalLoginCallback(returnUrl: null, remoteError: null);
 
         await _userEmailService.DidNotReceive().UpdateEmailAsync(
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+            Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

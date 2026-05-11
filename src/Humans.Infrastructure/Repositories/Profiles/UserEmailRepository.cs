@@ -368,21 +368,70 @@ public sealed class UserEmailRepository : IUserEmailRepository
 
     // Sole legitimate caller: UserEmailService.UpdateEmailAsync, itself called
     // only by AccountController. See memory/architecture/email-mutation-paths.md.
-    public async Task<Guid?> UpdateEmailAsync(
-        string provider, string providerKey, string newEmail, Instant updatedAt,
+    //
+    // Upserts the (provider, providerKey) row for userId to newEmail in one
+    // transaction:
+    //   - inserts a verified row if (provider, providerKey) is missing
+    //   - updates the row's Email + UpdatedAt if present
+    //   - removes any OTHER row for the same user already holding newEmail
+    //     (case-insensitive) so the partial unique Email index does not throw
+    //   - reconciles IsPrimary on the surviving rows: 0 primaries -> set the
+    //     current login primary; exactly 1 -> leave alone; 2+ -> current login
+    //     stays primary, others demoted
+    public async Task UpdateEmailAsync(
+        Guid userId, string provider, string providerKey, string newEmail, Instant updatedAt,
         CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var row = await ctx.UserEmails
-            .FirstOrDefaultAsync(
-                e => e.Provider == provider && e.ProviderKey == providerKey, ct);
-        if (row is null)
-            return null;
+        var rows = await ctx.UserEmails
+            .Where(e => e.UserId == userId)
+            .ToListAsync(ct);
 
-        row.Email = newEmail;
-        row.UpdatedAt = updatedAt;
+        var oauthRow = rows.FirstOrDefault(r =>
+            string.Equals(r.Provider, provider, StringComparison.Ordinal) &&
+            string.Equals(r.ProviderKey, providerKey, StringComparison.Ordinal));
+        if (oauthRow is null)
+        {
+            oauthRow = new UserEmail
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                Provider = provider,
+                ProviderKey = providerKey,
+                Email = newEmail,
+                IsVerified = true,
+                CreatedAt = updatedAt,
+                UpdatedAt = updatedAt,
+            };
+            ctx.UserEmails.Add(oauthRow);
+            rows.Add(oauthRow);
+        }
+        else
+        {
+            oauthRow.Email = newEmail;
+            oauthRow.UpdatedAt = updatedAt;
+        }
+
+        var conflicts = rows
+            .Where(r => r.Id != oauthRow.Id)
+            .Where(r => string.Equals(r.Email, newEmail, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        foreach (var c in conflicts)
+            ctx.UserEmails.Remove(c);
+
+        var remaining = rows.Where(r => !conflicts.Contains(r)).ToList();
+        var primaryCount = remaining.Count(r => r.IsPrimary);
+        if (primaryCount == 0)
+        {
+            oauthRow.IsPrimary = true;
+        }
+        else if (primaryCount > 1)
+        {
+            foreach (var r in remaining)
+                r.IsPrimary = (r.Id == oauthRow.Id);
+        }
+
         await ctx.SaveChangesAsync(ct);
-        return row.UserId;
     }
 
     public async Task SetGoogleExclusiveAsync(

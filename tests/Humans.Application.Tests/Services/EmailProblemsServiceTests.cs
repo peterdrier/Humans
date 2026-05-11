@@ -418,7 +418,7 @@ public class EmailProblemsServiceTests
         var user = MakeUser(userId, "legacy@x.com");
         SetUsersWithProfiles((user, MakeProfile(userId)));
 
-        var result = await Sut.BackfillLegacyIdentityEmailsAsync();
+        var result = await Sut.BackfillLegacyIdentityEmailsAsync(Guid.NewGuid());
 
         result.Should().ContainSingle()
             .Which.Should().Be((userId, "legacy@x.com"));
@@ -444,12 +444,13 @@ public class EmailProblemsServiceTests
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(logins);
 
-        var result = await Sut.BackfillLegacyIdentityEmailsAsync();
+        var actorUserId = Guid.NewGuid();
+        var result = await Sut.BackfillLegacyIdentityEmailsAsync(actorUserId);
 
         result.Should().ContainSingle()
             .Which.Should().Be((userId, "legacy@x.com"));
         await _userEmailService.Received(1).LinkAsync(
-            userId, "Google", "google-sub-42", "legacy@x.com", userId,
+            userId, "Google", "google-sub-42", "legacy@x.com", actorUserId,
             Arg.Any<CancellationToken>());
         await _userEmailService.DidNotReceive().AddVerifiedEmailAsync(
             Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
@@ -463,7 +464,7 @@ public class EmailProblemsServiceTests
         SetUsersWithProfiles((user, MakeProfile(userId,
             new UserEmailSnapshot(Guid.NewGuid(), "match@x.com", true, true, false))));
 
-        var result = await Sut.BackfillLegacyIdentityEmailsAsync();
+        var result = await Sut.BackfillLegacyIdentityEmailsAsync(Guid.NewGuid());
 
         result.Should().BeEmpty();
         await _userEmailService.DidNotReceive().AddVerifiedEmailAsync(
@@ -477,7 +478,7 @@ public class EmailProblemsServiceTests
         var user = MakeUser(userId, legacyEmail: null);
         SetUsersWithProfiles((user, MakeProfile(userId)));
 
-        var result = await Sut.BackfillLegacyIdentityEmailsAsync();
+        var result = await Sut.BackfillLegacyIdentityEmailsAsync(Guid.NewGuid());
 
         result.Should().BeEmpty();
     }
@@ -545,7 +546,7 @@ public class EmailProblemsServiceTests
             IsVerified = true
         });
 
-        var result = await Sut.BackfillLegacyIdentityEmailsAsync();
+        var result = await Sut.BackfillLegacyIdentityEmailsAsync(Guid.NewGuid());
 
         result.Should().BeEmpty();
         await _userEmailService.DidNotReceive().AddVerifiedEmailAsync(

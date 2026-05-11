@@ -1183,41 +1183,23 @@ public class UserEmailServiceTests
 
     // ─── UpdateEmailAsync ───────────────────────────────────────────────────
     // Per memory/architecture/email-mutation-paths.md, this is the only path
-    // that rewrites UserEmail.Email on an existing row. Matched on
-    // (Provider, ProviderKey). Service forwards to repo, invalidates the
-    // affected user's FullProfile cache on success.
+    // that writes UserEmail.Email on the OAuth-linked row. Service forwards
+    // to repo (upsert + same-user conflict cleanup + IsPrimary reconciliation)
+    // and invalidates the affected user's FullProfile cache.
 
     [HumansFact]
-    public async Task UpdateEmailAsync_RowFound_InvalidatesAndReturnsTrue()
+    public async Task UpdateEmailAsync_DelegatesToRepoAndInvalidatesCache()
     {
         var userId = Guid.NewGuid();
-        _repository.UpdateEmailAsync(
-                "Google", "sub-123", "new@x.test", _clock.GetCurrentInstant(),
-                Arg.Any<CancellationToken>())
-            .Returns(userId);
 
-        var result = await _service.UpdateEmailAsync(
-            "Google", "sub-123", "new@x.test");
+        await _service.UpdateEmailAsync(
+            userId, "Google", "sub-123", "new@x.test");
 
-        result.Should().BeTrue();
+        await _repository.Received(1).UpdateEmailAsync(
+            userId, "Google", "sub-123", "new@x.test", _clock.GetCurrentInstant(),
+            Arg.Any<CancellationToken>());
         await _fullProfileInvalidator.Received(1).InvalidateAsync(
             userId, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
-    }
-
-    [HumansFact]
-    public async Task UpdateEmailAsync_NoMatchingRow_ReturnsFalseAndDoesNotInvalidate()
-    {
-        _repository.UpdateEmailAsync(
-                "Google", "missing-sub", "new@x.test", _clock.GetCurrentInstant(),
-                Arg.Any<CancellationToken>())
-            .Returns((Guid?)null);
-
-        var result = await _service.UpdateEmailAsync(
-            "Google", "missing-sub", "new@x.test");
-
-        result.Should().BeFalse();
-        await _fullProfileInvalidator.DidNotReceive().InvalidateAsync(
-            Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
     }
 
     // ─── VerifyEmailAsync row-Id disambiguation — issue #611 ──────────────

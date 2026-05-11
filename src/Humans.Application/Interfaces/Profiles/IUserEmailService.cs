@@ -329,22 +329,25 @@ public interface IUserEmailService : IApplicationService
         string email, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// The one and only way to rewrite an email address on an existing
-    /// <see cref="Domain.Entities.UserEmail"/> row. Matches on
-    /// <see cref="Domain.Entities.UserEmail.Provider"/>+
+    /// The one and only way to write the OAuth-linked
+    /// <see cref="Domain.Entities.UserEmail"/> row from a Google sign-in.
+    /// Upserts on <see cref="Domain.Entities.UserEmail.Provider"/>+
     /// <see cref="Domain.Entities.UserEmail.ProviderKey"/> — the only
-    /// legitimate match key for the OAuth identity. Stamps <c>UpdatedAt</c>
-    /// and invalidates the affected user's <c>FullProfile</c> cache. Returns
-    /// true when a row was found and updated; false when no row matches the
-    /// pair.
+    /// legitimate match key for the OAuth identity — for the given
+    /// <paramref name="userId"/>. Inserts a verified row when the pair is
+    /// missing; updates <c>Email</c> and stamps <c>UpdatedAt</c> when present.
+    /// Removes any other row for the same user already holding
+    /// <paramref name="newEmail"/> and reconciles
+    /// <see cref="Domain.Entities.UserEmail.IsPrimary"/> on the surviving rows.
+    /// Invalidates the user's <c>FullProfile</c> cache.
     ///
     /// Callable only by the OAuth sign-in callback in <c>AccountController</c>
     /// per <c>memory/architecture/email-mutation-paths.md</c>. Cross-user
     /// conflict on the partial unique <c>Email</c> index is allowed to
     /// propagate as a Postgres 23505; the callback handles it.
     /// </summary>
-    Task<bool> UpdateEmailAsync(
-        string provider, string providerKey, string newEmail,
+    Task UpdateEmailAsync(
+        Guid userId, string provider, string providerKey, string newEmail,
         CancellationToken cancellationToken = default);
 
     /// <summary>

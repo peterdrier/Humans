@@ -164,7 +164,7 @@ public sealed class EmailProblemsService : IEmailProblemsService
     }
 
     public async Task<IReadOnlyList<(Guid UserId, string Email)>> BackfillLegacyIdentityEmailsAsync(
-        CancellationToken ct = default)
+        Guid actorUserId, CancellationToken ct = default)
     {
         var users = await _userService.GetAllUsersAsync(ct);
         var userIds = users.Select(u => u.Id).ToList();
@@ -197,7 +197,7 @@ public sealed class EmailProblemsService : IEmailProblemsService
             {
                 var (provider, providerKey) = logins[0];
                 await _userEmailService.LinkAsync(
-                    u.Id, provider, providerKey, legacy, actorUserId: u.Id, ct);
+                    u.Id, provider, providerKey, legacy, actorUserId: actorUserId, ct);
             }
             else
             {

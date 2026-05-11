@@ -215,14 +215,17 @@ public interface IUserEmailRepository : IRepository
         string email, Guid excludeUserId, CancellationToken ct = default);
 
     /// <summary>
-    /// The one and only primitive that rewrites <see cref="UserEmail.Email"/>
-    /// on an existing row. Matches on <see cref="UserEmail.Provider"/>+
+    /// The one and only primitive that writes <see cref="UserEmail.Email"/> on
+    /// the OAuth-linked row. Upsert on <see cref="UserEmail.Provider"/>+
     /// <see cref="UserEmail.ProviderKey"/> — the only legitimate match key for
-    /// the OAuth identity. Updates <c>Email</c> and stamps <c>UpdatedAt</c>.
-    /// Returns the <see cref="UserEmail.UserId"/> of the updated row so the
-    /// service layer can invalidate that user's <c>FullProfile</c> cache;
-    /// returns null when no row matches <paramref name="provider"/>+
-    /// <paramref name="providerKey"/>.
+    /// the OAuth identity — for the given <paramref name="userId"/>. Inserts a
+    /// verified row if the pair is missing; updates <c>Email</c> and stamps
+    /// <c>UpdatedAt</c> if present. Removes any OTHER row for the same user
+    /// that already holds <paramref name="newEmail"/> (case-insensitive) so
+    /// the partial unique <c>Email</c> index does not throw on the upsert.
+    /// Reconciles <see cref="UserEmail.IsPrimary"/> on the surviving rows:
+    /// 0 primaries — set the current login primary; exactly 1 — leave alone;
+    /// 2+ — current login stays primary, others demoted.
     ///
     /// Per <c>memory/architecture/email-mutation-paths.md</c>: the sole
     /// legitimate caller is <c>UserEmailService.UpdateEmailAsync</c>, which is
@@ -231,8 +234,8 @@ public interface IUserEmailRepository : IRepository
     /// <c>Email</c> index is allowed to propagate as a Postgres 23505; the
     /// callback's existing try/catch surfaces it.
     /// </summary>
-    Task<Guid?> UpdateEmailAsync(
-        string provider, string providerKey, string newEmail, Instant updatedAt,
+    Task UpdateEmailAsync(
+        Guid userId, string provider, string providerKey, string newEmail, Instant updatedAt,
         CancellationToken ct = default);
 
     /// <summary>

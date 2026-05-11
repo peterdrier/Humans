@@ -209,7 +209,7 @@ public class ProfileAdminControllerTests
     {
         var u1 = Guid.NewGuid();
         var u2 = Guid.NewGuid();
-        _emailProblems.BackfillLegacyIdentityEmailsAsync(Arg.Any<CancellationToken>())
+        _emailProblems.BackfillLegacyIdentityEmailsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(new List<(Guid, string)> { (u1, "a@x.com"), (u2, "b@x.com") });
 
         var result = await BuildController().BackfillLegacyEmails(default);
@@ -229,7 +229,7 @@ public class ProfileAdminControllerTests
     [HumansFact]
     public async Task BackfillLegacyEmails_NoneToBackfill_NoAudit()
     {
-        _emailProblems.BackfillLegacyIdentityEmailsAsync(Arg.Any<CancellationToken>())
+        _emailProblems.BackfillLegacyIdentityEmailsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(new List<(Guid, string)>());
 
         var result = await BuildController().BackfillLegacyEmails(default);

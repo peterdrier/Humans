@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using NodaTime;
 using Humans.Domain.Entities;
@@ -368,6 +369,9 @@ public class AccountController : HumansControllerBase
 
     private async Task DetectAndApplyRenameAsync(ExternalLoginInfo info, Guid? userId)
     {
+        if (userId is null)
+            return;
+
         try
         {
             var claimEmail = info.Principal.FindFirstValue(ClaimTypes.Email);
@@ -376,73 +380,46 @@ public class AccountController : HumansControllerBase
 
             var match = await _userEmailService.FindByProviderKeyAsync(
                 info.LoginProvider, info.ProviderKey);
-
-            if (match is null)
-            {
-                // No UserEmail row exists for this OAuth identity. The AspNetUserLogins
-                // row exists (sign-in succeeded) but the UserEmail mirror is missing —
-                // e.g. a user provisioned before LinkAsync was wired into signup, or a
-                // row that got dropped by an older account-merge path. Backfill it now
-                // using the same LinkAsync primitive the signup paths use (find-or-create
-                // with provider-key tagging). Cross-user collisions on the partial unique
-                // Email index surface as exceptions and are caught below.
-                if (userId is null)
-                {
-                    _logger.LogWarning(
-                        "OAuth backfill skipped: ExternalLoginSignInAsync succeeded but FindByLoginAsync returned null for {Provider} sub={Sub}.",
-                        info.LoginProvider, info.ProviderKey);
-                    return;
-                }
-
-                await _userEmailService.LinkAsync(
-                    userId.Value,
-                    info.LoginProvider,
-                    info.ProviderKey,
-                    claimEmail,
-                    actorUserId: userId.Value);
-                _logger.LogInformation(
-                    "OAuth backfill: created UserEmail row for user {UserId} ({Provider}, sub={Sub}, email={Email}).",
-                    userId.Value, info.LoginProvider, info.ProviderKey, claimEmail);
-                return;
-            }
-
-            if (string.Equals(match.Email, claimEmail, StringComparison.OrdinalIgnoreCase))
+            if (match is not null &&
+                string.Equals(match.Email, claimEmail, StringComparison.OrdinalIgnoreCase))
                 return;
 
-            var oldEmail = match.Email;
-            var updated = await _userEmailService.UpdateEmailAsync(
-                info.LoginProvider, info.ProviderKey, claimEmail);
+            await _userEmailService.UpdateEmailAsync(
+                userId.Value, info.LoginProvider, info.ProviderKey, claimEmail);
 
-            if (updated)
+            if (match is not null)
             {
                 await _auditLogService.LogAsync(
                     AuditAction.GoogleEmailRenamed,
-                    nameof(User), match.UserId,
-                    $"email rename detected: {oldEmail} -> {claimEmail}, sub={info.ProviderKey}",
+                    nameof(User), userId.Value,
+                    $"email rename detected: {match.Email} -> {claimEmail}, sub={info.ProviderKey}",
                     nameof(AccountController),
                     relatedEntityId: match.Id, relatedEntityType: nameof(UserEmail));
             }
             else
             {
-                // FindByProviderKeyAsync just confirmed the row existed; a false
-                // result here means the row disappeared between the two calls.
-                // Surface at Warning so the prod log viewer shows the discrepancy.
-                _logger.LogWarning(
-                    "OAuth rename: UpdateEmailAsync returned false for user {UserId} oldEmail {OldEmail} (provider={Provider}, sub={Sub}) — row may have been removed concurrently between FindByProviderKey and update.",
-                    match.UserId, oldEmail, info.LoginProvider, info.ProviderKey);
+                _logger.LogInformation(
+                    "OAuth backfill: created UserEmail row for user {UserId} ({Provider}, sub={Sub}, email={Email}).",
+                    userId.Value, info.LoginProvider, info.ProviderKey, claimEmail);
             }
         }
         catch (OperationCanceledException) when (HttpContext.RequestAborted.IsCancellationRequested)
         {
             throw;
         }
+        catch (DbUpdateException dbEx)
+            when (dbEx.InnerException is Npgsql.PostgresException { SqlState: "23505" })
+        {
+            // Cross-user collision on the partial unique Email index — another
+            // user already holds claimEmail. Duplicate-account detection sweeps
+            // this on its next pass; expected in normal operation per
+            // memory/code/always-log-problems.md (LogWarning, no exception).
+            _logger.LogWarning(
+                "OAuth rename/backfill: cross-user email collision (23505) for {Provider} sub={Sub} — duplicate-account detection will surface.",
+                info.LoginProvider, info.ProviderKey);
+        }
         catch (Exception ex)
         {
-            // Cross-user collision on the partial unique Email index (Postgres
-            // 23505) surfaces here — UpdateEmailAsync and LinkAsync both let
-            // DB constraints propagate. Duplicate-account detection runs as a
-            // separate sweep and will surface the conflict to admins on its
-            // next pass.
             _logger.LogError(ex,
                 "OAuth rename/backfill failed for {Provider} sub={Sub}",
                 info.LoginProvider, info.ProviderKey);
