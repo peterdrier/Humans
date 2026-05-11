@@ -1,24 +1,26 @@
 namespace Humans.Application.Architecture;
 
 /// <summary>
-/// Per-interface method-count budget. Decorate a service interface with
-/// <c>[SurfaceBudget(N)]</c> where <c>N</c> equals the current directly-declared
-/// ordinary-method count. The <c>SurfaceBudgetAnalyzer</c> (HUM0015 / HUM0016)
-/// fails the build whenever the actual count drifts away from <c>N</c>.
+/// Per-type public-instance method-count budget. Decorate a type
+/// (typically an interface) with <c>[SurfaceBudget(N)]</c> where <c>N</c>
+/// equals the current directly-declared public-instance ordinary-method
+/// count. The <c>SurfaceBudgetAnalyzer</c> (HUM0015 / HUM0016) fails the
+/// build whenever the actual count drifts away from <c>N</c>.
 /// </summary>
 /// <remarks>
 /// This attribute is a <b>consolidation ratchet</b> — the goal is for budgeted
-/// interfaces to get smaller over time, not stable, not redistributed.
+/// types to get smaller over time, not stable, not redistributed.
 ///
 /// <para>Agent rules (strict):</para>
 /// <list type="bullet">
 ///   <item>
 ///     <b>No raises.</b> Adding a method requires removing one from the SAME
-///     interface in the SAME PR. Net delta is &lt;= 0.
+///     type in the SAME PR. Net delta is &lt;= 0.
 ///   </item>
 ///   <item>
-///     <b>No splits as a workaround.</b> Don't extract a sub-interface to put
-///     methods under a fresh budget — that defeats the consolidation goal.
+///     <b>No splits as a workaround.</b> Don't extract a sub-interface (or
+///     partial / sibling type) to put methods under a fresh budget — that
+///     defeats the consolidation goal.
 ///   </item>
 ///   <item>
 ///     <b>No "replace 2 methods with 1 broader bag-of-flags method" tricks.</b>
@@ -44,18 +46,26 @@ namespace Humans.Application.Architecture;
 /// </para>
 ///
 /// <para>
-/// In scope: interfaces with a meaningful surface (~10+ methods) where growth
-/// would matter. Smaller interfaces aren't budgeted — adding the 3rd method to
-/// a 2-method interface isn't a smell.
+/// In scope: types with a meaningful surface (~10+ methods) where growth would
+/// matter. Currently applied to service interfaces only, but the attribute is
+/// valid on classes and structs too — pick whatever symbol most accurately
+/// represents the surface you want budgeted. Smaller types aren't budgeted —
+/// adding the 3rd method to a 2-method type isn't a smell.
 /// </para>
 ///
 /// <para>
 /// Counting semantics (mirrored exactly in <c>SurfaceBudgetAnalyzer</c>):
-/// directly-declared ordinary methods only. Property accessors, indexers,
-/// events, and inherited interface methods are not counted.
+/// directly-declared <b>public instance</b> ordinary methods only. Private,
+/// internal, protected, and static methods are not counted. Property
+/// accessors, indexers, events, and inherited members are not counted.
+/// (For interfaces, all members are implicitly public-instance, so this
+/// collapses to "directly-declared ordinary methods".)
 /// </para>
 /// </remarks>
-[AttributeUsage(AttributeTargets.Interface, AllowMultiple = false, Inherited = false)]
+[AttributeUsage(
+    AttributeTargets.Interface | AttributeTargets.Class | AttributeTargets.Struct,
+    AllowMultiple = false,
+    Inherited = false)]
 public sealed class SurfaceBudgetAttribute : Attribute
 {
     public SurfaceBudgetAttribute(int methodCount) => MethodCount = methodCount;

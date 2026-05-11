@@ -16,7 +16,8 @@ public class SurfaceBudgetAnalyzerTests
     private const string AttributeStub = """
         namespace Humans.Application.Architecture
         {
-            [System.AttributeUsage(System.AttributeTargets.Interface)]
+            [System.AttributeUsage(
+                System.AttributeTargets.Interface | System.AttributeTargets.Class | System.AttributeTargets.Struct)]
             public sealed class SurfaceBudgetAttribute : System.Attribute
             {
                 public SurfaceBudgetAttribute(int methodCount) => MethodCount = methodCount;
@@ -248,5 +249,92 @@ public class SurfaceBudgetAnalyzerTests
             source);
 
         diagnostics.Where(d => IsHum0015(d) || IsHum0016(d)).Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Class_over_budget_emits_HUM0015()
+    {
+        var source = AttributeStub + """
+
+            namespace Sample
+            {
+                using Humans.Application.Architecture;
+
+                [SurfaceBudget(2)]
+                public class Sample
+                {
+                    public void M1() { }
+                    public void M2() { }
+                    public void M3() { }
+                }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new SurfaceBudgetAnalyzer(),
+            "Humans.Application",
+            source);
+
+        diagnostics.Should().ContainSingle(d => IsHum0015(d));
+        diagnostics.Where(d => IsHum0016(d)).Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Class_private_and_static_methods_are_not_counted()
+    {
+        // Budget = 1 public-instance method. Private/internal/protected/static
+        // methods must not contribute to the count.
+        var source = AttributeStub + """
+
+            namespace Sample
+            {
+                using Humans.Application.Architecture;
+
+                [SurfaceBudget(1)]
+                public class Sample
+                {
+                    public void Public1() { }
+                    private void Private1() { }
+                    internal void Internal1() { }
+                    protected void Protected1() { }
+                    public static void Static1() { }
+                    private static void PrivateStatic1() { }
+                }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new SurfaceBudgetAnalyzer(),
+            "Humans.Application",
+            source);
+
+        diagnostics.Where(d => IsHum0015(d) || IsHum0016(d)).Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Struct_over_budget_emits_HUM0015()
+    {
+        var source = AttributeStub + """
+
+            namespace Sample
+            {
+                using Humans.Application.Architecture;
+
+                [SurfaceBudget(1)]
+                public struct Sample
+                {
+                    public void M1() { }
+                    public void M2() { }
+                }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new SurfaceBudgetAnalyzer(),
+            "Humans.Application",
+            source);
+
+        diagnostics.Should().ContainSingle(d => IsHum0015(d));
+        diagnostics.Where(d => IsHum0016(d)).Should().BeEmpty();
     }
 }

@@ -138,19 +138,22 @@ project at least one fix commit.
 
 ### HUM0015 / HUM0016 — `[SurfaceBudget(N)]` analyzer (SHIPPED)
 
-- Rule: an interface decorated with
+- Rule: a type (interface, class, or struct) decorated with
   `Humans.Application.Architecture.SurfaceBudgetAttribute(N)` must declare
-  exactly `N` directly-declared ordinary methods. Over-budget fires HUM0015;
-  under-budget (slack) fires HUM0016.
-- Source: replaces the retired
-  `tests/Humans.Application.Tests/Architecture/InterfaceMethodBudgetTests.cs`
+  exactly `N` directly-declared **public-instance** ordinary methods.
+  Over-budget fires HUM0015; under-budget (slack) fires HUM0016.
+- Source: replaces the retired `InterfaceMethodBudgetTests`
   (issue [nobodies-collective/Humans#700](https://github.com/nobodies-collective/Humans/issues/700)).
-  Budgets now live as a per-interface attribute with the rationale captured in
-  XML `<remarks>` on the interface itself — visible in tooltips, diffed alongside
-  the surface change, scoped to a single symbol.
-- Call-site shape: `SymbolKind.NamedType`, filter to interfaces carrying the
-  attribute, count `MethodKind == Ordinary` members directly on the symbol.
-  Mirrors `BindingFlags.DeclaredOnly` + `!IsSpecialName` exactly.
+  Budgets now live as a per-type attribute with the rationale captured in
+  XML `<remarks>` on the type itself — visible in tooltips, diffed alongside
+  the surface change, scoped to a single symbol. Currently applied to service
+  interfaces only; the attribute is valid on classes/structs too if you want
+  to budget an implementation's public surface directly.
+- Call-site shape: `SymbolKind.NamedType`, filter to interface/class/struct
+  carrying the attribute, count public-instance `MethodKind == Ordinary`
+  members directly on the symbol. Accessibility filter is a no-op on
+  interfaces (all members are implicitly public-instance) but discriminates
+  on classes/structs.
 - Status: shipped. Catalogued in `code-analysis.md`.
 
 ### HUM0014 — `Cached*` type names forbidden for public surface

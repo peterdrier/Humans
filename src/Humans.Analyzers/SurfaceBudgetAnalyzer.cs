@@ -15,16 +15,16 @@ public sealed class SurfaceBudgetAnalyzer : DiagnosticAnalyzer
         "Humans.Application.Architecture.SurfaceBudgetAttribute";
 
     private static readonly LocalizableString OverBudgetTitle =
-        "Interface surface exceeds budget";
+        "Type surface exceeds budget";
 
     private static readonly LocalizableString OverBudgetMessageFormat =
-        "'{0}' has {1} methods, budget is {2}. Remove a method in this PR " +
-        "(preferred — decrement the budget to match), or raise the budget " +
-        "only with explicit owner authorization. Run /audit-surface {0} to " +
-        "see what could be eliminated.";
+        "'{0}' has {1} public instance methods, budget is {2}. Remove a method " +
+        "in this PR (preferred — decrement the budget to match), or raise the " +
+        "budget only with explicit owner authorization. Run /audit-surface {0} " +
+        "to see what could be eliminated.";
 
     private static readonly LocalizableString OverBudgetDescription =
-        "[SurfaceBudget(N)] is a consolidation ratchet — budgeted interfaces " +
+        "[SurfaceBudget(N)] is a consolidation ratchet — budgeted types " +
         "should shrink over time. Net delta from any PR is <= 0. Only the " +
         "repo owner authorizes raises, and only out-of-band.";
 
@@ -38,7 +38,7 @@ public sealed class SurfaceBudgetAnalyzer : DiagnosticAnalyzer
         description: OverBudgetDescription);
 
     private static readonly LocalizableString SlackTitle =
-        "Interface surface budget has slack";
+        "Surface budget has slack";
 
     private static readonly LocalizableString SlackMessageFormat =
         "'{0}' budget ({2}) should equal current count ({1}). When you remove " +
@@ -80,7 +80,7 @@ public sealed class SurfaceBudgetAnalyzer : DiagnosticAnalyzer
     private static void AnalyzeNamedType(SymbolAnalysisContext context, INamedTypeSymbol attributeType)
     {
         var type = (INamedTypeSymbol)context.Symbol;
-        if (type.TypeKind != TypeKind.Interface)
+        if (type.TypeKind is not (TypeKind.Interface or TypeKind.Class or TypeKind.Struct))
             return;
 
         var budgetAttribute = type.GetAttributes().FirstOrDefault(a =>
@@ -95,7 +95,7 @@ public sealed class SurfaceBudgetAnalyzer : DiagnosticAnalyzer
         if (budgetArg.Value is not int budget)
             return;
 
-        var count = CountDirectlyDeclaredOrdinaryMethods(type);
+        var count = CountDirectlyDeclaredPublicInstanceOrdinaryMethods(type);
         var location = type.Locations.Length > 0 ? type.Locations[0] : Location.None;
 
         if (count > budget)
@@ -111,24 +111,31 @@ public sealed class SurfaceBudgetAnalyzer : DiagnosticAnalyzer
     }
 
     /// <summary>
-    /// Mirrors <c>InterfaceMethodBudgetTests.CountPublicMethods</c>:
-    /// directly-declared ordinary methods only — no property accessors,
-    /// indexers, events, or inherited interface methods.
+    /// Counts directly-declared <b>public instance</b> ordinary methods on the
+    /// type. Private/internal/protected and static methods are not counted;
+    /// property accessors, indexers, events, and inherited members are not
+    /// counted.
     ///
+    /// <para>
     /// <c>INamedTypeSymbol.GetMembers()</c> returns only the members declared
     /// directly on this symbol (analog of <c>BindingFlags.DeclaredOnly</c>).
     /// Property/indexer/event accessors surface as <c>IMethodSymbol</c> with
     /// a non-<c>Ordinary</c> <see cref="MethodKind"/>, so filtering on
     /// <c>MethodKind == Ordinary</c> is the analog of <c>!IsSpecialName</c>.
+    /// For interfaces, every declared method is implicitly public-instance so
+    /// the accessibility filter is a no-op there.
+    /// </para>
     /// </summary>
-    private static int CountDirectlyDeclaredOrdinaryMethods(INamedTypeSymbol interfaceSymbol)
+    private static int CountDirectlyDeclaredPublicInstanceOrdinaryMethods(INamedTypeSymbol type)
     {
         var count = 0;
-        foreach (var member in interfaceSymbol.GetMembers())
+        foreach (var member in type.GetMembers())
         {
             if (member is not IMethodSymbol method)
                 continue;
             if (method.MethodKind != MethodKind.Ordinary)
+                continue;
+            if (method.DeclaredAccessibility != Accessibility.Public)
                 continue;
             if (method.IsStatic)
                 continue;
