@@ -71,11 +71,11 @@ public sealed class ExpenseReportAuthorizationHandler
                 return;
             }
 
-            // Submitter can edit while in non-final statuses
+            // Submitter can only edit (header + lines) while in Draft.
+            // Lines are frozen at submission — ExpenseReportService.RequireEditableReportAsync
+            // enforces this, and the Edit GET/POST controllers also restrict to Draft.
             if (op == ExpenseReportOperation.Edit &&
-                resource.Status is ExpenseReportStatus.Draft
-                    or ExpenseReportStatus.Submitted
-                    or ExpenseReportStatus.CoordinatorEndorsed)
+                resource.Status == ExpenseReportStatus.Draft)
             {
                 context.Succeed(requirement);
                 return;

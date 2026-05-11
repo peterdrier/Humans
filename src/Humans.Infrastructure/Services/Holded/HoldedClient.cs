@@ -50,7 +50,7 @@ public sealed class HoldedClient : IHoldedClient
         { Content = JsonContent.Create(payload) };
         AttachAuth(req);
 
-        var resp = await SendAsync(req, ct);
+        using var resp = await SendAsync(req, ct);
         var body = await resp.Content.ReadAsStringAsync(ct);
         var node = JsonNode.Parse(body)
             ?? throw new HoldedTransientException("Holded returned empty body");

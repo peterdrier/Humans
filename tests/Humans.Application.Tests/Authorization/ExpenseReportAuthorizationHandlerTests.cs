@@ -72,11 +72,13 @@ public sealed class ExpenseReportAuthorizationHandlerTests
     }
 
     [HumansFact]
-    public async Task Submitter_CanEdit_OwnSubmittedReport()
+    public async Task Submitter_CannotEdit_OwnSubmittedReport()
     {
+        // Lines are frozen at submission per docs/sections/Expenses.md invariants
+        // and ExpenseReportService.RequireEditableReportAsync enforcement.
         var report = MakeReport(SubmitterId, ExpenseReportStatus.Submitted);
         var result = await EvaluateAsync(CreateUser(SubmitterId), report, ExpenseReportOperation.Edit);
-        result.Should().BeTrue();
+        result.Should().BeFalse();
     }
 
     [HumansFact]
