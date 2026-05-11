@@ -40,6 +40,11 @@ public interface ICampService : IApplicationService
         Guid? userId,
         CampDirectoryFilter? filter = null,
         CancellationToken cancellationToken = default);
+    /// <remarks>
+    /// <see cref="CampInfo.Leads"/> is always empty; leads are not loaded by
+    /// the year-directory query. Use <see cref="GetCampsWithLeadsForYearAsync"/>
+    /// when lead data is needed.
+    /// </remarks>
     Task<IReadOnlyList<CampInfo>> GetCampsForYearAsync(int year, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<CampPublicSummary>> GetCampPublicSummariesForYearAsync(int year, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<CampPlacementSummary>> GetCampPlacementSummariesForYearAsync(int year, CancellationToken cancellationToken = default);
