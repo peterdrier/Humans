@@ -620,8 +620,32 @@ public sealed class UserEmailRepository : IUserEmailRepository
             .ToListAsync(ct);
     }
 
-    public Task<UserEmail?> FindOtherUsersVerifiedRowAsync(
+    public async Task<UserEmail?> FindOtherUsersVerifiedRowAsync(
         string email, Guid excludeUserId, CancellationToken ct = default)
-        => throw new NotSupportedException(
-            "Issue nobodies-collective/Humans#697 step 2 implements this; this stub exists so the step-1 TDD commit compiles.");
+    {
+        var normalized = email.Trim();
+        var alternate = GetAlternateComparableEmail(normalized);
+        var escaped = EscapeLikePattern(normalized);
+        var escapedAlternate = alternate is null ? null : EscapeLikePattern(alternate);
+
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var query = ctx.UserEmails
+            .Where(e => e.IsVerified && e.UserId != excludeUserId);
+
+        return escapedAlternate is null
+            ? await query.FirstOrDefaultAsync(
+                e => EF.Functions.ILike(e.Email, escaped, "\\"), ct)
+            : await query.FirstOrDefaultAsync(
+                e => EF.Functions.ILike(e.Email, escaped, "\\") ||
+                     EF.Functions.ILike(e.Email, escapedAlternate, "\\"), ct);
+    }
+
+    private static string? GetAlternateComparableEmail(string email)
+    {
+        if (email.EndsWith("@gmail.com", StringComparison.OrdinalIgnoreCase))
+            return string.Concat(email.AsSpan(0, email.Length - "@gmail.com".Length), "@googlemail.com");
+        if (email.EndsWith("@googlemail.com", StringComparison.OrdinalIgnoreCase))
+            return string.Concat(email.AsSpan(0, email.Length - "@googlemail.com".Length), "@gmail.com");
+        return null;
+    }
 }
