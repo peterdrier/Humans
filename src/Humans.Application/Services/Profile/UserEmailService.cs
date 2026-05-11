@@ -625,9 +625,17 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
     {
         var written = await _repository.UpdateEmailAsync(
             userId, provider, providerKey, newEmail, _clock.GetCurrentInstant(), cancellationToken);
-        if (written)
-            await _fullProfileInvalidator.InvalidateAsync(userId, cancellationToken);
-        return written;
+        if (!written)
+            return false;
+
+        // Add-row flow: route through the same Google invariant the other add
+        // paths use (AddRowWithInvariantsAsync). The helper picks a winner
+        // only when no IsGoogle=true row exists or an obvious better winner
+        // does (verified @nobodies.team) — user-set IsGoogle survives. Skips
+        // entirely on the rename/update case (existing winner unchanged).
+        await EnsureGoogleInvariantAsync(userId, cancellationToken);
+        await _fullProfileInvalidator.InvalidateAsync(userId, cancellationToken);
+        return true;
     }
 
     public async Task<IReadOnlyList<UserEmailMatch>> MatchByEmailsAsync(
