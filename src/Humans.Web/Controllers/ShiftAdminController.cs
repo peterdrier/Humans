@@ -751,7 +751,7 @@ public class ShiftAdminController : HumansTeamControllerBase
 
         return Json(tags
             .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
-            .Select(t => new { t.Id, t.Name }));
+            .Select(t => new ShiftTagResult(t.Id, t.Name)));
     }
 
     [HttpPost("Tags/Create")]
@@ -826,3 +826,5 @@ public class ShiftAdminController : HumansTeamControllerBase
                await _shiftMgmt.IsDeptCoordinatorAsync(user.Id, team.Id);
     }
 }
+
+public sealed record ShiftTagResult(Guid Id, string Name);
