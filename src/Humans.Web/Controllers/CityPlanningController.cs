@@ -20,17 +20,20 @@ public class CityPlanningController : HumansControllerBase
     private readonly ICityPlanningService _cityPlanningService;
     private readonly ICampService _campService;
     private readonly IContainerService _containerService;
+    private readonly ILogger<CityPlanningController> _logger;
 
     public CityPlanningController(
         ICityPlanningService cityPlanningService,
         ICampService campService,
         IContainerService containerService,
-        UserManager<User> userManager)
+        UserManager<User> userManager,
+        ILogger<CityPlanningController> logger)
         : base(userManager)
     {
         _cityPlanningService = cityPlanningService;
         _campService = campService;
         _containerService = containerService;
+        _logger = logger;
     }
 
     private async Task<bool> IsMapAdminAsync(Guid userId, CancellationToken ct)
@@ -475,6 +478,7 @@ public class CityPlanningController : HumansControllerBase
         }
         catch (InvalidOperationException ex)
         {
+            _logger.LogWarning("Container create failed for camp {CampId}, year {Year}: {Message}", campId, year, ex.Message);
             SetError(ex.Message);
             return RedirectToAction(nameof(Containers), new { year });
         }
@@ -535,6 +539,7 @@ public class CityPlanningController : HumansControllerBase
         }
         catch (InvalidOperationException ex)
         {
+            _logger.LogWarning("Container update failed for id {ContainerId}, camp {CampId}, year {Year}: {Message}", id, campId, year, ex.Message);
             SetError(ex.Message);
             return RedirectToAction(nameof(Containers), new { year });
         }

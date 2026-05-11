@@ -10,7 +10,7 @@
     Humans.Web.Models.ContainerCardModel CardFor(Humans.Web.Models.ContainerViewModel c) => new()
     {
         Container = c,
-        Placement = null,
+        Placement = Model.PlacementsByContainerId.TryGetValue(c.Id, out var p) ? p : null,
         CanManage = Model.CanManage,
         FormController = "Container",
         EditAction = "Edit",

@@ -10,6 +10,7 @@ public class ContainerIndexViewModel
     public string CampName { get; set; } = string.Empty;
     public Guid CampId { get; set; }
     public List<ContainerViewModel> Containers { get; set; } = new();
+    public Dictionary<Guid, ContainerPlacementViewModel> PlacementsByContainerId { get; set; } = new();
     public bool CanManage { get; set; }
     public int CurrentYear { get; set; }
     public bool IsPlacementOpen { get; set; }

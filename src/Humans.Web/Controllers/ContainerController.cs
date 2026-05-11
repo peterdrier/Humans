@@ -19,19 +19,22 @@ public class ContainerController : HumansControllerBase
     private readonly IContainerService _containerService;
     private readonly ICityPlanningService _cityPlanningService;
     private readonly IAuthorizationService _authorizationService;
+    private readonly ILogger<ContainerController> _logger;
 
     public ContainerController(
         ICampService campService,
         IContainerService containerService,
         ICityPlanningService cityPlanningService,
         IAuthorizationService authorizationService,
-        UserManager<User> userManager)
+        UserManager<User> userManager,
+        ILogger<ContainerController> logger)
         : base(userManager)
     {
         _campService = campService;
         _containerService = containerService;
         _cityPlanningService = cityPlanningService;
         _authorizationService = authorizationService;
+        _logger = logger;
     }
 
     private sealed record CampContext(Camp Camp, bool CanManage, bool IsPrivileged);
@@ -87,19 +90,28 @@ public class ContainerController : HumansControllerBase
         var sortedContainers = containers
             .OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
+        var placements = await _containerService.GetPlacementsByYearAsync(settings.Year, ct);
 
-        var vm = BuildIndexViewModel(ctx, settings.Year, settings.IsContainerPlacementOpen, sortedContainers);
+        var vm = BuildIndexViewModel(ctx, settings.Year, settings.IsContainerPlacementOpen, sortedContainers, placements);
         return View(vm);
     }
 
     private static ContainerIndexViewModel BuildIndexViewModel(
-        CampContext ctx, int currentYear, bool isPlacementOpen, IReadOnlyList<ContainerDto> containers)
+        CampContext ctx,
+        int currentYear,
+        bool isPlacementOpen,
+        IReadOnlyList<ContainerDto> containers,
+        IReadOnlyList<ContainerPlacementDto> placements)
     {
         var isLead = ctx.CanManage && !ctx.IsPrivileged;
         var displayName = ctx.Camp.Seasons
             .OrderByDescending(s => s.Year)
             .FirstOrDefault()?.Name
             ?? ctx.Camp.Slug;
+        var containerIds = containers.Select(c => c.Id).ToHashSet();
+        var placementsByContainerId = placements
+            .Where(p => containerIds.Contains(p.ContainerId))
+            .ToDictionary(p => p.ContainerId, ToPlacementViewModel);
         return new ContainerIndexViewModel
         {
             CampSlug = ctx.Camp.Slug,
@@ -109,9 +121,20 @@ public class ContainerController : HumansControllerBase
             CanManage = ctx.CanManage,
             IsPlacementOpen = isPlacementOpen,
             IsLeadButPhaseClosed = isLead && !isPlacementOpen,
-            Containers = containers.Select(ToContainerViewModel).ToList()
+            Containers = containers.Select(ToContainerViewModel).ToList(),
+            PlacementsByContainerId = placementsByContainerId,
         };
     }
+
+    private static ContainerPlacementViewModel ToPlacementViewModel(ContainerPlacementDto p) => new()
+    {
+        ContainerId = p.ContainerId,
+        Year = p.Year,
+        LocationGeoJson = p.LocationGeoJson,
+        PlacementNotes = p.PlacementNotes,
+        PlacementImageUrl = p.PlacementImageStoragePath,
+        PlacementImageFileName = p.PlacementImageFileName,
+    };
 
     private static ContainerViewModel ToContainerViewModel(ContainerDto c) => new()
     {
@@ -213,6 +236,7 @@ public class ContainerController : HumansControllerBase
         }
         catch (InvalidOperationException ex)
         {
+            _logger.LogWarning("Container write failed for camp {Slug}: {Message}", slug, ex.Message);
             SetError(ex.Message);
             return RedirectToAction(nameof(Index), new { slug });
         }
