@@ -13,7 +13,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Humans.Infrastructure.Migrations
 {
     [DbContext(typeof(HumansDbContext))]
-    [Migration("20260510185822_AddVolunteerBuildStatus")]
+    [Migration("20260511011442_AddVolunteerBuildStatus")]
     partial class AddVolunteerBuildStatus
     {
         /// <inheritdoc />
@@ -991,6 +991,9 @@ namespace Humans.Infrastructure.Migrations
                     b.Property<Guid?>("ConfirmedByUserId")
                         .HasColumnType("uuid");
 
+                    b.Property<bool>("HasEarlyEntry")
+                        .HasColumnType("boolean");
+
                     b.Property<Instant?>("RemovedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -1205,6 +1208,9 @@ namespace Humans.Infrastructure.Migrations
                     b.Property<Instant>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int>("EeSlotCount")
+                        .HasColumnType("integer");
+
                     b.Property<string>("ElectricalGrid")
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
@@ -1301,6 +1307,9 @@ namespace Humans.Infrastructure.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
+
+                    b.Property<LocalDate?>("EeStartDate")
+                        .HasColumnType("date");
 
                     b.Property<string>("OpenSeasons")
                         .IsRequired()
@@ -4729,7 +4738,7 @@ namespace Humans.Infrastructure.Migrations
             modelBuilder.Entity("Humans.Domain.Entities.CampMember", b =>
                 {
                     b.HasOne("Humans.Domain.Entities.CampSeason", "CampSeason")
-                        .WithMany()
+                        .WithMany("Members")
                         .HasForeignKey("CampSeasonId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -5610,6 +5619,11 @@ namespace Humans.Infrastructure.Migrations
             modelBuilder.Entity("Humans.Domain.Entities.CampRoleDefinition", b =>
                 {
                     b.Navigation("Assignments");
+                });
+
+            modelBuilder.Entity("Humans.Domain.Entities.CampSeason", b =>
+                {
+                    b.Navigation("Members");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.Campaign", b =>
