@@ -40,6 +40,9 @@ public interface ICampService : IApplicationService
         Guid? userId,
         CampDirectoryFilter? filter = null,
         CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Gets camps for a year without lead data.
+    /// </summary>
     /// <remarks>
     /// <see cref="CampInfo.Leads"/> is always empty; leads are not loaded by
     /// the year-directory query. Use <see cref="GetCampsWithLeadsForYearAsync"/>
