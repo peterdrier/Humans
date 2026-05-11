@@ -26,7 +26,7 @@ For each issue in the work order (sequentially, never parallel):
 
    a. **Privilege change.** The change crosses into privilege territory — bumping a default permission tier, modifying `[Authorize]` requirements, expanding a role grant, adding to a CORS allowlist beyond clearly-internal dev origins, adding an admin flag, lowering an auth bar, granting move/delete/admin on shared resources. Per `memory/process/privilege-changes-need-explicit-approval.md`.
 
-   b. **Spec change derived from user feedback.** The issue body includes an `fb:` feedback reference AND the change alters what the system does or allows beyond a mechanical fix — adds/removes a workflow step, changes eligibility rules, changes what data is shown or collected, adds a new public endpoint, changes a default behavior, removes a consent step. Per `memory/process/user-feedback-spec-changes-need-review.md`.
+   b. **Spec change derived from user feedback.** The issue body includes an `fb:` feedback reference AND the change alters what the system does or allows beyond a mechanical fix — adds/removes a workflow step, changes eligibility rules, changes what data is shown or collected, adds a new public endpoint, changes a default behavior, removes a consent step. Per `memory/process/triage-protocol.md`.
 
    When you stop, report: the specific concern, the line(s) that would need to change, a one-line summary of what changes for whom, and (if a privilege change) which user(s) would gain the capability. The orchestrator escalates to Peter; you do not. The pre-flight gate in `/execute-sprint` Step 2.5 should have caught these — if you're hitting this path, either the gate missed something or the spec was misleading. Either way, the worker is not the layer that decides.
 
