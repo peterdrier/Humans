@@ -131,4 +131,8 @@ public enum AuditAction
     OrphanUserEmailDeleted,
     GhostExternalLoginsDeleted,
     LegacyIdentityEmailBackfilled,
+    CampEarlyEntryGranted,
+    CampEarlyEntryRevoked,
+    CampSeasonEeSlotCountChanged,
+    CampSettingsEeStartDateChanged,
 }

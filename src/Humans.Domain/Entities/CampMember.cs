@@ -29,4 +29,11 @@ public class CampMember
 
     public Instant? RemovedAt { get; set; }
     public Guid? RemovedByUserId { get; set; }
+
+    /// <summary>
+    /// True when this member holds an Early Entry grant for the season's camp.
+    /// Granted by camp leads / CampAdmin; cleared on member removal. Never rendered
+    /// on anonymous/public views.
+    /// </summary>
+    public bool HasEarlyEntry { get; set; }
 }
