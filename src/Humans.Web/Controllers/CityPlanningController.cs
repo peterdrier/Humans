@@ -370,7 +370,7 @@ public class CityPlanningController : HumansControllerBase
     {
         var campsWithLeads = await _campService.GetCampsWithLeadsForYearAsync(year, cancellationToken: ct);
         return campsWithLeads.FirstOrDefault(c =>
-            c.Leads?.Any(l => l.UserId == userId && l.IsActive) == true);
+            c.Leads?.Any(l => l.UserId == userId) == true);
     }
 
     private static (string Slug, string Name) LeadCampDisplay(bool isMapAdmin, CampInfo? userCamp, int year)

@@ -58,7 +58,7 @@ public class CityPlanningApiController : ControllerBase
     {
         var campsWithLeads = await _campService.GetCampsWithLeadsForYearAsync(year, cancellationToken: ct);
         return campsWithLeads
-            .FirstOrDefault(c => c.Leads?.Any(l => l.UserId == userId && l.IsActive) == true)?.Id;
+            .FirstOrDefault(c => c.Leads?.Any(l => l.UserId == userId) == true)?.Id;
     }
 
     /// <summary>Returns current map state: settings, all camp polygons, unmapped seasons.</summary>
