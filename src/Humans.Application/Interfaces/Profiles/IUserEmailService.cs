@@ -119,9 +119,10 @@ public interface IUserEmailService : IApplicationService
     /// <summary>
     /// Adds a verified email directly (admin provisioning/linking — no verification flow needed).
     /// If the email is @nobodies.team, it's automatically set as the notification target.
-    /// Skips if the email already exists for this user.
+    /// Idempotent: if the email already exists for this user, skips the insert
+    /// and returns <c>false</c>. Returns <c>true</c> when a row was actually inserted.
     /// </summary>
-    Task AddVerifiedEmailAsync(
+    Task<bool> AddVerifiedEmailAsync(
         Guid userId,
         string email,
         CancellationToken cancellationToken = default);

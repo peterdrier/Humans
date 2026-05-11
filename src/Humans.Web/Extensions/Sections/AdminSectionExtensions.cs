@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces.Admin;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Infrastructure.Configuration;
@@ -23,6 +24,7 @@ internal static class AdminSectionExtensions
         services.AddScoped<SuspendNonCompliantMembersJob>();
         services.AddScoped<SendAdminDailyDigestJob>();
         services.AddScoped<SendBoardDailyDigestJob>();
+        services.AddScoped<IAdminDatabaseDiagnosticsService, AdminDatabaseDiagnosticsService>();
 
         // Log API key (separate credential from feedback)
         services.Configure<LogApiSettings>(opts =>

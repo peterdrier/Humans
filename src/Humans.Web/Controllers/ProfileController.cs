@@ -1307,6 +1307,79 @@ public class ProfileController : HumansControllerBase
         return RedirectToAction(nameof(AdminEmails), new { id });
     }
 
+    // Admin-only recovery path: directly insert an already-verified UserEmail
+    // row without sending a verification email. Use when an admin needs to
+    // restore a row that was deleted in error (or otherwise re-attach a known
+    // address to the user without a round-trip to their mailbox).
+    [HttpPost("{id:guid}/Admin/Emails/AddVerified")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AdminAddVerifiedEmail(Guid id, string email, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            SetError(_localizer["Profile_EnterEmail"].Value);
+            return RedirectToAction(nameof(AdminEmails), new { id });
+        }
+
+        var actor = await GetCurrentUserAsync();
+        var targetUser = await FindUserByIdAsync(id);
+
+        return await AdminAddVerifiedEmailAsync(id, email.Trim(), actor, targetUser, ct);
+    }
+
+    private async Task<IActionResult> AdminAddVerifiedEmailAsync(
+        Guid userId,
+        string email,
+        User? actor,
+        User? targetUser,
+        CancellationToken ct)
+    {
+        if (actor is null)
+            return Forbid();
+
+        if (targetUser is null)
+            return NotFound();
+
+        try
+        {
+            var inserted = await _userEmailService.AddVerifiedEmailAsync(userId, email, ct);
+            await ReportVerifiedEmailAddAsync(inserted, userId, email, actor.Id);
+        }
+        catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
+        {
+            _logger.LogWarning(
+                "Admin failed to add verified email for user {UserId} ({Email}): {Reason}",
+                userId, email, ex.Message);
+            SetError(ex.Message);
+        }
+
+        return RedirectToAction(nameof(AdminEmails), new { id = userId });
+    }
+
+    private async Task ReportVerifiedEmailAddAsync(
+        bool inserted,
+        Guid userId,
+        string email,
+        Guid actorUserId)
+    {
+        if (!inserted)
+        {
+            SetInfo($"Email {email} already exists on this user — no change.");
+            return;
+        }
+
+        _cache.InvalidateNobodiesTeamEmails();
+
+        await _auditLogService.LogAsync(
+            AuditAction.UserEmailAdded,
+            nameof(User), userId,
+            $"Admin added pre-verified email {email} for user {userId} (no verification flow)",
+            actorUserId);
+
+        SetSuccess($"Verified email {email} added.");
+    }
+
     [HttpPost("{id:guid}/Admin/Emails/Verify")]
     [Authorize(Policy = PolicyNames.AdminOnly)]
     [ValidateAntiForgeryToken]

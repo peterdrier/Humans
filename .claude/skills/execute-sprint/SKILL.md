@@ -74,7 +74,7 @@ Author and feedback-id signals don't gate on their own, but call them out in Pat
 
 This gate fires even when the sprint plan already labeled the issue with a tier — sprint planning is fallible. Never include a privilege-change or spec-change issue in a worker prompt without this gate having fired and Peter having approved.
 
-Per `memory/process/privilege-changes-need-explicit-approval.md` and `memory/process/user-feedback-spec-changes-need-review.md`.
+Per `memory/process/privilege-changes-need-explicit-approval.md` and `memory/process/triage-protocol.md`.
 
 ## Step 3: Determine execution plan
 

@@ -944,6 +944,8 @@ public class ShiftDashboardMetricsTests : IDisposable
         public Task<int> GetUserTicketCountAsync(Guid userId) => throw new NotSupportedException();
         public Task<HashSet<Guid>> GetUserIdsWithTicketsAsync() => throw new NotSupportedException();
         public Task<HashSet<Guid>> GetAllMatchedUserIdsAsync() => throw new NotSupportedException();
+        public Task<IReadOnlySet<Guid>> GetMatchedUserIdsForYearAsync(int year, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<IReadOnlyList<int>> GetMatchedTicketYearsAsync(CancellationToken ct = default) => throw new NotSupportedException();
         public Task<Humans.Application.DTOs.TicketDashboardStats> GetDashboardStatsAsync() => throw new NotSupportedException();
         public Task<decimal> GetGrossTicketRevenueAsync() => throw new NotSupportedException();
         public Task<Humans.Application.DTOs.BreakEvenResult> CalculateBreakEvenAsync(int ticketsSold, decimal grossRevenue, string currency, bool canAccessFinance, int fallbackTarget) => throw new NotSupportedException();

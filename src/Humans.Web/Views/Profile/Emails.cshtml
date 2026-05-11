@@ -196,6 +196,12 @@
                                             </button>
                                         </form>
                                     }
+                                    else if (workspaceLocked && row.IsVerified)
+                                    {
+                                        @* Verified, but another row holds the Workspace lock — *@
+                                        @* don't claim "verify first", which is a lie.          *@
+                                        <span class="text-muted small" title="Locked by the Workspace email row">—</span>
+                                    }
                                     else
                                     {
                                         <span class="text-muted small">@Localizer["Emails_VerifyFirst"]</span>
@@ -241,6 +247,10 @@
                                                 @Localizer["EmailGrid_SetGoogle"]
                                             </button>
                                         </form>
+                                    }
+                                    else if (workspaceLocked && row.IsVerified)
+                                    {
+                                        <span class="text-muted small" title="Locked by the Workspace email row">—</span>
                                     }
                                     else
                                     {
@@ -347,10 +357,10 @@
         @* self-heal on next OAuth sign-in via ReconcileOAuthIdentityAsync.   *@
         @if (Model.IsAdminContext)
         {
-            <div class="card mb-4" id="external-logins">
-                <div class="card-header">
-                    <h5 class="mb-0">AspNetUserLogins</h5>
-                    <small class="text-muted">Authoritative store for OAuth identity. The <code>UserEmail</code> provider tag above is a per-row pointer; this is the truth.</small>
+            <div class="card mb-4 border-danger" id="external-logins">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0"><i class="fa-solid fa-user-shield me-1"></i>AspNetUserLogins <small class="ms-2 opacity-75">(Admin only)</small></h5>
+                    <small class="text-white-50">Authoritative store for OAuth identity. The <code>UserEmail</code> provider tag above is a per-row pointer; this is the truth.</small>
                 </div>
                 <div class="card-body p-0">
                     @if (!Model.ExternalLogins.Any())
@@ -399,10 +409,10 @@
 
             @* Admin-only raw UserEmail dump — every column verbatim. *@
             @* Diagnostic surface; no formatting, no actions. *@
-            <div class="card mb-4" id="raw-user-emails">
-                <div class="card-header">
-                    <h5 class="mb-0">Raw <code>user_emails</code> rows</h5>
-                    <small class="text-muted">Every column verbatim. Admin diagnostic.</small>
+            <div class="card mb-4 border-danger" id="raw-user-emails">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0"><i class="fa-solid fa-user-shield me-1"></i>Raw <code>user_emails</code> rows <small class="ms-2 opacity-75">(Admin only)</small></h5>
+                    <small class="text-white-50">Every column verbatim. Admin diagnostic.</small>
                 </div>
                 <div class="card-body p-0">
                     @if (!Model.RawUserEmails.Any())
@@ -451,6 +461,34 @@
                             </table>
                         </div>
                     }
+                </div>
+            </div>
+
+            @* Admin-only recovery: insert an already-verified UserEmail row    *@
+            @* directly, no verification email. Use when a row was deleted in   *@
+            @* error and the address is already known-good. Bypasses the legacy *@
+            @* "this is already your sign-in email" check that blocks the       *@
+            @* normal Add flow when User.Email still holds the address.         *@
+            <div class="card mb-4 border-danger" id="admin-add-verified">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0"><i class="fa-solid fa-user-shield me-1"></i>Add verified email directly <small class="ms-2 opacity-75">(Admin only)</small></h5>
+                    <small class="text-white-50">Inserts a verified <code>user_emails</code> row with no verification flow. Use to restore a row deleted in error.</small>
+                </div>
+                <div class="card-body">
+                    <form asp-action="AdminAddVerifiedEmail"
+                          asp-route-id="@Model.TargetUserId"
+                          method="post"
+                          data-confirm="Insert a verified user_emails row for this address? No verification email will be sent.">
+                        @Html.AntiForgeryToken()
+                        <div class="mb-3">
+                            <label class="form-label" for="admin-add-verified-email-input">Email address</label>
+                            <input id="admin-add-verified-email-input" class="form-control" type="email" name="email"
+                                   placeholder="you@example.com" required />
+                        </div>
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fa-solid fa-plus me-1"></i>Insert verified row
+                        </button>
+                    </form>
                 </div>
             </div>
         }

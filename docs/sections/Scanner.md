@@ -53,4 +53,4 @@ None — this section is a pure client-side tool with no server-side side effect
 - **Decorator decision:** no caching decorator. No server-side data to cache.
 - **Cross-domain navs:** none.
 - **Cross-section calls:** none.
-- **Architecture test:** none. The general `NoControllerInjectsDbContext` ratchet test and `HUM0009` service analyzer cover this controller; no section-specific test is warranted at this size.
+- **Architecture test:** none. The `HUM0008` controller analyzer and `HUM0009` service analyzer cover this controller; no section-specific test is warranted at this size.
