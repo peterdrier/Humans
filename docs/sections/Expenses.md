@@ -114,7 +114,7 @@ Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (Cre
 | `/Expenses/Review` | GET | FinanceAdminOrAdmin | Finance review queue |
 | `/Expenses/{id}/Approve` | POST | FinanceAdminOrAdmin (resource-based) | Approve |
 | `/Expenses/{id}/Reject` | POST | FinanceAdminOrAdmin (resource-based) | Finance reject |
-| `/Expenses/Sepa/Generate` | GET/POST | FinanceAdminOrAdmin | Generate SEPA file |
+| `/Expenses/Sepa/Generate` | POST | FinanceAdminOrAdmin | Generate SEPA file (form on Review page) |
 | `/Profile/{id}/Admin/RevealIban` | POST | AdminOnly | Reveal raw IBAN (audit-logged) |
 
 ## Actors & Roles
