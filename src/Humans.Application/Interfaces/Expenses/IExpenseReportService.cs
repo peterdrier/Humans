@@ -10,6 +10,14 @@ public interface IExpenseReportService : IApplicationService
         Guid submitterUserId, CancellationToken ct = default);
     Task<IReadOnlyList<ExpenseReportDto>> GetCoordinatorQueueAsync(
         Guid coordinatorUserId, CancellationToken ct = default);
+    /// <summary>
+    /// Reports the coordinator endorsed that are now awaiting Finance review
+    /// (CoordinatorEndorsed status). Separate from the action queue because once
+    /// endorsed the coordinator no longer needs to act, but they still need read
+    /// + attachment access so they can verify what they endorsed.
+    /// </summary>
+    Task<IReadOnlyList<ExpenseReportDto>> GetCoordinatorEndorsedQueueAsync(
+        Guid coordinatorUserId, CancellationToken ct = default);
     Task<IReadOnlyList<ExpenseReportDto>> GetReviewQueueAsync(CancellationToken ct = default);
     Task<IReadOnlyList<ExpenseReportDto>> GetApprovedUnpaidAsync(CancellationToken ct = default);
 

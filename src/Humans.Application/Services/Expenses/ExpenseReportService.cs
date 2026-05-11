@@ -86,23 +86,37 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
     public async Task<IReadOnlyList<ExpenseReportDto>> GetCoordinatorQueueAsync(
         Guid coordinatorUserId, CancellationToken ct = default)
     {
-        // Resolve category ids the coordinator is responsible for via budget + team services.
+        var categoryIds = await GetCoordinatorCategoryIdsAsync(coordinatorUserId, ct);
+        if (categoryIds.Count == 0) return [];
+
+        return await _repo.GetByCategoryIdsAndStatusAsync(categoryIds,
+            ExpenseReportStatus.Submitted, ct);
+    }
+
+    public async Task<IReadOnlyList<ExpenseReportDto>> GetCoordinatorEndorsedQueueAsync(
+        Guid coordinatorUserId, CancellationToken ct = default)
+    {
+        var categoryIds = await GetCoordinatorCategoryIdsAsync(coordinatorUserId, ct);
+        if (categoryIds.Count == 0) return [];
+
+        return await _repo.GetByCategoryIdsAndStatusAsync(categoryIds,
+            ExpenseReportStatus.CoordinatorEndorsed, ct);
+    }
+
+    private async Task<IReadOnlyList<Guid>> GetCoordinatorCategoryIdsAsync(
+        Guid coordinatorUserId, CancellationToken ct)
+    {
         var teamIds = await _teamService.GetEffectiveBudgetCoordinatorTeamIdsAsync(coordinatorUserId, ct);
         if (teamIds.Count == 0) return [];
 
         var year = await _budgetService.GetActiveYearAsync();
         if (year is null) return [];
 
-        var categoryIds = year.Groups
+        return year.Groups
             .SelectMany(g => g.Categories)
             .Where(c => c.TeamId.HasValue && teamIds.Contains(c.TeamId.Value))
             .Select(c => c.Id)
             .ToList();
-
-        if (categoryIds.Count == 0) return [];
-
-        return await _repo.GetByCategoryIdsAndStatusAsync(categoryIds,
-            ExpenseReportStatus.Submitted, ct);
     }
 
     // ──────────────────────────── Draft CRUD ─────────────────────────────────
@@ -337,8 +351,18 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
         if (profile?.Iban is null)
             throw new InvalidOperationException("Submitter must have an IBAN set on their profile.");
 
-        var user = await _userService.GetByIdAsync(submitterUserId, ct);
-        var payeeName = user?.DisplayName ?? "";
+        // SEPA pain.001 and Holded purchase docs are financial records — the payee name must be
+        // the legal identity that matches the bank-account holder, not the community pseudonym
+        // (BurnerName). Profile.FirstName + LastName carry the legal name; fall back to
+        // User.DisplayName for stub profiles where the legal-name fields were never populated.
+        // This is the documented carve-out from memory/architecture/burnername-is-the-display-name.md.
+        var legalName = $"{profile.FirstName} {profile.LastName}".Trim();
+        if (string.IsNullOrWhiteSpace(legalName))
+        {
+            var user = await _userService.GetByIdAsync(submitterUserId, ct);
+            legalName = user?.DisplayName ?? "";
+        }
+        var payeeName = legalName;
         var payeeIban = profile.Iban;
 
         var now = _clock.GetCurrentInstant();
@@ -776,9 +800,10 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
             ?? throw new InvalidOperationException("Report not found.");
         if (report.SubmitterUserId != submitterUserId)
             throw new UnauthorizedAccessException("Only the submitter can edit lines.");
-        if (report.Status is not (ExpenseReportStatus.Draft
-                                  or ExpenseReportStatus.Submitted
-                                  or ExpenseReportStatus.CoordinatorEndorsed))
+        // Line mutations are Draft-only — once submitted, the coordinator and Finance
+        // review a frozen set of lines + attachments. Post-submission edits would let
+        // the submitter alter a report mid-review (after endorsement, even).
+        if (report.Status is not ExpenseReportStatus.Draft)
             throw new InvalidOperationException(
                 $"Lines cannot be edited when the report is in status {report.Status}.");
         return report;

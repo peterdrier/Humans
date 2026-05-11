@@ -217,9 +217,11 @@ public sealed class ExpenseRepository : IExpenseRepository
         var r = await ctx.ExpenseReports
             .FirstOrDefaultAsync(x => x.Id == reportId, ct);
         if (r is null) return false;
-        // Withdrawn from Submitted/CoordinatorEndorsed/Approved per section invariant;
-        // post-payout statuses (SepaSent/Paid) and the terminal Withdrawn itself are blocked.
-        if (r.Status is ExpenseReportStatus.SepaSent
+        // Withdraw is valid only from Submitted/CoordinatorEndorsed/Approved per section invariant.
+        // Draft has no UI Withdraw path (use Delete-while-Draft when that ships) and a direct
+        // POST should not silently succeed; post-payout terminal states stay locked.
+        if (r.Status is ExpenseReportStatus.Draft
+                     or ExpenseReportStatus.SepaSent
                      or ExpenseReportStatus.Paid
                      or ExpenseReportStatus.Withdrawn) return false;
         r.Status = ExpenseReportStatus.Withdrawn;

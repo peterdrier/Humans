@@ -173,7 +173,7 @@ public sealed class ExpensesController : HumansControllerBase
                 ? $"{category.BudgetGroup?.Name} / {category.Name}"
                 : "(unknown category)";
 
-            var editableStatuses = new[] { ExpenseReportStatus.Draft, ExpenseReportStatus.Submitted, ExpenseReportStatus.CoordinatorEndorsed };
+            var editableStatuses = new[] { ExpenseReportStatus.Draft };
             var withdrawableStatuses = new[] { ExpenseReportStatus.Submitted, ExpenseReportStatus.CoordinatorEndorsed, ExpenseReportStatus.Approved };
 
             var model = new ExpenseDetailViewModel
@@ -182,7 +182,7 @@ public sealed class ExpensesController : HumansControllerBase
                 CategoryDisplayName = categoryName,
                 CanEdit = report.SubmitterUserId == user.Id && editableStatuses.Contains(report.Status),
                 CanSubmit = report.Status == ExpenseReportStatus.Draft,
-                CanWithdraw = withdrawableStatuses.Contains(report.Status),
+                CanWithdraw = report.SubmitterUserId == user.Id && withdrawableStatuses.Contains(report.Status),
                 HasIban = !string.IsNullOrEmpty(profile?.Iban),
                 MaskedIban = string.IsNullOrEmpty(profile?.Iban) ? null : IbanFormatter.Mask(profile.Iban)
             };
@@ -210,7 +210,7 @@ public sealed class ExpensesController : HumansControllerBase
             if (report is null) return NotFound();
             if (report.SubmitterUserId != user.Id) return Forbid();
 
-            var editableStatuses = new[] { ExpenseReportStatus.Draft, ExpenseReportStatus.Submitted, ExpenseReportStatus.CoordinatorEndorsed };
+            var editableStatuses = new[] { ExpenseReportStatus.Draft };
             if (!editableStatuses.Contains(report.Status))
             {
                 SetError("This report can no longer be edited.");
@@ -923,9 +923,14 @@ public sealed class ExpensesController : HumansControllerBase
                 r.Lines.Any(l => l.AttachmentId == attachmentId || l.Attachment?.Id == attachmentId));
         }
 
-        // For coordinators: scan coordinator queue (Submitted reports in their categories)
-        var coordinatorQueue = await _service.GetCoordinatorQueueAsync(userId);
-        return coordinatorQueue.FirstOrDefault(r =>
+        // For coordinators: scan both Submitted (action queue) and CoordinatorEndorsed
+        // (already-endorsed reports the coordinator still has read access to) reports
+        // in their categories. Without the endorsed list, coordinators lose attachment
+        // access the moment they endorse — they can still reach the Detail page (View is
+        // permitted) but every attachment link 404s.
+        var coordinatorPending = await _service.GetCoordinatorQueueAsync(userId);
+        var coordinatorEndorsed = await _service.GetCoordinatorEndorsedQueueAsync(userId);
+        return coordinatorPending.Concat(coordinatorEndorsed).FirstOrDefault(r =>
             r.Lines.Any(l => l.AttachmentId == attachmentId || l.Attachment?.Id == attachmentId));
     }
 }
