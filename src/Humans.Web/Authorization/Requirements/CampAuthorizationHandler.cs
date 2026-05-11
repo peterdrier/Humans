@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Humans.Application.Interfaces.Camps;
+using Humans.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 
 namespace Humans.Web.Authorization.Requirements;
@@ -14,7 +15,7 @@ namespace Humans.Web.Authorization.Requirements;
 /// - Camp lead: allow only their assigned camp
 /// - Everyone else: deny
 /// </summary>
-public class CampAuthorizationHandler : AuthorizationHandler<CampOperationRequirement, CampLookup>
+public class CampAuthorizationHandler : AuthorizationHandler<CampOperationRequirement>
 {
     private readonly ICampService _campService;
 
@@ -23,10 +24,25 @@ public class CampAuthorizationHandler : AuthorizationHandler<CampOperationRequir
         _campService = campService;
     }
 
-    protected override async Task HandleRequirementAsync(
+    protected override async Task HandleRequirementAsync(AuthorizationHandlerContext context, CampOperationRequirement requirement)
+    {
+        var campId = context.Resource switch
+        {
+            CampLookup camp => camp.Id,
+            Camp camp => camp.Id,
+            _ => (Guid?)null
+        };
+
+        if (campId is null)
+            return;
+
+        await HandleCampRequirementAsync(context, requirement, campId.Value);
+    }
+
+    private async Task HandleCampRequirementAsync(
         AuthorizationHandlerContext context,
         CampOperationRequirement requirement,
-        CampLookup resource)
+        Guid campId)
     {
         // Admin and CampAdmin can manage any camp
         if (RoleChecks.IsCampAdmin(context.User))
@@ -40,7 +56,7 @@ public class CampAuthorizationHandler : AuthorizationHandler<CampOperationRequir
         if (userIdClaim is null || !Guid.TryParse(userIdClaim.Value, out var userId))
             return;
 
-        if (await _campService.IsUserCampLeadAsync(userId, resource.Id))
+        if (await _campService.IsUserCampLeadAsync(userId, campId))
         {
             context.Succeed(requirement);
         }
