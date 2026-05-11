@@ -380,6 +380,7 @@ public class AccountController : HumansControllerBase
             var match = await _userEmailService.FindByProviderKeyAsync(
                 info.LoginProvider, info.ProviderKey);
             if (match is not null &&
+                match.UserId == userId.Value &&
                 string.Equals(match.Email, claimEmail, StringComparison.OrdinalIgnoreCase))
                 return;
 
@@ -388,7 +389,7 @@ public class AccountController : HumansControllerBase
             if (!written)
                 return;
 
-            if (match is not null)
+            if (match is not null && match.UserId == userId.Value)
             {
                 await _auditLogService.LogAsync(
                     AuditAction.GoogleEmailRenamed,
@@ -399,6 +400,11 @@ public class AccountController : HumansControllerBase
             }
             else
             {
+                await _auditLogService.LogAsync(
+                    AuditAction.UserEmailLinked,
+                    nameof(User), userId.Value,
+                    $"OAuth backfill: created UserEmail row ({info.LoginProvider}, sub={info.ProviderKey}, email={claimEmail}) on sign-in.",
+                    nameof(AccountController));
                 _logger.LogWarning(
                     "OAuth backfill: created UserEmail row for user {UserId} ({Provider}, sub={Sub}, email={Email}).",
                     userId.Value, info.LoginProvider, info.ProviderKey, claimEmail);

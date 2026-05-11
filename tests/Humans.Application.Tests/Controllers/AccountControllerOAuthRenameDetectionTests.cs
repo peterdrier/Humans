@@ -249,13 +249,63 @@ public class AccountControllerOAuthRenameDetectionTests
     }
 
     [HumansFact]
-    public async Task SuccessBranch_NoUserEmailRow_BackfillsViaUpsert()
+    public async Task SuccessBranch_MatchBelongsToDifferentUser_UpsertsForCurrentAndAuditsAsBackfill()
+    {
+        // Corrupted state: another user's UserEmail row carries the same
+        // (Provider, ProviderKey) with the same email as the OIDC claim
+        // (single-row-per-(Provider, ProviderKey) is service-enforced, not
+        // DB-enforced). The early-return guard requires match.UserId ==
+        // userId, so execution falls through and UpdateEmailAsync runs for
+        // the current user. The audit branch must NOT log
+        // GoogleEmailRenamed with the foreign user's email/row Id — it's a
+        // backfill INSERT for the current user; audit as UserEmailLinked.
+        var userId = Guid.NewGuid();
+        var otherUserId = Guid.NewGuid();
+        var otherEmailId = Guid.NewGuid();
+        var claimEmail = "shared@nobodies.team";
+        var info = MakeInfo(claimEmail);
+
+        _signInManager.GetExternalLoginInfoAsync().Returns(info);
+        _signInManager.ExternalLoginSignInAsync(Provider, ProviderKey, false, true)
+            .Returns(SignInResult.Success);
+
+        var existingUser = new User { Id = userId };
+        _userManager.FindByLoginAsync(Provider, ProviderKey).Returns(existingUser);
+        _userManager.UpdateAsync(Arg.Any<User>()).Returns(IdentityResult.Success);
+
+        _userEmailService.FindByProviderKeyAsync(Provider, ProviderKey, Arg.Any<CancellationToken>())
+            .Returns(new UserEmailProviderMatch(otherEmailId, otherUserId, claimEmail));
+        _userEmailService.UpdateEmailAsync(
+                userId, Provider, ProviderKey, claimEmail, Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        await _controller.ExternalLoginCallback(returnUrl: null, remoteError: null);
+
+        await _userEmailService.Received(1).UpdateEmailAsync(
+            userId, Provider, ProviderKey, claimEmail, Arg.Any<CancellationToken>());
+        await _auditLogService.Received(1).LogAsync(
+            AuditAction.UserEmailLinked,
+            nameof(User), userId,
+            Arg.Any<string>(),
+            nameof(AccountController),
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+        await _auditLogService.DidNotReceive().LogAsync(
+            AuditAction.GoogleEmailRenamed,
+            Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task SuccessBranch_NoUserEmailRow_BackfillsViaUpsertAndAudits()
     {
         // The AspNetUserLogins row exists (sign-in succeeded) but no UserEmail
         // row is tagged with this (Provider, ProviderKey) — e.g. a pre-LinkAsync
         // provisioned user. The callback calls UpdateEmailAsync, which upserts
         // (insert when missing) per memory/architecture/email-mutation-paths.md.
-        // No audit row (creation is logged at Information level only).
+        // Writes UserEmailLinked audit (matching LinkAsync's pattern) so the
+        // Board/Admin trail records when the row first appeared, plus a
+        // Warning log for real-time ops visibility.
         var userId = Guid.NewGuid();
         var claimEmail = "backfill@nobodies.team";
         var info = MakeInfo(claimEmail);
@@ -270,14 +320,19 @@ public class AccountControllerOAuthRenameDetectionTests
 
         _userEmailService.FindByProviderKeyAsync(Provider, ProviderKey, Arg.Any<CancellationToken>())
             .Returns((UserEmailProviderMatch?)null);
+        _userEmailService.UpdateEmailAsync(
+                userId, Provider, ProviderKey, claimEmail, Arg.Any<CancellationToken>())
+            .Returns(true);
 
         await _controller.ExternalLoginCallback(returnUrl: null, remoteError: null);
 
         await _userEmailService.Received(1).UpdateEmailAsync(
             userId, Provider, ProviderKey, claimEmail, Arg.Any<CancellationToken>());
-        await _auditLogService.DidNotReceive().LogAsync(
-            Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
-            Arg.Any<string>(), Arg.Any<string>(),
+        await _auditLogService.Received(1).LogAsync(
+            AuditAction.UserEmailLinked,
+            nameof(User), userId,
+            Arg.Is<string>(s => s.Contains(claimEmail) && s.Contains(ProviderKey)),
+            nameof(AccountController),
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
