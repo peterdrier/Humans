@@ -361,6 +361,45 @@ public class AccountControllerOAuthReconcileTests
         await _userManager.Received(1).DeleteAsync(Arg.Any<User>());
     }
 
+    [HumansFact]
+    public async Task NewUserCreation_CrossUserBlocked_RollsBackUser()
+    {
+        // Distinct code path from ReconcileThrows: reconcile returns
+        // normally with Outcome=CrossUserBlocked (provider's email_verified
+        // claim was false while another user verified-holds the address).
+        // The controller must still roll back the newly-created User +
+        // AspNetUserLogins — otherwise an orphan is left in the database
+        // un-notifiable + magic-link-unreachable.
+        var newEmail = "blocked@example.com";
+        var info = MakeInfo(newEmail, emailVerified: false);
+
+        _signInManager.GetExternalLoginInfoAsync().Returns(info);
+        _signInManager.ExternalLoginSignInAsync(Provider, ProviderKey, false, true)
+            .Returns(SignInResult.Failed);
+        _magicLinkService.FindUserByVerifiedEmailAsync(newEmail, Arg.Any<CancellationToken>())
+            .Returns((User?)null);
+        _userManager.CreateAsync(Arg.Any<User>()).Returns(IdentityResult.Success);
+        _userManager.AddLoginAsync(Arg.Any<User>(), Arg.Any<UserLoginInfo>())
+            .Returns(IdentityResult.Success);
+        _userManager.DeleteAsync(Arg.Any<User>()).Returns(IdentityResult.Success);
+
+        _userEmailService.ReconcileOAuthIdentityAsync(
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns(new OAuthReconcileResult(
+                ReconcileOutcome.CrossUserBlocked,
+                PreviousEmail: null,
+                AffectedRowId: null,
+                DisplacedUserId: Guid.NewGuid(),
+                DisplacedRowId: Guid.NewGuid(),
+                DisplacedEmail: newEmail,
+                DisplacedUserLeftWithoutVerifiedEmail: false));
+
+        await _controller.ExternalLoginCallback(returnUrl: null, remoteError: null);
+
+        await _userManager.Received(1).DeleteAsync(Arg.Any<User>());
+    }
+
     // ─── email_verified claim plumbing ───────────────────────────────────────
 
     [HumansFact]

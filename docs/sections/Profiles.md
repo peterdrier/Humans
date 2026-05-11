@@ -32,7 +32,7 @@ Per-human personal data: profile, contact fields, emails, communication preferen
 - **CV Entries** (sub-aggregate of Profile, table `volunteer_history_entries`) record volunteer involvement history.
 - **Profile Languages** (sub-aggregate of Profile, table `profile_languages`) record self-assessed proficiency in ISO 639-1 language codes.
 - **Duplicate Account Detection** scans for email addresses appearing on multiple accounts (across `User.Email` and `UserEmail.Email`, with gmail/googlemail equivalence). Admin can resolve by archiving the duplicate and re-linking its logins to the real account.
-- **Email Problems** scans every UserEmail invariant violation (multi/zero IsPrimary or IsGoogle, unverified rows, cross-user collisions, orphan rows, ghost AspNetUserLogins). Reads source-of-truth from the `FullProfile` cache. Read-only-plus-three-actions admin surface; the cross-user merge action shares its kernel with `IAccountMergeService.AcceptAsync`.
+- **Email Problems** scans every UserEmail invariant violation (multi/zero IsPrimary or IsGoogle, unverified rows, cross-user collisions, orphan rows, ghost AspNetUserLogins). Reads source-of-truth from the `FullProfile` cache. Read-only admin surface with deep-links into the per-user `/Profile/{userId}/Admin/Emails` diagnostic for orphan/ghost remediation; the cross-user merge action shares its kernel with `IAccountMergeService.AcceptAsync`.
 - **Account Merge** consolidates two accounts into one, transferring all associated data (emails, contact fields, CV entries, role assignments, memberships) to the surviving account.
 
 ## Data Model

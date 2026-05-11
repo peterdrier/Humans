@@ -338,12 +338,20 @@ public class AccountController : HumansControllerBase
                 email,
                 claimEmailVerified: ReadEmailVerifiedClaim(info));
 
+            // CrossUserBlocked: reconcile returned normally with no UserEmail
+            // row created (another user verified-holds the address and the
+            // provider's email_verified claim is false). The service has
+            // already written the OAuthRenameCollisionBlocked audit + the
+            // mother-of-all LogError — we don't re-log here. Roll back the
+            // newly-created User + AspNetUserLogins row so we don't leave
+            // an un-notifiable orphan.
             if (reconcile.Outcome == ReconcileOutcome.CrossUserBlocked)
             {
-                throw new InvalidOperationException(
-                    $"OAuth signup blocked: {email} is verified by user " +
-                    $"{reconcile.DisplacedUserId} and the provider's email_verified " +
-                    "claim is false.");
+                await TryDeleteOrphanUserAsync(user);
+                ModelState.AddModelError(string.Empty,
+                    "We couldn't finish setting up your account. Please try again.");
+                ViewData["ReturnUrl"] = returnUrl;
+                return View(nameof(Login));
             }
         }
         catch (OAuthReconcileConcurrencyException race)
