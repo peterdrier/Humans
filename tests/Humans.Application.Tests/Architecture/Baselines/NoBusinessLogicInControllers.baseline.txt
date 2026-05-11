@@ -50,7 +50,6 @@ src/Humans.Web/Controllers/FeedbackController.cs:PostMessage/2
 src/Humans.Web/Controllers/FeedbackController.cs:Submit/1
 src/Humans.Web/Controllers/FinanceController.cs:EnsureTicketingGroup/1
 src/Humans.Web/Controllers/FinanceController.cs:UpdateTicketingProjection/11
-src/Humans.Web/Controllers/GoogleController.cs:FixEmailRename/2
 src/Humans.Web/Controllers/GoogleController.cs:ProvisionAccount/1
 src/Humans.Web/Controllers/GoogleController.cs:RemediateAllGroupSettings/0
 src/Humans.Web/Controllers/GoogleController.cs:RemediateGroupSettings/2

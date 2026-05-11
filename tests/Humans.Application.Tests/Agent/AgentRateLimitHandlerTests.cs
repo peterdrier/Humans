@@ -75,8 +75,7 @@ public class AgentRateLimitHandlerTests
     private static IAgentSettingsService FakeSettings(AgentSettings s)
     {
         var svc = Substitute.For<IAgentSettingsService>();
-        svc.Current.Returns(new AgentSettingsInfo(
-            s.Id,
+        svc.Current.Returns(new AgentSettingsDto(
             s.Enabled,
             s.Model,
             s.PreloadConfig,

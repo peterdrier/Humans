@@ -617,36 +617,25 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         string email, CancellationToken cancellationToken = default) =>
         _repository.AnyWithEmailAsync(email, cancellationToken);
 
-    public async Task<RewriteEmailAddressOutcome> RewriteEmailAddressAsync(
-        Guid userId, string oldEmail, string newEmail,
+    // Sole legitimate caller: AccountController OAuth sign-in callback.
+    // See memory/architecture/email-mutation-paths.md.
+    public async Task<bool> UpdateEmailAsync(
+        Guid userId, string provider, string providerKey, string newEmail,
         CancellationToken cancellationToken = default)
     {
-        var outcome = await _repository.RewriteEmailAddressAsync(
-            userId, oldEmail, newEmail, _clock.GetCurrentInstant(), cancellationToken);
+        var written = await _repository.UpdateEmailAsync(
+            userId, provider, providerKey, newEmail, _clock.GetCurrentInstant(), cancellationToken);
+        if (!written)
+            return false;
 
-        if (outcome == RewriteEmailAddressOutcome.CrossUserConflict)
-        {
-            // Surface the cross-user collision via the prod log viewer at
-            // Warning (no exception object — there's no exception to attach;
-            // this is a known, classified outcome). Caller-neutral wording —
-            // this method is called from both AccountController (OAuth rename
-            // detector) and GoogleAdminService (admin fix flow). The
-            // duplicate-account detection flow will pick the conflict up on
-            // its next sweep.
-            _logger.LogWarning(
-                "Email rewrite collision: user {UserId} attempted to rewrite {OldEmail} to {NewEmail}, but the new address already belongs to user {ConflictUserId}. Stale row left in place; duplicate-account detection will surface this to admins.",
-                userId, oldEmail, newEmail, await _repository.GetOtherUserIdHavingEmailAsync(newEmail, userId, cancellationToken));
-        }
-
-        // Both Rewritten (UPDATE) and MergedIntoExistingRowForSameUser (DELETE +
-        // mark-verified) mutate user_emails rows that FullProfile derives
-        // PrimaryEmail / AllVerifiedEmails / GoogleEmail from — invalidate so
-        // the cache doesn't serve stale values until the next warmup. The
-        // no-mutation outcomes (SourceRowNotFound / CrossUserConflict) make
-        // this a harmless no-op invalidate.
+        // Add-row flow: route through the same Google invariant the other add
+        // paths use (AddRowWithInvariantsAsync). The helper picks a winner
+        // only when no IsGoogle=true row exists or an obvious better winner
+        // does (verified @nobodies.team) — user-set IsGoogle survives. Skips
+        // entirely on the rename/update case (existing winner unchanged).
+        await EnsureGoogleInvariantAsync(userId, cancellationToken);
         await _fullProfileInvalidator.InvalidateAsync(userId, cancellationToken);
-
-        return outcome;
+        return true;
     }
 
     public async Task<IReadOnlyList<UserEmailMatch>> MatchByEmailsAsync(

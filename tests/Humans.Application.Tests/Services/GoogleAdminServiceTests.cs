@@ -779,61 +779,6 @@ public class GoogleAdminServiceTests
             .AddVerifiedEmailAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
-    // --- ApplyEmailBackfillAsync ---
-
-    [HumansFact]
-    public async Task ApplyEmailBackfillAsync_UpdatesEmailsAndReturnsCount()
-    {
-        var userId = Guid.NewGuid();
-        _userService.ApplyEmailBackfillAsync(userId, "new@example.com", Arg.Any<CancellationToken>())
-            .Returns((true, "old@example.com"));
-
-        var corrections = new Dictionary<string, string>(StringComparer.Ordinal)
-        {
-            { userId.ToString(), "new@example.com" }
-        };
-
-        var result = await _service.ApplyEmailBackfillAsync(
-            [userId], corrections, _actorUserId);
-
-        result.UpdatedCount.Should().Be(1);
-        result.Errors.Should().BeEmpty();
-        await _userService.Received(1).ApplyEmailBackfillAsync(
-            userId, "new@example.com", Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task ApplyEmailBackfillAsync_SkipsUsersWithNoCorrection()
-    {
-        var userId = Guid.NewGuid();
-
-        var result = await _service.ApplyEmailBackfillAsync(
-            [userId], new Dictionary<string, string>(StringComparer.Ordinal), _actorUserId);
-
-        result.UpdatedCount.Should().Be(0);
-        await _userService.DidNotReceive().ApplyEmailBackfillAsync(
-            Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task ApplyEmailBackfillAsync_RecordsErrorWhenUserMissing()
-    {
-        var userId = Guid.NewGuid();
-        _userService.ApplyEmailBackfillAsync(userId, "new@example.com", Arg.Any<CancellationToken>())
-            .Returns((false, (string?)null));
-
-        var corrections = new Dictionary<string, string>(StringComparer.Ordinal)
-        {
-            { userId.ToString(), "new@example.com" }
-        };
-
-        var result = await _service.ApplyEmailBackfillAsync(
-            [userId], corrections, _actorUserId);
-
-        result.UpdatedCount.Should().Be(0);
-        result.Errors.Should().ContainSingle().Which.Should().Contain("not found");
-    }
-
     // --- LinkGroupToTeamAsync ---
 
     [HumansFact]

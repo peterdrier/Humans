@@ -19,7 +19,7 @@ public sealed class AgentSettingsService : IAgentSettingsService
         _clock = clock;
     }
 
-    public AgentSettingsInfo Current => CreateAgentSettingsInfo(_store.Current);
+    public AgentSettingsDto Current => ToDto(_store.Current);
 
     public async Task LoadAsync(CancellationToken cancellationToken)
     {
@@ -34,15 +34,13 @@ public sealed class AgentSettingsService : IAgentSettingsService
         _store.Set(row);
     }
 
-    private static AgentSettingsInfo CreateAgentSettingsInfo(AgentSettings settings) =>
-        new(
-            settings.Id,
-            settings.Enabled,
-            settings.Model,
-            settings.PreloadConfig,
-            settings.DailyMessageCap,
-            settings.HourlyMessageCap,
-            settings.DailyTokenCap,
-            settings.RetentionDays,
-            settings.UpdatedAt);
+    private static AgentSettingsDto ToDto(AgentSettings settings) => new(
+        settings.Enabled,
+        settings.Model,
+        settings.PreloadConfig,
+        settings.DailyMessageCap,
+        settings.HourlyMessageCap,
+        settings.DailyTokenCap,
+        settings.RetentionDays,
+        settings.UpdatedAt);
 }

@@ -26,8 +26,7 @@ public class AgentConversationRetentionJobTests
         await db.SaveChangesAsync();
 
         var settings = Substitute.For<IAgentSettingsService>();
-        settings.Current.Returns(new AgentSettingsInfo(
-            Id: 1,
+        settings.Current.Returns(new AgentSettingsDto(
             Enabled: true,
             Model: "test-model",
             PreloadConfig: default,

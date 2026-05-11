@@ -13,7 +13,7 @@ public interface ICalendarService : IApplicationService
         Guid? teamId = null,
         CancellationToken ct = default);
 
-    Task<CalendarEvent?> GetEventByIdAsync(Guid id, CancellationToken ct = default);
+    Task<CalendarEventDetail?> GetEventByIdAsync(Guid id, CancellationToken ct = default);
 
     Task<CalendarEvent> CreateEventAsync(CreateCalendarEventDto dto, Guid createdByUserId, CancellationToken ct = default);
 

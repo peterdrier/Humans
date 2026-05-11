@@ -6,13 +6,12 @@ namespace Humans.Application.Interfaces;
 
 public interface IAgentSettingsService : IApplicationService
 {
-    AgentSettingsInfo Current { get; }
+    AgentSettingsDto Current { get; }
     Task LoadAsync(CancellationToken cancellationToken);
     Task UpdateAsync(Action<AgentSettings> mutator, CancellationToken cancellationToken);
 }
 
-public sealed record AgentSettingsInfo(
-    int Id,
+public sealed record AgentSettingsDto(
     bool Enabled,
     string Model,
     AgentPreloadConfig PreloadConfig,

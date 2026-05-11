@@ -19,7 +19,6 @@ Humans.Application.Interfaces.Budget.IBudgetService.GetCategoryByIdAsync:Humans.
 Humans.Application.Interfaces.Budget.IBudgetService.GetLineItemByIdAsync:Humans.Domain.Entities.BudgetLineItem
 Humans.Application.Interfaces.Budget.IBudgetService.GetTicketingProjectionAsync:Humans.Domain.Entities.TicketingProjection
 Humans.Application.Interfaces.Budget.IBudgetService.GetYearByIdAsync:Humans.Domain.Entities.BudgetYear
-Humans.Application.Interfaces.Calendar.ICalendarService.GetEventByIdAsync:Humans.Domain.Entities.CalendarEvent
 Humans.Application.Interfaces.Campaigns.ICampaignService.GetActiveOrCompletedGrantsForUserAsync:Humans.Domain.Entities.CampaignGrant
 Humans.Application.Interfaces.Campaigns.ICampaignService.GetAllAsync:Humans.Domain.Entities.Campaign
 Humans.Application.Interfaces.Campaigns.ICampaignService.GetAllGrantsForUserAsync:Humans.Domain.Entities.CampaignGrant
@@ -33,7 +32,6 @@ Humans.Application.Interfaces.Camps.ICampService.GetCampBySlugAsync:Humans.Domai
 Humans.Application.Interfaces.Camps.ICampService.GetCampSeasonByIdAsync:Humans.Domain.Entities.CampSeason
 Humans.Application.Interfaces.Camps.ICampService.GetSeasonMembersAsync:Humans.Domain.Entities.CampMember
 Humans.Application.Interfaces.Camps.ICampService.GetSettingsAsync:Humans.Domain.Entities.CampSettings
-Humans.Application.Interfaces.CitiPlanning.ICityPlanningService.GetSettingsAsync:Humans.Domain.Entities.CityPlanningSettings
 Humans.Application.Interfaces.Consent.IConsentService.GetConsentDashboardAsync:Humans.Domain.Entities.ConsentRecord
 Humans.Application.Interfaces.Consent.IConsentService.GetConsentDashboardAsync:Humans.Domain.Entities.DocumentVersion
 Humans.Application.Interfaces.Consent.IConsentService.GetConsentDashboardAsync:Humans.Domain.Entities.Team
@@ -45,8 +43,6 @@ Humans.Application.Interfaces.Dashboard.IDashboardService.GetMemberDashboardAsyn
 Humans.Application.Interfaces.Dashboard.IDashboardService.GetMemberDashboardAsync:Humans.Domain.Entities.Profile
 Humans.Application.Interfaces.Dashboard.IDashboardService.GetMemberDashboardAsync:Humans.Domain.Entities.Shift
 Humans.Application.Interfaces.Dashboard.IDashboardService.GetMemberDashboardAsync:Humans.Domain.Entities.ShiftSignup
-Humans.Application.Interfaces.Email.IEmailOutboxService.GetMessagesForUserAsync:Humans.Domain.Entities.EmailOutboxMessage
-Humans.Application.Interfaces.Email.IEmailOutboxService.GetOutboxStatsAsync:Humans.Domain.Entities.EmailOutboxMessage
 Humans.Application.Interfaces.Feedback.IFeedbackService.GetFeedbackByIdAsync:Humans.Domain.Entities.FeedbackReport
 Humans.Application.Interfaces.Feedback.IFeedbackService.GetFeedbackListAsync:Humans.Domain.Entities.FeedbackReport
 Humans.Application.Interfaces.Feedback.IFeedbackService.GetMessagesAsync:Humans.Domain.Entities.FeedbackMessage
