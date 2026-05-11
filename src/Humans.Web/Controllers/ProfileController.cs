@@ -2523,12 +2523,15 @@ public class ProfileController : HumansControllerBase
         // is admin-only).
         IReadOnlyList<(string Provider, string ProviderKey)> userLogins =
             Array.Empty<(string, string)>();
+        IReadOnlyList<Humans.Domain.Entities.UserEmail> rawUserEmails =
+            Array.Empty<Humans.Domain.Entities.UserEmail>();
         if (isAdminContext)
         {
             var loginsByUser = await _userService.GetExternalLoginsByUserIdsAsync(
                 new[] { user.Id }, ct);
             if (loginsByUser.TryGetValue(user.Id, out var list))
                 userLogins = list;
+            rawUserEmails = await _userEmailService.GetEntitiesByUserIdAsync(user.Id, ct);
         }
 
         bool RowHasOrphanProviderTag(string? provider, string? providerKey) =>
@@ -2574,6 +2577,7 @@ public class ProfileController : HumansControllerBase
                 ProviderDisplayName = null,
                 HasOrphanLogin = LoginHasOrphanRow(l.Provider, l.ProviderKey),
             }).ToList(),
+            RawUserEmails = rawUserEmails,
             CanAddEmail = canAdd,
             MinutesUntilResend = minutesUntilResend,
             GoogleServiceEmail = googleServiceEmail,

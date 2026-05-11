@@ -396,6 +396,63 @@
                     }
                 </div>
             </div>
+
+            @* Admin-only raw UserEmail dump — every column verbatim. *@
+            @* Diagnostic surface; no formatting, no actions. *@
+            <div class="card mb-4" id="raw-user-emails">
+                <div class="card-header">
+                    <h5 class="mb-0">Raw <code>user_emails</code> rows</h5>
+                    <small class="text-muted">Every column verbatim. Admin diagnostic.</small>
+                </div>
+                <div class="card-body p-0">
+                    @if (!Model.RawUserEmails.Any())
+                    {
+                        <div class="p-3 text-muted">No rows.</div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-sm mb-0" style="font-family: monospace; font-size: 12px;">
+                                <thead>
+                                    <tr>
+                                        <th>Id</th>
+                                        <th>UserId</th>
+                                        <th>Email</th>
+                                        <th>IsVerified</th>
+                                        <th>IsPrimary</th>
+                                        <th>IsGoogle</th>
+                                        <th>Provider</th>
+                                        <th>ProviderKey</th>
+                                        <th>Visibility</th>
+                                        <th>VerificationSentAt</th>
+                                        <th>CreatedAt</th>
+                                        <th>UpdatedAt</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                @foreach (var r in Model.RawUserEmails)
+                                {
+                                    <tr>
+                                        <td>@r.Id</td>
+                                        <td>@r.UserId</td>
+                                        <td>@r.Email</td>
+                                        <td>@r.IsVerified</td>
+                                        <td>@r.IsPrimary</td>
+                                        <td>@r.IsGoogle</td>
+                                        <td>@(r.Provider ?? "")</td>
+                                        <td>@(r.ProviderKey ?? "")</td>
+                                        <td>@(r.Visibility?.ToString() ?? "")</td>
+                                        <td>@(r.VerificationSentAt?.ToString() ?? "")</td>
+                                        <td>@r.CreatedAt</td>
+                                        <td>@r.UpdatedAt</td>
+                                    </tr>
+                                }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
         }
 
         <div class="card mb-4">

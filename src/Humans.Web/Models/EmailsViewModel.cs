@@ -90,6 +90,14 @@ public class EmailsViewModel
     /// </summary>
     public IReadOnlyList<ExternalLoginRowViewModel> ExternalLogins { get; init; } =
         Array.Empty<ExternalLoginRowViewModel>();
+
+    /// <summary>
+    /// Admin-only raw <see cref="Humans.Domain.Entities.UserEmail"/> entities for
+    /// the target user — every column, no formatting. Diagnostic surface for
+    /// reading the on-disk shape directly. Empty in self contexts.
+    /// </summary>
+    public IReadOnlyList<Humans.Domain.Entities.UserEmail> RawUserEmails { get; init; } =
+        Array.Empty<Humans.Domain.Entities.UserEmail>();
 }
 
 /// <summary>
