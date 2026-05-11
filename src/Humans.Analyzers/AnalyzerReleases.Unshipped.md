@@ -9,3 +9,5 @@ HUM0004 | Humans.Architecture   | Error    | Profile.IsSuspended written outside
 HUM0005 | Humans.Architecture   | Error    | IUserEmailService.UpdateEmailAsync called from outside AccountController
 HUM0006 | Humans.Architecture   | Error    | IUserEmailRepository.UpdateEmailAsync called from outside UserEmailService
 HUM0008 | Humans.Architecture   | Error    | Controller constructor injects HumansDbContext
+HUM0015 | Humans.Architecture   | Error    | Interface decorated with [SurfaceBudget(N)] declares more than N methods
+HUM0016 | Humans.Architecture   | Error    | Interface decorated with [SurfaceBudget(N)] declares fewer than N methods (slack — decrement budget)

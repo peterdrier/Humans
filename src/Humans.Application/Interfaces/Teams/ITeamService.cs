@@ -1,3 +1,4 @@
+using Humans.Application.Architecture;
 using Humans.Application.Interfaces;
 using Humans.Application.DTOs;
 using Humans.Domain.Entities;
@@ -126,6 +127,18 @@ public record TeamCoordinatorRef(Guid TeamId, Guid UserId);
 /// <summary>
 /// Service for managing teams and team membership.
 /// </summary>
+/// <remarks>
+/// Surface-budget recent history (newest first):
+/// <list type="bullet">
+///   <item>2026-05-11 — InterfaceMethodBudgetTests retired; budget migrated to [SurfaceBudget(71)] (issue nobodies-collective/Humans#700).</item>
+///   <item>73→71 — tech-debt query consolidation: removed GetTeamMembersAsync and GetActiveMemberUserIdsAsync; callers project members/user IDs from GetTeamAsync/GetTeamsAsync read models.</item>
+///   <item>71→73 — team-cache decorator groundwork: added canonical GetTeamAsync/GetTeamsAsync read-model methods. Follow-up passes should consolidate member/name/option getters down onto those methods.</item>
+///   <item>70→71 — issue-682 global search: added SearchAsync(query, max). Authorized exception (Peter, 2026-05-09): queries against teams must live in the owning section per design-rules §6; the ratchet's "remove one to add one" rule doesn't apply when the addition is a moved-in query rather than a new feature surface.</item>
+///   <item>70→70 — issue-634: added GetActiveTeamMembershipsForUserAsync (name + role-in-team for the agent snapshot) and removed GetActiveTeamNamesForUserAsync, since the new method is strictly more capable; the one production caller (ProfileController popover) projects to names via .Select(m =&gt; m.TeamName).</item>
+///   <item>71→70 — account-merge fold redesign: removed ReassignToUserAsync from ITeamService (moved to IUserMerge.ReassignAsync, implemented by TeamService and dispatched by AccountMergeService via IEnumerable&lt;IUserMerge&gt; fan-out).</item>
+/// </list>
+/// </remarks>
+[SurfaceBudget(71)]
 public interface ITeamService : IApplicationService
 {
     /// <summary>

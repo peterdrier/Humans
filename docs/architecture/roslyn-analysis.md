@@ -136,6 +136,23 @@ project at least one fix commit.
 - Current coverage: none — caught by the resulting compile error far from
   the cause.
 
+### HUM0015 / HUM0016 — `[SurfaceBudget(N)]` analyzer (SHIPPED)
+
+- Rule: an interface decorated with
+  `Humans.Application.Architecture.SurfaceBudgetAttribute(N)` must declare
+  exactly `N` directly-declared ordinary methods. Over-budget fires HUM0015;
+  under-budget (slack) fires HUM0016.
+- Source: replaces the retired
+  `tests/Humans.Application.Tests/Architecture/InterfaceMethodBudgetTests.cs`
+  (issue [nobodies-collective/Humans#700](https://github.com/nobodies-collective/Humans/issues/700)).
+  Budgets now live as a per-interface attribute with the rationale captured in
+  XML `<remarks>` on the interface itself — visible in tooltips, diffed alongside
+  the surface change, scoped to a single symbol.
+- Call-site shape: `SymbolKind.NamedType`, filter to interfaces carrying the
+  attribute, count `MethodKind == Ordinary` members directly on the symbol.
+  Mirrors `BindingFlags.DeclaredOnly` + `!IsSpecialName` exactly.
+- Status: shipped. Catalogued in `code-analysis.md`.
+
 ### HUM0014 — `Cached*` type names forbidden for public surface
 
 - Rule: a `public` or `internal` `INamedTypeSymbol` whose name starts with
@@ -227,7 +244,6 @@ analyzer.
 - `NoDestructiveMigrationOpsRule` (`tests/.../Rules/NoDestructiveMigrationOpsRule.cs`) — operates on EF-generated migration files which legitimately contain destructive ops in other contexts. Filesystem-aware. Stay as ratchet.
 - `NoStartupGuardsRule` (`tests/.../Rules/NoStartupGuardsRule.cs`) — heuristic regex over `Program.cs` and startup classes; pattern is too fuzzy for crisp call-site analyzer detection. Stay as ratchet.
 - `DisplaySortInControllersRule` (`tests/.../Rules/DisplaySortInControllersRule.cs`) — accumulated debt + inline `// arch:db-sort-ok` opt-out; baseline-ratcheted today, see Tier 2 for the analyzer prerequisite.
-- `InterfaceMethodBudgetTests` (`tests/.../Architecture/InterfaceMethodBudgetTests.cs`) — accumulated method counts per interface, down-only ratchet. Stay as ratchet.
 - `ServiceBoundaryArchitectureTests` (`tests/.../Architecture/ServiceBoundaryArchitectureTests.cs`) — seven boundary scans (marker-attribute presence, ownership-map completeness, repository-injection rules across Web, cross-section repo injections in Application). All shaped as reflection/marker tests or baselined ratchets. Stay as tests.
 - The per-section `*ArchitectureTests.cs` files (Camps, Teams, Shifts, Profile, etc.) — each pins namespace location, ctor shape, no-DbContext-injection, and "owned entities have no cross-domain navs" using reflection on the loaded assemblies. Marker/existence + reflection shape. Stay as tests.
 
