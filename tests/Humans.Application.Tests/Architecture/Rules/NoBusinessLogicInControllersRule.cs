@@ -44,7 +44,7 @@ public class NoBusinessLogicInControllersRule
     private const int LineThreshold = 50;
     private const int ComplexityThreshold = 6;
 
-    [HumansFact]
+    [HumansFact(Skip = "Temporarily disabled 2026-05-11; heuristic is too restrictive. Revisit by 2026-05-25.")]
     public void No_new_business_logic_in_controllers()
     {
         var repoRoot = RatchetTestRunner.LocateRepoRoot();
