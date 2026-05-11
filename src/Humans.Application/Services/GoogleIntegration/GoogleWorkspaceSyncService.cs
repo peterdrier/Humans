@@ -1769,65 +1769,6 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
     // ==========================================================================
 
     /// <inheritdoc />
-    public async Task<EmailBackfillResult> GetEmailMismatchesAsync(CancellationToken cancellationToken = default)
-    {
-        var list = await _directory.ListDomainUsersAsync(cancellationToken);
-        if (list.Users is null)
-        {
-            _logger.LogError(
-                "Failed to check email mismatches via Admin SDK — HTTP {Code}: {Message}",
-                list.Error?.StatusCode, list.Error?.RawMessage);
-            return new EmailBackfillResult
-            {
-                ErrorMessage = list.Error?.RawMessage
-            };
-        }
-
-        // Dictionary keyed by normalized email (gmail/googlemail aware).
-        var googleUsersByNormalizedEmail = new Dictionary<string, string>(NormalizingEmailComparer.Instance);
-        foreach (var u in list.Users)
-        {
-            if (!string.IsNullOrEmpty(u.PrimaryEmail))
-                googleUsersByNormalizedEmail[u.PrimaryEmail] = u.PrimaryEmail;
-        }
-
-        // Load every user row and check.
-        var dbUsers = await _userService.GetAllUsersAsync(cancellationToken);
-        var mismatches = new List<EmailMismatch>();
-        var totalChecked = 0;
-
-        foreach (var dbUser in dbUsers)
-        {
-            if (dbUser.Email is null) continue;
-            totalChecked++;
-
-            if (!googleUsersByNormalizedEmail.TryGetValue(dbUser.Email, out var matchedGoogleEmail))
-                continue;
-
-            if (!string.Equals(dbUser.Email, matchedGoogleEmail, StringComparison.Ordinal))
-            {
-                mismatches.Add(new EmailMismatch
-                {
-                    UserId = dbUser.Id,
-                    DisplayName = dbUser.DisplayName,
-                    StoredEmail = dbUser.Email,
-                    GoogleEmail = matchedGoogleEmail
-                });
-            }
-        }
-
-        _logger.LogInformation(
-            "Email mismatch check complete: {Total} DB users checked, {Count} mismatches found",
-            totalChecked, mismatches.Count);
-
-        return new EmailBackfillResult
-        {
-            Mismatches = mismatches,
-            TotalUsersChecked = totalChecked
-        };
-    }
-
-    /// <inheritdoc />
     public async Task<AllGroupsResult> GetAllDomainGroupsAsync(CancellationToken cancellationToken = default)
     {
         var listResult = await _directory.ListDomainGroupsAsync(cancellationToken);

@@ -19,7 +19,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// repository; the application service stitches display names from
 /// <see cref="Users.IUserService"/> per design-rules §6.
 /// </remarks>
-public interface ICampRepository
+public interface ICampRepository : IRepository
 {
     // ==========================================================================
     // Reads — Camp
@@ -77,6 +77,20 @@ public interface ICampRepository
     /// Returns true if <paramref name="slug"/> is already taken by any camp.
     /// </summary>
     Task<bool> SlugExistsAsync(string slug, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns camps that have a season for <paramref name="year"/> whose
+    /// <c>CampSeason.Name</c> contains <paramref name="query"/>
+    /// (case-insensitive, Postgres ILike). When
+    /// <paramref name="onlyPublicStatus"/> is true, the year's season must
+    /// also be in <c>CampSeasonStatus.Active</c> or <c>Full</c> — same gate
+    /// the public camp directory uses. Year-filtered seasons are included.
+    /// Capped at <paramref name="max"/>; ordering is unspecified (caller
+    /// ranks). Read-only, no cross-domain navs.
+    /// </summary>
+    Task<IReadOnlyList<Camp>> SearchForYearAsync(
+        string query, int year, bool onlyPublicStatus, int max,
+        CancellationToken ct = default);
 
     // ==========================================================================
     // Writes — Camp / Season / Lead (aggregate)
@@ -330,6 +344,11 @@ public interface ICampRepository
     Task SetPublicYearAsync(int year, CancellationToken ct = default);
 
     /// <summary>
+    /// Sets <c>EeStartDate</c> on the singleton settings row. Pass <c>null</c> to clear.
+    /// </summary>
+    Task SetEeStartDateAsync(LocalDate? eeStartDate, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Adds <paramref name="year"/> to <c>OpenSeasons</c> if not present.
     /// Returns true if the list changed.
     /// </summary>
@@ -428,6 +447,21 @@ public interface ICampRepository
     /// <summary>Returns (CampSeasonId, UserId, Status) for the member, or null if not found. Read-only.</summary>
     Task<(Guid CampSeasonId, Guid UserId, CampMemberStatus Status)?> GetMemberLookupAsync(
         Guid campMemberId, CancellationToken ct = default);
+
+    // ==========================================================================
+    // Early Entry
+    // ==========================================================================
+
+    /// <summary>
+    /// Sets <c>EeSlotCount</c> on the given season. Returns (OldValue, NewValue, CampId),
+    /// or null if the season was not found. When old == new, the row is not updated
+    /// but the result tuple is still returned so the service can short-circuit the audit.
+    /// </summary>
+    Task<(int OldValue, int NewValue, Guid CampId)?> SetCampSeasonEeSlotCountAsync(
+        Guid campSeasonId, int slotCount, CancellationToken cancellationToken = default);
+
+    Task<int> GetGrantedCountForSeasonAsync(
+        Guid campSeasonId, CancellationToken cancellationToken = default);
 
     // ==========================================================================
     // Account-merge fold

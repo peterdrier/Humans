@@ -16,8 +16,25 @@ public class EmailProblemsServiceTests
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly FakeClock _clock = new(NodaTime.Instant.FromUtc(2026, 5, 5, 12, 0));
 
+    public EmailProblemsServiceTests()
+    {
+        _userEmailService.GetEntitiesByUserIdsAsync(
+                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, IReadOnlyList<UserEmail>>());
+    }
+
     private EmailProblemsService Sut => new(
         _profileService, _userEmailService, _userService, _clock);
+
+    private void SetAllUserEmails(params UserEmail[] emails)
+    {
+        var grouped = emails
+            .GroupBy(e => e.UserId)
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<UserEmail>)g.ToList());
+        _userEmailService.GetEntitiesByUserIdsAsync(
+                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(grouped);
+    }
 
     private static FullProfile MakeProfile(Guid userId, params UserEmailSnapshot[] emails) =>
         new FullProfile(
@@ -304,11 +321,25 @@ public class EmailProblemsServiceTests
     {
         var users = pairs.Select(p => p.User).ToList();
         _userService.GetAllUsersAsync(Arg.Any<CancellationToken>()).Returns(users);
+        var grouped = new Dictionary<Guid, IReadOnlyList<UserEmail>>();
         foreach (var (u, profile) in pairs)
         {
             _profileService.GetFullProfileAsync(u.Id, Arg.Any<CancellationToken>())
                 .Returns(new ValueTask<FullProfile?>(profile));
+            var rows = profile.AllUserEmails.Select(s => new UserEmail
+            {
+                Id = s.Id,
+                UserId = u.Id,
+                Email = s.Email,
+                IsVerified = s.IsVerified,
+                IsPrimary = s.IsPrimary,
+                IsGoogle = s.IsGoogle
+            }).ToList();
+            if (rows.Count > 0) grouped[u.Id] = rows;
         }
+        _userEmailService.GetEntitiesByUserIdsAsync(
+                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(grouped);
     }
 
     private static User MakeUser(Guid id, string? legacyEmail) =>
@@ -383,11 +414,15 @@ public class EmailProblemsServiceTests
     [HumansFact]
     public async Task BackfillLegacyIdentityEmails_FlaggedUser_CallsAddVerifiedAndReturnsPair()
     {
+        // Issue nobodies-collective/Humans#697: the OAuth-aware "tag via
+        // LinkAsync when an external login exists" branch is gone. The legacy
+        // address is added as a plain verified row; the next OAuth sign-in's
+        // reconcile attaches the provider tag via TagMoved.
         var userId = Guid.NewGuid();
         var user = MakeUser(userId, "legacy@x.com");
         SetUsersWithProfiles((user, MakeProfile(userId)));
 
-        var result = await Sut.BackfillLegacyIdentityEmailsAsync();
+        var result = await Sut.BackfillLegacyIdentityEmailsAsync(Guid.NewGuid());
 
         result.Should().ContainSingle()
             .Which.Should().Be((userId, "legacy@x.com"));
@@ -403,7 +438,7 @@ public class EmailProblemsServiceTests
         SetUsersWithProfiles((user, MakeProfile(userId,
             new UserEmailSnapshot(Guid.NewGuid(), "match@x.com", true, true, false))));
 
-        var result = await Sut.BackfillLegacyIdentityEmailsAsync();
+        var result = await Sut.BackfillLegacyIdentityEmailsAsync(Guid.NewGuid());
 
         result.Should().BeEmpty();
         await _userEmailService.DidNotReceive().AddVerifiedEmailAsync(
@@ -417,8 +452,78 @@ public class EmailProblemsServiceTests
         var user = MakeUser(userId, legacyEmail: null);
         SetUsersWithProfiles((user, MakeProfile(userId)));
 
-        var result = await Sut.BackfillLegacyIdentityEmailsAsync();
+        var result = await Sut.BackfillLegacyIdentityEmailsAsync(Guid.NewGuid());
 
         result.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task DoesNotFlagLegacyEmail_WhenProfileLessUserHasMatchingVerifiedRow()
+    {
+        var userId = Guid.NewGuid();
+        var user = MakeUser(userId, "import@x.com");
+        _userService.GetAllUsersAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<User> { user });
+        _profileService.GetFullProfileAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<FullProfile?>((FullProfile?)null));
+        SetAllUserEmails(new UserEmail
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Email = "import@x.com",
+            IsVerified = true
+        });
+        SetOrphans();
+        SetGhosts();
+
+        var report = await Sut.ScanAsync();
+
+        report.Problems.Should().NotContain(p =>
+            p.Kind == EmailProblemKind.LegacyIdentityEmailNotInUserEmails);
+    }
+
+    [HumansFact]
+    public async Task DetectsLegacyEmail_WhenProfileLessUserHasNoMatchingRow()
+    {
+        var userId = Guid.NewGuid();
+        var user = MakeUser(userId, "legacy@x.com");
+        _userService.GetAllUsersAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<User> { user });
+        _profileService.GetFullProfileAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<FullProfile?>((FullProfile?)null));
+        SetAllUserEmails();
+        SetOrphans();
+        SetGhosts();
+
+        var report = await Sut.ScanAsync();
+
+        report.Problems.Should().ContainSingle(p =>
+            p.Kind == EmailProblemKind.LegacyIdentityEmailNotInUserEmails
+            && p.UserId == userId
+            && p.Email == "legacy@x.com");
+    }
+
+    [HumansFact]
+    public async Task BackfillLegacyIdentityEmails_ProfileLessUserAlreadyMatched_SkipsUser()
+    {
+        var userId = Guid.NewGuid();
+        var user = MakeUser(userId, "import@x.com");
+        _userService.GetAllUsersAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<User> { user });
+        _profileService.GetFullProfileAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<FullProfile?>((FullProfile?)null));
+        SetAllUserEmails(new UserEmail
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Email = "import@x.com",
+            IsVerified = true
+        });
+
+        var result = await Sut.BackfillLegacyIdentityEmailsAsync(Guid.NewGuid());
+
+        result.Should().BeEmpty();
+        await _userEmailService.DidNotReceive().AddVerifiedEmailAsync(
+            Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 }

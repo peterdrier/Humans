@@ -1,12 +1,13 @@
-using Humans.Domain.Enums;
 using Humans.Application.DTOs;
+using Humans.Application.Interfaces;
+using Humans.Domain.Enums;
 
 namespace Humans.Application.Interfaces.Governance;
 
 /// <summary>
 /// Service for computing membership status.
 /// </summary>
-public interface IMembershipCalculator
+public interface IMembershipCalculator : IApplicationService
 {
     /// <summary>
     /// Computes the current membership status for a user.

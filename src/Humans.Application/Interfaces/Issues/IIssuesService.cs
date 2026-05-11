@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces;
 using Microsoft.AspNetCore.Http;
 using NodaTime;
 using Humans.Domain.Entities;
@@ -5,7 +6,7 @@ using Humans.Domain.Enums;
 
 namespace Humans.Application.Interfaces.Issues;
 
-public interface IIssuesService
+public interface IIssuesService : IApplicationService
 {
     Task<Issue> SubmitIssueAsync(
         Guid reporterUserId,

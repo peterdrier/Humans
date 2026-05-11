@@ -16,7 +16,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// day). The repository uses the Singleton + <c>IDbContextFactory</c> pattern
 /// so each method owns its own <c>HumansDbContext</c> lifetime.
 /// </remarks>
-public interface IRoleAssignmentRepository
+public interface IRoleAssignmentRepository : IRepository
 {
     // ==========================================================================
     // Reads

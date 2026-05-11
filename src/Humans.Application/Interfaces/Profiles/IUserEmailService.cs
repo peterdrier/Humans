@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces;
 using Humans.Application.DTOs;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -8,7 +9,7 @@ namespace Humans.Application.Interfaces.Profiles;
 /// <summary>
 /// Service for managing user email addresses.
 /// </summary>
-public interface IUserEmailService
+public interface IUserEmailService : IApplicationService
 {
     /// <summary>
     /// Gets all emails for a user, ordered by display order.
@@ -118,17 +119,51 @@ public interface IUserEmailService
     /// <summary>
     /// Adds a verified email directly (admin provisioning/linking — no verification flow needed).
     /// If the email is @nobodies.team, it's automatically set as the notification target.
-    /// Skips if the email already exists for this user.
+    /// Idempotent: if the email already exists for this user, skips the insert
+    /// and returns <c>false</c>. Returns <c>true</c> when a row was actually inserted.
     /// </summary>
-    Task AddVerifiedEmailAsync(
+    Task<bool> AddVerifiedEmailAsync(
         Guid userId,
         string email,
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// If the user has a verified @nobodies.team email but GoogleEmail is null, sets it.
-    /// Returns true if GoogleEmail was updated.
+    /// Idempotent verified-email add for the import-flow account-creation path
+    /// (<c>AccountProvisioningService</c>): on a freshly created User the row
+    /// is added through <see cref="UserEmailService"/> rather than the
+    /// repository directly so it goes through the same orchestrator
+    /// (Primary + Google invariants, FullProfile invalidation) as every
+    /// other UserEmail-add path. Issue nobodies-collective/Humans#687.
+    /// Skips if the email already exists for this user (idempotent).
     /// </summary>
+    Task AddProvisionedEmailAsync(
+        Guid userId,
+        string email,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Looks up the owning userId for any UserEmail row matching the given
+    /// address (case-insensitive normalized, including the gmail/googlemail
+    /// alternate). Returns the userId of any matching row regardless of
+    /// verification state — used by import-flow account provisioning to
+    /// detect existing accounts before creating a new one. Returns null when
+    /// no row matches. Orphan detection (matched row pointing at a missing
+    /// user) is the caller's responsibility — see
+    /// <see cref="Humans.Application.Services.Users.AccountProvisioningService"/>.
+    /// </summary>
+    Task<Guid?> FindAnyUserIdByEmailAsync(
+        string email,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Legacy backfill that wrote the verified @nobodies.team email into the
+    /// <c>User.GoogleEmail</c> shadow column. With the column deprecated and
+    /// the new <c>EnsureGoogleInvariantAsync</c> running on every UserEmail
+    /// row creation, the shadow column no longer participates in the Google
+    /// identity invariant. Method body is now a no-op kept temporarily so
+    /// tests and callers compile through the obsolete transition.
+    /// </summary>
+    [Obsolete("Issue nobodies-collective/Humans#687: User.GoogleEmail is being deprecated. UserEmailService.EnsureGoogleInvariantAsync now stamps IsGoogle on the canonical row whenever a UserEmail is added; no separate backfill is needed.")]
     Task<bool> TryBackfillGoogleEmailAsync(
         Guid userId,
         CancellationToken cancellationToken = default);
@@ -204,6 +239,17 @@ public interface IUserEmailService
     Task<Guid?> GetUserIdByVerifiedEmailAsync(
         string email,
         CancellationToken cancellationToken = default);
+
+    /// <summary>Resolve a user by exact, case-insensitive email match against UserEmails. Returns null if zero or ambiguous matches.</summary>
+    Task<Guid?> GetUserIdByExactEmailAsync(string email, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the notification-target (IsPrimary=true, verified) email address for the user,
+    /// falling back to <c>User.Email</c> when no primary row exists. Returns <c>null</c> when
+    /// no email can be resolved. Used by transfer-request creation to snapshot the recipient's
+    /// preferred contact address.
+    /// </summary>
+    Task<string?> GetPrimaryEmailAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
     /// Returns every verified email address belonging to the user. Used by
@@ -282,24 +328,6 @@ public interface IUserEmailService
     /// </summary>
     Task<bool> IsEmailLinkedToAnyUserAsync(
         string email, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Rewrites the user's <see cref="Domain.Entities.UserEmail"/> row
-    /// whose address matches <paramref name="oldEmail"/> (case-insensitive) to
-    /// <paramref name="newEmail"/> and stamps <c>UpdatedAt</c>. Used by the
-    /// admin rename-fix flow and by the OAuth rename detector.
-    ///
-    /// Returns a <see cref="RewriteEmailAddressOutcome"/> describing what
-    /// happened (rewritten, merged into a same-user row, cross-user conflict,
-    /// or source row not found). Never throws on a unique-index conflict —
-    /// see <see cref="IUserEmailRepository.RewriteEmailAddressAsync"/> for the
-    /// branching contract. Cross-user conflicts are logged at
-    /// <c>LogWarning</c> with structured properties (no exception object) and
-    /// surfaced to admins via the duplicate-account detection flow.
-    /// </summary>
-    Task<RewriteEmailAddressOutcome> RewriteEmailAddressAsync(
-        Guid userId, string oldEmail, string newEmail,
-        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Returns every <see cref="UserEmailMatch"/> whose address matches one of
@@ -383,23 +411,6 @@ public interface IUserEmailService
     Task<bool> DeleteByIdAsync(Guid emailId, CancellationToken ct = default);
 
     /// <summary>
-    /// Find-or-create. Attaches the OAuth identity (<paramref name="provider"/>,
-    /// <paramref name="providerKey"/>) to the user's email row matching
-    /// <paramref name="email"/> (Ordinal/case-insensitive); creates a new
-    /// verified row when none matches. <paramref name="userId"/> is the
-    /// <b>target</b> user; <paramref name="actorUserId"/> is the actor.
-    /// Replaces the legacy AddOAuthEmailAsync + SetProviderAsync pair (PR 4
-    /// consolidation).
-    /// </summary>
-    Task<bool> LinkAsync(
-        Guid userId,
-        string provider,
-        string providerKey,
-        string email,
-        Guid actorUserId,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Removes both the AspNetUserLogins row and the UserEmail row for a
     /// Provider-attached email. Owner-gated. Returns <c>false</c> if the row
     /// is not found for this user or has no <see cref="UserEmail.Provider"/>/
@@ -414,23 +425,122 @@ public interface IUserEmailService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Looks up the UserEmail row tagged with
-    /// <paramref name="provider"/> / <paramref name="providerKey"/>. Returns
-    /// <c>null</c> when no row matches. Used by the OAuth callback's rename
-    /// detection to compare the row's email against the incoming claim email
-    /// and update the row when they diverge.
+    /// Issue nobodies-collective/Humans#697. The single OAuth-callback entry
+    /// point that mutates <see cref="Domain.Entities.UserEmail"/> rows. Called
+    /// once per OAuth-success path in <c>AccountController</c> after Identity's
+    /// <c>AspNetUserLogins</c> row points at <paramref name="userId"/>. Policy
+    /// ladder (all inside a single transaction):
+    /// <list type="number">
+    /// <item>Tagged row at <paramref name="claimEmail"/> → <see cref="ReconcileOutcome.NoChange"/>.</item>
+    /// <item>Tagged row at a different email + another row of this user holds
+    /// the claim email → tag-move (union <c>IsGoogle</c>/<c>IsPrimary</c>,
+    /// force verify, delete old) → <see cref="ReconcileOutcome.TagMoved"/>.</item>
+    /// <item>Tagged row at a different email + no other row of this user holds
+    /// the claim email → rewrite → <see cref="ReconcileOutcome.EmailRewritten"/>.</item>
+    /// <item>No tagged row + another row of this user holds the claim email →
+    /// tag-move → <see cref="ReconcileOutcome.TagMoved"/>.</item>
+    /// <item>No tagged row + no row of this user holds the claim email → insert
+    /// a verified tagged row → <see cref="ReconcileOutcome.NewRowCreated"/>.</item>
+    /// </list>
+    /// Before any insert/rewrite that would place a verified row at
+    /// <paramref name="claimEmail"/>, a cross-user collision check runs. If
+    /// another user already verified-holds the claim email:
+    /// <list type="bullet">
+    /// <item>When <paramref name="claimEmailVerified"/> is <c>true</c> → Google
+    /// wins. Delete the other user's row, write paired audits, proceed →
+    /// <see cref="ReconcileOutcome.CrossUserDisplaced"/>.</item>
+    /// <item>When <paramref name="claimEmailVerified"/> is <c>false</c> →
+    /// block. No mutation. Audit the attempt →
+    /// <see cref="ReconcileOutcome.CrossUserBlocked"/>.</item>
+    /// </list>
+    /// Audit rows for every outcome are written by this method inside the same
+    /// transaction as the data change; callers must not write their own audit
+    /// rows on the OAuth path. Sign-in must NEVER block on this call —
+    /// exceptions propagate but the caller is required to swallow them and
+    /// continue the sign-in.
     /// </summary>
-    Task<UserEmailProviderMatch?> FindByProviderKeyAsync(
-        string provider, string providerKey,
+    Task<OAuthReconcileResult> ReconcileOAuthIdentityAsync(
+        Guid userId,
+        string provider,
+        string providerKey,
+        string claimEmail,
+        bool claimEmailVerified,
         CancellationToken cancellationToken = default);
 }
 
 /// <summary>
-/// Narrow projection of a UserEmail row matched by (Provider, ProviderKey).
-/// Returned from <see cref="IUserEmailService.FindByProviderKeyAsync"/> so the
-/// service interface does not leak the Domain entity into Web-layer callers.
+/// Thrown by <see cref="IUserEmailService.ReconcileOAuthIdentityAsync"/>
+/// (via the underlying repository) when the verified-email partial unique
+/// index catches a concurrent cross-user collision past the in-service
+/// pre-check — the race backstop. Surfaced as a domain exception so the
+/// Web layer never imports Postgres / Npgsql types
+/// (<c>docs/architecture/design-rules.md §1</c>: clean architecture).
 /// </summary>
-public record UserEmailProviderMatch(Guid Id, Guid UserId, string Email);
+public sealed class OAuthReconcileConcurrencyException : Exception
+{
+    public OAuthReconcileConcurrencyException() { }
+    public OAuthReconcileConcurrencyException(string message) : base(message) { }
+    public OAuthReconcileConcurrencyException(string message, Exception inner)
+        : base(message, inner) { }
+}
+
+/// <summary>
+/// Outcome of <see cref="IUserEmailService.ReconcileOAuthIdentityAsync"/>.
+/// </summary>
+public enum ReconcileOutcome
+{
+    /// <summary>User's tagged row already holds the claim email.</summary>
+    NoChange,
+    /// <summary>Tagged row's email was rewritten in place.</summary>
+    EmailRewritten,
+    /// <summary>Provider tag moved onto another row of the same user holding
+    /// the claim email; flags unioned, old row deleted.</summary>
+    TagMoved,
+    /// <summary>No tagged row existed; created a new verified tagged row.</summary>
+    NewRowCreated,
+    /// <summary>Another user already verified-held the claim email; that
+    /// user's row was deleted (Google wins) because the provider's claim
+    /// asserted email verification.</summary>
+    CrossUserDisplaced,
+    /// <summary>Another user already verified-held the claim email and the
+    /// provider's claim did not assert email verification. No mutation
+    /// performed.</summary>
+    CrossUserBlocked,
+}
+
+/// <summary>
+/// Informational record describing the reconcile outcome. Audit rows are
+/// written by the service itself; this record exists for tests, admin
+/// diagnostics, and any non-audit observers in the caller.
+/// </summary>
+/// <param name="Outcome">The reconcile outcome that occurred.</param>
+/// <param name="PreviousEmail">For <see cref="ReconcileOutcome.EmailRewritten"/>
+/// or <see cref="ReconcileOutcome.TagMoved"/>, the email value previously
+/// held by the signing user's tagged row. <c>null</c> otherwise.</param>
+/// <param name="AffectedRowId">The <see cref="UserEmail.Id"/> of the signing
+/// user's row that now carries the tag at the claim email, or that was
+/// determined to already be in the correct state. <c>null</c> for
+/// <see cref="ReconcileOutcome.CrossUserBlocked"/>.</param>
+/// <param name="DisplacedUserId">For <see cref="ReconcileOutcome.CrossUserDisplaced"/>
+/// or <see cref="ReconcileOutcome.CrossUserBlocked"/>, the id of the other
+/// user that held / holds the claim email.</param>
+/// <param name="DisplacedRowId">For <see cref="ReconcileOutcome.CrossUserDisplaced"/>,
+/// the id of the row that was deleted. For
+/// <see cref="ReconcileOutcome.CrossUserBlocked"/>, the id of the row that
+/// blocked the mutation.</param>
+/// <param name="DisplacedEmail">The email value on the displaced (or blocking)
+/// row.</param>
+/// <param name="DisplacedUserLeftWithoutVerifiedEmail"><c>true</c> when
+/// <see cref="ReconcileOutcome.CrossUserDisplaced"/> deleted the displaced
+/// user's only remaining verified email row.</param>
+public record OAuthReconcileResult(
+    ReconcileOutcome Outcome,
+    string? PreviousEmail,
+    Guid? AffectedRowId,
+    Guid? DisplacedUserId,
+    Guid? DisplacedRowId,
+    string? DisplacedEmail,
+    bool DisplacedUserLeftWithoutVerifiedEmail);
 
 /// <summary>
 /// Narrow projection describing a <see cref="Domain.Entities.UserEmail"/>
@@ -453,13 +563,16 @@ public record UserEmailMatch(
 /// <param name="DisplayName">Display name (for the admin grid). May be null
 /// if the User row is missing or has no display name.</param>
 /// <param name="IsGoogleCount">How many rows have <c>IsGoogle = true</c>.
-/// A healthy value is 0 or 1; values &gt; 1 are violations.</param>
+/// A healthy value is 1 (when verified rows exist); 0 with verified rows is
+/// a violation, as are values &gt; 1.</param>
 /// <param name="VerifiedCount">How many rows are verified.</param>
 /// <param name="VerifiedPrimaryCount">How many verified rows have
 /// <c>IsPrimary = true</c>. A healthy value is 1 (when verified rows exist)
 /// or 0 (when no verified rows exist).</param>
 /// <param name="HasMultipleGoogle">Convenience flag — true when
 /// <see cref="IsGoogleCount"/> &gt; 1.</param>
+/// <param name="HasZeroGoogle">Convenience flag — true when verified rows
+/// exist and <see cref="IsGoogleCount"/> is 0.</param>
 /// <param name="HasPrimaryProblem">Convenience flag — true when verified
 /// rows exist and <see cref="VerifiedPrimaryCount"/> is not exactly 1.</param>
 public record UserEmailFlagViolation(
@@ -469,4 +582,5 @@ public record UserEmailFlagViolation(
     int VerifiedCount,
     int VerifiedPrimaryCount,
     bool HasMultipleGoogle,
+    bool HasZeroGoogle,
     bool HasPrimaryProblem);

@@ -6,6 +6,7 @@ using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Constants;
+using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Campaigns;
@@ -229,7 +230,8 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
         var recentOrders = await _ticketRepository.GetRecentOrdersAsync(count: 10);
 
         // Volunteer ticket coverage.
-        var volunteerUserIds = await _teamService.GetActiveMemberUserIdsAsync(SystemTeamIds.Volunteers);
+        var volunteerTeam = await _teamService.GetTeamAsync(SystemTeamIds.Volunteers);
+        var volunteerUserIds = volunteerTeam?.Members.Select(m => m.UserId).ToList() ?? [];
         var totalActiveVolunteers = volunteerUserIds.Count;
 
         var userIdsWithTickets = await GetUserIdsWithTicketsAsync();
@@ -575,8 +577,8 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
 
         // Load Users and Volunteers-team membership via service interfaces.
         var allUsers = await _userService.GetAllUsersAsync();
-        var volunteerUserIds = (await _teamService.GetActiveMemberUserIdsAsync(SystemTeamIds.Volunteers))
-            .ToHashSet();
+        var volunteerTeam = await _teamService.GetTeamAsync(SystemTeamIds.Volunteers);
+        var volunteerUserIds = volunteerTeam?.Members.Select(m => m.UserId).ToHashSet() ?? [];
 
         var candidateIds = allUsers
             .Where(u => volunteerUserIds.Contains(u.Id))
@@ -760,6 +762,9 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
             o.Currency)).ToList();
     }
 
+    public Task<IReadOnlyList<Guid>> GetOpenTicketIdsForUserAsync(Guid userId, CancellationToken ct = default) =>
+        _ticketRepository.GetOpenOrderIdsMatchedToUserAsync(userId, ct);
+
     public async Task<Instant?> GetPostEventHoldDateAsync(CancellationToken ct = default)
     {
         var activeEvent = await _shiftManagementService.GetActiveAsync();
@@ -870,4 +875,14 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
 
     private static bool ContainsIgnoreCase(string? source, string value) =>
         source?.Contains(value, StringComparison.OrdinalIgnoreCase) == true;
+
+    public void InvalidateAfterTransfer(Guid senderUserId, Guid? receiverUserId)
+    {
+        _cache.InvalidateTicketCaches();
+        _cache.InvalidateUserTicketCount(senderUserId);
+        if (receiverUserId is { } receiver)
+        {
+            _cache.InvalidateUserTicketCount(receiver);
+        }
+    }
 }

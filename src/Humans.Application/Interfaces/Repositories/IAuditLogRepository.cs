@@ -28,7 +28,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// <c>HumansDbContext</c> remains Scoped.
 /// </para>
 /// </remarks>
-public interface IAuditLogRepository
+public interface IAuditLogRepository : IRepository
 {
     // ==========================================================================
     // Writes — append-only

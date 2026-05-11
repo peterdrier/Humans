@@ -50,7 +50,23 @@ public class InterfaceMethodBudgetTests
         // from ITeamService (moved to IUserMerge.ReassignAsync, implemented
         // by TeamService and dispatched by AccountMergeService via
         // IEnumerable<IUserMerge> fan-out).
-        [typeof(ITeamService)] = 70,
+        // 70→70: issue-634 — added GetActiveTeamMembershipsForUserAsync (name +
+        // role-in-team for the agent snapshot) and removed
+        // GetActiveTeamNamesForUserAsync, since the new method is strictly more
+        // capable; the one production caller (ProfileController popover)
+        // projects to names via .Select(m => m.TeamName).
+        // 70→71: issue-682 global search — added SearchAsync(query, max).
+        // Authorized exception (Peter, 2026-05-09): queries against teams
+        // must live in the owning section per design-rules §6, and the
+        // ratchet's "remove one to add one" rule doesn't apply when the
+        // addition is a moved-in query rather than a new feature surface.
+        // 71→73: team-cache decorator groundwork — added canonical
+        // GetTeamAsync/GetTeamsAsync read-model methods. Follow-up passes should
+        // consolidate member/name/option getters down onto those methods.
+        // 73→71: tech-debt query consolidation — removed GetTeamMembersAsync
+        // and GetActiveMemberUserIdsAsync; callers project members/user IDs
+        // from GetTeamAsync/GetTeamsAsync read models.
+        [typeof(ITeamService)] = 71,
         // ICampService raised 53→57 for per-camp roles feature (peterdrier#489):
         // AddCampMemberAsLeadAsync, GetSeasonMembersAsync, GetCampMemberStatusAsync,
         // GetCampSeasonsForComplianceAsync — all needed by ICampRoleService and the
@@ -76,7 +92,15 @@ public class InterfaceMethodBudgetTests
         // new lead-pin feature on this branch already calls the repo
         // method directly); SetSeasonFullAsync and
         // GetCampSeasonBriefsForYearAsync (both zero callers, zero tests).
-        [typeof(ICampService)] = 51,
+        // 51→52: issue-682 global search — added SearchAsync(query, max).
+        // Authorized exception (Peter, 2026-05-09): queries against camps
+        // must live in the owning section per design-rules §6.
+        // 52→55: issue-490 — Early Entry (camps consumer). Added
+        // SetEeStartDateAsync, SetCampSeasonEeSlotCountAsync, SetEarlyEntryAsync.
+        // Authorized by Peter 2026-05-10. EE state lives on CampSeason/CampMember/
+        // CampSettings — tables ICampService already owns — so the methods belong
+        // here per design-rules §6 (no service split).
+        [typeof(ICampService)] = 55,
         // +1: GetOverallCoverageAsync for admin dashboard shift-coverage tile (peterdrier#349).
         // 50→50: account-merge fold redesign Phase 3.2. Added
         // ReassignProfilesAndTagPrefsToUserAsync; removed CanManageShiftsAsync
@@ -86,7 +110,15 @@ public class InterfaceMethodBudgetTests
         // 50→49: account-merge fold final consolidation — removed
         // ReassignProfilesAndTagPrefsToUserAsync from IShiftManagementService
         // (moved to IUserMerge.ReassignAsync, dispatched via fan-out).
-        [typeof(IShiftManagementService)] = 49,
+        // 49→50: issue-682 global search — added SearchAsync(query, max).
+        // Authorized exception (Peter, 2026-05-09): queries against rotas
+        // must live in the owning section per design-rules §6.
+        // 50→49: tech-debt interface consolidation — collapsed
+        // GetShiftsSummaryAsync(single team) and GetShiftsSummaryForTeamsAsync
+        // into one GetShiftsSummaryAsync(eventId, teamIds) method.
+        // 49→48: collapsed GetAllTagsAsync and SearchTagsAsync into one
+        // GetTagsAsync(query) method.
+        [typeof(IShiftManagementService)] = 48,
         // +1 for SetProfilePictureAsync (nobodies-collective/Humans#532 — Google avatar import button needs a
         // narrow service write that owns its own cache invalidation; controllers can't reach
         // the FullProfile cache directly).
@@ -128,7 +160,12 @@ public class InterfaceMethodBudgetTests
         // controller-driven composition; FeedbackController/IssuesController
         // use GetActiveApprovedUserIdsAsync + IUserService.GetByIdsAsync for
         // population dropdowns. Net -3.
-        [typeof(IProfileService)] = 36,
+        // 36→30: issue nobodies-collective/Humans#685 — removed RequestDeletionAsync,
+        // CancelDeletionAsync, GetEventHoldDateAsync (deletion orchestration
+        // moved to IAccountDeletionService), and GetProfileIndexDataAsync,
+        // GetProfileEditDataAsync, GetAdminHumanDetailAsync (Profile-section
+        // bundling moved to ProfileController composition).
+        [typeof(IProfileService)] = 30,
         // -1 for GetContactUsersAsync removal (/Contacts surface deleted in PR 2 of
         // email-identity-decoupling — only ContactService called it).
         // 31→31: account-merge fold redesign Phase 3.4. Added 3 fold primitives

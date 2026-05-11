@@ -59,12 +59,21 @@ public sealed class EmailOutboxService : IEmailOutboxService
         var isPaused = await _repo.GetSendingPausedAsync(cancellationToken);
         var messages = await _repo.GetRecentAsync(recentMessageCount, cancellationToken);
 
-        return new EmailOutboxStats(totalCount, queuedCount, sentLast24H, failedCount, isPaused, messages);
+        return new EmailOutboxStats(
+            totalCount,
+            queuedCount,
+            sentLast24H,
+            failedCount,
+            isPaused,
+            messages.Select(ToDto).ToList());
     }
 
-    public Task<IReadOnlyList<EmailOutboxMessage>> GetMessagesForUserAsync(
-        Guid userId, CancellationToken cancellationToken = default) =>
-        _repo.GetForUserAsync(userId, cancellationToken);
+    public async Task<IReadOnlyList<EmailOutboxMessageDto>> GetMessagesForUserAsync(
+        Guid userId, CancellationToken cancellationToken = default)
+    {
+        var messages = await _repo.GetForUserAsync(userId, cancellationToken);
+        return messages.Select(ToDto).ToList();
+    }
 
     public Task<int> GetMessageCountForUserAsync(
         Guid userId, CancellationToken cancellationToken = default) =>
@@ -75,4 +84,18 @@ public sealed class EmailOutboxService : IEmailOutboxService
 
     public Task SetEmailPausedAsync(bool paused, CancellationToken cancellationToken = default) =>
         _repo.SetSendingPausedAsync(paused, cancellationToken);
+
+    private static EmailOutboxMessageDto ToDto(EmailOutboxMessage message) => new(
+        message.Id,
+        message.RecipientEmail,
+        message.RecipientName,
+        message.Subject,
+        message.HtmlBody,
+        message.TemplateName,
+        message.UserId,
+        message.Status,
+        message.CreatedAt,
+        message.SentAt,
+        message.RetryCount,
+        message.LastError);
 }

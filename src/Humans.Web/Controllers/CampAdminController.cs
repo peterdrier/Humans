@@ -13,6 +13,7 @@ using Humans.Web.Models.CampAdmin;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using NodaTime;
 
 namespace Humans.Web.Controllers;
 
@@ -77,7 +78,7 @@ public class CampAdminController : HumansControllerBase
 
             // Resolve lead display names via IUserService — CampLead.User nav is forbidden cross-domain.
             var leadUserIds = campsWithLeads
-                .SelectMany(c => c.Leads.Where(l => l.IsActive).Select(l => l.UserId))
+                .SelectMany(c => (c.Leads ?? []).Select(l => l.UserId))
                 .Distinct()
                 .ToList();
             var leadUsers = await _userService.GetByIdsAsync(leadUserIds);
@@ -89,13 +90,15 @@ public class CampAdminController : HumansControllerBase
                 {
                     Name = season?.Name ?? c.Slug,
                     Slug = c.Slug,
+                    SeasonId = season?.Id,
                     AcceptingMembers = season?.AcceptingMembers.ToString() ?? "—",
                     MemberCount = season?.MemberCount ?? 0,
                     Zone = season?.SoundZone?.ToString() ?? "—",
                     SpaceRequirement = season?.SpaceRequirement?.ToString() ?? "—",
                     YearsParticipating = c.TimesAtNowhere,
-                    Leads = c.Leads
-                        .Where(l => l.IsActive)
+                    EeSlotCount = season?.EeSlotCount ?? 0,
+                    EeGrantedCount = season?.EeGrantedCount ?? 0,
+                    Leads = (c.Leads ?? [])
                         .Select(l => new CampLeadViewModel
                         {
                             LeadId = l.Id,
@@ -116,11 +119,12 @@ public class CampAdminController : HumansControllerBase
                 NameLockDates = nameLockDates,
                 AllCampSummaries = summaries,
                 RegistrationInfo = registrationInfo,
+                EeStartDate = settings.EeStartDate,
                 PendingCamps = pendingSeasons.Select(s => new CampCardViewModel
                 {
                     Id = s.CampId,
                     SeasonId = s.Id,
-                    Slug = s.Camp?.Slug ?? string.Empty,
+                    Slug = s.CampSlug,
                     Name = s.Name,
                     BlurbShort = s.BlurbShort,
                     Status = s.Status
@@ -260,6 +264,78 @@ public class CampAdminController : HumansControllerBase
         return RedirectToAction(nameof(Index));
     }
 
+    [HttpPost("SetCampSeasonEeSlotCount/{seasonId:guid}")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SetCampSeasonEeSlotCount(
+        Guid seasonId, int slotCount, CancellationToken cancellationToken)
+    {
+        var user = await GetCurrentUserAsync();
+        if (user is null) return Unauthorized();
+
+        try
+        {
+            await _campService.SetCampSeasonEeSlotCountAsync(
+                seasonId, slotCount, user.Id, cancellationToken);
+            SetSuccess($"EE slot count set to {slotCount}.");
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            _logger.LogWarning(
+                "EE slot count must be non-negative for season {SeasonId} (actor {UserId})",
+                seasonId, user.Id);
+            SetError("EE slot count cannot be negative.");
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(
+                "Failed to set EE slot count on season {SeasonId}: {Reason}",
+                seasonId, ex.Message);
+            SetError(ex.Message);
+        }
+
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost("SetEeStartDate")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SetEeStartDate(string? eeStartDate, CancellationToken cancellationToken)
+    {
+        var user = await GetCurrentUserAsync();
+        if (user is null) return Unauthorized();
+
+        var (ok, parsed, parseError) = TryParseEeStartDate(eeStartDate);
+        if (!ok)
+        {
+            SetError(parseError!);
+            return RedirectToAction(nameof(Index));
+        }
+
+        try
+        {
+            await _campService.SetEeStartDateAsync(parsed, user.Id, cancellationToken);
+            SetSuccess(EeStartDateSuccessMessage(parsed));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to set EE start date");
+            SetError($"Failed to set EE start date: {ex.Message}");
+        }
+
+        return RedirectToAction(nameof(Index));
+    }
+
+    private static string EeStartDateSuccessMessage(LocalDate? date) =>
+        date.HasValue ? $"EE start date set to {date.Value.ToDisplayDate()}." : "EE start date cleared.";
+
+    private static (bool Ok, LocalDate? Value, string? Error) TryParseEeStartDate(string? input)
+    {
+        if (string.IsNullOrWhiteSpace(input)) return (true, null, null);
+        var result = NodaTime.Text.LocalDatePattern.Iso.Parse(input);
+        return result.Success
+            ? (true, result.Value, null)
+            : (false, null, "Invalid date format. Use yyyy-MM-dd.");
+    }
+
     [HttpPost("Reactivate/{seasonId:guid}")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Reactivate(Guid seasonId, string? returnSlug)
@@ -292,7 +368,7 @@ public class CampAdminController : HumansControllerBase
 
             // Resolve lead display names + emails via IUserService.
             var leadUserIds = camps
-                .SelectMany(c => c.Leads.Where(l => l.IsActive).Select(l => l.UserId))
+                .SelectMany(c => (c.Leads ?? []).Select(l => l.UserId))
                 .Distinct()
                 .ToList();
             var leadUsers = await _userService.GetByIdsAsync(leadUserIds);
@@ -310,8 +386,7 @@ public class CampAdminController : HumansControllerBase
                 var season = camp.Seasons.FirstOrDefault();
                 if (season is null) continue;
 
-                var leads = string.Join("; ", camp.Leads
-                    .Where(l => l.IsActive)
+                var leads = string.Join("; ", (camp.Leads ?? [])
                     .Select(l =>
                     {
                         var user = leadUsers.TryGetValue(l.UserId, out var u) ? u : null;

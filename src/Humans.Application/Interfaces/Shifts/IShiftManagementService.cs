@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces;
 using Humans.Application.DTOs;
 using Humans.Application.Enums;
 using Humans.Domain.Entities;
@@ -10,7 +11,7 @@ namespace Humans.Application.Interfaces.Shifts;
 /// Consolidated service for shift management: authorization, event settings,
 /// rotas, shifts, and urgency scoring.
 /// </summary>
-public interface IShiftManagementService
+public interface IShiftManagementService : IApplicationService
 {
     // === Authorization ===
 
@@ -90,6 +91,21 @@ public interface IShiftManagementService
     /// Gets all rotas for a department in an event.
     /// </summary>
     Task<IReadOnlyList<Rota>> GetRotasByDepartmentAsync(Guid teamId, Guid eventSettingsId);
+
+    /// <summary>
+    /// Volunteer-visible rotas in the active event whose <c>Name</c>
+    /// contains <paramref name="query"/> (case-insensitive). The owning
+    /// team's display name is stitched in via <c>ITeamService</c>
+    /// (cross-domain — this service does not navigate the rota's team
+    /// navigation property). Capped at <paramref name="max"/>; returned
+    /// in unspecified order — the global search orchestrator scores and
+    /// ranks. Returns an empty list when no event is active. Used by the
+    /// global /Search page (<c>SearchService</c>); every caller sees the
+    /// public surface regardless of role.
+    /// </summary>
+    Task<IReadOnlyList<RotaSearchHit>> SearchAsync(
+        string query, int max,
+        CancellationToken cancellationToken = default);
 
     // === Bulk Shift Creation ===
 
@@ -187,16 +203,10 @@ public interface IShiftManagementService
         BuildSubPeriod? subPeriod = null);
 
     /// <summary>
-    /// Gets shifts summary for a department. Returns null if no rotas.
+    /// Gets shifts summary aggregated across one or more teams. Returns null if no rotas.
     /// </summary>
     Task<ShiftsSummaryData?> GetShiftsSummaryAsync(
-        Guid eventSettingsId, Guid departmentTeamId);
-
-    /// <summary>
-    /// Gets aggregated shifts summary across multiple teams. Returns null if no rotas.
-    /// </summary>
-    Task<ShiftsSummaryData?> GetShiftsSummaryForTeamsAsync(
-        Guid eventSettingsId, IReadOnlyList<Guid> teamIds);
+        Guid eventSettingsId, IReadOnlyCollection<Guid> teamIds);
 
     /// <summary>
     /// Gets all parent teams that have active rotas in the given event.
@@ -278,14 +288,9 @@ public interface IShiftManagementService
     // === Shift Tags ===
 
     /// <summary>
-    /// Gets all shift tags, ordered by name.
+    /// Gets shift tags, optionally filtered by name (case-insensitive contains).
     /// </summary>
-    Task<IReadOnlyList<ShiftTag>> GetAllTagsAsync();
-
-    /// <summary>
-    /// Searches tags by name (case-insensitive prefix/contains).
-    /// </summary>
-    Task<IReadOnlyList<ShiftTag>> SearchTagsAsync(string query);
+    Task<IReadOnlyList<ShiftTag>> GetTagsAsync(string? query = null);
 
     /// <summary>
     /// Gets or creates a tag by name. Returns existing if name already exists (case-insensitive).
@@ -383,4 +388,3 @@ public record DailyStaffingHours(
     double EssentialHours,
     double ImportantHours,
     double NormalHours);
-

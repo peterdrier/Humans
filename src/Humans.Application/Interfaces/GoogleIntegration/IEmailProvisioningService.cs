@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces;
 namespace Humans.Application.Interfaces.GoogleIntegration;
 
 /// <summary>
@@ -8,7 +9,7 @@ namespace Humans.Application.Interfaces.GoogleIntegration;
 ///   3. Link @nobodies.team email (changes notification target)
 ///   4. Send credentials email to recovery address
 /// </summary>
-public interface IEmailProvisioningService
+public interface IEmailProvisioningService : IApplicationService
 {
     /// <summary>
     /// Provisions a new @nobodies.team email account for a user.

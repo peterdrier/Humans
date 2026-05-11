@@ -102,7 +102,6 @@ public class TeamServiceSlugRaceTests
     private static TeamService BuildService(ITeamRepository repo)
     {
         var clock = new FakeClock(Instant.FromUtc(2026, 4, 1, 12, 0));
-        var cache = new MemoryCache(new MemoryCacheOptions());
 
         return new TeamService(
             repo,
@@ -112,7 +111,6 @@ public class TeamServiceSlugRaceTests
             Substitute.For<INotificationMeterCacheInvalidator>(),
             Substitute.For<IShiftAuthorizationInvalidator>(),
             Substitute.For<IServiceProvider>(),
-            cache,
             clock,
             NullLogger<TeamService>.Instance);
     }

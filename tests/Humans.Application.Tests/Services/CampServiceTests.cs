@@ -934,6 +934,34 @@ public class CampServiceTests : IDisposable
     }
 
     [HumansFact]
+    public async Task RemoveCampMemberAsync_CascadesRoleAssignments()
+    {
+        // Bug fix bundled with issue-490: the section invariants doc says Remove
+        // cascades role assignments, but the code historically did not. Route
+        // through the new TransitionMemberToRemovedAsync helper closes that gap.
+        var camp = new Camp { Id = Guid.NewGuid(), Slug = "remove-cascade" };
+        var season = new CampSeason { Id = Guid.NewGuid(), CampId = camp.Id, Year = 2026, Status = CampSeasonStatus.Active };
+        var memberId = Guid.NewGuid();
+        var member = new CampMember
+        {
+            Id = memberId,
+            CampSeasonId = season.Id,
+            UserId = Guid.NewGuid(),
+            Status = CampMemberStatus.Active,
+            RequestedAt = _clock.GetCurrentInstant(),
+            ConfirmedAt = _clock.GetCurrentInstant(),
+            ConfirmedByUserId = Guid.NewGuid(),
+        };
+        _dbContext.Camps.Add(camp); _dbContext.CampSeasons.Add(season); _dbContext.CampMembers.Add(member);
+        await _dbContext.SaveChangesAsync();
+
+        await _service.RemoveCampMemberAsync(camp.Id, memberId, Guid.NewGuid());
+
+        await _campRoleService.Received(1).RemoveAllForMemberAsync(
+            memberId, Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task WithdrawSeasonAsync_NotifiesPendingRequesters_DoesNotChangeMemberStatus()
     {
         // No more auto-withdraw cascade — just a notification out. Pending rows stay pending.

@@ -9,6 +9,7 @@
   src/Humans.Application/Services/Teams/TeamService.cs
   src/Humans.Web/Controllers/OnboardingReviewController.cs
   src/Humans.Web/Controllers/AccountController.cs
+  src/Humans.Web/Controllers/ProfileController.cs
   src/Humans.Web/Authorization/MembershipRequiredFilter.cs
 -->
 <!-- freshness:flag-on-change
@@ -39,6 +40,26 @@ This section owns no tables. Entity detail for the objects Onboarding reads / mu
 
 The only onboarding-specific value type is the narrow `IOnboardingEligibilityQuery` seam used to break the DI cycle between `OnboardingService` and `ProfileService` (see Architecture).
 
+## Routing
+
+Multiple controllers serve this section:
+
+| Controller | Route | Notes |
+|------------|-------|-------|
+| `OnboardingReviewController` | `GET /OnboardingReview` | Review queue (`PolicyNames.ReviewQueueAccess`) |
+| `OnboardingReviewController` | `GET /OnboardingReview/{userId}` | Detail view |
+| `OnboardingReviewController` | `POST /OnboardingReview/{userId}/Clear` | CC clear (`PolicyNames.ConsentCoordinatorBoardOrAdmin`) |
+| `OnboardingReviewController` | `POST /OnboardingReview/BulkClear` | Bulk clear (`PolicyNames.ConsentCoordinatorBoardOrAdmin`) |
+| `OnboardingReviewController` | `POST /OnboardingReview/{userId}/Flag` | CC flag (`PolicyNames.ConsentCoordinatorBoardOrAdmin`) |
+| `OnboardingReviewController` | `POST /OnboardingReview/{userId}/Reject` | CC reject (`PolicyNames.ConsentCoordinatorBoardOrAdmin`) |
+| `OnboardingReviewController` | `GET /OnboardingReview/BoardVoting` | Board voting dashboard (`PolicyNames.BoardOrAdmin`) — **Governance-owned; see `Governance.md` routing table** |
+| `OnboardingReviewController` | `GET /OnboardingReview/BoardVoting/{applicationId}` | Board vote detail (`PolicyNames.BoardOrAdmin`) — **Governance-owned** |
+| `OnboardingReviewController` | `POST /OnboardingReview/BoardVoting/Vote` | Cast vote (`PolicyNames.BoardOnly`) — **Governance-owned** |
+| `OnboardingReviewController` | `POST /OnboardingReview/BoardVoting/Finalize` | Finalize decision (`PolicyNames.BoardOrAdmin`) — **Governance-owned** |
+| `ProfileController` | `POST /Profile/{id}/Admin/Approve` | Manual volunteer override (`PolicyNames.HumanAdminBoardOrAdmin`) |
+| `AccountController` | Login/logout/OAuth | Exempt from membership gate; no onboarding-specific routes |
+| `MembershipRequiredFilter` | (global filter) | Redirects non-members; profileless → `/Guest`, onboarding → `/Home` |
+
 ## Actors & Roles
 
 | Actor | Capabilities |
@@ -47,7 +68,7 @@ The only onboarding-specific value type is the narrow `IOnboardingEligibilityQue
 | Authenticated human (pre-approval) | Complete profile, sign legal documents, submit a tier application (optional), submit feedback |
 | ConsentCoordinator | Clear, flag, or reject signups in the onboarding review queue (`PolicyNames.ConsentCoordinatorBoardOrAdmin`) |
 | VolunteerCoordinator | Read-only access to the onboarding review queue (`PolicyNames.ReviewQueueAccess`) — cannot clear, flag, or reject |
-| Board, Admin | All ConsentCoordinator capabilities, plus manual `ApproveVolunteerAsync` to override a flagged profile, and Board voting on Colaborador/Asociado tier applications |
+| HumanAdmin, Board, Admin | All ConsentCoordinator capabilities, plus manual `ApproveVolunteerAsync` to override a flagged profile (`PolicyNames.HumanAdminBoardOrAdmin`). Board voting on Colaborador/Asociado tier applications is Board+Admin only (`PolicyNames.BoardOrAdmin` / `PolicyNames.BoardOnly`). |
 
 ## Invariants
 
@@ -64,7 +85,7 @@ The only onboarding-specific value type is the narrow `IOnboardingEligibilityQue
 ## Negative Access Rules
 
 - VolunteerCoordinator **cannot** clear, flag, or reject in the review queue. They have read-only access only (`PolicyNames.ReviewQueueAccess` lets them view; the Clear/Flag/Reject POST endpoints all require `PolicyNames.ConsentCoordinatorBoardOrAdmin`).
-- ConsentCoordinator **cannot** cast Board votes on tier applications, **cannot** finalize tier-application Approve/Reject decisions (Board+Admin only via `OnboardingReviewController.Vote` / `Finalize`), and **cannot** manually `ApproveVolunteerAsync` a flagged profile (Board+Admin only via `ProfileController.ApproveVolunteer`).
+- ConsentCoordinator **cannot** cast Board votes on tier applications, **cannot** finalize tier-application Approve/Reject decisions (Board+Admin only via `OnboardingReviewController.Vote` / `Finalize`), and **cannot** manually `ApproveVolunteerAsync` a flagged profile (HumanAdmin+Board+Admin only via `ProfileController.ApproveVolunteer`, `PolicyNames.HumanAdminBoardOrAdmin`).
 - Regular humans still onboarding **cannot** access most of the application (teams, shifts, budget, tickets, governance, etc.) until they become active Volunteers.
 - Profileless accounts **cannot** access the Home dashboard, City Planning, Budget, Shifts, Governance, or any member-only features. They are redirected to the Guest dashboard. **Exception:** profileless mid-widget users see the priority-shift list rendered inside `/OnboardingWidget` Step 2; direct navigation to `/Shifts` still routes them through the membership filter as today.
 
@@ -73,9 +94,9 @@ The only onboarding-specific value type is the narrow `IOnboardingEligibilityQue
 - When a human completes their profile and signs all required documents: `OnboardingService.SetConsentCheckPendingIfEligibleAsync` flips `Profile.ConsentCheckStatus` to `Pending` (only if not already approved and `IMembershipCalculator.HasAllRequiredConsentsForTeamAsync(Volunteers)` returns true), and notifies the ConsentCoordinator role. This is the audit/annotation track — admission to Volunteers happens automatically and does not depend on this flow.
 - When a legal document is signed: `ConsentService.SubmitConsentAsync` calls `SetConsentCheckPendingIfEligibleAsync` (flipping the consent check to Pending if all consents are now in) and `SyncVolunteersMembershipForUserAsync`, which admits the user to the Volunteers system team if `!IsSuspended && ConsentCheckStatus != Flagged && RejectedAt is null && HasAllRequiredConsentsForTeam(Volunteers)`. `Profile.IsApproved` is not consulted.
 - When a profile review is cleared by a CC: `Profile.IsApproved` is set to true and `ConsentCheckStatus = Cleared`. `ISystemTeamSync.SyncVolunteersMembershipForUserAsync` runs but is a no-op for admission if the user is already a Volunteer team member. No email is sent on this audit-track path.
-- When a consent check is flagged: `Profile.IsApproved` is set to false, `ConsentCheckStatus = Flagged`, and Volunteers / Colaborador / Asociado memberships are de-provisioned via `DeprovisionApprovalGatedSystemTeamsAsync`. Board or Admin must resolve via `ProfileController.ApproveVolunteer` (manual override).
+- When a consent check is flagged: `Profile.IsApproved` is set to false, `ConsentCheckStatus = Flagged`, and Volunteers / Colaborador / Asociado memberships are de-provisioned via `DeprovisionApprovalGatedSystemTeamsAsync`. HumanAdmin+Board+Admin must resolve via `ProfileController.ApproveVolunteer` (manual override, `PolicyNames.HumanAdminBoardOrAdmin`).
 - When a signup is rejected: `Profile.RejectedAt`, `RejectionReason`, and `RejectedByUserId` are recorded; `IsApproved` is set to false; system team memberships are de-provisioned; a `SignupRejected` email and `ProfileRejected` notification are dispatched. (`Profile` has no `IsRejected` boolean — rejection is detected by `RejectedAt is not null`.)
-- When a Board+Admin manually `ApproveVolunteerAsync` (override path used after a flag is resolved): `IsApproved` is set to true, Volunteers team sync runs, and a `VolunteerApproved` notification ("Welcome! You have been approved") is dispatched.
+- When a HumanAdmin+Board+Admin manually `ApproveVolunteerAsync` (override path used after a flag is resolved): `IsApproved` is set to true, Volunteers team sync runs, and a `VolunteerApproved` notification ("Welcome! You have been approved") is dispatched.
 
 ## Cross-Section Dependencies
 
@@ -91,7 +112,7 @@ After the nobodies-collective#584 narrowing, `OnboardingService` injects only wh
 ## Architecture
 
 **Owning services:** `OnboardingService` (intake funnel only after the nobodies-collective#584 narrowing).
-**Sibling services in the three-concerns split:** `HumanLifecycleService` (state-machine), `ApplicationDecisionService` (board voting), `AdminDashboardService` (dashboard aggregation), future `AccountDeletionService` (cascade).
+**Sibling services in the three-concerns split:** `HumanLifecycleService` (state-machine), `ApplicationDecisionService` (board voting), `AdminDashboardService` (dashboard aggregation), `AccountDeletionService` (cascade — single entry point for `RequestDeletionAsync` and `CancelDeletionAsync`; both `ProfileController` and `GuestController` deletion actions call through it; ticket-hold + 30-day-grace fields written atomically, see `Profiles.md` cascade section).
 **Owned tables:** None — orchestrator over Profiles, Legal & Consent, Teams, Governance.
 **Status:** (A) Migrated (peterdrier/Humans PR #285 for issue nobodies-collective/Humans#553, 2026-04-22). Three-concerns narrowing complete with nobodies-collective#583 (lifecycle) and nobodies-collective#584 (board voting + admin dashboard).
 

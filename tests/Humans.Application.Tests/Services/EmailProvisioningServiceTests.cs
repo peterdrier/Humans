@@ -163,32 +163,11 @@ public class EmailProvisioningServiceTests
             Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
-    [HumansFact]
-    public async Task ProvisionNobodiesEmailAsync_RejectsWhenEmailBelongsToAnotherGoogleEmail()
-    {
-        var f = BuildFixture();
-
-        var ownerId = Guid.NewGuid();
-        var targetId = Guid.NewGuid();
-
-        StubTargetUser(f, targetId);
-        f.UserService.GetOtherUserIdHavingGoogleEmailAsync(
-                "alice@nobodies.team", targetId, Arg.Any<CancellationToken>())
-            .Returns(ownerId);
-
-        var result = await f.Service.ProvisionNobodiesEmailAsync(targetId, "alice", targetId);
-
-        result.Success.Should().BeFalse();
-        result.ErrorMessage.Should().Contain("already in use by another human");
-
-        await f.WorkspaceUserService.DidNotReceive().GetAccountAsync(
-            Arg.Any<string>(), Arg.Any<CancellationToken>());
-        await f.WorkspaceUserService.DidNotReceive().ProvisionAccountAsync(
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
-        await f.UserEmailService.DidNotReceive().AddVerifiedEmailAsync(
-            Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
-    }
+    // Issue nobodies-collective/Humans#687: the second cross-user check
+    // (GetOtherUserIdHavingGoogleEmailAsync against the legacy User.GoogleEmail
+    // shadow column) is gone. UserEmail.IsGoogle is sole source of truth, so
+    // any user owning the address as their Google identity also has a matching
+    // user_emails row — caught by the first check above.
 
     [HumansFact]
     public async Task ProvisionNobodiesEmailAsync_RejectsWhenPrefixCollidesWithTeamGoogleGroup()
@@ -249,5 +228,73 @@ public class EmailProvisioningServiceTests
             Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
         await f.UserEmailService.Received(1).AddVerifiedEmailAsync(
             userId, "bob@nobodies.team", Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ProvisionNobodiesEmailAsync_HalfCompletedPriorProvisioning_VerifiesAndStampsIsGoogle()
+    {
+        // Half-completed prior provisioning: a previous failed attempt (or a
+        // user-initiated manual add) left an UNVERIFIED @nobodies.team row.
+        // AddVerifiedEmailAsync short-circuits via ExistsForUserAsync and does
+        // NOT promote the existing row to verified. EmailProvisioningService
+        // must close the gap so the row ends up verified AND IsGoogle=true,
+        // matching the legacy User.GoogleEmail belt-and-suspenders behaviour.
+        var f = BuildFixture();
+
+        var userId = Guid.NewGuid();
+        var existingRowId = Guid.NewGuid();
+        StubTargetUser(f, userId, oauthEmail: "person@example.com");
+        f.ProfileService.GetProfileAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new Profile { FirstName = "Person", LastName = "Test" });
+
+        // Pre-existing UNVERIFIED row before AdminMarkVerifiedAsync runs;
+        // post-verification the row reads back verified but IsGoogle=false
+        // (simulates the rare case where EnsureGoogleInvariantAsync tie-broke
+        // against us, so SetGoogleAsync is the belt-and-suspenders catch).
+        var unverifiedRow = new UserEmailEditDto(
+            existingRowId, "bob@nobodies.team",
+            IsVerified: false, IsGoogle: false,
+            Provider: null, ProviderKey: null,
+            IsPrimary: false, Visibility: null,
+            IsPendingVerification: true);
+        var verifiedRow = unverifiedRow with { IsVerified = true, IsPendingVerification = false };
+
+        var callCount = 0;
+        f.UserEmailService.GetUserEmailsAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                callCount++;
+                // Calls: (1) ResolveRecoveryEmailAsync before provisioning,
+                // (2) post-AddVerifiedEmailAsync row lookup, (3) post-AdminMarkVerifiedAsync re-read.
+                return callCount switch
+                {
+                    1 => new List<UserEmailEditDto> { unverifiedRow },
+                    2 => new List<UserEmailEditDto> { unverifiedRow },
+                    _ => new List<UserEmailEditDto> { verifiedRow },
+                };
+            });
+
+        f.WorkspaceUserService.GetAccountAsync(
+                Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns((WorkspaceUserAccount?)null);
+        f.WorkspaceUserService.ProvisionAccountAsync(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(new WorkspaceUserAccount(
+                "bob@nobodies.team", "Person", "Test", false,
+                DateTime.UtcNow, null, IsEnrolledIn2Sv: false));
+
+        var result = await f.Service.ProvisionNobodiesEmailAsync(userId, "bob", userId);
+
+        result.Success.Should().BeTrue();
+
+        // The unverified row must be promoted to verified via the service surface.
+        await f.UserEmailService.Received(1).AdminMarkVerifiedAsync(
+            userId, existingRowId, userId, Arg.Any<CancellationToken>());
+
+        // And then stamped IsGoogle (belt-and-suspenders catch when
+        // EnsureGoogleInvariantAsync didn't auto-stamp).
+        await f.UserEmailService.Received(1).SetGoogleAsync(
+            userId, existingRowId, userId, Arg.Any<CancellationToken>());
     }
 }

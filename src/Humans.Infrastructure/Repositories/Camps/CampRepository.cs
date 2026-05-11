@@ -78,6 +78,7 @@ public sealed class CampRepository : ICampRepository
         var query = ctx.Camps
             .AsNoTracking()
             .Include(c => c.Seasons.Where(s => s.Year == year))
+                .ThenInclude(s => s.Members.Where(m => m.Status == CampMemberStatus.Active))
             .Include(c => c.Leads.Where(l => l.LeftAt == null))
             .Where(c => c.Seasons.Any(s => s.Year == year));
 
@@ -129,6 +130,53 @@ public sealed class CampRepository : ICampRepository
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.Camps.AnyAsync(b => b.Slug == slug, ct);
     }
+
+    // Public camp-directory statuses, applied as a Contains() filter so EF
+    // translates to an IN clause. CampSeasonStatus is stored via
+    // HasConversion<string>(), so ||-chained == comparisons would violate
+    // memory/code/no-enum-compare-in-ef.md.
+    private static readonly CampSeasonStatus[] PublicCampSeasonStatuses =
+        { CampSeasonStatus.Active, CampSeasonStatus.Full };
+
+    public async Task<IReadOnlyList<Camp>> SearchForYearAsync(
+        string query, int year, bool onlyPublicStatus, int max,
+        CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(query) || max <= 0)
+            return Array.Empty<Camp>();
+
+        var pattern = "%" + EscapeLikePattern(query.Trim()) + "%";
+
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var baseQuery = ctx.Camps
+            .AsNoTracking()
+            .Include(c => c.Seasons.Where(s => s.Year == year));
+
+        // Name-match and public-status gate must bind to the SAME season
+        // row — splitting them across two .Where(c => c.Seasons.Any(...))
+        // calls would emit independent correlated subqueries and let two
+        // different seasons satisfy each predicate. Public-status mirrors
+        // Camp.HasPublicSeasonForYear, the same gate the public camp
+        // directory uses.
+        IQueryable<Camp> q = onlyPublicStatus
+            ? baseQuery.Where(c => c.Seasons.Any(s => s.Year == year
+                && EF.Functions.ILike(s.Name, pattern, "\\")
+                && PublicCampSeasonStatuses.Contains(s.Status)))
+            : baseQuery.Where(c => c.Seasons.Any(s => s.Year == year
+                && EF.Functions.ILike(s.Name, pattern, "\\")));
+
+        return await q
+            // Deterministic Take(max) for global search; orchestrator re-ranks by score before display.
+            .OrderBy(c => c.Slug) // arch:db-sort-ok
+            .Take(max)
+            .ToListAsync(ct);
+    }
+
+    private static string EscapeLikePattern(string value)
+        => value
+            .Replace("\\", "\\\\")
+            .Replace("%", "\\%")
+            .Replace("_", "\\_");
 
     // ==========================================================================
     // Writes — Camp (aggregate)
@@ -603,6 +651,15 @@ public sealed class CampRepository : ICampRepository
         await ctx.SaveChangesAsync(ct);
     }
 
+    public async Task SetEeStartDateAsync(
+        LocalDate? eeStartDate, CancellationToken cancellationToken = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(cancellationToken);
+        var settings = await ctx.CampSettings.FirstAsync(cancellationToken);
+        settings.EeStartDate = eeStartDate;
+        await ctx.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task<bool> OpenSeasonAsync(int year, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
@@ -899,5 +956,36 @@ public sealed class CampRepository : ICampRepository
 
         return await ctx.CampLeads
             .CountAsync(l => l.UserId == targetUserId, ct);
+    }
+
+    // ==========================================================================
+    // Early Entry
+    // ==========================================================================
+
+    public async Task<int> GetGrantedCountForSeasonAsync(
+        Guid campSeasonId, CancellationToken cancellationToken = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(cancellationToken);
+        return await ctx.CampMembers
+            .CountAsync(m => m.CampSeasonId == campSeasonId
+                          && m.HasEarlyEntry
+                          && m.Status == CampMemberStatus.Active,
+                        cancellationToken);
+    }
+
+    public async Task<(int OldValue, int NewValue, Guid CampId)?> SetCampSeasonEeSlotCountAsync(
+        Guid campSeasonId, int slotCount, CancellationToken cancellationToken = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(cancellationToken);
+        var season = await ctx.CampSeasons
+            .FirstOrDefaultAsync(s => s.Id == campSeasonId, cancellationToken);
+        if (season is null) return null;
+
+        var oldValue = season.EeSlotCount;
+        if (oldValue == slotCount) return (oldValue, slotCount, season.CampId);
+
+        season.EeSlotCount = slotCount;
+        await ctx.SaveChangesAsync(cancellationToken);
+        return (oldValue, slotCount, season.CampId);
     }
 }

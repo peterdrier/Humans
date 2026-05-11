@@ -599,11 +599,8 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
 
     private async Task<List<Guid>> GetActiveTeamUserIdsAsync(Guid teamId, CancellationToken ct)
     {
-        var members = await _teamService.GetTeamMembersAsync(teamId, ct);
-        return members
-            .Where(tm => tm.LeftAt == null)
-            .Select(tm => tm.UserId)
-            .ToList();
+        var team = await _teamService.GetTeamAsync(teamId, ct);
+        return team?.Members.Select(tm => tm.UserId).ToList() ?? [];
     }
 
     /// <summary>

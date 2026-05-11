@@ -60,6 +60,14 @@ public class User : IdentityUser<Guid>
     /// <c>base.Email</c> when no UserEmails are loaded (test fixtures,
     /// post-anonymization reads). Requires <see cref="UserEmails"/> to be
     /// loaded for production reads.
+    ///
+    /// MUTATION: see <c>memory/architecture/email-mutation-paths.md</c>. This is
+    /// a vestigial ASP.NET Identity field. Application code never writes it —
+    /// its value changes only as a consequence of the underlying
+    /// <see cref="UserEmails"/> data changing (the verified
+    /// <see cref="UserEmail.IsPrimary"/> row's <c>Email</c> rewritten via the
+    /// OAuth callback path, or the <see cref="UserEmail.IsPrimary"/> flag
+    /// flipping between rows).
     /// </summary>
     /// <remarks>
     /// SILENT-FALLBACK FOOTGUN: when <see cref="UserEmails"/> is not loaded

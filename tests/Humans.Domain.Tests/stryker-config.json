@@ -1,0 +1,19 @@
+{
+  "stryker-config": {
+    "project": "Humans.Domain.csproj",
+    "test-runner": "mtp",
+    "coverage-analysis": "off",
+    "mutation-level": "Standard",
+    "concurrency": 16,
+    "reporters": [
+      "ClearText",
+      "Json",
+      "Html"
+    ],
+    "thresholds": {
+      "high": 80,
+      "low": 60,
+      "break": 0
+    }
+  }
+}

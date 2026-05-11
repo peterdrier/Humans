@@ -86,7 +86,7 @@ else
                                 }
                                 else if (!string.IsNullOrEmpty(ev.ActorDisplayName))
                                 {
-                                    <human-link user-id="@ev.ActorUserId.Value" display-name="@ev.ActorDisplayName" mode="Text" />
+                                    <vc:human user-id="@ev.ActorUserId.Value" />
                                 }
                                 else
                                 {
@@ -99,7 +99,7 @@ else
                             <td>
                                 @if (ev.SubjectUserId.HasValue && !string.IsNullOrEmpty(ev.SubjectDisplayName))
                                 {
-                                    <human-link user-id="@ev.SubjectUserId.Value" display-name="@ev.SubjectDisplayName" mode="Text" />
+                                    <vc:human user-id="@ev.SubjectUserId.Value" />
                                 }
                                 else if (ev.SubjectUserId.HasValue)
                                 {

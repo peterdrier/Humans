@@ -48,13 +48,12 @@ public sealed class EmailOutboxRepository : IEmailOutboxRepository
             .CountAsync(m => m.Status == EmailOutboxStatus.Sent && m.SentAt > since, ct);
     }
 
-    public async Task<IReadOnlyList<EmailOutboxMessage>> GetRecentAsync(
-        int take, CancellationToken ct = default)
+    public async Task<IReadOnlyList<EmailOutboxMessage>> GetRecentAsync(int take, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.EmailOutboxMessages
             .AsNoTracking()
-            .OrderByDescending(m => m.CreatedAt)
+            .OrderByDescending(m => m.CreatedAt) // arch:db-sort-ok top-N selector
             .Take(take)
             .ToListAsync(ct);
     }
@@ -66,7 +65,7 @@ public sealed class EmailOutboxRepository : IEmailOutboxRepository
         return await ctx.EmailOutboxMessages
             .AsNoTracking()
             .Where(m => m.UserId == userId)
-            .OrderByDescending(m => m.CreatedAt)
+            .OrderByDescending(m => m.CreatedAt) // arch:db-sort-ok operational chronology
             .ToListAsync(ct);
     }
 

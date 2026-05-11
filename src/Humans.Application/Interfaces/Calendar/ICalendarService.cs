@@ -1,10 +1,11 @@
+using Humans.Application.Interfaces;
 using Humans.Application.DTOs.Calendar;
 using Humans.Domain.Entities;
 using NodaTime;
 
 namespace Humans.Application.Interfaces.Calendar;
 
-public interface ICalendarService
+public interface ICalendarService : IApplicationService
 {
     Task<IReadOnlyList<CalendarOccurrence>> GetOccurrencesInWindowAsync(
         Instant from,
@@ -12,7 +13,7 @@ public interface ICalendarService
         Guid? teamId = null,
         CancellationToken ct = default);
 
-    Task<CalendarEvent?> GetEventByIdAsync(Guid id, CancellationToken ct = default);
+    Task<CalendarEventDetail?> GetEventByIdAsync(Guid id, CancellationToken ct = default);
 
     Task<CalendarEvent> CreateEventAsync(CreateCalendarEventDto dto, Guid createdByUserId, CancellationToken ct = default);
 

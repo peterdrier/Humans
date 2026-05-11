@@ -3,7 +3,7 @@ namespace Humans.Application.Interfaces;
 /// <summary>
 /// Public façade for retrieving rendered guide pages. Owns the memory cache.
 /// </summary>
-public interface IGuideContentService
+public interface IGuideContentService : IApplicationService
 {
     /// <summary>
     /// Returns the rendered, role-annotated HTML for a guide file. Triggers a

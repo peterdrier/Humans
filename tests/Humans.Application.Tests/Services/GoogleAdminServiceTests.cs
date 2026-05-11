@@ -713,15 +713,13 @@ public class GoogleAdminServiceTests
     // --- LinkAccountAsync ---
 
     [HumansFact]
-    public async Task LinkAccountAsync_LinksEmailAndSetsGoogleEmail()
+    public async Task LinkAccountAsync_LinksEmailAndStampsIsGoogle()
     {
         var userId = Guid.NewGuid();
         _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new User { Id = userId, DisplayName = "Test User" });
         _userEmailService.IsEmailLinkedToAnyUserAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(false);
-        _userService.SetGoogleEmailAsync(userId, "alice@nobodies.team", Arg.Any<CancellationToken>())
-            .Returns(true);
 
         var result = await _service.LinkAccountAsync(
             "alice@nobodies.team", userId, _actorUserId);
@@ -729,10 +727,16 @@ public class GoogleAdminServiceTests
         result.Success.Should().BeTrue();
         result.Message.Should().Contain("Linked");
 
+        // Issue nobodies-collective/Humans#687: AddVerifiedEmailAsync creates the
+        // row and the UserEmailService orchestrator stamps IsGoogle via
+        // EnsureGoogleInvariantAsync — no separate SetGoogleEmailAsync call to
+        // User.GoogleEmail. GoogleEmailStatus is reset explicitly so
+        // reconciliation resumes.
         await _userEmailService.Received(1)
             .AddVerifiedEmailAsync(userId, "alice@nobodies.team", Arg.Any<CancellationToken>());
         await _userService.Received(1)
-            .SetGoogleEmailAsync(userId, "alice@nobodies.team", Arg.Any<CancellationToken>());
+            .TrySetGoogleEmailStatusFromSyncAsync(
+                userId, GoogleEmailStatus.Unknown, Arg.Any<CancellationToken>());
         await _teamService.Received(1)
             .EnqueueGoogleResyncForUserTeamsAsync(userId, Arg.Any<CancellationToken>());
         await _auditLogService.Received(1).LogAsync(
@@ -773,61 +777,6 @@ public class GoogleAdminServiceTests
 
         await _userEmailService.DidNotReceive()
             .AddVerifiedEmailAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
-    }
-
-    // --- ApplyEmailBackfillAsync ---
-
-    [HumansFact]
-    public async Task ApplyEmailBackfillAsync_UpdatesEmailsAndReturnsCount()
-    {
-        var userId = Guid.NewGuid();
-        _userService.ApplyEmailBackfillAsync(userId, "new@example.com", Arg.Any<CancellationToken>())
-            .Returns((true, "old@example.com"));
-
-        var corrections = new Dictionary<string, string>(StringComparer.Ordinal)
-        {
-            { userId.ToString(), "new@example.com" }
-        };
-
-        var result = await _service.ApplyEmailBackfillAsync(
-            [userId], corrections, _actorUserId);
-
-        result.UpdatedCount.Should().Be(1);
-        result.Errors.Should().BeEmpty();
-        await _userService.Received(1).ApplyEmailBackfillAsync(
-            userId, "new@example.com", Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task ApplyEmailBackfillAsync_SkipsUsersWithNoCorrection()
-    {
-        var userId = Guid.NewGuid();
-
-        var result = await _service.ApplyEmailBackfillAsync(
-            [userId], new Dictionary<string, string>(StringComparer.Ordinal), _actorUserId);
-
-        result.UpdatedCount.Should().Be(0);
-        await _userService.DidNotReceive().ApplyEmailBackfillAsync(
-            Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task ApplyEmailBackfillAsync_RecordsErrorWhenUserMissing()
-    {
-        var userId = Guid.NewGuid();
-        _userService.ApplyEmailBackfillAsync(userId, "new@example.com", Arg.Any<CancellationToken>())
-            .Returns((false, (string?)null));
-
-        var corrections = new Dictionary<string, string>(StringComparer.Ordinal)
-        {
-            { userId.ToString(), "new@example.com" }
-        };
-
-        var result = await _service.ApplyEmailBackfillAsync(
-            [userId], corrections, _actorUserId);
-
-        result.UpdatedCount.Should().Be(0);
-        result.Errors.Should().ContainSingle().Which.Should().Contain("not found");
     }
 
     // --- LinkGroupToTeamAsync ---

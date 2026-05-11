@@ -21,7 +21,7 @@ public record VendorOrderDto(
 /// <summary>Vendor-agnostic issued ticket data.</summary>
 public record VendorTicketDto(
     string VendorTicketId,
-    string VendorOrderId,
+    string? VendorOrderId,
     string AttendeeName,
     string? AttendeeEmail,
     string TicketTypeName,

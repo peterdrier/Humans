@@ -14,12 +14,12 @@
 
     <vc:temp-data-alerts />
 
-    <p class="text-muted">Users whose email rows violate the at-most-one IsGoogle / exactly-one IsPrimary invariants. Open each user's email grid to remediate.</p>
+    <p class="text-muted">Users whose email rows violate the exactly-one IsGoogle (when verified rows exist) / exactly-one IsPrimary invariants. Open each user's email grid to remediate.</p>
 
     @if (Model.Count == 0)
     {
         <div class="alert alert-success">
-            <i class="fa-solid fa-check-circle me-1"></i>No invariant violations found. All users have at most one Google identity row and exactly one primary verified email.
+            <i class="fa-solid fa-check-circle me-1"></i>No invariant violations found. All users have exactly one Google identity row (when they have verified emails) and exactly one primary verified email.
         </div>
     }
     else
@@ -51,6 +51,10 @@
                                 {
                                     <span class="badge bg-danger">@v.IsGoogleCount</span>
                                 }
+                                else if (v.HasZeroGoogle)
+                                {
+                                    <span class="badge bg-warning text-dark">@v.IsGoogleCount</span>
+                                }
                                 else
                                 {
                                     <span class="text-muted">@v.IsGoogleCount</span>
@@ -71,6 +75,10 @@
                                 @if (v.HasMultipleGoogle)
                                 {
                                     <div><i class="fa-brands fa-google me-1 text-danger"></i>Multiple Google rows</div>
+                                }
+                                @if (v.HasZeroGoogle)
+                                {
+                                    <div><i class="fa-brands fa-google me-1 text-warning"></i>No Google row among verified emails</div>
                                 }
                                 @if (v.HasPrimaryProblem)
                                 {

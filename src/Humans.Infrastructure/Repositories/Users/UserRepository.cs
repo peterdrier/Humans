@@ -267,29 +267,9 @@ public sealed class UserRepository : IUserRepository
         return true;
     }
 
-    public async Task<(bool Updated, string? OldEmail)> RewritePrimaryEmailAsync(
-        Guid userId, string newEmail, CancellationToken ct = default)
-    {
-        // The email rename is applied to the UserEmail row by the admin flow's
-        // call to IUserEmailService.RewriteEmailAddressAsync; this method only
-        // returns the previous value for audit logging. With Identity-column
-        // writes removed (PR 2), base.Email is null for users created post-PR 1
-        // — pull the old email from UserEmails so the audit log records a real
-        // address. Falls back to base.Email for legacy pre-PR 1 users (column
-        // still populated) so the audit remains accurate during the transition.
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var user = await ctx.Users
-            .AsNoTracking()
-            .Include(u => u.UserEmails)
-            .FirstOrDefaultAsync(u => u.Id == userId, ct);
-        if (user is null)
-            return (false, null);
-
-        return (true, user.Email);
-    }
-
     public async Task<bool> SetDeletionPendingAsync(
-        Guid userId, Instant requestedAt, Instant scheduledFor, CancellationToken ct = default)
+        Guid userId, Instant requestedAt, Instant scheduledFor, Instant? eligibleAfter,
+        CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         var user = await ctx.Users.FindAsync([userId], ct);
@@ -298,6 +278,7 @@ public sealed class UserRepository : IUserRepository
 
         user.DeletionRequestedAt = requestedAt;
         user.DeletionScheduledFor = scheduledFor;
+        user.DeletionEligibleAfter = eligibleAfter;
         await ctx.SaveChangesAsync(ct);
         return true;
     }
@@ -407,6 +388,29 @@ public sealed class UserRepository : IUserRepository
         return await ctx.Set<IdentityUserLogin<Guid>>()
             .Where(l => l.UserId == userId)
             .ExecuteDeleteAsync(ct);
+    }
+
+    public async Task<IReadOnlyDictionary<Guid, IReadOnlyList<(string Provider, string ProviderKey)>>>
+        GetExternalLoginsByUserIdsAsync(
+            IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
+    {
+        if (userIds.Count == 0)
+            return new Dictionary<Guid, IReadOnlyList<(string, string)>>();
+
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var rows = await ctx.Set<IdentityUserLogin<Guid>>()
+            .AsNoTracking()
+            .Where(l => userIds.Contains(l.UserId))
+            .Select(l => new { l.UserId, l.LoginProvider, l.ProviderKey })
+            .ToListAsync(ct);
+
+        return rows
+            .GroupBy(r => r.UserId)
+            .ToDictionary(
+                g => g.Key,
+                g => (IReadOnlyList<(string, string)>)g
+                    .Select(r => (r.LoginProvider, r.ProviderKey))
+                    .ToList());
     }
 
     public async Task<int> ReassignLoginsToUserAsync(

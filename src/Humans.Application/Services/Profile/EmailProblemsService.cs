@@ -1,6 +1,7 @@
 using Humans.Application.DTOs.EmailProblems;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
+using Humans.Domain.Entities;
 using Humans.Domain.Helpers;
 using NodaTime;
 
@@ -114,18 +115,22 @@ public sealed class EmailProblemsService : IEmailProblemsService
         }
 
         // Case 9: legacy AspNetIdentity Email column populated but no matching
-        // verified UserEmail row exists. Pre-decoupling users whose row was
-        // never written when the spec switched. Detect via the raw column
-        // (IdentityEmailColumn) so the User.Email override's UserEmails-based
-        // resolution doesn't mask it.
+        // verified UserEmail row exists. Read user_emails directly by UserId —
+        // Profile-less users (mailing-list / ticketing imports) have a valid
+        // UserEmail row but no Profile aggregate, so the FullProfile path
+        // would false-positive them.
+        var emailsByUser = await _userEmailService.GetEntitiesByUserIdsAsync(
+            users.Select(u => u.Id).ToList(), ct);
+
         foreach (var u in users)
         {
             var legacy = u.IdentityEmailColumn;
             if (string.IsNullOrEmpty(legacy)) continue;
 
-            var profile = profiles.FirstOrDefault(p => p.UserId == u.Id);
-            var emails = profile?.AllUserEmails ?? Array.Empty<UserEmailSnapshot>();
-            var hasMatchingVerifiedRow = emails.Any(e =>
+            var userEmails = emailsByUser.TryGetValue(u.Id, out var list)
+                ? list
+                : (IReadOnlyList<UserEmail>)Array.Empty<UserEmail>();
+            var hasMatchingVerifiedRow = userEmails.Any(e =>
                 e.IsVerified && string.Equals(e.Email, legacy, StringComparison.OrdinalIgnoreCase));
             if (hasMatchingVerifiedRow) continue;
 
@@ -159,9 +164,16 @@ public sealed class EmailProblemsService : IEmailProblemsService
     }
 
     public async Task<IReadOnlyList<(Guid UserId, string Email)>> BackfillLegacyIdentityEmailsAsync(
-        CancellationToken ct = default)
+        Guid actorUserId, CancellationToken ct = default)
     {
+        // actorUserId is captured by the caller's audit row; the scanner is
+        // admin-invoked and the per-row audit lives at the controller level.
+        _ = actorUserId;
+
         var users = await _userService.GetAllUsersAsync(ct);
+        var userIds = users.Select(u => u.Id).ToList();
+        var emailsByUser = await _userEmailService.GetEntitiesByUserIdsAsync(userIds, ct);
+
         var backfilled = new List<(Guid, string)>();
 
         foreach (var u in users)
@@ -169,12 +181,18 @@ public sealed class EmailProblemsService : IEmailProblemsService
             var legacy = u.IdentityEmailColumn;
             if (string.IsNullOrEmpty(legacy)) continue;
 
-            var profile = await _profileService.GetFullProfileAsync(u.Id, ct);
-            var emails = profile?.AllUserEmails ?? Array.Empty<UserEmailSnapshot>();
-            if (emails.Any(e => e.IsVerified
+            var userEmails = emailsByUser.TryGetValue(u.Id, out var list)
+                ? list
+                : (IReadOnlyList<UserEmail>)Array.Empty<UserEmail>();
+            if (userEmails.Any(e => e.IsVerified
                 && string.Equals(e.Email, legacy, StringComparison.OrdinalIgnoreCase)))
                 continue;
 
+            // Issue nobodies-collective/Humans#697: write the legacy address as
+            // a plain verified row. The (Provider, ProviderKey) tag is no
+            // longer authoritative for OAuth identity (AspNetUserLogins is) —
+            // the next OAuth sign-in's reconcile finds the matching row by
+            // address and attaches the tag via TagMoved.
             await _userEmailService.AddVerifiedEmailAsync(u.Id, legacy, ct);
             backfilled.Add((u.Id, legacy));
         }

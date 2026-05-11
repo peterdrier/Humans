@@ -5,7 +5,7 @@ using Humans.Application.Models;
 
 namespace Humans.Application.Interfaces;
 
-public interface IAgentService : IUserDataContributor
+public interface IAgentService : IApplicationService, IUserDataContributor
 {
     IAsyncEnumerable<AgentTurnToken> AskAsync(AgentTurnRequest request, CancellationToken cancellationToken);
 

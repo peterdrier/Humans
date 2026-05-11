@@ -8,97 +8,35 @@ using Xunit;
 
 namespace Humans.Application.Tests.Authorization;
 
-/// <summary>
-/// Unit tests for IssuesAuthorizationHandler — resource-based authorization for
-/// issue handler operations. Tests cover: Admin override, section role-holder
-/// access (including the multi-role Onboarding case), denial for non-handlers,
-/// null-section (Admin-only) issues, and unknown-section issues.
-/// </summary>
 public sealed class IssuesAuthorizationHandlerTests
 {
     private readonly IssuesAuthorizationHandler _handler = new();
 
-    [HumansFact]
-    public async Task Admin_CanHandleAnyIssue()
+    public static TheoryData<string[], string?, bool> IssueAuthorizationCases => new()
     {
-        var user = CreateUserWithRoles(RoleNames.Admin);
-        var issue = CreateIssue(IssueSectionRouting.Tickets);
+        { [RoleNames.Admin], IssueSectionRouting.Tickets, true },
+        { [RoleNames.Admin], null, true },
+        { [RoleNames.TicketAdmin], IssueSectionRouting.Tickets, true },
+        { [RoleNames.TicketAdmin], IssueSectionRouting.Camps, false },
+        { [RoleNames.CampAdmin], IssueSectionRouting.Camps, true },
+        { [RoleNames.CampAdmin], IssueSectionRouting.CityPlanning, true },
+        { [RoleNames.ConsentCoordinator], IssueSectionRouting.Onboarding, true },
+        { [], IssueSectionRouting.Tickets, false },
+        { [RoleNames.TicketAdmin, RoleNames.CampAdmin], null, false },
+        { [RoleNames.TicketAdmin], "ZSomeUnknownSection", false },
+    };
 
-        (await EvaluateAsync(user, issue)).Should().BeTrue();
-    }
-
-    [HumansFact]
-    public async Task Admin_CanHandleNullSectionIssue()
+    [HumansTheory]
+    [MemberData(nameof(IssueAuthorizationCases))]
+    public async Task Issue_handle_authorization_matches_expected_scenarios(
+        string[] roles,
+        string? section,
+        bool expected)
     {
-        var user = CreateUserWithRoles(RoleNames.Admin);
-        var issue = CreateIssue(section: null);
+        var user = CreateUserWithRoles(roles);
+        var issue = CreateIssue(section);
 
-        (await EvaluateAsync(user, issue)).Should().BeTrue();
-    }
-
-    [HumansFact]
-    public async Task TicketAdmin_CanHandleTicketsSectionIssue()
-    {
-        var user = CreateUserWithRoles(RoleNames.TicketAdmin);
-        var issue = CreateIssue(IssueSectionRouting.Tickets);
-
-        (await EvaluateAsync(user, issue)).Should().BeTrue();
-    }
-
-    [HumansFact]
-    public async Task TicketAdmin_CannotHandleCampsSectionIssue()
-    {
-        var user = CreateUserWithRoles(RoleNames.TicketAdmin);
-        var issue = CreateIssue(IssueSectionRouting.Camps);
-
-        (await EvaluateAsync(user, issue)).Should().BeFalse();
-    }
-
-    [HumansFact]
-    public async Task CampAdmin_CanHandleCampsAndCityPlanningIssues()
-    {
-        var user = CreateUserWithRoles(RoleNames.CampAdmin);
-
-        (await EvaluateAsync(user, CreateIssue(IssueSectionRouting.Camps))).Should().BeTrue();
-        (await EvaluateAsync(user, CreateIssue(IssueSectionRouting.CityPlanning))).Should().BeTrue();
-    }
-
-    [HumansFact]
-    public async Task ConsentCoordinator_CanHandleOnboardingIssue()
-    {
-        // Onboarding maps to multiple roles — verify ANY of them grants access.
-        var user = CreateUserWithRoles(RoleNames.ConsentCoordinator);
-        var issue = CreateIssue(IssueSectionRouting.Onboarding);
-
-        (await EvaluateAsync(user, issue)).Should().BeTrue();
-    }
-
-    [HumansFact]
-    public async Task RegularUser_CannotHandleAnyIssue()
-    {
-        var user = CreateUserWithRoles(); // no roles
-        var issue = CreateIssue(IssueSectionRouting.Tickets);
-
-        (await EvaluateAsync(user, issue)).Should().BeFalse();
-    }
-
-    [HumansFact]
-    public async Task NonAdmin_CannotHandleNullSectionIssue()
-    {
-        // Null section maps to no roles → Admin-only.
-        var user = CreateUserWithRoles(RoleNames.TicketAdmin, RoleNames.CampAdmin);
-        var issue = CreateIssue(section: null);
-
-        (await EvaluateAsync(user, issue)).Should().BeFalse();
-    }
-
-    [HumansFact]
-    public async Task NonAdmin_CannotHandleUnknownSectionIssue()
-    {
-        var user = CreateUserWithRoles(RoleNames.TicketAdmin);
-        var issue = CreateIssue("ZSomeUnknownSection");
-
-        (await EvaluateAsync(user, issue)).Should().BeFalse();
+        (await EvaluateAsync(user, issue)).Should().Be(expected);
     }
 
     [HumansFact]

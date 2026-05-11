@@ -203,7 +203,9 @@ public class TicketController : HumansControllerBase
             FilterPaymentStatus = filterPaymentStatus,
             FilterTicketType = filterTicketType,
             FilterMatched = filterMatched,
-            AvailableTicketTypes = await _ticketQueryService.GetAvailableTicketTypesAsync(),
+            AvailableTicketTypes = (await _ticketQueryService.GetAvailableTicketTypesAsync())
+                .OrderBy(t => t, StringComparer.Ordinal)
+                .ToList(),
         };
 
         return View(model);
@@ -255,7 +257,9 @@ public class TicketController : HumansControllerBase
             FilterMatched = filterMatched,
             FilterOrderId = filterOrderId,
             FilterMultipleTickets = filterMultipleTickets,
-            AvailableTicketTypes = await _ticketQueryService.GetAvailableTicketTypesAsync(),
+            AvailableTicketTypes = (await _ticketQueryService.GetAvailableTicketTypesAsync())
+                .OrderBy(t => t, StringComparer.Ordinal)
+                .ToList(),
         };
 
         return View(model);

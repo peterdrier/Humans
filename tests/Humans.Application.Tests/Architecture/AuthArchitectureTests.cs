@@ -13,90 +13,73 @@ using RoleAssignmentService = Humans.Application.Services.Auth.RoleAssignmentSer
 namespace Humans.Application.Tests.Architecture;
 
 /// <summary>
-/// Architecture tests enforcing the §15 repository pattern for the Auth
-/// section — migrated per issue #551. Auth is admin-only and low-traffic
-/// (handful of role changes per month, rare magic-link sends), so no caching
-/// decorator sits in front of either service — they go directly through
-/// <see cref="IRoleAssignmentRepository"/> / cross-section service interfaces
-/// and invalidate cross-cutting caches via
-/// <see cref="INavBadgeCacheInvalidator"/> +
-/// <see cref="IRoleAssignmentClaimsCacheInvalidator"/> after successful writes.
+/// Architecture tests enforcing the repository pattern for the Auth section.
 /// </summary>
 public class AuthArchitectureTests
 {
-    // ── RoleAssignmentService ────────────────────────────────────────────────
-
-    [HumansFact]
-    public void RoleAssignmentService_LivesInHumansApplicationServicesAuthNamespace()
+    public static TheoryData<Type> AuthServices => new()
     {
-        typeof(RoleAssignmentService).Namespace
+        typeof(RoleAssignmentService),
+        typeof(MagicLinkService),
+    };
+
+    public static TheoryData<Type, Type> RequiredConstructorEdges => new()
+    {
+        { typeof(RoleAssignmentService), typeof(IRoleAssignmentRepository) },
+        { typeof(RoleAssignmentService), typeof(IUserService) },
+        { typeof(RoleAssignmentService), typeof(IRoleAssignmentClaimsCacheInvalidator) },
+        { typeof(RoleAssignmentService), typeof(INavBadgeCacheInvalidator) },
+        { typeof(MagicLinkService), typeof(IMagicLinkUrlBuilder) },
+        { typeof(MagicLinkService), typeof(IMagicLinkRateLimiter) },
+        { typeof(MagicLinkService), typeof(IUserEmailService) },
+    };
+
+    [HumansTheory]
+    [MemberData(nameof(AuthServices))]
+    public void Auth_services_live_in_application_auth_namespace(Type serviceType)
+    {
+        serviceType.Namespace
             .Should().Be("Humans.Application.Services.Auth",
-                because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
+                because: "services with business logic live in Humans.Application");
     }
 
-    [HumansFact]
-    public void RoleAssignmentService_HasNoDbContextConstructorParameter()
+    [HumansTheory]
+    [MemberData(nameof(AuthServices))]
+    public void Auth_services_have_no_dbcontext_constructor_parameter(Type serviceType)
     {
-        var ctor = typeof(RoleAssignmentService).GetConstructors().Single();
+        var ctor = serviceType.GetConstructors().Single();
+
         ctor.GetParameters()
             .Should().NotContain(
                 p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
-                because: "services in Humans.Application must never take DbContext — use IRoleAssignmentRepository instead (design-rules §3)");
+                because: "Application services must not take DbContext directly");
     }
 
-    [HumansFact]
-    public void RoleAssignmentService_HasNoIMemoryCacheConstructorParameter()
+    [HumansTheory]
+    [MemberData(nameof(AuthServices))]
+    public void Auth_services_do_not_own_memory_cache(Type serviceType)
     {
-        var ctor = typeof(RoleAssignmentService).GetConstructors().Single();
+        var ctor = serviceType.GetConstructors().Single();
         var cachingParam = ctor.GetParameters()
             .FirstOrDefault(p => (p.ParameterType.FullName ?? string.Empty)
                 .StartsWith("Microsoft.Extensions.Caching.Memory", StringComparison.Ordinal));
 
         cachingParam.Should().BeNull(
-            because: "Auth has no canonical domain cache; nav-badge and role-assignment-claims invalidation route through INavBadgeCacheInvalidator / IRoleAssignmentClaimsCacheInvalidator, not IMemoryCache directly (design-rules §5)");
+            because: "Auth cache invalidation routes through explicit invalidator abstractions");
     }
 
-    [HumansFact]
-    public void RoleAssignmentService_TakesRepository()
+    [HumansTheory]
+    [MemberData(nameof(RequiredConstructorEdges))]
+    public void Auth_services_take_required_collaborators(Type serviceType, Type dependencyType)
     {
-        var ctor = typeof(RoleAssignmentService).GetConstructors().Single();
+        var ctor = serviceType.GetConstructors().Single();
         var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
 
-        paramTypes.Should().Contain(typeof(IRoleAssignmentRepository));
+        paramTypes.Should().Contain(dependencyType);
     }
 
     [HumansFact]
-    public void RoleAssignmentService_TakesUserServiceForNavStitching()
-    {
-        var ctor = typeof(RoleAssignmentService).GetConstructors().Single();
-        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
-
-        paramTypes.Should().Contain(typeof(IUserService),
-            because: "RoleAssignmentService resolves assignee / assigner display names via IUserService.GetByIdsAsync and stitches them onto the [Obsolete] cross-domain navs in memory (design-rules §6b)");
-    }
-
-    [HumansFact]
-    public void RoleAssignmentService_TakesClaimsInvalidator()
-    {
-        var ctor = typeof(RoleAssignmentService).GetConstructors().Single();
-        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
-
-        paramTypes.Should().Contain(typeof(IRoleAssignmentClaimsCacheInvalidator),
-            because: "RoleAssignmentService must invalidate the per-user claims cache after Assign/End/Revoke — the dependency proves the wire is in place so the RoleAssignmentClaimsTransformation 60-second cached snapshot does not serve stale claims");
-    }
-
-    [HumansFact]
-    public void RoleAssignmentService_TakesNavBadgeInvalidator()
-    {
-        var ctor = typeof(RoleAssignmentService).GetConstructors().Single();
-        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
-
-        paramTypes.Should().Contain(typeof(INavBadgeCacheInvalidator),
-            because: "Assign/End affect nav-badge counts (active role totals), so the service invalidates the nav-badge cache after writes");
-    }
-
-    [HumansFact]
-    public void RoleAssignmentService_ConstructorTakesNoStoreType()
+    public void RoleAssignmentService_constructor_takes_no_store_type()
     {
         var ctor = typeof(RoleAssignmentService).GetConstructors().Single();
         var storeParam = ctor.GetParameters()
@@ -104,62 +87,20 @@ public class AuthArchitectureTests
                 .StartsWith("Humans.Application.Interfaces.Stores", StringComparison.Ordinal));
 
         storeParam.Should().BeNull(
-            because: "Application services must not depend on store abstractions (design-rules §15); the Auth section has no store at all");
+            because: "the Auth section has no store abstraction");
     }
 
-    // ── IRoleAssignmentRepository ────────────────────────────────────────────
-
     [HumansFact]
-    public void IRoleAssignmentRepository_LivesInApplicationInterfacesRepositoriesNamespace()
+    public void RoleAssignment_repository_has_expected_application_interface_and_sealed_implementation()
     {
         typeof(IRoleAssignmentRepository).Namespace
-            .Should().Be("Humans.Application.Interfaces.Repositories",
-                because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
+            .Should().Be("Humans.Application.Interfaces.Repositories");
+        typeof(RoleAssignmentRepository).IsSealed.Should().BeTrue(
+            because: "repository implementations are sealed to prevent ad-hoc extension");
     }
 
     [HumansFact]
-    public void RoleAssignmentRepository_IsSealed()
-    {
-        var repoType = typeof(RoleAssignmentRepository);
-
-        repoType.IsSealed.Should().BeTrue(
-            because: "repository implementations are sealed to prevent ad-hoc extension; any new behavior belongs on the interface");
-    }
-
-    // ── MagicLinkService ─────────────────────────────────────────────────────
-
-    [HumansFact]
-    public void MagicLinkService_LivesInHumansApplicationServicesAuthNamespace()
-    {
-        typeof(MagicLinkService).Namespace
-            .Should().Be("Humans.Application.Services.Auth",
-                because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
-    }
-
-    [HumansFact]
-    public void MagicLinkService_HasNoDbContextConstructorParameter()
-    {
-        var ctor = typeof(MagicLinkService).GetConstructors().Single();
-        ctor.GetParameters()
-            .Should().NotContain(
-                p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
-                because: "MagicLinkService owns no tables — verified-email lookup routes through IUserEmailService.FindVerifiedEmailWithUserAsync instead of direct DbContext queries");
-    }
-
-    [HumansFact]
-    public void MagicLinkService_HasNoIMemoryCacheConstructorParameter()
-    {
-        var ctor = typeof(MagicLinkService).GetConstructors().Single();
-        var cachingParam = ctor.GetParameters()
-            .FirstOrDefault(p => (p.ParameterType.FullName ?? string.Empty)
-                .StartsWith("Microsoft.Extensions.Caching.Memory", StringComparison.Ordinal));
-
-        cachingParam.Should().BeNull(
-            because: "MagicLink's token-replay and signup-cooldown state routes through IMagicLinkRateLimiter, an Application-layer abstraction (same pattern as IUnsubscribeTokenProvider)");
-    }
-
-    [HumansFact]
-    public void MagicLinkService_HasNoEmailSettingsOrDataProtectionConstructorParameter()
+    public void MagicLinkService_has_no_email_settings_or_data_protection_constructor_parameter()
     {
         var ctor = typeof(MagicLinkService).GetConstructors().Single();
         var settingsParam = ctor.GetParameters()
@@ -170,18 +111,6 @@ public class AuthArchitectureTests
                     .Contains("IDataProtectionProvider", StringComparison.Ordinal));
 
         settingsParam.Should().BeNull(
-            because: "Data-protection and URL construction live behind IMagicLinkUrlBuilder in Infrastructure so MagicLinkService stays free of Infrastructure config (mirrors CommunicationPreferenceService + IUnsubscribeTokenProvider)");
-    }
-
-    [HumansFact]
-    public void MagicLinkService_TakesUrlBuilderAndRateLimiter()
-    {
-        var ctor = typeof(MagicLinkService).GetConstructors().Single();
-        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
-
-        paramTypes.Should().Contain(typeof(IMagicLinkUrlBuilder));
-        paramTypes.Should().Contain(typeof(IMagicLinkRateLimiter));
-        paramTypes.Should().Contain(typeof(IUserEmailService),
-            because: "verified-email lookup goes through IUserEmailService.FindVerifiedEmailWithUserAsync instead of a direct DbContext.UserEmails query");
+            because: "Data-protection and URL construction live behind IMagicLinkUrlBuilder in Infrastructure");
     }
 }

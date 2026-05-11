@@ -187,6 +187,37 @@ public sealed class ShiftManagementRepository : IShiftManagementRepository
         await ctx.SaveChangesAsync(ct);
     }
 
+    public async Task<IReadOnlyList<Rota>> SearchRotasAsync(
+        string query, Guid eventSettingsId, bool onlyVolunteerVisible,
+        int max, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(query) || max <= 0)
+            return Array.Empty<Rota>();
+
+        var pattern = "%" + EscapeLikePattern(query.Trim()) + "%";
+
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var q = ctx.Rotas
+            .AsNoTracking()
+            .Where(r => r.EventSettingsId == eventSettingsId
+                && EF.Functions.ILike(r.Name, pattern, "\\"));
+
+        if (onlyVolunteerVisible)
+            q = q.Where(r => r.IsVisibleToVolunteers);
+
+        return await q
+            // Deterministic Take(max) for global search; controller re-ranks by score before display.
+            .OrderBy(r => r.Name) // arch:db-sort-ok
+            .Take(max)
+            .ToListAsync(ct);
+    }
+
+    private static string EscapeLikePattern(string value)
+        => value
+            .Replace("\\", "\\\\")
+            .Replace("%", "\\%")
+            .Replace("_", "\\_");
+
     public async Task SetRotaTagsAsync(Guid rotaId, IReadOnlyList<Guid> tagIds, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
@@ -594,23 +625,15 @@ public sealed class ShiftManagementRepository : IShiftManagementRepository
     // Shift tags
     // ==========================================================================
 
-    public async Task<IReadOnlyList<ShiftTag>> GetAllTagsAsync(CancellationToken ct = default)
+    public async Task<IReadOnlyList<ShiftTag>> GetTagsAsync(string? query = null, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.ShiftTags
-            .AsNoTracking()
-            .OrderBy(t => t.Name)
-            .ToListAsync(ct);
-    }
+        var tags = ctx.ShiftTags.AsNoTracking();
 
-    public async Task<IReadOnlyList<ShiftTag>> SearchTagsAsync(string query, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.ShiftTags
-            .AsNoTracking()
-            .Where(t => EF.Functions.ILike(t.Name, $"%{query}%"))
-            .OrderBy(t => t.Name)
-            .ToListAsync(ct);
+        if (!string.IsNullOrWhiteSpace(query))
+            tags = tags.Where(t => EF.Functions.ILike(t.Name, $"%{query}%"));
+
+        return await tags.ToListAsync(ct);
     }
 
     public async Task<ShiftTag?> FindTagByNameAsync(string name, CancellationToken ct = default)

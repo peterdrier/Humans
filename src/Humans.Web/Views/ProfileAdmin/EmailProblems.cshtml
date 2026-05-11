@@ -26,8 +26,8 @@ else
             {
                 <tr>
                     <td><code>@row.Email</code></td>
-                    <td><human-link user-id="@row.User1Id" display-name="@row.User1DisplayName" admin /></td>
-                    <td><human-link user-id="@row.User2Id" display-name="@row.User2DisplayName" admin /></td>
+                    <td><vc:human user-id="@row.User1Id" link="Admin" /></td>
+                    <td><vc:human user-id="@row.User2Id" link="Admin" /></td>
                     <td>
                         <a class="btn btn-sm btn-primary"
                            asp-action="EmailProblemsCompare"
@@ -53,7 +53,7 @@ else
             @foreach (var row in Model.SingleUserIssues)
             {
                 <tr>
-                    <td><human-link user-id="@row.UserId" display-name="@row.DisplayName" admin /></td>
+                    <td><vc:human user-id="@row.UserId" link="Admin" /></td>
                     <td>@string.Join(", ", row.ProblemSummaries)</td>
                     <td>
                         <a class="btn btn-sm btn-secondary"
@@ -90,7 +90,7 @@ else
             @foreach (var row in Model.LegacyEmailRows)
             {
                 <tr>
-                    <td><human-link user-id="@row.UserId" display-name="@row.DisplayName" admin /></td>
+                    <td><vc:human user-id="@row.UserId" link="Admin" /></td>
                     <td><code>@row.LegacyEmail</code></td>
                 </tr>
             }
@@ -124,12 +124,15 @@ else
                         }
                         else if (row.Kind == EmailProblemKind.GhostExternalLogins)
                         {
-                            <form method="post" asp-action="DeleteGhostLogins" class="d-inline">
-                                @Html.AntiForgeryToken()
-                                <input type="hidden" name="userId" value="@row.UserId" />
-                                <button type="submit" class="btn btn-sm btn-danger"
-                                        data-confirm="Delete ghost AspNetUserLogins rows? This is irreversible.">Delete logins ✕</button>
-                            </form>
+                            @* Issue nobodies-collective/Humans#697: ghost-logins remediation moved *@
+                            @* into the per-user admin emails diagnostic, where the AspNetUserLogins *@
+                            @* table and disagreement flags are visible side-by-side with the user's *@
+                            @* UserEmail rows. No inline action button. *@
+                            <a class="btn btn-sm btn-outline-secondary"
+                               asp-controller="Profile"
+                               asp-action="AdminEmails"
+                               asp-route-id="@row.UserId"
+                               asp-fragment="external-logins">Investigate ▸</a>
                         }
                     </td>
                 </tr>

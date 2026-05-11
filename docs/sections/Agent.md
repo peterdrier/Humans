@@ -45,7 +45,7 @@ Conversational helper backed by Anthropic Claude. Available to any authenticated
 
 **Table:** `agent_settings`
 
-Single-row table (PK `Id = 1`, enforced by `ck_agent_settings_singleton`) holding the live tunables: `Enabled`, `Model`, `PreloadConfig` (`Tier1`/`Tier2`), `DailyMessageCap`, `HourlyMessageCap`, `DailyTokenCap`, `RetentionDays`. Mutated only via `IAgentSettingsService`; reads served by the Singleton `IAgentSettingsStore` (warmup hosted service preloads it). Tool-call cap is `AnthropicOptions.MaxToolCallsPerTurn` (config, not DB).
+Single-row table (PK `Id = 1`, enforced by `ck_agent_settings_singleton`) holding the live tunables: `Enabled`, `Model`, `PreloadConfig` (`Tier1`/`Tier2`), `DailyMessageCap`, `HourlyMessageCap`, `DailyTokenCap`, `RetentionDays`, `UpdatedAt`. Mutated only via `IAgentSettingsService`; reads served by the Singleton `IAgentSettingsStore` (warmup hosted service preloads it). Tool-call cap is `AnthropicOptions.MaxToolCallsPerTurn` (config, not DB).
 
 ### Rate-limit counters (in-memory)
 
@@ -68,7 +68,7 @@ Per-user message and token counters live in the Singleton `IAgentRateLimitStore`
 1. **Terms link, not gate.** The Assistant panel shows a persistent "AI Terms" link below the composer that opens `/Legal/agent-chat` (the rendered Agent Chat Terms from `nobodies-collective/legal`). There is no explicit consent step — opening the panel and sending a message constitutes use; the terms describe what's sent, retention, and rights. The team-required-doc consent flow (`IConsentService.GetPendingDocumentNamesAsync`) is intentionally NOT used here; agent use is opt-in, not a membership precondition.
 2. **Enabled gate.** If `AgentSettings.Enabled = false`, widget is hidden and `POST /Agent/Ask` returns `503 ServiceUnavailable`.
 3. **Rate limit.** Per-user daily and hourly caps from `AgentSettings`. Over-cap requests return `429 TooManyRequests` without hitting the provider.
-4. **Tool whitelist.** Only `fetch_feature_spec`, `fetch_section_guide`, `route_to_issue`, `get_audit_history` are valid tool names. Unknown names return a tool error; filesystem is never touched outside `docs/sections/` and `docs/features/`.
+4. **Tool whitelist.** Only `fetch_feature_spec`, `fetch_section_guide`, `route_to_issue`, `get_audit_history`, `get_shift_details` are valid tool names. Unknown names return a tool error; filesystem is never touched outside `docs/sections/` and `docs/features/`.
 5. **Tool loop bound.** At most `AnthropicOptions.MaxToolCallsPerTurn` (default 3) tool calls per turn, enforced server-side.
 6. **Refusal logging.** Every refused turn writes an `AgentMessage` with `RefusalReason != null`.
 7. **Append-only conversations per user.** A user can only post to conversations they own. `AgentController` rejects cross-user access with 404.
@@ -103,16 +103,16 @@ Missing or wrong key → 401 (503 if the key is not configured). Unknown id → 
 ## Cross-Section Dependencies
 
 - **Issues** — agent handoff produces a client-side issue proposal (title/category/description) that pre-fills `/Issues/Submit`. The agent does not write Issue rows itself.
-- **Feedback (legacy)** — historical `FeedbackReport.Source = AgentUnresolved` rows from before this PR are still readable via the Feedback admin queue. Agent no longer creates new ones.
+- **Feedback** — `IFeedbackService.GetOpenFeedbackIdsForUserAsync` is called live by `AgentUserSnapshotProvider` to surface a user's open feedback items in the per-turn context. Additionally, historical `FeedbackReport.Source = AgentUnresolved` rows (from the original server-side handoff flow) remain readable via the Feedback admin queue; Agent no longer creates new `FeedbackReport` rows.
 - **Legal** — `LegalDocumentService` resolves the `agent-chat` slug to the `AgentChat/` folder in the legal repo and renders content at `/Legal/agent-chat`. The Assistant panel links there from the composer footer. No `IConsentService` involvement.
-- **Profiles / Users / Auth / Teams** — `IAgentUserSnapshotProvider` composes the per-turn user context from `IProfileService`, `IUserService`, `IRoleAssignmentService.GetActiveForUserAsync`, `ITeamService.GetActiveTeamNamesForUserAsync`.
+- **Profiles / Users / Auth / Teams / Consent / Tickets / Shifts** — `IAgentUserSnapshotProvider` composes the per-turn user context from `IProfileService`, `IUserService`, `IRoleAssignmentService.GetActiveForUserAsync`, `ITeamService.GetActiveTeamMembershipsForUserAsync`, `IConsentService.GetPendingDocumentNamesAsync` (surfaces pending docs in snapshot — not a gate), `ITicketQueryService.GetOpenTicketIdsForUserAsync`, `IShiftSignupService.GetByUserAsync`, and `IShiftManagementService.GetActiveAsync`. `IFeedbackService.GetOpenFeedbackIdsForUserAsync` is also called — see Feedback bullet above.
 - **GDPR** — `AgentService` implements `IUserDataContributor` so per-user export pulls conversation history. User deletion does not cascade into Agent; orphan rows expire via the retention job.
 
 ## Architecture
 
 **Owning services:** `AgentService` (orchestrator), `AgentSettingsService`, `AgentToolDispatcher`, `AgentUserSnapshotProvider`, `AgentAbuseDetector`, `AgentPromptAssembler`, `AgentPreloadCorpusBuilder`, `AgentPreloadAugmentor`, `AnthropicClient`, `AgentConversationRetentionJob`.
 **Owned tables:** `agent_conversations`, `agent_messages`, `agent_settings`.
-**Status:** (B) Partially §15-migrated — `AgentService` lives in `Humans.Application/Services/Agent/` and goes through `IAgentRepository` for all DB access. `AgentSettingsService` also goes through the same `IAgentRepository` (settings + conversations + messages share one repo). Stateless helpers (`AgentPromptAssembler`, `AgentAbuseDetector`, `AgentUserSnapshotProvider`) and Infrastructure-tied services (`AgentToolDispatcher`, `AnthropicClient`) live in `Humans.Infrastructure/Services/Agent/` and `Humans.Infrastructure/Services/Anthropic/`. `AgentToolDispatcher` and `AgentUserSnapshotProvider` stay until the preload readers are abstracted. **No cross-section FK or nav at the EF level** — `agent_conversations.UserId`, `agent_messages.HandedOffToFeedbackId`, and `feedback_reports.AgentConversationId` are bare Guid columns.
+**Status:** (B) Partially §15-migrated — `AgentService` lives in `Humans.Application/Services/Agent/` and goes through `IAgentRepository` for all DB access. `AgentSettingsService` lives in `Humans.Infrastructure/Services/Agent/` and also goes through `IAgentRepository` (settings + conversations + messages share one repo). Stateless helpers (`AgentPromptAssembler`, `AgentAbuseDetector`, `AgentUserSnapshotProvider`, `AgentToolDispatcher`) and the Anthropic client (`AnthropicClient`) live in `Humans.Infrastructure/Services/Agent/` and `Humans.Infrastructure/Services/Anthropic/`. `AgentPreloadCorpusBuilder` lives in `Humans.Infrastructure/Services/Preload/`; `AgentPreloadAugmentor` lives in `Humans.Web/Services/Agent/`. No architecture test exists for this section yet. **No cross-section FK or nav at the EF level** — `agent_conversations.UserId`, `agent_messages.HandedOffToFeedbackId`, and `feedback_reports.AgentConversationId` are bare Guid columns.
 
 - **DI registration** lives in `src/Humans.Web/Extensions/Sections/AgentSectionExtensions.cs` (`services.AddAgentSection(configuration)`), called from `InfrastructureServiceCollectionExtensions.AddHumansInfrastructure`.
 - **Stores** — `IAgentSettingsStore` and `IAgentRateLimitStore` are Singleton (in-process). `AgentSettingsStoreWarmupHostedService` populates the settings store at startup.

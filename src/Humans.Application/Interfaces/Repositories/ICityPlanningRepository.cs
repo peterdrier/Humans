@@ -16,7 +16,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// <c>DeleteAsync</c>. Restores write a new history row and update the
 /// corresponding <see cref="Humans.Domain.Entities.CampPolygon"/>.
 /// </remarks>
-public interface ICityPlanningRepository
+public interface ICityPlanningRepository : IRepository
 {
     // ==========================================================================
     // Reads — CampPolygon

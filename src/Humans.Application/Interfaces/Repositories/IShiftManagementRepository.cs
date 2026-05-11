@@ -33,7 +33,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// contexts per call.
 /// </para>
 /// </summary>
-public interface IShiftManagementRepository
+public interface IShiftManagementRepository : IRepository
 {
     // ==========================================================================
     // EventSettings
@@ -110,6 +110,19 @@ public interface IShiftManagementRepository
     /// The service is expected to have validated "no confirmed signups" first.
     /// </summary>
     Task DeleteRotaCascadeAsync(Guid rotaId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Rotas in the active event whose <c>Name</c> contains
+    /// <paramref name="query"/> (case-insensitive, Postgres ILike). When
+    /// <paramref name="onlyVolunteerVisible"/> is true, filters to
+    /// <c>IsVisibleToVolunteers</c> at the DB layer. Capped at
+    /// <paramref name="max"/>; ordering is unspecified (caller ranks).
+    /// Read-only, no cross-domain navs — caller stitches team display data
+    /// via <c>ITeamService</c>.
+    /// </summary>
+    Task<IReadOnlyList<Rota>> SearchRotasAsync(
+        string query, Guid eventSettingsId, bool onlyVolunteerVisible,
+        int max, CancellationToken ct = default);
 
     /// <summary>
     /// Sets the tag membership for a rota, replacing any existing tags. Unknown
@@ -293,9 +306,7 @@ public interface IShiftManagementRepository
     // Shift tags
     // ==========================================================================
 
-    Task<IReadOnlyList<ShiftTag>> GetAllTagsAsync(CancellationToken ct = default);
-
-    Task<IReadOnlyList<ShiftTag>> SearchTagsAsync(string query, CancellationToken ct = default);
+    Task<IReadOnlyList<ShiftTag>> GetTagsAsync(string? query = null, CancellationToken ct = default);
 
     /// <summary>
     /// Looks up a tag by case-insensitive name. Returns null if not found.

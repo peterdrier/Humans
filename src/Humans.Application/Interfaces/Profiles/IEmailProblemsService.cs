@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces;
 using Humans.Application.DTOs.EmailProblems;
 
 namespace Humans.Application.Interfaces.Profiles;
@@ -7,7 +8,7 @@ namespace Humans.Application.Interfaces.Profiles;
 /// <c>/Profile/Admin/EmailProblems</c> page. Consumes only existing section
 /// services — never any <c>I*Repository</c> or <c>DbContext</c>.
 /// </summary>
-public interface IEmailProblemsService
+public interface IEmailProblemsService : IApplicationService
 {
     Task<EmailProblemsReport> ScanAsync(CancellationToken ct = default);
 
@@ -41,5 +42,5 @@ public interface IEmailProblemsService
     /// the caller can audit per row.
     /// </summary>
     Task<IReadOnlyList<(Guid UserId, string Email)>> BackfillLegacyIdentityEmailsAsync(
-        CancellationToken ct = default);
+        Guid actorUserId, CancellationToken ct = default);
 }

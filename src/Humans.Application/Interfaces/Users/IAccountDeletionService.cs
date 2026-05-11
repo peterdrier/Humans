@@ -1,4 +1,6 @@
+using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Onboarding;
+using NodaTime;
 
 namespace Humans.Application.Interfaces.Users;
 
@@ -19,18 +21,29 @@ namespace Humans.Application.Interfaces.Users;
 /// into User/Profile cascade code. Synchronous orchestration (not event-bus):
 /// at ~500-user scale, explicit call order is simpler than a pub/sub hop.
 /// </remarks>
-public interface IAccountDeletionService
+public interface IAccountDeletionService : IApplicationService
 {
     /// <summary>
     /// User-initiated account-deletion request. Sets the 30-day scheduled
-    /// deletion fields on the user, immediately revokes active team memberships
-    /// and governance role assignments (so the user loses access without
-    /// waiting for the grace period to expire), writes an audit entry, and
-    /// sends the deletion-scheduled confirmation email. No-op with
-    /// <c>NotFound</c> if the user does not exist; <c>AlreadyPending</c> if
-    /// a deletion request is already open.
+    /// deletion fields on the user (including <c>DeletionEligibleAfter</c>
+    /// when the user holds a current event ticket — deletion is held until
+    /// after the event), immediately revokes active team memberships and
+    /// governance role assignments (so the user loses access without waiting
+    /// for the grace period to expire), writes an audit entry, sends the
+    /// deletion-scheduled confirmation email, and invalidates the
+    /// shift-authorization cache. No-op with <c>NotFound</c> if the user
+    /// does not exist; <c>AlreadyPending</c> if a deletion request is
+    /// already open.
     /// </summary>
-    Task<OnboardingResult> RequestDeletionAsync(Guid userId, CancellationToken ct = default);
+    Task<DeletionRequestResult> RequestDeletionAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Cancels a pending user-initiated deletion request by clearing the
+    /// deletion fields on the user. Returns <c>NotFound</c> if the user
+    /// does not exist; <c>NoDeletionPending</c> if no request is open.
+    /// FullProfile cache is refreshed via <see cref="IUserService.ClearDeletionAsync"/>.
+    /// </summary>
+    Task<OnboardingResult> CancelDeletionAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
     /// Admin-initiated purge: anonymizes the identity on the <c>User</c> row
@@ -65,3 +78,19 @@ public interface IAccountDeletionService
     Task<AnonymizedAccountSummary?> AnonymizeExpiredAccountAsync(
         Guid userId, CancellationToken ct = default);
 }
+
+/// <summary>
+/// Outcome of <see cref="IAccountDeletionService.RequestDeletionAsync"/>.
+/// On success, <see cref="EffectiveDeletionDate"/> is the earliest instant at
+/// which the user's account becomes eligible for anonymization
+/// (<c>DeletionEligibleAfter</c> when held for a current event ticket, otherwise
+/// the standard 30-day <c>DeletionScheduledFor</c>). <see cref="IsHeldForTicket"/>
+/// signals the ticket-hold path so callers can render the right copy without a
+/// re-fetch. Mirrors <see cref="OnboardingResult"/>'s <c>ErrorKey</c> contract
+/// (<c>NotFound</c>, <c>AlreadyPending</c>) on failure.
+/// </summary>
+public sealed record DeletionRequestResult(
+    bool Success,
+    string? ErrorKey = null,
+    Instant? EffectiveDeletionDate = null,
+    bool IsHeldForTicket = false);

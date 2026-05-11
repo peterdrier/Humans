@@ -54,7 +54,9 @@ public class StoreController : HumansControllerBase
 
         var activeEvent = await _shifts.GetActiveAsync();
         var year = activeEvent?.Year > 0 ? activeEvent.Year : _clock.GetCurrentInstant().InUtc().Year;
-        var catalog = await _storeService.GetActiveCatalogAsync(year, ct);
+        var catalog = (await _storeService.GetActiveCatalogAsync(year, ct))
+            .OrderBy(p => p.Name, StringComparer.Ordinal)
+            .ToList();
 
         var isPrivilegedReader = RoleChecks.CanAdministerStore(User);
 
@@ -106,7 +108,9 @@ public class StoreController : HumansControllerBase
         {
             var activeEvent = await _shifts.GetActiveAsync();
             var year = activeEvent?.Year > 0 ? activeEvent.Year : _clock.GetCurrentInstant().InUtc().Year;
-            catalog = await _storeService.GetActiveCatalogAsync(year, ct);
+            catalog = (await _storeService.GetActiveCatalogAsync(year, ct))
+                .OrderBy(p => p.Name, StringComparer.Ordinal)
+                .ToList();
         }
         var season = await _campService.GetCampSeasonByIdAsync(order.CampSeasonId, ct);
 

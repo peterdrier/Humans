@@ -40,6 +40,7 @@ Also avoid entity-shape cleanup, serialization attribute changes, and other sche
 
 Prioritize items with clear payoff:
 
+- layer-separation violations: EF/repository/service code doing presentation sorting, UI filtering, arbitrary caps, navigation joins, or cross-section DB reads
 - one concern implemented several different ways
 - copy-pasted controller or service logic with the same business meaning
 - cross-domain methods that belong in a different service
@@ -52,6 +53,72 @@ Deprioritize:
 - large rewrites with weak behavioral payoff
 - breaking interface churn unless the call graph is fully understood
 - file splitting done only to reduce line count
+
+## Layer-Separation Rules
+
+Treat these as the first-pass search rules for new tech-debt runs.
+
+Repositories are persistence adapters. They may apply storage predicates needed to fetch the owned data set, but they must not own screen behavior. Cross-section DB joins/includes are more important than display-sort cleanup and should be fixed first:
+
+- no display sorting or user-facing ordering in repositories
+- no screen/page caps such as `Take(50)`, "recent", "top", or dashboard limits in repositories when the source is a bounded/cached set
+- no query-string, tab, or screen-specific filtering in repositories
+- no joins/includes added only to shape a view model
+
+Exception: do not load unbounded operational/history tables just to sort/filter/take in a service or controller. Audit, email outbox, feedback, issue lists, and similarly growing tables should use explicit repository methods that perform DB-side ordering/paging/windowing and return only the bounded slice. Mark those intentional exceptions inline with `// arch:db-sort-ok top-N selector`, `// arch:db-sort-ok admin page window`, or a similarly specific reason.
+
+Controllers and views own UI-specific shaping for finite/cached data sets such as profiles, teams, camps, and option lists:
+
+- final display sort order
+- screen-specific filters
+- paging/window sizes and `Take(...)` limits
+- grouping and secondary ordering for tables/cards
+- dashboard-card "recent" or "top N" choices
+
+Services own reusable application behavior, not display choices. If a rule is truly domain/application behavior, put it in the owning service. If it is just how one screen wants to sort, filter, group, cap, or show data over already-bounded data, keep it at the controller/view boundary. For unbounded tables, services may orchestrate after a repository-selected slice, but must not load the full table and then apply top-N/windowing in memory.
+
+Sections must not reach across each other's persistence:
+
+- no cross-section DB calls or joins from repositories or services
+- no EF navigation joins across section boundaries
+- no repository method returning another section's entity graph
+- call the other section's public service/interface by IDs instead
+- merge data in memory at the controller/application boundary when a screen needs multiple sections
+
+Users, Profiles, and UserEmail are one ownership section: Humans. Do not move code between `Services.Users` and `Services.Profile`, and do not add wrapper service methods, just to satisfy a section-boundary cleanup. Treat `IUserRepository`, `IProfileRepository`, and `IUserEmailRepository` as same-section repositories for this rule.
+
+Prefer typed foreign-key queries and narrow projections over navigation-property graph loading. A slower but explicit service call boundary is better than a hidden cross-section join.
+
+## Interface Consolidation Rules
+
+Large interfaces should not grow one convenience method per caller. Prefer smaller, composable contracts.
+
+Bad pattern:
+
+- `GetActiveProfilesAsync()`
+- `GetSuspendedProfilesAsync()`
+- `GetProfilesForDashboardAsync()`
+- `GetRecentOrdersAsync()`
+- `GetTopTicketsAsync()`
+
+Better pattern, when the result set is safe to materialize and the shaping is screen-specific:
+
+- `GetProfilesAsync()` plus caller-side `.Where(p => p.IsActive)`
+- `GetProfilesAsync()` plus caller-side `.Where(p => p.IsSuspended)`
+- `GetProfilesAsync()` plus controller/view `.OrderBy(...).Take(20)`
+
+Start interface-consolidation passes with the largest interfaces and work down by method count. This gives the best payoff and catches the contracts most likely to accumulate AI-generated helper methods.
+
+Fixing strategy:
+
+- Rank `src/Humans.Application/Interfaces/**/*.cs` interfaces by public method count.
+- Inspect the largest interfaces first.
+- Find method families that differ only by status, filter, sort, window, dashboard, or screen.
+- Collapse them into one broader section-owned method when behavior remains clear and result size is safe.
+- Move screen-specific `.Where(...)`, `.OrderBy(...)`, `.Take(...)`, grouping, and dashboard shaping to controllers/views.
+- Update callers and tests in the same commit.
+
+Do not collapse methods that represent real domain concepts, authorization boundaries, operational queue semantics, expensive server-side queries that cannot safely materialize, or intentionally bounded search/tool APIs.
 
 ## Safety Checks
 

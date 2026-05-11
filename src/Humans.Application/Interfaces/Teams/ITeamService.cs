@@ -1,3 +1,5 @@
+using Humans.Application.Interfaces;
+using Humans.Application.DTOs;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Domain.ValueObjects;
@@ -5,15 +7,15 @@ using NodaTime;
 
 namespace Humans.Application.Interfaces.Teams;
 
-public record CachedTeam(
+public record TeamInfo(
     Guid Id, string Name, string? Description, string Slug,
-    bool IsSystemTeam, SystemTeamType SystemTeamType, bool RequiresApproval,
-    bool IsPublicPage, bool IsHidden, bool IsPromotedToDirectory, Instant CreatedAt, List<CachedTeamMember> Members,
+    bool IsActive, bool IsSystemTeam, SystemTeamType SystemTeamType, bool RequiresApproval,
+    bool IsPublicPage, bool IsHidden, bool IsPromotedToDirectory, Instant CreatedAt, List<TeamMemberInfo> Members,
     Guid? ParentTeamId = null);
 
-public record CachedTeamMember(
+public record TeamMemberInfo(
     Guid TeamMemberId, Guid UserId, string DisplayName,
-    string? ProfilePictureUrl, TeamMemberRole Role, Instant JoinedAt);
+    string? Email, string? ProfilePictureUrl, TeamMemberRole Role, Instant JoinedAt);
 
 public record TeamDirectorySummary(
     Guid Id,
@@ -124,7 +126,7 @@ public record TeamCoordinatorRef(Guid TeamId, Guid UserId);
 /// <summary>
 /// Service for managing teams and team membership.
 /// </summary>
-public interface ITeamService
+public interface ITeamService : IApplicationService
 {
     /// <summary>
     /// Creates a new team.
@@ -147,6 +149,16 @@ public interface ITeamService
     /// Gets a team by its ID.
     /// </summary>
     Task<Team?> GetTeamByIdAsync(Guid teamId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets the team read model by ID, including active members.
+    /// </summary>
+    Task<TeamInfo?> GetTeamAsync(Guid teamId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets team read models keyed by ID, including active members.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, TeamInfo>> GetTeamsAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Returns the display name of the team whose <c>GoogleGroupPrefix</c> matches
@@ -174,6 +186,18 @@ public interface ITeamService
     /// Gets all active teams.
     /// </summary>
     Task<IReadOnlyList<Team>> GetAllTeamsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Active, non-hidden teams whose <c>Name</c> contains
+    /// <paramref name="query"/> (case-insensitive). Capped at
+    /// <paramref name="max"/>; returned in unspecified order — the global
+    /// search orchestrator scores and ranks. Used by the global /Search
+    /// page (<c>SearchService</c>); every caller sees the public surface
+    /// regardless of role.
+    /// </summary>
+    Task<IReadOnlyList<TeamSearchHit>> SearchAsync(
+        string query, int max,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets the summarized team directory for anonymous or authenticated viewers.
@@ -325,13 +349,6 @@ public interface ITeamService
         Guid teamId,
         Guid userId,
         Guid actorUserId,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Gets all members of a team.
-    /// </summary>
-    Task<IReadOnlyList<TeamMember>> GetTeamMembersAsync(
-        Guid teamId,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -527,10 +544,12 @@ public interface ITeamService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Gets the names of all active (non-Volunteers) teams the user belongs to,
-    /// ordered alphabetically. Used for profile popover display.
+    /// Returns the active (non-Volunteers) teams the user belongs to with the
+    /// user's role on each team. Callers that only need names project via
+    /// <c>.Select(m =&gt; m.TeamName)</c>. Display ordering is the caller's
+    /// responsibility (rendering layer).
     /// </summary>
-    Task<IReadOnlyList<string>> GetActiveTeamNamesForUserAsync(
+    Task<IReadOnlyList<Humans.Application.Models.TeamMembership>> GetActiveTeamMembershipsForUserAsync(
         Guid userId, CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -560,16 +579,6 @@ public interface ITeamService
     /// </summary>
     Task<IReadOnlyList<TeamCoordinatorRef>> GetActiveCoordinatorsForTeamsAsync(
         IReadOnlyCollection<Guid> teamIds,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Returns the user IDs of every active (<see cref="TeamMember.LeftAt"/>
-    /// is null) member of the given team. Used by cross-section callers
-    /// (Tickets dashboard, coverage reporting) that need a set of member ids
-    /// without loading full <see cref="TeamMember"/> entities.
-    /// </summary>
-    Task<IReadOnlyList<Guid>> GetActiveMemberUserIdsAsync(
-        Guid teamId,
         CancellationToken cancellationToken = default);
 
     /// <summary>

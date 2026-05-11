@@ -2,9 +2,13 @@
   src/Humans.Application/Services/AuditLog/**
   src/Humans.Domain/Entities/AuditLogEntry.cs
   src/Humans.Infrastructure/Data/Configurations/AuditLog/**
-  src/Humans.Infrastructure/Repositories/AuditLogRepository.cs
+  src/Humans.Infrastructure/Repositories/AuditLog/AuditLogRepository.cs
   src/Humans.Application/Interfaces/Repositories/IAuditLogRepository.cs
-  src/Humans.Application/Interfaces/IAuditLogService.cs
+  src/Humans.Application/Interfaces/AuditLog/IAuditLogService.cs
+  src/Humans.Application/Interfaces/AuditLog/IAuditViewerService.cs
+  src/Humans.Domain/Enums/AuditAction.cs
+  src/Humans.Web/Controllers/BoardController.cs
+  src/Humans.Web/Controllers/GoogleController.cs
 -->
 <!-- freshness:flag-on-change
   Audit log append-only invariant, AuditAction enum surface, and self-persisting semantics — review when AuditLog service/repo/entity changes.
@@ -49,23 +53,39 @@ Append-only per design-rules §12. Enforced at two layers: the architecture test
 | SyncSource | GoogleSyncSource? | Stored as string (max 100). What triggered the Google sync action. Null for non-Google entries |
 | UserEmail | string? (500) | Email at time of the Google sync action — denormalized so history survives anonymization |
 
-**Indexes:** `(EntityType, EntityId)`, `(RelatedEntityType, RelatedEntityId)`, `OccurredAt`, `Action`, `ResourceId`, `ActorUserId` (FK index).
+**Indexes:** `(EntityType, EntityId)`, `(RelatedEntityType, RelatedEntityId)`, `OccurredAt`, `Action`, `ResourceId`. (`ActorUserId` has a FK constraint via `HasOne`/`HasForeignKey` but no explicit `HasIndex` call in `AuditLogEntryConfiguration.cs`.)
 
 ### AuditAction (cross-section enum)
 
 `AuditAction` (`Humans.Domain.Enums.AuditAction`) is the shared contract across all writers. Stored as string via `HasConversion<string>()`. Full surface as of this sweep:
 
-- **Onboarding / Profile / Users:** `ConsentCheckCleared`, `ConsentCheckFlagged`, `SignupRejected`, `VolunteerApproved`, `MemberSuspended`, `MemberUnsuspended`, `AccountAnonymized`, `MembershipsRevokedOnDeletionRequest`, `AccountMergeRequested`, `AccountMergeAccepted`, `AccountMergeRejected`, `CommunicationPreferenceChanged`, `ContactCreated`.
+- **Onboarding / Profile / Users:** `ConsentCheckCleared`, `ConsentCheckFlagged`, `SignupRejected`, `VolunteerApproved`, `MemberSuspended`, `MemberUnsuspended`, `AccountAnonymized`, `MembershipsRevokedOnDeletionRequest`, `AccountMergeRequested`, `AccountMergeAccepted`, `AccountMergeRejected`, `AccountPurged`, `CommunicationPreferenceChanged`, `ContactCreated`.
+- **User emails:** `UserEmailProviderBackfilled`, `UserEmailGoogleSet`, `UserEmailGoogleCleared`, `UserEmailLinked`, `UserEmailUnlinked`, `UserEmailPrimarySet`, `UserEmailPrimaryCleared`, `UserEmailDeleted`, `UserEmailVisibilityChanged`, `UserEmailAdded`, `UserEmailManuallyVerified`, `OrphanUserEmailDeleted`, `GhostExternalLoginsDeleted`, `LegacyIdentityEmailBackfilled`.
 - **Governance (tier applications + roles):** `TierApplicationApproved`, `TierApplicationRejected`, `TierDowngraded`, `RoleAssigned`, `RoleEnded`.
 - **Teams:** `TeamMemberAdded`, `TeamMemberRemoved`, `TeamMemberRoleChanged`, `TeamJoinedDirectly`, `TeamLeft`, `TeamJoinRequestApproved`, `TeamJoinRequestRejected`, `TeamRoleDefinitionCreated`, `TeamRoleDefinitionUpdated`, `TeamRoleDefinitionDeleted`, `TeamRoleAssigned`, `TeamRoleUnassigned`, `TeamPageContentUpdated`, `RotaMovedToTeam`.
 - **Google Integration:** `GoogleResourceProvisioned`, `GoogleResourceAccessGranted`, `GoogleResourceAccessRevoked`, `GoogleResourceDeactivated`, `GoogleResourceSettingsRemediated`, `GoogleResourceInheritanceDriftCorrected`, `GoogleEmailRenamed`, `AnomalousPermissionDetected`.
-- **Workspace accounts:** `WorkspaceAccountProvisioned`, `WorkspaceAccountSuspended`, `WorkspaceAccountReactivated`, `WorkspaceAccountPasswordReset`, `WorkspaceAccountLinked`, `WorkspaceAccountBackupCodesGenerated`.
-- **Camps:** `CampCreated`, `CampUpdated`, `CampDeleted`, `CampNameChanged`, `CampImageUploaded`, `CampImageDeleted`, `CampLeadAdded`, `CampLeadRemoved`, `CampPrimaryLeadTransferred`, `CampSeasonCreated`, `CampSeasonApproved`, `CampSeasonRejected`, `CampSeasonWithdrawn`, `CampSeasonStatusChanged`, `CampMemberRequested`, `CampMemberApproved`, `CampMemberRejected`, `CampMemberWithdrawn`, `CampMemberLeft`, `CampMemberRemoved`.
+- **Workspace accounts:** `WorkspaceAccountProvisioned`, `WorkspaceAccountSuspended`, `WorkspaceAccountReactivated`, `WorkspaceAccountPasswordReset`, `WorkspaceAccountLinked`, `WorkspaceAccountBackupCodesGenerated`, `WorkspaceAccountResetBlockedFor2Sv`. `WorkspaceAccountBackupCodesInvalidated` is reserved (wired briefly during PR #254, no active writer — do not remove; audit enum is positional).
+- **Camps:** `CampCreated`, `CampUpdated`, `CampDeleted`, `CampNameChanged`, `CampImageUploaded`, `CampImageDeleted`, `CampLeadAdded`, `CampLeadRemoved`, `CampPrimaryLeadTransferred`, `CampSeasonCreated`, `CampSeasonApproved`, `CampSeasonRejected`, `CampSeasonWithdrawn`, `CampSeasonStatusChanged`, `CampMemberRequested`, `CampMemberApproved`, `CampMemberRejected`, `CampMemberWithdrawn`, `CampMemberLeft`, `CampMemberRemoved`, `CampMemberAddedByLead`, `CampRoleDefinitionCreated`, `CampRoleDefinitionUpdated`, `CampRoleDefinitionDeactivated`, `CampRoleDefinitionReactivated`, `CampRoleAssigned`, `CampRoleUnassigned`.
 - **Shifts:** `ShiftSignupCreated`, `ShiftSignupConfirmed`, `ShiftSignupRefused`, `ShiftSignupVoluntold`, `ShiftSignupBailed`, `ShiftSignupNoShow`, `ShiftSignupCancelled`, `ShiftSignupReassigned`. `ShiftSignupCreated` fires on every self-signup (Pending or Confirmed) so the creation moment is always traceable; `ShiftSignupConfirmed` fires only on the later Pending → Confirmed transition by an approver. `ShiftSignupReassigned` fires once per account-merge fold, summarising how many ShiftSignups were re-FK'd from source to target.
 - **Calendar:** `CalendarEventCreated`, `CalendarEventUpdated`, `CalendarEventDeleted`, `CalendarOccurrenceCancelled`, `CalendarOccurrenceOverridden`.
 - **Feedback / Communications:** `FeedbackResponseSent`, `FeedbackStatusChanged`, `FeedbackAssignmentChanged`, `FacilitatedMessageSent`.
+- **Issues:** `IssueStatusChanged`, `IssueAssigneeChanged`, `IssueSectionChanged`, `IssueGitHubLinked`.
+- **Store:** `StoreOrderCreated`, `StoreLineAdded`, `StoreLineRemoved`, `StoreCounterpartyEdited`, `StoreProductCreated`, `StoreProductUpdated`, `StoreProductDeactivated`, `StorePaymentRecorded`.
 
 Note: `BudgetAuditLog` is a separate per-section append-only log owned by Budget — it is **not** an `AuditAction` value and does not write to `audit_log`.
+
+## Routing
+
+Audit Log is served from two controllers — required because `BoardController` owns the global admin dashboard and `GoogleController` owns per-resource and per-user Google sync views.
+
+| Route | Controller | Auth policy |
+|-------|-----------|------------|
+| `GET /Board/AuditLog` | `BoardController.AuditLog` | `BoardOrAdmin` |
+| `POST /Google/AuditLog/CheckDriveActivity` | `GoogleController.CheckDriveActivity` | `BoardOrAdmin` |
+| `GET /Google/Sync/Resource/{id}/Audit` | `GoogleController.GoogleSyncResourceAudit` | `BoardOrAdmin` |
+| `GET /Google/Human/{id}/SyncAudit` | `GoogleController.HumanGoogleSyncAudit` | `HumanAdminBoardOrAdmin` |
+
+Both controllers inject `IAuditViewerService` — no controller touches `IAuditLogService` or any repository directly.
 
 ## Actors & Roles
 
