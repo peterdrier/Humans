@@ -329,28 +329,6 @@ public interface IUserEmailService : IApplicationService
         string email, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// The one and only way to write the OAuth-linked
-    /// <see cref="Domain.Entities.UserEmail"/> row from a Google sign-in.
-    /// Upserts on <see cref="Domain.Entities.UserEmail.Provider"/>+
-    /// <see cref="Domain.Entities.UserEmail.ProviderKey"/> — the only
-    /// legitimate match key for the OAuth identity — for the given
-    /// <paramref name="userId"/>. Inserts a verified row when the pair is
-    /// missing; updates <c>Email</c> and stamps <c>UpdatedAt</c> when present.
-    /// Removes any other row for the same user already holding
-    /// <paramref name="newEmail"/> and reconciles
-    /// <see cref="Domain.Entities.UserEmail.IsPrimary"/> on the surviving rows.
-    /// Invalidates the user's <c>FullProfile</c> cache.
-    ///
-    /// Callable only by the OAuth sign-in callback in <c>AccountController</c>
-    /// per <c>memory/architecture/email-mutation-paths.md</c>. Returns false
-    /// when a cross-user collision was caught at the persistence layer (the
-    /// caller skips audit logging in that case); true on a successful write.
-    /// </summary>
-    Task<bool> UpdateEmailAsync(
-        Guid userId, string provider, string providerKey, string newEmail,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Returns every <see cref="UserEmailMatch"/> whose address matches one of
     /// <paramref name="emails"/> (case-insensitive). Used by the Google admin
     /// workspace-accounts list to match Google-side accounts to humans without
@@ -432,23 +410,6 @@ public interface IUserEmailService : IApplicationService
     Task<bool> DeleteByIdAsync(Guid emailId, CancellationToken ct = default);
 
     /// <summary>
-    /// Find-or-create. Attaches the OAuth identity (<paramref name="provider"/>,
-    /// <paramref name="providerKey"/>) to the user's email row matching
-    /// <paramref name="email"/> (Ordinal/case-insensitive); creates a new
-    /// verified row when none matches. <paramref name="userId"/> is the
-    /// <b>target</b> user; <paramref name="actorUserId"/> is the actor.
-    /// Replaces the legacy AddOAuthEmailAsync + SetProviderAsync pair (PR 4
-    /// consolidation).
-    /// </summary>
-    Task<bool> LinkAsync(
-        Guid userId,
-        string provider,
-        string providerKey,
-        string email,
-        Guid actorUserId,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Removes both the AspNetUserLogins row and the UserEmail row for a
     /// Provider-attached email. Owner-gated. Returns <c>false</c> if the row
     /// is not found for this user or has no <see cref="UserEmail.Provider"/>/
@@ -460,17 +421,6 @@ public interface IUserEmailService : IApplicationService
         Guid userId,
         Guid userEmailId,
         Guid actorUserId,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Looks up the UserEmail row tagged with
-    /// <paramref name="provider"/> / <paramref name="providerKey"/>. Returns
-    /// <c>null</c> when no row matches. Used by the OAuth callback's rename
-    /// detection to compare the row's email against the incoming claim email
-    /// and update the row when they diverge.
-    /// </summary>
-    Task<UserEmailProviderMatch?> FindByProviderKeyAsync(
-        string provider, string providerKey,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -574,13 +524,6 @@ public record OAuthReconcileResult(
     Guid? DisplacedRowId,
     string? DisplacedEmail,
     bool DisplacedUserLeftWithoutVerifiedEmail);
-
-/// <summary>
-/// Narrow projection of a UserEmail row matched by (Provider, ProviderKey).
-/// Returned from <see cref="IUserEmailService.FindByProviderKeyAsync"/> so the
-/// service interface does not leak the Domain entity into Web-layer callers.
-/// </summary>
-public record UserEmailProviderMatch(Guid Id, Guid UserId, string Email);
 
 /// <summary>
 /// Narrow projection describing a <see cref="Domain.Entities.UserEmail"/>

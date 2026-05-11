@@ -412,8 +412,12 @@ public class EmailProblemsServiceTests
     }
 
     [HumansFact]
-    public async Task BackfillLegacyIdentityEmails_FlaggedUser_NoExternalLogin_CallsAddVerifiedAndReturnsPair()
+    public async Task BackfillLegacyIdentityEmails_FlaggedUser_CallsAddVerifiedAndReturnsPair()
     {
+        // Issue nobodies-collective/Humans#697: the OAuth-aware "tag via
+        // LinkAsync when an external login exists" branch is gone. The legacy
+        // address is added as a plain verified row; the next OAuth sign-in's
+        // reconcile attaches the provider tag via TagMoved.
         var userId = Guid.NewGuid();
         var user = MakeUser(userId, "legacy@x.com");
         SetUsersWithProfiles((user, MakeProfile(userId)));
@@ -424,36 +428,6 @@ public class EmailProblemsServiceTests
             .Which.Should().Be((userId, "legacy@x.com"));
         await _userEmailService.Received(1).AddVerifiedEmailAsync(
             userId, "legacy@x.com", Arg.Any<CancellationToken>());
-        await _userEmailService.DidNotReceive().LinkAsync(
-            Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task BackfillLegacyIdentityEmails_FlaggedUser_WithExternalLogin_CallsLinkAsync()
-    {
-        var userId = Guid.NewGuid();
-        var user = MakeUser(userId, "legacy@x.com");
-        SetUsersWithProfiles((user, MakeProfile(userId)));
-
-        var logins = new Dictionary<Guid, IReadOnlyList<(string Provider, string ProviderKey)>>
-        {
-            [userId] = new List<(string, string)> { ("Google", "google-sub-42") }
-        };
-        _userService.GetExternalLoginsByUserIdsAsync(
-                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(logins);
-
-        var actorUserId = Guid.NewGuid();
-        var result = await Sut.BackfillLegacyIdentityEmailsAsync(actorUserId);
-
-        result.Should().ContainSingle()
-            .Which.Should().Be((userId, "legacy@x.com"));
-        await _userEmailService.Received(1).LinkAsync(
-            userId, "Google", "google-sub-42", "legacy@x.com", actorUserId,
-            Arg.Any<CancellationToken>());
-        await _userEmailService.DidNotReceive().AddVerifiedEmailAsync(
-            Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

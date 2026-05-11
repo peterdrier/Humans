@@ -617,27 +617,6 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         string email, CancellationToken cancellationToken = default) =>
         _repository.AnyWithEmailAsync(email, cancellationToken);
 
-    // Sole legitimate caller: AccountController OAuth sign-in callback.
-    // See memory/architecture/email-mutation-paths.md.
-    public async Task<bool> UpdateEmailAsync(
-        Guid userId, string provider, string providerKey, string newEmail,
-        CancellationToken cancellationToken = default)
-    {
-        var written = await _repository.UpdateEmailAsync(
-            userId, provider, providerKey, newEmail, _clock.GetCurrentInstant(), cancellationToken);
-        if (!written)
-            return false;
-
-        // Add-row flow: route through the same Google invariant the other add
-        // paths use (AddRowWithInvariantsAsync). The helper picks a winner
-        // only when no IsGoogle=true row exists or an obvious better winner
-        // does (verified @nobodies.team) — user-set IsGoogle survives. Skips
-        // entirely on the rename/update case (existing winner unchanged).
-        await EnsureGoogleInvariantAsync(userId, cancellationToken);
-        await _fullProfileInvalidator.InvalidateAsync(userId, cancellationToken);
-        return true;
-    }
-
     public async Task<IReadOnlyList<UserEmailMatch>> MatchByEmailsAsync(
         IReadOnlyCollection<string> emails, CancellationToken cancellationToken = default)
     {
@@ -1043,88 +1022,6 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
     }
 
     /// <inheritdoc />
-    public async Task<bool> LinkAsync(
-        Guid userId, string provider, string providerKey, string email, Guid actorUserId,
-        CancellationToken cancellationToken = default)
-    {
-        var now = _clock.GetCurrentInstant();
-        var existing = await _repository.GetByUserIdReadOnlyAsync(userId, cancellationToken);
-        var match = existing.FirstOrDefault(
-            e => string.Equals(e.Email, email, StringComparison.OrdinalIgnoreCase));
-
-        Guid rowId;
-        string description;
-
-        if (match is not null)
-        {
-            // Re-fetch tracked entity for mutation. GetByIdAndUserIdAsync returns
-            // a tracked row (per repo XML: "tracked for modification").
-            var tracked = await _repository.GetByIdAndUserIdAsync(match.Id, userId, cancellationToken)
-                ?? throw new InvalidOperationException(
-                    $"UserEmail row {match.Id} disappeared between read and mutate.");
-
-            // Successful OAuth proves ownership, so promote a previously-pending
-            // plain row to verified. Without this the row is stranded —
-            // VerifyEmailAsync filters on (Provider == null) and won't pick it up.
-            var wasPending = !tracked.IsVerified;
-            tracked.Provider = provider;
-            tracked.ProviderKey = providerKey;
-            tracked.IsVerified = true;
-            tracked.UpdatedAt = now;
-            await _repository.UpdateAsync(tracked, cancellationToken);
-
-            rowId = tracked.Id;
-            description = wasPending
-                ? $"Linked {provider} `{tracked.Email}` to user (verified via OAuth)"
-                : $"Linked {provider} `{tracked.Email}` to user";
-        }
-        else
-        {
-            var fresh = new UserEmail
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                Email = email,
-                IsVerified = true,
-                IsPrimary = false,
-                // IsGoogle is set by EnsureGoogleInvariantAsync inside the
-                // orchestrator. The previous `IsGoogle = false` here was the
-                // root cause of ZeroIsGoogle on OAuth signups (issue
-                // nobodies-collective/Humans#687) — newly-created OAuth rows
-                // never got promoted to IsGoogle.
-                Provider = provider,
-                ProviderKey = providerKey,
-                CreatedAt = now,
-                UpdatedAt = now,
-            };
-            await AddRowWithInvariantsAsync(fresh, cancellationToken);
-
-            rowId = fresh.Id;
-            description = $"Linked {provider} `{fresh.Email}` to user (new row)";
-        }
-
-        // For the existing-row branch above (match path), AddRowWithInvariantsAsync
-        // wasn't called — the row was mutated in place. Re-run the Primary
-        // invariant + invalidate to preserve the original LinkAsync behavior
-        // (first OAuth sign-in promotes the row to primary).
-        if (match is not null)
-        {
-            await EnsurePrimaryInvariantAsync(userId, cancellationToken);
-            await EnsureGoogleInvariantAsync(userId, cancellationToken);
-            await _fullProfileInvalidator.InvalidateAsync(userId, cancellationToken);
-        }
-
-        await _auditLogService.LogAsync(
-            AuditAction.UserEmailLinked,
-            nameof(User), userId,
-            description,
-            actorUserId,
-            relatedEntityId: rowId, relatedEntityType: nameof(UserEmail));
-
-        return true;
-    }
-
-    /// <inheritdoc />
     public async Task<bool> UnlinkAsync(
         Guid userId, Guid userEmailId, Guid actorUserId,
         CancellationToken cancellationToken = default)
@@ -1187,24 +1084,6 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         var bytes = System.Security.Cryptography.SHA256.HashData(
             System.Text.Encoding.UTF8.GetBytes(s));
         return Convert.ToHexString(bytes.AsSpan(0, 8));
-    }
-
-    /// <inheritdoc />
-    public async Task<UserEmailProviderMatch?> FindByProviderKeyAsync(
-        string provider, string providerKey,
-        CancellationToken cancellationToken = default)
-    {
-        var matches = await _repository.FindAllByProviderKeyAsync(
-            provider, providerKey, cancellationToken);
-        if (matches.Count > 1)
-        {
-            _logger.LogWarning(
-                "FindByProviderKeyAsync: multiple rows matched provider={Provider} providerKey={ProviderKey} — single-row-per-pair invariant violated; returning first match {EmailId}.",
-                provider, providerKey, matches[0].Id);
-        }
-        if (matches.Count == 0) return null;
-        var first = matches[0];
-        return new UserEmailProviderMatch(first.Id, first.UserId, first.Email);
     }
 
     /// <inheritdoc />

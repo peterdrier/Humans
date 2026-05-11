@@ -1034,7 +1034,7 @@ public class ProfileController : HumansControllerBase
 
         // Route the OAuth round-trip through AccountController.ExternalLoginCallback
         // so the link-while-signed-in branch (UserManager.AddLoginAsync +
-        // TryLinkProviderForUserEmailAsync) actually fires after the provider
+        // ReconcileOAuthIdentityAsync) actually fires after the provider
         // returns. Redirecting straight back to /Profile/Me/Emails would skip
         // that branch and the linkage would never persist.
         var resolvedReturnUrl = returnUrl ?? Url.Action(nameof(Emails)) ?? "/Profile/Me/Emails";

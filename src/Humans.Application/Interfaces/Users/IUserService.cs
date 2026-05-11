@@ -281,10 +281,9 @@ public interface IUserService : IApplicationService
     /// <summary>
     /// Returns every <c>AspNetUserLogins</c> <c>(LoginProvider, ProviderKey)</c>
     /// row for each of the given users, grouped by <c>UserId</c>. Users without
-    /// any external login are absent from the dictionary. Used by the legacy
-    /// email backfill to pick a <c>(Provider, ProviderKey)</c> pair so the
-    /// inserted <c>UserEmail</c> row can be linked via
-    /// <c>IUserEmailService.LinkAsync</c> in one step.
+    /// any external login are absent from the dictionary. Used by the per-user
+    /// admin emails diagnostic and the OAuth-reconcile mother-of-all
+    /// cross-user-collision log.
     /// </summary>
     Task<IReadOnlyDictionary<Guid, IReadOnlyList<(string Provider, string ProviderKey)>>>
         GetExternalLoginsByUserIdsAsync(

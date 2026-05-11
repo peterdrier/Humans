@@ -215,43 +215,6 @@ public interface IUserEmailRepository : IRepository
         string email, Guid excludeUserId, CancellationToken ct = default);
 
     /// <summary>
-    /// The one and only primitive that writes <see cref="UserEmail.Email"/> on
-    /// the OAuth-linked row. Upsert on <see cref="UserEmail.Provider"/>+
-    /// <see cref="UserEmail.ProviderKey"/> — the only legitimate match key for
-    /// the OAuth identity — for the given <paramref name="userId"/>. Inserts a
-    /// verified row if the pair is missing; updates <c>Email</c> and stamps
-    /// <c>UpdatedAt</c> if present. Removes any OTHER row for the same user
-    /// that already holds <paramref name="newEmail"/> (case-insensitive) so
-    /// the partial unique <c>Email</c> index does not throw on the upsert.
-    /// Reconciles <see cref="UserEmail.IsPrimary"/> on the surviving rows:
-    /// 0 primaries — set the current login primary; exactly 1 — leave alone;
-    /// 2+ — current login stays primary, others demoted.
-    ///
-    /// Per <c>memory/architecture/email-mutation-paths.md</c>: the sole
-    /// legitimate caller is <c>UserEmailService.UpdateEmailAsync</c>, which is
-    /// itself callable only by the OAuth sign-in callback in
-    /// <c>AccountController</c>. Cross-user collision (Postgres 23505 on the
-    /// partial unique <c>Email</c> index — another user already holds
-    /// <paramref name="newEmail"/>) is caught inside the implementation,
-    /// logged at Warning, and surfaced as a <c>false</c> return so EF types
-    /// do not leak into the Application or Web layers.
-    /// </summary>
-    Task<bool> UpdateEmailAsync(
-        Guid userId, string provider, string providerKey, string newEmail, Instant updatedAt,
-        CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns every <see cref="UserEmail"/> row with matching
-    /// <paramref name="provider"/> / <paramref name="providerKey"/>.
-    /// Read-only (AsNoTracking). Used by
-    /// <c>UserEmailService.FindByProviderKeyAsync</c> for OAuth-callback rename
-    /// detection. The single-row-per-pair invariant is service-enforced; a
-    /// healthy database returns 0 or 1 rows.
-    /// </summary>
-    Task<IReadOnlyList<UserEmail>> FindAllByProviderKeyAsync(
-        string provider, string providerKey, CancellationToken ct = default);
-
-    /// <summary>
     /// Issue nobodies-collective/Humans#697. Returns the first verified
     /// <see cref="UserEmail"/> row whose <c>Email</c> matches
     /// <paramref name="email"/> (case-insensitive, gmail/googlemail alternate

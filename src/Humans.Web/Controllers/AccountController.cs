@@ -4,8 +4,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
 using NodaTime;
 using Humans.Domain.Entities;
-using Humans.Domain.Enums;
-using Humans.Application.DTOs;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Profiles;
@@ -109,9 +107,9 @@ public class AccountController : HumansControllerBase
             {
                 existingUser.LastLoginAt = _clock.GetCurrentInstant();
                 await _userManager.UpdateAsync(existingUser);
-            }
 
-            await DetectAndApplyRenameAsync(info, existingUser?.Id);
+                await TryReconcileOAuthIdentityAsync(existingUser.Id, info);
+            }
 
             _logger.LogInformation("User logged in with {Provider}", info.LoginProvider);
             return RedirectToLocal(returnUrl);
@@ -145,7 +143,7 @@ public class AccountController : HumansControllerBase
 
                     if (!string.IsNullOrEmpty(email))
                     {
-                        await TryLinkProviderForUserEmailAsync(currentUser.Id, email, info);
+                        await TryReconcileOAuthIdentityAsync(currentUser.Id, info);
                     }
 
                     _logger.LogInformation(
@@ -203,6 +201,9 @@ public class AccountController : HumansControllerBase
                                 activeTarget.LastLoginAt = _clock.GetCurrentInstant();
                                 await _userManager.UpdateAsync(activeTarget);
                                 await _signInManager.SignInAsync(activeTarget, isPersistent: false);
+
+                                await TryReconcileOAuthIdentityAsync(activeTarget.Id, info);
+
                                 _logger.LogInformation(
                                     "Relinked {Provider} login from locked source {SourceId} to active target {TargetId}",
                                     info.LoginProvider, lockedSource.Id, activeTarget.Id);
@@ -256,7 +257,7 @@ public class AccountController : HumansControllerBase
                     }
                     await _userManager.UpdateAsync(existingByEmail);
 
-                    await TryLinkProviderForUserEmailAsync(existingByEmail.Id, email, info);
+                    await TryReconcileOAuthIdentityAsync(existingByEmail.Id, info);
 
                     await _signInManager.SignInAsync(existingByEmail, isPersistent: false);
                     _logger.LogInformation(
@@ -323,24 +324,26 @@ public class AccountController : HumansControllerBase
             return View(nameof(Login));
         }
 
-        // Create the OAuth-linked UserEmail row via LinkAsync (find-or-create
-        // with Provider/ProviderKey tagged). If this fails after CreateAsync +
-        // AddLoginAsync both succeeded, we still have an orphan: the User +
-        // AspNetUserLogins row persist, but no UserEmail row exists, so the
-        // user becomes un-notifiable. Symmetric to CompleteSignup's cleanup.
+        // Create the OAuth-linked UserEmail row via the reconcile entry point.
+        // For a freshly created user this hits the NewRowCreated branch (no
+        // existing rows, no cross-user collision unless the address is already
+        // verified by another user). If reconcile throws after CreateAsync +
+        // AddLoginAsync both succeeded, roll back the User to avoid an orphan
+        // that's unreachable via either OAuth or magic link. Symmetric to
+        // CompleteSignup's cleanup.
         try
         {
-            await _userEmailService.LinkAsync(
+            await _userEmailService.ReconcileOAuthIdentityAsync(
                 user.Id,
                 info.LoginProvider,
                 info.ProviderKey,
                 email,
-                actorUserId: user.Id);
+                claimEmailVerified: ReadEmailVerifiedClaim(info));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex,
-                "Failed to create UserEmail for OAuth signup {UserId} ({Email}); rolling back user + login",
+                "Failed to reconcile OAuth identity for new user {UserId} ({Email}); rolling back user + login",
                 user.Id, email);
             try
             {
@@ -349,7 +352,7 @@ public class AccountController : HumansControllerBase
             catch (Exception deleteEx)
             {
                 _logger.LogError(deleteEx,
-                    "Failed to clean up orphan user {UserId} after LinkAsync failure",
+                    "Failed to clean up orphan user {UserId} after reconcile failure",
                     user.Id);
             }
             ModelState.AddModelError(string.Empty,
@@ -366,49 +369,30 @@ public class AccountController : HumansControllerBase
         return RedirectToLocal(returnUrl);
     }
 
-    private async Task DetectAndApplyRenameAsync(ExternalLoginInfo info, Guid? userId)
+    /// <summary>
+    /// Calls <see cref="IUserEmailService.ReconcileOAuthIdentityAsync"/> for
+    /// every OAuth-success path (existing-user sign-in, already-authenticated
+    /// link, lockout-relink, email-match link). Sign-in must never block on
+    /// reconcile failures — every exception is logged and swallowed. The
+    /// service owns every audit row for the OAuth path; this controller writes
+    /// none. The new-user creation path uses the reconcile result to decide
+    /// whether to roll back, so it calls reconcile inline rather than via
+    /// this helper.
+    /// </summary>
+    private async Task TryReconcileOAuthIdentityAsync(Guid userId, Microsoft.AspNetCore.Identity.ExternalLoginInfo info)
     {
-        if (userId is null)
+        var claimEmail = info.Principal.FindFirstValue(ClaimTypes.Email);
+        if (string.IsNullOrEmpty(claimEmail))
             return;
 
         try
         {
-            var claimEmail = info.Principal.FindFirstValue(ClaimTypes.Email);
-            if (string.IsNullOrEmpty(claimEmail))
-                return;
-
-            var match = await _userEmailService.FindByProviderKeyAsync(
-                info.LoginProvider, info.ProviderKey);
-            if (match is not null &&
-                match.UserId == userId.Value &&
-                string.Equals(match.Email, claimEmail, StringComparison.OrdinalIgnoreCase))
-                return;
-
-            var written = await _userEmailService.UpdateEmailAsync(
-                userId.Value, info.LoginProvider, info.ProviderKey, claimEmail);
-            if (!written)
-                return;
-
-            if (match is not null && match.UserId == userId.Value)
-            {
-                await _auditLogService.LogAsync(
-                    AuditAction.GoogleEmailRenamed,
-                    nameof(User), userId.Value,
-                    $"email rename detected: {match.Email} -> {claimEmail}, sub={info.ProviderKey}",
-                    nameof(AccountController),
-                    relatedEntityId: match.Id, relatedEntityType: nameof(UserEmail));
-            }
-            else
-            {
-                await _auditLogService.LogAsync(
-                    AuditAction.UserEmailLinked,
-                    nameof(User), userId.Value,
-                    $"OAuth backfill: created UserEmail row ({info.LoginProvider}, sub={info.ProviderKey}, email={claimEmail}) on sign-in.",
-                    nameof(AccountController));
-                _logger.LogWarning(
-                    "OAuth backfill: created UserEmail row for user {UserId} ({Provider}, sub={Sub}, email={Email}).",
-                    userId.Value, info.LoginProvider, info.ProviderKey, claimEmail);
-            }
+            await _userEmailService.ReconcileOAuthIdentityAsync(
+                userId,
+                info.LoginProvider,
+                info.ProviderKey,
+                claimEmail,
+                claimEmailVerified: ReadEmailVerifiedClaim(info));
         }
         catch (OperationCanceledException) when (HttpContext.RequestAborted.IsCancellationRequested)
         {
@@ -417,33 +401,22 @@ public class AccountController : HumansControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex,
-                "OAuth rename/backfill failed for {Provider} sub={Sub}",
-                info.LoginProvider, info.ProviderKey);
+                "OAuth reconcile failed for user {UserId} {Provider} sub={Sub}; sign-in continues",
+                userId, info.LoginProvider, info.ProviderKey);
         }
     }
 
-    private async Task TryLinkProviderForUserEmailAsync(Guid userId, string email, ExternalLoginInfo info)
+    /// <summary>
+    /// Reads the OIDC <c>email_verified</c> boolean from the principal. Google
+    /// surfaces it via the <c>email_verified</c> claim (mapped in
+    /// <c>Program.cs</c>). Returns <c>false</c> when the claim is missing or
+    /// unparseable — the displacement gate in the service treats this as
+    /// "don't displace another user".
+    /// </summary>
+    private static bool ReadEmailVerifiedClaim(Microsoft.AspNetCore.Identity.ExternalLoginInfo info)
     {
-        try
-        {
-            // The actor for the OAuth callback is the user being authenticated
-            // (themselves) — there is no separate admin/system invoker on this
-            // path. UserEmailService.LinkAsync is find-or-create, so passing the
-            // claim email handles both the "row already exists" and "fresh row"
-            // cases without a separate lookup in the controller.
-            await _userEmailService.LinkAsync(
-                userId,
-                info.LoginProvider,
-                info.ProviderKey,
-                email,
-                actorUserId: userId);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex,
-                "OAuth provider link failed for user {UserId} {Provider} sub={Sub}",
-                userId, info.LoginProvider, info.ProviderKey);
-        }
+        var raw = info.Principal.FindFirstValue("email_verified");
+        return bool.TryParse(raw, out var verified) && verified;
     }
 
     // --- Magic Link Auth ---
