@@ -118,6 +118,13 @@
                             <tr>
                                 <td>
                                     <code>@row.Email</code>
+                                    @if (row.HasOrphanProviderTag)
+                                    {
+                                        <div class="small text-warning">
+                                            <i class="fa-solid fa-triangle-exclamation me-1"></i>
+                                            Tagged with @row.Provider but no matching AspNetUserLogins row — self-heals on next OAuth sign-in.
+                                        </div>
+                                    }
                                 </td>
                                 <td>
                                     @if (row.IsMergePending)
@@ -331,6 +338,65 @@
                 </div>
             </div>
         </div>
+
+        @* Issue nobodies-collective/Humans#697: admin-only AspNetUserLogins   *@
+        @* snapshot so admins can see the Identity-owned OAuth identity store *@
+        @* alongside the UserEmail tag rows. Per-row disagreement flags surface *@
+        @* the "tagged but no login" and "login but no tag" states. The store *@
+        @* is authoritative for `(Provider, ProviderKey) -> UserId`; mismatches *@
+        @* self-heal on next OAuth sign-in via ReconcileOAuthIdentityAsync.   *@
+        @if (Model.IsAdminContext)
+        {
+            <div class="card mb-4" id="external-logins">
+                <div class="card-header">
+                    <h5 class="mb-0">AspNetUserLogins</h5>
+                    <small class="text-muted">Authoritative store for OAuth identity. The <code>UserEmail</code> provider tag above is a per-row pointer; this is the truth.</small>
+                </div>
+                <div class="card-body p-0">
+                    @if (!Model.ExternalLogins.Any())
+                    {
+                        <div class="p-3 text-muted">No external login rows for this user.</div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Provider</th>
+                                        <th>Provider Key (SHA-256 prefix)</th>
+                                        <th>Display Name</th>
+                                        <th>Flags</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                @foreach (var login in Model.ExternalLogins)
+                                {
+                                    <tr>
+                                        <td><code>@login.LoginProvider</code></td>
+                                        <td><code>@login.ProviderKeyHash</code></td>
+                                        <td>@(login.ProviderDisplayName ?? "—")</td>
+                                        <td>
+                                            @if (login.HasOrphanLogin)
+                                            {
+                                                <span class="badge bg-warning text-dark" title="No UserEmail row is tagged with this (Provider, ProviderKey) for this user. Self-heals on next OAuth sign-in via reconcile.">
+                                                    <i class="fa-solid fa-triangle-exclamation me-1"></i>No matching UserEmail tag
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">—</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
 
         <div class="card mb-4">
             <div class="card-header">
