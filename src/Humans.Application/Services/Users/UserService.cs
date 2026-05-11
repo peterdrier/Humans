@@ -143,24 +143,6 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
     // User writes
     // ==========================================================================
 
-    [Obsolete("Issue nobodies-collective/Humans#687: User.GoogleEmail is being deprecated. UserEmailService.EnsureGoogleInvariantAsync owns the IsGoogle flag on every row creation.")]
-    public async Task<bool> TrySetGoogleEmailAsync(Guid userId, string email, CancellationToken ct = default)
-    {
-        var set = await _repo.TrySetGoogleEmailAsync(userId, email, ct);
-        if (set)
-            await _fullProfileInvalidator.InvalidateAsync(userId, ct);
-        return set;
-    }
-
-    [Obsolete("Issue nobodies-collective/Humans#687: User.GoogleEmail is being deprecated. Use IUserEmailService.SetGoogleAsync to promote a UserEmail row.")]
-    public async Task<bool> SetGoogleEmailAsync(Guid userId, string email, CancellationToken ct = default)
-    {
-        var set = await _repo.SetGoogleEmailAsync(userId, email, ct);
-        if (set)
-            await _fullProfileInvalidator.InvalidateAsync(userId, ct);
-        return set;
-    }
-
     public async Task<bool> TrySetGoogleEmailStatusFromSyncAsync(
         Guid userId, GoogleEmailStatus status, CancellationToken ct = default)
     {

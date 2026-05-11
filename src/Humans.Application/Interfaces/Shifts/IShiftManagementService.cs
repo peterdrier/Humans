@@ -61,11 +61,6 @@ public interface IShiftManagementService : IApplicationService
     /// </summary>
     Task<int> DeleteEventAsync(Guid eventSettingsId, CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Gets the available (non-barrios) EE slots for a given day offset.
-    /// </summary>
-    int GetAvailableEeSlots(EventSettings settings, int dayOffset);
-
     // === Rota ===
 
     /// <summary>

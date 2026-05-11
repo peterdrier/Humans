@@ -987,7 +987,7 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
 
     private async Task<string?> CheckEeCapAsync(EventSettings es, int dayOffset)
     {
-        var availableSlots = _shiftMgmt.GetAvailableEeSlots(es, dayOffset);
+        var availableSlots = EarlyEntryCapacityCalculator.GetAvailableEeSlots(es, dayOffset);
         if (availableSlots <= 0)
             return "Early entry capacity reached for this day.";
 

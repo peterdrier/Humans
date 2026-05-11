@@ -127,26 +127,6 @@ public interface IUserService : IApplicationService
     // ---- Methods added for Profile-section migration (§15 Step 0) ----
 
     /// <summary>
-    /// Sets <c>User.GoogleEmail</c> if it is currently null. No-op if the
-    /// user already has a GoogleEmail set or the user does not exist.
-    /// Returns true if the GoogleEmail was set.
-    /// </summary>
-    [Obsolete("Issue nobodies-collective/Humans#687: User.GoogleEmail is being deprecated. The Google identity now lives on the UserEmail row (UserEmail.IsGoogle), maintained by UserEmailService.EnsureGoogleInvariantAsync on every row creation. Read FullProfile.GoogleEmail; promote a row with IUserEmailService.SetGoogleAsync.")]
-    Task<bool> TrySetGoogleEmailAsync(Guid userId, string email, CancellationToken ct = default);
-
-    /// <summary>
-    /// Unconditionally sets <c>User.GoogleEmail</c>, overwriting any existing
-    /// value. Used by <c>EmailProvisioningService</c> after a successful
-    /// Google Workspace provisioning, where the new <c>@nobodies.team</c>
-    /// address must become the authoritative Google identity even if the
-    /// user previously signed in with a personal Google account. Returns
-    /// true if the user exists and the value was written, false if the user
-    /// does not exist.
-    /// </summary>
-    [Obsolete("Issue nobodies-collective/Humans#687: User.GoogleEmail is being deprecated. Promote the desired UserEmail row via IUserEmailService.SetGoogleAsync (sets IsGoogle exclusively); read via FullProfile.GoogleEmail.")]
-    Task<bool> SetGoogleEmailAsync(Guid userId, string email, CancellationToken ct = default);
-
-    /// <summary>
     /// Sync-driven <see cref="User.GoogleEmailStatus"/> write that preserves
     /// the "Rejected is terminal" invariant: once flagged
     /// <see cref="GoogleEmailStatus.Rejected"/> (Google HTTP 403 on a

@@ -78,6 +78,7 @@ public sealed class ShiftManagementRepository : IShiftManagementRepository
     public async Task<int> DeleteEventCascadeAsync(Guid eventSettingsId, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var tx = await ctx.Database.BeginTransactionAsync(ct);
 
         var rotaIds = await ctx.Rotas
             .Where(r => r.EventSettingsId == eventSettingsId)
@@ -107,9 +108,12 @@ public sealed class ShiftManagementRepository : IShiftManagementRepository
                 .ExecuteDeleteAsync(ct);
         }
 
-        return await ctx.EventSettings
+        var deleted = await ctx.EventSettings
             .Where(e => e.Id == eventSettingsId)
             .ExecuteDeleteAsync(ct);
+
+        await tx.CommitAsync(ct);
+        return deleted;
     }
 
     // ==========================================================================

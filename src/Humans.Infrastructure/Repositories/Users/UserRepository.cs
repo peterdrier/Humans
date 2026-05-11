@@ -390,6 +390,7 @@ public sealed class UserRepository : IUserRepository
             return 0;
 
         await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var tx = await ctx.Database.BeginTransactionAsync(ct);
 
         await ctx.UserEmails
             .Where(e => userIds.Contains(e.UserId))
@@ -399,9 +400,12 @@ public sealed class UserRepository : IUserRepository
             .Where(l => userIds.Contains(l.UserId))
             .ExecuteDeleteAsync(ct);
 
-        return await ctx.Users
+        var deleted = await ctx.Users
             .Where(u => userIds.Contains(u.Id))
             .ExecuteDeleteAsync(ct);
+
+        await tx.CommitAsync(ct);
+        return deleted;
     }
 
     public async Task<int> DeleteAllExternalLoginsForUserAsync(Guid userId, CancellationToken ct = default)
