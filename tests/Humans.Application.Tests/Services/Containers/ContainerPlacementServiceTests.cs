@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Camps;
-using Humans.Application.Interfaces.CitiPlanning;
 using Humans.Application.Interfaces.Containers;
 using Humans.Application.Services.Containers;
 using Humans.Application.Tests.Infrastructure;
@@ -36,7 +35,6 @@ public class ContainerPlacementServiceTests : IDisposable
             repo,
             Substitute.For<IContainerImageStorage>(),
             Substitute.For<ICampService>(),
-            Substitute.For<ICityPlanningService>(),
             _clock);
     }
 

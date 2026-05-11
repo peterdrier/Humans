@@ -1,5 +1,4 @@
 using Humans.Application.Interfaces.Camps;
-using Humans.Application.Interfaces.CitiPlanning;
 using Humans.Application.Interfaces.Containers;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Constants;
@@ -16,20 +15,17 @@ public sealed class ContainerService : IContainerService
     private readonly IContainerRepository _repo;
     private readonly IContainerImageStorage _imageStorage;
     private readonly ICampService _campService;
-    private readonly ICityPlanningService _cityPlanningService;
     private readonly IClock _clock;
 
     public ContainerService(
         IContainerRepository repo,
         IContainerImageStorage imageStorage,
         ICampService campService,
-        ICityPlanningService cityPlanningService,
         IClock clock)
     {
         _repo = repo;
         _imageStorage = imageStorage;
         _campService = campService;
-        _cityPlanningService = cityPlanningService;
         _clock = clock;
     }
 

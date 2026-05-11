@@ -213,19 +213,17 @@ Map admin = `RoleChecks.IsCampAdmin(User)` **or** member of the City Planning te
 | `GET /CityPlanning/BarrioMap/Admin/DownloadOfficialZones` | Download official zones GeoJSON |
 | `POST /CityPlanning/BarrioMap/Admin/DeleteOfficialZones` | Delete official zones |
 | `GET /CityPlanning/BarrioMap/Admin/Containers/{year}` | Admin container list |
-| `POST /CityPlanning/BarrioMap/Admin/Containers/{year}/Create` | Create org-level container |
-| `POST /CityPlanning/BarrioMap/Admin/Containers/{year}/Barrios/{seasonId}/Create` | Create barrio container |
+| `POST /CityPlanning/BarrioMap/Admin/Containers/Create` | Create org-level container |
+| `POST /CityPlanning/BarrioMap/Admin/Containers/Barrios/{campId}/Create` | Create barrio container |
 | `POST /CityPlanning/BarrioMap/Admin/Containers/{id}/Edit` | Edit container |
 | `POST /CityPlanning/BarrioMap/Admin/Containers/{id}/Delete` | Delete container |
-| `POST /CityPlanning/BarrioMap/Admin/Containers/{id}/Image/Upload` | Upload container image |
-| `POST /CityPlanning/BarrioMap/Admin/Containers/{id}/Image/Delete` | Delete container image |
+| `POST /CityPlanning/BarrioMap/Admin/OpenContainerPlacement` | Open container placement phase |
+| `POST /CityPlanning/BarrioMap/Admin/CloseContainerPlacement` | Close container placement phase |
 | `GET /CityPlanning/ContainerMap/{year}` | Container placement map |
 | `GET /Camp/{slug}/Containers` | Barrio lead container list |
 | `POST /Camp/{slug}/Containers/Create` | Create container (barrio lead) |
 | `POST /Camp/{slug}/Containers/{id}/Edit` | Edit container (barrio lead) |
 | `POST /Camp/{slug}/Containers/{id}/Delete` | Delete container (barrio lead) |
-| `POST /Camp/{slug}/Containers/{id}/Image/Upload` | Upload image (barrio lead) |
-| `POST /Camp/{slug}/Containers/{id}/Image/Delete` | Delete image (barrio lead) |
 
 ### API Routes
 
