@@ -71,12 +71,12 @@
                     <dd class="col-sm-8 fw-semibold">&euro;@r.Total.ToString("N2")</dd>
 
                     <dt class="col-sm-4">Created</dt>
-                    <dd class="col-sm-8">@r.CreatedAt.ToDateTimeUtc().ToString("yyyy-MM-dd HH:mm") UTC</dd>
+                    <dd class="col-sm-8">@r.CreatedAt.ToDisplayDateTime()</dd>
 
                     @if (r.SubmittedAt.HasValue)
                     {
                         <dt class="col-sm-4">Submitted</dt>
-                        <dd class="col-sm-8">@r.SubmittedAt.Value.ToDateTimeUtc().ToString("yyyy-MM-dd HH:mm") UTC</dd>
+                        <dd class="col-sm-8">@r.SubmittedAt.Value.ToDisplayDateTime()</dd>
                     }
                 </dl>
             </div>
