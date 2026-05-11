@@ -56,6 +56,10 @@ public interface ICampService : IApplicationService
     /// Gets camps with their active leads (and lead user data) for a given year.
     /// Optionally filters to specific season statuses.
     /// </summary>
+    /// <remarks>
+    /// <see cref="CampInfo.Leads"/> is always a non-null list for results from
+    /// this method.
+    /// </remarks>
     Task<IReadOnlyList<CampInfo>> GetCampsWithLeadsForYearAsync(int year, IReadOnlyList<CampSeasonStatus>? statusFilter = null, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<CampSeasonInfo>> GetPendingSeasonsAsync(CancellationToken cancellationToken = default);
 
@@ -198,6 +202,11 @@ public sealed record CampInfo(
     bool IsSwissCamp,
     int TimesAtNowhere,
     IReadOnlyList<CampSeasonInfo> Seasons,
+    /// <remarks>
+    /// Null means leads were not loaded by <see cref="ICampService.GetCampsForYearAsync"/>.
+    /// Results from <see cref="ICampService.GetCampsWithLeadsForYearAsync"/> always
+    /// provide a non-null list, which may be empty when the camp has no leads.
+    /// </remarks>
     IReadOnlyList<CampLeadInfo>? Leads);
 
 public sealed record CampSeasonInfo(
