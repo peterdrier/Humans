@@ -44,6 +44,7 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
     private readonly IUserService _userService;
     private readonly IUserEmailService _userEmailService;
     private readonly ITeamService _teamService;
+    private readonly IProfileService _profileService;
     private readonly IEmailService _emailService;
     private readonly INotificationService _notificationService;
     private readonly IAuditLogService _auditLogService;
@@ -64,6 +65,7 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
         IUserService userService,
         IUserEmailService userEmailService,
         ITeamService teamService,
+        IProfileService profileService,
         IEmailService emailService,
         INotificationService notificationService,
         IAuditLogService auditLogService,
@@ -76,6 +78,7 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
         _userService = userService;
         _userEmailService = userEmailService;
         _teamService = teamService;
+        _profileService = profileService;
         _emailService = emailService;
         _notificationService = notificationService;
         _auditLogService = auditLogService;
@@ -152,8 +155,8 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
         var report = await _repository.GetByIdAsync(id, cancellationToken);
         if (report is null) return null;
 
-        await StitchCrossDomainNavsAsync([report], cancellationToken);
-        return CreateFeedbackReportInfo(report);
+        var displayNames = await StitchCrossDomainNavsAsync([report], cancellationToken);
+        return CreateFeedbackReportInfo(report, displayNames);
     }
 
     public async Task<IReadOnlyList<FeedbackReportInfo>> GetFeedbackListAsync(
@@ -167,8 +170,8 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
             status, category, reporterUserId, assignedToUserId, assignedToTeamId,
             unassignedOnly, limit, cancellationToken);
 
-        await StitchCrossDomainNavsAsync(reports, cancellationToken);
-        return reports.Select(CreateFeedbackReportInfo).ToList();
+        var displayNames = await StitchCrossDomainNavsAsync(reports, cancellationToken);
+        return reports.Select(r => CreateFeedbackReportInfo(r, displayNames)).ToList();
     }
 
     public async Task UpdateStatusAsync(
@@ -334,8 +337,8 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
         Guid reportId, CancellationToken cancellationToken = default)
     {
         var messages = await _repository.GetMessagesAsync(reportId, cancellationToken);
-        await StitchMessageSendersAsync(messages, cancellationToken);
-        return messages.Select(CreateFeedbackMessageInfo).ToList();
+        var displayNames = await StitchMessageSendersAsync(messages, cancellationToken);
+        return messages.Select(m => CreateFeedbackMessageInfo(m, displayNames)).ToList();
     }
 
     public async Task UpdateAssignmentAsync(
@@ -497,10 +500,10 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
     // ==========================================================================
 #pragma warning disable CS0618 // Obsolete cross-domain nav properties populated in-memory
 
-    private async Task StitchCrossDomainNavsAsync(
+    private async Task<IReadOnlyDictionary<Guid, string>> StitchCrossDomainNavsAsync(
         IReadOnlyList<FeedbackReport> reports, CancellationToken ct)
     {
-        if (reports.Count == 0) return;
+        if (reports.Count == 0) return EmptyDisplayNames;
 
         var userIds = new HashSet<Guid>();
         var teamIds = new HashSet<Guid>();
@@ -557,19 +560,21 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
                 }
             }
         }
+
+        return await BuildDisplayNamesAsync(userIds, users, ct);
     }
 
-    private async Task StitchMessageSendersAsync(
+    private async Task<IReadOnlyDictionary<Guid, string>> StitchMessageSendersAsync(
         IReadOnlyList<FeedbackMessage> messages, CancellationToken ct)
     {
-        if (messages.Count == 0) return;
+        if (messages.Count == 0) return EmptyDisplayNames;
 
         var userIds = messages
             .Where(m => m.SenderUserId.HasValue)
             .Select(m => m.SenderUserId!.Value)
             .ToHashSet();
 
-        if (userIds.Count == 0) return;
+        if (userIds.Count == 0) return EmptyDisplayNames;
 
         var users = await _userService.GetByIdsAsync(userIds, ct);
         foreach (var m in messages)
@@ -579,9 +584,36 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
                 m.SenderUser = sender;
             }
         }
+
+        return await BuildDisplayNamesAsync(userIds, users, ct);
     }
 
-    private static FeedbackReportInfo CreateFeedbackReportInfo(FeedbackReport report) =>
+    // Resolves display names using the BurnerName-first rule (memory/architecture/burnername-is-the-display-name.md):
+    // Profile.BurnerName when present, else User.DisplayName. Mirrors FullProfile.ResolveDisplayName.
+    private async Task<IReadOnlyDictionary<Guid, string>> BuildDisplayNamesAsync(
+        IReadOnlyCollection<Guid> userIds,
+        IReadOnlyDictionary<Guid, User>? users,
+        CancellationToken ct)
+    {
+        if (userIds.Count == 0 || users is null) return EmptyDisplayNames;
+
+        var profiles = await _profileService.GetByUserIdsAsync(userIds, ct);
+        var result = new Dictionary<Guid, string>(userIds.Count);
+        foreach (var id in userIds)
+        {
+            if (!users.TryGetValue(id, out var user)) continue;
+            var burnerName = profiles.TryGetValue(id, out var profile) ? profile.BurnerName : null;
+            result[id] = !string.IsNullOrWhiteSpace(burnerName) ? burnerName : user.DisplayName;
+        }
+        return result;
+    }
+
+    private static readonly IReadOnlyDictionary<Guid, string> EmptyDisplayNames =
+        new Dictionary<Guid, string>();
+
+    private static FeedbackReportInfo CreateFeedbackReportInfo(
+        FeedbackReport report,
+        IReadOnlyDictionary<Guid, string> displayNames) =>
         new(
             report.Id,
             report.UserId,
@@ -601,22 +633,27 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
             report.ResolvedByUserId,
             report.AssignedToUserId,
             report.AssignedToTeamId,
-            report.User?.DisplayName ?? report.UserId.ToString(),
+            displayNames.TryGetValue(report.UserId, out var reporterName) ? reporterName : report.UserId.ToString(),
             report.User?.Email,
             report.User?.PreferredLanguage ?? "en",
-            report.ResolvedByUser?.DisplayName,
-            report.AssignedToUser?.DisplayName,
+            ResolveName(report.ResolvedByUserId, displayNames),
+            ResolveName(report.AssignedToUserId, displayNames),
             report.AssignedToTeam?.Name,
-            report.Messages.Select(CreateFeedbackMessageInfo).ToList());
+            report.Messages.Select(m => CreateFeedbackMessageInfo(m, displayNames)).ToList());
 
-    private static FeedbackMessageInfo CreateFeedbackMessageInfo(FeedbackMessage message) =>
+    private static FeedbackMessageInfo CreateFeedbackMessageInfo(
+        FeedbackMessage message,
+        IReadOnlyDictionary<Guid, string> displayNames) =>
         new(
             message.Id,
             message.FeedbackReportId,
             message.SenderUserId,
-            message.SenderUser?.DisplayName,
+            ResolveName(message.SenderUserId, displayNames),
             message.Content,
             message.CreatedAt);
+
+    private static string? ResolveName(Guid? userId, IReadOnlyDictionary<Guid, string> displayNames)
+        => userId.HasValue && displayNames.TryGetValue(userId.Value, out var name) ? name : null;
 
 #pragma warning restore CS0618
 }
