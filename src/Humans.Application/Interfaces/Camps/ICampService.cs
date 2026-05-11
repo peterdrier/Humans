@@ -264,7 +264,11 @@ public sealed record CampSeasonInfo(
     int EeSlotCount,
     int? EeGrantedCount);
 
-public sealed record CampLeadInfo(Guid Id, Guid UserId, bool IsActive);
+// CampLookup / CampInfo.Leads is populated only from camp loads that apply the
+// filtered Include `.Include(c => c.Leads.Where(l => l.LeftAt == null))`, so
+// every CampLeadInfo in scope is active. An IsActive field here would be
+// invariantly true and misleading — leave it out.
+public sealed record CampLeadInfo(Guid Id, Guid UserId);
 
 /// <summary>
 /// Result of a camp membership request action.

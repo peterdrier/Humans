@@ -1,5 +1,6 @@
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Application.Interfaces.Email;
 
 namespace Humans.Web.Models;
 
@@ -345,7 +346,7 @@ public class EmailOutboxViewModel
     public int SentLast24HoursCount { get; set; }
     public int FailedCount { get; set; }
     public bool IsPaused { get; set; }
-    public List<EmailOutboxMessage> Messages { get; set; } = [];
+    public List<EmailOutboxMessageDto> Messages { get; set; } = [];
 }
 
 public class DbStatsViewModel

@@ -6,7 +6,7 @@ namespace Humans.Application.Interfaces.Gdpr;
 /// <see cref="UserDataSlice"/> values so the output shape stays stable even if
 /// a contributor moves between services. The names are deliberately
 /// <see cref="string"/>-typed so they can also appear in the architecture test
-/// and in <c>docs/features/gdpr-export.md</c>.
+/// and in <c>docs/features/global/gdpr-export.md</c>.
 ///
 /// <para>
 /// Changing a value here is a breaking change for any human who has previously

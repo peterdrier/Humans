@@ -164,11 +164,15 @@ public sealed class EmailProblemsService : IEmailProblemsService
     }
 
     public async Task<IReadOnlyList<(Guid UserId, string Email)>> BackfillLegacyIdentityEmailsAsync(
-        CancellationToken ct = default)
+        Guid actorUserId, CancellationToken ct = default)
     {
+        // actorUserId is captured by the caller's audit row; the scanner is
+        // admin-invoked and the per-row audit lives at the controller level.
+        _ = actorUserId;
+
         var users = await _userService.GetAllUsersAsync(ct);
-        var emailsByUser = await _userEmailService.GetEntitiesByUserIdsAsync(
-            users.Select(u => u.Id).ToList(), ct);
+        var userIds = users.Select(u => u.Id).ToList();
+        var emailsByUser = await _userEmailService.GetEntitiesByUserIdsAsync(userIds, ct);
 
         var backfilled = new List<(Guid, string)>();
 
@@ -184,6 +188,11 @@ public sealed class EmailProblemsService : IEmailProblemsService
                 && string.Equals(e.Email, legacy, StringComparison.OrdinalIgnoreCase)))
                 continue;
 
+            // Issue nobodies-collective/Humans#697: write the legacy address as
+            // a plain verified row. The (Provider, ProviderKey) tag is no
+            // longer authoritative for OAuth identity (AspNetUserLogins is) —
+            // the next OAuth sign-in's reconcile finds the matching row by
+            // address and attaches the tag via TagMoved.
             await _userEmailService.AddVerifiedEmailAsync(u.Id, legacy, ct);
             backfilled.Add((u.Id, legacy));
         }

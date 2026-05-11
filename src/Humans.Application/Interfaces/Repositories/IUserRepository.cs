@@ -135,17 +135,6 @@ public interface IUserRepository : IRepository
         Guid userId, GoogleEmailStatus status, CancellationToken ct = default);
 
     /// <summary>
-    /// Rewrites <c>User.Email</c>, <c>User.UserName</c>, <c>User.NormalizedEmail</c>,
-    /// and <c>User.NormalizedUserName</c> to the given <paramref name="newEmail"/>.
-    /// Used by the admin email-backfill workflow to repair OAuth identity after a
-    /// provider-side email change. Returns the previous <c>Email</c> value (may be
-    /// null) so callers can log the transition, or <c>(false, null)</c> if the user
-    /// does not exist.
-    /// </summary>
-    Task<(bool Updated, string? OldEmail)> RewritePrimaryEmailAsync(
-        Guid userId, string newEmail, CancellationToken ct = default);
-
-    /// <summary>
     /// Sets the deletion-pending fields on a user (<c>DeletionRequestedAt</c>,
     /// <c>DeletionScheduledFor</c>, optional <c>DeletionEligibleAfter</c>).
     /// Returns false if the user does not exist.
@@ -197,6 +186,17 @@ public interface IUserRepository : IRepository
     /// number of rows deleted. Used by EmailProblems ghost-login cleanup.
     /// </summary>
     Task<int> DeleteAllExternalLoginsForUserAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns every <c>AspNetUserLogins</c> <c>(LoginProvider, ProviderKey)</c>
+    /// row for each of the given users, grouped by <c>UserId</c>. Users without
+    /// any external login are absent from the dictionary. Used by the admin
+    /// per-user emails diagnostic to show the OAuth identity store alongside
+    /// the <c>UserEmail</c> tag rows.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, IReadOnlyList<(string Provider, string ProviderKey)>>>
+        GetExternalLoginsByUserIdsAsync(
+            IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
 
     /// <summary>
     /// Migrates every <c>AspNetUserLogins</c> row from

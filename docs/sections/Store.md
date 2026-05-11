@@ -64,7 +64,7 @@ A camp's order against a season.
 | CampSeasonId | Guid | FK only — no nav |
 | Label | string(100)? | Optional disambiguator within a season |
 | State | StoreOrderState (int) | Open or InvoiceIssued |
-| CounterpartyName / VatId / Address / CountryCode / Email | string? | Editable by Camp Lead while Open; FinanceAdmin always |
+| CounterpartyName / CounterpartyVatId / CounterpartyAddress / CounterpartyCountryCode / CounterpartyEmail | string? | Editable by Camp Lead while Open; FinanceAdmin always |
 | IssuedInvoiceId | Guid? | Set when invoice is issued |
 | CreatedAt / UpdatedAt | Instant | |
 
@@ -90,7 +90,7 @@ A camp's order against a season.
 | AddedAt | Instant | |
 | AddedByUserId | Guid | FK only — no nav |
 
-**Indexes:** `OrderId`, `ProductId`.
+**Indexes:** `OrderId`. `ProductId` — intra-section FK to `store_products` (`OnDelete=Restrict`, no navigation property).
 
 ### StorePayment
 
@@ -127,7 +127,7 @@ One per order; written once at issuance.
 | RequestPayload | jsonb | Full Holded request body for audit |
 | ResponsePayload | jsonb | Full Holded response body for audit |
 
-**Indexes:** unique `OrderId`, unique `HoldedDocId`.
+**Constraints:** `OrderId` — intra-section FK to `store_orders` (one-to-one, `OnDelete=Restrict`); unique implicit. `HoldedDocId` — unique index.
 
 ### StoreTreasurySyncState
 
@@ -165,10 +165,13 @@ Stored as int via `HasConversion<int>()`.
 
 - `/Store` — Camp Lead order browse + create + line edit.
 - `/Store/Order/{id}` — Camp Lead order detail (balance + Pay button).
-- `/Store/Admin/Catalog` — StoreAdmin catalog CRUD.
-- `/Store/Admin/Orders` — FinanceAdmin order ledger + payment entry + Issue Invoice.
-- `/Store/Summary` — FinanceAdmin per-camp + per-item summary.
-- `/Store/StripeWebhook` — anonymous endpoint for Stripe checkout-session events.
+- `/Store/Admin/Catalog` — StoreAdmin catalog CRUD (`StoreAdminController`, policy `StoreCatalogAdmin`).
+- `/Store/Admin/Catalog/Edit[/{id}]` — Create / edit product.
+- `/Store/Admin/Catalog/Save` — POST save product.
+- `/Store/Admin/Catalog/Deactivate/{id}` — POST soft-deactivate product.
+- `/Store/Admin/Orders` — FinanceAdmin order ledger + payment entry + Issue Invoice. **Not yet implemented (Phase 5 stub).**
+- `/Store/Summary` — FinanceAdmin per-camp + per-item summary. **Not yet implemented (Phase 5 stub).**
+- `/Store/StripeWebhook` — anonymous endpoint for Stripe checkout-session events (`StoreStripeWebhookController`).
 
 ## Actors & Roles
 
@@ -182,14 +185,14 @@ Stored as int via `HasConversion<int>()`.
 
 - An order follows the lifecycle: **Open → InvoiceIssued**. There is no return-to-Open transition.
 - Lines may only be added or removed while the order is `Open` AND `today <= Product.OrderableUntil` (enforced in `StoreService.AddLineAsync` / `RemoveLineAsync`).
-- Counterparty fields (Name, VAT id, Address, CountryCode, Email) are editable only while the order is `Open` (Camp Lead) or by FinanceAdmin/Admin always.
+- Counterparty fields (`CounterpartyName`, `CounterpartyVatId`, `CounterpartyAddress`, `CounterpartyCountryCode`, `CounterpartyEmail`) are editable only while the order is `Open` (Camp Lead) or by FinanceAdmin/Admin always.
 - Line snapshots (`UnitPriceSnapshot`, `VatRateSnapshot`, `DepositAmountSnapshot`) are written at add-time and never recomputed — later catalog edits to `StoreProduct` do not propagate to existing lines.
 - Payments may be recorded regardless of order state — payments do not freeze on issuance.
 - Issuing an invoice is idempotent: re-issuing an order that already has `IssuedInvoiceId` set throws and does NOT call Holded.
 - Issue-invoice failure mid-flight leaves the order in `Open` state with no `StoreInvoice` row (atomic on success only).
 - A Stripe `checkout.session.completed` event with a known `humans_store_order_id` inserts at most one `StorePayment` per `StripePaymentIntentId` (filtered unique index + service-level dedup check).
 - The treasury sync job matches Holded entries to orders **best-effort** by exact `Order.Label` ↔ entry description; ambiguous matches (multiple orders share a Label) are skipped and logged.
-- Resource-based authorization per design-rules §11: `StoreOrderAuthorizationHandler` + `StoreOrderOperationRequirement` gate Camp Lead writes against the order's parent camp-season (Phase 2).
+- Resource-based authorization per design-rules §11: `StoreOrderAuthorizationHandler` + `StoreOrderOperationRequirement` gate Camp Lead writes against the order's parent camp-season. Operations: `View`, `Create`, `AddLine`, `RemoveLine`, `EditCounterparty`, `Pay`. Mutating ops (`AddLine`, `RemoveLine`, `EditCounterparty`) are gated on `State = Open`; `View` and `Pay` carry no state gate.
 
 ## Negative Access Rules
 
@@ -201,10 +204,15 @@ Stored as int via `HasConversion<int>()`.
 
 ## Triggers
 
-- Every Order create, line add/remove, counterparty edit, payment record, and invoice issuance emits an audit log entry via `IAuditLogService` (Phases 2, 3, 5).
-- `IssueInvoiceAsync` calls `IHoldedClient.UpsertContactAsync` then `IHoldedClient.CreateInvoiceAsync`, then writes the `StoreInvoice` row and flips `StoreOrder.State = InvoiceIssued` in the same logical operation (Phase 5).
-- The Stripe webhook controller verifies the request signature with `STRIPE_WEBHOOK_SECRET` and inserts a `StorePayment(Method=Stripe)` for `checkout.session.completed` events (Phase 6).
-- `StoreTreasurySyncJob` (Hangfire recurring) polls `IHoldedClient.ListTreasuryEntriesAsync` from `StoreTreasurySyncState.LastSyncAt`, inserts `StorePayment(Method=BankTransfer)` for unambiguous Label matches, and advances the cursor (Phase 7).
+**Live:**
+- Order create, line add/remove, counterparty edit, and Stripe payment record emit audit log entries via `IAuditLogService` (`StoreOrderCreated`, `StoreLineAdded`, `StoreLineRemoved`, `StoreCounterpartyEdited`, `StorePaymentRecorded`).
+- Product create, update, and deactivate emit `StoreProductCreated`, `StoreProductUpdated`, `StoreProductDeactivated`.
+- The Stripe webhook controller (`StoreStripeWebhookController`) verifies the request signature via `IStripeService.ParseStoreCheckoutEvent` and calls `IStoreService.RecordStripePaymentAsync` for `checkout.session.completed` events. Idempotent on `StripePaymentIntentId`.
+
+**Not yet shipped (Phase 5+):**
+- `IssueInvoiceAsync` — will call `IHoldedClient.UpsertContactAsync` then `IHoldedClient.CreateInvoiceAsync`, write the `StoreInvoice` row, flip `StoreOrder.State = InvoiceIssued`, and emit `StorePaymentRecorded` audit entry. Currently throws `NotSupportedException("Phase 5")`.
+- `RecordManualPaymentAsync` — manual payment entry by FinanceAdmin. Currently throws `NotSupportedException("Phase 5")`.
+- `StoreTreasurySyncJob` (Hangfire recurring) — polls `IHoldedClient.ListTreasuryEntriesAsync` from `StoreTreasurySyncState.LastSyncAt`, inserts `StorePayment(Method=BankTransfer)` for unambiguous Label matches, advances cursor. Not yet implemented.
 
 ## Cross-Section Dependencies
 
@@ -215,44 +223,14 @@ Stored as int via `HasConversion<int>()`.
 - **Stripe connector** (Infrastructure): `IStripeService.CreateCheckoutSessionAsync` for camp-lead payments; `StoreStripeWebhookController` for `checkout.session.completed` ingestion.
 - **Audit Log:** `IAuditLogService` for every mutation.
 
-## Stripe Configuration
+## Stripe Connector
 
-**One key per Stripe account / purpose.** Each key holds the minimum scope its job requires; production keys are Restricted API Keys (`rk_live_*`).
+The Store section uses `IStripeService` (Application-layer abstraction; Infrastructure impl in `Humans.Infrastructure/Services/StripeService.cs`).
 
-| Env var | Account | Scope | Set in |
-|---|---|---|---|
-| `STRIPE_TICKETS_KEY` | Tickets | PaymentIntent + BalanceTransaction reads | dev / QA / prod |
-| `STRIPE_STORE_KEY` | Store | `checkout_session:write` only | dev / QA / prod |
-| `STRIPE_STORE_WEBHOOK_SECRET` | Store | Webhook signing secret (`whsec_*`) | QA / prod (manual); ephemeral (auto-set at boot) |
-| `STRIPE_STORE_WEBHOOK_REGISTRAR_KEY` | Store | `webhook_endpoint:read` + `webhook_endpoint:write` | **PR-preview / ephemeral envs only** |
-| `Stripe:WebhookCleanupOwner` (config) | — | n/a | PR-preview only — GitHub owner of the fork that produces previews (e.g. `peterdrier`) |
-| `Stripe:WebhookCleanupRepository` (config) | — | n/a | PR-preview only — repository name (e.g. `Humans`) |
-
-`STRIPE_API_KEY` is honored as a deprecated alias for `STRIPE_TICKETS_KEY` and emits a one-shot startup warning.
-
-The Store key explicitly does NOT carry refund, payout, charge-modify, customer-write, or PaymentIntent-write scopes. **Refunds, payouts, and chargebacks remain manual via the Stripe dashboard** by policy — bookkeeping for refunds posts to Store as negative `StorePayment` rows via FinanceAdmin manual entry (Phase 5.3).
-
-### Webhook auto-registration (ephemeral envs)
-
-PR-preview environments cannot reasonably create dashboard webhooks per-PR. `StoreWebhookRegistrationService` runs at boot iff `STRIPE_STORE_WEBHOOK_REGISTRAR_KEY` is set:
-
-1. **Cross-PR sweep.** Hits the GitHub API (`GET /repos/{owner}/{repo}/pulls?state=open`) using the existing `GitHub:AccessToken`, builds a set of currently-open PR numbers. Then lists Stripe webhooks owned by this account, filters to URLs matching `{N}.n.burn.camp/Store/StripeWebhook`, parses `{N}` from each host, and deletes any whose PR is no longer open. Idempotent — concurrent boots race harmlessly; 404s on already-deleted endpoints are swallowed.
-2. **Current-PR cleanup.** Deletes any webhook whose URL exactly matches this env's URL (handles the redeploy/restart case).
-3. **Register.** Creates a fresh endpoint subscribed to all four `checkout.session.*` events (`completed`, `async_payment_succeeded`, `async_payment_failed`, `expired`) so PR-preview matches QA/prod's manual subscription. Today the controller acts only on `completed`; the other three log at Warning until the async-payment state machine ships. Stamps the returned `whsec_*` onto the in-memory `StripeSettings.StoreWebhookSecret` for the process lifetime — Stripe only returns the secret at creation, never via fetch.
-
-The registrar key is **deliberately separate** from `STRIPE_STORE_KEY` so PR-preview testing exercises the production-narrow `checkout_session:write`-only Store key — expanding `STRIPE_STORE_KEY`'s scope in dev would mask scope-related production failures.
-
-**PR-preview Coolify config (the only env that should set these):**
-- `STRIPE_STORE_WEBHOOK_REGISTRAR_KEY=rk_test_...` (with `webhook_endpoint:read` + `webhook_endpoint:write`)
-- `Stripe:WebhookCleanupOwner=peterdrier`, `Stripe:WebhookCleanupRepository=Humans`
-
-QA and production deliberately do NOT set the registrar key and use a dashboard-configured webhook with a stable signing secret.
-
-The cross-PR sweep means closed-PR cleanup is **self-contained** — no extension to the PR-close GitHub Action is required. The next boot of any PR-preview env (or the same PR redeploying) reaps stale endpoints across the whole account.
-
-### Smoke probe
-
-Boot-time `StripeStartupSmokeService` makes one low-risk read against each configured key (Tickets: PaymentIntents.list; Store: Checkout.Sessions.list). Logs warnings on missing scopes. Stripe does not expose programmatic introspection of RAK scopes, so the probe is positive-confirmation only — it cannot detect over-granted permissions.
+- `STRIPE_STORE_KEY` — `checkout_session:write` only. Refunds, payouts, and chargebacks remain manual via the Stripe dashboard; the bookkeeping side posts as negative `StorePayment` rows via FinanceAdmin manual entry (Phase 5.3).
+- `STRIPE_STORE_WEBHOOK_SECRET` — signing secret for `StoreStripeWebhookController`. Set manually in QA/prod; auto-provisioned at boot in PR-preview envs via `StoreWebhookRegistrationService` (requires `STRIPE_STORE_WEBHOOK_REGISTRAR_KEY`).
+- Webhook events subscribed: `checkout.session.completed` (handled); `checkout.session.async_payment_succeeded/failed/expired` (logged at Warning, not yet handled).
+- Boot-time `StripeStartupSmokeService` validates each key with one low-risk read (Checkout.Sessions.list for Store key). Positive-confirmation only — cannot detect over-granted scopes.
 
 ## Architecture
 
@@ -261,9 +239,10 @@ Boot-time `StripeStartupSmokeService` makes one low-risk read against each confi
 **Status:** (A) Migrated — new section, born §15-compliant (peterdrier/Humans store-foundation, 2026-04-30).
 
 - `StoreService` lives in `Humans.Application.Services.Store` and depends only on Application-layer abstractions.
-- `StoreRepository` (impl `Humans.Infrastructure/Repositories/Store/StoreRepository.cs`, §15b Singleton + `IDbContextFactory`) is the only file that touches Store tables via `DbContext`.
+- `IStoreRepository` interface lives in `Humans.Application.Interfaces.Repositories`. `StoreRepository` (impl `Humans.Infrastructure/Repositories/Store/StoreRepository.cs`, §15b Singleton + `IDbContextFactory`) is the only file that touches Store tables via `DbContext`.
 - **Decorator decision — no caching decorator.** Store is admin / camp-lead only, low-traffic; same rationale as Budget / Governance.
-- **Cross-domain navs:** none. `CampSeasonId`, `ProductId`, `AddedByUserId`, `RecordedByUserId`, `IssuedByUserId` are all FK-only with no navigation property.
+- **Cross-domain navs:** none. `CampSeasonId`, `ProductId`, `AddedByUserId`, `RecordedByUserId`, `IssuedByUserId` are all FK-only with no navigation property. Intra-section back-navs `StoreOrderLine.Order` and `StorePayment.Order` are aggregate-local and are kept.
 - **Cross-section calls** route through `ICampService` (camp / camp-season lookups), `IShiftManagementService` (active event year + time-zone), `IAuditLogService`, `IHoldedClient`, `IStripeService`.
+- **Architecture test:** none yet. `tests/Humans.Application.Tests/Architecture/StoreArchitectureTests.cs` is not present — gap to fill in a follow-up.
 
-Phase 1 ships entities, migration, role, service skeleton (methods throw `NotSupportedException` until later phases). Phases 2–7 progressively fill the surface; see `docs/superpowers/specs/2026-04-30-store-section-design.md` and `docs/superpowers/plans/2026-04-30-store-section.md`.
+Implementation status: catalog CRUD (create, update, deactivate), order create, add/remove line, counterparty edit, and Stripe payment recording are live. `RecordManualPaymentAsync`, `IssueInvoiceAsync`, `GetAllOrderSummariesAsync`, treasury sync, and the Orders/Summary admin views throw `NotSupportedException("Phase 5")`. See `docs/superpowers/specs/2026-04-30-store-section-design.md` and `docs/superpowers/plans/2026-04-30-store-section.md`.

@@ -256,7 +256,7 @@ Rules that apply when writing or updating any section doc:
 5. **"Current violations" is the ONLY place to list violations.** Do not let them leak into Invariants (those are what IS true, not what IS broken). Status (A) sections have no "Current violations" block — full stop.
 6. **Terse wins.** Every bullet that could be shortened without losing meaning should be. Readers will stop reading a bloated doc; they will not stop reading at the point the bullet becomes terse.
 7. **No emojis, no narrative ("let's"), no commentary ("interestingly..."), no "as of today"** — anchor every date with a concrete reference ("2026-04-22", "PR #243").
-8. **Link to specs, do not duplicate.** Workflows belong in `docs/features/<feature>.md`; UI text choices belong in CLAUDE.md; entity field listings belong in `docs/architecture/data-model.md`. Section docs point to those files, they do not copy from them.
+8. **Link to specs, do not duplicate.** Workflows belong in `docs/features/<section>/<feature>.md`; UI text choices belong in CLAUDE.md; entity field listings belong in `docs/architecture/data-model.md`. Section docs point to those files, they do not copy from them.
 
 ---
 
@@ -264,7 +264,7 @@ Rules that apply when writing or updating any section doc:
 
 Explicit out-of-scope list, to keep docs from drifting into other files' territory:
 
-- **No workflow diagrams.** State machines live under `docs/features/<feature>.md`. The section doc states "Status follows: Submitted → Approved/Rejected" and stops.
+- **No workflow diagrams.** State machines live under `docs/features/<section>/<feature>.md`. The section doc states "Status follows: Submitted → Approved/Rejected" and stops.
 - **No implementation walk-throughs.** If a PR needs one, it goes in the PR description, not the section doc.
 - **No open questions, TODOs, "thinking about..." notes.** Those are issues on GitHub or lines in `todos.md`.
 - **No deploy / infra notes.** CLAUDE.md owns deployment; section docs describe the section as it runs, not how it ships.
