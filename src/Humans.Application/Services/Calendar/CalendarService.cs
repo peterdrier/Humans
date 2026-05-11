@@ -240,10 +240,10 @@ public sealed class CalendarService : ICalendarService
         return finalResults.OrderBy(o => o.OccurrenceStartUtc).ToList();
     }
 
-    public async Task<CalendarEventInfo?> GetEventByIdAsync(Guid id, CancellationToken ct = default)
+    public async Task<CalendarEventDetail?> GetEventByIdAsync(Guid id, CancellationToken ct = default)
     {
-        var calendarEvent = await _repo.GetEventByIdAsync(id, ct);
-        return calendarEvent is null ? null : CreateCalendarEventInfo(calendarEvent);
+        var ev = await _repo.GetEventByIdAsync(id, ct);
+        return ev is null ? null : ToDetail(ev);
     }
 
     public async Task<CalendarEvent> CreateEventAsync(CreateCalendarEventDto dto, Guid createdByUserId, CancellationToken ct = default)
@@ -289,24 +289,6 @@ public sealed class CalendarService : ICalendarService
     }
 
     private void InvalidateCache() => _cache.Remove(CacheKeyActiveEvents);
-
-    private static CalendarEventInfo CreateCalendarEventInfo(CalendarEvent calendarEvent) =>
-        new(
-            calendarEvent.Id,
-            calendarEvent.Title,
-            calendarEvent.Description,
-            calendarEvent.Location,
-            calendarEvent.LocationUrl,
-            calendarEvent.OwningTeamId,
-            calendarEvent.StartUtc,
-            calendarEvent.EndUtc,
-            calendarEvent.IsAllDay,
-            calendarEvent.RecurrenceRule,
-            calendarEvent.RecurrenceTimezone,
-            calendarEvent.RecurrenceUntilUtc,
-            calendarEvent.CreatedByUserId,
-            calendarEvent.CreatedAt,
-            calendarEvent.UpdatedAt);
 
     // Parse-check the RRULE at write time so a malformed rule cannot persist and break
     // calendar reads (where occurrence expansion would throw). Ical.Net's RecurrencePattern
@@ -518,4 +500,19 @@ public sealed class CalendarService : ICalendarService
 
         InvalidateCache();
     }
+
+    private static CalendarEventDetail ToDetail(CalendarEvent ev) => new(
+        ev.Id,
+        ev.Title,
+        ev.Description,
+        ev.Location,
+        ev.LocationUrl,
+        ev.OwningTeamId,
+        ev.StartUtc,
+        ev.EndUtc,
+        ev.IsAllDay,
+        ev.RecurrenceRule,
+        ev.RecurrenceTimezone,
+        ev.CreatedAt,
+        ev.UpdatedAt);
 }

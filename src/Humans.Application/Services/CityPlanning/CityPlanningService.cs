@@ -127,6 +127,19 @@ public sealed class CityPlanningService : ICityPlanningService
         _ => null
     };
 
+    private static CityPlanningSettingsDto ToDto(CityPlanningSettings settings) => new(
+        settings.Id,
+        settings.Year,
+        settings.IsPlacementOpen,
+        settings.OpenedAt,
+        settings.ClosedAt,
+        settings.PlacementOpensAt,
+        settings.PlacementClosesAt,
+        settings.RegistrationInfo,
+        settings.LimitZoneGeoJson,
+        settings.OfficialZonesGeoJson,
+        settings.UpdatedAt);
+
     public async Task<List<CampPolygonHistoryEntryDto>> GetCampPolygonHistoryAsync(
         Guid campSeasonId, CancellationToken cancellationToken = default)
     {
@@ -215,12 +228,13 @@ public sealed class CityPlanningService : ICityPlanningService
     // Settings
     // ==========================================================================
 
-    public async Task<CityPlanningSettings> GetSettingsAsync(
+    public async Task<CityPlanningSettingsDto> GetSettingsAsync(
         CancellationToken cancellationToken = default)
     {
         var campSettings = await _campService.GetSettingsAsync(cancellationToken);
-        return await _repo.GetOrCreateSettingsAsync(
+        var settings = await _repo.GetOrCreateSettingsAsync(
             campSettings.PublicYear, _clock.GetCurrentInstant(), cancellationToken);
+        return ToDto(settings);
     }
 
     public async Task OpenPlacementAsync(Guid userId, CancellationToken cancellationToken = default)

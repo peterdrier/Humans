@@ -1,6 +1,5 @@
 # Baseline for application service read methods that still expose EF/domain entities.
 # New read methods on IApplicationService must return read models/snapshots instead of entities.
-Humans.Application.Interfaces.IAgentSettingsService.Current:Humans.Domain.Entities.AgentSettings
 Humans.Application.Interfaces.AuditLog.IAuditLogService.GetAuditLogPageAsync:Humans.Domain.Entities.AuditLogEntry
 Humans.Application.Interfaces.AuditLog.IAuditLogService.GetByResourceAsync:Humans.Domain.Entities.AuditLogEntry
 Humans.Application.Interfaces.AuditLog.IAuditLogService.GetByUserAsync:Humans.Domain.Entities.AuditLogEntry
@@ -33,7 +32,6 @@ Humans.Application.Interfaces.Camps.ICampService.GetCampBySlugAsync:Humans.Domai
 Humans.Application.Interfaces.Camps.ICampService.GetCampSeasonByIdAsync:Humans.Domain.Entities.CampSeason
 Humans.Application.Interfaces.Camps.ICampService.GetSeasonMembersAsync:Humans.Domain.Entities.CampMember
 Humans.Application.Interfaces.Camps.ICampService.GetSettingsAsync:Humans.Domain.Entities.CampSettings
-Humans.Application.Interfaces.CitiPlanning.ICityPlanningService.GetSettingsAsync:Humans.Domain.Entities.CityPlanningSettings
 Humans.Application.Interfaces.Consent.IConsentService.GetConsentDashboardAsync:Humans.Domain.Entities.ConsentRecord
 Humans.Application.Interfaces.Consent.IConsentService.GetConsentDashboardAsync:Humans.Domain.Entities.DocumentVersion
 Humans.Application.Interfaces.Consent.IConsentService.GetConsentDashboardAsync:Humans.Domain.Entities.Team
@@ -45,8 +43,6 @@ Humans.Application.Interfaces.Dashboard.IDashboardService.GetMemberDashboardAsyn
 Humans.Application.Interfaces.Dashboard.IDashboardService.GetMemberDashboardAsync:Humans.Domain.Entities.Profile
 Humans.Application.Interfaces.Dashboard.IDashboardService.GetMemberDashboardAsync:Humans.Domain.Entities.Shift
 Humans.Application.Interfaces.Dashboard.IDashboardService.GetMemberDashboardAsync:Humans.Domain.Entities.ShiftSignup
-Humans.Application.Interfaces.Email.IEmailOutboxService.GetMessagesForUserAsync:Humans.Domain.Entities.EmailOutboxMessage
-Humans.Application.Interfaces.Email.IEmailOutboxService.GetOutboxStatsAsync:Humans.Domain.Entities.EmailOutboxMessage
 Humans.Application.Interfaces.Feedback.IFeedbackService.GetFeedbackByIdAsync:Humans.Domain.Entities.FeedbackReport
 Humans.Application.Interfaces.Feedback.IFeedbackService.GetFeedbackListAsync:Humans.Domain.Entities.FeedbackReport
 Humans.Application.Interfaces.Feedback.IFeedbackService.GetMessagesAsync:Humans.Domain.Entities.FeedbackMessage

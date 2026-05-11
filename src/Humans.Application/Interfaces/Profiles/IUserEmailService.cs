@@ -329,21 +329,25 @@ public interface IUserEmailService : IApplicationService
         string email, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Rewrites the user's <see cref="Domain.Entities.UserEmail"/> row
-    /// whose address matches <paramref name="oldEmail"/> (case-insensitive) to
-    /// <paramref name="newEmail"/> and stamps <c>UpdatedAt</c>. Used by the
-    /// admin rename-fix flow and by the OAuth rename detector.
+    /// The one and only way to write the OAuth-linked
+    /// <see cref="Domain.Entities.UserEmail"/> row from a Google sign-in.
+    /// Upserts on <see cref="Domain.Entities.UserEmail.Provider"/>+
+    /// <see cref="Domain.Entities.UserEmail.ProviderKey"/> — the only
+    /// legitimate match key for the OAuth identity — for the given
+    /// <paramref name="userId"/>. Inserts a verified row when the pair is
+    /// missing; updates <c>Email</c> and stamps <c>UpdatedAt</c> when present.
+    /// Removes any other row for the same user already holding
+    /// <paramref name="newEmail"/> and reconciles
+    /// <see cref="Domain.Entities.UserEmail.IsPrimary"/> on the surviving rows.
+    /// Invalidates the user's <c>FullProfile</c> cache.
     ///
-    /// Returns a <see cref="RewriteEmailAddressOutcome"/> describing what
-    /// happened (rewritten, merged into a same-user row, cross-user conflict,
-    /// or source row not found). Never throws on a unique-index conflict —
-    /// see <see cref="IUserEmailRepository.RewriteEmailAddressAsync"/> for the
-    /// branching contract. Cross-user conflicts are logged at
-    /// <c>LogWarning</c> with structured properties (no exception object) and
-    /// surfaced to admins via the duplicate-account detection flow.
+    /// Callable only by the OAuth sign-in callback in <c>AccountController</c>
+    /// per <c>memory/architecture/email-mutation-paths.md</c>. Returns false
+    /// when a cross-user collision was caught at the persistence layer (the
+    /// caller skips audit logging in that case); true on a successful write.
     /// </summary>
-    Task<RewriteEmailAddressOutcome> RewriteEmailAddressAsync(
-        Guid userId, string oldEmail, string newEmail,
+    Task<bool> UpdateEmailAsync(
+        Guid userId, string provider, string providerKey, string newEmail,
         CancellationToken cancellationToken = default);
 
     /// <summary>
