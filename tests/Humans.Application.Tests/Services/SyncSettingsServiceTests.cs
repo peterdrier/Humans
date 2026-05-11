@@ -48,9 +48,9 @@ public class SyncSettingsServiceTests : IDisposable
         var result = await _service.GetAllAsync();
 
         result.Should().HaveCount(3);
-        result[0].ServiceType.Should().Be(Enum.GetValues<SyncServiceType>()[0]);
-        result[0].SyncMode.Should().Be(SyncMode.None);
-        result[0].UpdatedAt.Should().Be(_clock.GetCurrentInstant());
+        var googleDriveRow = result.First(r => r.ServiceType == Enum.GetValues<SyncServiceType>()[0]);
+        googleDriveRow.SyncMode.Should().Be(SyncMode.None);
+        googleDriveRow.UpdatedAt.Should().Be(_clock.GetCurrentInstant());
     }
 
     [HumansFact]
