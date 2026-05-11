@@ -86,21 +86,16 @@ public sealed class EmailMutationPathsAnalyzer : DiagnosticAnalyzer
         if (!string.Equals(method.Name, MethodName, System.StringComparison.Ordinal))
             return;
 
-        var declaring = method.ContainingType;
-        if (declaring is null)
-            return;
-
-        var declaringName = declaring.ToDisplayString();
         var callerTopLevel = context.ContainingSymbol.ContainingTopLevelType()?.ToDisplayString();
 
-        if (string.Equals(declaringName, ServiceInterface, System.StringComparison.Ordinal))
+        if (InterfaceMethodMatcher.Targets(method, ServiceInterface, MethodName))
         {
             if (!string.Equals(callerTopLevel, AllowedServiceCaller, System.StringComparison.Ordinal))
                 context.ReportDiagnostic(Diagnostic.Create(ServiceCallerRule, op.Syntax.GetLocation()));
             return;
         }
 
-        if (string.Equals(declaringName, RepositoryInterface, System.StringComparison.Ordinal))
+        if (InterfaceMethodMatcher.Targets(method, RepositoryInterface, MethodName))
         {
             if (!string.Equals(callerTopLevel, AllowedRepositoryCaller, System.StringComparison.Ordinal))
                 context.ReportDiagnostic(Diagnostic.Create(RepositoryCallerRule, op.Syntax.GetLocation()));

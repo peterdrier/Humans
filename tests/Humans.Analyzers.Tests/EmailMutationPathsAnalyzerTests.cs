@@ -136,6 +136,87 @@ public class EmailMutationPathsAnalyzerTests
     }
 
     [HumansFact]
+    public async Task Fires_HUM0005_when_concrete_service_class_called_from_non_AccountController()
+    {
+        // Codex P2: a caller holding the concrete UserEmailService (rather than the
+        // IUserEmailService interface) used to bypass the analyzer because the call's
+        // ContainingType was the class, not the interface.
+        var source = InterfaceStubs + """
+
+            namespace Humans.Application.Services.Profile
+            {
+                public class UserEmailService : Humans.Application.Interfaces.Profiles.IUserEmailService
+                {
+                    public async System.Threading.Tasks.Task<bool> UpdateEmailAsync(
+                        System.Guid userId, string provider, string providerKey, string newEmail)
+                    {
+                        await System.Threading.Tasks.Task.CompletedTask;
+                        return false;
+                    }
+                }
+            }
+
+            namespace Humans.Web.Controllers
+            {
+                public class SomeOtherController
+                {
+                    public async System.Threading.Tasks.Task Run(
+                        Humans.Application.Services.Profile.UserEmailService concrete)
+                    {
+                        await concrete.UpdateEmailAsync(System.Guid.Empty, "p", "k", "e@x");
+                    }
+                }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new EmailMutationPathsAnalyzer(),
+            "Humans.Web",
+            source);
+
+        diagnostics.Should().ContainSingle(d => IsHum0005(d));
+    }
+
+    [HumansFact]
+    public async Task Fires_HUM0006_when_concrete_repository_class_called_from_non_UserEmailService()
+    {
+        var source = InterfaceStubs + """
+
+            namespace Humans.Infrastructure.Repositories.Profiles
+            {
+                public class UserEmailRepository : Humans.Application.Interfaces.Repositories.IUserEmailRepository
+                {
+                    public async System.Threading.Tasks.Task<bool> UpdateEmailAsync(
+                        System.Guid userId, string provider, string providerKey, string newEmail)
+                    {
+                        await System.Threading.Tasks.Task.CompletedTask;
+                        return false;
+                    }
+                }
+            }
+
+            namespace Humans.Application.Services.Other
+            {
+                public class Sneaky
+                {
+                    public async System.Threading.Tasks.Task Run(
+                        Humans.Infrastructure.Repositories.Profiles.UserEmailRepository concrete)
+                    {
+                        await concrete.UpdateEmailAsync(System.Guid.Empty, "p", "k", "e@x");
+                    }
+                }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new EmailMutationPathsAnalyzer(),
+            "Humans.Application",
+            source);
+
+        diagnostics.Should().ContainSingle(d => IsHum0006(d));
+    }
+
+    [HumansFact]
     public async Task Does_not_fire_outside_scope_assemblies()
     {
         var source = InterfaceStubs + """

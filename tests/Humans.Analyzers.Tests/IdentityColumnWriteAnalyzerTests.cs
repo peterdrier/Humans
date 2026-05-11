@@ -143,6 +143,72 @@ public class IdentityColumnWriteAnalyzerTests
     }
 
     [HumansFact]
+    public async Task Fires_on_compound_assignment_plus_equals()
+    {
+        var source = DomainStub + """
+
+            namespace Some.App.Code
+            {
+                public class Writer
+                {
+                    public void Set(Humans.Domain.Entities.User user) => user.Email += "@y";
+                }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new IdentityColumnWriteAnalyzer(),
+            "Humans.Application",
+            source);
+
+        diagnostics.Should().ContainSingle(d => IsHum0002(d));
+    }
+
+    [HumansFact]
+    public async Task Fires_on_coalesce_assignment_question_question_equals()
+    {
+        var source = DomainStub + """
+
+            namespace Some.App.Code
+            {
+                public class Writer
+                {
+                    public void Set(Humans.Domain.Entities.User user) => user.NormalizedEmail ??= "X";
+                }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new IdentityColumnWriteAnalyzer(),
+            "Humans.Application",
+            source);
+
+        diagnostics.Should().ContainSingle(d => IsHum0002(d));
+    }
+
+    [HumansFact]
+    public async Task Fires_on_compound_or_equals_on_bool()
+    {
+        var source = DomainStub + """
+
+            namespace Some.App.Code
+            {
+                public class Writer
+                {
+                    public void Set(Humans.Domain.Entities.User user) => user.EmailConfirmed |= true;
+                }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new IdentityColumnWriteAnalyzer(),
+            "Humans.Application",
+            source);
+
+        diagnostics.Should().ContainSingle(d => IsHum0002(d));
+    }
+
+    [HumansFact]
     public async Task Does_not_fire_on_property_read()
     {
         var source = DomainStub + """

@@ -62,13 +62,17 @@ public sealed class IdentityColumnWriteAnalyzer : DiagnosticAnalyzer
         if (!AssemblyScope.IsApplicationOrWeb(context.Compilation.Assembly))
             return;
 
-        context.RegisterOperationAction(AnalyzeAssignment, OperationKind.SimpleAssignment);
+        context.RegisterOperationAction(
+            AnalyzeAssignment,
+            OperationKind.SimpleAssignment,
+            OperationKind.CompoundAssignment,
+            OperationKind.CoalesceAssignment);
     }
 
     private static void AnalyzeAssignment(OperationAnalysisContext context)
     {
-        var op = (ISimpleAssignmentOperation)context.Operation;
-        if (op.Target is not IPropertyReferenceOperation propRef)
+        var target = AssignmentTarget.From(context.Operation);
+        if (target is not IPropertyReferenceOperation propRef)
             return;
 
         var prop = propRef.Property;
@@ -84,6 +88,6 @@ public sealed class IdentityColumnWriteAnalyzer : DiagnosticAnalyzer
         if (!declaring.InheritsFromOrEquals(UserFullName) && !declaring.NameStartsWith("IdentityUser"))
             return;
 
-        context.ReportDiagnostic(Diagnostic.Create(Rule, op.Syntax.GetLocation(), prop.Name));
+        context.ReportDiagnostic(Diagnostic.Create(Rule, context.Operation.Syntax.GetLocation(), prop.Name));
     }
 }

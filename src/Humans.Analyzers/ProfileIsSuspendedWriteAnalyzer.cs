@@ -57,13 +57,17 @@ public sealed class ProfileIsSuspendedWriteAnalyzer : DiagnosticAnalyzer
         if (!AssemblyScope.IsApplicationWebOrInfrastructure(context.Compilation.Assembly))
             return;
 
-        context.RegisterOperationAction(AnalyzeAssignment, OperationKind.SimpleAssignment);
+        context.RegisterOperationAction(
+            AnalyzeAssignment,
+            OperationKind.SimpleAssignment,
+            OperationKind.CompoundAssignment,
+            OperationKind.CoalesceAssignment);
     }
 
     private static void AnalyzeAssignment(OperationAnalysisContext context)
     {
-        var op = (ISimpleAssignmentOperation)context.Operation;
-        if (op.Target is not IPropertyReferenceOperation propRef)
+        var target = AssignmentTarget.From(context.Operation);
+        if (target is not IPropertyReferenceOperation propRef)
             return;
 
         var prop = propRef.Property;
@@ -82,6 +86,6 @@ public sealed class ProfileIsSuspendedWriteAnalyzer : DiagnosticAnalyzer
                 return;
         }
 
-        context.ReportDiagnostic(Diagnostic.Create(Rule, op.Syntax.GetLocation()));
+        context.ReportDiagnostic(Diagnostic.Create(Rule, context.Operation.Syntax.GetLocation()));
     }
 }

@@ -87,6 +87,28 @@ public class ProfileIsSuspendedWriteAnalyzerTests
     }
 
     [HumansFact]
+    public async Task Fires_on_compound_or_equals_assignment_outside_allowlist()
+    {
+        var source = DomainStub + """
+
+            namespace Humans.Application.Services.Other
+            {
+                public class Sneaky
+                {
+                    public void Suspend(Humans.Domain.Entities.Profile p) => p.IsSuspended |= true;
+                }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new ProfileIsSuspendedWriteAnalyzer(),
+            "Humans.Application",
+            source);
+
+        diagnostics.Should().ContainSingle(d => IsHum0004(d));
+    }
+
+    [HumansFact]
     public async Task Does_not_fire_on_read()
     {
         var source = DomainStub + """
