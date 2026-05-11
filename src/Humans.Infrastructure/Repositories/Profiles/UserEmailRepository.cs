@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.DTOs;
+using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -19,14 +19,10 @@ namespace Humans.Infrastructure.Repositories.Profiles;
 public sealed class UserEmailRepository : IUserEmailRepository
 {
     private readonly IDbContextFactory<HumansDbContext> _factory;
-    private readonly ILogger<UserEmailRepository> _logger;
 
-    public UserEmailRepository(
-        IDbContextFactory<HumansDbContext> factory,
-        ILogger<UserEmailRepository> logger)
+    public UserEmailRepository(IDbContextFactory<HumansDbContext> factory)
     {
         _factory = factory;
-        _logger = logger;
     }
 
     public async Task<IReadOnlyList<UserEmail>> GetByUserIdReadOnlyAsync(
@@ -366,105 +362,6 @@ public sealed class UserEmailRepository : IUserEmailRepository
             .FirstOrDefaultAsync(ct);
     }
 
-    // Sole legitimate caller: UserEmailService.UpdateEmailAsync, itself called
-    // only by AccountController. See memory/architecture/email-mutation-paths.md.
-    //
-    // Upserts the (provider, providerKey) row for userId to newEmail in one
-    // transaction:
-    //   - inserts a verified row if (provider, providerKey) is missing
-    //   - updates the row's Email + UpdatedAt if present
-    //   - removes any OTHER row for the same user already holding newEmail
-    //     (case-insensitive) so the partial unique Email index does not throw
-    //   - reconciles IsPrimary on the surviving rows: 0 primaries -> set the
-    //     current login primary; exactly 1 -> leave alone; 2+ -> current login
-    //     stays primary, others demoted
-    //
-    // Returns false when a cross-user collision (Postgres 23505 on the partial
-    // unique Email index — another user already verified-holds newEmail) was
-    // caught and swallowed; true on a successful write. The 23505 catch lives
-    // here so EF Core types do not leak into the Web layer.
-    public async Task<bool> UpdateEmailAsync(
-        Guid userId, string provider, string providerKey, string newEmail, Instant updatedAt,
-        CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var rows = await ctx.UserEmails
-            .Where(e => e.UserId == userId)
-            .ToListAsync(ct);
-
-        var oauthRow = rows.FirstOrDefault(r =>
-            string.Equals(r.Provider, provider, StringComparison.Ordinal) &&
-            string.Equals(r.ProviderKey, providerKey, StringComparison.Ordinal));
-        if (oauthRow is null)
-        {
-            oauthRow = new UserEmail
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                Provider = provider,
-                ProviderKey = providerKey,
-                Email = newEmail,
-                IsVerified = true,
-                CreatedAt = updatedAt,
-                UpdatedAt = updatedAt,
-            };
-            ctx.UserEmails.Add(oauthRow);
-            rows.Add(oauthRow);
-        }
-        else
-        {
-            oauthRow.Email = newEmail;
-            oauthRow.UpdatedAt = updatedAt;
-        }
-
-        var conflicts = rows
-            .Where(r => r.Id != oauthRow.Id)
-            .Where(r => string.Equals(r.Email, newEmail, StringComparison.OrdinalIgnoreCase))
-            .ToList();
-        foreach (var c in conflicts)
-        {
-            // A conflict row carrying its own (Provider, ProviderKey) means the
-            // user had a second OAuth identity at this address — dropping it
-            // permanently orphans FindByProviderKeyAsync for that identity.
-            // Surface it so admins can investigate.
-            if (c.Provider is not null)
-                _logger.LogWarning(
-                    "UpdateEmailAsync: removing same-user OAuth identity row (UserId={UserId}, ConflictProvider={ConflictProvider}, ConflictKey={ConflictKey}, ConflictEmail={ConflictEmail}) — FindByProviderKeyAsync for this identity will return null.",
-                    userId, c.Provider, c.ProviderKey, c.Email);
-            ctx.UserEmails.Remove(c);
-        }
-
-        var remaining = rows.Where(r => !conflicts.Contains(r)).ToList();
-        var primaryCount = remaining.Count(r => r.IsPrimary);
-        if (primaryCount == 0)
-        {
-            oauthRow.IsPrimary = true;
-        }
-        else if (primaryCount > 1)
-        {
-            foreach (var r in remaining)
-                r.IsPrimary = (r.Id == oauthRow.Id);
-        }
-
-        try
-        {
-            await ctx.SaveChangesAsync(ct);
-            return true;
-        }
-        catch (DbUpdateException ex)
-            when (ex.InnerException is Npgsql.PostgresException { SqlState: "23505" })
-        {
-            // Cross-user collision on the partial unique Email index — another
-            // user already holds newEmail. Expected per
-            // memory/code/always-log-problems.md (LogWarning, no exception);
-            // duplicate-account detection surfaces this on its next sweep.
-            _logger.LogWarning(
-                "OAuth rename/backfill: cross-user email collision (23505) for user {UserId} {Provider} sub={Sub} newEmail={NewEmail} — duplicate-account detection will surface.",
-                userId, provider, providerKey, newEmail);
-            return false;
-        }
-    }
-
     public async Task SetGoogleExclusiveAsync(
         Guid userId,
         Guid userEmailId,
@@ -610,13 +507,82 @@ public sealed class UserEmailRepository : IUserEmailRepository
         entry.Property("DisplayOrder").IsModified = false;
     }
 
-    public async Task<IReadOnlyList<UserEmail>> FindAllByProviderKeyAsync(
-        string provider, string providerKey, CancellationToken ct = default)
+    public async Task<UserEmail?> FindOtherUsersVerifiedRowAsync(
+        string normalizedEmail, string? alternateEmail, Guid excludeUserId,
+        CancellationToken ct = default)
     {
+        var escaped = EscapeLikePattern(normalizedEmail);
+        var escapedAlternate = alternateEmail is null ? null : EscapeLikePattern(alternateEmail);
+
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.UserEmails
-            .AsNoTracking()
-            .Where(e => e.Provider == provider && e.ProviderKey == providerKey)
-            .ToListAsync(ct);
+        var query = ctx.UserEmails
+            .Where(e => e.IsVerified && e.UserId != excludeUserId);
+
+        return escapedAlternate is null
+            ? await query.FirstOrDefaultAsync(
+                e => EF.Functions.ILike(e.Email, escaped, "\\"), ct)
+            : await query.FirstOrDefaultAsync(
+                e => EF.Functions.ILike(e.Email, escaped, "\\") ||
+                     EF.Functions.ILike(e.Email, escapedAlternate, "\\"), ct);
+    }
+
+    public async Task ApplyReconcilePlanAsync(
+        UserEmail? displacedRowToDelete,
+        UserEmail? rowToDelete,
+        UserEmail? rowToUpdate,
+        UserEmail? rowToInsert,
+        CancellationToken ct = default)
+    {
+        if (displacedRowToDelete is null && rowToDelete is null
+            && rowToUpdate is null && rowToInsert is null)
+            return;
+
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var tx = await ctx.Database.BeginTransactionAsync(ct);
+
+        if (displacedRowToDelete is not null)
+        {
+            ctx.Attach(displacedRowToDelete);
+            ctx.UserEmails.Remove(displacedRowToDelete);
+        }
+
+        if (rowToDelete is not null)
+        {
+            ctx.Attach(rowToDelete);
+            ctx.UserEmails.Remove(rowToDelete);
+        }
+
+        if (rowToUpdate is not null)
+        {
+            ctx.Attach(rowToUpdate);
+            ctx.Entry(rowToUpdate).State = EntityState.Modified;
+            ExcludeLegacyShadowsFromUpdate(ctx.Entry(rowToUpdate));
+        }
+
+        if (rowToInsert is not null)
+        {
+            ctx.UserEmails.Add(rowToInsert);
+        }
+
+        try
+        {
+            await ctx.SaveChangesAsync(ct);
+            await tx.CommitAsync(ct);
+        }
+        catch (DbUpdateException dbex)
+            when (dbex.InnerException is Npgsql.PostgresException { SqlState: "23505" })
+        {
+            // The verified-email partial unique index caught a concurrent
+            // cross-user insert that beat the in-service pre-check. Translate
+            // here so the Web layer never imports Npgsql / Postgres types
+            // (clean architecture per design-rules §1). Sole catcher in the
+            // Web layer is AccountController.TryReconcileOAuthIdentityAsync
+            // (and the new-user inline catch) — both swallow + log so sign-in
+            // never blocks.
+            throw new OAuthReconcileConcurrencyException(
+                "OAuth reconcile race: a concurrent insert violated the " +
+                "verified-email partial unique index (Postgres 23505).",
+                dbex);
+        }
     }
 }

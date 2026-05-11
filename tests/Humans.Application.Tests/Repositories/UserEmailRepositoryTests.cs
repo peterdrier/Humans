@@ -27,9 +27,7 @@ public sealed class UserEmailRepositoryTests : IDisposable
             .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
             .Options;
         _dbContext = new HumansDbContext(options);
-        _repo = new UserEmailRepository(
-            new TestDbContextFactory(options),
-            NullLogger<UserEmailRepository>.Instance);
+        _repo = new UserEmailRepository(new TestDbContextFactory(options));
     }
 
     public void Dispose()
@@ -65,12 +63,12 @@ public sealed class UserEmailRepositoryTests : IDisposable
         reloadedC.UpdatedAt.Should().Be(SeedInstant);
     }
 
-    // Note: UpdateEmailAsync is not unit-tested at the repository level — the
-    // (Provider, ProviderKey) match path is straightforward EF, and end-to-end
-    // behavior against Postgres is verified in preview/QA. The service layer
-    // is covered in UserEmailServiceTests via a substitute repo, plus the
-    // controller-level rename detection in
-    // AccountControllerOAuthRenameDetectionTests.
+    // Note: the OAuth-callback write path is now driven by
+    // UserEmailService.ReconcileOAuthIdentityAsync (issue
+    // nobodies-collective/Humans#697); the legacy repo-level UpdateEmailAsync
+    // primitive is gone. Service-level coverage lives in
+    // UserEmailServiceReconcileOAuthTests; controller-level coverage in
+    // AccountControllerOAuthReconcileTests.
 
     private static readonly Instant SeedInstant = Instant.FromUtc(2026, 3, 1, 12, 0);
 

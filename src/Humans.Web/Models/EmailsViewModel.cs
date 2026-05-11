@@ -83,6 +83,43 @@ public class EmailsViewModel
     /// requires unlinking, gated by the more-than-one-email rule).
     /// </summary>
     public Guid? WorkspaceLockedEmailId { get; init; }
+
+    /// <summary>
+    /// Issue nobodies-collective/Humans#697: admin-only `AspNetUserLogins`
+    /// snapshot shown alongside the `UserEmail` grid. Empty in self contexts.
+    /// </summary>
+    public IReadOnlyList<ExternalLoginRowViewModel> ExternalLogins { get; init; } =
+        Array.Empty<ExternalLoginRowViewModel>();
+
+    /// <summary>
+    /// Admin-only raw <see cref="Humans.Domain.Entities.UserEmail"/> entities for
+    /// the target user — every column, no formatting. Diagnostic surface for
+    /// reading the on-disk shape directly. Empty in self contexts.
+    /// </summary>
+    public IReadOnlyList<Humans.Domain.Entities.UserEmail> RawUserEmails { get; init; } =
+        Array.Empty<Humans.Domain.Entities.UserEmail>();
+}
+
+/// <summary>
+/// One AspNetUserLogins row for the per-user admin diagnostic (issue
+/// nobodies-collective/Humans#697).
+/// </summary>
+public class ExternalLoginRowViewModel
+{
+    public string LoginProvider { get; init; } = string.Empty;
+    /// <summary>SHA256 prefix of the OIDC `sub`. Shown rather than the raw
+    /// key so the page can be copied to chat without leaking the identifier.</summary>
+    public string ProviderKeyHash { get; init; } = string.Empty;
+    public string? ProviderDisplayName { get; init; }
+
+    /// <summary>
+    /// True when this AspNetUserLogins row has no matching <c>UserEmail</c>
+    /// row tagged with the same <c>(Provider, ProviderKey)</c> for this user
+    /// — i.e. the OAuth identity is authoritative but the per-row tag is
+    /// missing. Self-heals on the user's next OAuth sign-in via
+    /// <c>ReconcileOAuthIdentityAsync</c>.
+    /// </summary>
+    public bool HasOrphanLogin { get; init; }
 }
 
 /// <summary>
@@ -106,4 +143,13 @@ public class EmailRowViewModel
     /// button: provider-attached rows show Unlink; plain rows show Delete.
     /// </summary>
     public string? Provider { get; set; }
+
+    /// <summary>
+    /// Issue nobodies-collective/Humans#697: true when this row carries a
+    /// <c>(Provider, ProviderKey)</c> tag but the user has no matching
+    /// <c>AspNetUserLogins</c> row for the same identity. Surfaces the
+    /// "row tagged but the authoritative OAuth identity is gone" disagreement
+    /// in the per-user admin diagnostic.
+    /// </summary>
+    public bool HasOrphanProviderTag { get; init; }
 }
