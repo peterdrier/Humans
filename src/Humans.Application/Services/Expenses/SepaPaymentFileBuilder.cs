@@ -68,7 +68,7 @@ public sealed class SepaPaymentFileBuilder : ISepaPaymentFileBuilder
             new XElement(Ns + "CtrlSum", ctrlSum),
             new XElement(Ns + "PmtTpInf",
                 new XElement(Ns + "SvcLvl",
-                    new XElement(Ns + "Cd", config.ChargeBearer))),
+                    new XElement(Ns + "Cd", "SEPA"))),
             new XElement(Ns + "ReqdExctnDt",
                 new XElement(Ns + "Dt", reqExctnDt)),
             new XElement(Ns + "Dbtr",
@@ -79,7 +79,7 @@ public sealed class SepaPaymentFileBuilder : ISepaPaymentFileBuilder
             new XElement(Ns + "DbtrAgt",
                 new XElement(Ns + "FinInstnId",
                     new XElement(Ns + "BICFI", config.CreditorBic))),
-            new XElement(Ns + "ChrgBr", "SLEV"));
+            new XElement(Ns + "ChrgBr", config.ChargeBearer));
 
         foreach (var report in reports)
             pmtInf.Add(BuildCreditTransfer(report));

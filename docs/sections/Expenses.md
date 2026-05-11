@@ -79,7 +79,7 @@ Metadata only; bytes on disk managed by `IExpenseAttachmentStorageService`.
 
 ### HoldedExpenseOutboxEvent
 
-**Table:** `holded_expense_outbox`
+**Table:** `holded_expense_outbox_events`
 
 Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (CreateIncomingDoc | UpdateIncomingDocTag), `RetryCount`, `FailedPermanently`, `ProcessedAt`, `LastError`.
 
@@ -134,7 +134,7 @@ Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (Cre
 - `PayeeIban` (snapshotted) and `Profile.Iban` (current) MUST pass through `IbanFormatter.Mask` before appearing in any log, audit entry, or error message (enforced by convention; memory atom `memory/code/iban-mask-in-logs.md`).
 - The coordinator endorsement step is required only if the report's category has at least one budget coordinator (`CategoryRequiresCoordinatorEndorsementAsync`). Finance Admin may approve directly from Submitted if no coordinator is assigned.
 - Resource-based authorization (`IbanAccessRequirement` / `IbanAccessHandler`) gates raw IBAN access: self, FinanceAdmin with non-Draft/non-Withdrawn report context, or Admin on admin page.
-- `HoldedExpenseOutboxJob` drains the `holded_expense_outbox` in order. Transient errors increment `RetryCount`; permanent errors set `FailedPermanently` and stop retrying.
+- `HoldedExpenseOutboxJob` drains the `holded_expense_outbox_events` in order. Transient errors increment `RetryCount`; permanent errors set `FailedPermanently` and stop retrying.
 - `ExpensePaidPollingJob` processes at most 50 `SepaSent` reports per run (oldest `SepaSentAt` first). A 404 from Holded means the doc was deleted out-of-band — log warning, do not transition.
 - SEPA pain.001 XML and Holded API request bodies are the only code paths that may contain a raw IBAN (not masked).
 
@@ -170,7 +170,7 @@ Append-on-approve, drained by `HoldedExpenseOutboxJob`. Fields: `EventType` (Cre
 ## Architecture
 
 **Owning services:** `ExpenseReportService`
-**Owned tables:** `expense_reports`, `expense_lines`, `expense_attachments`, `holded_expense_outbox`
+**Owned tables:** `expense_reports`, `expense_lines`, `expense_attachments`, `holded_expense_outbox_events`
 **Status:** (A) Migrated (2026-05-10, this PR).
 
 - `ExpenseReportService` lives in `Humans.Application.Services.Expenses` and depends only on Application-layer abstractions.

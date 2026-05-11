@@ -12,6 +12,6 @@ public sealed class SepaConfig
     public string CreditorBic { get; set; } = string.Empty;
     /// <summary>Spanish NIF or other org tax id, used as initiating-party identifier.</summary>
     public string CreditorIdentifier { get; set; } = string.Empty;
-    /// <summary>"SLEV" / "SHAR" / "DEBT" — service level for charge bearer in pain.001.</summary>
+    /// <summary>"SLEV" / "SHAR" / "DEBT" — charge-bearer code for the ChrgBr element in pain.001.</summary>
     public string ChargeBearer { get; set; } = "SLEV";
 }

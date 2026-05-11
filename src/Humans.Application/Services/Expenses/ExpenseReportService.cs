@@ -901,6 +901,8 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
             AuditAction.ExpenseCategoryOverride,
             AuditAction.ExpenseSepaSent,
             AuditAction.ExpensePaid,
+            AuditAction.ExpenseAttachmentUploaded,
+            AuditAction.ExpenseAttachmentRemoved,
             AuditAction.IbanSet,
             AuditAction.IbanRemove,
             AuditAction.IbanReveal,
