@@ -9,7 +9,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// and its EF model has no cross-section FK or nav wiring — owned-table joins
 /// only.
 /// </summary>
-public interface IAgentRepository
+public interface IAgentRepository : IRepository
 {
     // ---- Settings (singleton row, Id = 1) ------------------------------------
 

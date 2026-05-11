@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces;
 using Humans.Application.DTOs;
 
 namespace Humans.Application.Interfaces.Search;
@@ -26,7 +27,7 @@ namespace Humans.Application.Interfaces.Search;
 /// admins use the existing per-section admin pages.
 /// </para>
 /// </summary>
-public interface ISearchService
+public interface ISearchService : IApplicationService
 {
     /// <summary>
     /// Run a global search. Empty/whitespace <paramref name="query"/>, or

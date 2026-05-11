@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 
 namespace Humans.Application.Interfaces.Consent;
@@ -10,7 +11,7 @@ public record ConsentSubmitResult(bool Success, string? DocumentName = null, str
 /// </summary>
 public record RequiredConsentRow(Guid DocumentVersionId, string Title, bool Signed);
 
-public interface IConsentService
+public interface IConsentService : IApplicationService
 {
     Task<(List<(Team Team, List<(DocumentVersion Version, ConsentRecord? Consent)> Documents)> Groups,
           List<ConsentRecord> History)>

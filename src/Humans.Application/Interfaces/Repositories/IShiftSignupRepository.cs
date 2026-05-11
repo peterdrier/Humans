@@ -32,7 +32,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// (same Scoped <c>HumansDbContext</c> instance).
 /// </para>
 /// </remarks>
-public interface IShiftSignupRepository
+public interface IShiftSignupRepository : IRepository
 {
     // ============================================================
     // Reads — ShiftSignup (per-user / per-shift / per-block)

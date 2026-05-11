@@ -2491,8 +2491,11 @@ public class ProfileController : HumansControllerBase
         var hasNobodiesTeam = emails.Any(e => e.IsVerified &&
             e.Email.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase));
 
-        if (hasNobodiesTeam)
-            await _userEmailService.TryBackfillGoogleEmailAsync(user.Id, ct);
+        // Issue nobodies-collective/Humans#687: TryBackfillGoogleEmailAsync
+        // call removed. UserEmail.IsGoogle is sole source of truth and is
+        // maintained by UserEmailService.EnsureGoogleInvariantAsync on every
+        // row creation / verification; the legacy User.GoogleEmail shadow
+        // column is no longer read, so the backfill is dead.
 
         // Use the already-loaded `emails` list (from GetUserEmailsAsync above) rather
         // than user.UserEmails — UserManager.GetUserAsync / FindByIdAsync don't

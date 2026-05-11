@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 
 namespace Humans.Application.Interfaces.Email;
@@ -5,7 +6,7 @@ namespace Humans.Application.Interfaces.Email;
 /// <summary>
 /// Service for managing email outbox messages (retry, discard, stats, pause/resume).
 /// </summary>
-public interface IEmailOutboxService
+public interface IEmailOutboxService : IApplicationService
 {
     /// <summary>
     /// Requeues a failed or stuck email outbox message for retry.

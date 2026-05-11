@@ -150,6 +150,47 @@ Do not mechanically remove every match. For each candidate, identify the owning 
 
 ---
 
+## Phase 0b: Interface Consolidation
+
+Run this after the cross-section DB-boundary pass, or in parallel only when it does not conflict with boundary work.
+
+**Problem:** AI-assisted refactors often grow interfaces by adding convenience methods for each caller:
+- `GetActiveProfilesAsync`
+- `GetSuspendedProfilesAsync`
+- `GetProfilesForDashboardAsync`
+- `GetRecentOrdersAsync`
+- `GetTopTicketsAsync`
+
+These methods feel easy locally, but they bloat service/repository contracts and encode presentation-specific filters, sorting, paging, and row limits into shared interfaces.
+
+**Fix:** Prefer fewer, more composable section-owned methods when the caller can safely shape the result:
+- `GetProfilesAsync()` plus `.Where(p => p.IsActive)`
+- `GetProfilesAsync()` plus `.Where(p => p.IsSuspended)`
+- `GetProfilesAsync()` plus controller/view `.OrderBy(...).Take(20)` for a dashboard
+
+Do not collapse methods that represent real domain/application concepts, authorization boundaries, expensive server-side queries that cannot be materialized safely, operational queue semantics, or intentionally bounded search/tool APIs.
+
+### Interface Consolidation Search Plan
+
+Start with the largest interfaces and work down by method count. This gives the best payoff and prevents the broadest contracts from growing unchecked.
+
+Suggested approach:
+- List `src/Humans.Application/Interfaces/**/*.cs` interfaces by public method count.
+- Inspect the largest interfaces first.
+- Look for method families that differ only by status/filter/sort/window/screen.
+- Replace them with one broader method plus caller-side LINQ when the result set is safely bounded and already section-owned.
+- Move screen-specific `.Where(...)`, `.OrderBy(...)`, `.Take(...)`, grouping, and dashboard shaping to controllers/views.
+- Keep reusable domain filtering in the owning service only when it has domain meaning beyond one screen.
+- Update all callers and tests in the same commit.
+
+Useful commands:
+- `rg -n "Task<|ValueTask<|IAsyncEnumerable<|IReadOnly|IEnumerable<|\\w+Async\\(" src/Humans.Application/Interfaces`
+- `rg --files src/Humans.Application/Interfaces | % { $p=$_; $c=(rg -n "\\w+Async\\(" $p | Measure-Object).Count; [pscustomobject]@{ Count=$c; Path=$p } } | Sort-Object Count -Descending`
+
+Commit each interface-consolidation slice separately. Do not combine broad interface churn with unrelated repository or section-boundary fixes.
+
+---
+
 ## Phase 1: Controller Pattern Consolidation
 
 ### Extract Repeated Controller Patterns

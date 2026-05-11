@@ -222,7 +222,7 @@ public sealed class ConsentService : IConsentService, IUserDataContributor
         await _onboardingService.SetConsentCheckPendingIfEligibleAsync(userId, ct);
 
         // Sync system team memberships (adds user if eligible + all consents done).
-        await _syncJob.SyncVolunteersMembershipForUserAsync(userId);
+        await _syncJob.SyncMembershipForUserAsync(userId, SystemTeamType.Volunteers, ct);
 
         // Promote any current-event Pending shift signups the user has parked
         // while consents were outstanding. Resolved lazily through the service
@@ -232,7 +232,7 @@ public sealed class ConsentService : IConsentService, IUserDataContributor
         var shiftSignupService = _serviceProvider.GetRequiredService<IShiftSignupService>();
         await shiftSignupService.PromoteWidgetPendingSignupsAfterAdmissionAsync(userId, ct);
 
-        await _syncJob.SyncCoordinatorsMembershipForUserAsync(userId);
+        await _syncJob.SyncMembershipForUserAsync(userId, SystemTeamType.Coordinators, ct);
 
         // Auto-resolve AccessSuspended notifications only once ALL required consents are complete.
         try

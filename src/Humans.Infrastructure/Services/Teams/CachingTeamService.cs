@@ -259,11 +259,6 @@ public sealed class CachingTeamService : ITeamService, IUserMerge
         return result;
     }
 
-    public Task<IReadOnlyList<TeamMember>> GetTeamMembersAsync(
-        Guid teamId,
-        CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetTeamMembersAsync(teamId, cancellationToken));
-
     public Task<IReadOnlyDictionary<Guid, int>> GetPendingRequestCountsByTeamIdsAsync(
         IEnumerable<Guid> teamIds,
         CancellationToken cancellationToken = default) =>
@@ -487,11 +482,6 @@ public sealed class CachingTeamService : ITeamService, IUserMerge
         CancellationToken cancellationToken = default) =>
         WithInner(inner => inner.GetActiveCoordinatorsForTeamsAsync(teamIds, cancellationToken));
 
-    public Task<IReadOnlyList<Guid>> GetActiveMemberUserIdsAsync(
-        Guid teamId,
-        CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetActiveMemberUserIdsAsync(teamId, cancellationToken));
-
     public async Task<IReadOnlyDictionary<Guid, IReadOnlyList<string>>> GetActiveNonSystemTeamNamesByUserIdsAsync(
         IReadOnlyCollection<Guid> userIds,
         CancellationToken cancellationToken = default)
@@ -686,7 +676,7 @@ public sealed class CachingTeamService : ITeamService, IUserMerge
             var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
             var users = allUserIds.Count == 0
                 ? new Dictionary<Guid, User>()
-                : await userService.GetByIdsAsync(allUserIds, ct);
+                : await userService.GetByIdsWithEmailsAsync(allUserIds, ct);
 
             _byTeamId.Clear();
             foreach (var team in teams)
@@ -744,6 +734,7 @@ public sealed class CachingTeamService : ITeamService, IUserMerge
                     TeamMemberId: m.Id,
                     UserId: m.UserId,
                     DisplayName: u?.DisplayName ?? string.Empty,
+                    Email: u?.Email,
                     ProfilePictureUrl: u?.ProfilePictureUrl,
                     Role: m.Role,
                     JoinedAt: m.JoinedAt);
@@ -772,4 +763,3 @@ public sealed class CachingTeamService : ITeamService, IUserMerge
         await action(inner);
     }
 }
-

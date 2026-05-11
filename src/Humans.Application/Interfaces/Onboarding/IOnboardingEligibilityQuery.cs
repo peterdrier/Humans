@@ -1,3 +1,5 @@
+using Humans.Application.Interfaces;
+
 namespace Humans.Application.Interfaces.Onboarding;
 
 /// <summary>
@@ -8,7 +10,7 @@ namespace Humans.Application.Interfaces.Onboarding;
 /// this narrow interface; <c>OnboardingService</c> depends on the full
 /// Profile/Consent services.
 /// </summary>
-public interface IOnboardingEligibilityQuery
+public interface IOnboardingEligibilityQuery : IApplicationService
 {
     /// <summary>
     /// If the user has a profile that is not yet approved, not rejected, has

@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces;
 using Humans.Application.DTOs;
 using Humans.Domain.Entities;
 
@@ -6,7 +7,7 @@ namespace Humans.Application.Interfaces.Tickets;
 /// <summary>
 /// Materializes ticket sales actuals into budget line items and computes projections for future weeks.
 /// </summary>
-public interface ITicketingBudgetService
+public interface ITicketingBudgetService : IApplicationService
 {
     /// <summary>
     /// Sync completed weeks of ticket sales into budget line items from TicketTailor/Stripe data,

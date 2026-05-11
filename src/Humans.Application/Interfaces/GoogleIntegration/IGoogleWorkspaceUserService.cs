@@ -1,9 +1,10 @@
+using Humans.Application.Interfaces;
 namespace Humans.Application.Interfaces.GoogleIntegration;
 
 /// <summary>
 /// Manages @nobodies.team user accounts via Google Workspace Admin SDK (Directory API).
 /// </summary>
-public interface IGoogleWorkspaceUserService
+public interface IGoogleWorkspaceUserService : IApplicationService
 {
     /// <summary>
     /// Lists all @nobodies.team user accounts from Google Workspace.

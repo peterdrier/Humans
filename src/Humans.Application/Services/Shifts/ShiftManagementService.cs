@@ -870,17 +870,11 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
     }
 
     public async Task<ShiftsSummaryData?> GetShiftsSummaryAsync(
-        Guid eventSettingsId, Guid departmentTeamId)
-    {
-        return await GetShiftsSummaryForTeamsAsync(eventSettingsId, new[] { departmentTeamId });
-    }
-
-    public async Task<ShiftsSummaryData?> GetShiftsSummaryForTeamsAsync(
-        Guid eventSettingsId, IReadOnlyList<Guid> teamIds)
+        Guid eventSettingsId, IReadOnlyCollection<Guid> teamIds)
     {
         if (teamIds.Count == 0) return null;
 
-        var rotas = await _repo.GetRotasWithShiftsAndSignupsAsync(eventSettingsId, teamIds);
+        var rotas = await _repo.GetRotasWithShiftsAndSignupsAsync(eventSettingsId, teamIds.ToList());
         if (rotas.Count == 0) return null;
 
         var allShifts = rotas.SelectMany(r => r.Shifts).ToList();
@@ -1638,11 +1632,8 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
     // Shift Tags
     // ============================================================
 
-    public Task<IReadOnlyList<ShiftTag>> GetAllTagsAsync() =>
-        _repo.GetAllTagsAsync();
-
-    public Task<IReadOnlyList<ShiftTag>> SearchTagsAsync(string query) =>
-        _repo.SearchTagsAsync(query);
+    public Task<IReadOnlyList<ShiftTag>> GetTagsAsync(string? query = null) =>
+        _repo.GetTagsAsync(query);
 
     public async Task<ShiftTag> GetOrCreateTagAsync(string name)
     {

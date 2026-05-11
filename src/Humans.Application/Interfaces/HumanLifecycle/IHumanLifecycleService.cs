@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Onboarding;
 
 namespace Humans.Application.Interfaces.HumanLifecycle;
@@ -13,7 +14,7 @@ namespace Humans.Application.Interfaces.HumanLifecycle;
 /// workflow stage, not by dependency shape (see umbrella issue
 /// nobodies-collective#563).
 /// </summary>
-public interface IHumanLifecycleService
+public interface IHumanLifecycleService : IApplicationService
 {
     /// <summary>
     /// Suspends a human (admin-initiated). Sets <c>IsSuspended = true</c> on

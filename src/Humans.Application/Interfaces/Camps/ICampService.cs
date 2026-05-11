@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces;
 using Humans.Application.DTOs;
 using Humans.Application.Services.Camps;
 using Humans.Domain.Entities;
@@ -7,7 +8,7 @@ using NodaTime;
 
 namespace Humans.Application.Interfaces.Camps;
 
-public interface ICampService
+public interface ICampService : IApplicationService
 {
     // Registration
     Task<Camp> CreateCampAsync(
@@ -177,6 +178,40 @@ public interface ICampService
 
     Task<IReadOnlyList<(Guid CampId, string CampName, string CampSlug, Guid CampSeasonId)>>
         GetCampSeasonsForComplianceAsync(int year, CancellationToken ct = default);
+
+    // ==========================================================================
+    // Early Entry (issue nobodies-collective#490)
+    // ==========================================================================
+
+    /// <summary>
+    /// Sets the global Early Entry start date in CampSettings. CampAdmin/Admin only;
+    /// authorization enforced at the controller layer.
+    /// </summary>
+    Task SetEeStartDateAsync(
+        LocalDate? eeStartDate, Guid actorUserId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sets the EE slot cap for a given camp season. CampAdmin/Admin only.
+    /// Allowed to drop below the current granted-count: existing grants are retained
+    /// but no new grants can be issued until the granted-count falls back under the cap.
+    /// </summary>
+    Task SetCampSeasonEeSlotCountAsync(
+        Guid campSeasonId, int slotCount, Guid actorUserId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Grants or revokes Early Entry for a CampMember. Camp lead, CoLead, CampAdmin,
+    /// or Admin only; authorization enforced at the controller layer.
+    /// <paramref name="scopedCampId"/> must match the camp the member belongs to;
+    /// returns MemberNotFound when the member does not exist or belongs to a different camp.
+    /// Rejects when granting would push the season's active-granted count above
+    /// CampSeason.EeSlotCount, or when the member is not Status=Active.
+    /// Idempotent: writes no audit row when the value is already at the requested state.
+    /// </summary>
+    Task<SetEarlyEntryOutcome> SetEarlyEntryAsync(
+        Guid scopedCampId, Guid campMemberId, bool granted, Guid actorUserId,
+        CancellationToken cancellationToken = default);
 }
 
 public sealed record CampMemberLookup(Guid CampSeasonId, Guid UserId, CampMemberStatus Status);
@@ -225,6 +260,7 @@ public enum CampMemberStatusSummary
 public record CampMemberListData(
     Guid CampSeasonId,
     int Year,
+    int EeSlotCount,
     IReadOnlyList<CampMemberRow> Pending,
     IReadOnlyList<CampMemberRow> Active);
 
@@ -239,7 +275,8 @@ public record CampMemberRow(
     string DisplayName,
     Instant RequestedAt,
     Instant? ConfirmedAt,
-    bool IsLead);
+    bool IsLead,
+    bool HasEarlyEntry);
 
 public record CampMembershipSummary(
     Guid CampMemberId,

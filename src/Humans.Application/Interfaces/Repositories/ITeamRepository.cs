@@ -23,7 +23,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// <see cref="Users.IUserService"/>. See design-rules §6.
 /// </para>
 /// </summary>
-public interface ITeamRepository
+public interface ITeamRepository : IRepository
 {
     // ==========================================================================
     // Team reads
@@ -173,18 +173,6 @@ public interface ITeamRepository
     /// <c>Team.ParentTeam</c> eagerly loaded. Detached.
     /// </summary>
     Task<IReadOnlyList<TeamMember>> GetActiveByUserIdAsync(Guid userId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Get active members of a team with aggregate-local data, detached.
-    /// Cross-domain User data is not included — caller stitches via
-    /// <see cref="Users.IUserService"/>.
-    /// </summary>
-    Task<IReadOnlyList<TeamMember>> GetActiveMembersAsync(Guid teamId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Get the active UserIds of every member of a team.
-    /// </summary>
-    Task<IReadOnlyList<Guid>> GetActiveMemberUserIdsAsync(Guid teamId, CancellationToken ct = default);
 
     /// <summary>
     /// Get active user ids with the <see cref="TeamMemberRole.Coordinator"/>
@@ -660,7 +648,8 @@ public interface ITeamRepository
     /// <summary>
     /// Does the user currently hold <see cref="TeamMemberRole.Coordinator"/>
     /// on any active department team (<see cref="Team.ParentTeamId"/> is null)?
-    /// Used by <c>SystemTeamSyncJob.SyncCoordinatorsMembershipForUserAsync</c>.
+    /// Used by <c>SystemTeamSyncJob.SyncMembershipForUserAsync</c> for the
+    /// Coordinators system team.
     /// </summary>
     Task<bool> IsActiveDepartmentCoordinatorAsync(
         Guid userId, CancellationToken ct = default);

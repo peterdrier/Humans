@@ -39,14 +39,14 @@ public sealed class CachingTeamServiceTests : IDisposable
             .Returns(callInfo =>
             {
                 var ids = callInfo.Arg<IReadOnlyCollection<Guid>>();
-                if (ids.Count == 0)
-                    return Task.FromResult<IReadOnlyDictionary<Guid, User>>(new Dictionary<Guid, User>());
-
-                using var db = new HumansDbContext(_options);
-                var users = db.Users.AsNoTracking()
-                    .Where(u => ids.Contains(u.Id))
-                    .ToDictionary(u => u.Id);
-                return Task.FromResult<IReadOnlyDictionary<Guid, User>>(users);
+                return Task.FromResult(LoadUsers(ids, includeEmails: false));
+            });
+        userService
+            .GetByIdsWithEmailsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                var ids = callInfo.Arg<IReadOnlyCollection<Guid>>();
+                return Task.FromResult(LoadUsers(ids, includeEmails: true));
             });
 
         var services = new ServiceCollection();
@@ -89,6 +89,46 @@ public sealed class CachingTeamServiceTests : IDisposable
         var result = await _service.IsUserCoordinatorOfTeamAsync(child.Id, user.Id);
 
         result.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task GetTeamAsync_IncludesCanonicalUserEmail()
+    {
+        var user = SeedUser("Alice");
+        user.Email = null;
+        _dbContext.UserEmails.Add(new UserEmail
+        {
+            Id = Guid.NewGuid(),
+            UserId = user.Id,
+            Email = "alice@example.test",
+            IsVerified = true,
+            IsPrimary = true,
+            CreatedAt = _clock.GetCurrentInstant(),
+            UpdatedAt = _clock.GetCurrentInstant()
+        });
+        var team = SeedTeam("Alpha");
+        SeedTeamMember(team.Id, user.Id, TeamMemberRole.Member);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.GetTeamAsync(team.Id);
+
+        var member = result!.Members.Should().ContainSingle().Subject;
+        member.Email.Should().Be("alice@example.test");
+    }
+
+    private IReadOnlyDictionary<Guid, User> LoadUsers(IReadOnlyCollection<Guid> ids, bool includeEmails)
+    {
+        if (ids.Count == 0)
+            return new Dictionary<Guid, User>();
+
+        using var db = new HumansDbContext(_options);
+        var users = db.Users.AsNoTracking();
+        if (includeEmails)
+            users = users.Include(u => u.UserEmails);
+
+        return users
+            .Where(u => ids.Contains(u.Id))
+            .ToDictionary(u => u.Id);
     }
 
     private User SeedUser(string displayName = "Test User")

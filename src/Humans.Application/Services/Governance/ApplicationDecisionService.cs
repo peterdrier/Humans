@@ -154,9 +154,11 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
 
         // Sync team membership for the new tier.
         if (application.MembershipTier == MembershipTier.Colaborador)
-            await _syncJob.SyncColaboradorsMembershipForUserAsync(application.UserId, cancellationToken);
+            await _syncJob.SyncMembershipForUserAsync(
+                application.UserId, SystemTeamType.Colaboradors, cancellationToken);
         else if (application.MembershipTier == MembershipTier.Asociado)
-            await _syncJob.SyncAsociadosMembershipForUserAsync(application.UserId, cancellationToken);
+            await _syncJob.SyncMembershipForUserAsync(
+                application.UserId, SystemTeamType.Asociados, cancellationToken);
 
         // Email + in-app notification — best-effort. User info fetched
         // via IUserService now that Application.User is stripped. The

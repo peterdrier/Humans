@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
@@ -46,7 +47,7 @@ public record TeamPageDetailResult(
     string? PageContentUpdatedByDisplayName,
     TeamPageShiftsSummary? ShiftsSummary);
 
-public interface ITeamPageService
+public interface ITeamPageService : IApplicationService
 {
     Task<TeamPageDetailResult?> GetTeamPageDetailAsync(
         string slug,

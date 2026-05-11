@@ -1,4 +1,5 @@
 using Humans.Application.DTOs;
+using Humans.Domain.Enums;
 
 namespace Humans.Application.Interfaces.GoogleIntegration;
 
@@ -9,10 +10,9 @@ namespace Humans.Application.Interfaces.GoogleIntegration;
 public interface ISystemTeamSync
 {
     Task<SyncReport> ExecuteAsync(CancellationToken cancellationToken = default);
-    Task SyncVolunteersMembershipForUserAsync(Guid userId, CancellationToken cancellationToken = default);
-    Task SyncCoordinatorsMembershipForUserAsync(Guid userId, CancellationToken cancellationToken = default);
-    Task SyncColaboradorsMembershipForUserAsync(Guid userId, CancellationToken cancellationToken = default);
-    Task SyncAsociadosMembershipForUserAsync(Guid userId, CancellationToken cancellationToken = default);
+    Task SyncMembershipForUserAsync(
+        Guid userId,
+        SystemTeamType teamType,
+        CancellationToken cancellationToken = default);
     Task SyncBoardTeamAsync(SyncReport? report = null, CancellationToken cancellationToken = default);
-    Task SyncBarrioLeadsMembershipForUserAsync(Guid userId, CancellationToken cancellationToken = default);
 }

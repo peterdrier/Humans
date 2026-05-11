@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces;
 using Humans.Application.DTOs;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -14,7 +15,7 @@ public record TeamInfo(
 
 public record TeamMemberInfo(
     Guid TeamMemberId, Guid UserId, string DisplayName,
-    string? ProfilePictureUrl, TeamMemberRole Role, Instant JoinedAt);
+    string? Email, string? ProfilePictureUrl, TeamMemberRole Role, Instant JoinedAt);
 
 public record TeamDirectorySummary(
     Guid Id,
@@ -125,7 +126,7 @@ public record TeamCoordinatorRef(Guid TeamId, Guid UserId);
 /// <summary>
 /// Service for managing teams and team membership.
 /// </summary>
-public interface ITeamService
+public interface ITeamService : IApplicationService
 {
     /// <summary>
     /// Creates a new team.
@@ -348,13 +349,6 @@ public interface ITeamService
         Guid teamId,
         Guid userId,
         Guid actorUserId,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Gets all members of a team.
-    /// </summary>
-    Task<IReadOnlyList<TeamMember>> GetTeamMembersAsync(
-        Guid teamId,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -585,16 +579,6 @@ public interface ITeamService
     /// </summary>
     Task<IReadOnlyList<TeamCoordinatorRef>> GetActiveCoordinatorsForTeamsAsync(
         IReadOnlyCollection<Guid> teamIds,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Returns the user IDs of every active (<see cref="TeamMember.LeftAt"/>
-    /// is null) member of the given team. Used by cross-section callers
-    /// (Tickets dashboard, coverage reporting) that need a set of member ids
-    /// without loading full <see cref="TeamMember"/> entities.
-    /// </summary>
-    Task<IReadOnlyList<Guid>> GetActiveMemberUserIdsAsync(
-        Guid teamId,
         CancellationToken cancellationToken = default);
 
     /// <summary>

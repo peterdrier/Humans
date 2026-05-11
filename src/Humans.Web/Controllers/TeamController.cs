@@ -639,7 +639,7 @@ public class TeamController : HumansControllerBase
             var wasCoordinator = await _teamService.LeaveTeamAsync(team.Id, user.Id);
             if (wasCoordinator)
             {
-                await _systemTeamSync.SyncCoordinatorsMembershipForUserAsync(user.Id);
+                await _systemTeamSync.SyncMembershipForUserAsync(user.Id, SystemTeamType.Coordinators);
             }
             SetSuccess(_localizer["Team_Left"].Value);
             return RedirectToAction(nameof(Index));

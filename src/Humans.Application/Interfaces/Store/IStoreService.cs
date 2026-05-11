@@ -1,9 +1,10 @@
+using Humans.Application.Interfaces;
 using Humans.Application.Services.Store.Dtos;
 using Humans.Domain.Enums;
 
 namespace Humans.Application.Interfaces.Store;
 
-public interface IStoreService
+public interface IStoreService : IApplicationService
 {
     // Catalog (read)
     Task<IReadOnlyList<ProductDto>> GetActiveCatalogAsync(int year, CancellationToken ct = default);

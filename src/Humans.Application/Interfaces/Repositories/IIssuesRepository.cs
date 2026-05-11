@@ -5,7 +5,7 @@ using NodaTime;
 
 namespace Humans.Application.Interfaces.Repositories;
 
-public interface IIssuesRepository
+public interface IIssuesRepository : IRepository
 {
     Task AddIssueAsync(Issue issue, CancellationToken ct = default);
 

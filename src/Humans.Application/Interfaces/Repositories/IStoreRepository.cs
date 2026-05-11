@@ -27,7 +27,7 @@ public record StoreLineContext(
 /// opens its own short-lived <c>DbContext</c>, performs its work, and saves
 /// atomically within that context's lifetime.
 /// </remarks>
-public interface IStoreRepository
+public interface IStoreRepository : IRepository
 {
     // Products
     Task<IReadOnlyList<StoreProduct>> GetActiveProductsForYearAsync(int year, CancellationToken ct = default);

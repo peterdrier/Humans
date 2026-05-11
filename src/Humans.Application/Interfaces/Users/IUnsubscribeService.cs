@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces;
 using Humans.Domain.Enums;
 
 namespace Humans.Application.Interfaces.Users;
@@ -6,7 +7,7 @@ namespace Humans.Application.Interfaces.Users;
 /// Handles token validation, user lookup, and unsubscribe actions
 /// for both new category-aware tokens and legacy campaign-only tokens.
 /// </summary>
-public interface IUnsubscribeService
+public interface IUnsubscribeService : IApplicationService
 {
     /// <summary>
     /// Validates an unsubscribe token (new or legacy) and returns the resolved result.

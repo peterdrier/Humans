@@ -527,7 +527,7 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
         if (becomingChild && usersNeedingShiftAuthorizationInvalidation.Count > 0)
         {
             foreach (var userId in usersNeedingShiftAuthorizationInvalidation)
-                await SystemTeamSync.SyncCoordinatorsMembershipForUserAsync(userId, cancellationToken);
+                await SystemTeamSync.SyncMembershipForUserAsync(userId, SystemTeamType.Coordinators, cancellationToken);
         }
 
         _logger.LogInformation("Updated team {TeamId} ({TeamName})", teamId, name);
@@ -1145,25 +1145,6 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
             actorUserId,
             relatedEntityId: userId, relatedEntityType: nameof(User));
     }
-
-    public async Task<IReadOnlyList<TeamMember>> GetTeamMembersAsync(
-        Guid teamId,
-        CancellationToken cancellationToken = default)
-    {
-        var members = await _repo.GetActiveMembersAsync(teamId, cancellationToken);
-        await StitchMemberUserSlicesAsync(members, cancellationToken);
-        return members
-            .OrderBy(m => m.Role)
-#pragma warning disable CS0618 // Populated in-memory by StitchMemberUserSlicesAsync
-            .ThenBy(m => m.User.DisplayName, StringComparer.OrdinalIgnoreCase)
-#pragma warning restore CS0618
-            .ToList();
-    }
-
-    public Task<IReadOnlyList<Guid>> GetActiveMemberUserIdsAsync(
-        Guid teamId,
-        CancellationToken cancellationToken = default) =>
-        _repo.GetActiveMemberUserIdsAsync(teamId, cancellationToken);
 
     public Task<IReadOnlyDictionary<Guid, IReadOnlyList<string>>> GetActiveNonSystemTeamNamesByUserIdsAsync(
         IReadOnlyCollection<Guid> userIds,
@@ -1843,7 +1824,7 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
             .ToList();
         var users = allUserIds.Count == 0
             ? new Dictionary<Guid, User>()
-            : await UserService.GetByIdsAsync(allUserIds, ct);
+            : await UserService.GetByIdsWithEmailsAsync(allUserIds, ct);
 
         return teams.ToDictionary(t => t.Id, t => BuildTeamInfo(t, users));
     }
@@ -1870,6 +1851,7 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
                     TeamMemberId: m.Id,
                     UserId: m.UserId,
                     DisplayName: u?.DisplayName ?? string.Empty,
+                    Email: u?.Email,
                     ProfilePictureUrl: u?.ProfilePictureUrl,
                     Role: m.Role,
                     JoinedAt: m.JoinedAt);

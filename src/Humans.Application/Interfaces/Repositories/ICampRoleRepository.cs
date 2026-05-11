@@ -15,7 +15,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// context. Cross-domain navigation is not resolved here; the application
 /// service stitches display names from <see cref="Users.IUserService"/>.
 /// </remarks>
-public interface ICampRoleRepository
+public interface ICampRoleRepository : IRepository
 {
     // Definitions
 

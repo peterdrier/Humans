@@ -25,7 +25,7 @@ namespace Humans.Application.Interfaces.Governance;
 /// cycle. Same pattern as <see cref="INotificationRecipientResolver"/>.
 /// </para>
 /// </remarks>
-public interface IMembershipQuery
+public interface IMembershipQuery : IApplicationService
 {
     /// <summary>
     /// Gets all teams the user is a member of (with <c>Team</c> navigation
