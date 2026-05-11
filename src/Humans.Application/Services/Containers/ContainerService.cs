@@ -265,7 +265,7 @@ public sealed class ContainerService : IContainerService
         var placements = await _repo.GetPlacementsByYearAsync(year, ct);
         var placementByContainerId = placements.ToDictionary(p => p.ContainerId, p => p);
 
-        var campDisplay = await _campService.GetCampDisplayDataForYearAsync(year, ct);
+        var camps = await _campService.GetCampsForYearAsync(year, ct);
 
         ContainerWithPlacement Compose(Container c) => new(
             ToDto(c),
@@ -281,12 +281,12 @@ public sealed class ContainerService : IContainerService
             .GroupBy(c => c.CampId)
             .ToDictionary(g => g.Key, g => g.ToList());
 
-        var campGroups = campDisplay
-            .Select(kvp => new ContainerCampGroup(
-                kvp.Key,
-                kvp.Value.Name,
-                kvp.Value.CampSlug,
-                byCampId.TryGetValue(kvp.Key, out var cs)
+        var campGroups = camps
+            .Select(camp => new ContainerCampGroup(
+                camp.Id,
+                camp.Seasons.First(s => s.Year == year).Name,
+                camp.Slug,
+                byCampId.TryGetValue(camp.Id, out var cs)
                     ? cs.Select(Compose).ToList()
                     : []))
             .ToList();

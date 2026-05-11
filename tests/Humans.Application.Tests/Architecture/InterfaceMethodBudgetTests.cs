@@ -100,13 +100,12 @@ public class InterfaceMethodBudgetTests
         // Authorized by Peter 2026-05-10. EE state lives on CampSeason/CampMember/
         // CampSettings — tables ICampService already owns — so the methods belong
         // here per design-rules §6 (no service split).
-        // 55→57: containers refactor (PR #389). +2 for camp-id-based lookups
-        // needed by Containers section after dropping cross-section nav from
-        // Container → CampSeason: GetCampDisplayDataForYearAsync (camp-keyed
-        // display data for grouping containers by camp), and
-        // GetCampLeadCampIdForYearAsync (camp lead's camp id for the year,
-        // replacing the season-id variant on container map and admin views).
-        [typeof(ICampService)] = 57,
+        // 55→55: containers refactor (PR #389) net-zero. Containers callers use
+        // existing GetCampsForYearAsync / GetCampsWithLeadsForYearAsync + filter
+        // for the user's active lead — no new ICampService methods. Per Peter
+        // 2026-05-11: bake values into existing CampInfo shape instead of
+        // adding specialized year-scoped lookups.
+        [typeof(ICampService)] = 55,
         // +1: GetOverallCoverageAsync for admin dashboard shift-coverage tile (peterdrier#349).
         // 50→50: account-merge fold redesign Phase 3.2. Added
         // ReassignProfilesAndTagPrefsToUserAsync; removed CanManageShiftsAsync

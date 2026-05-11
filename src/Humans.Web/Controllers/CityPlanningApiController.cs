@@ -54,6 +54,13 @@ public class CityPlanningApiController : ControllerBase
                await _cityPlanningService.IsCityPlanningTeamMemberAsync(userId, ct);
     }
 
+    private async Task<Guid?> FindUserLeadCampIdAsync(Guid userId, int year, CancellationToken ct)
+    {
+        var campsWithLeads = await _campService.GetCampsWithLeadsForYearAsync(year, cancellationToken: ct);
+        return campsWithLeads
+            .FirstOrDefault(c => c.Leads?.Any(l => l.UserId == userId && l.IsActive) == true)?.Id;
+    }
+
     /// <summary>Returns current map state: settings, all camp polygons, unmapped seasons.</summary>
     [HttpGet("state")]
     public async Task<IActionResult> GetState(CancellationToken cancellationToken)
@@ -187,7 +194,7 @@ public class CityPlanningApiController : ControllerBase
         var userId = CurrentUserId();
         var isMapAdmin = await IsMapAdminAsync(userId, cancellationToken);
         var settings = await _cityPlanningService.GetSettingsAsync(cancellationToken);
-        var userCampId = await _campService.GetCampLeadCampIdForYearAsync(userId, year, cancellationToken);
+        var userCampId = await FindUserLeadCampIdAsync(userId, year, cancellationToken);
 
         var containers = await _containerService.GetAllAsync(cancellationToken);
         var placements = await _containerService.GetPlacementsByYearAsync(year, cancellationToken);
@@ -217,7 +224,7 @@ public class CityPlanningApiController : ControllerBase
     {
         var userId = CurrentUserId();
         var isMapAdmin = await IsMapAdminAsync(userId, cancellationToken);
-        var userCampId = await _campService.GetCampLeadCampIdForYearAsync(userId, year, cancellationToken);
+        var userCampId = await FindUserLeadCampIdAsync(userId, year, cancellationToken);
 
         if (!isMapAdmin && !userCampId.HasValue)
         {

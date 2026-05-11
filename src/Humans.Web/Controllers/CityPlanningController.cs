@@ -346,34 +346,38 @@ public class CityPlanningController : HumansControllerBase
         if (error != null) return error;
 
         var isMapAdmin = await IsMapAdminAsync(user.Id, cancellationToken);
-        var userCampId = await _campService.GetCampLeadCampIdForYearAsync(user.Id, year, cancellationToken);
+        var userCamp = await FindUserLeadCampAsync(user.Id, year, cancellationToken);
         var settings = await _cityPlanningService.GetSettingsAsync(cancellationToken);
 
-        if (!isMapAdmin && (!settings.IsContainerPlacementOpen || !userCampId.HasValue))
+        if (!isMapAdmin && (!settings.IsContainerPlacementOpen || userCamp is null))
         {
             return Forbid();
         }
 
-        var (campSlug, campName) = await ResolveLeadCampDisplayAsync(isMapAdmin, userCampId, year, cancellationToken);
+        var (campSlug, campName) = LeadCampDisplay(isMapAdmin, userCamp, year);
 
         return View(new ContainerMapViewModel
         {
             Year = year,
             IsMapAdmin = isMapAdmin,
-            UserCampId = userCampId?.ToString() ?? string.Empty,
+            UserCampId = userCamp?.Id.ToString() ?? string.Empty,
             CampSlug = campSlug,
             CampName = campName,
         });
     }
 
-    private async Task<(string Slug, string Name)> ResolveLeadCampDisplayAsync(
-        bool isMapAdmin, Guid? userCampId, int year, CancellationToken ct)
+    private async Task<CampInfo?> FindUserLeadCampAsync(Guid userId, int year, CancellationToken ct)
     {
-        if (isMapAdmin || !userCampId.HasValue) return (string.Empty, string.Empty);
-        var displayData = await _campService.GetCampDisplayDataForYearAsync(year, ct);
-        return displayData.TryGetValue(userCampId.Value, out var data)
-            ? (data.CampSlug, data.Name)
-            : (string.Empty, string.Empty);
+        var campsWithLeads = await _campService.GetCampsWithLeadsForYearAsync(year, cancellationToken: ct);
+        return campsWithLeads.FirstOrDefault(c =>
+            c.Leads?.Any(l => l.UserId == userId && l.IsActive) == true);
+    }
+
+    private static (string Slug, string Name) LeadCampDisplay(bool isMapAdmin, CampInfo? userCamp, int year)
+    {
+        if (isMapAdmin || userCamp is null) return (string.Empty, string.Empty);
+        var season = userCamp.Seasons.First(s => s.Year == year);
+        return (userCamp.Slug, season.Name);
     }
 
     [HttpGet("BarrioMap/Admin/Containers/{year}")]
