@@ -96,6 +96,16 @@ public sealed class ExpenseRepository : IExpenseRepository
         return entity is null ? null : ExpenseReportMapper.ToAttachmentDto(entity);
     }
 
+    public async Task<Guid?> GetReportIdByAttachmentIdAsync(
+        Guid attachmentId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.ExpenseLines.AsNoTracking()
+            .Where(l => l.AttachmentId == attachmentId)
+            .Select(l => (Guid?)l.ExpenseReportId)
+            .FirstOrDefaultAsync(ct);
+    }
+
     public async Task AddDraftAsync(ExpenseReport report, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
@@ -392,19 +402,14 @@ public sealed class ExpenseRepository : IExpenseRepository
     }
 
     public async Task SetHoldedDocIdAsync(
-        Guid reportId, string holdedDocId, Guid outboxEventId,
-        Instant processedAt, CancellationToken ct = default)
+        Guid reportId, string holdedDocId, Instant updatedAt,
+        CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         var r = await ctx.ExpenseReports.FirstOrDefaultAsync(x => x.Id == reportId, ct);
-        var ev = await ctx.HoldedExpenseOutboxEvents
-            .FirstOrDefaultAsync(e => e.Id == outboxEventId, ct);
-        if (r is not null) r.HoldedDocId = holdedDocId;
-        if (ev is not null)
-        {
-            ev.ProcessedAt = processedAt;
-            ev.LastError = null;
-        }
+        if (r is null) return;
+        r.HoldedDocId = holdedDocId;
+        r.UpdatedAt = updatedAt;
         await ctx.SaveChangesAsync(ct);
     }
 

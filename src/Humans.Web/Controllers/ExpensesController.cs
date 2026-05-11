@@ -582,12 +582,18 @@ public sealed class ExpensesController : HumansControllerBase
             var (errorResult, user) = await RequireCurrentUserAsync();
             if (errorResult is not null) return errorResult;
 
-            // Locate the report that owns this attachment, then pull the attachment from
-            // its lines. View permission is enforced by FindReportOwningAttachmentAsync
-            // (submitter / coordinator / FinanceAdmin / Admin); reports outside that scope
-            // simply don't surface, so we return NotFound rather than leaking existence.
-            var owningReport = await FindReportOwningAttachmentAsync(attachmentId, user.Id);
+            // Single source of truth for visibility: load the owning report and ask
+            // the View handler. Curated-queue scans drifted from the handler's grant
+            // scope (e.g. coordinators View any report in their category regardless
+            // of status, but the queues stopped at Submitted+CoordinatorEndorsed).
+            // NotFound for both "no such attachment" and "no View permission" so we
+            // don't leak attachment existence to unauthorized callers.
+            var owningReport = await _service.GetReportOwningAttachmentAsync(attachmentId);
             if (owningReport is null) return NotFound();
+
+            var authResult = await _authService.AuthorizeAsync(User, owningReport,
+                new ExpenseReportOperationRequirement(ExpenseReportOperation.View));
+            if (!authResult.Succeeded) return NotFound();
 
             var attachment = owningReport.Lines
                 .Select(l => l.Attachment)
@@ -902,35 +908,4 @@ public sealed class ExpensesController : HumansControllerBase
             .ToList();
     }
 
-    /// <summary>
-    /// Returns the report if the given user may see an attachment belonging to it.
-    /// Checks submitter queue first, then (for FinanceAdmin/Admin) the review queue.
-    /// Returns null if no accessible report contains the attachment.
-    /// </summary>
-    private async Task<ExpenseReportDto?> FindReportOwningAttachmentAsync(Guid attachmentId, Guid userId)
-    {
-        // Check submitter's own reports first (most common case)
-        var submitterReports = await _service.GetForSubmitterAsync(userId);
-        var match = submitterReports.FirstOrDefault(r =>
-            r.Lines.Any(l => l.AttachmentId == attachmentId || l.Attachment?.Id == attachmentId));
-        if (match is not null) return match;
-
-        // For FinanceAdmin/Admin: scan the review queue (all non-Draft/non-Withdrawn)
-        if (RoleChecks.IsFinanceAdmin(User))
-        {
-            var reviewQueue = await _service.GetReviewQueueAsync();
-            return reviewQueue.FirstOrDefault(r =>
-                r.Lines.Any(l => l.AttachmentId == attachmentId || l.Attachment?.Id == attachmentId));
-        }
-
-        // For coordinators: scan both Submitted (action queue) and CoordinatorEndorsed
-        // (already-endorsed reports the coordinator still has read access to) reports
-        // in their categories. Without the endorsed list, coordinators lose attachment
-        // access the moment they endorse — they can still reach the Detail page (View is
-        // permitted) but every attachment link 404s.
-        var coordinatorPending = await _service.GetCoordinatorQueueAsync(userId);
-        var coordinatorEndorsed = await _service.GetCoordinatorEndorsedQueueAsync(userId);
-        return coordinatorPending.Concat(coordinatorEndorsed).FirstOrDefault(r =>
-            r.Lines.Any(l => l.AttachmentId == attachmentId || l.Attachment?.Id == attachmentId));
-    }
 }

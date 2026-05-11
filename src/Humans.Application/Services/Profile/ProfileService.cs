@@ -8,6 +8,7 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Domain.Helpers;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Interfaces.Onboarding;
@@ -955,7 +956,11 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         if (profile is null)
             return false;
 
-        var normalized = string.IsNullOrWhiteSpace(iban) ? null : iban.Replace(" ", "").ToUpperInvariant();
+        // Use IbanValidator.Normalize so the persisted value matches what IsValid accepts —
+        // the validator strips both U+0020 and U+202F (narrow no-break space, common in
+        // bank-PDF copy-paste). A mismatched normalizer here lets hidden whitespace ride
+        // into SEPA/Holded payloads and downstream payment rejections.
+        var normalized = string.IsNullOrWhiteSpace(iban) ? null : IbanValidator.Normalize(iban);
         var isClearing = normalized is null;
 
         profile.Iban = normalized;

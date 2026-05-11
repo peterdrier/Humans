@@ -153,7 +153,9 @@ public class ExpenseReportServiceHoldedOutboxTests
             Arg.Any<CancellationToken>());
 
         await _repo.Received(1).SetHoldedDocIdAsync(
-            report.Id, holdedDocId, outboxEvent.Id, Now, Arg.Any<CancellationToken>());
+            report.Id, holdedDocId, Now, Arg.Any<CancellationToken>());
+        await _repo.Received(1).MarkOutboxProcessedAsync(
+            outboxEvent.Id, Now, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -242,7 +244,9 @@ public class ExpenseReportServiceHoldedOutboxTests
             Arg.Any<CancellationToken>());
 
         await _repo.Received(1).SetHoldedDocIdAsync(
-            report.Id, holdedDocId, outboxEvent.Id, Now, Arg.Any<CancellationToken>());
+            report.Id, holdedDocId, Now, Arg.Any<CancellationToken>());
+        await _repo.Received(1).MarkOutboxProcessedAsync(
+            outboxEvent.Id, Now, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -270,7 +274,33 @@ public class ExpenseReportServiceHoldedOutboxTests
         await _holdedClient.DidNotReceiveWithAnyArgs()
             .UploadAttachmentAsync(default!, default!, default);
         await _repo.Received(1).SetHoldedDocIdAsync(
-            report.Id, "doc-no-att", outboxEvent.Id, Now, Arg.Any<CancellationToken>());
+            report.Id, "doc-no-att", Now, Arg.Any<CancellationToken>());
+        await _repo.Received(1).MarkOutboxProcessedAsync(
+            outboxEvent.Id, Now, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task CreateIncomingDoc_HoldedDocIdAlreadySet_SkipsCreateAndOnlyMarksProcessed()
+    {
+        // Idempotency guard: if a previous retry already issued the Holded document
+        // (and persisted HoldedDocId early) but failed during the attachment upload
+        // loop, the next drain pass must NOT call CreatePurchaseDocumentAsync again.
+        var report = MakeReport(holdedDocId: "doc-prev-retry");
+        var outboxEvent = MakeEvent(report.Id, HoldedExpenseOutboxEventType.CreateIncomingDoc);
+
+        _repo.GetUnprocessedOutboxAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns([outboxEvent]);
+        _repo.GetByIdAsync(report.Id, Arg.Any<CancellationToken>())
+            .Returns(report);
+
+        await _sut.DrainHoldedOutboxAsync(BatchSize);
+
+        await _holdedClient.DidNotReceiveWithAnyArgs()
+            .CreatePurchaseDocumentAsync(default!, default);
+        await _repo.DidNotReceiveWithAnyArgs()
+            .SetHoldedDocIdAsync(default, default!, default, default);
+        await _repo.Received(1).MarkOutboxProcessedAsync(
+            outboxEvent.Id, Now, Arg.Any<CancellationToken>());
     }
 
     // ─── UpdateIncomingDocTag happy path ──────────────────────────────────────
@@ -319,7 +349,7 @@ public class ExpenseReportServiceHoldedOutboxTests
 
         await _repo.Received(1).IncrementOutboxRetryAsync(
             outboxEvent.Id, "timeout", Arg.Any<CancellationToken>());
-        await _repo.DidNotReceiveWithAnyArgs().SetHoldedDocIdAsync(default, default!, default, default, default);
+        await _repo.DidNotReceiveWithAnyArgs().SetHoldedDocIdAsync(default, default!, default, default);
         await _repo.DidNotReceiveWithAnyArgs().MarkOutboxProcessedAsync(default, default, default);
         await _repo.DidNotReceiveWithAnyArgs()
             .MarkOutboxFailedPermanentlyAsync(default, default!, default, default);
@@ -347,7 +377,7 @@ public class ExpenseReportServiceHoldedOutboxTests
             Arg.Any<string>(),
             Now,
             Arg.Any<CancellationToken>());
-        await _repo.DidNotReceiveWithAnyArgs().SetHoldedDocIdAsync(default, default!, default, default, default);
+        await _repo.DidNotReceiveWithAnyArgs().SetHoldedDocIdAsync(default, default!, default, default);
         await _repo.DidNotReceiveWithAnyArgs().MarkOutboxProcessedAsync(default, default, default);
         await _repo.DidNotReceiveWithAnyArgs().IncrementOutboxRetryAsync(default, default!, default);
     }

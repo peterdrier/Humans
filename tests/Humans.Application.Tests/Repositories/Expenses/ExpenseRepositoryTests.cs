@@ -218,22 +218,21 @@ public class ExpenseRepositoryTests
     }
 
     [HumansFact]
-    public async Task SetHoldedDocIdAsync_StampsBoth_InOneTransaction()
+    public async Task SetHoldedDocIdAsync_PersistsHoldedDocIdAndUpdatedAt()
     {
+        // Persistence is intentionally separate from outbox-event marking — the
+        // service writes HoldedDocId immediately after the Holded create call and
+        // marks the outbox event processed only after the full upload chain succeeds
+        // (idempotency: a retry after a failed upload reuses the persisted doc id).
         var report = MakeReport(status: ExpenseReportStatus.Approved);
-        var outbox = NewOutbox(reportId: report.Id);
         await Seed(report);
-        await SeedOutbox(outbox);
+        var updatedAt = Instant.FromUtc(2026, 5, 5, 1, 0);
 
-        await _sut.SetHoldedDocIdAsync(report.Id, "doc-123",
-            outbox.Id, Instant.FromUtc(2026, 5, 5, 1, 0));
+        await _sut.SetHoldedDocIdAsync(report.Id, "doc-123", updatedAt);
 
         var loaded = await _sut.GetByIdAsync(report.Id);
         loaded!.HoldedDocId.Should().Be("doc-123");
-
-        await using var ctx = await _factory.CreateDbContextAsync();
-        var loadedEvent = await ctx.HoldedExpenseOutboxEvents.FirstAsync(e => e.Id == outbox.Id);
-        loadedEvent.ProcessedAt.Should().NotBeNull();
+        loaded.UpdatedAt.Should().Be(updatedAt);
     }
 
     private async Task Seed(params ExpenseReport[] reports)

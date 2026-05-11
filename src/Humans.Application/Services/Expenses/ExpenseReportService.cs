@@ -83,6 +83,14 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
             .ToList();
     }
 
+    public async Task<ExpenseReportDto?> GetReportOwningAttachmentAsync(
+        Guid attachmentId, CancellationToken ct = default)
+    {
+        var reportId = await _repo.GetReportIdByAttachmentIdAsync(attachmentId, ct);
+        if (reportId is null) return null;
+        return await _repo.GetByIdAsync(reportId.Value, ct);
+    }
+
     public async Task<IReadOnlyList<ExpenseReportDto>> GetCoordinatorQueueAsync(
         Guid coordinatorUserId, CancellationToken ct = default)
     {
@@ -91,16 +99,6 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
 
         return await _repo.GetByCategoryIdsAndStatusAsync(categoryIds,
             ExpenseReportStatus.Submitted, ct);
-    }
-
-    public async Task<IReadOnlyList<ExpenseReportDto>> GetCoordinatorEndorsedQueueAsync(
-        Guid coordinatorUserId, CancellationToken ct = default)
-    {
-        var categoryIds = await GetCoordinatorCategoryIdsAsync(coordinatorUserId, ct);
-        if (categoryIds.Count == 0) return [];
-
-        return await _repo.GetByCategoryIdsAndStatusAsync(categoryIds,
-            ExpenseReportStatus.CoordinatorEndorsed, ct);
     }
 
     private async Task<IReadOnlyList<Guid>> GetCoordinatorCategoryIdsAsync(
@@ -223,6 +221,25 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
         CancellationToken ct = default)
     {
         var report = await RequireEditableReportAsync(reportId, submitterUserId, ct);
+
+        // If the line has an attachment, clean it up first so we don't leak an
+        // orphan attachment row + file blob when the line goes away.
+        var line = report.Lines.FirstOrDefault(l => l.Id == lineId);
+        if (line?.Attachment is not null)
+        {
+            await _repo.SetLineAttachmentAsync(lineId, null, ct);
+            await _repo.RemoveAttachmentAsync(line.Attachment.Id, ct);
+            try
+            {
+                await _storage.DeleteAsync(line.Attachment.Id, line.Attachment.Extension, ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex,
+                    "Could not delete attachment file {AttachmentId} while removing line {LineId}",
+                    line.Attachment.Id, lineId);
+            }
+        }
 
         var ok = await _repo.RemoveLineAsync(reportId, lineId, ct);
         if (!ok) throw new InvalidOperationException("Failed to remove line.");
@@ -727,7 +744,20 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
                 .ToList(),
         };
 
-        var holdedDocId = await _holdedClient.CreatePurchaseDocumentAsync(input, ct);
+        // Idempotency: if a prior retry already issued the Holded document but failed
+        // during attachment upload, reuse the existing id instead of creating a duplicate.
+        // SetHoldedDocIdAsync runs IMMEDIATELY after the create call so a transient
+        // upload failure cannot cause a retry to call CreatePurchaseDocumentAsync again.
+        string holdedDocId;
+        if (string.IsNullOrEmpty(report.HoldedDocId))
+        {
+            holdedDocId = await _holdedClient.CreatePurchaseDocumentAsync(input, ct);
+            await _repo.SetHoldedDocIdAsync(report.Id, holdedDocId, now, ct);
+        }
+        else
+        {
+            holdedDocId = report.HoldedDocId;
+        }
 
         foreach (var line in report.Lines.OrderBy(l => l.SortOrder))
         {
@@ -756,8 +786,7 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
             }
         }
 
-        await _repo.SetHoldedDocIdAsync(
-            report.Id, holdedDocId, outboxEventId, now, ct);
+        await _repo.MarkOutboxProcessedAsync(outboxEventId, now, ct);
     }
 
     private async Task ProcessHoldedUpdateTagAsync(

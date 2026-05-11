@@ -19,6 +19,12 @@ public interface IExpenseRepository : IRepository
         CancellationToken ct = default);
     Task<IReadOnlyList<ExpenseReportDto>> GetForReviewQueueAsync(CancellationToken ct = default);
     Task<ExpenseAttachmentDto?> GetAttachmentByIdAsync(Guid id, CancellationToken ct = default);
+    /// <summary>
+    /// Resolves the report id that owns the given attachment via the line that
+    /// references it. Returns null if no line currently points at the attachment
+    /// (orphan attachment or unknown id).
+    /// </summary>
+    Task<Guid?> GetReportIdByAttachmentIdAsync(Guid attachmentId, CancellationToken ct = default);
 
     // Writes — atomic per-method, all inside one short-lived DbContext.
     Task AddDraftAsync(ExpenseReport report, CancellationToken ct = default);
@@ -83,9 +89,17 @@ public interface IExpenseRepository : IRepository
         int limit, CancellationToken ct = default);
     Task<IReadOnlyList<HoldedExpenseOutboxEvent>> GetFailedPermanentlyAsync(
         CancellationToken ct = default);
+    /// <summary>
+    /// Persists the freshly-issued Holded document id on the report. Caller
+    /// invokes this immediately after <c>IHoldedClient.CreatePurchaseDocumentAsync</c>
+    /// returns — that way a transient failure during attachment upload (which runs
+    /// after) does not cause the outbox event to retry the create call and produce
+    /// a duplicate Holded document. Marking the outbox event processed is a
+    /// separate <see cref="MarkOutboxProcessedAsync"/> call that runs only after
+    /// the full create + upload chain succeeds.
+    /// </summary>
     Task SetHoldedDocIdAsync(
-        Guid reportId, string holdedDocId,
-        Guid outboxEventId, NodaTime.Instant processedAt,
+        Guid reportId, string holdedDocId, NodaTime.Instant updatedAt,
         CancellationToken ct = default);
     Task IncrementOutboxRetryAsync(
         Guid outboxEventId, string error, CancellationToken ct = default);

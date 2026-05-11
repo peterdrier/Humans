@@ -6,17 +6,19 @@ namespace Humans.Application.Interfaces.Expenses;
 public interface IExpenseReportService : IApplicationService
 {
     Task<ExpenseReportDto?> GetAsync(Guid id, CancellationToken ct = default);
+    /// <summary>
+    /// Returns the report that owns the given attachment (via its line), with
+    /// Lines populated. Returns null if the attachment doesn't belong to any
+    /// line or the report is gone. Used by the attachment-streaming endpoint
+    /// so visibility is decided by the View authorization handler against the
+    /// real owning report, rather than by scanning curated queues that may
+    /// drift from the handler's grant scope.
+    /// </summary>
+    Task<ExpenseReportDto?> GetReportOwningAttachmentAsync(
+        Guid attachmentId, CancellationToken ct = default);
     Task<IReadOnlyList<ExpenseReportDto>> GetForSubmitterAsync(
         Guid submitterUserId, CancellationToken ct = default);
     Task<IReadOnlyList<ExpenseReportDto>> GetCoordinatorQueueAsync(
-        Guid coordinatorUserId, CancellationToken ct = default);
-    /// <summary>
-    /// Reports the coordinator endorsed that are now awaiting Finance review
-    /// (CoordinatorEndorsed status). Separate from the action queue because once
-    /// endorsed the coordinator no longer needs to act, but they still need read
-    /// + attachment access so they can verify what they endorsed.
-    /// </summary>
-    Task<IReadOnlyList<ExpenseReportDto>> GetCoordinatorEndorsedQueueAsync(
         Guid coordinatorUserId, CancellationToken ct = default);
     Task<IReadOnlyList<ExpenseReportDto>> GetReviewQueueAsync(CancellationToken ct = default);
     Task<IReadOnlyList<ExpenseReportDto>> GetApprovedUnpaidAsync(CancellationToken ct = default);
