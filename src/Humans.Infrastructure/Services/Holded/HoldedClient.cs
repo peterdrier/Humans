@@ -137,12 +137,15 @@ public sealed class HoldedClient : IHoldedClient
 
         if (resp.IsSuccessStatusCode) return resp;
 
-        var body = await resp.Content.ReadAsStringAsync(ct);
-        if ((int)resp.StatusCode >= 500)
-            throw new HoldedTransientException(
-                $"Holded {(int)resp.StatusCode} {resp.ReasonPhrase}");
-        throw new HoldedPermanentException((int)resp.StatusCode, body,
-            $"Holded {(int)resp.StatusCode} {resp.ReasonPhrase}: {body}");
+        using (resp)
+        {
+            var body = await resp.Content.ReadAsStringAsync(ct);
+            if ((int)resp.StatusCode >= 500)
+                throw new HoldedTransientException(
+                    $"Holded {(int)resp.StatusCode} {resp.ReasonPhrase}");
+            throw new HoldedPermanentException((int)resp.StatusCode, body,
+                $"Holded {(int)resp.StatusCode} {resp.ReasonPhrase}: {body}");
+        }
     }
 
     private static decimal ReadDecimal(JsonNode? node) =>
