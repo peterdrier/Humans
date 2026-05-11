@@ -141,7 +141,7 @@ Stored as string (`HasConversion<string>()`, max length 20).
 - **Decorator decision — no caching decorator.** Admin-only, low write/read volume.
 - **Cross-section reads** route through `ITeamService.GetActiveTeamOptionsAsync` / `GetTeamMembersAsync`, `IUserEmailService.GetNotificationTargetEmailsAsync`, `IUserService.GetByIdAsync` / `GetByIdsAsync` for display data, and `ICommunicationPreferenceService.IsOptedOutAsync` for opt-out filtering. Outbound email queueing goes through `IEmailService.SendCampaignCodeAsync` (the outbox service owns the email_outbox_messages table).
 - **Cross-domain navs `[Obsolete]`-marked:** `Campaign.CreatedByUser`, `CampaignGrant.User`. Both are kept solely so EF can model the FK constraint (configured under `#pragma warning disable CS0618` in `CampaignConfiguration` / `CampaignGrantConfiguration`). All callers — including `TicketQueryService.GetCodeTrackingDataAsync` via `ICampaignService.GetCodeTrackingAsync` — resolve display names through `IUserService`, never the obsolete navs.
-- **Architecture test** — no dedicated `CampaignArchitectureTests.cs` exists. Cross-cutting ratchet tests in `tests/Humans.Application.Tests/Architecture/` (e.g. `NoCrossSectionEfJoins`, `NoObsoleteNavReads`, `NoServiceInjectsDbContext`) cover this section generically.
+- **Architecture test** — no dedicated `CampaignArchitectureTests.cs` exists. Cross-cutting architecture coverage (`NoCrossSectionEfJoins`, `NoObsoleteNavReads`, `HUM0009`) covers this section generically.
 
 ### Touch-and-clean guidance
 
