@@ -165,7 +165,11 @@ public class InterfaceMethodBudgetTests
         // moved to IAccountDeletionService), and GetProfileIndexDataAsync,
         // GetProfileEditDataAsync, GetAdminHumanDetailAsync (Profile-section
         // bundling moved to ProfileController composition).
-        [typeof(IProfileService)] = 30,
+        // 30→31: Expenses Phase 6. Added SetIbanAsync — IBAN set/clear on Profile
+        // via the expense-report IBAN modal. Profile section owns the write; no
+        // expiable substitute (the write must go through the caching decorator and
+        // the audit log, which both require the IProfileService surface).
+        [typeof(IProfileService)] = 31,
         // -1 for GetContactUsersAsync removal (/Contacts surface deleted in PR 2 of
         // email-identity-decoupling — only ContactService called it).
         // 31→31: account-merge fold redesign Phase 3.4. Added 3 fold primitives

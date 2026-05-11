@@ -1,0 +1,184 @@
+@model Humans.Web.Models.ExpenseDetailViewModel
+@using Humans.Domain.Enums
+@{
+    ViewData["Title"] = $"Expense Report";
+    var r = Model.Report;
+    var badgeClass = r.Status switch
+    {
+        ExpenseReportStatus.Draft => "bg-secondary",
+        ExpenseReportStatus.Submitted => "bg-primary",
+        ExpenseReportStatus.CoordinatorEndorsed => "bg-info text-dark",
+        ExpenseReportStatus.Approved => "bg-success",
+        ExpenseReportStatus.SepaSent => "bg-warning text-dark",
+        ExpenseReportStatus.Paid => "bg-success",
+        ExpenseReportStatus.Withdrawn => "bg-secondary",
+        _ => "bg-secondary"
+    };
+}
+
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-action="Index">My Expense Reports</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Report</li>
+    </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex align-items-center gap-2">
+        <h1 class="mb-0">Expense Report</h1>
+        <span class="badge @badgeClass fs-6">@r.Status</span>
+    </div>
+    <div class="d-flex gap-2">
+        @if (Model.CanEdit)
+        {
+            <a asp-action="Edit" asp-route-id="@r.Id" class="btn btn-outline-primary">
+                <i class="fa-solid fa-pen me-1"></i>Edit
+            </a>
+        }
+        @if (Model.CanWithdraw)
+        {
+            <form asp-action="Withdraw" asp-route-id="@r.Id" method="post" class="d-inline">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-outline-danger"
+                        data-confirm="Withdraw this report? This cannot be undone.">Withdraw</button>
+            </form>
+        }
+    </div>
+</div>
+
+<vc:temp-data-alerts />
+
+@if (Model.LastRejectionReason is not null)
+{
+    <div class="alert alert-warning mb-4">
+        <strong>Returned for revision:</strong> @Model.LastRejectionReason
+    </div>
+}
+
+<div class="row mb-4">
+    <div class="col-md-8">
+        <div class="card mb-3">
+            <div class="card-header"><strong>Details</strong></div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">Category</dt>
+                    <dd class="col-sm-8">@Model.CategoryDisplayName</dd>
+
+                    <dt class="col-sm-4">Note</dt>
+                    <dd class="col-sm-8">@(string.IsNullOrEmpty(r.Note) ? "—" : r.Note)</dd>
+
+                    <dt class="col-sm-4">Total</dt>
+                    <dd class="col-sm-8 fw-semibold">&euro;@r.Total.ToString("N2")</dd>
+
+                    <dt class="col-sm-4">Created</dt>
+                    <dd class="col-sm-8">@r.CreatedAt.ToDisplayDateTime()</dd>
+
+                    @if (r.SubmittedAt.HasValue)
+                    {
+                        <dt class="col-sm-4">Submitted</dt>
+                        <dd class="col-sm-8">@r.SubmittedAt.Value.ToDisplayDateTime()</dd>
+                    }
+                </dl>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header"><strong>Lines</strong></div>
+            @if (r.Lines.Count == 0)
+            {
+                <div class="card-body text-muted">No lines yet.</div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Description</th>
+                                <th class="text-end">Amount</th>
+                                <th>Attachment</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var line in r.Lines.OrderBy(l => l.SortOrder))
+                            {
+                                <tr>
+                                    <td>@(line.SortOrder + 1)</td>
+                                    <td>@line.Description</td>
+                                    <td class="text-end">&euro;@line.Amount.ToString("N2")</td>
+                                    <td>
+                                        @if (line.Attachment is not null)
+                                        {
+                                            <a asp-action="Attachment" asp-route-attachmentId="@line.Attachment.Id"
+                                               class="text-decoration-none" target="_blank">
+                                                <i class="fa-solid fa-paperclip me-1"></i>@line.Attachment.OriginalFileName
+                                            </a>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-warning small"><i class="fa-solid fa-triangle-exclamation me-1"></i>No attachment</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                        <tfoot>
+                            <tr class="fw-semibold">
+                                <td colspan="2" class="text-end">Total</td>
+                                <td class="text-end">&euro;@r.Total.ToString("N2")</td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card mb-3">
+            <div class="card-header"><strong>Payment IBAN</strong></div>
+            <div class="card-body">
+                @if (Model.HasIban)
+                {
+                    <p class="mb-1 font-monospace">@Model.MaskedIban</p>
+                    <a asp-action="Iban" asp-route-id="@r.Id" class="btn btn-sm btn-outline-secondary">Change IBAN</a>
+                }
+                else
+                {
+                    <p class="text-muted small mb-2">No IBAN set. Required before submitting.</p>
+                    <a asp-action="Iban" asp-route-id="@r.Id" class="btn btn-sm btn-primary">Set IBAN</a>
+                }
+            </div>
+        </div>
+
+        @if (Model.CanSubmit)
+        {
+            <div class="card border-primary">
+                <div class="card-body">
+                    <h6 class="card-title">Ready to submit?</h6>
+                    <p class="small text-muted">Make sure all lines have an attachment and your IBAN is set.</p>
+                    <form asp-action="Submit" asp-route-id="@r.Id" method="post">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fa-solid fa-paper-plane me-1"></i>Submit Report
+                        </button>
+                    </form>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('[data-confirm]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            if (!confirm(this.getAttribute('data-confirm'))) {
+                e.preventDefault();
+            }
+        });
+    });
+});
+</script>

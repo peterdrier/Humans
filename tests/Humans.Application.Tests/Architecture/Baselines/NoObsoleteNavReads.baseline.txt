@@ -196,6 +196,11 @@ src/Humans.Infrastructure/Services/GoogleWorkspace/GoogleDriveActivityClient.cs:
 src/Humans.Infrastructure/Services/GoogleWorkspace/GoogleDriveActivityClient.cs:User#2
 src/Humans.Web/Authorization/MembershipRequiredFilter.cs:User#1
 src/Humans.Web/Authorization/Requirements/ActiveMemberOrShiftAccessHandler.cs:User#1
+src/Humans.Web/Authorization/Requirements/ExpenseReportAuthorizationHandler.cs:User#1
+src/Humans.Web/Authorization/Requirements/ExpenseReportAuthorizationHandler.cs:User#2
+src/Humans.Web/Authorization/Requirements/IbanAccessHandler.cs:User#1
+src/Humans.Web/Authorization/Requirements/IbanAccessHandler.cs:User#2
+src/Humans.Web/Authorization/Requirements/IbanAccessHandler.cs:User#3
 src/Humans.Web/Authorization/Requirements/BudgetAuthorizationHandler.cs:User#1
 src/Humans.Web/Authorization/Requirements/BudgetAuthorizationHandler.cs:User#2
 src/Humans.Web/Authorization/Requirements/CampAuthorizationHandler.cs:User#1

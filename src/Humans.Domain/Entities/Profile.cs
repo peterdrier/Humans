@@ -147,6 +147,9 @@ public class Profile
     [PersonalData]
     public string? BoardNotes { get; set; }
 
+    [PersonalData]
+    public string? Iban { get; set; }
+
     /// <summary>
     /// Whether the member has been manually suspended.
     /// </summary>

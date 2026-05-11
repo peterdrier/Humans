@@ -8,6 +8,7 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Domain.Helpers;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Interfaces.Onboarding;
@@ -948,5 +949,34 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
     public Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
         CancellationToken ct) =>
         _profileRepository.ReassignSubAggregatesToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
+
+    public async Task<bool> SetIbanAsync(Guid userId, string? iban, CancellationToken ct = default)
+    {
+        var profile = await _profileRepository.GetByUserIdAsync(userId, ct);
+        if (profile is null)
+            return false;
+
+        // Use IbanValidator.Normalize so the persisted value matches what IsValid accepts —
+        // the validator strips both U+0020 and U+202F (narrow no-break space, common in
+        // bank-PDF copy-paste). A mismatched normalizer here lets hidden whitespace ride
+        // into SEPA/Holded payloads and downstream payment rejections.
+        var normalized = string.IsNullOrWhiteSpace(iban) ? null : IbanValidator.Normalize(iban);
+        var isClearing = normalized is null;
+
+        profile.Iban = normalized;
+        profile.UpdatedAt = _clock.GetCurrentInstant();
+        await _profileRepository.UpdateAsync(profile, ct);
+
+        await _auditLogService.LogAsync(
+            isClearing ? AuditAction.IbanRemove : AuditAction.IbanSet,
+            nameof(Domain.Entities.Profile), userId,
+            isClearing ? "IBAN removed" : "IBAN set",
+            userId);
+
+        _logger.LogInformation(
+            "IBAN {Action} for user {UserId}", isClearing ? "removed" : "set", userId);
+
+        return true;
+    }
 
 }

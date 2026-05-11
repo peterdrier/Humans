@@ -107,6 +107,13 @@ public class AdminHumanDetailViewModel
     public List<AdminHumanApplicationViewModel> Applications { get; set; } = [];
     public List<AdminRoleAssignmentViewModel> RoleAssignments { get; set; } = [];
     public IReadOnlyList<ProfileLanguageDisplayViewModel> Languages { get; set; } = [];
+
+    // Payment details
+    public string? MaskedIban { get; set; }
+    /// <summary>
+    /// Set by the RevealIban action via TempData. Survives exactly one page load after reveal.
+    /// </summary>
+    public string? RevealedIban { get; set; }
 }
 
 public class AdminUserEmailViewModel

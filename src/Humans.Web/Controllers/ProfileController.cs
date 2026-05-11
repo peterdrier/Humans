@@ -39,6 +39,7 @@ using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Services.Profiles;
+using Humans.Domain.Helpers;
 
 // RoleAssignment cross-domain nav properties (User, CreatedByUser) are [Obsolete] —
 // RoleAssignmentService stitches them in memory from IUserService so controllers can
@@ -2342,7 +2343,43 @@ public class ProfileController : HumansControllerBase
 
         // nobodies.team email is now resolved by NobodiesEmailBadgeViewComponent in the view
 
+        // Payment details — masked by default; unmasked only for one load after RevealIban POST
+        viewModel.MaskedIban = string.IsNullOrEmpty(profile?.Iban)
+            ? null
+            : IbanFormatter.Mask(profile.Iban);
+        if (TempData.TryGetValue("RevealedIban", out var revealed) && revealed is string revealedStr)
+            viewModel.RevealedIban = revealedStr;
+
         return View("AdminDetail", viewModel);
+    }
+
+    /// <summary>
+    /// Reveals the unmasked IBAN for one page load (TempData), and writes an audit entry.
+    /// Admin-only: only users in the Admin role may reveal raw IBANs on the admin user page.
+    /// </summary>
+    [Authorize(Policy = PolicyNames.AdminOnly)]
+    [HttpPost("{id:guid}/Admin/RevealIban")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RevealIban(Guid id, CancellationToken ct)
+    {
+        var actor = await GetCurrentUserAsync();
+        if (actor is null) return Forbid();
+        return await RevealIbanCoreAsync(id, actor.Id, ct);
+    }
+
+    private async Task<IActionResult> RevealIbanCoreAsync(Guid id, Guid actorId, CancellationToken ct)
+    {
+        var profile = await _profileService.GetProfileAsync(id, ct);
+        if (profile?.Iban is null)
+        {
+            SetError("No IBAN on record for this user.");
+            return RedirectToAction(nameof(AdminDetail), new { id });
+        }
+        await _auditLogService.LogAsync(
+            AuditAction.IbanReveal, "User", id,
+            $"Admin revealed IBAN for user {id}", actorId);
+        TempData["RevealedIban"] = profile.Iban;
+        return RedirectToAction(nameof(AdminDetail), new { id });
     }
 
     [Authorize(Policy = PolicyNames.HumanAdminBoardOrAdmin)]

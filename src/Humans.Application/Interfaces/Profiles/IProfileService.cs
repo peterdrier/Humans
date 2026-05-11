@@ -275,4 +275,15 @@ public interface IProfileService : IApplicationService, IUserMerge
             IReadOnlyDictionary<Guid, MembershipTier> fallbackTierByUser,
             Instant now,
             CancellationToken ct = default);
+
+    /// <summary>
+    /// Sets, updates, or clears the IBAN on the user's profile.
+    /// Pass <c>null</c> or an empty string to clear. The caller is
+    /// responsible for validating the IBAN before calling (use
+    /// <c>IbanValidator.IsValid</c>). Writes <see cref="Domain.Enums.AuditAction.IbanSet"/>
+    /// or <see cref="Domain.Enums.AuditAction.IbanRemove"/> via
+    /// <see cref="IAuditLogService"/>. No-op (returns false) if the user has no
+    /// profile. Used exclusively by the expense-report IBAN modal route.
+    /// </summary>
+    Task<bool> SetIbanAsync(Guid userId, string? iban, CancellationToken ct = default);
 }
