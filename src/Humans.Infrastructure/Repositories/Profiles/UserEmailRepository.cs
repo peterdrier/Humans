@@ -449,8 +449,8 @@ public sealed class UserEmailRepository : IUserEmailRepository
             // memory/code/always-log-problems.md (LogWarning, no exception);
             // duplicate-account detection surfaces this on its next sweep.
             _logger.LogWarning(
-                "OAuth rename/backfill: cross-user email collision (23505) for user {UserId} {Provider} sub={Sub} — duplicate-account detection will surface.",
-                userId, provider, providerKey);
+                "OAuth rename/backfill: cross-user email collision (23505) for user {UserId} {Provider} sub={Sub} newEmail={NewEmail} — duplicate-account detection will surface.",
+                userId, provider, providerKey, newEmail);
             return false;
         }
     }
