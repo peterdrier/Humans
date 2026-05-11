@@ -25,19 +25,12 @@ namespace Humans.Application.Services.Feedback;
 /// never imports <c>Microsoft.EntityFrameworkCore</c>, enforced by
 /// <c>Humans.Application.csproj</c>'s reference graph. Cross-section reads
 /// (reporter/assignee/resolver display names, team names, effective emails)
-/// go through <see cref="IUserService"/>, <see cref="ITeamService"/>, and
-/// <see cref="IUserEmailService"/>. Nav-badge cache invalidation is routed
-/// through <see cref="INavBadgeCacheInvalidator"/> rather than
-/// <c>IMemoryCache</c> directly.
+/// go through <see cref="IUserService"/>, <see cref="IProfileService"/>,
+/// <see cref="ITeamService"/>, and <see cref="IUserEmailService"/>, and are
+/// projected into <see cref="FeedbackReportInfo"/> / <see cref="FeedbackMessageInfo"/>
+/// records before returning. Nav-badge cache invalidation is routed through
+/// <see cref="INavBadgeCacheInvalidator"/> rather than <c>IMemoryCache</c> directly.
 /// </summary>
-/// <remarks>
-/// Feedback is admin-review-only and low-traffic, so no caching decorator
-/// sits in front of this service. The service stitches display data in
-/// memory onto the <see cref="FeedbackReport"/> entity's (now <c>[Obsolete]</c>)
-/// cross-domain navigation properties so existing controllers and views can
-/// continue to read <c>report.User.DisplayName</c>, <c>report.AssignedToTeam.Name</c>,
-/// etc. without change — this is the "in-memory join" from design-rules §6b.
-/// </remarks>
 public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IUserMerge
 {
     private readonly IFeedbackRepository _repository;
