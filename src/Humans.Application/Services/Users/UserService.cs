@@ -390,7 +390,10 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
         CancellationToken ct = default)
     {
         await _adminAuthorization.RequireCurrentUserIsAdminAsync(ct);
-        return await _repo.DeleteUsersAsync(userIds, ct);
+        var deleted = await _repo.DeleteUsersAsync(userIds, ct);
+        foreach (var userId in userIds)
+            await _fullProfileInvalidator.InvalidateAsync(userId, ct);
+        return deleted;
     }
 
     public Task<int> DeleteAllExternalLoginsForUserAsync(Guid userId, CancellationToken ct = default) =>
