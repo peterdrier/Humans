@@ -628,11 +628,10 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         if (!written)
             return false;
 
-        // Add-row flow: route through the same Google invariant the other add
-        // paths use (AddRowWithInvariantsAsync). The helper picks a winner
-        // only when no IsGoogle=true row exists or an obvious better winner
-        // does (verified @nobodies.team) — user-set IsGoogle survives. Skips
-        // entirely on the rename/update case (existing winner unchanged).
+        // Runs on both INSERT and UPDATE. INSERT: picks the canonical IsGoogle
+        // winner for the new row. UPDATE (rename): a no-op when the current winner
+        // is still best; writes when the rename moves the oauthRow off @nobodies.team
+        // while another @nobodies.team row becomes the better candidate.
         await EnsureGoogleInvariantAsync(userId, cancellationToken);
         await _fullProfileInvalidator.InvalidateAsync(userId, cancellationToken);
         return true;
