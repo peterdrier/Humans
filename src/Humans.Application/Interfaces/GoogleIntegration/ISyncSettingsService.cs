@@ -1,6 +1,6 @@
 using Humans.Application.Interfaces;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using NodaTime;
 
 namespace Humans.Application.Interfaces.GoogleIntegration;
 
@@ -10,7 +10,7 @@ namespace Humans.Application.Interfaces.GoogleIntegration;
 public interface ISyncSettingsService : IApplicationService
 {
     /// <summary>Get all sync settings.</summary>
-    Task<List<SyncServiceSettings>> GetAllAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<SyncServiceSettingsInfo>> GetAllAsync(CancellationToken ct = default);
 
     /// <summary>Get sync mode for a specific service.</summary>
     Task<SyncMode> GetModeAsync(SyncServiceType serviceType, CancellationToken ct = default);
@@ -18,3 +18,10 @@ public interface ISyncSettingsService : IApplicationService
     /// <summary>Update sync mode for a service.</summary>
     Task UpdateModeAsync(SyncServiceType serviceType, SyncMode mode, Guid actorUserId, CancellationToken ct = default);
 }
+
+public sealed record SyncServiceSettingsInfo(
+    Guid Id,
+    SyncServiceType ServiceType,
+    SyncMode SyncMode,
+    Instant UpdatedAt,
+    Guid? UpdatedByUserId);
