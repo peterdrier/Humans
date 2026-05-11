@@ -196,6 +196,12 @@
                                             </button>
                                         </form>
                                     }
+                                    else if (workspaceLocked && row.IsVerified)
+                                    {
+                                        @* Verified, but another row holds the Workspace lock — *@
+                                        @* don't claim "verify first", which is a lie.          *@
+                                        <span class="text-muted small" title="Locked by the Workspace email row">—</span>
+                                    }
                                     else
                                     {
                                         <span class="text-muted small">@Localizer["Emails_VerifyFirst"]</span>
@@ -241,6 +247,10 @@
                                                 @Localizer["EmailGrid_SetGoogle"]
                                             </button>
                                         </form>
+                                    }
+                                    else if (workspaceLocked && row.IsVerified)
+                                    {
+                                        <span class="text-muted small" title="Locked by the Workspace email row">—</span>
                                     }
                                     else
                                     {
