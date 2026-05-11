@@ -505,7 +505,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             camp.Slug,
             camp.ContactEmail,
             camp.Seasons.Select(s => CreateCampSeasonInfo(s, camp.Slug, includeEarlyEntryGrantCount: false)).ToList(),
-            camp.Leads.Select(l => new CampLeadInfo(l.Id, l.UserId, l.IsActive)).ToList());
+            camp.Leads.Select(l => new CampLeadInfo(l.Id, l.UserId)).ToList());
 
     private static CampSeasonInfo CreateCampSeasonInfo(
         CampSeason season,

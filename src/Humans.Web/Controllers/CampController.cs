@@ -241,7 +241,6 @@ public class CampController : HumansCampControllerBase
             try
             {
                 var leadUserIds = camp.Leads
-                    .Where(l => l.IsActive)
                     .Select(l => l.UserId)
                     .Distinct()
                     .ToList();
