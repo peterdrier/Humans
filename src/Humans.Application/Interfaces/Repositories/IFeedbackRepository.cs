@@ -21,7 +21,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// Singleton + <c>IDbContextFactory</c> pattern so each method owns its own
 /// <c>HumansDbContext</c> lifetime.
 /// </remarks>
-public interface IFeedbackRepository
+public interface IFeedbackRepository : IRepository
 {
     // ==========================================================================
     // Reads
@@ -43,10 +43,10 @@ public interface IFeedbackRepository
     Task<FeedbackReport?> FindForMutationAsync(Guid id, CancellationToken ct = default);
 
     /// <summary>
-    /// Filtered list of feedback reports, with their aggregate-local
-    /// <c>Messages</c> collection (callers use <c>Messages.Count</c> only).
-    /// Ordered by CreatedAt descending, limited to <paramref name="limit"/>.
-    /// Read-only (AsNoTracking).
+    /// Filtered, newest-first list of feedback reports, capped by
+    /// <paramref name="limit"/>, with their aggregate-local <c>Messages</c>
+    /// collection (callers use <c>Messages.Count</c> only). This is a
+    /// bounded admin-history read, so the ordering/window stay DB-side.
     /// </summary>
     Task<IReadOnlyList<FeedbackReport>> GetListAsync(
         FeedbackStatus? status,

@@ -1,9 +1,6 @@
-using System.Collections.Concurrent;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NodaTime;
-using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Extensions;
 using Humans.Application.Helpers;
@@ -37,24 +34,10 @@ namespace Humans.Application.Services.Teams;
 /// structurally enforced by <c>Humans.Application.csproj</c>.
 ///
 /// <para>
-/// Owns a private <see cref="ConcurrentDictionary{TKey,TValue}"/> of
-/// <see cref="CachedTeam"/> keyed by team id. This mirrors the old
-/// <c>CacheKeys.ActiveTeams</c> in-memory projection so team directory /
-/// membership / coordinator queries stay synchronous dict reads after the
-/// section migration — per §15f, canonical domain data caches use the
-/// §15 pattern; <see cref="IMemoryCache"/> is not imported by services in
-/// Application. No separate decorator: at ~500-user scale the dict sits in
-/// the service itself (same precedent as the non-decorator migrations:
-/// User #243, Budget #544, Auth #551). If future profiling shows the
-/// dict-miss path is hot, a <c>CachingTeamService</c> decorator can be
-/// layered on top without changing this class's signature.
-/// </para>
-///
-/// <para>
-/// Cross-section cache invalidation flows through narrow invalidator
-/// interfaces (<see cref="INotificationMeterCacheInvalidator"/>,
-/// <see cref="IShiftAuthorizationInvalidator"/>) — the same pattern the
-/// §15 Profile migration established.
+/// Cross-section cache invalidation flows through narrow invalidator interfaces
+/// (<see cref="INotificationMeterCacheInvalidator"/>,
+/// <see cref="IShiftAuthorizationInvalidator"/>). Active-team read caching is
+/// owned by the transparent caching decorator, not this scoped inner service.
 /// </para>
 /// </summary>
 public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
@@ -66,7 +49,6 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
     private readonly INotificationMeterCacheInvalidator _notificationMeterInvalidator;
     private readonly IShiftAuthorizationInvalidator _shiftAuthInvalidator;
     private readonly IServiceProvider _serviceProvider;
-    private readonly IMemoryCache _cache;
     private readonly IClock _clock;
     private readonly ILogger<TeamService> _logger;
 
@@ -99,7 +81,6 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
         INotificationMeterCacheInvalidator notificationMeterInvalidator,
         IShiftAuthorizationInvalidator shiftAuthInvalidator,
         IServiceProvider serviceProvider,
-        IMemoryCache cache,
         IClock clock,
         ILogger<TeamService> logger)
     {
@@ -110,7 +91,6 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
         _notificationMeterInvalidator = notificationMeterInvalidator;
         _shiftAuthInvalidator = shiftAuthInvalidator;
         _serviceProvider = serviceProvider;
-        _cache = cache;
         _clock = clock;
         _logger = logger;
     }
@@ -174,9 +154,6 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
             var persisted = await _repo.AddTeamWithRequiresApprovalOverrideAsync(team, requiresApproval, cancellationToken);
             if (persisted)
             {
-                UpsertCachedTeam(new CachedTeam(team.Id, team.Name, team.Description, team.Slug,
-                    team.IsSystemTeam, team.SystemTeamType, team.RequiresApproval, team.IsPublicPage, team.IsHidden,
-                    team.IsPromotedToDirectory, team.CreatedAt, [], ParentTeamId: parentTeamId));
                 _logger.LogInformation("Created team {TeamName} with slug {Slug}", name, slug);
                 return team;
             }
@@ -212,13 +189,28 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
         return team;
     }
 
+    public async Task<TeamInfo?> GetTeamAsync(
+        Guid teamId,
+        CancellationToken cancellationToken = default)
+    {
+        var teamsById = await LoadTeamsByIdAsync(cancellationToken);
+        return teamsById.GetValueOrDefault(teamId);
+    }
+
+    public async Task<IReadOnlyDictionary<Guid, TeamInfo>> GetTeamsAsync(
+        CancellationToken cancellationToken = default) =>
+        await LoadTeamsByIdAsync(cancellationToken);
+
     public Task<IReadOnlyDictionary<Guid, string>> GetTeamNamesByIdsAsync(
         IReadOnlyCollection<Guid> teamIds,
         CancellationToken cancellationToken = default) =>
         _repo.GetNamesByIdsAsync(teamIds, cancellationToken);
 
-    public Task<IReadOnlyList<Team>> GetAllTeamsAsync(CancellationToken cancellationToken = default) =>
-        _repo.GetAllActiveAsync(cancellationToken);
+    public async Task<IReadOnlyList<Team>> GetAllTeamsAsync(CancellationToken cancellationToken = default)
+    {
+        var teams = await _repo.GetAllActiveAsync(cancellationToken);
+        return teams.ToList();
+    }
 
     public async Task<IReadOnlyList<TeamSearchHit>> SearchAsync(
         string query, int max,
@@ -231,12 +223,19 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
             .ToList();
     }
 
-    public Task<IReadOnlyList<TeamOptionDto>> GetActiveTeamOptionsAsync(CancellationToken cancellationToken = default) =>
-        _repo.GetActiveOptionsAsync(cancellationToken);
+    public async Task<IReadOnlyList<TeamOptionDto>> GetActiveTeamOptionsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var teams = await _repo.GetActiveOptionsAsync(cancellationToken);
+        return teams.ToList();
+    }
 
-    public Task<IReadOnlyList<TeamOptionDto>> GetBudgetableTeamsAsync(
-        CancellationToken cancellationToken = default) =>
-        _repo.GetBudgetableOptionsAsync(cancellationToken);
+    public async Task<IReadOnlyList<TeamOptionDto>> GetBudgetableTeamsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var teams = await _repo.GetBudgetableOptionsAsync(cancellationToken);
+        return teams.ToList();
+    }
 
     public async Task<IReadOnlyCollection<Guid>> GetEffectiveBudgetCoordinatorTeamIdsAsync(
         Guid userId, CancellationToken cancellationToken = default)
@@ -258,8 +257,6 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
         Guid teamId, string? prefix, CancellationToken cancellationToken = default)
     {
         var (updated, previous) = await _repo.SetGoogleGroupPrefixAsync(teamId, prefix, cancellationToken);
-        if (updated)
-            InvalidateActiveTeamsCache();
         return (updated, previous);
     }
 
@@ -271,71 +268,8 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
         Guid? userId,
         CancellationToken cancellationToken = default)
     {
-        var cachedTeams = await GetCachedTeamsAsync(cancellationToken);
-
-        if (!userId.HasValue)
-        {
-            var publicDepartments = cachedTeams.Values
-                .Where(t => !t.IsSystemTeam && !t.IsHidden
-                    && ((t.ParentTeamId is null && t.IsPublicPage)
-                        || (t.ParentTeamId is not null && t.IsPromotedToDirectory)))
-                .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
-                .Select(t => CreateDirectorySummary(t, cachedTeams, userId))
-                .ToList();
-
-            return new TeamDirectoryResult(
-                IsAuthenticated: false,
-                CanCreateTeam: false,
-                MyTeams: [],
-                Departments: publicDepartments,
-                SystemTeams: [],
-                HiddenTeams: []);
-        }
-
-        var isBoardMember = await RoleAssignmentService.IsUserBoardMemberAsync(userId.Value, cancellationToken);
-        var isAdmin = await RoleAssignmentService.IsUserAdminAsync(userId.Value, cancellationToken);
-        var isTeamsAdmin = await RoleAssignmentService.IsUserTeamsAdminAsync(userId.Value, cancellationToken);
-        var canCreateTeam = isBoardMember || isAdmin || isTeamsAdmin;
-        var canSeeHiddenTeams = canCreateTeam;
-
-        var visibleTeams = canSeeHiddenTeams
-            ? cachedTeams.Values
-            : cachedTeams.Values.Where(t => !t.IsHidden);
-
-        var directoryTeams = visibleTeams
-            .Where(t => t.ParentTeamId is null || t.IsPromotedToDirectory);
-
-        var summaries = directoryTeams
-            .Select(t => CreateDirectorySummary(t, cachedTeams, userId))
-            .ToList();
-
-        var myTeams = summaries
-            .Where(t => t.IsCurrentUserMember)
-            .OrderBy(t => t.SortKey, StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        var departments = summaries
-            .Where(t => !t.IsCurrentUserMember && !t.IsSystemTeam && !t.IsHidden)
-            .OrderBy(t => t.SortKey, StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        var systemTeams = summaries
-            .Where(t => !t.IsCurrentUserMember && t.IsSystemTeam && !t.IsHidden)
-            .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        var hiddenTeams = summaries
-            .Where(t => !t.IsCurrentUserMember && t.IsHidden)
-            .OrderBy(t => t.SortKey, StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        return new TeamDirectoryResult(
-            IsAuthenticated: true,
-            CanCreateTeam: canCreateTeam,
-            MyTeams: myTeams,
-            Departments: departments,
-            SystemTeams: systemTeams,
-            HiddenTeams: hiddenTeams);
+        var teamsById = await LoadTeamsByIdAsync(cancellationToken);
+        return await TeamDirectoryBuilder.BuildAsync(teamsById, RoleAssignmentService, userId, cancellationToken);
     }
 
     public async Task<TeamDetailResult?> GetTeamDetailAsync(
@@ -511,7 +445,6 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
             team.GoogleGroupPrefix = googleGroupPrefix;
             team.UpdatedAt = _clock.GetCurrentInstant();
             await _repo.UpdateTeamAsync(team, cancellationToken);
-            InvalidateActiveTeamsCache();
             return team;
         }
 
@@ -589,13 +522,12 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
 
         await _repo.UpdateTeamAsync(team, cancellationToken);
 
-        InvalidateActiveTeamsCache();
         InvalidateShiftAuthorization(usersNeedingShiftAuthorizationInvalidation);
 
         if (becomingChild && usersNeedingShiftAuthorizationInvalidation.Count > 0)
         {
             foreach (var userId in usersNeedingShiftAuthorizationInvalidation)
-                await SystemTeamSync.SyncCoordinatorsMembershipForUserAsync(userId, cancellationToken);
+                await SystemTeamSync.SyncMembershipForUserAsync(userId, SystemTeamType.Coordinators, cancellationToken);
         }
 
         _logger.LogInformation("Updated team {TeamId} ({TeamName})", teamId, name);
@@ -645,7 +577,6 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
             $"Team page content updated. Public: {isPublicPage}",
             updatedByUserId);
 
-        TryUpdateCachedTeam(teamId, cachedTeam => cachedTeam with { IsPublicPage = isPublicPage });
     }
 
     public async Task DeleteTeamAsync(Guid teamId, CancellationToken cancellationToken = default)
@@ -669,8 +600,6 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
         // tick sees Team.IsActive == false with every TeamMember.LeftAt set, computes
         // every current Google permission as an Extra, revokes them, and then flips
         // GoogleResource.IsActive to false via the owning service.
-
-        RemoveCachedTeam(teamId);
 
         _logger.LogInformation(
             "Deactivated team {TeamId} ({TeamName}); closed {MemberCount} memberships",
@@ -778,14 +707,6 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
             userId,
             relatedEntityId: userId, relatedEntityType: nameof(User));
 
-        var joinedUser = await UserService.GetByIdAsync(userId, cancellationToken);
-        if (joinedUser is not null)
-        {
-            AddMemberToTeamCache(teamId, new CachedTeamMember(
-                member.Id, userId, joinedUser.DisplayName, joinedUser.ProfilePictureUrl,
-                TeamMemberRole.Member, member.JoinedAt));
-        }
-
         await SendAddedToTeamEmailAsync(userId, team, cancellationToken);
 
         return member;
@@ -832,7 +753,6 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
             userId,
             relatedEntityId: userId, relatedEntityType: nameof(User));
 
-        RemoveMemberFromTeamCache(teamId, userId);
         InvalidateShiftAuthorizationIfNeeded(userId, removedAssignments);
 
         return wasCoordinator;
@@ -910,13 +830,6 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
             relatedEntityId: request.UserId, relatedEntityType: nameof(User));
 
         _notificationMeterInvalidator.Invalidate();
-        var joinedUser = await UserService.GetByIdAsync(request.UserId, cancellationToken);
-        if (joinedUser is not null)
-        {
-            AddMemberToTeamCache(request.TeamId, new CachedTeamMember(
-                member.Id, request.UserId, joinedUser.DisplayName, joinedUser.ProfilePictureUrl,
-                TeamMemberRole.Member, member.JoinedAt));
-        }
 
         await SendAddedToTeamEmailAsync(request.UserId, request.Team, cancellationToken);
 
@@ -1016,8 +929,10 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
         Guid userId,
         CancellationToken cancellationToken = default)
     {
-        var cached = await GetCachedTeamsAsync(cancellationToken);
-        return cached.TryGetValue(teamId, out var team) && team.Members.Any(m => m.UserId == userId);
+        var teamsById = await LoadTeamsByIdAsync(cancellationToken);
+        return teamsById.TryGetValue(teamId, out var team)
+            && team.IsActive
+            && team.Members.Any(m => m.UserId == userId);
     }
 
     public async Task<bool> IsUserCoordinatorOfTeamAsync(
@@ -1025,8 +940,18 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
         Guid userId,
         CancellationToken cancellationToken = default)
     {
-        var cached = await GetCachedTeamsAsync(cancellationToken);
-        if (!cached.TryGetValue(teamId, out var team))
+        var teamsById = await LoadTeamsByIdAsync(cancellationToken);
+        var coordinatorTeamIds = await _repo.GetUserCoordinatorTeamIdsAsync(userId, cancellationToken);
+        return IsUserCoordinatorOfActiveTeam(teamsById, coordinatorTeamIds, teamId, userId);
+    }
+
+    private bool IsUserCoordinatorOfActiveTeam(
+        IReadOnlyDictionary<Guid, TeamInfo> teamsById,
+        IReadOnlyCollection<Guid> coordinatorTeamIds,
+        Guid teamId,
+        Guid userId)
+    {
+        if (!teamsById.TryGetValue(teamId, out var team) || !team.IsActive)
         {
             _logger.LogDebug("Coordinator check: team {TeamId} not found in cache for user {UserId}", teamId, userId);
             return false;
@@ -1039,7 +964,6 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
             return true;
         }
 
-        var coordinatorTeamIds = await _repo.GetUserCoordinatorTeamIdsAsync(userId, cancellationToken);
         if (coordinatorTeamIds.Contains(teamId))
         {
             _logger.LogDebug("Coordinator check: user {UserId} has IsManagement role on team {TeamName} ({TeamId})",
@@ -1051,7 +975,7 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
         {
             _logger.LogDebug("Coordinator check: checking parent team {ParentTeamId} for user {UserId} on team {TeamName} ({TeamId})",
                 team.ParentTeamId.Value, userId, team.Name, teamId);
-            return await IsUserCoordinatorOfTeamAsync(team.ParentTeamId.Value, userId, cancellationToken);
+            return IsUserCoordinatorOfActiveTeam(teamsById, coordinatorTeamIds, team.ParentTeamId.Value, userId);
         }
 
         _logger.LogDebug("Coordinator check: user {UserId} is NOT coordinator of team {TeamName} ({TeamId})",
@@ -1093,7 +1017,6 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
             actorUserId,
             relatedEntityId: userId, relatedEntityType: nameof(User));
 
-        RemoveMemberFromTeamCache(teamId, userId);
         InvalidateShiftAuthorizationIfNeeded(userId, removedAssignments);
 
         try
@@ -1200,14 +1123,6 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
             actorUserId,
             relatedEntityId: targetUserId, relatedEntityType: nameof(User));
 
-        var addedUser = await UserService.GetByIdAsync(targetUserId, cancellationToken);
-        if (addedUser is not null)
-        {
-            AddMemberToTeamCache(teamId, new CachedTeamMember(
-                member.Id, targetUserId, addedUser.DisplayName, addedUser.ProfilePictureUrl,
-                TeamMemberRole.Member, member.JoinedAt));
-        }
-
         await SendAddedToTeamEmailAsync(targetUserId, team, cancellationToken);
 
         return member;
@@ -1224,33 +1139,12 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
         if (newRole is null)
             return;
 
-        UpdateMemberRoleInTeamCache(teamId, userId, newRole.Value);
-
         await _auditLogService.LogAsync(
             AuditAction.TeamMemberRoleChanged, nameof(Team), teamId,
             $"Set member role to {role}",
             actorUserId,
             relatedEntityId: userId, relatedEntityType: nameof(User));
     }
-
-    public async Task<IReadOnlyList<TeamMember>> GetTeamMembersAsync(
-        Guid teamId,
-        CancellationToken cancellationToken = default)
-    {
-        var members = await _repo.GetActiveMembersAsync(teamId, cancellationToken);
-        await StitchMemberUserSlicesAsync(members, cancellationToken);
-        return members
-            .OrderBy(m => m.Role)
-#pragma warning disable CS0618 // Populated in-memory by StitchMemberUserSlicesAsync
-            .ThenBy(m => m.User.DisplayName, StringComparer.OrdinalIgnoreCase)
-#pragma warning restore CS0618
-            .ToList();
-    }
-
-    public Task<IReadOnlyList<Guid>> GetActiveMemberUserIdsAsync(
-        Guid teamId,
-        CancellationToken cancellationToken = default) =>
-        _repo.GetActiveMemberUserIdsAsync(teamId, cancellationToken);
 
     public Task<IReadOnlyDictionary<Guid, IReadOnlyList<string>>> GetActiveNonSystemTeamNamesByUserIdsAsync(
         IReadOnlyCollection<Guid> userIds,
@@ -1382,9 +1276,6 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
             actorUserId,
             relatedEntityId: definition.TeamId, relatedEntityType: nameof(Team));
 
-        if (invalidatedActiveTeams)
-            InvalidateActiveTeamsCache();
-
         InvalidateShiftAuthorization(usersNeedingShiftAuthorizationInvalidation);
 
         return definition;
@@ -1460,9 +1351,6 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
             $"IsManagement set to {isManagement} on role '{definition.Name}' in {definition.Team.Name}",
             actorUserId,
             relatedEntityId: definition.TeamId, relatedEntityType: nameof(Team));
-
-        if (demotedMembers)
-            InvalidateActiveTeamsCache();
 
         InvalidateShiftAuthorization(usersNeedingShiftAuthorizationInvalidation);
     }
@@ -1608,21 +1496,6 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
 
         InvalidateShiftAuthorizationIfNeeded(definition, targetUserId);
 
-        var targetUser = await UserService.GetByIdAsync(targetUserId, cancellationToken);
-        if (targetUser is not null)
-        {
-            var cachedMember = new CachedTeamMember(
-                persistedMember.Id, targetUserId, targetUser.DisplayName, targetUser.ProfilePictureUrl,
-                persistedMember.Role, persistedMember.JoinedAt);
-            TryUpdateCachedTeam(definition.TeamId, ct =>
-            {
-                var existing = ct.Members.FirstOrDefault(m => m.UserId == targetUserId);
-                return existing is not null
-                    ? ct with { Members = ct.Members.Select(m => m.UserId == targetUserId ? cachedMember : m).ToList() }
-                    : ct with { Members = [.. ct.Members, cachedMember] };
-            });
-        }
-
         return assignment;
     }
 
@@ -1648,8 +1521,6 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
 
         InvalidateShiftAuthorizationIfNeeded(definition, targetUserId);
 
-        if (definition.IsManagement && demoted)
-            UpdateMemberRoleInTeamCache(definition.TeamId, targetUserId, TeamMemberRole.Member);
     }
 
     // ==========================================================================
@@ -1669,9 +1540,9 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
     public async Task<IReadOnlyList<Humans.Application.Models.TeamMembership>> GetActiveTeamMembershipsForUserAsync(
         Guid userId, CancellationToken cancellationToken = default)
     {
-        var cached = await GetCachedTeamsAsync(cancellationToken);
+        var teamsById = await LoadTeamsByIdAsync(cancellationToken);
         var rows = new List<Humans.Application.Models.TeamMembership>();
-        foreach (var team in cached.Values)
+        foreach (var team in teamsById.Values.Where(t => t.IsActive))
         {
             if (team.SystemTeamType == SystemTeamType.Volunteers)
                 continue;
@@ -1736,13 +1607,6 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
 
         await _repo.AddMemberAsync(member, cancellationToken);
 
-        var addedUser = await UserService.GetByIdAsync(userId, cancellationToken);
-        if (addedUser is not null)
-        {
-            AddMemberToTeamCache(teamId, new CachedTeamMember(
-                member.Id, userId, addedUser.DisplayName, addedUser.ProfilePictureUrl, role, joinedAt));
-        }
-
         return member;
     }
 
@@ -1759,11 +1623,6 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
     private async Task<int> HardDeleteAndRemoveFromCacheAsync(string nameSuffix, CancellationToken ct)
     {
         var count = await _repo.HardDeleteBySuffixAsync(nameSuffix, ct);
-        if (count > 0)
-        {
-            // Wipe the whole cache — we don't track which ids were removed.
-            _cache.InvalidateActiveTeams();
-        }
         return count;
     }
 
@@ -1814,10 +1673,10 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
         if (userIdSet.Count == 0)
             return new Dictionary<Guid, List<string>>();
 
-        var cached = await GetCachedTeamsAsync(cancellationToken);
+        var teamsById = await LoadTeamsByIdAsync(cancellationToken);
         var result = new Dictionary<Guid, List<string>>();
 
-        foreach (var team in cached.Values.Where(t => t.SystemTeamType == SystemTeamType.None && !t.IsHidden))
+        foreach (var team in teamsById.Values.Where(t => t.IsActive && t.SystemTeamType == SystemTeamType.None && !t.IsHidden))
         {
             foreach (var member in team.Members.Where(m => userIdSet.Contains(m.UserId)))
             {
@@ -1833,9 +1692,11 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
         return result;
     }
 
-    public Task<(IReadOnlyList<Team> Items, int TotalCount)> GetAllTeamsForAdminAsync(
-        int page, int pageSize, CancellationToken cancellationToken = default) =>
-        _repo.GetAllForAdminAsync(page, pageSize, cancellationToken);
+    public async Task<(IReadOnlyList<Team> Items, int TotalCount)> GetAllTeamsForAdminAsync(
+        int page, int pageSize, CancellationToken cancellationToken = default)
+    {
+        return await _repo.GetAllForAdminAsync(page, pageSize, cancellationToken);
+    }
 
     public async Task<AdminTeamListResult> GetAdminTeamListAsync(
         int page,
@@ -1867,17 +1728,13 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
 
     public void RemoveMemberFromAllTeamsCache(Guid userId)
     {
-        TryMutateActiveTeamsCache(cached =>
-        {
-            foreach (var kvp in cached)
-            {
-                if (kvp.Value.Members.Any(m => m.UserId == userId))
-                    cached[kvp.Key] = kvp.Value with { Members = kvp.Value.Members.Where(m => m.UserId != userId).ToList() };
-            }
-        });
+        // Cache mutation is owned by CachingTeamService.
     }
 
-    public void InvalidateActiveTeamsCache() => _cache.InvalidateActiveTeams();
+    public void InvalidateActiveTeamsCache()
+    {
+        // Cache invalidation is owned by CachingTeamService.
+    }
 
     public async Task<int> RevokeAllMembershipsAsync(Guid userId, CancellationToken cancellationToken = default)
     {
@@ -1956,34 +1813,28 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
     }
 
     // ==========================================================================
-    // Internal helpers — cache
+    // Internal helpers — team projection
     // ==========================================================================
 
-    private async Task<ConcurrentDictionary<Guid, CachedTeam>> GetCachedTeamsAsync(CancellationToken ct = default)
+    private async Task<IReadOnlyDictionary<Guid, TeamInfo>> LoadTeamsByIdAsync(CancellationToken ct = default)
     {
-        return await _cache.GetOrCreateAsync(CacheKeys.ActiveTeams, async entry =>
-        {
-            entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10);
+        var teams = await _repo.GetAllWithMembersAsync(ct);
+        var allUserIds = teams.SelectMany(t => t.Members.Where(m => m.LeftAt is null).Select(m => m.UserId))
+            .Distinct()
+            .ToList();
+        var users = allUserIds.Count == 0
+            ? new Dictionary<Guid, User>()
+            : await UserService.GetByIdsWithEmailsAsync(allUserIds, ct);
 
-            var teams = await _repo.GetAllActiveWithMembersAsync(ct);
-            // Stitch the member User slice in memory (cross-domain).
-            var allUserIds = teams.SelectMany(t => t.Members.Where(m => m.LeftAt is null).Select(m => m.UserId))
-                .Distinct()
-                .ToList();
-            var users = allUserIds.Count == 0
-                ? new Dictionary<Guid, User>()
-                : await UserService.GetByIdsAsync(allUserIds, ct);
-
-            return new ConcurrentDictionary<Guid, CachedTeam>(
-                teams.ToDictionary(t => t.Id, t => BuildCachedTeam(t, users)));
-        }) ?? new();
+        return teams.ToDictionary(t => t.Id, t => BuildTeamInfo(t, users));
     }
 
-    private static CachedTeam BuildCachedTeam(Team team, IReadOnlyDictionary<Guid, User> users) => new(
+    private static TeamInfo BuildTeamInfo(Team team, IReadOnlyDictionary<Guid, User> users) => new(
         Id: team.Id,
         Name: team.Name,
         Description: team.Description,
         Slug: team.Slug,
+        IsActive: team.IsActive,
         IsSystemTeam: team.IsSystemTeam,
         SystemTeamType: team.SystemTeamType,
         RequiresApproval: team.RequiresApproval,
@@ -1996,55 +1847,17 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
             .Select(m =>
             {
                 users.TryGetValue(m.UserId, out var u);
-                return new CachedTeamMember(
+                return new TeamMemberInfo(
                     TeamMemberId: m.Id,
                     UserId: m.UserId,
                     DisplayName: u?.DisplayName ?? string.Empty,
+                    Email: u?.Email,
                     ProfilePictureUrl: u?.ProfilePictureUrl,
                     Role: m.Role,
                     JoinedAt: m.JoinedAt);
             })
             .ToList(),
         ParentTeamId: team.ParentTeamId);
-
-    private bool TryMutateActiveTeamsCache(Action<ConcurrentDictionary<Guid, CachedTeam>> mutate) =>
-        _cache.TryUpdateExistingValue<ConcurrentDictionary<Guid, CachedTeam>>(CacheKeys.ActiveTeams, mutate);
-
-    private void UpsertCachedTeam(CachedTeam team) =>
-        TryMutateActiveTeamsCache(cachedTeams => cachedTeams[team.Id] = team);
-
-    private void RemoveCachedTeam(Guid teamId) =>
-        TryMutateActiveTeamsCache(cachedTeams => cachedTeams.TryRemove(teamId, out _));
-
-    private bool TryUpdateCachedTeam(Guid teamId, Func<CachedTeam, CachedTeam> update)
-    {
-        var updated = false;
-
-        TryMutateActiveTeamsCache(cachedTeams =>
-        {
-            if (!cachedTeams.TryGetValue(teamId, out var team))
-                return;
-
-            cachedTeams[teamId] = update(team);
-            updated = true;
-        });
-
-        return updated;
-    }
-
-    private void AddMemberToTeamCache(Guid teamId, CachedTeamMember member) =>
-        TryUpdateCachedTeam(teamId, team => team with { Members = [.. team.Members, member] });
-
-    private void RemoveMemberFromTeamCache(Guid teamId, Guid userId) =>
-        TryUpdateCachedTeam(teamId, team => team with { Members = team.Members.Where(m => m.UserId != userId).ToList() });
-
-    private void UpdateMemberRoleInTeamCache(Guid teamId, Guid userId, TeamMemberRole role) =>
-        TryUpdateCachedTeam(teamId, team => team with
-        {
-            Members = team.Members
-                .Select(m => m.UserId == userId ? m with { Role = role } : m)
-                .ToList()
-        });
 
     // ==========================================================================
     // Internal helpers — shift authorization invalidation
@@ -2289,35 +2102,6 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
             team.IsHidden);
     }
 
-    private static TeamDirectorySummary CreateDirectorySummary(
-        CachedTeam team,
-        IReadOnlyDictionary<Guid, CachedTeam> teamById,
-        Guid? userId)
-    {
-        CachedTeam? parent = team.ParentTeamId.HasValue && teamById.TryGetValue(team.ParentTeamId.Value, out var resolvedParent)
-            ? resolvedParent
-            : null;
-        var isCurrentUserMember = userId.HasValue && team.Members.Any(m => m.UserId == userId.Value);
-        var isCurrentUserCoordinator = userId.HasValue && team.Members.Any(m =>
-            m.UserId == userId.Value &&
-            m.Role == TeamMemberRole.Coordinator);
-
-        return new TeamDirectorySummary(
-            team.Id,
-            team.Name,
-            team.Description,
-            team.Slug,
-            team.Members.Count,
-            team.IsSystemTeam,
-            team.IsHidden,
-            team.RequiresApproval,
-            team.IsPublicPage,
-            isCurrentUserMember,
-            isCurrentUserCoordinator,
-            parent?.Name,
-            parent?.Slug);
-    }
-
     private static TeamDetailMemberSummary MapTeamDetailMemberSummary(TeamMember member) => new(
         UserId: member.UserId,
 #pragma warning disable CS0618 // populated in memory
@@ -2373,12 +2157,7 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
     {
         if (changes.Count == 0)
             return 0;
-        var updated = await _repo.ApplyMemberRoleChangesAsync(changes, cancellationToken);
-        if (updated > 0)
-        {
-            InvalidateActiveTeamsCache();
-        }
-        return updated;
+        return await _repo.ApplyMemberRoleChangesAsync(changes, cancellationToken);
     }
 
     public Task<IReadOnlyList<Guid>> GetActiveDepartmentCoordinatorUserIdsAsync(
@@ -2396,15 +2175,7 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
         Instant now,
         CancellationToken cancellationToken = default)
     {
-        var changed = await _repo.ApplySystemTeamMembershipDeltaAsync(
+        return await _repo.ApplySystemTeamMembershipDeltaAsync(
             teamId, userIdsToAdd, userIdsToRemove, now, cancellationToken);
-        if (changed)
-        {
-            // The in-service CachedTeam projection is rebuilt lazily on next
-            // read; invalidate it so downstream directory / coordinator
-            // queries reflect the post-sync membership.
-            InvalidateActiveTeamsCache();
-        }
-        return changed;
     }
 }

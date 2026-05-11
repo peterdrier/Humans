@@ -19,7 +19,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// the service layer via <see cref="Teams.ITeamService"/>
 /// per design-rules §2c/§6.
 /// </remarks>
-public interface IGoogleResourceRepository
+public interface IGoogleResourceRepository : IRepository
 {
     // ==========================================================================
     // Reads

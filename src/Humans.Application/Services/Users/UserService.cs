@@ -123,6 +123,7 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
         Instant fromInclusive, Instant toExclusive, CancellationToken ct = default) =>
         _repo.GetLoginTimestampsInWindowAsync(fromInclusive, toExclusive, ct);
 
+    [Obsolete("Issue nobodies-collective/Humans#687: User.GoogleEmail is being deprecated. Use IUserEmailService.GetOtherUserIdHavingEmailAsync.")]
     public Task<Guid?> GetOtherUserIdHavingGoogleEmailAsync(
         string email, Guid excludeUserId, CancellationToken ct = default) =>
         _repo.GetOtherUserIdHavingGoogleEmailAsync(email, excludeUserId, ct);
@@ -138,6 +139,7 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
     // User writes
     // ==========================================================================
 
+    [Obsolete("Issue nobodies-collective/Humans#687: User.GoogleEmail is being deprecated. UserEmailService.EnsureGoogleInvariantAsync owns the IsGoogle flag on every row creation.")]
     public async Task<bool> TrySetGoogleEmailAsync(Guid userId, string email, CancellationToken ct = default)
     {
         var set = await _repo.TrySetGoogleEmailAsync(userId, email, ct);
@@ -146,6 +148,7 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
         return set;
     }
 
+    [Obsolete("Issue nobodies-collective/Humans#687: User.GoogleEmail is being deprecated. Use IUserEmailService.SetGoogleAsync to promote a UserEmail row.")]
     public async Task<bool> SetGoogleEmailAsync(Guid userId, string email, CancellationToken ct = default)
     {
         var set = await _repo.SetGoogleEmailAsync(userId, email, ct);
@@ -181,20 +184,6 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
         if (set)
             await _fullProfileInvalidator.InvalidateAsync(userId, ct);
         return set;
-    }
-
-    public async Task<(bool Updated, string? OldEmail)> ApplyEmailBackfillAsync(
-        Guid userId, string newEmail, CancellationToken ct = default)
-    {
-        var (updated, oldEmail) = await _repo.RewritePrimaryEmailAsync(userId, newEmail, ct);
-        if (!updated)
-            return (false, null);
-
-        // Keep the OAuth UserEmail row in lock-step so login against the new
-        // provider email continues to succeed (no-op if none exists).
-        await _userEmailRepo.RewriteLinkedEmailAsync(userId, newEmail, ct);
-        await _fullProfileInvalidator.InvalidateAsync(userId, ct);
-        return (true, oldEmail);
     }
 
     public async Task UpdateDisplayNameAsync(Guid userId, string displayName, CancellationToken ct = default)
@@ -326,8 +315,14 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
             return [new UserDataSlice(GdprExportSections.Account, null)];
         }
 
-        var legacyGoogleEmails = await _repo.GetLegacyGoogleEmailsAsync([userId], ct);
-        legacyGoogleEmails.TryGetValue(userId, out var legacyGoogleEmail);
+        // Issue nobodies-collective/Humans#687: GoogleEmail is now derived from
+        // the UserEmail row tagged IsGoogle (sole source of truth). The legacy
+        // User.GoogleEmail shadow column is deprecated and not exported.
+        var userEmails = await _userEmailRepo.GetByUserIdReadOnlyAsync(userId, ct);
+        var googleEmail = userEmails
+            .Where(e => e.IsVerified && e.IsGoogle)
+            .Select(e => e.Email)
+            .FirstOrDefault();
 
         var shaped = new
         {
@@ -335,7 +330,7 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
             user.Email,
             user.DisplayName,
             user.PreferredLanguage,
-            GoogleEmail = legacyGoogleEmail,
+            GoogleEmail = googleEmail,
             user.UnsubscribedFromCampaigns,
             user.SuppressScheduleChangeEmails,
             ContactSource = user.ContactSource?.ToString(),
@@ -406,4 +401,9 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
 
     public Task<int> DeleteAllExternalLoginsForUserAsync(Guid userId, CancellationToken ct = default) =>
         _repo.DeleteAllExternalLoginsForUserAsync(userId, ct);
+
+    public Task<IReadOnlyDictionary<Guid, IReadOnlyList<(string Provider, string ProviderKey)>>>
+        GetExternalLoginsByUserIdsAsync(
+            IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
+        _repo.GetExternalLoginsByUserIdsAsync(userIds, ct);
 }

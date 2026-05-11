@@ -13,6 +13,7 @@ using Humans.Web.Models.Shifts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Localization;
 using NodaTime;
 using NodaTime.Text;
 
@@ -27,6 +28,7 @@ public class ShiftsController : HumansControllerBase
     private readonly IGeneralAvailabilityService _availabilityService;
     private readonly ITeamService _teamService;
     private readonly IAuditLogService _auditLogService;
+    private readonly IStringLocalizer<SharedResource> _localizer;
     private readonly IClock _clock;
     private readonly ILogger<ShiftsController> _logger;
 
@@ -36,6 +38,7 @@ public class ShiftsController : HumansControllerBase
         IGeneralAvailabilityService availabilityService,
         ITeamService teamService,
         IAuditLogService auditLogService,
+        IStringLocalizer<SharedResource> localizer,
         UserManager<User> userManager,
         IClock clock,
         ILogger<ShiftsController> logger)
@@ -46,6 +49,7 @@ public class ShiftsController : HumansControllerBase
         _availabilityService = availabilityService;
         _teamService = teamService;
         _auditLogService = auditLogService;
+        _localizer = localizer;
         _clock = clock;
         _logger = logger;
     }
@@ -198,7 +202,7 @@ public class ShiftsController : HumansControllerBase
         }
 
         // Load all tags for filter UI and volunteer's preferred tags
-        var allTags = await _shiftMgmt.GetAllTagsAsync();
+        var allTags = await _shiftMgmt.GetTagsAsync();
         var userPreferredTags = await _shiftMgmt.GetVolunteerTagPreferencesAsync(user.Id);
 
         var model = new ShiftBrowseViewModel
@@ -219,7 +223,9 @@ public class ShiftsController : HumansControllerBase
             ShowSignups = true,
             Sort = isUrgencySort ? "urgency" : "department",
             UrgencyRankedRotas = urgencyRankedRotas,
-            AllTags = allTags.ToList(),
+            AllTags = allTags
+                .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
+                .ToList(),
             FilterTagIds = activeTagFilter,
             UserPreferredTagIds = userPreferredTags.Select(t => t.Id).ToHashSet(),
             MySignupCount = userSignups.Count(s => s.Status is SignupStatus.Confirmed or SignupStatus.Pending),

@@ -1,11 +1,13 @@
-using Humans.Domain.Entities;
+using Humans.Application.Interfaces;
+using Humans.Domain.Enums;
+using NodaTime;
 
 namespace Humans.Application.Interfaces.Email;
 
 /// <summary>
 /// Service for managing email outbox messages (retry, discard, stats, pause/resume).
 /// </summary>
-public interface IEmailOutboxService
+public interface IEmailOutboxService : IApplicationService
 {
     /// <summary>
     /// Requeues a failed or stuck email outbox message for retry.
@@ -27,7 +29,7 @@ public interface IEmailOutboxService
     /// <summary>
     /// Gets outbox messages for a specific user, ordered by CreatedAt descending.
     /// </summary>
-    Task<IReadOnlyList<EmailOutboxMessage>> GetMessagesForUserAsync(
+    Task<IReadOnlyList<EmailOutboxMessageDto>> GetMessagesForUserAsync(
         Guid userId, CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -56,4 +58,18 @@ public record EmailOutboxStats(
     int SentLast24HoursCount,
     int FailedCount,
     bool IsPaused,
-    IReadOnlyList<EmailOutboxMessage> RecentMessages);
+    IReadOnlyList<EmailOutboxMessageDto> RecentMessages);
+
+public record EmailOutboxMessageDto(
+    Guid Id,
+    string RecipientEmail,
+    string? RecipientName,
+    string Subject,
+    string HtmlBody,
+    string TemplateName,
+    Guid? UserId,
+    EmailOutboxStatus Status,
+    Instant CreatedAt,
+    Instant? SentAt,
+    int RetryCount,
+    string? LastError);

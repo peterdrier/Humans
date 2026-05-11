@@ -115,6 +115,9 @@ public class UserEmailServiceTests
             Email = "secondary@example.com",
             IsVerified = true,
             IsPrimary = false,
+            // IsGoogle on the row being deleted so EnsureGoogleInvariantAsync
+            // has work to do after the delete (re-stamping the surviving row).
+            IsGoogle = false,
         };
         var keeping = new UserEmail
         {
@@ -123,6 +126,9 @@ public class UserEmailServiceTests
             Email = "primary@example.com",
             IsVerified = true,
             IsPrimary = true,
+            // Already-stamped IsGoogle so the post-delete EnsureGoogleInvariantAsync
+            // is a no-op and only DeleteEmailAsync's own invalidation runs.
+            IsGoogle = true,
         };
         _repository.GetByIdAndUserIdAsync(deletingId, userId, Arg.Any<CancellationToken>())
             .Returns(deleting);
@@ -769,7 +775,6 @@ public class UserEmailServiceTests
         added.ProviderKey.Should().Be("sub-xyz");
         added.IsVerified.Should().BeTrue();
         added.IsPrimary.Should().BeFalse();
-        added.IsGoogle.Should().BeFalse();
         await _repository.Received(1).AddAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
         await _repository.DidNotReceive().UpdateAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
         await _fullProfileInvalidator.Received(1).InvalidateAsync(userId, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
@@ -1176,81 +1181,44 @@ public class UserEmailServiceTests
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
-    // ─── RewriteEmailAddressAsync — issue nobodies-collective/Humans#622 ─────
-    // The service forwards the repository's three-way conflict outcome and
-    // additionally emits a structured LogWarning (no exception arg) on the
-    // CrossUserConflict branch. We assert the outcome forwarding here; the
-    // repository's actual conflict-detection logic (which uses
-    // EF.Functions.ILike) is verified end-to-end against Postgres in
-    // preview/QA, per the existing convention for ILike-using methods.
+    // ─── UpdateEmailAsync ───────────────────────────────────────────────────
+    // Per memory/architecture/email-mutation-paths.md, this is the only path
+    // that writes UserEmail.Email on the OAuth-linked row. Service forwards
+    // to repo (upsert + same-user conflict cleanup + IsPrimary reconciliation)
+    // and invalidates the affected user's FullProfile cache.
 
     [HumansFact]
-    public async Task RewriteEmailAddressAsync_NoConflict_ForwardsRewrittenOutcome()
+    public async Task UpdateEmailAsync_RepoWrote_DelegatesAndInvalidatesCache()
     {
         var userId = Guid.NewGuid();
-        _repository.RewriteEmailAddressAsync(
-                userId, "old@x.test", "new@x.test", _clock.GetCurrentInstant(),
+        _repository.UpdateEmailAsync(
+                userId, "Google", "sub-123", "new@x.test", _clock.GetCurrentInstant(),
                 Arg.Any<CancellationToken>())
-            .Returns(RewriteEmailAddressOutcome.Rewritten);
+            .Returns(true);
 
-        var outcome = await _service.RewriteEmailAddressAsync(
-            userId, "old@x.test", "new@x.test");
+        var written = await _service.UpdateEmailAsync(
+            userId, "Google", "sub-123", "new@x.test");
 
-        outcome.Should().Be(RewriteEmailAddressOutcome.Rewritten);
+        written.Should().BeTrue();
+        await _fullProfileInvalidator.Received(1).InvalidateAsync(
+            userId, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
     }
 
     [HumansFact]
-    public async Task RewriteEmailAddressAsync_SameUserConflict_ForwardsMergedOutcome()
+    public async Task UpdateEmailAsync_RepoCollision_ReturnsFalseAndDoesNotInvalidate()
     {
         var userId = Guid.NewGuid();
-        _repository.RewriteEmailAddressAsync(
-                userId, "old@x.test", "new@x.test", _clock.GetCurrentInstant(),
+        _repository.UpdateEmailAsync(
+                userId, "Google", "sub-123", "new@x.test", _clock.GetCurrentInstant(),
                 Arg.Any<CancellationToken>())
-            .Returns(RewriteEmailAddressOutcome.MergedIntoExistingRowForSameUser);
+            .Returns(false);
 
-        var outcome = await _service.RewriteEmailAddressAsync(
-            userId, "old@x.test", "new@x.test");
+        var written = await _service.UpdateEmailAsync(
+            userId, "Google", "sub-123", "new@x.test");
 
-        outcome.Should().Be(RewriteEmailAddressOutcome.MergedIntoExistingRowForSameUser);
-    }
-
-    [HumansFact]
-    public async Task RewriteEmailAddressAsync_CrossUserConflict_ForwardsOutcomeAndDoesNotThrow()
-    {
-        var userId = Guid.NewGuid();
-        var conflictUserId = Guid.NewGuid();
-        _repository.RewriteEmailAddressAsync(
-                userId, "old@x.test", "new@x.test", _clock.GetCurrentInstant(),
-                Arg.Any<CancellationToken>())
-            .Returns(RewriteEmailAddressOutcome.CrossUserConflict);
-        _repository.GetOtherUserIdHavingEmailAsync(
-                "new@x.test", userId, Arg.Any<CancellationToken>())
-            .Returns(conflictUserId);
-
-        var outcome = await _service.RewriteEmailAddressAsync(
-            userId, "old@x.test", "new@x.test");
-
-        outcome.Should().Be(RewriteEmailAddressOutcome.CrossUserConflict);
-        // Conflict-user lookup is invoked so the warning includes both IDs
-        // (logged through NullLogger here — the logging itself is verified at
-        // the controller level in the OAuth rename detection test).
-        await _repository.Received(1).GetOtherUserIdHavingEmailAsync(
-            "new@x.test", userId, Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task RewriteEmailAddressAsync_SourceRowNotFound_ForwardsOutcome()
-    {
-        var userId = Guid.NewGuid();
-        _repository.RewriteEmailAddressAsync(
-                userId, "missing@x.test", "new@x.test", _clock.GetCurrentInstant(),
-                Arg.Any<CancellationToken>())
-            .Returns(RewriteEmailAddressOutcome.SourceRowNotFound);
-
-        var outcome = await _service.RewriteEmailAddressAsync(
-            userId, "missing@x.test", "new@x.test");
-
-        outcome.Should().Be(RewriteEmailAddressOutcome.SourceRowNotFound);
+        written.Should().BeFalse();
+        await _fullProfileInvalidator.DidNotReceive().InvalidateAsync(
+            Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
     }
 
     // ─── VerifyEmailAsync row-Id disambiguation — issue #611 ──────────────
@@ -1537,5 +1505,160 @@ public class UserEmailServiceTests
         var act = async () => await _service.AdminMarkVerifiedAsync(userId, rowId, Guid.NewGuid());
 
         await act.Should().ThrowAsync<System.ComponentModel.DataAnnotations.ValidationException>();
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Issue nobodies-collective/Humans#687: UserEmail.IsGoogle is sole source
+    // of truth. Tests for the orchestrator + EnsureGoogleInvariantAsync.
+    // ─────────────────────────────────────────────────────────────────────────
+
+    [HumansFact]
+    public async Task LinkAsync_NewOAuthRow_StampsIsGoogleOnTheCreatedRow()
+    {
+        // Spec acceptance criterion: signup-via-OAuth produces IsGoogle=true on
+        // the new row. The orchestrator's EnsureGoogleInvariantAsync runs after
+        // the AddAsync — the brand-new row is the only verified row, so it
+        // becomes IsGoogle.
+        var userId = Guid.NewGuid();
+        UserEmail? capturedAdded = null;
+        var addedRows = new List<UserEmail>();
+
+        _repository.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(Array.Empty<UserEmail>());
+        _repository.AddAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                capturedAdded = call.Arg<UserEmail>();
+                addedRows.Add(capturedAdded);
+                return Task.CompletedTask;
+            });
+        // After AddAsync, the orchestrator calls GetByUserIdForMutationAsync —
+        // return the just-added row so the invariants observe the post-add state.
+        _repository.GetByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(_ => addedRows);
+        // First UpdateBatchAsync from EnsurePrimaryInvariantAsync mutates the
+        // tracked row in-place, so by the time EnsureGoogleInvariantAsync runs
+        // it sees the row with IsPrimary=true and (still) IsGoogle=false.
+
+        await _service.LinkAsync(userId, "Google", "sub-fresh", "alice@example.com", Guid.NewGuid());
+
+        capturedAdded.Should().NotBeNull();
+        // Post-orchestrator the row should be both IsPrimary and IsGoogle.
+        capturedAdded!.IsPrimary.Should().BeTrue();
+        capturedAdded.IsGoogle.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task LinkAsync_SecondEmailAdd_DoesNotFlipIsGoogleOnExistingRow()
+    {
+        // Spec acceptance criterion: second-email add does not flip IsGoogle.
+        // The user already has an IsGoogle row; LinkAsync (matched-row branch)
+        // re-runs EnsureGoogleInvariantAsync but the existing IsGoogle row stays
+        // (no @nobodies.team row to override; existing IsGoogle is stable).
+        var userId = Guid.NewGuid();
+        var existingRowId = Guid.NewGuid();
+        var existingRow = new UserEmail
+        {
+            Id = existingRowId,
+            UserId = userId,
+            Email = "alice@example.com",
+            IsVerified = true,
+            IsPrimary = true,
+            IsGoogle = true,
+            Provider = "Google",
+            ProviderKey = "sub-old",
+            UpdatedAt = Instant.FromUtc(2026, 4, 10, 0, 0),
+        };
+
+        _repository.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new List<UserEmail> { existingRow });
+        _repository.GetByIdAndUserIdAsync(existingRowId, userId, Arg.Any<CancellationToken>())
+            .Returns(existingRow);
+        _repository.GetByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(_ => new List<UserEmail> { existingRow });
+
+        await _service.LinkAsync(userId, "Google", "sub-old", "alice@example.com", Guid.NewGuid());
+
+        existingRow.IsGoogle.Should().BeTrue("existing IsGoogle row stays IsGoogle (stable invariant)");
+    }
+
+    [HumansFact]
+    public async Task AddVerifiedEmailAsync_NobodiesTeamRow_BecomesIsGooglePromotedOverExistingPersonalRow()
+    {
+        // When a personal Google row exists (IsGoogle=true) and a @nobodies.team
+        // row is added, EnsureGoogleInvariantAsync's @nobodies.team-wins
+        // precedence flips IsGoogle to the new Workspace row.
+        var userId = Guid.NewGuid();
+        var personalRow = new UserEmail
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Email = "alice@gmail.com",
+            IsVerified = true,
+            IsPrimary = true,
+            IsGoogle = true,
+            UpdatedAt = Instant.FromUtc(2026, 4, 10, 0, 0),
+        };
+
+        _repository.ExistsForUserAsync(userId, Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(false);
+
+        UserEmail? added = null;
+        _repository.AddAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                added = call.Arg<UserEmail>();
+                return Task.CompletedTask;
+            });
+
+        // After AddAsync, repository returns both rows.
+        _repository.GetByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(_ => new List<UserEmail> { personalRow, added! });
+
+        await _service.AddVerifiedEmailAsync(userId, "alice@nobodies.team");
+
+        added.Should().NotBeNull();
+        added!.IsGoogle.Should().BeTrue("@nobodies.team row wins Google precedence");
+        personalRow.IsGoogle.Should().BeFalse("EnsureGoogleInvariantAsync demoted the personal row");
+    }
+
+    [HumansFact]
+    public async Task AddProvisionedEmailAsync_NewUser_StampsIsGoogleOnFirstRow()
+    {
+        // Spec acceptance criterion: AccountProvisioningService path enforces
+        // the invariant — the first UserEmail row added for a brand-new user
+        // becomes IsGoogle (it's the only verified row).
+        var userId = Guid.NewGuid();
+        UserEmail? added = null;
+
+        _repository.ExistsForUserAsync(userId, Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(false);
+        _repository.AddAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                added = call.Arg<UserEmail>();
+                return Task.CompletedTask;
+            });
+        _repository.GetByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(_ => added is null ? new List<UserEmail>() : new List<UserEmail> { added });
+
+        await _service.AddProvisionedEmailAsync(userId, "alice@example.com");
+
+        added.Should().NotBeNull();
+        added!.IsPrimary.Should().BeTrue("the only verified row wins Primary");
+        added.IsGoogle.Should().BeTrue("the only verified row wins Google");
+    }
+
+    [HumansFact]
+    public async Task AddProvisionedEmailAsync_RowAlreadyExistsForUser_IsIdempotent()
+    {
+        var userId = Guid.NewGuid();
+        _repository.ExistsForUserAsync(userId, Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        await _service.AddProvisionedEmailAsync(userId, "alice@example.com");
+
+        await _repository.DidNotReceive()
+            .AddAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
     }
 }

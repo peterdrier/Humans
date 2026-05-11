@@ -1,12 +1,15 @@
 <!-- freshness:triggers
   src/Humans.Application/Services/CityPlanning/**
+  src/Humans.Application/Interfaces/CitiPlanning/ICityPlanningService.cs
+  src/Humans.Application/Interfaces/Repositories/ICityPlanningRepository.cs
   src/Humans.Domain/Entities/CityPlanningSettings.cs
   src/Humans.Domain/Entities/CampPolygon.cs
   src/Humans.Domain/Entities/CampPolygonHistory.cs
   src/Humans.Infrastructure/Data/Configurations/CityPlanning/**
-  src/Humans.Infrastructure/Repositories/CityPlanningRepository.cs
+  src/Humans.Infrastructure/Repositories/CitiPlanning/CityPlanningRepository.cs
   src/Humans.Web/Controllers/CityPlanningController.cs
   src/Humans.Web/Controllers/CityPlanningApiController.cs
+  src/Humans.Web/Hubs/CityPlanningHub.cs
 -->
 <!-- freshness:flag-on-change
   Polygon edit authorization (lead vs city-planning team vs CampAdmin), placement-open gating, and append-only history rules — review when CityPlanning service/entities/controllers change.
@@ -98,8 +101,35 @@ Admin sub-pages hosted on `CityPlanningController` under `/CityPlanning/BarrioMa
 |-------|---------|
 | `/CityPlanning/BarrioMap/Admin` | Settings panel: toggle barrio placement, upload limit zone and official zones, set placement dates |
 | `/CityPlanning/BarrioMap/Admin/Containers/{year}` | Org-level + all-barrio container admin: CRUD, image management, container placement phase toggle |
+| `POST /CityPlanning/BarrioMap/Admin/OpenPlacement` | Open barrio placement phase |
+| `POST /CityPlanning/BarrioMap/Admin/ClosePlacement` | Close barrio placement phase |
+| `POST /CityPlanning/BarrioMap/Admin/UpdatePlacementDates` | Set informational open/close datetimes |
+| `POST /CityPlanning/BarrioMap/Admin/UploadLimitZone` | Upload limit zone GeoJSON |
+| `GET /CityPlanning/BarrioMap/Admin/DownloadLimitZone` | Download limit zone GeoJSON |
+| `POST /CityPlanning/BarrioMap/Admin/DeleteLimitZone` | Delete limit zone |
+| `POST /CityPlanning/BarrioMap/Admin/UploadOfficialZones` | Upload official zones GeoJSON |
+| `GET /CityPlanning/BarrioMap/Admin/DownloadOfficialZones` | Download official zones GeoJSON |
+| `POST /CityPlanning/BarrioMap/Admin/DeleteOfficialZones` | Delete official zones |
 
-The container entity CRUD for barrio leads is served by `ContainerController` at `/Camp/{slug}/Season/{year}/Containers`. The placement API for all containers is served by `CityPlanningApiController` at `/api/city-planning/containers/*` — placement is a City Planning concern even though the container entity belongs to the Containers section.
+The container entity CRUD for barrio leads is served by `ContainerController` at `/Camp/{slug}/Containers`. The placement API for all containers is served by `CityPlanningApiController` at `/api/city-planning/containers/*` — placement is a City Planning concern even though the container entity belongs to the Containers section.
+
+**API — `CityPlanningApiController` (`[Route("api/city-planning")]`)**
+
+| Route | Action |
+|-------|--------|
+| `GET /api/city-planning/state` | Map state: settings + all polygons + unmapped seasons |
+| `PUT /api/city-planning/camp-polygons/{campSeasonId}` | Save or update a polygon |
+| `GET /api/city-planning/camp-polygons/{campSeasonId}/history` | Version history (newest first) |
+| `POST /api/city-planning/camp-polygons/{campSeasonId}/restore/{historyId}` | Restore historical version (map admin only) |
+| `GET /api/city-planning/export.geojson?year={year}` | Export all polygons as GeoJSON (map admin only) |
+| `GET /api/city-planning/containers/{year}` | Container placement map state for the year |
+| `GET /api/city-planning/containers/{year}/export.geojson` | Export all container placements as GeoJSON |
+| `PUT /api/city-planning/containers/{id}/placement/{year}` | Save or update a container placement |
+| `DELETE /api/city-planning/containers/{id}/placement/{year}` | Clear a container placement |
+
+**SignalR — `CityPlanningHub` (`/hubs/city-planning`)**
+
+Broadcasts `CampPolygonUpdated(campSeasonId, geoJson, areaSqm, soundZone, campName)` after every polygon save. Receives `CursorMoved(lng, lat)` from clients.
 
 ## Actors & Roles
 
@@ -150,7 +180,7 @@ The container entity CRUD for barrio leads is served by `ContainerController` at
 **Status:** (A) Migrated (peterdrier/Humans PR #543, 2026-04-22).
 
 - `CityPlanningService` lives in `Humans.Application.Services.CityPlanning` and never imports `Microsoft.EntityFrameworkCore` — enforced structurally by `Humans.Application.csproj`'s reference graph.
-- `ICityPlanningRepository` / `CityPlanningRepository` (`Humans.Infrastructure.Repositories`) is the only code path that touches this section's tables via `DbContext`.
+- `ICityPlanningRepository` (`Humans.Application.Interfaces.Repositories`) / `CityPlanningRepository` (`Humans.Infrastructure.Repositories.CitiPlanning`) is the only code path that touches this section's tables via `DbContext`.
 - **Decorator decision — no caching decorator.** Admin-facing, low-traffic (same rationale as Governance / User / Feedback).
 - **Cross-section reads** route through `ICampService`, `ITeamService`, `IProfileService`, and `IUserService`. The previous cross-domain `.Include(h => h.ModifiedByUser)` on `CampPolygonHistories` is replaced by a batched `IUserService.GetByIdsAsync` lookup at the service layer.
 - **Architecture test** — `tests/Humans.Application.Tests/Architecture/CityPlanningArchitectureTests.cs` pins the non-decorator shape and the append-only repository surface.

@@ -9,7 +9,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// Repository for the <c>user_emails</c> table.
 /// The only non-test file that may write to this DbSet.
 /// </summary>
-public interface IUserEmailRepository
+public interface IUserEmailRepository : IRepository
 {
     /// <summary>
     /// Returns all emails for a user, read-only, ordered by
@@ -194,6 +194,18 @@ public interface IUserEmailRepository
         string email, CancellationToken ct = default);
 
     /// <summary>
+    /// Returns all distinct <c>UserId</c> values whose verified email rows
+    /// contain an address that matches <paramref name="email"/> exactly
+    /// (case-sensitive, no gmail/googlemail aliasing). The caller uses this
+    /// to detect ambiguous matches: a count of 0 means no match, a count
+    /// of 1 means an unambiguous match, and a count &gt; 1 means the same
+    /// address is verified for more than one user (invariant violation —
+    /// treat as ambiguous / return null to the caller).
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetDistinctUserIdsByVerifiedEmailAsync(
+        string email, CancellationToken ct = default);
+
+    /// <summary>
     /// Returns the id of any user, other than <paramref name="excludeUserId"/>,
     /// whose <c>user_emails</c> rows contain the given address (case-insensitive).
     /// Used by @nobodies.team provisioning to block a prefix that is already
@@ -203,39 +215,29 @@ public interface IUserEmailRepository
         string email, Guid excludeUserId, CancellationToken ct = default);
 
     /// <summary>
-    /// Rewrites the <c>Email</c> of the user's OAuth-sourced <see cref="UserEmail"/>
-    /// row (if one exists) to <paramref name="newEmail"/>. Used by the admin
-    /// email-backfill workflow. Returns true when a row was updated. No-op if the
-    /// user has no OAuth email row.
-    /// </summary>
-    Task<bool> RewriteLinkedEmailAsync(Guid userId, string newEmail, CancellationToken ct = default);
-
-    /// <summary>
-    /// Rewrites the <c>Email</c> of the user's existing <see cref="UserEmail"/> row
-    /// (case-insensitive match on <paramref name="oldEmail"/>) to
-    /// <paramref name="newEmail"/> and stamps <c>UpdatedAt</c> with
-    /// <paramref name="updatedAt"/>. Used by the admin rename-fix flow and by
-    /// the OAuth rename detector.
+    /// The one and only primitive that writes <see cref="UserEmail.Email"/> on
+    /// the OAuth-linked row. Upsert on <see cref="UserEmail.Provider"/>+
+    /// <see cref="UserEmail.ProviderKey"/> — the only legitimate match key for
+    /// the OAuth identity — for the given <paramref name="userId"/>. Inserts a
+    /// verified row if the pair is missing; updates <c>Email</c> and stamps
+    /// <c>UpdatedAt</c> if present. Removes any OTHER row for the same user
+    /// that already holds <paramref name="newEmail"/> (case-insensitive) so
+    /// the partial unique <c>Email</c> index does not throw on the upsert.
+    /// Reconciles <see cref="UserEmail.IsPrimary"/> on the surviving rows:
+    /// 0 primaries — set the current login primary; exactly 1 — leave alone;
+    /// 2+ — current login stays primary, others demoted.
     ///
-    /// Three-way pre-UPDATE conflict resolution on the unique <c>Email</c>
-    /// index:
-    /// <list type="bullet">
-    /// <item>No conflicting row → standard UPDATE
-    ///   (<see cref="RewriteEmailAddressOutcome.Rewritten"/>).</item>
-    /// <item>Conflicting row owned by the same user → drop the source row and
-    ///   mark the existing target row verified, in a single transaction
-    ///   (<see cref="RewriteEmailAddressOutcome.MergedIntoExistingRowForSameUser"/>).</item>
-    /// <item>Conflicting row owned by a DIFFERENT user → no UPDATE, no exception
-    ///   (<see cref="RewriteEmailAddressOutcome.CrossUserConflict"/>). The caller
-    ///   logs a warning and lets the duplicate-account detection flow surface
-    ///   the conflict to admins.</item>
-    /// </list>
-    ///
-    /// No-op if no row matches <paramref name="oldEmail"/> for this user
-    /// (<see cref="RewriteEmailAddressOutcome.SourceRowNotFound"/>).
+    /// Per <c>memory/architecture/email-mutation-paths.md</c>: the sole
+    /// legitimate caller is <c>UserEmailService.UpdateEmailAsync</c>, which is
+    /// itself callable only by the OAuth sign-in callback in
+    /// <c>AccountController</c>. Cross-user collision (Postgres 23505 on the
+    /// partial unique <c>Email</c> index — another user already holds
+    /// <paramref name="newEmail"/>) is caught inside the implementation,
+    /// logged at Warning, and surfaced as a <c>false</c> return so EF types
+    /// do not leak into the Application or Web layers.
     /// </summary>
-    Task<RewriteEmailAddressOutcome> RewriteEmailAddressAsync(
-        Guid userId, string oldEmail, string newEmail, Instant updatedAt,
+    Task<bool> UpdateEmailAsync(
+        Guid userId, string provider, string providerKey, string newEmail, Instant updatedAt,
         CancellationToken ct = default);
 
     /// <summary>

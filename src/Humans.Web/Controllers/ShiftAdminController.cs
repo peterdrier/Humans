@@ -126,7 +126,7 @@ public class ShiftAdminController : HumansTeamControllerBase
                 .ToList();
         }
 
-        var allTags = await _shiftMgmt.GetAllTagsAsync();
+        var allTags = await _shiftMgmt.GetTagsAsync();
 
         return View(new ShiftAdminViewModel
         {
@@ -145,7 +145,9 @@ public class ShiftAdminController : HumansTeamControllerBase
             StaffingHours = staffingHours.ToList(),
             Now = _clock.GetCurrentInstant(),
             AllDepartments = allDepartments,
-            AllTags = allTags.ToList(),
+            AllTags = allTags
+                .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
+                .ToList(),
             IncompleteOnboardingFilter = incompleteOnboarding
         });
     }
@@ -745,11 +747,11 @@ public class ShiftAdminController : HumansTeamControllerBase
         var (teamError, _, _) = await ResolveDepartmentManagementAsync(slug);
         if (teamError is not null) return Forbid();
 
-        var tags = string.IsNullOrWhiteSpace(q)
-            ? await _shiftMgmt.GetAllTagsAsync()
-            : await _shiftMgmt.SearchTagsAsync(q);
+        var tags = await _shiftMgmt.GetTagsAsync(q);
 
-        return Json(tags.Select(t => new { t.Id, t.Name }));
+        return Json(tags
+            .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(t => new ShiftTagResult(t.Id, t.Name)));
     }
 
     [HttpPost("Tags/Create")]
@@ -824,3 +826,5 @@ public class ShiftAdminController : HumansTeamControllerBase
                await _shiftMgmt.IsDeptCoordinatorAsync(user.Id, team.Id);
     }
 }
+
+public sealed record ShiftTagResult(Guid Id, string Name);

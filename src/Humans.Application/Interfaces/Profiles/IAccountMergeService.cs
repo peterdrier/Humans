@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 
 namespace Humans.Application.Interfaces.Profiles;
@@ -5,7 +6,7 @@ namespace Humans.Application.Interfaces.Profiles;
 /// <summary>
 /// Service for managing account merge requests.
 /// </summary>
-public interface IAccountMergeService
+public interface IAccountMergeService : IApplicationService
 {
     /// <summary>
     /// Gets all pending merge requests for admin review.

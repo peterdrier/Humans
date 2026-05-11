@@ -18,6 +18,7 @@ using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Profiles;
+using Humans.Domain.Enums;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Repositories.Consent;
@@ -205,8 +206,10 @@ public class ConsentServiceTests : IDisposable
 
         await _service.SubmitConsentAsync(userId, versionId, true, "127.0.0.1", "Agent");
 
-        await _syncJob.Received().SyncVolunteersMembershipForUserAsync(userId, Arg.Any<CancellationToken>());
-        await _syncJob.Received().SyncCoordinatorsMembershipForUserAsync(userId, Arg.Any<CancellationToken>());
+        await _syncJob.Received().SyncMembershipForUserAsync(
+            userId, SystemTeamType.Volunteers, Arg.Any<CancellationToken>());
+        await _syncJob.Received().SyncMembershipForUserAsync(
+            userId, SystemTeamType.Coordinators, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -225,9 +228,9 @@ public class ConsentServiceTests : IDisposable
         // Record-only calls inside InOrder; discards keep the analyzers happy.
         Received.InOrder(() =>
         {
-            _ = _syncJob.SyncVolunteersMembershipForUserAsync(userId, Arg.Any<CancellationToken>());
+            _ = _syncJob.SyncMembershipForUserAsync(userId, SystemTeamType.Volunteers, Arg.Any<CancellationToken>());
             _ = _shiftSignupService.PromoteWidgetPendingSignupsAfterAdmissionAsync(userId, Arg.Any<CancellationToken>());
-            _ = _syncJob.SyncCoordinatorsMembershipForUserAsync(userId, Arg.Any<CancellationToken>());
+            _ = _syncJob.SyncMembershipForUserAsync(userId, SystemTeamType.Coordinators, Arg.Any<CancellationToken>());
         });
     }
 

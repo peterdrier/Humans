@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces;
 using Humans.Application.Models;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -6,7 +7,7 @@ using NodaTime;
 
 namespace Humans.Application.Interfaces.Feedback;
 
-public interface IFeedbackService
+public interface IFeedbackService : IApplicationService
 {
     Task<FeedbackReport> SubmitFeedbackAsync(
         Guid userId, FeedbackCategory category, string description,

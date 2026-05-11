@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces;
 using Humans.Domain.Enums;
 
 namespace Humans.Application.Interfaces.Notifications;
@@ -13,7 +14,7 @@ namespace Humans.Application.Interfaces.Notifications;
 /// interface avoids the DI cycle through
 /// <see cref="INotificationRecipientResolver"/>.
 /// </remarks>
-public interface INotificationService : INotificationEmitter
+public interface INotificationService : IApplicationService, INotificationEmitter
 {
     /// <summary>
     /// Sends a single shared notification to all members of a team.

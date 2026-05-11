@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces;
 using System.ComponentModel.DataAnnotations;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -5,7 +6,7 @@ using NodaTime;
 
 namespace Humans.Application.Interfaces.CitiPlanning;
 
-public interface ICityPlanningService
+public interface ICityPlanningService : IApplicationService
 {
     // Queries
     Task<List<CampPolygonDto>> GetCampPolygonsAsync(int year, CancellationToken cancellationToken = default);
@@ -31,7 +32,7 @@ public interface ICityPlanningService
     Task<bool> IsCityPlanningTeamMemberAsync(Guid userId, CancellationToken cancellationToken = default);
 
     // Settings (creates row on demand for PublicYear)
-    Task<CityPlanningSettings> GetSettingsAsync(CancellationToken cancellationToken = default);
+    Task<CityPlanningSettingsDto> GetSettingsAsync(CancellationToken cancellationToken = default);
     Task OpenPlacementAsync(Guid userId, CancellationToken cancellationToken = default);
     Task ClosePlacementAsync(Guid userId, CancellationToken cancellationToken = default);
     Task OpenContainerPlacementAsync(Guid userId, CancellationToken cancellationToken = default);
@@ -72,6 +73,19 @@ public record CampPolygonHistoryEntryDto(
     double AreaSqm,
     string Note,
     string GeoJson);
+
+public record CityPlanningSettingsDto(
+    Guid Id,
+    int Year,
+    bool IsPlacementOpen,
+    Instant? OpenedAt,
+    Instant? ClosedAt,
+    LocalDateTime? PlacementOpensAt,
+    LocalDateTime? PlacementClosesAt,
+    string? RegistrationInfo,
+    string? LimitZoneGeoJson,
+    string? OfficialZonesGeoJson,
+    Instant UpdatedAt);
 
 public record SaveCampPolygonRequest(
     string GeoJson,

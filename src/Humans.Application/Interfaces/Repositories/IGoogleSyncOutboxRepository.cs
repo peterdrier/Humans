@@ -30,7 +30,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// Registered as Singleton via <c>IDbContextFactory&lt;HumansDbContext&gt;</c>
 /// per design-rules §15b.
 /// </remarks>
-public interface IGoogleSyncOutboxRepository
+public interface IGoogleSyncOutboxRepository : IRepository
 {
     // ==========================================================================
     // Read — counts (Part 1)

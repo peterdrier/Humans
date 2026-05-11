@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces;
 using Humans.Application.DTOs;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -7,7 +8,7 @@ namespace Humans.Application.Interfaces.GoogleIntegration;
 /// <summary>
 /// Service for provisioning and syncing Google resources.
 /// </summary>
-public interface IGoogleSyncService
+public interface IGoogleSyncService : IApplicationService
 {
     /// <summary>
     /// Provisions a new Google Drive folder for a team.
@@ -121,15 +122,6 @@ public interface IGoogleSyncService
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Drift results for all groups, or a skipped result if sync is disabled.</returns>
     Task<GroupSettingsDriftResult> CheckGroupSettingsAsync(CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Compares stored user emails against the canonical emails from Google Admin SDK.
-    /// Returns a list of users whose stored email differs from what Google reports.
-    /// Detect-only: does not modify any data.
-    /// </summary>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>Mismatch results for all users checked.</returns>
-    Task<EmailBackfillResult> GetEmailMismatchesAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Applies expected settings to a Google Group, fixing any drift.

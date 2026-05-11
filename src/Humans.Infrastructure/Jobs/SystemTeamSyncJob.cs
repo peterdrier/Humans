@@ -127,7 +127,13 @@ public class SystemTeamSyncJob : ISystemTeamSync
             await SyncAsociadosTeamAsync(report, cancellationToken);
             await SyncColaboradorsTeamAsync(report, cancellationToken);
             await SyncBarrioLeadsTeamAsync(report, cancellationToken);
-            await BackfillGoogleEmailsAsync(report, cancellationToken);
+
+            // Issue nobodies-collective/Humans#687: BackfillGoogleEmailsAsync
+            // step removed. UserEmail.IsGoogle is the sole source of truth and
+            // is maintained by UserEmailService.EnsureGoogleInvariantAsync on
+            // every UserEmail row creation; the User.GoogleEmail shadow column
+            // is no longer the read path, so a per-sync backfill into it is
+            // dead work.
 
             _metrics.RecordJobRun("system_team_sync", "success");
             _logger.LogInformation("Completed system team sync");
@@ -394,11 +400,27 @@ public class SystemTeamSyncJob : ISystemTeamSync
         report?.Steps.Add(step);
     }
 
+    public Task SyncMembershipForUserAsync(
+        Guid userId,
+        SystemTeamType teamType,
+        CancellationToken cancellationToken = default) =>
+        teamType switch
+        {
+            SystemTeamType.Volunteers => SyncVolunteersMembershipForUserAsync(userId, cancellationToken),
+            SystemTeamType.Coordinators => SyncCoordinatorsMembershipForUserAsync(userId, cancellationToken),
+            SystemTeamType.Colaboradors => SyncTierMembershipForUserAsync(
+                userId, MembershipTier.Colaborador, SystemTeamType.Colaboradors, SystemTeamIds.Colaboradors, cancellationToken),
+            SystemTeamType.Asociados => SyncTierMembershipForUserAsync(
+                userId, MembershipTier.Asociado, SystemTeamType.Asociados, SystemTeamIds.Asociados, cancellationToken),
+            SystemTeamType.BarrioLeads => SyncBarrioLeadsMembershipForUserAsync(userId, cancellationToken),
+            _ => throw new ArgumentOutOfRangeException(nameof(teamType), teamType, "System team does not support per-user sync.")
+        };
+
     /// <summary>
     /// Syncs Volunteers team membership for a single user. Call this after approving
     /// a volunteer or after they complete their required consents.
     /// </summary>
-    public async Task SyncVolunteersMembershipForUserAsync(Guid userId, CancellationToken cancellationToken = default)
+    private async Task SyncVolunteersMembershipForUserAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         var team = await _teamService.GetSystemTeamWithActiveMembersAsync(
             SystemTeamType.Volunteers, cancellationToken);
@@ -430,7 +452,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
     /// Syncs Coordinators team membership for a single user. Call this after changing
     /// a team member's role to/from Coordinator.
     /// </summary>
-    public async Task SyncCoordinatorsMembershipForUserAsync(Guid userId, CancellationToken cancellationToken = default)
+    private async Task SyncCoordinatorsMembershipForUserAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         var team = await _teamService.GetSystemTeamWithActiveMembersAsync(
             SystemTeamType.Coordinators, cancellationToken);
@@ -453,12 +475,6 @@ public class SystemTeamSyncJob : ISystemTeamSync
     /// Syncs Colaboradors team membership for a single user. Call this after approving
     /// a Colaborador application or after a user's Colaborador status changes.
     /// </summary>
-    public Task SyncColaboradorsMembershipForUserAsync(Guid userId, CancellationToken cancellationToken = default) =>
-        SyncTierMembershipForUserAsync(userId, MembershipTier.Colaborador, SystemTeamType.Colaboradors, SystemTeamIds.Colaboradors, cancellationToken);
-
-    public Task SyncAsociadosMembershipForUserAsync(Guid userId, CancellationToken cancellationToken = default) =>
-        SyncTierMembershipForUserAsync(userId, MembershipTier.Asociado, SystemTeamType.Asociados, SystemTeamIds.Asociados, cancellationToken);
-
     private async Task SyncTierMembershipForUserAsync(Guid userId, MembershipTier tier,
         SystemTeamType teamType, Guid teamId, CancellationToken cancellationToken)
     {
@@ -514,7 +530,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
     /// Syncs Barrio Leads team membership for a single user. Call this after adding
     /// or removing a camp lead assignment.
     /// </summary>
-    public async Task SyncBarrioLeadsMembershipForUserAsync(Guid userId, CancellationToken cancellationToken = default)
+    private async Task SyncBarrioLeadsMembershipForUserAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         var team = await _teamService.GetSystemTeamWithActiveMembersAsync(
             SystemTeamType.BarrioLeads, cancellationToken);
@@ -542,44 +558,6 @@ public class SystemTeamSyncJob : ISystemTeamSync
 
         var eligibleUserIds = isLeadAnywhere ? [userId] : new List<Guid>();
         await SyncTeamMembershipAsync(team, eligibleUserIds, cancellationToken, singleUserSync: userId);
-    }
-
-    /// <summary>
-    /// Backfills User.GoogleEmail for users who have a verified @nobodies.team email
-    /// but a null GoogleEmail. This ensures Google Group sync uses the correct address.
-    /// </summary>
-    /// <remarks>
-    /// Bulk-fetches the <c>@nobodies.team</c> map once via
-    /// <see cref="IUserEmailService.GetNobodiesTeamEmailsByUserIdsAsync"/>,
-    /// then iterates the user list calling
-    /// <see cref="IUserService.TrySetGoogleEmailAsync"/> (a no-op when
-    /// <c>GoogleEmail</c> is already set). One scan of <c>user_emails</c>
-    /// per sync pass instead of N.
-    /// </remarks>
-    private async Task BackfillGoogleEmailsAsync(SyncReport? report = null, CancellationToken cancellationToken = default)
-    {
-        var step = new SyncStepResult("Google Email Backfill");
-
-        var allUsers = await _userService.GetAllUsersAsync(cancellationToken);
-        var nobodiesEmailByUser = await _userEmailService.GetNobodiesTeamEmailsByUserIdsAsync(
-            allUsers.Select(u => u.Id), cancellationToken);
-
-        foreach (var user in allUsers)
-        {
-            if (!nobodiesEmailByUser.TryGetValue(user.Id, out var nobodiesEmail))
-                continue;
-
-            var backfilled = await _userService.TrySetGoogleEmailAsync(
-                user.Id, nobodiesEmail, cancellationToken);
-            if (!backfilled)
-                continue;
-
-            step.Fixed(user.Id, user.DisplayName, $"Set GoogleEmail to {nobodiesEmail}");
-            _logger.LogInformation(
-                "Backfilled GoogleEmail for {User} to {Email}", user.DisplayName, nobodiesEmail);
-        }
-
-        report?.Steps.Add(step);
     }
 
     private async Task SyncTeamMembershipAsync(Team team, List<Guid> eligibleUserIds,

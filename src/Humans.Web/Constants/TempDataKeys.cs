@@ -10,7 +10,6 @@ public static class TempDataKeys
     public const string InfoMessage = "InfoMessage";
     public const string SyncReport = "SyncReport";
     public const string GroupSettingsResult = "GroupSettingsResult";
-    public const string EmailBackfillResult = "EmailBackfillResult";
     public const string EmailRenameResult = "EmailRenameResult";
     public const string WorkspaceRecoveryCredentials = "WorkspaceRecoveryCredentials";
 }

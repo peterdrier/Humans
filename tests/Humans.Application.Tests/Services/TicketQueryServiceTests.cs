@@ -57,9 +57,8 @@ public sealed class TicketQueryServiceTests : IDisposable
             SystemClock.Instance);
 
         // Defaults for the Volunteers team lookup — tests that care override them.
-        _teamService.GetActiveMemberUserIdsAsync(
-                SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<Guid>());
+        _teamService.GetTeamAsync(SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
+            .Returns(VolunteersTeam([]));
 
         _userService.GetAllUsersAsync(Arg.Any<CancellationToken>())
             .Returns(Array.Empty<User>());
@@ -182,6 +181,37 @@ public sealed class TicketQueryServiceTests : IDisposable
         weekly.VatAmount.Should().Be(9.09m);
         weekly.TicketsSold.Should().Be(1);
         weekly.VipDonations.Should().Be(0m);
+    }
+
+    [HumansFact]
+    public async Task GetAvailableTicketTypesAsync_ReturnsDistinctTypes()
+    {
+        var orderId = Guid.NewGuid();
+        _dbContext.TicketOrders.Add(new TicketOrder
+        {
+            Id = orderId,
+            VendorOrderId = "ord_ticket_type_options",
+            BuyerName = "Buyer",
+            BuyerEmail = "buyer@example.com",
+            TotalAmount = 300m,
+            Currency = "EUR",
+            PaymentStatus = TicketPaymentStatus.Paid,
+            VendorEventId = "ev_test",
+            PurchasedAt = Instant.FromUtc(2026, 3, 1, 10, 0),
+            SyncedAt = Instant.FromUtc(2026, 3, 1, 10, 0),
+            Attendees =
+            [
+                MakeAttendee(orderId, "tkt_weekend", "Weekend"),
+                MakeAttendee(orderId, "tkt_vip", "VIP"),
+                MakeAttendee(orderId, "tkt_full_week", "Full Week"),
+                MakeAttendee(orderId, "tkt_weekend_duplicate", "Weekend")
+            ]
+        });
+        await _dbContext.SaveChangesAsync();
+
+        var types = await _service.GetAvailableTicketTypesAsync();
+
+        types.Should().BeEquivalentTo(["Full Week", "VIP", "Weekend"]);
     }
 
     // ====================================================================
@@ -478,9 +508,8 @@ public sealed class TicketQueryServiceTests : IDisposable
         _userService.GetAllUsersAsync(Arg.Any<CancellationToken>())
             .Returns(allUsers);
 
-        _teamService.GetActiveMemberUserIdsAsync(
-                SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
-            .Returns(userIds);
+        _teamService.GetTeamAsync(SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
+            .Returns(VolunteersTeam(userIds));
 
         var profilesByUserId = users
             .Select(u => (UserId: u.Id, Profile: new Profile
@@ -574,4 +603,38 @@ public sealed class TicketQueryServiceTests : IDisposable
             Attendees = attendees,
         };
     }
+
+    private static TicketAttendee MakeAttendee(Guid orderId, string vendorTicketId, string ticketTypeName) =>
+        new()
+        {
+            Id = Guid.NewGuid(),
+            VendorTicketId = vendorTicketId,
+            TicketOrderId = orderId,
+            TicketOrder = null!,
+            AttendeeName = ticketTypeName,
+            TicketTypeName = ticketTypeName,
+            Price = 100m,
+            Status = TicketAttendeeStatus.Valid,
+            VendorEventId = "ev_test",
+            SyncedAt = Instant.FromUtc(2026, 3, 1, 10, 0),
+        };
+
+    private static TeamInfo VolunteersTeam(IEnumerable<Guid> userIds) =>
+        new(
+            SystemTeamIds.Volunteers,
+            "Volunteers",
+            null,
+            "volunteers",
+            IsActive: true,
+            IsSystemTeam: true,
+            SystemTeamType.Volunteers,
+            RequiresApproval: false,
+            IsPublicPage: false,
+            IsHidden: false,
+            IsPromotedToDirectory: false,
+            Instant.FromUtc(2026, 1, 1, 0, 0),
+            userIds.Select(userId => new TeamMemberInfo(
+                    Guid.NewGuid(), userId, string.Empty, null, null,
+                    TeamMemberRole.Member, Instant.FromUtc(2026, 1, 1, 0, 0)))
+                .ToList());
 }

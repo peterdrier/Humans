@@ -60,6 +60,12 @@ public class InterfaceMethodBudgetTests
         // must live in the owning section per design-rules §6, and the
         // ratchet's "remove one to add one" rule doesn't apply when the
         // addition is a moved-in query rather than a new feature surface.
+        // 71→73: team-cache decorator groundwork — added canonical
+        // GetTeamAsync/GetTeamsAsync read-model methods. Follow-up passes should
+        // consolidate member/name/option getters down onto those methods.
+        // 73→71: tech-debt query consolidation — removed GetTeamMembersAsync
+        // and GetActiveMemberUserIdsAsync; callers project members/user IDs
+        // from GetTeamAsync/GetTeamsAsync read models.
         [typeof(ITeamService)] = 71,
         // ICampService raised 53→57 for per-camp roles feature (peterdrier#489):
         // AddCampMemberAsLeadAsync, GetSeasonMembersAsync, GetCampMemberStatusAsync,
@@ -89,13 +95,18 @@ public class InterfaceMethodBudgetTests
         // 51→52: issue-682 global search — added SearchAsync(query, max).
         // Authorized exception (Peter, 2026-05-09): queries against camps
         // must live in the owning section per design-rules §6.
-        // 52→54: containers refactor (PR #389). +2 for camp-id-based lookups
+        // 52→55: issue-490 — Early Entry (camps consumer). Added
+        // SetEeStartDateAsync, SetCampSeasonEeSlotCountAsync, SetEarlyEntryAsync.
+        // Authorized by Peter 2026-05-10. EE state lives on CampSeason/CampMember/
+        // CampSettings — tables ICampService already owns — so the methods belong
+        // here per design-rules §6 (no service split).
+        // 55→57: containers refactor (PR #389). +2 for camp-id-based lookups
         // needed by Containers section after dropping cross-section nav from
         // Container → CampSeason: GetCampDisplayDataForYearAsync (camp-keyed
         // display data for grouping containers by camp), and
         // GetCampLeadCampIdForYearAsync (camp lead's camp id for the year,
         // replacing the season-id variant on container map and admin views).
-        [typeof(ICampService)] = 54,
+        [typeof(ICampService)] = 57,
         // +1: GetOverallCoverageAsync for admin dashboard shift-coverage tile (peterdrier#349).
         // 50→50: account-merge fold redesign Phase 3.2. Added
         // ReassignProfilesAndTagPrefsToUserAsync; removed CanManageShiftsAsync
@@ -108,7 +119,12 @@ public class InterfaceMethodBudgetTests
         // 49→50: issue-682 global search — added SearchAsync(query, max).
         // Authorized exception (Peter, 2026-05-09): queries against rotas
         // must live in the owning section per design-rules §6.
-        [typeof(IShiftManagementService)] = 50,
+        // 50→49: tech-debt interface consolidation — collapsed
+        // GetShiftsSummaryAsync(single team) and GetShiftsSummaryForTeamsAsync
+        // into one GetShiftsSummaryAsync(eventId, teamIds) method.
+        // 49→48: collapsed GetAllTagsAsync and SearchTagsAsync into one
+        // GetTagsAsync(query) method.
+        [typeof(IShiftManagementService)] = 48,
         // +1 for SetProfilePictureAsync (nobodies-collective/Humans#532 — Google avatar import button needs a
         // narrow service write that owns its own cache invalidation; controllers can't reach
         // the FullProfile cache directly).

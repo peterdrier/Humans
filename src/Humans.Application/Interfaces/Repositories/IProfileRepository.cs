@@ -15,7 +15,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// <see cref="ReconcileCVEntriesAsync"/>. Language writes are handled by
 /// <see cref="ReplaceLanguagesAsync"/>.
 /// </remarks>
-public interface IProfileRepository
+public interface IProfileRepository : IRepository
 {
     /// <summary>
     /// Loads a single profile by user id for mutation. Returns a tracked entity

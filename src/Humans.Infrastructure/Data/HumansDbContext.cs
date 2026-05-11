@@ -62,12 +62,14 @@ public class HumansDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
     public DbSet<TicketOrder> TicketOrders => Set<TicketOrder>();
     public DbSet<TicketAttendee> TicketAttendees => Set<TicketAttendee>();
     public DbSet<TicketSyncState> TicketSyncStates => Set<TicketSyncState>();
+    public DbSet<TicketTransferRequest> TicketTransferRequests => Set<TicketTransferRequest>();
     public DbSet<EventSettings> EventSettings => Set<EventSettings>();
     public DbSet<Rota> Rotas => Set<Rota>();
     public DbSet<Shift> Shifts => Set<Shift>();
     public DbSet<ShiftSignup> ShiftSignups => Set<ShiftSignup>();
     public DbSet<VolunteerEventProfile> VolunteerEventProfiles => Set<VolunteerEventProfile>();
     public DbSet<GeneralAvailability> GeneralAvailability => Set<GeneralAvailability>();
+    public DbSet<VolunteerBuildStatus> VolunteerBuildStatuses => Set<VolunteerBuildStatus>();
     public DbSet<FeedbackReport> FeedbackReports => Set<FeedbackReport>();
     public DbSet<FeedbackMessage> FeedbackMessages => Set<FeedbackMessage>();
     public DbSet<Issue> Issues => Set<Issue>();

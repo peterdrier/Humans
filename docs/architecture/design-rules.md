@@ -250,10 +250,10 @@ Each section's service owns these tables. Cross-service access goes through the 
 | **Containers** | `ContainerService` | `containers` |
 | **City Planning** | `CityPlanningService` | `city_planning_settings`, `camp_polygons`, `camp_polygon_histories` |
 | **Calendar** | `CalendarService` | `calendar_events`, `calendar_event_exceptions` |
-| **Shifts** | `ShiftManagementService`, `ShiftSignupService`, `GeneralAvailabilityService` | `rotas`, `shifts`, `shift_signups`, `event_settings`, `general_availabilities`, `volunteer_event_profiles`, `shift_tags`, `volunteer_tag_preferences` |
+| **Shifts** | `ShiftManagementService`, `ShiftSignupService`, `GeneralAvailabilityService` | `rotas`, `shifts`, `shift_signups`, `event_settings`, `general_availabilities`, `volunteer_event_profiles`, `volunteer_build_statuses`, `shift_tags`, `volunteer_tag_preferences` |
 | **Budget** | `BudgetService` | `budget_years`, `budget_groups`, `budget_categories`, `budget_line_items`, `budget_audit_logs`, `ticketing_projections` |
 | **Finance** | `HoldedSyncService`, `HoldedTransactionService` | `holded_transactions`, `holded_sync_states` |
-| **Tickets** | `TicketQueryService`, `TicketSyncService`, `TicketingBudgetService` | `ticket_orders`, `ticket_attendees`, `ticket_sync_states` |
+| **Tickets** | `TicketQueryService`, `TicketSyncService`, `TicketingBudgetService`, `TicketTransferService` | `ticket_orders`, `ticket_attendees`, `ticket_sync_states`, `ticket_transfer_requests` |
 | **Store** | `StoreService` | `store_products`, `store_orders`, `store_order_lines`, `store_payments`, `store_invoices`, `store_treasury_sync_state` |
 | **Scanner** | none (phase 1 is presentational) | none |
 | **Campaigns** | `CampaignService` | `campaigns`, `campaign_codes`, `campaign_grants` |
@@ -301,7 +301,7 @@ The architecture test suite in `GdprExportDependencyInjectionTests.cs` enforces 
 
 **Provenance FKs are not user-scoped data.** A section's tables can carry user FK columns that record *who performed an action* (`AddedByUserId`, `RecordedByUserId`, `IssuedByUserId`, etc.) without the section's data being user-scoped. The rule of thumb: if you delete the user, do their rows go with them, or do they belong to a different aggregate (a camp, a team, an event) and merely lose their actor reference? If the latter, the section is not user-scoped — the FKs are provenance and belong to audit-style "what happened" data, not to the user's "what's mine" export. The **Store** section is the canonical example: store orders, lines, payments, and invoices belong to a camp season; the user FKs only record which lead clicked which button. Store data flows out of GDPR export through the audit log, not through a Store-section contributor.
 
-See [`docs/features/gdpr-export.md`](../features/gdpr-export.md) for the JSON output shape, the contributor table, and a worked example of adding a new section.
+See [`docs/features/global/gdpr-export.md`](../features/global/gdpr-export.md) for the JSON output shape, the contributor table, and a worked example of adding a new section.
 
 ## 9. Cross-Service Communication
 
@@ -565,14 +565,19 @@ Implemented by `CachingProfileService`. External sections inject `IFullProfileIn
 
 **CRITICAL:** `IFullProfileInvalidator` must resolve to the **same Singleton instance** as `IProfileService`. Both registrations point to the single `CachingProfileService` instance. If two instances were created, the dict would diverge and invalidations would be silently lost.
 
-### 15f. Projection DTO Naming
+### 15f. Canonical Read-Model Naming
 
 | Type | Name |
 |------|------|
-| Projection DTO | `Full<Section>` (e.g., `FullProfile`) |
-| Read method | `GetFull<Section>Async` (e.g., `GetFullProfileAsync`) |
-| Invalidator interface | `IFull<Section>Invalidator` (e.g., `IFullProfileInvalidator`) |
+| Canonical section read model | Prefer `<Section>Info` for section-owned read models (e.g., `TeamInfo`). `Full<Section>` remains valid for established stitched models (e.g., `FullProfile`). |
+| Read method | Match the read model name when returning one item (e.g., `GetTeamAsync` for `TeamInfo`, `GetFullProfileAsync` for `FullProfile`). Plural collection methods may use the natural plural (e.g., `GetTeamsAsync`). |
+| Invalidator interface | Name the canonical model being invalidated when one exists (e.g., `IFullProfileInvalidator`). |
 | Sub-aggregate collections | Natural plural on the DTO (e.g., `CVEntries` — not `VolunteerHistory`) |
+
+Do not force every section into `Full<Section>`. The name should make the
+service boundary obvious without implying EF entity identity. For Teams,
+`TeamInfo` is the canonical read model; `Team` remains the EF/domain entity and
+should not be exposed by new `ITeamService` read APIs.
 
 Old names that no longer exist: `CachedProfile`, `IProfileStore`, `ProfileStore`, `ProfileStoreWarmupHostedService`, `IVolunteerHistoryService`, `VolunteerHistoryService`.
 

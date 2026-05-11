@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces;
 namespace Humans.Application.Interfaces.Gdpr;
 
 /// <summary>
@@ -5,7 +6,7 @@ namespace Humans.Application.Interfaces.Gdpr;
 /// registered <see cref="IUserDataContributor"/> and merges the returned slices
 /// into a single document for the user to download.
 /// </summary>
-public interface IGdprExportService
+public interface IGdprExportService : IApplicationService
 {
     /// <summary>
     /// Builds a complete GDPR export document for <paramref name="userId"/> by

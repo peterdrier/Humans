@@ -193,13 +193,15 @@ public sealed class GoogleAdminService : IGoogleAdminService
                 ErrorMessage: $"{fullEmail} is already in use by another human.");
         }
 
-        // Also reject if the address is set as a User.GoogleEmail (or User.Email) — the
-        // user_emails check covers verified/linked rows, this covers the User row itself.
+        // Belt-and-suspenders: GetByEmailOrAlternateAsync also falls back to
+        // the legacy User.GoogleEmail shadow column, catching the ~200
+        // pre-issue-687 users whose IsGoogle is unset on every row but the
+        // legacy column still holds the address.
         var existingUser = await _userService.GetByEmailOrAlternateAsync(fullEmail, ct);
         if (existingUser is not null)
         {
             _logger.LogWarning(
-                "Standalone provisioning rejected: {Email} is already set as GoogleEmail for a human",
+                "Standalone provisioning rejected: {Email} is already linked to a human",
                 fullEmail);
             return new WorkspaceAccountActionResult(false,
                 ErrorMessage: $"{fullEmail} is already in use by another human.");
@@ -546,13 +548,22 @@ public sealed class GoogleAdminService : IGoogleAdminService
                     ErrorMessage: $"{email} is already linked to a human.");
             }
 
-            // Add as verified email (also sets notification target for @nobodies.team).
-            // Self-persists via IUserEmailRepository.
+            // Add as verified email — the UserEmailService orchestrator runs
+            // EnsureGoogleInvariantAsync, which stamps IsGoogle on the
+            // @nobodies.team row (Workspace > existing-IsGoogle precedence).
+            // The earlier IsEmailLinkedToAnyUserAsync check rules out a
+            // pre-existing row for this address, so the orchestrator's
+            // first-row-wins path is the only one we hit. Self-persists via
+            // IUserEmailRepository.
+            //
+            // Issue nobodies-collective/Humans#687: User.GoogleEmail is no
+            // longer the source of truth, so the legacy
+            // _userService.SetGoogleEmailAsync write is gone. Reset
+            // GoogleEmailStatus explicitly so reconciliation resumes against
+            // the newly-linked address.
             await _userEmailService.AddVerifiedEmailAsync(userId, email, ct);
-
-            // Auto-set as Google service email and reset sync state (also invalidates
-            // FullProfile). Self-persists via IUserRepository.
-            await _userService.SetGoogleEmailAsync(userId, email, ct);
+            await _userService.TrySetGoogleEmailStatusFromSyncAsync(
+                userId, GoogleEmailStatus.Unknown, ct);
 
             // Enqueue re-sync for all current team memberships — delegated to the
             // Teams-owning service so google_sync_outbox_events writes stay
@@ -576,46 +587,6 @@ public sealed class GoogleAdminService : IGoogleAdminService
             return new WorkspaceAccountActionResult(false,
                 ErrorMessage: $"Failed to link {email}.");
         }
-    }
-
-    public async Task<EmailBackfillActionResult> ApplyEmailBackfillAsync(
-        List<Guid> selectedUserIds, Dictionary<string, string> corrections,
-        Guid actorUserId,
-        CancellationToken ct = default)
-    {
-        var updated = 0;
-        var errors = new List<string>();
-
-        foreach (var userId in selectedUserIds)
-        {
-            if (!corrections.TryGetValue(userId.ToString(), out var googleEmail) || string.IsNullOrEmpty(googleEmail))
-                continue;
-
-            try
-            {
-                var (wasUpdated, oldEmail) = await _userService.ApplyEmailBackfillAsync(
-                    userId, googleEmail, ct);
-
-                if (!wasUpdated)
-                {
-                    errors.Add($"User {userId} not found.");
-                    continue;
-                }
-
-                _logger.LogInformation(
-                    "Admin {AdminId} applying email backfill for user {UserId}: '{OldEmail}' -> '{NewEmail}'",
-                    actorUserId, userId, oldEmail, googleEmail);
-
-                updated++;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to update email for user {UserId}", userId);
-                errors.Add($"Error updating user {userId}: {ex.Message}");
-            }
-        }
-
-        return new EmailBackfillActionResult(updated, errors);
     }
 
     public async Task<GroupLinkActionResult> LinkGroupToTeamAsync(
@@ -812,96 +783,4 @@ public sealed class GoogleAdminService : IGoogleAdminService
         }
     }
 
-    public async Task<EmailRenameFixResult> FixEmailRenameAsync(
-        Guid userId, string newEmail, Guid actorUserId,
-        CancellationToken ct = default)
-    {
-        try
-        {
-            // Issue #635 (§15i): read UserEmails through the owning section
-            // service (design-rules §2c) instead of traversing user.UserEmails
-            // cross-domain.
-            var user = await _userService.GetByIdAsync(userId, ct);
-            if (user is null)
-            {
-                return new EmailRenameFixResult(false, ErrorMessage: "Human not found.");
-            }
-
-            var userEmails = await _userEmailService.GetEntitiesByUserIdAsync(userId, ct);
-            var oldEmail = userEmails
-                .Where(e => e.IsVerified && e.IsGoogle)
-                .Select(e => e.Email)
-                .FirstOrDefault()
-                ?? userEmails
-                    .Where(e => e.IsVerified && e.Provider != null)
-                    .OrderBy(e => e.Email, StringComparer.OrdinalIgnoreCase)
-                    .Select(e => e.Email)
-                    .FirstOrDefault();
-            if (string.IsNullOrEmpty(oldEmail))
-            {
-                return new EmailRenameFixResult(false,
-                    ErrorMessage: "Human does not have a GoogleEmail set.");
-            }
-
-            // Update User.GoogleEmail and reset sync status so reconciliation resumes
-            var updated = await _userService.SetGoogleEmailAsync(userId, newEmail, ct);
-            if (!updated)
-            {
-                return new EmailRenameFixResult(false,
-                    ErrorMessage: "Human not found during update.");
-            }
-
-            // Update the corresponding UserEmail row if one exists for the old email —
-            // delegated to the owning section so no user_emails writes happen here.
-            // Self-persists via IUserEmailRepository.
-            var rewriteOutcome = await _userEmailService.RewriteEmailAddressAsync(
-                userId, oldEmail, newEmail, ct);
-
-            // Only Rewritten / MergedIntoExistingRowForSameUser are real successes.
-            // CrossUserConflict means another user already owns newEmail (issue 622)
-            // — surface as failure so the admin sees the duplicate-account flow
-            // rather than a false-success message + phantom audit row.
-            // SourceRowNotFound means there was no row to rewrite in the first place.
-            if (rewriteOutcome == RewriteEmailAddressOutcome.CrossUserConflict)
-            {
-                return new EmailRenameFixResult(false,
-                    ErrorMessage:
-                        $"'{newEmail}' already belongs to another user. Resolve via the duplicate-account flow before retrying.");
-            }
-            if (rewriteOutcome == RewriteEmailAddressOutcome.SourceRowNotFound)
-            {
-                // We just resolved oldEmail from this user's verified rows above;
-                // SourceRowNotFound here means the row disappeared between the
-                // lookup and the rewrite — log at Warning so the prod log viewer
-                // shows the discrepancy (the admin UI gets the failure message,
-                // but observability would otherwise be invisible).
-                _logger.LogWarning(
-                    "Admin {AdminId} email rename: source row not found for user {UserId} oldEmail {OldEmail} — row may have been removed concurrently.",
-                    actorUserId, userId, oldEmail);
-                return new EmailRenameFixResult(false,
-                    ErrorMessage: $"No UserEmail row found for '{oldEmail}'.");
-            }
-
-            _logger.LogInformation(
-                "Admin {AdminId} fixing email rename for user {UserId}: '{OldEmail}' -> '{NewEmail}'",
-                actorUserId, userId, oldEmail, newEmail);
-
-            // Audit AFTER every business write completes so a failing upstream call
-            // never leaves a phantom rename audit row.
-            await _auditLogService.LogAsync(
-                AuditAction.GoogleEmailRenamed,
-                "User", userId,
-                $"Fixed email rename: {oldEmail} -> {newEmail}",
-                actorUserId);
-
-            return new EmailRenameFixResult(true,
-                Message: $"Updated email for {user.DisplayName}: {oldEmail} -> {newEmail}");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to fix email rename for user {UserId}", userId);
-            return new EmailRenameFixResult(false,
-                ErrorMessage: $"Failed to fix email rename: {ex.Message}");
-        }
-    }
 }

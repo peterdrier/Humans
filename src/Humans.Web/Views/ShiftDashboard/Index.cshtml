@@ -82,6 +82,23 @@
         </div>
     </div>
 
+    @* Entry point to the cross-event Volunteer Tracking page (gap-detection
+       heatmaps for the main and declared-but-unbooked cohorts). Gated on
+       ShiftDashboardAccess — the same policy that gates this page entry. *@
+    <div class="card mb-4 border-info" authorize-policy="ShiftDashboardAccess">
+        <div class="card-body d-flex align-items-center gap-3 py-3">
+            <i class="fa-solid fa-people-group text-info fs-3"></i>
+            <div class="flex-grow-1">
+                <div class="fw-semibold">@Localizer["ShiftDash_VolTrackEntry_Title"]</div>
+                <div class="text-muted small">@Localizer["ShiftDash_VolTrackEntry_Subtitle"]</div>
+            </div>
+            <a asp-controller="VolunteerTracking" asp-action="Index" class="btn btn-outline-info">
+                @Localizer["ShiftDash_VolTrackEntry_Open"]
+                <i class="fa-solid fa-arrow-right ms-1"></i>
+            </a>
+        </div>
+    </div>
+
     @* Unified filter card: period buttons + sub-period buttons (visible when Build is selected),
        and the date-range + department form below. Period and date range are MUTUALLY EXCLUSIVE —
        client-side JS clears one when the user picks the other. *@
@@ -239,7 +256,7 @@
             .ThenBy(g => g.Key.DepartmentName, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        <div class="accordion" id="urgencyAccordion">
+        <div class="accordion" id="urgencyAccordion" style="scroll-margin-top: 1rem;">
         @foreach (var group in grouped)
         {
             var groupId = "urgrp-" + group.Key.RotaId.ToString("N");
@@ -339,6 +356,25 @@
 <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"
         integrity="sha384-5JqMv4L/Xa0hfvtF06qboNdhvuYXUku9ZrhZh3bSk8VXF0A/RuSLHpLsSV9Zqhl6"
         crossorigin="anonymous"></script>
+<script>
+// Re-scroll to URL hash after window.load: the dashboard renders multiple
+// Chart.js canvases above the urgency accordion, and their final layout
+// settles after DOMContentLoaded. The browser's initial hash-jump lands
+// on the right element but subsequent layout shifts push it offscreen.
+// Two rAF ticks let chart resize observers settle before we scroll.
+(function () {
+    if (!window.location.hash) return;
+    var hash = window.location.hash;
+    window.addEventListener('load', function () {
+        requestAnimationFrame(function () {
+            requestAnimationFrame(function () {
+                var el = document.querySelector(hash);
+                if (el) el.scrollIntoView({ behavior: 'instant', block: 'start' });
+            });
+        });
+    });
+})();
+</script>
 <script>
 @await Html.PartialAsync("~/Views/Shared/_EscapeHtmlScript.cshtml")
 @await Html.PartialAsync("~/Views/Shared/_VolunteerSearchScript.cshtml", new ViewDataDictionary(ViewData)

@@ -494,7 +494,8 @@ public class CampController : HumansCampControllerBase
                 DisplayName = m.DisplayName,
                 RequestedAt = m.RequestedAt,
                 ConfirmedAt = m.ConfirmedAt,
-                IsLead = m.IsLead
+                IsLead = m.IsLead,
+                HasEarlyEntry = m.HasEarlyEntry
             })
             .ToList();
         viewModel.ActiveMembers = members.Active
@@ -505,9 +506,12 @@ public class CampController : HumansCampControllerBase
                 DisplayName = m.DisplayName,
                 RequestedAt = m.RequestedAt,
                 ConfirmedAt = m.ConfirmedAt,
-                IsLead = m.IsLead
+                IsLead = m.IsLead,
+                HasEarlyEntry = m.HasEarlyEntry
             })
             .ToList();
+        viewModel.EeSlotCount = members.EeSlotCount;
+        viewModel.EeGrantedCount = viewModel.ActiveMembers.Count(m => m.HasEarlyEntry);
     }
 
     [Authorize]
@@ -1013,6 +1017,34 @@ public class CampController : HumansCampControllerBase
         }
 
         return RedirectToAction(nameof(Members), new { slug });
+    }
+
+    [Authorize]
+    [HttpPost("{slug}/Members/{campMemberId:guid}/EarlyEntry")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SetMemberEarlyEntry(
+        string slug, Guid campMemberId, bool granted, CancellationToken cancellationToken)
+    {
+        var (errorResult, user, camp) = await ResolveCampManagementAsync(slug);
+        if (errorResult is not null) return errorResult;
+
+        var outcome = await _campService.SetEarlyEntryAsync(
+            camp.Id, campMemberId, granted, user.Id, cancellationToken);
+
+        if (outcome == SetEarlyEntryOutcome.MemberNotFound) return NotFound();
+        ApplyEarlyEntryFlash(outcome, granted);
+        return RedirectToAction(nameof(Members), new { slug });
+    }
+
+    private void ApplyEarlyEntryFlash(SetEarlyEntryOutcome outcome, bool granted)
+    {
+        if (outcome == SetEarlyEntryOutcome.Success)
+            SetSuccess(granted ? "Early Entry granted." : "Early Entry revoked.");
+        else if (outcome == SetEarlyEntryOutcome.SlotCapExceeded)
+            SetError("Cannot grant Early Entry: slot cap reached for this camp.");
+        else if (outcome == SetEarlyEntryOutcome.MemberNotActive)
+            SetError("Only Active camp members can hold Early Entry.");
+        // NoChange: silent — UI already reflected the state.
     }
 
     [Authorize]

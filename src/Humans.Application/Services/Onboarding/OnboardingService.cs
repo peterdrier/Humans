@@ -130,7 +130,7 @@ public sealed class OnboardingService : IOnboardingService
             return result;
 
         // Sync Volunteers team membership (adds to team if consents are also complete)
-        await _syncJob.SyncVolunteersMembershipForUserAsync(userId, CancellationToken.None);
+        await _syncJob.SyncMembershipForUserAsync(userId, SystemTeamType.Volunteers, CancellationToken.None);
 
         // If user already has approved tier applications, sync those teams too.
         var approvedTiers = await _applicationDecisionService.GetApprovedTiersForUserAsync(userId, ct);
@@ -138,9 +138,9 @@ public sealed class OnboardingService : IOnboardingService
         foreach (var tier in approvedTiers)
         {
             if (tier == MembershipTier.Colaborador)
-                await _syncJob.SyncColaboradorsMembershipForUserAsync(userId, CancellationToken.None);
+                await _syncJob.SyncMembershipForUserAsync(userId, SystemTeamType.Colaboradors, CancellationToken.None);
             else if (tier == MembershipTier.Asociado)
-                await _syncJob.SyncAsociadosMembershipForUserAsync(userId, CancellationToken.None);
+                await _syncJob.SyncMembershipForUserAsync(userId, SystemTeamType.Asociados, CancellationToken.None);
         }
 
         return result;
@@ -254,7 +254,7 @@ public sealed class OnboardingService : IOnboardingService
             return result;
 
         // Sync Volunteers team membership (adds user if they also have all required consents)
-        await _syncJob.SyncVolunteersMembershipForUserAsync(userId);
+        await _syncJob.SyncMembershipForUserAsync(userId, SystemTeamType.Volunteers, ct);
 
         _metrics.RecordVolunteerApproved();
 
@@ -326,8 +326,8 @@ public sealed class OnboardingService : IOnboardingService
 
     private async Task DeprovisionApprovalGatedSystemTeamsAsync(Guid userId)
     {
-        await _syncJob.SyncVolunteersMembershipForUserAsync(userId, CancellationToken.None);
-        await _syncJob.SyncColaboradorsMembershipForUserAsync(userId, CancellationToken.None);
-        await _syncJob.SyncAsociadosMembershipForUserAsync(userId, CancellationToken.None);
+        await _syncJob.SyncMembershipForUserAsync(userId, SystemTeamType.Volunteers, CancellationToken.None);
+        await _syncJob.SyncMembershipForUserAsync(userId, SystemTeamType.Colaboradors, CancellationToken.None);
+        await _syncJob.SyncMembershipForUserAsync(userId, SystemTeamType.Asociados, CancellationToken.None);
     }
 }

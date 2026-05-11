@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces;
 using Humans.Application.DTOs;
 using Humans.Domain.Enums;
 
@@ -6,7 +7,7 @@ namespace Humans.Application.Interfaces.Email;
 /// <summary>
 /// Service for sending email notifications.
 /// </summary>
-public interface IEmailService
+public interface IEmailService : IApplicationService
 {
     /// <summary>
     /// Sends an application approved notification to the applicant.

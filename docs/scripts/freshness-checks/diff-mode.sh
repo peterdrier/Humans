@@ -133,7 +133,7 @@ for entry in authorization-inventory controller-architecture-audit dependency-gr
 done
 
 ed_dirty=0
-for f in docs/sections/Teams.md docs/features/06-teams.md docs/guide/Teams.md; do
+for f in docs/sections/Teams.md docs/features/teams/teams.md docs/guide/Teams.md; do
   triggers=$(awk '/<!-- freshness:triggers/,/^-->/' "$f" 2>/dev/null | grep -E '^\s+src/' | sed 's/^\s*//;s/\s*$//')
   while IFS= read -r glob; do
     [ -z "$glob" ] && continue

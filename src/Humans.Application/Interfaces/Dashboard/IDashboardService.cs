@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces;
 using Humans.Application.DTOs;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -12,7 +13,7 @@ namespace Humans.Application.Interfaces.Dashboard;
 /// into a single pre-computed snapshot the web controller can map directly to a
 /// view model. Authorization-free; callers are responsible for gating access.
 /// </summary>
-public interface IDashboardService
+public interface IDashboardService : IApplicationService
 {
     Task<MemberDashboardData> GetMemberDashboardAsync(
         Guid userId,

@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces;
 using Humans.Application.DTOs;
 using Humans.Domain.Entities;
 
@@ -6,7 +7,7 @@ namespace Humans.Application.Interfaces.Legal;
 /// <summary>
 /// Application service for admin legal-document management flows.
 /// </summary>
-public interface IAdminLegalDocumentService
+public interface IAdminLegalDocumentService : IApplicationService
 {
     /// <summary>
     /// Gets legal documents for admin listing, optionally filtered by team.

@@ -17,7 +17,7 @@ Atomic rules. Fetch the body when the description's trigger matches your task. S
 - [`interface-method-additions-are-debt`](architecture/interface-method-additions-are-debt.md) — every method added to any interface is durable tech debt; default is REUSE, not add. Audit existing methods first; inline a LINQ chain on a list-returning method when picking a field. STOP and ask Peter before adding to any interface, budgeted or not.
 - [`interface-method-budget-ratchet`](architecture/interface-method-budget-ratchet.md) — HARD RULE. Add a method to a budgeted interface → remove one from the SAME interface, same PR. No splits to dodge.
 - [`migration-regen-after-rebase`](architecture/migration-regen-after-rebase.md) — HARD RULE. Once main's migrations interleave with yours, `migrations remove` is broken for your branch-migrations. Stop and ask. Don't hand-edit snapshot. Regen BEFORE rebase, not after.
-- [`no-admin-url-section`](architecture/no-admin-url-section.md) — new admin pages live at `/<Section>/Admin/*`, never `/Admin/<Section>/*`
+- [`no-admin-url-section`](architecture/no-admin-url-section.md) — HARD RULE: top-level `/Admin/*` is legacy/frozen; never add new `/Admin/foo` routes. New admin pages live at `/<Section>/Admin/*` only
 - [`no-business-logic-in-controllers`](architecture/no-business-logic-in-controllers.md) — controllers parse input, authorize, dispatch, return; no domain branching/loops/derived values. Heuristic threshold: action methods >50 lines or cyclomatic ≥6.
 - [`no-column-drops-for-decoupling`](architecture/no-column-drops-for-decoupling.md) — HARD RULE. Property override IS the migration; column drop waits for a separate PR after prod verification
 - [`no-concurrency-tokens`](architecture/no-concurrency-tokens.md) — HARD RULE. No `IsConcurrencyToken` / `[ConcurrencyCheck]` / row versioning. Single server, ~500 users.
@@ -33,6 +33,10 @@ Atomic rules. Fetch the body when the description's trigger matches your task. S
 - [`shared-drives-only`](architecture/shared-drives-only.md) — Drive resources on Shared Drives only; API calls need `SupportsAllDrives` + `permissionDetails`
 - [`user-profile-foundational`](architecture/user-profile-foundational.md) — UserService/ProfileService are bottom of the stack; no outbound calls to higher-level sections
 - [Widget Pending → Confirmed promotion](architecture/widget-pending-promotion.md) — how mid-onboarding signups stay Pending until consents land
+
+- [`users-profiles-one-section`](architecture/users-profiles-one-section.md) — HARD RULE. Users, Profiles, and UserEmail are one ownership section: Humans. Do not move code between Users/Profile just to satisfy section-boundary cleanup.
+
+- [`email-mutation-paths`](architecture/email-mutation-paths.md) — HARD RULE. `UserEmail.Email` is written only by the OAuth callback via `(Provider, ProviderKey)` match. `User.Email` is a vestigial Identity field — computed from the verified `IsPrimary` row, never written by application code.
 
 ## code/
 
@@ -84,9 +88,11 @@ Atomic rules. Fetch the body when the description's trigger matches your task. S
 - [`maintenance-log-update`](process/maintenance-log-update.md) — after any recurring maintenance, update `docs/architecture/maintenance-log.md` with current + next-due dates
 - [`no-anon-perf-guards`](process/no-anon-perf-guards.md) — don't flag cheap `[AllowAnonymous]` DB reads as perf issues; auth guard is dead defensive code at this scale
 - [`no-data-backfills`](process/no-data-backfills.md) — HARD RULE. No data-mutation SQL in EF migrations, no autonomous one-shot runners. Bulk fixes go through an admin screen with a review → confirm UX (model: `BackfillLegacyEmails`). Default scope on a new invariant: enforce on writes + surface via scanner.
+- [`no-destructive-actions-without-approval`](process/no-destructive-actions-without-approval.md) — HARD RULE. Never take a destructive/irreversible action — git history rewrites, force-pushes, branch deletions, DB writes outside migrations, file deletions, runtime state edits — without Peter's explicit per-instance instruction. "Cruft" / "messy" / "stale" describe state, not authorization. Only standing flatten is the squash-merge button on a fork PR.
 - [`no-direct-to-main`](process/no-direct-to-main.md) — HARD RULE. Feature branch + PR for code/docs/config; `memory/**`-only changes either bundle with the discovery PR or go direct to `origin/main` standalone
 - [`context-discipline`](process/context-discipline.md) — read narrow, build/test → file (read incrementally), Write beats >3 sequential Edits, /reforge for symbol queries, commit checkpoints during long refactors
 - [`model-tiering`](process/model-tiering.md) — Opus orchestrates judgment; Sonnet subagents do mechanical refactors via `Agent` with `model: "sonnet"`; Haiku for surgical one-shots. Dispatch right after design dialogue ends.
+- [`no-manual-db-writes`](process/no-manual-db-writes.md) — HARD RULE. Never modify a DB row by hand (any env): no INSERT/UPDATE/DELETE via psql/admin UI, no `__EFMigrationsHistory` patching, no fix-up migrations to paper over regen. Drop+recreate the env DB instead.
 - [`post-fix-doc-check`](process/post-fix-doc-check.md) — before final commit, scan `docs/features/` and `docs/sections/` for invariants the change touches; update inline
 - [`pr-codex-thread-replies`](process/pr-codex-thread-replies.md) — reply per Codex inline thread (`POST /pulls/{n}/comments/{id}/replies`), not as top-level PR comment
 - [`pr-done-means-codex-clean`](process/pr-done-means-codex-clean.md) — a PR isn't "done" until Codex returns no findings; pushed+green is mid-state

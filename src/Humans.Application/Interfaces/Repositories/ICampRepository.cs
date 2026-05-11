@@ -19,7 +19,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// repository; the application service stitches display names from
 /// <see cref="Users.IUserService"/> per design-rules §6.
 /// </remarks>
-public interface ICampRepository
+public interface ICampRepository : IRepository
 {
     // ==========================================================================
     // Reads — Camp
@@ -353,6 +353,11 @@ public interface ICampRepository
     Task SetPublicYearAsync(int year, CancellationToken ct = default);
 
     /// <summary>
+    /// Sets <c>EeStartDate</c> on the singleton settings row. Pass <c>null</c> to clear.
+    /// </summary>
+    Task SetEeStartDateAsync(LocalDate? eeStartDate, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Adds <paramref name="year"/> to <c>OpenSeasons</c> if not present.
     /// Returns true if the list changed.
     /// </summary>
@@ -451,6 +456,21 @@ public interface ICampRepository
     /// <summary>Returns (CampSeasonId, UserId, Status) for the member, or null if not found. Read-only.</summary>
     Task<(Guid CampSeasonId, Guid UserId, CampMemberStatus Status)?> GetMemberLookupAsync(
         Guid campMemberId, CancellationToken ct = default);
+
+    // ==========================================================================
+    // Early Entry
+    // ==========================================================================
+
+    /// <summary>
+    /// Sets <c>EeSlotCount</c> on the given season. Returns (OldValue, NewValue, CampId),
+    /// or null if the season was not found. When old == new, the row is not updated
+    /// but the result tuple is still returned so the service can short-circuit the audit.
+    /// </summary>
+    Task<(int OldValue, int NewValue, Guid CampId)?> SetCampSeasonEeSlotCountAsync(
+        Guid campSeasonId, int slotCount, CancellationToken cancellationToken = default);
+
+    Task<int> GetGrantedCountForSeasonAsync(
+        Guid campSeasonId, CancellationToken cancellationToken = default);
 
     // ==========================================================================
     // Account-merge fold

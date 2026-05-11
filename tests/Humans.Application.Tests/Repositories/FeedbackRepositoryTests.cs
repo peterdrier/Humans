@@ -145,7 +145,8 @@ public sealed class FeedbackRepositoryTests : IDisposable
         var filtered = await _repo.GetListAsync(
             status: null, category: null, reporterUserId: null,
             assignedToUserId: null, assignedToTeamId: teamA,
-            unassignedOnly: null, limit: 50);
+            unassignedOnly: null,
+            limit: 50);
 
         filtered.Should().ContainSingle();
         filtered[0].AssignedToTeamId.Should().Be(teamA);
@@ -186,7 +187,8 @@ public sealed class FeedbackRepositoryTests : IDisposable
         var result = await _repo.GetListAsync(
             status: null, category: null, reporterUserId: null,
             assignedToUserId: null, assignedToTeamId: null,
-            unassignedOnly: true, limit: 50);
+            unassignedOnly: true,
+            limit: 50);
 
         result.Should().ContainSingle();
         result[0].Description.Should().Be("unassigned");

@@ -76,6 +76,121 @@ dotnet build Humans.slnx && dotnet test Humans.slnx --filter "FullyQualifiedName
 
 ---
 
+## Phase 0: Layer Separation First Pass
+
+Run this phase before the older generic consolidation phases. Recent refactoring work has established stricter section and layer boundaries; the next tech-debt run should first search for violations of those boundaries and fix one small, coherent violation at a time.
+
+### Repository Layer Boundaries
+
+**Problem:** Repositories should be thin persistence adapters, but older code may still contain cross-section joins, query-shaping, or UI-flow decisions in repository methods.
+
+**Fix:** Repositories may express storage-safe predicates needed to retrieve a coherent owned data set, but they must not own presentation shaping. Cross-section DB joins/includes are the higher-priority violation: fix those before display-sort cleanups.
+
+Look for and move out of repositories when they are presentation concerns over finite/cached data:
+- `OrderBy`, `ThenBy`, display sorting, or user-facing ordering decisions
+- `Take(50)`, arbitrary page/window caps, "recent", "top", or dashboard limits
+- search/filter criteria that come from a screen, query string, tab, or controller action rather than from a storage invariant
+- joins/includes that exist only to support navigation/display shaping
+
+Move presentation shaping to the controller/view layer for bounded data sets such as cached profiles, teams, camps, and lookup/options lists. If the logic is reusable application behavior, move it to the owning service, but keep final display ordering, screen filtering, and UI limits in the controller/view.
+
+Do not load unbounded operational/history tables just so a controller can take the last N rows. Audit, email outbox, feedback, issue history, and similarly growing tables should keep efficient DB-side ordering/paging/windowing in the owning repository. Mark intentional exceptions inline, for example `// arch:db-sort-ok top-N selector`, and keep method names explicit (`GetRecentAsync`, `GetPageAsync`, `GetFilteredAsync`) rather than hiding screen behavior in broad `GetAllAsync` calls.
+
+### EF Navigation Joins
+
+**Problem:** EF-layer code can accidentally rebuild cross-section object graphs through navigation joins or broad includes.
+
+**Fix:** Avoid navigation joins at the EF layer. Prefer typed foreign-key queries and narrow projections. If a screen needs data from another section, load the current section's owned data first, then call the other section's service by IDs.
+
+Search for:
+- `.Include(...)` / `.ThenInclude(...)` across section boundaries
+- LINQ joins between tables/entities owned by different sections
+- repository methods returning another section's entity graph
+- service methods that use repositories to sidestep another section's service boundary
+
+### Cross-Section Boundaries
+
+**Problem:** Services and repositories sometimes read another section's tables directly because it is convenient.
+
+**Fix:** A section must not make cross-section DB calls or joins. It should call the other section's public service/interface instead. Keep ownership clear even if this means two calls and an in-memory merge at the controller/application boundary.
+
+Allowed shape:
+- Owning repository reads only owned persistence.
+- Owning service exposes a narrow method for the data it owns.
+- Neighboring service/controller calls that service instead of joining across owned tables.
+
+Disallowed shape:
+- Team repository querying Shifts tables for dashboard counts.
+- Profile/User service joining Ticket, Shift, Camp, or Google tables directly for UI rollups.
+- Any repository or service using EF navigation properties to pull another section's graph for convenience.
+
+### Controller/View Responsibilities
+
+**Problem:** Some ordering, filtering, and caps are business-like in code shape but actually represent screen behavior.
+
+**Fix:** Keep UI-specific shaping at the controller/view boundary, not in repositories or services:
+- screen-specific sort order
+- tab/filter/query-string filtering
+- `Take(50)`/page-size/window-size choices
+- display grouping and secondary ordering
+- "show recent", "top N", or dashboard-card limits
+
+This rule is strongest for finite or cached data sets where materializing the owned collection is already normal, such as profiles, teams, camps, and option lists. Services may return enough owned data for the screen to shape safely, or provide reusable domain/application queries where the rule is not screen-specific. Services must not bake in one screen's ordering, filters, or row limits.
+
+For unbounded tables, prefer an explicit repository query that performs the DB-side order/page/take and returns only the bounded slice. The service may orchestrate cross-section stitching after the slice is selected, but it should not pull the full table and then sort/filter/take in memory.
+
+### First-Pass Search Plan
+
+Start with grep-detectable candidates and inspect ownership before editing:
+- `rg -n "\.Include\(|\.ThenInclude\(| join |\.Join\(" src/Humans.Infrastructure src/Humans.Application src/Humans.Web`
+- `rg -n "\.OrderBy|\.ThenBy|\.Take\(|Skip\(|Get.*Recent|Top|Limit" src/Humans.Infrastructure`
+- `rg -n "DbContext|I.*Repository" src/Humans.Infrastructure/Services src/Humans.Web/Controllers`
+
+Do not mechanically remove every match. For each candidate, identify the owning section, the caller's actual display/workflow need, and the smallest safe move. Commit each boundary fix separately.
+
+---
+
+## Phase 0b: Interface Consolidation
+
+Run this after the cross-section DB-boundary pass, or in parallel only when it does not conflict with boundary work.
+
+**Problem:** AI-assisted refactors often grow interfaces by adding convenience methods for each caller:
+- `GetActiveProfilesAsync`
+- `GetSuspendedProfilesAsync`
+- `GetProfilesForDashboardAsync`
+- `GetRecentOrdersAsync`
+- `GetTopTicketsAsync`
+
+These methods feel easy locally, but they bloat service/repository contracts and encode presentation-specific filters, sorting, paging, and row limits into shared interfaces.
+
+**Fix:** Prefer fewer, more composable section-owned methods when the caller can safely shape the result:
+- `GetProfilesAsync()` plus `.Where(p => p.IsActive)`
+- `GetProfilesAsync()` plus `.Where(p => p.IsSuspended)`
+- `GetProfilesAsync()` plus controller/view `.OrderBy(...).Take(20)` for a dashboard
+
+Do not collapse methods that represent real domain/application concepts, authorization boundaries, expensive server-side queries that cannot be materialized safely, operational queue semantics, or intentionally bounded search/tool APIs.
+
+### Interface Consolidation Search Plan
+
+Start with the largest interfaces and work down by method count. This gives the best payoff and prevents the broadest contracts from growing unchecked.
+
+Suggested approach:
+- List `src/Humans.Application/Interfaces/**/*.cs` interfaces by public method count.
+- Inspect the largest interfaces first.
+- Look for method families that differ only by status/filter/sort/window/screen.
+- Replace them with one broader method plus caller-side LINQ when the result set is safely bounded and already section-owned.
+- Move screen-specific `.Where(...)`, `.OrderBy(...)`, `.Take(...)`, grouping, and dashboard shaping to controllers/views.
+- Keep reusable domain filtering in the owning service only when it has domain meaning beyond one screen.
+- Update all callers and tests in the same commit.
+
+Useful commands:
+- `rg -n "Task<|ValueTask<|IAsyncEnumerable<|IReadOnly|IEnumerable<|\\w+Async\\(" src/Humans.Application/Interfaces`
+- `rg --files src/Humans.Application/Interfaces | % { $p=$_; $c=(rg -n "\\w+Async\\(" $p | Measure-Object).Count; [pscustomobject]@{ Count=$c; Path=$p } } | Sort-Object Count -Descending`
+
+Commit each interface-consolidation slice separately. Do not combine broad interface churn with unrelated repository or section-boundary fixes.
+
+---
+
 ## Phase 1: Controller Pattern Consolidation
 
 ### Extract Repeated Controller Patterns

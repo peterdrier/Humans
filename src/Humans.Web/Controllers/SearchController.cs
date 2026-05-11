@@ -15,7 +15,7 @@ namespace Humans.Web.Controllers;
 /// Every authenticated viewer sees the same public-visibility surface;
 /// privileged search across hidden teams, non-public camp seasons, or
 /// admin-only profile fields is out of scope (see
-/// <c>docs/features/global-search.md</c>).
+/// <c>docs/features/global/global-search.md</c>).
 /// </summary>
 [Authorize]
 [Route("Search")]

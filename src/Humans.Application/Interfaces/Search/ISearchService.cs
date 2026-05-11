@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces;
 using Humans.Application.DTOs;
 
 namespace Humans.Application.Interfaces.Search;
@@ -10,7 +11,7 @@ namespace Humans.Application.Interfaces.Search;
 /// DB layer (<c>memory/feedback_ef_ilike_not_toupper.md</c>). The
 /// orchestrator scores and ranks within each type and returns four
 /// independently-ranked buckets — there is no cross-modal / relational
-/// expansion (see <c>docs/features/global-search.md</c>).
+/// expansion (see <c>docs/features/global/global-search.md</c>).
 ///
 /// <para>
 /// Per design-rules §6, this service NEVER queries another section's
@@ -26,7 +27,7 @@ namespace Humans.Application.Interfaces.Search;
 /// admins use the existing per-section admin pages.
 /// </para>
 /// </summary>
-public interface ISearchService
+public interface ISearchService : IApplicationService
 {
     /// <summary>
     /// Run a global search. Empty/whitespace <paramref name="query"/>, or

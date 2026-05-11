@@ -1,8 +1,9 @@
+using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 
 namespace Humans.Application.Interfaces.Shifts;
 
-public interface IGeneralAvailabilityService
+public interface IGeneralAvailabilityService : IApplicationService
 {
     Task SetAvailabilityAsync(Guid userId, Guid eventSettingsId, List<int> dayOffsets);
     Task<GeneralAvailability?> GetByUserAsync(Guid userId, Guid eventSettingsId);

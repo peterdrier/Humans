@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces;
 using Humans.Application.DTOs;
 
 namespace Humans.Application.Interfaces.GoogleIntegration;
@@ -7,7 +8,7 @@ namespace Humans.Application.Interfaces.GoogleIntegration;
 /// workspace account management, group linking, email backfill, account linking.
 /// Owns all mutation orchestration and SaveChangesAsync calls for these workflows.
 /// </summary>
-public interface IGoogleAdminService
+public interface IGoogleAdminService : IApplicationService
 {
     /// <summary>
     /// Builds the workspace accounts list view model with matched user data.
@@ -63,13 +64,6 @@ public interface IGoogleAdminService
         Guid actorUserId,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Applies email backfill corrections for selected users.
-    /// </summary>
-    Task<EmailBackfillActionResult> ApplyEmailBackfillAsync(
-        List<Guid> selectedUserIds, Dictionary<string, string> corrections,
-        Guid actorUserId,
-        CancellationToken ct = default);
 
     /// <summary>
     /// Links a Google Group prefix to a team.
@@ -85,18 +79,14 @@ public interface IGoogleAdminService
         CancellationToken ct = default);
 
     /// <summary>
-    /// Detects @nobodies.team email renames by comparing stored GoogleEmail
-    /// against current primaryEmail from Google Directory API.
+    /// Detects @nobodies.team email renames by comparing the stored Google
+    /// identity (the verified <c>UserEmail</c> row tagged
+    /// <see cref="UserEmail.IsGoogle"/>) against the current
+    /// <c>primaryEmail</c> from the Google Directory API. Read-only diagnostic
+    /// surface only — there is no admin "fix" action. Renames self-heal on
+    /// the user's next Google sign-in via the OAuth callback path.
     /// </summary>
     Task<EmailRenameDetectionResult> DetectEmailRenamesAsync(
-        CancellationToken ct = default);
-
-    /// <summary>
-    /// Fixes a detected email rename by updating User.GoogleEmail and the
-    /// corresponding UserEmail record to the new primary email.
-    /// </summary>
-    Task<EmailRenameFixResult> FixEmailRenameAsync(
-        Guid userId, string newEmail, Guid actorUserId,
         CancellationToken ct = default);
 }
 
@@ -164,13 +154,6 @@ public record WorkspaceRecoveryCredentialsResult(
     string? ErrorMessage = null);
 
 /// <summary>
-/// Result of applying email backfill corrections.
-/// </summary>
-public record EmailBackfillActionResult(
-    int UpdatedCount,
-    IReadOnlyList<string> Errors);
-
-/// <summary>
 /// Result of linking a group to a team.
 /// </summary>
 public record GroupLinkActionResult(
@@ -183,11 +166,3 @@ public record GroupLinkActionResult(
 /// Minimal team info for dropdowns/selectors.
 /// </summary>
 public record TeamSummary(Guid Id, string Name);
-
-/// <summary>
-/// Result of fixing a single email rename.
-/// </summary>
-public record EmailRenameFixResult(
-    bool Success,
-    string? Message = null,
-    string? ErrorMessage = null);

@@ -8,83 +8,40 @@ using Xunit;
 
 namespace Humans.Application.Tests.Authorization;
 
-/// <summary>
-/// Unit tests for UserEmailAuthorizationHandler — self-or-admin gate over
-/// a Guid targetUserId resource. Tests cover: actor==target self path,
-/// admin override on a different target, denial for unrelated users.
-/// </summary>
 public sealed class UserEmailAuthorizationHandlerTests
 {
     private readonly UserEmailAuthorizationHandler _handler = new();
 
-    [HumansFact]
-    public async Task SucceedsWhenActorIsTarget()
+    public static TheoryData<string?, bool> UserEmailAuthorizationCases => new()
     {
-        var userId = Guid.NewGuid();
-        var user = CreateUser(userId);
+        { null, true },
+        { RoleNames.Admin, true },
+        { RoleNames.HumanAdmin, true },
+        { RoleNames.Board, true },
+        { "SomeOtherRole", false },
+    };
 
-        var result = await EvaluateAsync(user, userId);
-
-        result.Should().BeTrue();
-    }
-
-    [HumansFact]
-    public async Task SucceedsWhenActorIsAdmin()
+    [HumansTheory]
+    [MemberData(nameof(UserEmailAuthorizationCases))]
+    public async Task User_email_edit_authorization_matches_expected_scenarios(
+        string? actorRole,
+        bool expected)
     {
         var actorId = Guid.NewGuid();
-        var targetId = Guid.NewGuid();
-        var user = CreateUser(actorId, RoleNames.Admin);
+        var targetId = actorRole is null ? actorId : Guid.NewGuid();
+        var user = actorRole is null
+            ? CreateUser(actorId)
+            : CreateUser(actorId, actorRole);
 
         var result = await EvaluateAsync(user, targetId);
 
-        result.Should().BeTrue();
-    }
-
-    [HumansFact]
-    public async Task SucceedsWhenActorIsHumanAdmin()
-    {
-        // Profiles section invariants list HumanAdmin, Board, Admin as the actors
-        // who manage humans via admin pages — admin email management is part of
-        // that surface, so the handler grants HumanAdmin on a different target.
-        var actorId = Guid.NewGuid();
-        var targetId = Guid.NewGuid();
-        var user = CreateUser(actorId, RoleNames.HumanAdmin);
-
-        var result = await EvaluateAsync(user, targetId);
-
-        result.Should().BeTrue();
-    }
-
-    [HumansFact]
-    public async Task SucceedsWhenActorIsBoard()
-    {
-        // Board is in the same actor list as HumanAdmin/Admin per Profiles.md.
-        var actorId = Guid.NewGuid();
-        var targetId = Guid.NewGuid();
-        var user = CreateUser(actorId, RoleNames.Board);
-
-        var result = await EvaluateAsync(user, targetId);
-
-        result.Should().BeTrue();
-    }
-
-    [HumansFact]
-    public async Task FailsWhenActorIsNeitherTargetNorAdmin()
-    {
-        var actorId = Guid.NewGuid();
-        var targetId = Guid.NewGuid();
-        var user = CreateUser(actorId);
-
-        var result = await EvaluateAsync(user, targetId);
-
-        result.Should().BeFalse();
+        result.Should().Be(expected);
     }
 
     private async Task<bool> EvaluateAsync(ClaimsPrincipal user, Guid targetUserId)
     {
         var requirement = UserEmailOperations.Edit;
-        var context = new AuthorizationHandlerContext(
-            [requirement], user, targetUserId);
+        var context = new AuthorizationHandlerContext([requirement], user, targetUserId);
 
         await _handler.HandleAsync(context);
         return context.HasSucceeded;

@@ -14,7 +14,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// navigation — callers resolve display names via <c>IUserService</c>. See
 /// <c>docs/architecture/design-rules.md</c> §3 and §6 for the canonical shape.
 /// </remarks>
-public interface ISyncSettingsRepository
+public interface ISyncSettingsRepository : IRepository
 {
     /// <summary>
     /// Returns every sync service settings row, ordered by <see cref="SyncServiceType"/>.

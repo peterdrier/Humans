@@ -105,6 +105,9 @@ public static class AuthorizationPolicyExtensions
             options.AddPolicy(PolicyNames.ShiftDashboardAccess, policy =>
                 policy.RequireRole(RoleNames.Admin, RoleNames.NoInfoAdmin, RoleNames.VolunteerCoordinator));
 
+            options.AddPolicy(PolicyNames.VolunteerTrackingWrite, policy =>
+                policy.RequireRole(RoleNames.Admin, RoleNames.VolunteerCoordinator));
+
             // ShiftDepartmentManager is wider: privileged dashboard roles OR anyone who is
             // a coordinator / manager of any team or sub-team. Gates the dashboard page
             // entry point and the "open dashboard" button on /Shifts. The role-OR-team-coord

@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -8,7 +9,7 @@ namespace Humans.Application.Interfaces.Users;
 /// <summary>
 /// Service owning user-level concerns. Currently focused on event participation.
 /// </summary>
-public interface IUserService
+public interface IUserService : IApplicationService
 {
     /// <summary>
     /// Fetches a single user by id. Returns null if the user does not exist.
@@ -130,6 +131,7 @@ public interface IUserService
     /// user already has a GoogleEmail set or the user does not exist.
     /// Returns true if the GoogleEmail was set.
     /// </summary>
+    [Obsolete("Issue nobodies-collective/Humans#687: User.GoogleEmail is being deprecated. The Google identity now lives on the UserEmail row (UserEmail.IsGoogle), maintained by UserEmailService.EnsureGoogleInvariantAsync on every row creation. Read FullProfile.GoogleEmail; promote a row with IUserEmailService.SetGoogleAsync.")]
     Task<bool> TrySetGoogleEmailAsync(Guid userId, string email, CancellationToken ct = default);
 
     /// <summary>
@@ -141,6 +143,7 @@ public interface IUserService
     /// true if the user exists and the value was written, false if the user
     /// does not exist.
     /// </summary>
+    [Obsolete("Issue nobodies-collective/Humans#687: User.GoogleEmail is being deprecated. Promote the desired UserEmail row via IUserEmailService.SetGoogleAsync (sets IsGoogle exclusively); read via FullProfile.GoogleEmail.")]
     Task<bool> SetGoogleEmailAsync(Guid userId, string email, CancellationToken ct = default);
 
     /// <summary>
@@ -156,17 +159,6 @@ public interface IUserService
     /// </summary>
     Task<bool> TrySetGoogleEmailStatusFromSyncAsync(
         Guid userId, GoogleEmailStatus status, CancellationToken ct = default);
-
-    /// <summary>
-    /// Rewrites <c>User.Email</c>, <c>User.UserName</c>, and their normalized
-    /// counterparts to <paramref name="newEmail"/>. If the user has an
-    /// OAuth-sourced <see cref="UserEmail"/> row, it is
-    /// rewritten to match so login continues to succeed against the new email.
-    /// Invalidates the Profile cache on success. Returns the previous email on
-    /// success, or (<c>false</c>, <c>null</c>) if the user does not exist.
-    /// </summary>
-    Task<(bool Updated, string? OldEmail)> ApplyEmailBackfillAsync(
-        Guid userId, string newEmail, CancellationToken ct = default);
 
     /// <summary>
     /// Updates <c>User.DisplayName</c>. No-op if the user does not exist.
@@ -213,11 +205,10 @@ public interface IUserService
 
     /// <summary>
     /// Returns the id of any user, other than <paramref name="excludeUserId"/>,
-    /// whose <c>GoogleEmail</c> matches <paramref name="email"/> (case-insensitive),
-    /// or null if no such user exists. Used by @nobodies.team provisioning so
-    /// the Application-layer service can detect cross-user conflicts without
-    /// touching the database directly.
+    /// whose legacy <c>User.GoogleEmail</c> shadow column matches <paramref name="email"/>
+    /// (case-insensitive), or null if no such user exists.
     /// </summary>
+    [Obsolete("Issue nobodies-collective/Humans#687: User.GoogleEmail is being deprecated. Use IUserEmailService.GetOtherUserIdHavingEmailAsync — once UserEmail.IsGoogle is sole source of truth a Google identity always has a matching user_emails row, so any other user already owning the address is detected by the user_emails check.")]
     Task<Guid?> GetOtherUserIdHavingGoogleEmailAsync(
         string email,
         Guid excludeUserId,
@@ -286,6 +277,18 @@ public interface IUserService
     /// number of rows deleted. Used by EmailProblems ghost-login cleanup.
     /// </summary>
     Task<int> DeleteAllExternalLoginsForUserAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns every <c>AspNetUserLogins</c> <c>(LoginProvider, ProviderKey)</c>
+    /// row for each of the given users, grouped by <c>UserId</c>. Users without
+    /// any external login are absent from the dictionary. Used by the legacy
+    /// email backfill to pick a <c>(Provider, ProviderKey)</c> pair so the
+    /// inserted <c>UserEmail</c> row can be linked via
+    /// <c>IUserEmailService.LinkAsync</c> in one step.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, IReadOnlyList<(string Provider, string ProviderKey)>>>
+        GetExternalLoginsByUserIdsAsync(
+            IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
 }
 
 /// <summary>

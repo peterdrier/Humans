@@ -1,10 +1,11 @@
+using Humans.Application.Interfaces;
 namespace Humans.Application.Interfaces.Camps;
 
 /// <summary>
 /// Orchestrates the facilitated-contact workflow for camps:
 /// rate limiting, message sanitization, email send, and audit logging.
 /// </summary>
-public interface ICampContactService
+public interface ICampContactService : IApplicationService
 {
     /// <summary>
     /// Send a facilitated contact message from a user to a camp.

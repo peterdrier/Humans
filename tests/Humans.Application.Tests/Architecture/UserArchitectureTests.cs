@@ -5,148 +5,123 @@ using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
+using Humans.Infrastructure.Repositories.Users;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
-using UserService = Humans.Application.Services.Users.UserService;
 using AccountProvisioningService = Humans.Application.Services.Users.AccountProvisioningService;
 using UnsubscribeService = Humans.Application.Services.Users.UnsubscribeService;
-using Humans.Infrastructure.Repositories.Users;
+using UserService = Humans.Application.Services.Users.UserService;
 
 namespace Humans.Application.Tests.Architecture;
 
 /// <summary>
-/// Architecture tests enforcing the §15 repository pattern for the User
-/// section — migrated per PR #243 / issue #511.
-///
-/// <para>
-/// The User section's §15 migration chose <b>Option A</b> (no caching
-/// decorator, no dict cache, no DTO) per
-/// <c>docs/superpowers/specs/2026-04-21-issue-511-user-migration.md</c>.
-/// User is ~500 rows with no stitched projection or hot bulk-read path, so
-/// a decorator is not warranted — same rationale Governance used when its
-/// decorator was removed in #242. These tests enforce the non-decorator shape:
-/// UserService lives in Application, goes through IUserRepository, and wires
-/// IFullProfileInvalidator for cross-section cache-staleness signalling.
-/// </para>
+/// Architecture tests enforcing the repository pattern for the User section.
 /// </summary>
 public class UserArchitectureTests
 {
-    // ── UserService ──────────────────────────────────────────────────────────
-
-    [HumansFact]
-    public void UserService_LivesInHumansApplicationServicesUsersNamespace()
+    public static TheoryData<Type> UserServices => new()
     {
-        typeof(UserService).Namespace
+        typeof(UserService),
+        typeof(AccountProvisioningService),
+        typeof(UnsubscribeService),
+    };
+
+    public static TheoryData<Type, Type> RequiredConstructorEdges => new()
+    {
+        { typeof(UserService), typeof(IUserRepository) },
+        { typeof(AccountProvisioningService), typeof(IUserRepository) },
+        { typeof(AccountProvisioningService), typeof(IUserEmailService) },
+        { typeof(UnsubscribeService), typeof(IUserRepository) },
+    };
+
+    public static TheoryData<Type, Type> ForbiddenConstructorEdges => new()
+    {
+        { typeof(AccountProvisioningService), typeof(IUserEmailRepository) },
+    };
+
+    [HumansTheory]
+    [MemberData(nameof(UserServices))]
+    public void User_services_live_in_application_users_namespace(Type serviceType)
+    {
+        serviceType.Namespace
             .Should().Be("Humans.Application.Services.Users",
-                because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
+                because: "User-section services live in Application");
     }
 
-    [HumansFact]
-    public void UserService_HasNoDbContextConstructorParameter()
+    [HumansTheory]
+    [MemberData(nameof(UserServices))]
+    public void User_services_have_no_dbcontext_constructor_parameter(Type serviceType)
     {
-        var ctor = typeof(UserService).GetConstructors().Single();
+        var ctor = serviceType.GetConstructors().Single();
+
         ctor.GetParameters()
             .Should().NotContain(
                 p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
-                because: "services in Humans.Application must never take DbContext — use IUserRepository instead (design-rules §3)");
+                because: "Application services must use repositories instead of DbContext directly");
+    }
+
+    [HumansTheory]
+    [MemberData(nameof(RequiredConstructorEdges))]
+    public void User_services_take_required_constructor_edges(Type serviceType, Type dependencyType)
+    {
+        var ctor = serviceType.GetConstructors().Single();
+        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
+
+        paramTypes.Should().Contain(dependencyType);
+    }
+
+    [HumansTheory]
+    [MemberData(nameof(ForbiddenConstructorEdges))]
+    public void User_services_do_not_take_forbidden_constructor_edges(Type serviceType, Type dependencyType)
+    {
+        var ctor = serviceType.GetConstructors().Single();
+        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
+
+        paramTypes.Should().NotContain(dependencyType);
     }
 
     [HumansFact]
-    public void UserService_HasNoIMemoryCacheConstructorParameter()
+    public void UserService_has_expected_cache_and_invalidation_shape()
     {
         var ctor = typeof(UserService).GetConstructors().Single();
-        var cachingParam = ctor.GetParameters()
+        var parameters = ctor.GetParameters();
+        var paramTypes = parameters.Select(p => p.ParameterType).ToList();
+        var cachingParam = parameters
             .FirstOrDefault(p => (p.ParameterType.FullName ?? string.Empty)
                 .StartsWith("Microsoft.Extensions.Caching.Memory", StringComparison.Ordinal));
 
         cachingParam.Should().BeNull(
-            because: "canonical User data is not IMemoryCache-backed; cross-section invalidation goes through IFullProfileInvalidator (design-rules §5)");
-    }
-
-    [HumansFact]
-    public void UserService_TakesRepository()
-    {
-        var ctor = typeof(UserService).GetConstructors().Single();
-        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
-
-        paramTypes.Should().Contain(typeof(IUserRepository));
-    }
-
-    [HumansFact]
-    public void UserService_TakesFullProfileInvalidator()
-    {
-        var ctor = typeof(UserService).GetConstructors().Single();
-        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
-
+            because: "canonical User data is not IMemoryCache-backed");
         paramTypes.Should().Contain(typeof(IFullProfileInvalidator),
-            because: "UserService writes that change FullProfile-visible fields (DisplayName, GoogleEmail) must invalidate the Profile cache; the dependency proves the wire is in place so cache-staleness regressions fail at compile/test time rather than silently at runtime");
+            because: "User writes that change FullProfile-visible fields must invalidate the Profile cache");
     }
 
     [HumansFact]
-    public void UserService_ConstructorTakesNoStoreType()
+    public void UserService_has_no_store_serviceprovider_or_higher_level_section_edges()
     {
         var ctor = typeof(UserService).GetConstructors().Single();
-        var storeParam = ctor.GetParameters()
-            .FirstOrDefault(p => (p.ParameterType.Namespace ?? string.Empty)
-                .StartsWith("Humans.Application.Interfaces.Stores", StringComparison.Ordinal));
+        var parameters = ctor.GetParameters();
+        var paramTypes = parameters.Select(p => p.ParameterType).ToList();
 
-        storeParam.Should().BeNull(
-            because: "Application services must not depend on store abstractions (design-rules §15); the User section's §15 migration went further and does not use a store at all");
+        parameters.Should().NotContain(
+            p => (p.ParameterType.Namespace ?? string.Empty)
+                .StartsWith("Humans.Application.Interfaces.Stores", StringComparison.Ordinal),
+            because: "User has no store abstraction");
+        paramTypes.Should().NotContain(typeof(IServiceProvider),
+            because: "lazy IServiceProvider escape hatches hide DI cycles");
+        paramTypes.Should().NotContain(typeof(ITeamService));
+        paramTypes.Should().NotContain(typeof(IRoleAssignmentService));
+        paramTypes.Should().NotContain(typeof(IShiftSignupService));
+        paramTypes.Should().NotContain(typeof(IShiftManagementService));
+        paramTypes.Should().NotContain(typeof(IProfileService));
     }
 
     [HumansFact]
-    public void UserService_HasNoOutboundEdgeToHigherLevelSections()
-    {
-        // Issue nobodies-collective/Humans#582: UserService is foundational. It must not inject
-        // ITeamService / IRoleAssignmentService / IShift*Service (those sections
-        // sit above it in the ownership graph). The account-deletion cascade
-        // that previously forced these edges lives in IAccountDeletionService.
-        var ctor = typeof(UserService).GetConstructors().Single();
-        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
-
-        paramTypes.Should().NotContain(typeof(ITeamService),
-            because: "UserService is foundational — no outbound edge to Teams (issue nobodies-collective/Humans#582, feedback_user_profile_foundational)");
-        paramTypes.Should().NotContain(typeof(IRoleAssignmentService),
-            because: "UserService is foundational — no outbound edge to RoleAssignments (issue nobodies-collective/Humans#582)");
-        paramTypes.Should().NotContain(typeof(IShiftSignupService),
-            because: "UserService is foundational — no outbound edge to Shifts (issue nobodies-collective/Humans#582)");
-        paramTypes.Should().NotContain(typeof(IShiftManagementService),
-            because: "UserService is foundational — no outbound edge to Shifts (issue nobodies-collective/Humans#582)");
-        paramTypes.Should().NotContain(typeof(IProfileService),
-            because: "UserService is foundational — no outbound edge to Profile (issue nobodies-collective/Humans#582; Profile depends on User, never the reverse)");
-    }
-
-    [HumansFact]
-    public void UserService_HasNoServiceProviderConstructorParameter()
-    {
-        // Issue nobodies-collective/Humans#582: the IServiceProvider was a workaround for DI cycles that
-        // existed solely because of the deletion cascade (ProfileService,
-        // RoleAssignmentService, ShiftSignupService, ShiftManagementService
-        // were resolved lazily). With those moved to IAccountDeletionService,
-        // UserService no longer needs a lazy escape hatch.
-        var ctor = typeof(UserService).GetConstructors().Single();
-        var providerParam = ctor.GetParameters()
-            .FirstOrDefault(p => p.ParameterType == typeof(IServiceProvider));
-
-        providerParam.Should().BeNull(
-            because: "UserService's lazy IServiceProvider escape hatch only existed for deletion cascade; the cascade moved to IAccountDeletionService in issue nobodies-collective/Humans#582");
-    }
-
-    // ── IUserRepository ──────────────────────────────────────────────────────
-
-    [HumansFact]
-    public void IUserRepository_LivesInApplicationInterfacesRepositoriesNamespace()
+    public void User_repository_has_expected_application_interface_and_sealed_implementation()
     {
         typeof(IUserRepository).Namespace
-            .Should().Be("Humans.Application.Interfaces.Repositories",
-                because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
-    }
+            .Should().Be("Humans.Application.Interfaces.Repositories");
 
-    [HumansFact]
-    public void UserRepository_IsSealed()
-    {
-        // Mirrors ProfileRepository — repository implementations are terminal; no subclass should
-        // extend or override the EF-backed data access.
         var repoType = typeof(IUserRepository).Assembly
             .GetExportedTypes()
             .Concat(typeof(UserRepository).Assembly.GetExportedTypes())
@@ -154,83 +129,18 @@ public class UserArchitectureTests
                          && typeof(IUserRepository).IsAssignableFrom(t));
 
         repoType.IsSealed.Should().BeTrue(
-            because: "repository implementations are sealed to prevent ad-hoc extension; any new behavior belongs on the interface");
+            because: "repository implementations are sealed to prevent ad-hoc extension");
     }
-
-    // ── AccountProvisioningService ───────────────────────────────────────────
-
-    [HumansFact]
-    public void AccountProvisioningService_LivesInHumansApplicationServicesUsersNamespace()
-    {
-        typeof(AccountProvisioningService).Namespace
-            .Should().Be("Humans.Application.Services.Users",
-                because: "AccountProvisioningService is part of the User section (issue #558) and must live with UserService in Application (design-rules §15i)");
-    }
-
-    [HumansFact]
-    public void AccountProvisioningService_HasNoDbContextConstructorParameter()
-    {
-        var ctor = typeof(AccountProvisioningService).GetConstructors().Single();
-        ctor.GetParameters()
-            .Should().NotContain(
-                p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
-                because: "services in Humans.Application must never take DbContext — use IUserRepository / IUserEmailRepository (design-rules §3)");
-    }
-
-    [HumansFact]
-    public void AccountProvisioningService_TakesRepositoryAndUserEmailRepository()
-    {
-        var ctor = typeof(AccountProvisioningService).GetConstructors().Single();
-        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
-
-        paramTypes.Should().Contain(typeof(IUserRepository));
-        paramTypes.Should().Contain(typeof(IUserEmailRepository));
-    }
-
-    // ── UnsubscribeService ───────────────────────────────────────────────────
-
-    [HumansFact]
-    public void UnsubscribeService_LivesInHumansApplicationServicesUsersNamespace()
-    {
-        typeof(UnsubscribeService).Namespace
-            .Should().Be("Humans.Application.Services.Users",
-                because: "UnsubscribeService operates on User state and is part of the User section (issue #558, design-rules §8 — Unsubscribe row)");
-    }
-
-    [HumansFact]
-    public void UnsubscribeService_HasNoDbContextConstructorParameter()
-    {
-        var ctor = typeof(UnsubscribeService).GetConstructors().Single();
-        ctor.GetParameters()
-            .Should().NotContain(
-                p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
-                because: "services in Humans.Application must never take DbContext — use IUserRepository (design-rules §3)");
-    }
-
-    [HumansFact]
-    public void UnsubscribeService_TakesRepository()
-    {
-        var ctor = typeof(UnsubscribeService).GetConstructors().Single();
-        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
-
-        paramTypes.Should().Contain(typeof(IUserRepository));
-    }
-
-    // ── UserEmail surface — Provider-parameterized naming (PR 4) ────────────
 
     [HumansFact]
     public void NoOAuthTokenInUserEmailServiceOrRepositoryMethodNames()
     {
         var offenders = new List<string>();
-
-        // Tests project already references Humans.Infrastructure (csproj), so use
-        // typeof(...) for compile-time checking. A future rename of UserEmailRepository
-        // breaks the test build loudly instead of silently passing.
         var typesToScan = new[]
         {
-            typeof(Humans.Application.Interfaces.Profiles.IUserEmailService),
+            typeof(IUserEmailService),
             typeof(Humans.Infrastructure.Repositories.Profiles.UserEmailRepository),
-            typeof(Humans.Application.Interfaces.Repositories.IUserEmailRepository),
+            typeof(IUserEmailRepository),
         };
 
         foreach (var t in typesToScan)
@@ -240,6 +150,7 @@ public class UserArchitectureTests
                 if (m.Name.Contains("OAuth", StringComparison.OrdinalIgnoreCase))
                     offenders.Add($"{t.Name}.{m.Name} (method)");
             }
+
             foreach (var p in t.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
             {
                 if (p.Name.Contains("OAuth", StringComparison.OrdinalIgnoreCase))
@@ -248,22 +159,10 @@ public class UserArchitectureTests
         }
 
         offenders.Should().BeEmpty(
-            because: "PR 4 of the email-identity-decoupling spec drops the 'OAuth' token from " +
-                     "IUserEmailService / UserEmailRepository method/property names. " +
-                     "Provider-specific operations are parameterized via a Provider arg. " +
-                     "Offenders: {0}",
+            because: "provider-specific operations are parameterized via a Provider arg. Offenders: {0}",
             string.Join("; ", offenders));
     }
 
-    // ── §15i nav-strip ───────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Issue #635 (§15i): the User-side cross-domain navs (Profile,
-    /// RoleAssignments, ConsentRecords, Applications, TeamMemberships,
-    /// CommunicationPreferences) and the GetEffectiveEmail() method are
-    /// stripped. UserEmails stays — the User.Email override depends on it
-    /// per AC. EventParticipations is owned by the Users section itself.
-    /// </summary>
     [HumansFact]
     public void User_HasNoCrossDomainNavigationProperties()
     {
@@ -283,19 +182,11 @@ public class UserArchitectureTests
             "CommunicationPreferences",
         };
 
-        var present = forbidden.Where(declaredProps.Contains).ToList();
-        present.Should().BeEmpty(
-            because: "issue #635 (§15i) strips these cross-domain navs from User. The " +
-                     "inverse-side EF configurations on each owning entity preserve the " +
-                     "schema-level FKs. Cross-section access goes through the owning " +
-                     "section's service. Offenders still on User: {0}",
-            string.Join(", ", present));
-
+        forbidden.Where(declaredProps.Contains).Should().BeEmpty(
+            because: "cross-section access goes through the owning section service");
         userType
             .GetMethod("GetEffectiveEmail", BindingFlags.Public | BindingFlags.Instance)
             .Should().BeNull(
-                because: "issue #635 (§15i) replaces User.GetEffectiveEmail() with a " +
-                         "direct read of User.Email. The override already does the " +
-                         "GetEffectiveEmail-equivalent computation.");
+                because: "User.Email owns the effective-email computation");
     }
 }

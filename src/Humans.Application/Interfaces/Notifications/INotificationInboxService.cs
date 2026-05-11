@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces;
 using Humans.Domain.Enums;
 
 namespace Humans.Application.Interfaces.Notifications;
@@ -7,7 +8,7 @@ namespace Humans.Application.Interfaces.Notifications;
 /// inbox/popup queries, resolve/dismiss, mark-read, and badge cache invalidation.
 /// Complements INotificationService (which handles dispatching new notifications).
 /// </summary>
-public interface INotificationInboxService
+public interface INotificationInboxService : IApplicationService
 {
     /// <summary>
     /// Builds the notification inbox for a user with filtering, search, and tab support.

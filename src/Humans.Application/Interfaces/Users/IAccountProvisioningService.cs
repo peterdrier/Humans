@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 
@@ -8,7 +9,7 @@ namespace Humans.Application.Interfaces.Users;
 /// Looks up existing accounts by email across all UserEmails for dedup,
 /// creates User + UserEmail when no match exists.
 /// </summary>
-public interface IAccountProvisioningService
+public interface IAccountProvisioningService : IApplicationService
 {
     /// <summary>
     /// Finds an existing User by email (checking both User.Email and all UserEmail records)

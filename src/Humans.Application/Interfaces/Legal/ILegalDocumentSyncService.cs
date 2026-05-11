@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 
 namespace Humans.Application.Interfaces.Legal;
@@ -5,7 +6,7 @@ namespace Humans.Application.Interfaces.Legal;
 /// <summary>
 /// Service for syncing legal documents from the GitHub repository.
 /// </summary>
-public interface ILegalDocumentSyncService
+public interface ILegalDocumentSyncService : IApplicationService
 {
     /// <summary>
     /// Syncs all legal documents from the GitHub repository.

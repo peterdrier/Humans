@@ -16,7 +16,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// <see cref="Humans.Application.Services.Users.UserService"/> can apply the
 /// status/source business rules before persisting.
 /// </remarks>
-public interface IUserRepository
+public interface IUserRepository : IRepository
 {
     // ==========================================================================
     // Reads — User
@@ -80,10 +80,10 @@ public interface IUserRepository
 
     /// <summary>
     /// Returns the id of any user, other than <paramref name="excludeUserId"/>,
-    /// whose <c>GoogleEmail</c> matches the given address (case-insensitive),
-    /// or null if no such user exists. Used by @nobodies.team provisioning to
-    /// block a prefix that is already attached to another human.
+    /// whose legacy <c>GoogleEmail</c> shadow column matches the given address
+    /// (case-insensitive), or null if no such user exists.
     /// </summary>
+    [Obsolete("Issue nobodies-collective/Humans#687: User.GoogleEmail is being deprecated. Use IUserEmailRepository.GetOtherUserIdHavingEmailAsync (matches the user_emails table — the canonical location for Google identity once UserEmail.IsGoogle is sole source of truth).")]
     Task<Guid?> GetOtherUserIdHavingGoogleEmailAsync(
         string email, Guid excludeUserId, CancellationToken ct = default);
 
@@ -110,6 +110,7 @@ public interface IUserRepository
     /// No-op if the user already has a GoogleEmail set or the user does not
     /// exist. Returns true if the GoogleEmail was set.
     /// </summary>
+    [Obsolete("Issue nobodies-collective/Humans#687: User.GoogleEmail is being deprecated. The Google identity now lives on the UserEmail row (UserEmail.IsGoogle); UserEmailService maintains it via EnsureGoogleInvariantAsync on every row creation.")]
     Task<bool> TrySetGoogleEmailAsync(Guid userId, string email, CancellationToken ct = default);
 
     /// <summary>
@@ -118,6 +119,7 @@ public interface IUserRepository
     /// Google account creation. Returns true if the user exists and the
     /// value was written, false if the user does not exist.
     /// </summary>
+    [Obsolete("Issue nobodies-collective/Humans#687: User.GoogleEmail is being deprecated. Promote the desired UserEmail row via IUserEmailService.SetGoogleAsync (sets IsGoogle exclusively) instead.")]
     Task<bool> SetGoogleEmailAsync(Guid userId, string email, CancellationToken ct = default);
 
     /// <summary>
@@ -131,17 +133,6 @@ public interface IUserRepository
     /// </summary>
     Task<bool> SetGoogleEmailStatusAsync(
         Guid userId, GoogleEmailStatus status, CancellationToken ct = default);
-
-    /// <summary>
-    /// Rewrites <c>User.Email</c>, <c>User.UserName</c>, <c>User.NormalizedEmail</c>,
-    /// and <c>User.NormalizedUserName</c> to the given <paramref name="newEmail"/>.
-    /// Used by the admin email-backfill workflow to repair OAuth identity after a
-    /// provider-side email change. Returns the previous <c>Email</c> value (may be
-    /// null) so callers can log the transition, or <c>(false, null)</c> if the user
-    /// does not exist.
-    /// </summary>
-    Task<(bool Updated, string? OldEmail)> RewritePrimaryEmailAsync(
-        Guid userId, string newEmail, CancellationToken ct = default);
 
     /// <summary>
     /// Sets the deletion-pending fields on a user (<c>DeletionRequestedAt</c>,
@@ -195,6 +186,18 @@ public interface IUserRepository
     /// number of rows deleted. Used by EmailProblems ghost-login cleanup.
     /// </summary>
     Task<int> DeleteAllExternalLoginsForUserAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns every <c>AspNetUserLogins</c> <c>(LoginProvider, ProviderKey)</c>
+    /// row for each of the given users, grouped by <c>UserId</c>. Users without
+    /// any external login are absent from the dictionary. Used by the legacy
+    /// email backfill to pick a <c>(Provider, ProviderKey)</c> pair so the
+    /// inserted <c>UserEmail</c> row can be linked via
+    /// <c>IUserEmailService.LinkAsync</c> in one step instead of two.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, IReadOnlyList<(string Provider, string ProviderKey)>>>
+        GetExternalLoginsByUserIdsAsync(
+            IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
 
     /// <summary>
     /// Migrates every <c>AspNetUserLogins</c> row from

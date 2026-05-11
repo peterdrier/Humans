@@ -88,10 +88,24 @@ public class TeamController : HumansControllerBase
 
         var viewModel = new TeamIndexViewModel
         {
-            MyTeams = directory.MyTeams.Select(MapTeamSummary).ToList(),
-            Departments = directory.Departments.Select(MapTeamSummary).ToList(),
-            SystemTeams = directory.SystemTeams.Select(MapTeamSummary).ToList(),
-            HiddenTeams = directory.HiddenTeams.Select(MapTeamSummary).ToList(),
+            MyTeams = directory.MyTeams
+                .OrderBy(t => t.SortKey, StringComparer.OrdinalIgnoreCase)
+                .Select(MapTeamSummary)
+                .ToList(),
+            Departments = directory.Departments
+                .OrderBy(
+                    t => directory.IsAuthenticated ? t.SortKey : t.Name,
+                    StringComparer.OrdinalIgnoreCase)
+                .Select(MapTeamSummary)
+                .ToList(),
+            SystemTeams = directory.SystemTeams
+                .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
+                .Select(MapTeamSummary)
+                .ToList(),
+            HiddenTeams = directory.HiddenTeams
+                .OrderBy(t => t.SortKey, StringComparer.OrdinalIgnoreCase)
+                .Select(MapTeamSummary)
+                .ToList(),
             CanCreateTeam = directory.CanCreateTeam,
             IsAuthenticated = directory.IsAuthenticated
         };
@@ -625,7 +639,7 @@ public class TeamController : HumansControllerBase
             var wasCoordinator = await _teamService.LeaveTeamAsync(team.Id, user.Id);
             if (wasCoordinator)
             {
-                await _systemTeamSync.SyncCoordinatorsMembershipForUserAsync(user.Id);
+                await _systemTeamSync.SyncMembershipForUserAsync(user.Id, SystemTeamType.Coordinators);
             }
             SetSuccess(_localizer["Team_Left"].Value);
             return RedirectToAction(nameof(Index));

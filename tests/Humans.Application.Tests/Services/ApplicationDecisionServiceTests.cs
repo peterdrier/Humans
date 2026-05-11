@@ -271,8 +271,10 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
 
         await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, null);
 
-        await _syncJob.Received().SyncColaboradorsMembershipForUserAsync(userId, Arg.Any<CancellationToken>());
-        await _syncJob.DidNotReceive().SyncAsociadosMembershipForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await _syncJob.Received().SyncMembershipForUserAsync(
+            userId, SystemTeamType.Colaboradors, Arg.Any<CancellationToken>());
+        await _syncJob.DidNotReceive().SyncMembershipForUserAsync(
+            Arg.Any<Guid>(), SystemTeamType.Asociados, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -283,8 +285,10 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
 
         await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, null);
 
-        await _syncJob.Received().SyncAsociadosMembershipForUserAsync(userId, Arg.Any<CancellationToken>());
-        await _syncJob.DidNotReceive().SyncColaboradorsMembershipForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await _syncJob.Received().SyncMembershipForUserAsync(
+            userId, SystemTeamType.Asociados, Arg.Any<CancellationToken>());
+        await _syncJob.DidNotReceive().SyncMembershipForUserAsync(
+            Arg.Any<Guid>(), SystemTeamType.Colaboradors, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -492,8 +496,10 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
 
         await _service.RejectAsync(app.Id, Guid.NewGuid(), "reason", null);
 
-        await _syncJob.DidNotReceive().SyncColaboradorsMembershipForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
-        await _syncJob.DidNotReceive().SyncAsociadosMembershipForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await _syncJob.DidNotReceive().SyncMembershipForUserAsync(
+            Arg.Any<Guid>(), SystemTeamType.Colaboradors, Arg.Any<CancellationToken>());
+        await _syncJob.DidNotReceive().SyncMembershipForUserAsync(
+            Arg.Any<Guid>(), SystemTeamType.Asociados, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
