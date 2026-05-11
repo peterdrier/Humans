@@ -389,7 +389,7 @@ public class AccountController : HumansControllerBase
             if (!written)
                 return;
 
-            if (match is not null)
+            if (match is not null && match.UserId == userId.Value)
             {
                 await _auditLogService.LogAsync(
                     AuditAction.GoogleEmailRenamed,
