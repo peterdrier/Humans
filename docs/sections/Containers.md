@@ -103,11 +103,10 @@ Physical shipping containers managed per-barrio or at org level, placed on the C
 - When a container is deleted, the Main image (if any) is removed from disk; all `ContainerPlacement` rows for that container are removed in the same transaction.
 - Placement save (`SavePlacementAsync(containerId, year, geoJson)`) upserts a `ContainerPlacement` row, preserving any existing notes/image.
 - Placement clear (`ClearPlacementAsync(containerId, year)`): if notes/image are absent, the row is deleted; otherwise `LocationGeoJson` is set to null and the row is preserved.
-- Placement metadata upsert (`UpsertPlacementMetadataAsync`) handles notes + placement image upload/removal independently of the geoJson location.
 
 ## Cross-Section Dependencies
 
-- **Camps:** `ICampService` — `GetCampBySlugAsync`, `IsUserCampLeadAsync`, `GetCampDisplayDataForYearAsync`, `GetCampLeadCampIdForYearAsync` — camp lookups and lead verification for authorization. `Container.CampId` is a bare Guid pointing at `camps.Id`.
+- **Camps:** `ICampService` — `GetCampBySlugAsync`, `IsUserCampLeadAsync`, `GetCampsForYearAsync`, `GetCampsWithLeadsForYearAsync` — camp lookups and lead verification for authorization. `Container.CampId` is a bare Guid pointing at `camps.Id`.
 - **City Planning:** `ICityPlanningService` — `GetSettingsAsync` (placement phase gate), `IsCityPlanningTeamMemberAsync` (Map Admin check). The container placement API endpoints (`PUT/DELETE /api/city-planning/containers/{id}/placement/{year}`, `GET /api/city-planning/containers/{year}`) are hosted in `CityPlanningApiController` because the placement editing experience is a City Planning concern.
 
 ## Architecture

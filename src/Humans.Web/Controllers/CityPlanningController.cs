@@ -380,7 +380,7 @@ public class CityPlanningController : HumansControllerBase
         return (userCamp.Slug, season.Name);
     }
 
-    [HttpGet("BarrioMap/Admin/Containers/{year}")]
+    [HttpGet("BarrioMap/Admin/Containers/{year:int}")]
     public async Task<IActionResult> Containers(int year, CancellationToken cancellationToken)
     {
         var (error, user) = await RequireCurrentUserAsync();
