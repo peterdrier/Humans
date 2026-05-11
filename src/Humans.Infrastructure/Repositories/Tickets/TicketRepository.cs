@@ -386,6 +386,51 @@ public sealed class TicketRepository : ITicketRepository
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<Guid>> GetMatchedOrderUserIdsInWindowAsync(
+        Instant fromInclusive, Instant toExclusive, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.TicketOrders
+            .AsNoTracking()
+            .Where(o => o.MatchedUserId != null &&
+                        o.PurchasedAt >= fromInclusive &&
+                        o.PurchasedAt < toExclusive)
+            .Select(o => o.MatchedUserId!.Value)
+            .Distinct()
+            .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<Guid>> GetMatchedAttendeeUserIdsInWindowAsync(
+        Instant fromInclusive, Instant toExclusive, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.TicketAttendees
+            .AsNoTracking()
+            .Where(a => a.MatchedUserId != null &&
+                        a.TicketOrder.PurchasedAt >= fromInclusive &&
+                        a.TicketOrder.PurchasedAt < toExclusive)
+            .Select(a => a.MatchedUserId!.Value)
+            .Distinct()
+            .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<int>> GetMatchedOrderYearsAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var purchasedAt = await ctx.TicketOrders
+            .AsNoTracking()
+            .Where(o => o.MatchedUserId != null)
+            .Select(o => o.PurchasedAt)
+            .Distinct()
+            .ToListAsync(ct);
+
+        return purchasedAt
+            .Select(i => i.ToDateTimeUtc().Year)
+            .Distinct()
+            .OrderDescending()
+            .ToList();
+    }
+
     public async Task<IReadOnlyList<Guid>> GetMatchedUserIdsForPaidOrdersAsync(
         CancellationToken ct = default)
     {

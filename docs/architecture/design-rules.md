@@ -685,6 +685,5 @@ Old names that no longer exist: `CachedProfile`, `IProfileStore`, `ProfileStore`
 - **Ticket vendor** (PR #277): `ITicketVendorService` (Application), concrete `TicketTailorService` / `StubTicketVendorService` (Infrastructure). `TicketVendorSettings` lives in `Humans.Application.Configuration` so the Application-layer `TicketSyncService` can read non-sensitive fields without reaching into Infrastructure.
 
 Controllers with direct `DbContext` access (violation of §2a, tracked separately):
-- `AdminController` — admin audience-segmentation / migrations-metadata / Hangfire-lock queries still read `HumansDbContext` directly.
 - `DevLoginController` — dev-only seeding path; low priority.
-- (`ProfileController` and `GoogleController` were cleaned in earlier §15 work — no direct DbContext usage remains.)
+- (`AdminController`, `ProfileController`, and `GoogleController` were cleaned in earlier §15 work — no direct DbContext usage remains. `AdminController` routes database diagnostics through `IAdminDatabaseDiagnosticsService`; audience segmentation composes the owning User/Profile/Tickets services, while infrastructure-only migration metadata and Hangfire lock cleanup stay behind the Infrastructure implementation.)

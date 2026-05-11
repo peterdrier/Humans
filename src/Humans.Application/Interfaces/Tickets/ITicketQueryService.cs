@@ -36,6 +36,21 @@ public interface ITicketQueryService : IApplicationService
     Task<HashSet<Guid>> GetAllMatchedUserIdsAsync();
 
     /// <summary>
+    /// Returns the set of user ids matched to any ticket order or attendee
+    /// whose purchase falls within the given calendar year (UTC). Used by the
+    /// admin audience-segmentation diagnostic so it does not read the ticket
+    /// tables directly (design-rules §9).
+    /// </summary>
+    Task<IReadOnlySet<Guid>> GetMatchedUserIdsForYearAsync(int year, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the distinct calendar years (UTC, descending) in which any
+    /// matched ticket order was purchased. Used by the admin
+    /// audience-segmentation diagnostic to populate the year picker.
+    /// </summary>
+    Task<IReadOnlyList<int>> GetMatchedTicketYearsAsync(CancellationToken ct = default);
+
+    /// <summary>
     /// Compute aggregated dashboard statistics: revenue, fees, daily sales,
     /// recent orders, volunteer coverage, and sync state.
     /// </summary>

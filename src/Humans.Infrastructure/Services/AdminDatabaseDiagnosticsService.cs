@@ -1,4 +1,7 @@
 using Humans.Application.Interfaces.Admin;
+using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Tickets;
+using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -7,10 +10,20 @@ namespace Humans.Infrastructure.Services;
 public sealed class AdminDatabaseDiagnosticsService : IAdminDatabaseDiagnosticsService
 {
     private readonly IDbContextFactory<HumansDbContext> _factory;
+    private readonly IUserService _userService;
+    private readonly IProfileService _profileService;
+    private readonly ITicketQueryService _ticketQueryService;
 
-    public AdminDatabaseDiagnosticsService(IDbContextFactory<HumansDbContext> factory)
+    public AdminDatabaseDiagnosticsService(
+        IDbContextFactory<HumansDbContext> factory,
+        IUserService userService,
+        IProfileService profileService,
+        ITicketQueryService ticketQueryService)
     {
         _factory = factory;
+        _userService = userService;
+        _profileService = profileService;
+        _ticketQueryService = ticketQueryService;
     }
 
     public async Task<DatabaseMigrationStatus> GetMigrationStatusAsync(CancellationToken ct = default)
@@ -33,67 +46,23 @@ public sealed class AdminDatabaseDiagnosticsService : IAdminDatabaseDiagnosticsS
 
     public async Task<AudienceSegmentation> GetAudienceSegmentationAsync(int? year, CancellationToken ct = default)
     {
-        await using var db = await _factory.CreateDbContextAsync(ct);
+        var allUsers = await _userService.GetAllUsersAsync(ct);
+        var allUserIds = allUsers.Select(u => u.Id).ToArray();
+        var profilesByUserId = await _profileService.GetByUserIdsAsync(allUserIds, ct);
+        var profileUserIds = profilesByUserId.Keys.ToHashSet();
+        IReadOnlySet<Guid> ticketUserIds = year.HasValue
+            ? await _ticketQueryService.GetMatchedUserIdsForYearAsync(year.Value, ct)
+            : await _ticketQueryService.GetAllMatchedUserIdsAsync();
 
-        var allUserIds = await db.Users
-            .Select(u => u.Id)
-            .ToListAsync(ct);
-
-        var profileUserIds = await db.Profiles
-            .Select(p => p.UserId)
-            .ToHashSetAsync(ct);
-
-        HashSet<Guid> ticketUserIds;
-        if (year.HasValue)
-        {
-            var startInstant = NodaTime.Instant.FromUtc(year.Value, 1, 1, 0, 0);
-            var endInstant = NodaTime.Instant.FromUtc(year.Value + 1, 1, 1, 0, 0);
-
-            var orderUserIds = await db.TicketOrders
-                .Where(o => o.MatchedUserId != null &&
-                            o.PurchasedAt >= startInstant &&
-                            o.PurchasedAt < endInstant)
-                .Select(o => o.MatchedUserId!.Value)
-                .Distinct()
-                .ToListAsync(ct);
-
-            var attendeeUserIds = await db.TicketAttendees
-                .Where(a => a.MatchedUserId != null &&
-                            a.TicketOrder.PurchasedAt >= startInstant &&
-                            a.TicketOrder.PurchasedAt < endInstant)
-                .Select(a => a.MatchedUserId!.Value)
-                .Distinct()
-                .ToListAsync(ct);
-
-            ticketUserIds = orderUserIds.Concat(attendeeUserIds).ToHashSet();
-        }
-        else
-        {
-            var orderUserIds = await db.TicketOrders
-                .Where(o => o.MatchedUserId != null)
-                .Select(o => o.MatchedUserId!.Value)
-                .Distinct()
-                .ToListAsync(ct);
-
-            var attendeeUserIds = await db.TicketAttendees
-                .Where(a => a.MatchedUserId != null)
-                .Select(a => a.MatchedUserId!.Value)
-                .Distinct()
-                .ToListAsync(ct);
-
-            ticketUserIds = orderUserIds.Concat(attendeeUserIds).ToHashSet();
-        }
-
-        var totalAccounts = allUserIds.Count;
         var withProfile = 0;
         var withTicket = 0;
         var withBoth = 0;
         var withNeither = 0;
 
-        foreach (var userId in allUserIds)
+        foreach (var user in allUsers)
         {
-            var hasProfile = profileUserIds.Contains(userId);
-            var hasTicket = ticketUserIds.Contains(userId);
+            var hasProfile = profileUserIds.Contains(user.Id);
+            var hasTicket = ticketUserIds.Contains(user.Id);
 
             if (hasProfile) withProfile++;
             if (hasTicket) withTicket++;
@@ -101,20 +70,10 @@ public sealed class AdminDatabaseDiagnosticsService : IAdminDatabaseDiagnosticsS
             if (!hasProfile && !hasTicket) withNeither++;
         }
 
-        var availableYears = await db.TicketOrders
-            .Where(o => o.MatchedUserId != null)
-            .Select(o => o.PurchasedAt)
-            .Distinct()
-            .ToListAsync(ct);
-
-        var years = availableYears
-            .Select(i => i.ToDateTimeUtc().Year)
-            .Distinct()
-            .OrderDescending()
-            .ToList();
+        var years = await _ticketQueryService.GetMatchedTicketYearsAsync(ct);
 
         return new AudienceSegmentation(
-            TotalAccounts: totalAccounts,
+            TotalAccounts: allUsers.Count,
             WithTicket: withTicket,
             WithProfile: withProfile,
             WithBoth: withBoth,
