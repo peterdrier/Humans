@@ -988,6 +988,9 @@ namespace Humans.Infrastructure.Migrations
                     b.Property<Guid?>("ConfirmedByUserId")
                         .HasColumnType("uuid");
 
+                    b.Property<bool>("HasEarlyEntry")
+                        .HasColumnType("boolean");
+
                     b.Property<Instant?>("RemovedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -1202,6 +1205,9 @@ namespace Humans.Infrastructure.Migrations
                     b.Property<Instant>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int>("EeSlotCount")
+                        .HasColumnType("integer");
+
                     b.Property<string>("ElectricalGrid")
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
@@ -1298,6 +1304,9 @@ namespace Humans.Infrastructure.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
+
+                    b.Property<LocalDate?>("EeStartDate")
+                        .HasColumnType("date");
 
                     b.Property<string>("OpenSeasons")
                         .IsRequired()
@@ -4160,6 +4169,47 @@ namespace Humans.Infrastructure.Migrations
                     b.ToTable("user_emails", (string)null);
                 });
 
+            modelBuilder.Entity("Humans.Domain.Entities.VolunteerBuildStatus", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<LocalDate?>("BarrioSetupStartDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("DayOffs")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasDefaultValueSql("'[]'::jsonb");
+
+                    b.Property<Guid>("EventSettingsId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Instant?>("SetAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("SetByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EventSettingsId");
+
+                    b.HasIndex("UserId", "EventSettingsId")
+                        .IsUnique();
+
+                    b.ToTable("volunteer_build_statuses", (string)null);
+                });
+
             modelBuilder.Entity("Humans.Domain.Entities.VolunteerEventProfile", b =>
                 {
                     b.Property<Guid>("Id")
@@ -4685,7 +4735,7 @@ namespace Humans.Infrastructure.Migrations
             modelBuilder.Entity("Humans.Domain.Entities.CampMember", b =>
                 {
                     b.HasOne("Humans.Domain.Entities.CampSeason", "CampSeason")
-                        .WithMany()
+                        .WithMany("Members")
                         .HasForeignKey("CampSeasonId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -5404,6 +5454,15 @@ namespace Humans.Infrastructure.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Humans.Domain.Entities.VolunteerBuildStatus", b =>
+                {
+                    b.HasOne("Humans.Domain.Entities.EventSettings", null)
+                        .WithMany()
+                        .HasForeignKey("EventSettingsId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Humans.Domain.Entities.VolunteerEventProfile", b =>
                 {
                     b.HasOne("Humans.Domain.Entities.User", null)
@@ -5557,6 +5616,11 @@ namespace Humans.Infrastructure.Migrations
             modelBuilder.Entity("Humans.Domain.Entities.CampRoleDefinition", b =>
                 {
                     b.Navigation("Assignments");
+                });
+
+            modelBuilder.Entity("Humans.Domain.Entities.CampSeason", b =>
+                {
+                    b.Navigation("Members");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.Campaign", b =>

@@ -78,6 +78,7 @@ public sealed class CampRepository : ICampRepository
         var query = ctx.Camps
             .AsNoTracking()
             .Include(c => c.Seasons.Where(s => s.Year == year))
+                .ThenInclude(s => s.Members.Where(m => m.Status == CampMemberStatus.Active))
             .Include(c => c.Leads.Where(l => l.LeftAt == null))
             .Where(c => c.Seasons.Any(s => s.Year == year));
 
@@ -650,6 +651,15 @@ public sealed class CampRepository : ICampRepository
         await ctx.SaveChangesAsync(ct);
     }
 
+    public async Task SetEeStartDateAsync(
+        LocalDate? eeStartDate, CancellationToken cancellationToken = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(cancellationToken);
+        var settings = await ctx.CampSettings.FirstAsync(cancellationToken);
+        settings.EeStartDate = eeStartDate;
+        await ctx.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task<bool> OpenSeasonAsync(int year, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
@@ -946,5 +956,36 @@ public sealed class CampRepository : ICampRepository
 
         return await ctx.CampLeads
             .CountAsync(l => l.UserId == targetUserId, ct);
+    }
+
+    // ==========================================================================
+    // Early Entry
+    // ==========================================================================
+
+    public async Task<int> GetGrantedCountForSeasonAsync(
+        Guid campSeasonId, CancellationToken cancellationToken = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(cancellationToken);
+        return await ctx.CampMembers
+            .CountAsync(m => m.CampSeasonId == campSeasonId
+                          && m.HasEarlyEntry
+                          && m.Status == CampMemberStatus.Active,
+                        cancellationToken);
+    }
+
+    public async Task<(int OldValue, int NewValue, Guid CampId)?> SetCampSeasonEeSlotCountAsync(
+        Guid campSeasonId, int slotCount, CancellationToken cancellationToken = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(cancellationToken);
+        var season = await ctx.CampSeasons
+            .FirstOrDefaultAsync(s => s.Id == campSeasonId, cancellationToken);
+        if (season is null) return null;
+
+        var oldValue = season.EeSlotCount;
+        if (oldValue == slotCount) return (oldValue, slotCount, season.CampId);
+
+        season.EeSlotCount = slotCount;
+        await ctx.SaveChangesAsync(cancellationToken);
+        return (oldValue, slotCount, season.CampId);
     }
 }

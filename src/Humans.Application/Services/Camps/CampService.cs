@@ -268,7 +268,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
     {
         var settings = await GetSettingsAsync(cancellationToken);
         var year = settings.PublicYear;
-        var camps = await GetCampsForYearAsync(year, cancellationToken);
+        var camps = await GetCampEntitiesForYearAsync(year, cancellationToken);
 
         // Pull the user's currently-led camps once so we can both (a) pin them to the
         // top of the public listing and (b) build the "my pending camps" panel below.
@@ -305,7 +305,14 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         return new CampDirectoryResult(year, pendingCount, cards, myCamps);
     }
 
-    public async Task<List<Camp>> GetCampsForYearAsync(
+    public async Task<IReadOnlyList<CampInfo>> GetCampsForYearAsync(
+        int year, CancellationToken cancellationToken = default)
+    {
+        var camps = await GetCampEntitiesForYearAsync(year, cancellationToken);
+        return camps.Select(camp => CreateCampInfo(camp, includeLeads: false)).ToList();
+    }
+
+    private async Task<List<Camp>> GetCampEntitiesForYearAsync(
         int year, CancellationToken cancellationToken = default)
     {
         var cached = await _cache.GetOrCreateAsync(
@@ -322,7 +329,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
     public async Task<IReadOnlyList<(Guid CampId, string CampName, string CampSlug, Guid CampSeasonId)>>
         GetCampSeasonsForComplianceAsync(int year, CancellationToken cancellationToken = default)
     {
-        var camps = await GetCampsForYearAsync(year, cancellationToken);
+        var camps = await GetCampEntitiesForYearAsync(year, cancellationToken);
         // Camp.Name lives on CampSeason, not Camp — pull s.Name not c.Name (deviation
         // from plan; reflects actual schema where the canonical name is per-season).
         return camps.SelectMany(c => c.Seasons.Where(s => s.Year == year).Select(s =>
@@ -333,7 +340,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         int year,
         CancellationToken cancellationToken = default)
     {
-        var camps = await GetCampsForYearAsync(year, cancellationToken);
+        var camps = await GetCampEntitiesForYearAsync(year, cancellationToken);
 
         return camps
             .Where(c => c.HasPublicSeasonForYear(year))
@@ -346,7 +353,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         int year,
         CancellationToken cancellationToken = default)
     {
-        var camps = await GetCampsForYearAsync(year, cancellationToken);
+        var camps = await GetCampEntitiesForYearAsync(year, cancellationToken);
 
         return camps
             .Where(c => c.HasPublicSeasonForYear(year))
@@ -358,14 +365,14 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
     }
 
     /// <inheritdoc />
-    public async Task<List<Camp>> GetCampsWithLeadsForYearAsync(
+    public async Task<IReadOnlyList<CampInfo>> GetCampsWithLeadsForYearAsync(
         int year,
         IReadOnlyList<CampSeasonStatus>? statusFilter = null,
         CancellationToken cancellationToken = default)
     {
         var camps = await _repo.GetCampsWithLeadsForYearAsync(
             year, statusFilter, cancellationToken);
-        return camps.ToList();
+        return camps.Select(camp => CreateCampInfo(camp, includeLeads: true)).ToList();
     }
 
     public async Task<CampSettings> GetSettingsAsync(CancellationToken cancellationToken = default)
@@ -381,10 +388,12 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         return cached ?? throw new InvalidOperationException("Camp settings not found.");
     }
 
-    public async Task<List<CampSeason>> GetPendingSeasonsAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<CampSeasonInfo>> GetPendingSeasonsAsync(CancellationToken cancellationToken = default)
     {
         var seasons = await _repo.GetPendingSeasonsAsync(cancellationToken);
-        return seasons.ToList();
+        return seasons
+            .Select(s => CreateCampSeasonInfo(s, s.Camp?.Slug ?? string.Empty))
+            .ToList();
     }
 
     public async Task<IReadOnlyList<CampSearchHit>> SearchAsync(
@@ -457,6 +466,50 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             season?.SoundZone,
             season?.Status ?? CampSeasonStatus.Pending,
             camp.TimesAtNowhere);
+    }
+
+    private static CampInfo CreateCampInfo(Camp camp, bool includeLeads)
+    {
+        return new CampInfo(
+            camp.Id,
+            camp.Slug,
+            camp.ContactEmail,
+            camp.ContactPhone,
+            camp.IsSwissCamp,
+            camp.TimesAtNowhere,
+            camp.Seasons.Select(s => CreateCampSeasonInfo(s, camp.Slug, includeEarlyEntryGrantCount: includeLeads)).ToList(),
+            includeLeads
+                ? camp.Leads.Select(l => new CampLeadInfo(l.Id, l.UserId, l.IsActive)).ToList()
+                : null);
+    }
+
+    private static CampSeasonInfo CreateCampSeasonInfo(
+        CampSeason season,
+        string campSlug,
+        bool includeEarlyEntryGrantCount = false)
+    {
+        return new CampSeasonInfo(
+            season.Id,
+            season.CampId,
+            campSlug,
+            season.Year,
+            season.Name,
+            season.BlurbShort,
+            season.Languages,
+            season.Vibes.ToList(),
+            season.Status,
+            season.AcceptingMembers,
+            season.KidsWelcome,
+            season.AdultPlayspace,
+            season.MemberCount,
+            season.SoundZone,
+            season.SpaceRequirement,
+            season.ContainerCount,
+            season.ElectricalGrid,
+            season.EeSlotCount,
+            includeEarlyEntryGrantCount
+                ? season.Members.Count(m => m.Status == CampMemberStatus.Active && m.HasEarlyEntry)
+                : null);
     }
 
     private static IReadOnlyList<CampLink> CreateCampLinks(Camp camp)
@@ -1399,6 +1452,40 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         }
     }
 
+    /// <summary>
+    /// Single transition point for moving a CampMember to Removed. Handles the
+    /// role-assignment cascade, the state/timestamp flip (including clearing
+    /// HasEarlyEntry), and the audit-log entry. Callers handle status preconditions
+    /// before invoking and any post-effects (notifications, lead-badge
+    /// invalidation) afterward.
+    /// </summary>
+    private async Task TransitionMemberToRemovedAsync(
+        CampMember member,
+        Guid actorUserId,
+        AuditAction auditAction,
+        string auditMessage,
+        bool cascadeRoleAssignments,
+        CancellationToken cancellationToken)
+    {
+        if (cascadeRoleAssignments)
+        {
+            await _campRoleService.Value.RemoveAllForMemberAsync(
+                member.Id, actorUserId, cancellationToken);
+        }
+
+        var now = _clock.GetCurrentInstant();
+        member.Status = CampMemberStatus.Removed;
+        member.RemovedAt = now;
+        member.RemovedByUserId = actorUserId;
+        member.HasEarlyEntry = false;
+        await _repo.SaveMemberAsync(member, cancellationToken);
+
+        await _auditLog.LogAsync(
+            auditAction, nameof(CampMember), member.Id,
+            auditMessage, actorUserId,
+            relatedEntityId: member.CampSeason.CampId, relatedEntityType: nameof(Camp));
+    }
+
     public async Task<CampMemberRequestResult> RequestCampMembershipAsync(
         Guid campId, Guid userId, CancellationToken cancellationToken = default)
     {
@@ -1490,24 +1577,17 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             ?? throw new InvalidOperationException("Camp member record not found.");
 
         if (member.Status != CampMemberStatus.Pending)
-        {
             throw new InvalidOperationException($"Cannot reject a camp member with status {member.Status}.");
-        }
 
         var requesterUserId = member.UserId;
         var seasonId = member.CampSeasonId;
 
-        var now = _clock.GetCurrentInstant();
-        member.Status = CampMemberStatus.Removed;
-        member.RemovedAt = now;
-        member.RemovedByUserId = rejectedByUserId;
-        await _repo.SaveMemberAsync(member, cancellationToken);
-
-        await _auditLog.LogAsync(
-            AuditAction.CampMemberRejected, nameof(CampMember), member.Id,
+        await TransitionMemberToRemovedAsync(
+            member, rejectedByUserId,
+            AuditAction.CampMemberRejected,
             $"Rejected camp membership request for season {member.CampSeason.Year}",
-            rejectedByUserId,
-            relatedEntityId: scopedCampId, relatedEntityType: nameof(Camp));
+            cascadeRoleAssignments: false,
+            cancellationToken);
 
         await InvalidateLeadBadgesAsync(scopedCampId, cancellationToken);
 
@@ -1537,21 +1617,14 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             ?? throw new InvalidOperationException("Camp member record not found.");
 
         if (member.Status != CampMemberStatus.Active)
-        {
             throw new InvalidOperationException($"Cannot remove a camp member with status {member.Status}.");
-        }
 
-        var now = _clock.GetCurrentInstant();
-        member.Status = CampMemberStatus.Removed;
-        member.RemovedAt = now;
-        member.RemovedByUserId = removedByUserId;
-        await _repo.SaveMemberAsync(member, cancellationToken);
-
-        await _auditLog.LogAsync(
-            AuditAction.CampMemberRemoved, nameof(CampMember), member.Id,
+        await TransitionMemberToRemovedAsync(
+            member, removedByUserId,
+            AuditAction.CampMemberRemoved,
             $"Removed camp member from season {member.CampSeason.Year}",
-            removedByUserId,
-            relatedEntityId: scopedCampId, relatedEntityType: nameof(Camp));
+            cascadeRoleAssignments: true,
+            cancellationToken);
     }
 
     public async Task<Guid> AddCampMemberAsLeadAsync(Guid campSeasonId, Guid userId, Guid actorUserId, CancellationToken cancellationToken = default)
@@ -1588,24 +1661,14 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             ?? throw new InvalidOperationException("Camp member record not found.");
 
         if (member.Status != CampMemberStatus.Pending)
-        {
             throw new InvalidOperationException($"Cannot withdraw a camp member request with status {member.Status}.");
-        }
 
-        // Cascade role-assignment cleanup before soft-delete (C1 fix).
-        await _campRoleService.Value.RemoveAllForMemberAsync(campMemberId, userId, cancellationToken);
-
-        var now = _clock.GetCurrentInstant();
-        member.Status = CampMemberStatus.Removed;
-        member.RemovedAt = now;
-        member.RemovedByUserId = userId;
-        await _repo.SaveMemberAsync(member, cancellationToken);
-
-        await _auditLog.LogAsync(
-            AuditAction.CampMemberWithdrawn, nameof(CampMember), member.Id,
+        await TransitionMemberToRemovedAsync(
+            member, userId,
+            AuditAction.CampMemberWithdrawn,
             $"Withdrew camp membership request for season {member.CampSeason.Year}",
-            userId,
-            relatedEntityId: member.CampSeason.CampId, relatedEntityType: nameof(Camp));
+            cascadeRoleAssignments: true,
+            cancellationToken);
 
         await InvalidateLeadBadgesAsync(member.CampSeason.CampId, cancellationToken);
     }
@@ -1617,24 +1680,14 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             ?? throw new InvalidOperationException("Camp member record not found.");
 
         if (member.Status != CampMemberStatus.Active)
-        {
             throw new InvalidOperationException($"Cannot leave a camp membership with status {member.Status}.");
-        }
 
-        // Cascade role-assignment cleanup before soft-delete (C1 fix).
-        await _campRoleService.Value.RemoveAllForMemberAsync(campMemberId, userId, cancellationToken);
-
-        var now = _clock.GetCurrentInstant();
-        member.Status = CampMemberStatus.Removed;
-        member.RemovedAt = now;
-        member.RemovedByUserId = userId;
-        await _repo.SaveMemberAsync(member, cancellationToken);
-
-        await _auditLog.LogAsync(
-            AuditAction.CampMemberLeft, nameof(CampMember), member.Id,
+        await TransitionMemberToRemovedAsync(
+            member, userId,
+            AuditAction.CampMemberLeft,
             $"Left camp season {member.CampSeason.Year}",
-            userId,
-            relatedEntityId: member.CampSeason.CampId, relatedEntityType: nameof(Camp));
+            cascadeRoleAssignments: true,
+            cancellationToken);
     }
 
     public async Task<CampMembershipState> GetMembershipStateForCampAsync(
@@ -1692,7 +1745,8 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             .Where(m => m.Status == CampMemberStatus.Pending)
             .Select(m => new CampMemberRow(
                 m.Id, m.UserId, DisplayName(m.UserId, userMap), m.RequestedAt, m.ConfirmedAt,
-                IsLead: leadUserIds.Contains(m.UserId)))
+                IsLead: leadUserIds.Contains(m.UserId),
+                HasEarlyEntry: false))
             .ToList();
 
         var activeMemberUserIds = members
@@ -1704,7 +1758,8 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             .Where(m => m.Status == CampMemberStatus.Active)
             .Select(m => new CampMemberRow(
                 m.Id, m.UserId, DisplayName(m.UserId, userMap), m.RequestedAt, m.ConfirmedAt,
-                IsLead: leadUserIds.Contains(m.UserId)));
+                IsLead: leadUserIds.Contains(m.UserId),
+                HasEarlyEntry: m.HasEarlyEntry));
 
         var activeFromLeads = activeLeads
             .Where(l => !activeMemberUserIds.Contains(l.UserId))
@@ -1714,7 +1769,8 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
                 DisplayName: DisplayName(l.UserId, userMap),
                 RequestedAt: l.JoinedAt,
                 ConfirmedAt: l.JoinedAt,
-                IsLead: true));
+                IsLead: true,
+                HasEarlyEntry: false));
 
         var active = activeFromMembers
             .Concat(activeFromLeads)
@@ -1722,7 +1778,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             .ThenBy(r => r.DisplayName, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        return new CampMemberListData(campSeasonId, season.Year, pending, active);
+        return new CampMemberListData(campSeasonId, season.Year, season.EeSlotCount, pending, active);
     }
 
     public Task<IReadOnlyList<CampMember>> GetSeasonMembersAsync(
@@ -1808,5 +1864,81 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             new UserDataSlice(GdprExportSections.CampLeadAssignments, shapedLeads),
             new UserDataSlice(GdprExportSections.CampRoleAssignments, shapedRoles)
         ];
+    }
+
+    public async Task SetEeStartDateAsync(
+        LocalDate? eeStartDate, Guid actorUserId,
+        CancellationToken cancellationToken = default)
+    {
+        await _repo.SetEeStartDateAsync(eeStartDate, cancellationToken);
+        _cache.InvalidateCampSettings();
+
+        var settings = await _repo.GetSettingsReadOnlyAsync(cancellationToken)
+            ?? throw new InvalidOperationException("Camp settings not found.");
+        await _auditLog.LogAsync(
+            AuditAction.CampSettingsEeStartDateChanged,
+            nameof(CampSettings), settings.Id,
+            eeStartDate is null
+                ? "EE start date cleared."
+                : $"EE start date set to {eeStartDate.Value:yyyy-MM-dd}.",
+            actorUserId);
+    }
+
+    public async Task SetCampSeasonEeSlotCountAsync(
+        Guid campSeasonId, int slotCount, Guid actorUserId,
+        CancellationToken cancellationToken = default)
+    {
+        if (slotCount < 0)
+            throw new ArgumentOutOfRangeException(nameof(slotCount), "EE slot count cannot be negative.");
+
+        var result = await _repo.SetCampSeasonEeSlotCountAsync(campSeasonId, slotCount, cancellationToken);
+        if (result is null)
+            throw new InvalidOperationException("Camp season not found.");
+
+        var (oldValue, newValue, campId) = result.Value;
+        if (oldValue == newValue) return;
+
+        await _auditLog.LogAsync(
+            AuditAction.CampSeasonEeSlotCountChanged,
+            nameof(CampSeason), campSeasonId,
+            $"EE slot count changed from {oldValue} to {newValue}.",
+            actorUserId,
+            relatedEntityId: campId, relatedEntityType: nameof(Camp));
+        await InvalidateCampYearCachesAsync(campId, cancellationToken);
+    }
+
+    public async Task<SetEarlyEntryOutcome> SetEarlyEntryAsync(
+        Guid scopedCampId, Guid campMemberId, bool granted, Guid actorUserId,
+        CancellationToken cancellationToken = default)
+    {
+        var member = await _repo.GetMemberForCampMutationAsync(campMemberId, scopedCampId, cancellationToken);
+        if (member is null) return SetEarlyEntryOutcome.MemberNotFound;
+
+        if (member.HasEarlyEntry == granted)
+            return SetEarlyEntryOutcome.NoChange;
+
+        if (granted)
+        {
+            if (member.Status != CampMemberStatus.Active)
+                return SetEarlyEntryOutcome.MemberNotActive;
+
+            var current = await _repo.GetGrantedCountForSeasonAsync(member.CampSeasonId, cancellationToken);
+            if (current >= member.CampSeason.EeSlotCount)
+                return SetEarlyEntryOutcome.SlotCapExceeded;
+        }
+
+        member.HasEarlyEntry = granted;
+        await _repo.SaveMemberAsync(member, cancellationToken);
+
+        await _auditLog.LogAsync(
+            granted ? AuditAction.CampEarlyEntryGranted : AuditAction.CampEarlyEntryRevoked,
+            nameof(CampMember), member.Id,
+            granted
+                ? $"Granted Early Entry to member in season {member.CampSeason.Year}."
+                : $"Revoked Early Entry from member in season {member.CampSeason.Year}.",
+            actorUserId,
+            relatedEntityId: member.CampSeason.CampId, relatedEntityType: nameof(Camp));
+
+        return SetEarlyEntryOutcome.Success;
     }
 }

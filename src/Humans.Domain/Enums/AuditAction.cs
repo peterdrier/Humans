@@ -131,4 +131,18 @@ public enum AuditAction
     OrphanUserEmailDeleted,
     GhostExternalLoginsDeleted,
     LegacyIdentityEmailBackfilled,
+    CampEarlyEntryGranted,
+    CampEarlyEntryRevoked,
+    CampSeasonEeSlotCountChanged,
+    CampSettingsEeStartDateChanged,
+    VolunteerCampSetupSet,
+    VolunteerCampSetupCleared,
+    // Reserved — was wired during the first volunteer-tracking day-off
+    // iteration (renamed in the redesign; historical audit rows may still
+    // exist on dev DBs). Do not remove (audit enum is positional).
+    VolunteerDayBlocked,
+    VolunteerDayUnblocked,
+    VolunteerOwnBlockedDaysSaved,
+    VolunteerDayOffMarked,
+    VolunteerDayOffCleared,
 }

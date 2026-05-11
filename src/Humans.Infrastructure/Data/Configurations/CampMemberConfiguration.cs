@@ -14,7 +14,7 @@ public class CampMemberConfiguration : IEntityTypeConfiguration<CampMember>
         builder.Property(m => m.RequestedAt).IsRequired();
 
         builder.HasOne(m => m.CampSeason)
-            .WithMany()
+            .WithMany(s => s.Members)
             .HasForeignKey(m => m.CampSeasonId)
             .OnDelete(DeleteBehavior.Cascade);
 

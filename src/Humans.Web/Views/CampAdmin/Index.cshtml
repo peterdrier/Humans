@@ -296,6 +296,33 @@
     </div>
 </div>
 
+@* Early Entry summary + start-date editor *@
+<div class="card mb-4">
+    <div class="card-header">
+        <i class="fa-solid fa-ticket me-2"></i>Early Entry (@Model.PublicYear)
+    </div>
+    <div class="card-body">
+        @{
+            var totalSlots = Model.AllCampSummaries.Sum(c => c.EeSlotCount);
+            var totalGranted = Model.AllCampSummaries.Sum(c => c.EeGrantedCount);
+        }
+        <p class="mb-2">
+            <strong>@totalGranted granted</strong> across <strong>@totalSlots configured slots</strong>
+            @if (totalGranted > totalSlots)
+            {
+                <span class="badge bg-warning ms-2">over cap</span>
+            }
+        </p>
+        <form method="post" asp-controller="CampAdmin" asp-action="SetEeStartDate" class="d-flex align-items-center gap-2">
+            @Html.AntiForgeryToken()
+            <label class="form-label mb-0">EE start date:</label>
+            <input type="date" name="eeStartDate" class="form-control form-control-sm" style="max-width:180px;"
+                   value="@(Model.EeStartDate?.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture))" />
+            <button type="submit" class="btn btn-sm btn-primary text-nowrap">Save</button>
+        </form>
+    </div>
+</div>
+
 @* Camp Summary Table *@
 @if (Model.AllCampSummaries.Count > 0)
 {
@@ -313,6 +340,7 @@
                         <th>Zone</th>
                         <th>Space</th>
                         <th class="text-end">Years</th>
+                        <th>EE Slots</th>
                         <th>Lead(s)</th>
                     </tr>
                 </thead>
@@ -328,6 +356,28 @@
                             <td>@camp.Zone</td>
                             <td>@camp.SpaceRequirement</td>
                             <td class="text-end">@camp.YearsParticipating</td>
+                            <td>
+                                @if (camp.SeasonId.HasValue)
+                                {
+                                    <form method="post" asp-controller="CampAdmin" asp-action="SetCampSeasonEeSlotCount"
+                                          asp-route-seasonId="@camp.SeasonId" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="number" name="slotCount" min="0"
+                                               value="@camp.EeSlotCount"
+                                               class="form-control form-control-sm d-inline" style="width:5rem" />
+                                        <small class="text-muted ms-1">@camp.EeGrantedCount / @camp.EeSlotCount</small>
+                                        @if (camp.EeGrantedCount > camp.EeSlotCount)
+                                        {
+                                            <span class="badge bg-warning ms-1">over</span>
+                                        }
+                                        <button type="submit" class="btn btn-sm btn-outline-primary ms-1">Save</button>
+                                    </form>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">—</span>
+                                }
+                            </td>
                             <td>
                                 @foreach (var lead in camp.Leads)
                                 {

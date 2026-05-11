@@ -21,6 +21,8 @@ public class CampSettingsConfiguration : IEntityTypeConfiguration<CampSettings>
                     v => v.Aggregate(0, (hash, item) => HashCode.Combine(hash, item)),
                     v => v.ToList()));
 
+        builder.Property(s => s.EeStartDate); // nullable LocalDate; default conversion via Npgsql NodaTime
+
         // Reserved GUID block: 0010. See docs/guid-reservations.md.
         builder.HasData(new CampSettings
         {

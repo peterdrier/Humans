@@ -95,7 +95,12 @@ public class InterfaceMethodBudgetTests
         // 51→52: issue-682 global search — added SearchAsync(query, max).
         // Authorized exception (Peter, 2026-05-09): queries against camps
         // must live in the owning section per design-rules §6.
-        [typeof(ICampService)] = 52,
+        // 52→55: issue-490 — Early Entry (camps consumer). Added
+        // SetEeStartDateAsync, SetCampSeasonEeSlotCountAsync, SetEarlyEntryAsync.
+        // Authorized by Peter 2026-05-10. EE state lives on CampSeason/CampMember/
+        // CampSettings — tables ICampService already owns — so the methods belong
+        // here per design-rules §6 (no service split).
+        [typeof(ICampService)] = 55,
         // +1: GetOverallCoverageAsync for admin dashboard shift-coverage tile (peterdrier#349).
         // 50→50: account-merge fold redesign Phase 3.2. Added
         // ReassignProfilesAndTagPrefsToUserAsync; removed CanManageShiftsAsync
