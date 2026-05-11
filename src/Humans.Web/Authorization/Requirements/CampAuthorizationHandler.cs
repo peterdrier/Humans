@@ -30,6 +30,7 @@ public class CampAuthorizationHandler : AuthorizationHandler<CampOperationRequir
         {
             CampLookup camp => camp.Id,
             Camp camp => camp.Id,
+            Guid id => id,
             _ => (Guid?)null
         };
 

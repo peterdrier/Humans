@@ -50,12 +50,15 @@ public sealed class CampAuthorizationHandlerTests
         var user = CreateUser(userKind, regularUserId);
         var camp = CreateCamp(campKind);
         var campLookup = CreateCampLookup(campKind);
+        var campId = camp.Id;
 
         var result = await EvaluateAsync(user, camp);
         var lookupResult = await EvaluateAsync(user, campLookup);
+        var idResult = await EvaluateAsync(user, campId);
 
         result.Should().Be(expected);
         lookupResult.Should().Be(expected);
+        idResult.Should().Be(expected);
     }
 
     private async Task<bool> EvaluateAsync(ClaimsPrincipal user, object resource)

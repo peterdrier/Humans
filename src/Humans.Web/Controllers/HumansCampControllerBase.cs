@@ -27,9 +27,9 @@ public abstract class HumansCampControllerBase : HumansControllerBase
         return _campService.GetCampBySlugAsync(slug, cancellationToken);
     }
 
-    protected async Task<(bool IsLead, bool IsCampAdmin)> ResolveCampViewerStateAsync(CampLookup camp, User? user, CancellationToken cancellationToken = default)
+    protected async Task<(bool IsLead, bool IsCampAdmin)> ResolveCampViewerStateAsync(Guid campId, User? user, CancellationToken cancellationToken = default)
     {
-        var canManage = (await _authorizationService.AuthorizeAsync(User, camp, CampOperationRequirement.Manage)).Succeeded;
+        var canManage = (await _authorizationService.AuthorizeAsync(User, campId, CampOperationRequirement.Manage)).Succeeded;
         if (!canManage)
         {
             return (false, false);
@@ -40,7 +40,7 @@ public abstract class HumansCampControllerBase : HumansControllerBase
             return (false, false);
         }
 
-        var isLead = await _campService.IsUserCampLeadAsync(user.Id, camp.Id, cancellationToken);
+        var isLead = await _campService.IsUserCampLeadAsync(user.Id, campId, cancellationToken);
         var isCampAdmin = Authorization.RoleChecks.IsCampAdmin(User);
 
         return (isLead, isCampAdmin);
