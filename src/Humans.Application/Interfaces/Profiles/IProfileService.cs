@@ -16,6 +16,7 @@ namespace Humans.Application.Interfaces.Profiles;
 /// <remarks>
 /// Surface-budget recent history (newest first):
 /// <list type="bullet">
+///   <item>2026-05-12 — 30→31: Expenses Phase 6 (PR #491). Added SetIbanAsync — IBAN set/clear on Profile via the expense-report IBAN modal. Profile section owns the write; no expiable substitute (must go through the caching decorator and the audit log, which both require the IProfileService surface). Carried over from the retired InterfaceMethodBudgetTests at the rebase onto origin/main.</item>
 ///   <item>2026-05-11 — InterfaceMethodBudgetTests retired; budget migrated to [SurfaceBudget(30)] (issue nobodies-collective/Humans#700).</item>
 ///   <item>36→30 — issue nobodies-collective/Humans#685: removed RequestDeletionAsync, CancelDeletionAsync, GetEventHoldDateAsync (deletion orchestration moved to IAccountDeletionService), and GetProfileIndexDataAsync, GetProfileEditDataAsync, GetAdminHumanDetailAsync (Profile-section bundling moved to ProfileController composition).</item>
 ///   <item>39→36 — peterdrier#673 person-search consolidation: removed SearchHumansAsync, SearchHumansByNameAsync, SearchApprovedUsersAsync, GetFilteredHumansAsync (4 surfaces accreted across past PRs — each tiny variant). Added SearchProfilesAsync(query, PersonSearchFields, limit) — single bit-flag API. Net -3.</item>
@@ -24,7 +25,7 @@ namespace Humans.Application.Interfaces.Profiles;
 ///   <item>41→40 — account-merge fold final consolidation: removed ReassignSubAggregatesToUserAsync from IProfileService (moved to IUserMerge.ReassignAsync, dispatched via fan-out).</item>
 /// </list>
 /// </remarks>
-[SurfaceBudget(30)]
+[SurfaceBudget(31)]
 public interface IProfileService : IApplicationService, IUserMerge
 {
     Task<Profile?> GetProfileAsync(Guid userId, CancellationToken ct = default);
