@@ -214,6 +214,100 @@ public sealed class TicketQueryServiceTests : IDisposable
         types.Should().BeEquivalentTo(["Full Week", "VIP", "Weekend"]);
     }
 
+    [HumansFact]
+    public async Task GetMatchedUserIdsForYearAsync_ReturnsOrderAndAttendeeMatchesInsideYear()
+    {
+        var orderUserId = Guid.NewGuid();
+        var attendeeUserId = Guid.NewGuid();
+        var previousYearUserId = Guid.NewGuid();
+
+        var inYear = MakeOrder(
+            "ord_audience_2026",
+            TicketPaymentStatus.Paid,
+            Instant.FromUtc(2026, 3, 1, 10, 0),
+            100m,
+            0m,
+            9.09m,
+            1,
+            0m);
+        inYear.MatchedUserId = orderUserId;
+        inYear.Attendees.Single().MatchedUserId = attendeeUserId;
+
+        var previousYear = MakeOrder(
+            "ord_audience_2025",
+            TicketPaymentStatus.Paid,
+            Instant.FromUtc(2025, 12, 31, 23, 59),
+            100m,
+            0m,
+            9.09m,
+            1,
+            0m);
+        previousYear.MatchedUserId = previousYearUserId;
+
+        await _dbContext.TicketOrders.AddRangeAsync(inYear, previousYear);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.GetMatchedUserIdsForYearAsync(2026);
+
+        result.Should().BeEquivalentTo([orderUserId, attendeeUserId]);
+    }
+
+    [HumansFact]
+    public async Task GetMatchedTicketYearsAsync_ReturnsDistinctMatchedOrderYearsDescending()
+    {
+        var matchedUserId = Guid.NewGuid();
+
+        var latest = MakeOrder(
+            "ord_year_latest",
+            TicketPaymentStatus.Paid,
+            Instant.FromUtc(2026, 3, 1, 10, 0),
+            100m,
+            0m,
+            9.09m,
+            1,
+            0m);
+        latest.MatchedUserId = matchedUserId;
+
+        var duplicateYear = MakeOrder(
+            "ord_year_duplicate",
+            TicketPaymentStatus.Paid,
+            Instant.FromUtc(2026, 4, 1, 10, 0),
+            100m,
+            0m,
+            9.09m,
+            1,
+            0m);
+        duplicateYear.MatchedUserId = matchedUserId;
+
+        var earlier = MakeOrder(
+            "ord_year_earlier",
+            TicketPaymentStatus.Paid,
+            Instant.FromUtc(2025, 5, 1, 10, 0),
+            100m,
+            0m,
+            9.09m,
+            1,
+            0m);
+        earlier.MatchedUserId = matchedUserId;
+
+        var unmatched = MakeOrder(
+            "ord_year_unmatched",
+            TicketPaymentStatus.Paid,
+            Instant.FromUtc(2024, 5, 1, 10, 0),
+            100m,
+            0m,
+            9.09m,
+            1,
+            0m);
+
+        await _dbContext.TicketOrders.AddRangeAsync(latest, duplicateYear, earlier, unmatched);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.GetMatchedTicketYearsAsync();
+
+        result.Should().Equal(2026, 2025);
+    }
+
     // ====================================================================
     // GetOrdersPageAsync tests
     // ====================================================================

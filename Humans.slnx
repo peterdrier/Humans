@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/Humans.Analyzers/Humans.Analyzers.csproj" />
     <Project Path="src/Humans.Domain/Humans.Domain.csproj" />
     <Project Path="src/Humans.Application/Humans.Application.csproj" />
     <Project Path="src/Humans.Infrastructure/Humans.Infrastructure.csproj" />
@@ -8,6 +9,7 @@
   <Folder Name="/tests/">
     <File Path="tests/Directory.Build.props" />
     <Project Path="tests/Humans.Domain.Tests/Humans.Domain.Tests.csproj" />
+    <Project Path="tests/Humans.Analyzers.Tests/Humans.Analyzers.Tests.csproj" />
     <Project Path="tests/Humans.Application.Tests/Humans.Application.Tests.csproj" />
     <Project Path="tests/Humans.Integration.Tests/Humans.Integration.Tests.csproj" />
     <Project Path="tests/Humans.Web.Tests/Humans.Web.Tests.csproj" />

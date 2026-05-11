@@ -1,0 +1,19 @@
+<Project>
+
+  <!-- Import parent Directory.Build.props -->
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <!--
+    Apply the in-repo Humans.Analyzers to every src/ project automatically.
+    Excludes the analyzer project itself (cannot reference itself).
+    See docs/architecture/code-analysis.md for the analyzer pattern and the
+    HUMxxxx rule catalogue.
+  -->
+  <ItemGroup Condition="'$(MSBuildProjectName)' != 'Humans.Analyzers'">
+    <ProjectReference Include="$(MSBuildThisFileDirectory)Humans.Analyzers/Humans.Analyzers.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false"
+                      PrivateAssets="all" />
+  </ItemGroup>
+
+</Project>

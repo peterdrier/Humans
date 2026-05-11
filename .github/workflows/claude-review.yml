@@ -1,4 +1,4 @@
-name: Claude PR Review
+name: claude-review
 
 # Auto-review PRs using the official Anthropic claude-code-action.
 # CLAUDE_CODE_OAUTH_TOKEN (from `claude setup-token` against a Pro/Max
@@ -85,6 +85,7 @@ jobs:
           # action the workflow token directly. Empty on pull_request → action
           # falls back to OIDC and posts as claude[bot].
           github_token: ${{ github.event_name == 'pull_request_target' && secrets.GITHUB_TOKEN || '' }}
+          show_full_output: true
           prompt: |
             Review this pull request for the Nobodies Humans codebase.
 
@@ -104,6 +105,55 @@ jobs:
             (services own their data, no cross-service DB access, NodaTime,
             append-only ConsentRecord, no concurrency tokens, etc.), and
             adherence to documented invariants. Do not flag stylistic nits.
+
+            ## Existing thread state — fetch BEFORE deciding what to flag
+
+            Synchronize fires on every push. To avoid re-flagging the same
+            finding across pushes, fetch the existing review threads FIRST,
+            then suppress any new finding that matches a resolved-or-declined
+            existing thread.
+
+            Use GraphQL — the REST `/pulls/{N}/comments` endpoint does NOT
+            expose `isResolved`, so it cannot tell you which threads have
+            been resolved via the GitHub UI:
+
+              gh api graphql \
+                -F owner='${{ github.event.pull_request.base.repo.owner.login }}' \
+                -F repo='${{ github.event.pull_request.base.repo.name }}' \
+                -F pr=${{ github.event.pull_request.number }} \
+                -f query='
+                  query($owner: String!, $repo: String!, $pr: Int!) {
+                    repository(owner: $owner, name: $repo) {
+                      pullRequest(number: $pr) {
+                        reviewThreads(first: 100) {
+                          nodes {
+                            isResolved
+                            path
+                            line
+                            comments(first: 50) {
+                              nodes { author { login } body }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                '
+
+            For each thread node in the response:
+
+            - **Resolved** (`isResolved == true` — the GitHub UI "Resolve
+              conversation" button was clicked, or a reviewer marked the
+              thread done): the finding is acknowledged. Don't re-flag.
+            - **Declined / not-doing**: any reply in the thread's `comments`
+              chain containing "not doing", "declined", "out of scope",
+              "won't fix", "leaving as-is", "Peter authorized", "wontfix",
+              or similar accepted-as-is language. The deviation is
+              sanctioned. Don't re-flag.
+
+            Skip any finding you would post if it matches a
+            resolved-or-declined existing thread on the same file +
+            neighborhood. Only post genuinely new findings on the latest push.
 
             ## How to post the review (STRICT)
 
@@ -168,4 +218,4 @@ jobs:
             real findings.
           claude_args: |
             --max-turns 100
-            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr checks:*)"
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr checks:*),Bash(gh api:*)"

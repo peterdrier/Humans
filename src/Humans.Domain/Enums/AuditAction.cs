@@ -145,4 +145,8 @@ public enum AuditAction
     VolunteerOwnBlockedDaysSaved,
     VolunteerDayOffMarked,
     VolunteerDayOffCleared,
+    // Issue nobodies-collective/Humans#697: OAuth-callback reconcile audits.
+    OAuthRenameCollision,
+    OAuthRenameCollisionBlocked,
+    UserEmailDisplacedByOAuthRename,
 }
