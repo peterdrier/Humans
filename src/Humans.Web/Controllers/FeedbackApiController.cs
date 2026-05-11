@@ -110,9 +110,7 @@ public class FeedbackApiController : ControllerBase
         var report = await _feedbackService.GetFeedbackByIdAsync(id);
         if (report is null) return NotFound();
 
-        var messages = await _feedbackService.GetMessagesAsync(id);
-
-        return Ok(messages.Select(m => new
+        return Ok(report.Messages.Select(m => new
         {
             m.Id,
             SenderName = m.SenderName ?? "Unknown",

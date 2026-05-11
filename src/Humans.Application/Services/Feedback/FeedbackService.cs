@@ -527,14 +527,6 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
             if (users is not null && users.TryGetValue(r.UserId, out var reporter))
                 r.User = reporter;
 
-            if (r.ResolvedByUserId.HasValue && users is not null &&
-                users.TryGetValue(r.ResolvedByUserId.Value, out var resolver))
-                r.ResolvedByUser = resolver;
-
-            if (r.AssignedToUserId.HasValue && users is not null &&
-                users.TryGetValue(r.AssignedToUserId.Value, out var assignee))
-                r.AssignedToUser = assignee;
-
             if (r.AssignedToTeamId.HasValue && teamNames is not null &&
                 teamNames.TryGetValue(r.AssignedToTeamId.Value, out var teamName))
             {
@@ -543,15 +535,6 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
                     Id = r.AssignedToTeamId.Value,
                     Name = teamName,
                 };
-            }
-
-            foreach (var m in r.Messages)
-            {
-                if (m.SenderUserId.HasValue && users is not null &&
-                    users.TryGetValue(m.SenderUserId.Value, out var sender))
-                {
-                    m.SenderUser = sender;
-                }
             }
         }
 
@@ -571,14 +554,6 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
         if (userIds.Count == 0) return EmptyDisplayNames;
 
         var users = await _userService.GetByIdsAsync(userIds, ct);
-        foreach (var m in messages)
-        {
-            if (m.SenderUserId.HasValue && users.TryGetValue(m.SenderUserId.Value, out var sender))
-            {
-                m.SenderUser = sender;
-            }
-        }
-
         return await BuildDisplayNamesAsync(userIds, users, ct);
     }
 
