@@ -1,4 +1,5 @@
 using Humans.Application.Extensions;
+using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
@@ -38,6 +39,7 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
 {
     private readonly IUserRepository _repo;
     private readonly IFullProfileInvalidator _fullProfileInvalidator;
+    private readonly IAdminAuthorizationService _adminAuthorization;
     private readonly IClock _clock;
     private readonly ILogger<UserService> _logger;
 
@@ -47,12 +49,14 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
         IUserRepository repo,
         IUserEmailRepository userEmailRepo,
         IFullProfileInvalidator fullProfileInvalidator,
+        IAdminAuthorizationService adminAuthorization,
         IClock clock,
         ILogger<UserService> logger)
     {
         _repo = repo;
         _userEmailRepo = userEmailRepo;
         _fullProfileInvalidator = fullProfileInvalidator;
+        _adminAuthorization = adminAuthorization;
         _clock = clock;
         _logger = logger;
     }
@@ -399,10 +403,13 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
     public Task<IReadOnlyList<Guid>> GetUsersWithLoginsButNoEmailsAsync(CancellationToken ct = default) =>
         _repo.GetUsersWithLoginsButNoEmailsAsync(ct);
 
-    public Task<int> DeleteUsersAsync(
+    public async Task<int> DeleteUsersAsync(
         IReadOnlyCollection<Guid> userIds,
-        CancellationToken ct = default) =>
-        _repo.DeleteUsersAsync(userIds, ct);
+        CancellationToken ct = default)
+    {
+        await _adminAuthorization.RequireCurrentUserIsAdminAsync(ct);
+        return await _repo.DeleteUsersAsync(userIds, ct);
+    }
 
     public Task<int> DeleteAllExternalLoginsForUserAsync(Guid userId, CancellationToken ct = default) =>
         _repo.DeleteAllExternalLoginsForUserAsync(userId, ct);

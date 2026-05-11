@@ -275,7 +275,8 @@ public interface IUserService : IApplicationService
     /// <summary>
     /// Permanently deletes the requested user rows after the caller has cleared
     /// cross-section references. Also removes the users' email rows and
-    /// external login rows. Caller is responsible for full Admin authorization.
+    /// external login rows. Requires the current authenticated user to hold
+    /// the full Admin role.
     /// </summary>
     Task<int> DeleteUsersAsync(
         IReadOnlyCollection<Guid> userIds,

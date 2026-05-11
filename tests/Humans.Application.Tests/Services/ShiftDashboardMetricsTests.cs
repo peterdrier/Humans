@@ -54,6 +54,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         _service = new ShiftManagementService(
             repo,
             Substitute.For<IAuditLogService>(),
+            Substitute.For<IAdminAuthorizationService>(),
             serviceProvider,
             new MemoryCache(new MemoryCacheOptions()),
             _clock,

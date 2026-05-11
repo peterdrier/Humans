@@ -56,7 +56,8 @@ public interface IShiftManagementService : IApplicationService
 
     /// <summary>
     /// Deletes an event and all Shifts-owned rows beneath it: rotas, shifts,
-    /// and shift signups. Caller is responsible for full Admin authorization.
+    /// and shift signups. Requires the current authenticated user to hold the
+    /// full Admin role.
     /// </summary>
     Task<int> DeleteEventAsync(Guid eventSettingsId, CancellationToken cancellationToken = default);
 

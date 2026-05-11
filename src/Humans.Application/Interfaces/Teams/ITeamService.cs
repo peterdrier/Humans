@@ -606,8 +606,8 @@ public interface ITeamService : IApplicationService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Permanently deletes a team and its Teams-owned child rows. Caller is
-    /// responsible for full Admin authorization.
+    /// Permanently deletes a team and its Teams-owned child rows. Requires the
+    /// current authenticated user to hold the full Admin role.
     /// </summary>
     Task<bool> PermanentlyDeleteTeamAsync(
         Guid teamId,

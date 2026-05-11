@@ -48,6 +48,7 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
     private readonly IShiftManagementService _shiftManagementService;
     private readonly INotificationMeterCacheInvalidator _notificationMeterInvalidator;
     private readonly IShiftAuthorizationInvalidator _shiftAuthInvalidator;
+    private readonly IAdminAuthorizationService _adminAuthorization;
     private readonly IServiceProvider _serviceProvider;
     private readonly IClock _clock;
     private readonly ILogger<TeamService> _logger;
@@ -80,6 +81,7 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
         IShiftManagementService shiftManagementService,
         INotificationMeterCacheInvalidator notificationMeterInvalidator,
         IShiftAuthorizationInvalidator shiftAuthInvalidator,
+        IAdminAuthorizationService adminAuthorization,
         IServiceProvider serviceProvider,
         IClock clock,
         ILogger<TeamService> logger)
@@ -90,6 +92,7 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
         _shiftManagementService = shiftManagementService;
         _notificationMeterInvalidator = notificationMeterInvalidator;
         _shiftAuthInvalidator = shiftAuthInvalidator;
+        _adminAuthorization = adminAuthorization;
         _serviceProvider = serviceProvider;
         _clock = clock;
         _logger = logger;
@@ -1614,6 +1617,8 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
         Guid teamId,
         CancellationToken cancellationToken = default)
     {
+        await _adminAuthorization.RequireCurrentUserIsAdminAsync(cancellationToken);
+
         var team = await _repo.GetByIdAsync(teamId, cancellationToken)
             ?? throw new InvalidOperationException($"Team {teamId} not found");
 

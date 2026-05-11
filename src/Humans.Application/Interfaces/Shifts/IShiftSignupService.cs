@@ -126,8 +126,8 @@ public interface IShiftSignupService : IApplicationService
         Guid userId, string reason, CancellationToken ct = default);
 
     /// <summary>
-    /// Deletes every shift signup owned by the supplied users. Caller is
-    /// responsible for full Admin authorization.
+    /// Deletes every shift signup owned by the supplied users. Requires the
+    /// current authenticated user to hold the full Admin role.
     /// </summary>
     Task<int> DeleteAllForUsersAsync(
         IReadOnlyCollection<Guid> userIds,

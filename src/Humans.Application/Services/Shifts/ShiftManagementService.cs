@@ -54,6 +54,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
 
     private readonly IShiftManagementRepository _repo;
     private readonly IAuditLogService _auditLogService;
+    private readonly IAdminAuthorizationService _adminAuthorization;
     private readonly IServiceProvider _serviceProvider;
     private readonly IMemoryCache _cache;
     private readonly IClock _clock;
@@ -76,6 +77,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
     public ShiftManagementService(
         IShiftManagementRepository repo,
         IAuditLogService auditLogService,
+        IAdminAuthorizationService adminAuthorization,
         IServiceProvider serviceProvider,
         IMemoryCache cache,
         IClock clock,
@@ -83,6 +85,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
     {
         _repo = repo;
         _auditLogService = auditLogService;
+        _adminAuthorization = adminAuthorization;
         _serviceProvider = serviceProvider;
         _cache = cache;
         _clock = clock;
@@ -188,10 +191,13 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         }
     }
 
-    public Task<int> DeleteEventAsync(
+    public async Task<int> DeleteEventAsync(
         Guid eventSettingsId,
-        CancellationToken cancellationToken = default) =>
-        _repo.DeleteEventCascadeAsync(eventSettingsId, cancellationToken);
+        CancellationToken cancellationToken = default)
+    {
+        await _adminAuthorization.RequireCurrentUserIsAdminAsync(cancellationToken);
+        return await _repo.DeleteEventCascadeAsync(eventSettingsId, cancellationToken);
+    }
 
     public int GetAvailableEeSlots(EventSettings settings, int dayOffset)
     {
