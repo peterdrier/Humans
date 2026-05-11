@@ -35,7 +35,7 @@
             <i class="fa-solid fa-plus me-1"></i> @Localizer["Common_Add"]
         </button>
     }
-    @if (Model.CanManage || Model.IsPlacementOpen)
+    @if (Model.CanManage && !Model.IsLeadButPhaseClosed)
     {
         <a asp-controller="CityPlanning" asp-action="ContainerMap" asp-route-year="@Model.CurrentYear"
            class="btn btn-outline-primary btn-sm ms-auto">

@@ -223,18 +223,6 @@ public sealed class ContainerService : IContainerService
         return new ContainerAdminOverview(year, orgContainers, campGroups);
     }
 
-    public async Task<bool> CanUserPlaceContainerAsync(
-        Guid userId, ContainerDto container, bool isMapAdmin, CancellationToken ct = default)
-    {
-        if (isMapAdmin) return true;
-        if (container.CampId == SystemCampIds.Organization) return false;
-
-        var settings = await _cityPlanningService.GetSettingsAsync(ct);
-        if (!settings.IsContainerPlacementOpen) return false;
-
-        return await _campService.IsUserCampLeadAsync(userId, container.CampId, ct);
-    }
-
     private static void ValidateImage(ContainerImageUpload? image)
     {
         if (image is null) return;

@@ -25,14 +25,6 @@ public interface IContainerService : IApplicationService
     /// </summary>
     Task<ContainerAdminOverview> GetAdminOverviewAsync(int year, CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns true iff the user may save/clear a container's placement —
-    /// either as a map admin (caller passes that flag) or as the camp lead
-    /// of the container's owning camp during an open placement phase.
-    /// Org-level containers (CampId == SystemCampIds.Organization) can only
-    /// be placed by map admins.
-    /// </summary>
-    Task<bool> CanUserPlaceContainerAsync(Guid userId, ContainerDto container, bool isMapAdmin, CancellationToken ct = default);
 }
 
 public record ContainerAdminOverview(

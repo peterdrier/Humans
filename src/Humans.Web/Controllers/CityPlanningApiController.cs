@@ -4,6 +4,7 @@ using Humans.Application.Interfaces.CitiPlanning;
 using Humans.Application.Interfaces.Containers;
 using Humans.Domain.Entities;
 using Humans.Web.Authorization;
+using Humans.Web.Authorization.Requirements;
 using Humans.Web.Extensions;
 using Humans.Web.Hubs;
 using Microsoft.AspNetCore.Authorization;
@@ -21,6 +22,7 @@ public class CityPlanningApiController : ControllerBase
     private readonly ICityPlanningService _cityPlanningService;
     private readonly ICampService _campService;
     private readonly IContainerService _containerService;
+    private readonly IAuthorizationService _authorizationService;
     private readonly IHubContext<CityPlanningHub> _hubContext;
     private readonly UserManager<User> _userManager;
     private readonly ILogger<CityPlanningApiController> _logger;
@@ -29,6 +31,7 @@ public class CityPlanningApiController : ControllerBase
         ICityPlanningService cityPlanningService,
         ICampService campService,
         IContainerService containerService,
+        IAuthorizationService authorizationService,
         IHubContext<CityPlanningHub> hubContext,
         UserManager<User> userManager,
         ILogger<CityPlanningApiController> logger)
@@ -36,6 +39,7 @@ public class CityPlanningApiController : ControllerBase
         _cityPlanningService = cityPlanningService;
         _campService = campService;
         _containerService = containerService;
+        _authorizationService = authorizationService;
         _hubContext = hubContext;
         _userManager = userManager;
         _logger = logger;
@@ -274,15 +278,12 @@ public class CityPlanningApiController : ControllerBase
         [FromBody] SaveContainerPlacementRequest request,
         CancellationToken cancellationToken)
     {
-        var userId = CurrentUserId();
         var container = await _containerService.GetByIdAsync(id, cancellationToken);
         if (container is null) return NotFound();
 
-        var isMapAdmin = await IsMapAdminAsync(userId, cancellationToken);
-        if (!await _containerService.CanUserPlaceContainerAsync(userId, container, isMapAdmin, cancellationToken))
-        {
-            return Forbid();
-        }
+        var entity = new Container { Id = container.Id, CampId = container.CampId };
+        var authResult = await _authorizationService.AuthorizeAsync(User, entity, ContainerPlacementRequirement.Place);
+        if (!authResult.Succeeded) return Forbid();
 
         if (string.IsNullOrWhiteSpace(request.GeoJson) || !IsValidContainerPlacementGeoJson(request.GeoJson))
         {
@@ -298,15 +299,12 @@ public class CityPlanningApiController : ControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ClearContainerPlacement(Guid id, int year, CancellationToken cancellationToken)
     {
-        var userId = CurrentUserId();
         var container = await _containerService.GetByIdAsync(id, cancellationToken);
         if (container is null) return NotFound();
 
-        var isMapAdmin = await IsMapAdminAsync(userId, cancellationToken);
-        if (!await _containerService.CanUserPlaceContainerAsync(userId, container, isMapAdmin, cancellationToken))
-        {
-            return Forbid();
-        }
+        var entity = new Container { Id = container.Id, CampId = container.CampId };
+        var authResult = await _authorizationService.AuthorizeAsync(User, entity, ContainerPlacementRequirement.Place);
+        if (!authResult.Succeeded) return Forbid();
 
         await _containerService.ClearPlacementAsync(id, year, cancellationToken);
         return NoContent();

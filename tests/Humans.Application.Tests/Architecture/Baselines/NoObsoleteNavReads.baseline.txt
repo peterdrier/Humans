@@ -202,6 +202,8 @@ src/Humans.Web/Authorization/Requirements/CampAuthorizationHandler.cs:User#1
 src/Humans.Web/Authorization/Requirements/CampAuthorizationHandler.cs:User#2
 src/Humans.Web/Authorization/Requirements/ContainerAuthorizationHandler.cs:User#1
 src/Humans.Web/Authorization/Requirements/ContainerAuthorizationHandler.cs:User#2
+src/Humans.Web/Authorization/Requirements/ContainerPlacementAuthorizationHandler.cs:User#1
+src/Humans.Web/Authorization/Requirements/ContainerPlacementAuthorizationHandler.cs:User#2
 src/Humans.Web/Authorization/Requirements/HumanAdminOnlyHandler.cs:User#1
 src/Humans.Web/Authorization/Requirements/IsActiveMemberHandler.cs:User#1
 src/Humans.Web/Authorization/Requirements/IsAnyTeamManagerOrCoordinatorHandler.cs:User#1
