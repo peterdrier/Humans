@@ -164,11 +164,12 @@ public sealed class EmailProblemsService : IEmailProblemsService
     }
 
     public async Task<IReadOnlyList<(Guid UserId, string Email)>> BackfillLegacyIdentityEmailsAsync(
-        CancellationToken ct = default)
+        Guid actorUserId, CancellationToken ct = default)
     {
         var users = await _userService.GetAllUsersAsync(ct);
-        var emailsByUser = await _userEmailService.GetEntitiesByUserIdsAsync(
-            users.Select(u => u.Id).ToList(), ct);
+        var userIds = users.Select(u => u.Id).ToList();
+        var emailsByUser = await _userEmailService.GetEntitiesByUserIdsAsync(userIds, ct);
+        var loginsByUser = await _userService.GetExternalLoginsByUserIdsAsync(userIds, ct);
 
         var backfilled = new List<(Guid, string)>();
 
@@ -184,7 +185,24 @@ public sealed class EmailProblemsService : IEmailProblemsService
                 && string.Equals(e.Email, legacy, StringComparison.OrdinalIgnoreCase)))
                 continue;
 
-            await _userEmailService.AddVerifiedEmailAsync(u.Id, legacy, ct);
+            // Prefer LinkAsync when the user has an external login — it inserts
+            // the UserEmail row already tagged with (Provider, ProviderKey) so a
+            // subsequent OAuth sign-in finds the row by FindByProviderKeyAsync
+            // and doesn't need to re-tag. Falls back to AddVerifiedEmailAsync
+            // for users with no OAuth login (legacy magic-link-only accounts).
+            // When multiple external logins exist, the first one wins —
+            // additional providers self-heal on their respective OAuth callbacks
+            // via the rename/backfill branch in AccountController.
+            if (loginsByUser.TryGetValue(u.Id, out var logins) && logins.Count > 0)
+            {
+                var (provider, providerKey) = logins[0];
+                await _userEmailService.LinkAsync(
+                    u.Id, provider, providerKey, legacy, actorUserId: actorUserId, ct);
+            }
+            else
+            {
+                await _userEmailService.AddVerifiedEmailAsync(u.Id, legacy, ct);
+            }
             backfilled.Add((u.Id, legacy));
         }
 

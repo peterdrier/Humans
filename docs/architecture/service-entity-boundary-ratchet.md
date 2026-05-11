@@ -28,6 +28,7 @@ The target pattern is already visible in Profiles and Teams:
 - Cross-section callers must never use repositories to bypass the service boundary.
 - Web classes must not inject repositories.
 - Application services must not inject another section's repository; cross-section calls go through the owning service.
+- Users, Profiles, and UserEmail are one ownership section: Humans. Do not move code between `Services.Users` and `Services.Profile`, and do not add wrapper service methods, just to satisfy this ratchet.
 
 ## Enforcement
 
