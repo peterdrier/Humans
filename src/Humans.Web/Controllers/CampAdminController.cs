@@ -120,7 +120,7 @@ public class CampAdminController : HumansControllerBase
                 {
                     Id = s.CampId,
                     SeasonId = s.Id,
-                    Slug = s.Camp?.Slug ?? string.Empty,
+                    Slug = s.CampSlug,
                     Name = s.Name,
                     BlurbShort = s.BlurbShort,
                     Status = s.Status

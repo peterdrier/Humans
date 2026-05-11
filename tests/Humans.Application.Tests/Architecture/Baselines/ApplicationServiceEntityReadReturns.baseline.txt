@@ -32,9 +32,6 @@ Humans.Application.Interfaces.Camps.ICampRoleService.GetDefinitionByIdAsync:Huma
 Humans.Application.Interfaces.Camps.ICampRoleService.ListDefinitionsAsync:Humans.Domain.Entities.CampRoleDefinition
 Humans.Application.Interfaces.Camps.ICampService.GetCampBySlugAsync:Humans.Domain.Entities.Camp
 Humans.Application.Interfaces.Camps.ICampService.GetCampSeasonByIdAsync:Humans.Domain.Entities.CampSeason
-Humans.Application.Interfaces.Camps.ICampService.GetCampsForYearAsync:Humans.Domain.Entities.Camp
-Humans.Application.Interfaces.Camps.ICampService.GetCampsWithLeadsForYearAsync:Humans.Domain.Entities.Camp
-Humans.Application.Interfaces.Camps.ICampService.GetPendingSeasonsAsync:Humans.Domain.Entities.CampSeason
 Humans.Application.Interfaces.Camps.ICampService.GetSeasonMembersAsync:Humans.Domain.Entities.CampMember
 Humans.Application.Interfaces.Camps.ICampService.GetSettingsAsync:Humans.Domain.Entities.CampSettings
 Humans.Application.Interfaces.CitiPlanning.ICityPlanningService.GetSettingsAsync:Humans.Domain.Entities.CityPlanningSettings

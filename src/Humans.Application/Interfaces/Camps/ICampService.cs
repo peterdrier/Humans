@@ -40,7 +40,7 @@ public interface ICampService : IApplicationService
         Guid? userId,
         CampDirectoryFilter? filter = null,
         CancellationToken cancellationToken = default);
-    Task<List<Camp>> GetCampsForYearAsync(int year, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<CampInfo>> GetCampsForYearAsync(int year, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<CampPublicSummary>> GetCampPublicSummariesForYearAsync(int year, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<CampPlacementSummary>> GetCampPlacementSummariesForYearAsync(int year, CancellationToken cancellationToken = default);
     Task<CampSettings> GetSettingsAsync(CancellationToken cancellationToken = default);
@@ -48,8 +48,8 @@ public interface ICampService : IApplicationService
     /// Gets camps with their active leads (and lead user data) for a given year.
     /// Optionally filters to specific season statuses.
     /// </summary>
-    Task<List<Camp>> GetCampsWithLeadsForYearAsync(int year, IReadOnlyList<CampSeasonStatus>? statusFilter = null, CancellationToken cancellationToken = default);
-    Task<List<CampSeason>> GetPendingSeasonsAsync(CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<CampInfo>> GetCampsWithLeadsForYearAsync(int year, IReadOnlyList<CampSeasonStatus>? statusFilter = null, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<CampSeasonInfo>> GetPendingSeasonsAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Camps participating in the current public-year whose
@@ -181,6 +181,37 @@ public interface ICampService : IApplicationService
 }
 
 public sealed record CampMemberLookup(Guid CampSeasonId, Guid UserId, CampMemberStatus Status);
+
+public sealed record CampInfo(
+    Guid Id,
+    string Slug,
+    string ContactEmail,
+    string ContactPhone,
+    bool IsSwissCamp,
+    int TimesAtNowhere,
+    IReadOnlyList<CampSeasonInfo> Seasons,
+    IReadOnlyList<CampLeadInfo> Leads);
+
+public sealed record CampSeasonInfo(
+    Guid Id,
+    Guid CampId,
+    string CampSlug,
+    int Year,
+    string Name,
+    string BlurbShort,
+    string Languages,
+    IReadOnlyList<CampVibe> Vibes,
+    CampSeasonStatus Status,
+    YesNoMaybe AcceptingMembers,
+    YesNoMaybe KidsWelcome,
+    AdultPlayspacePolicy AdultPlayspace,
+    int MemberCount,
+    SoundZone? SoundZone,
+    SpaceSize? SpaceRequirement,
+    int ContainerCount,
+    ElectricalGrid? ElectricalGrid);
+
+public sealed record CampLeadInfo(Guid Id, Guid UserId, bool IsActive);
 
 /// <summary>
 /// Result of a camp membership request action.
