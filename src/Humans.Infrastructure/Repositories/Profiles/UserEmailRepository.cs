@@ -378,7 +378,12 @@ public sealed class UserEmailRepository : IUserEmailRepository
     //   - reconciles IsPrimary on the surviving rows: 0 primaries -> set the
     //     current login primary; exactly 1 -> leave alone; 2+ -> current login
     //     stays primary, others demoted
-    public async Task UpdateEmailAsync(
+    //
+    // Returns false when a cross-user collision (Postgres 23505 on the partial
+    // unique Email index — another user already verified-holds newEmail) was
+    // caught and swallowed; true on a successful write. The 23505 catch lives
+    // here so EF Core types do not leak into the Web layer.
+    public async Task<bool> UpdateEmailAsync(
         Guid userId, string provider, string providerKey, string newEmail, Instant updatedAt,
         CancellationToken ct = default)
     {
@@ -431,7 +436,23 @@ public sealed class UserEmailRepository : IUserEmailRepository
                 r.IsPrimary = (r.Id == oauthRow.Id);
         }
 
-        await ctx.SaveChangesAsync(ct);
+        try
+        {
+            await ctx.SaveChangesAsync(ct);
+            return true;
+        }
+        catch (DbUpdateException ex)
+            when (ex.InnerException is Npgsql.PostgresException { SqlState: "23505" })
+        {
+            // Cross-user collision on the partial unique Email index — another
+            // user already holds newEmail. Expected per
+            // memory/code/always-log-problems.md (LogWarning, no exception);
+            // duplicate-account detection surfaces this on its next sweep.
+            _logger.LogWarning(
+                "OAuth rename/backfill: cross-user email collision (23505) for user {UserId} {Provider} sub={Sub} — duplicate-account detection will surface.",
+                userId, provider, providerKey);
+            return false;
+        }
     }
 
     public async Task SetGoogleExclusiveAsync(

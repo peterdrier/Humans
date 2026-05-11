@@ -342,11 +342,11 @@ public interface IUserEmailService : IApplicationService
     /// Invalidates the user's <c>FullProfile</c> cache.
     ///
     /// Callable only by the OAuth sign-in callback in <c>AccountController</c>
-    /// per <c>memory/architecture/email-mutation-paths.md</c>. Cross-user
-    /// conflict on the partial unique <c>Email</c> index is allowed to
-    /// propagate as a Postgres 23505; the callback handles it.
+    /// per <c>memory/architecture/email-mutation-paths.md</c>. Returns false
+    /// when a cross-user collision was caught at the persistence layer (the
+    /// caller skips audit logging in that case); true on a successful write.
     /// </summary>
-    Task UpdateEmailAsync(
+    Task<bool> UpdateEmailAsync(
         Guid userId, string provider, string providerKey, string newEmail,
         CancellationToken cancellationToken = default);
 

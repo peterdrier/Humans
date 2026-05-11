@@ -619,13 +619,15 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
 
     // Sole legitimate caller: AccountController OAuth sign-in callback.
     // See memory/architecture/email-mutation-paths.md.
-    public async Task UpdateEmailAsync(
+    public async Task<bool> UpdateEmailAsync(
         Guid userId, string provider, string providerKey, string newEmail,
         CancellationToken cancellationToken = default)
     {
-        await _repository.UpdateEmailAsync(
+        var written = await _repository.UpdateEmailAsync(
             userId, provider, providerKey, newEmail, _clock.GetCurrentInstant(), cancellationToken);
-        await _fullProfileInvalidator.InvalidateAsync(userId, cancellationToken);
+        if (written)
+            await _fullProfileInvalidator.InvalidateAsync(userId, cancellationToken);
+        return written;
     }
 
     public async Task<IReadOnlyList<UserEmailMatch>> MatchByEmailsAsync(

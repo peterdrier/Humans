@@ -138,6 +138,9 @@ public class AccountControllerOAuthRenameDetectionTests
         };
         _userEmailService.FindByProviderKeyAsync(Provider, ProviderKey, Arg.Any<CancellationToken>())
             .Returns(new UserEmailProviderMatch(existingRow.Id, existingRow.UserId, existingRow.Email));
+        _userEmailService.UpdateEmailAsync(
+                userId, Provider, ProviderKey, newEmail, Arg.Any<CancellationToken>())
+            .Returns(true);
 
         var result = await _controller.ExternalLoginCallback(returnUrl: null, remoteError: null);
 
@@ -189,7 +192,7 @@ public class AccountControllerOAuthRenameDetectionTests
             .Returns(new UserEmailProviderMatch(existingRow.Id, existingRow.UserId, existingRow.Email));
         _userEmailService.UpdateEmailAsync(
                 userId, Provider, ProviderKey, newEmail, Arg.Any<CancellationToken>())
-            .Returns(_ => throw new InvalidOperationException("simulated 23505"));
+            .Returns<bool>(_ => throw new InvalidOperationException("simulated unexpected error"));
 
         var result = await _controller.ExternalLoginCallback(returnUrl: null, remoteError: null);
 

@@ -1188,18 +1188,37 @@ public class UserEmailServiceTests
     // and invalidates the affected user's FullProfile cache.
 
     [HumansFact]
-    public async Task UpdateEmailAsync_DelegatesToRepoAndInvalidatesCache()
+    public async Task UpdateEmailAsync_RepoWrote_DelegatesAndInvalidatesCache()
     {
         var userId = Guid.NewGuid();
+        _repository.UpdateEmailAsync(
+                userId, "Google", "sub-123", "new@x.test", _clock.GetCurrentInstant(),
+                Arg.Any<CancellationToken>())
+            .Returns(true);
 
-        await _service.UpdateEmailAsync(
+        var written = await _service.UpdateEmailAsync(
             userId, "Google", "sub-123", "new@x.test");
 
-        await _repository.Received(1).UpdateEmailAsync(
-            userId, "Google", "sub-123", "new@x.test", _clock.GetCurrentInstant(),
-            Arg.Any<CancellationToken>());
+        written.Should().BeTrue();
         await _fullProfileInvalidator.Received(1).InvalidateAsync(
             userId, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
+    }
+
+    [HumansFact]
+    public async Task UpdateEmailAsync_RepoCollision_ReturnsFalseAndDoesNotInvalidate()
+    {
+        var userId = Guid.NewGuid();
+        _repository.UpdateEmailAsync(
+                userId, "Google", "sub-123", "new@x.test", _clock.GetCurrentInstant(),
+                Arg.Any<CancellationToken>())
+            .Returns(false);
+
+        var written = await _service.UpdateEmailAsync(
+            userId, "Google", "sub-123", "new@x.test");
+
+        written.Should().BeFalse();
+        await _fullProfileInvalidator.DidNotReceive().InvalidateAsync(
+            Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
     }
 
     // ─── VerifyEmailAsync row-Id disambiguation — issue #611 ──────────────

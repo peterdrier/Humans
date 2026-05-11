@@ -230,11 +230,13 @@ public interface IUserEmailRepository : IRepository
     /// Per <c>memory/architecture/email-mutation-paths.md</c>: the sole
     /// legitimate caller is <c>UserEmailService.UpdateEmailAsync</c>, which is
     /// itself callable only by the OAuth sign-in callback in
-    /// <c>AccountController</c>. Cross-user conflict on the partial unique
-    /// <c>Email</c> index is allowed to propagate as a Postgres 23505; the
-    /// callback's existing try/catch surfaces it.
+    /// <c>AccountController</c>. Cross-user collision (Postgres 23505 on the
+    /// partial unique <c>Email</c> index — another user already holds
+    /// <paramref name="newEmail"/>) is caught inside the implementation,
+    /// logged at Warning, and surfaced as a <c>false</c> return so EF types
+    /// do not leak into the Application or Web layers.
     /// </summary>
-    Task UpdateEmailAsync(
+    Task<bool> UpdateEmailAsync(
         Guid userId, string provider, string providerKey, string newEmail, Instant updatedAt,
         CancellationToken ct = default);
 

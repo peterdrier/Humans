@@ -1,7 +1,6 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using NodaTime;
 using Humans.Domain.Entities;
@@ -384,8 +383,10 @@ public class AccountController : HumansControllerBase
                 string.Equals(match.Email, claimEmail, StringComparison.OrdinalIgnoreCase))
                 return;
 
-            await _userEmailService.UpdateEmailAsync(
+            var written = await _userEmailService.UpdateEmailAsync(
                 userId.Value, info.LoginProvider, info.ProviderKey, claimEmail);
+            if (!written)
+                return;
 
             if (match is not null)
             {
@@ -406,17 +407,6 @@ public class AccountController : HumansControllerBase
         catch (OperationCanceledException) when (HttpContext.RequestAborted.IsCancellationRequested)
         {
             throw;
-        }
-        catch (DbUpdateException dbEx)
-            when (dbEx.InnerException is Npgsql.PostgresException { SqlState: "23505" })
-        {
-            // Cross-user collision on the partial unique Email index — another
-            // user already holds claimEmail. Duplicate-account detection sweeps
-            // this on its next pass; expected in normal operation per
-            // memory/code/always-log-problems.md (LogWarning, no exception).
-            _logger.LogWarning(
-                "OAuth rename/backfill: cross-user email collision (23505) for {Provider} sub={Sub} — duplicate-account detection will surface.",
-                info.LoginProvider, info.ProviderKey);
         }
         catch (Exception ex)
         {
