@@ -5,7 +5,7 @@ namespace Humans.Web.Authorization.Requirements;
 /// <summary>
 /// Resource-based authorization requirement for camp operations.
 /// Used with IAuthorizationService.AuthorizeAsync(User, resource, requirement)
-/// where the resource is a Camp.
+/// where the resource is a camp lookup read model.
 /// </summary>
 public sealed class CampOperationRequirement : IAuthorizationRequirement
 {

@@ -1,6 +1,5 @@
 using System.Security.Claims;
 using Humans.Application.Interfaces.Camps;
-using Humans.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 
 namespace Humans.Web.Authorization.Requirements;
@@ -15,7 +14,7 @@ namespace Humans.Web.Authorization.Requirements;
 /// - Camp lead: allow only their assigned camp
 /// - Everyone else: deny
 /// </summary>
-public class CampAuthorizationHandler : AuthorizationHandler<CampOperationRequirement, Camp>
+public class CampAuthorizationHandler : AuthorizationHandler<CampOperationRequirement, CampLookup>
 {
     private readonly ICampService _campService;
 
@@ -27,7 +26,7 @@ public class CampAuthorizationHandler : AuthorizationHandler<CampOperationRequir
     protected override async Task HandleRequirementAsync(
         AuthorizationHandlerContext context,
         CampOperationRequirement requirement,
-        Camp resource)
+        CampLookup resource)
     {
         // Admin and CampAdmin can manage any camp
         if (RoleChecks.IsCampAdmin(context.User))

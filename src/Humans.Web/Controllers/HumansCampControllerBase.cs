@@ -22,12 +22,12 @@ public abstract class HumansCampControllerBase : HumansControllerBase
         _authorizationService = authorizationService;
     }
 
-    protected Task<Camp?> GetCampBySlugAsync(string slug, CancellationToken cancellationToken = default)
+    protected Task<CampLookup?> GetCampBySlugAsync(string slug, CancellationToken cancellationToken = default)
     {
         return _campService.GetCampBySlugAsync(slug, cancellationToken);
     }
 
-    protected async Task<(bool IsLead, bool IsCampAdmin)> ResolveCampViewerStateAsync(Camp camp, User? user, CancellationToken cancellationToken = default)
+    protected async Task<(bool IsLead, bool IsCampAdmin)> ResolveCampViewerStateAsync(CampLookup camp, User? user, CancellationToken cancellationToken = default)
     {
         var canManage = (await _authorizationService.AuthorizeAsync(User, camp, CampOperationRequirement.Manage)).Succeeded;
         if (!canManage)
@@ -46,7 +46,7 @@ public abstract class HumansCampControllerBase : HumansControllerBase
         return (isLead, isCampAdmin);
     }
 
-    protected async Task<(IActionResult? ErrorResult, User User, Camp Camp)> ResolveCampManagementAsync(string slug)
+    protected async Task<(IActionResult? ErrorResult, User User, CampLookup Camp)> ResolveCampManagementAsync(string slug)
     {
         var camp = await GetCampBySlugAsync(slug);
         if (camp is null)

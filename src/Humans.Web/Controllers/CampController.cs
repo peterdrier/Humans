@@ -124,7 +124,7 @@ public class CampController : HumansCampControllerBase
         if (camp is null)
             return NotFound();
 
-        var campDetail = await _campService.BuildCampDetailDataAsync(camp, cancellationToken: cancellationToken);
+        var campDetail = await _campService.BuildCampDetailDataBySlugAsync(slug, cancellationToken: cancellationToken);
         if (campDetail is null)
             return NotFound();
 
@@ -144,8 +144,8 @@ public class CampController : HumansCampControllerBase
         if (camp is null)
             return NotFound();
 
-        var campDetail = await _campService.BuildCampDetailDataAsync(
-            camp,
+        var campDetail = await _campService.BuildCampDetailDataBySlugAsync(
+            slug,
             preferredYear: year,
             fallbackToLatestSeason: false,
             cancellationToken: cancellationToken);
@@ -249,7 +249,7 @@ public class CampController : HumansCampControllerBase
             try
             {
                 var leadUserIds = camp.Leads
-                    .Where(l => l.LeftAt == null)
+                    .Where(l => l.IsActive)
                     .Select(l => l.UserId)
                     .Distinct()
                     .ToList();
