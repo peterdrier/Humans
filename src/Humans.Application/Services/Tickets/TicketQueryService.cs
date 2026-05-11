@@ -144,6 +144,19 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
         return fromAttendees.Concat(fromOrders).ToHashSet();
     }
 
+    public async Task<IReadOnlySet<Guid>> GetMatchedUserIdsForYearAsync(int year, CancellationToken ct = default)
+    {
+        var start = Instant.FromUtc(year, 1, 1, 0, 0);
+        var end = Instant.FromUtc(year + 1, 1, 1, 0, 0);
+
+        var fromOrders = await _ticketRepository.GetMatchedOrderUserIdsInWindowAsync(start, end, ct);
+        var fromAttendees = await _ticketRepository.GetMatchedAttendeeUserIdsInWindowAsync(start, end, ct);
+        return fromOrders.Concat(fromAttendees).ToHashSet();
+    }
+
+    public Task<IReadOnlyList<int>> GetMatchedTicketYearsAsync(CancellationToken ct = default) =>
+        _ticketRepository.GetMatchedOrderYearsAsync(ct);
+
     // ==========================================================================
     // Dashboard stats
     // ==========================================================================

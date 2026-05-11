@@ -1323,42 +1323,61 @@ public class ProfileController : HumansControllerBase
         }
 
         var actor = await GetCurrentUserAsync();
+        var targetUser = await FindUserByIdAsync(id);
+
+        return await AdminAddVerifiedEmailAsync(id, email.Trim(), actor, targetUser, ct);
+    }
+
+    private async Task<IActionResult> AdminAddVerifiedEmailAsync(
+        Guid userId,
+        string email,
+        User? actor,
+        User? targetUser,
+        CancellationToken ct)
+    {
         if (actor is null)
             return Forbid();
 
-        var targetUser = await FindUserByIdAsync(id);
         if (targetUser is null)
             return NotFound();
 
         try
         {
-            var inserted = await _userEmailService.AddVerifiedEmailAsync(id, email.Trim(), ct);
-            if (inserted)
-            {
-                _cache.InvalidateNobodiesTeamEmails();
-
-                await _auditLogService.LogAsync(
-                    AuditAction.UserEmailAdded,
-                    nameof(User), id,
-                    $"Admin added pre-verified email {email.Trim()} for user {id} (no verification flow)",
-                    actor.Id);
-
-                SetSuccess($"Verified email {email.Trim()} added.");
-            }
-            else
-            {
-                SetInfo($"Email {email.Trim()} already exists on this user — no change.");
-            }
+            var inserted = await _userEmailService.AddVerifiedEmailAsync(userId, email, ct);
+            await ReportVerifiedEmailAddAsync(inserted, userId, email, actor.Id);
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
             _logger.LogWarning(
                 "Admin failed to add verified email for user {UserId} ({Email}): {Reason}",
-                id, email, ex.Message);
+                userId, email, ex.Message);
             SetError(ex.Message);
         }
 
-        return RedirectToAction(nameof(AdminEmails), new { id });
+        return RedirectToAction(nameof(AdminEmails), new { id = userId });
+    }
+
+    private async Task ReportVerifiedEmailAddAsync(
+        bool inserted,
+        Guid userId,
+        string email,
+        Guid actorUserId)
+    {
+        if (!inserted)
+        {
+            SetInfo($"Email {email} already exists on this user — no change.");
+            return;
+        }
+
+        _cache.InvalidateNobodiesTeamEmails();
+
+        await _auditLogService.LogAsync(
+            AuditAction.UserEmailAdded,
+            nameof(User), userId,
+            $"Admin added pre-verified email {email} for user {userId} (no verification flow)",
+            actorUserId);
+
+        SetSuccess($"Verified email {email} added.");
     }
 
     [HttpPost("{id:guid}/Admin/Emails/Verify")]
