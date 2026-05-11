@@ -148,6 +148,9 @@ public sealed class CityPlanningService : ICityPlanningService
         settings.RegistrationInfo,
         settings.LimitZoneGeoJson,
         settings.OfficialZonesGeoJson,
+        settings.IsContainerPlacementOpen,
+        settings.ContainerPlacementOpenedAt,
+        settings.ContainerPlacementClosedAt,
         settings.UpdatedAt);
 
     public async Task<List<CampPolygonHistoryEntryDto>> GetCampPolygonHistoryAsync(

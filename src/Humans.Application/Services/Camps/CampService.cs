@@ -504,7 +504,6 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             season.MemberCount,
             season.SoundZone,
             season.SpaceRequirement,
-            season.ContainerCount,
             season.ElectricalGrid,
             season.EeSlotCount,
             includeEarlyEntryGrantCount

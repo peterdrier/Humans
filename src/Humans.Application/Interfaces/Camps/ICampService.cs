@@ -266,7 +266,6 @@ public sealed record CampSeasonInfo(
     int MemberCount,
     SoundZone? SoundZone,
     SpaceSize? SpaceRequirement,
-    int ContainerCount,
     ElectricalGrid? ElectricalGrid,
     int EeSlotCount,
     int? EeGrantedCount);

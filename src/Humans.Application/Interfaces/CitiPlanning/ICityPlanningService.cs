@@ -85,6 +85,9 @@ public record CityPlanningSettingsDto(
     string? RegistrationInfo,
     string? LimitZoneGeoJson,
     string? OfficialZonesGeoJson,
+    bool IsContainerPlacementOpen,
+    Instant? ContainerPlacementOpenedAt,
+    Instant? ContainerPlacementClosedAt,
     Instant UpdatedAt);
 
 public record SaveCampPolygonRequest(

@@ -2,7 +2,7 @@ using Humans.Domain.Entities;
 
 namespace Humans.Application.Interfaces.Repositories;
 
-public interface IContainerRepository
+public interface IContainerRepository : IRepository
 {
     Task<IReadOnlyList<Container>> GetByCampAsync(Guid campId, CancellationToken ct = default);
     Task<IReadOnlyList<Container>> GetAllAsync(CancellationToken ct = default);

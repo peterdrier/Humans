@@ -2,7 +2,7 @@ using NodaTime;
 
 namespace Humans.Application.Interfaces.Containers;
 
-public interface IContainerService
+public interface IContainerService : IApplicationService
 {
     Task<IReadOnlyList<ContainerDto>> GetByCampAsync(Guid campId, CancellationToken ct = default);
     Task<IReadOnlyList<ContainerDto>> GetAllAsync(CancellationToken ct = default);
