@@ -1332,16 +1332,23 @@ public class ProfileController : HumansControllerBase
 
         try
         {
-            await _userEmailService.AddVerifiedEmailAsync(id, email.Trim(), ct);
-            _cache.InvalidateNobodiesTeamEmails();
+            var inserted = await _userEmailService.AddVerifiedEmailAsync(id, email.Trim(), ct);
+            if (inserted)
+            {
+                _cache.InvalidateNobodiesTeamEmails();
 
-            await _auditLogService.LogAsync(
-                AuditAction.UserEmailAdded,
-                nameof(User), id,
-                $"Admin added pre-verified email {email.Trim()} for user {id} (no verification flow)",
-                actor.Id);
+                await _auditLogService.LogAsync(
+                    AuditAction.UserEmailAdded,
+                    nameof(User), id,
+                    $"Admin added pre-verified email {email.Trim()} for user {id} (no verification flow)",
+                    actor.Id);
 
-            SetSuccess($"Verified email {email.Trim()} added.");
+                SetSuccess($"Verified email {email.Trim()} added.");
+            }
+            else
+            {
+                SetInfo($"Email {email.Trim()} already exists on this user — no change.");
+            }
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
