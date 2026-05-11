@@ -380,6 +380,7 @@ public class AccountController : HumansControllerBase
             var match = await _userEmailService.FindByProviderKeyAsync(
                 info.LoginProvider, info.ProviderKey);
             if (match is not null &&
+                match.UserId == userId.Value &&
                 string.Equals(match.Email, claimEmail, StringComparison.OrdinalIgnoreCase))
                 return;
 
