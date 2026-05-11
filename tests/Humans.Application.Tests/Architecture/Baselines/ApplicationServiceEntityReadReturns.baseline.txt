@@ -20,7 +20,6 @@ Humans.Application.Interfaces.Budget.IBudgetService.GetCategoryByIdAsync:Humans.
 Humans.Application.Interfaces.Budget.IBudgetService.GetLineItemByIdAsync:Humans.Domain.Entities.BudgetLineItem
 Humans.Application.Interfaces.Budget.IBudgetService.GetTicketingProjectionAsync:Humans.Domain.Entities.TicketingProjection
 Humans.Application.Interfaces.Budget.IBudgetService.GetYearByIdAsync:Humans.Domain.Entities.BudgetYear
-Humans.Application.Interfaces.Calendar.ICalendarService.GetEventByIdAsync:Humans.Domain.Entities.CalendarEvent
 Humans.Application.Interfaces.Campaigns.ICampaignService.GetActiveOrCompletedGrantsForUserAsync:Humans.Domain.Entities.CampaignGrant
 Humans.Application.Interfaces.Campaigns.ICampaignService.GetAllAsync:Humans.Domain.Entities.Campaign
 Humans.Application.Interfaces.Campaigns.ICampaignService.GetAllGrantsForUserAsync:Humans.Domain.Entities.CampaignGrant

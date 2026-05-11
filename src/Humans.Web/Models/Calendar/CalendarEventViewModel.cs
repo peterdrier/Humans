@@ -1,10 +1,10 @@
 using Humans.Application.DTOs.Calendar;
-using Humans.Domain.Entities;
+using Humans.Application.Interfaces.Calendar;
 
 namespace Humans.Web.Models.Calendar;
 
 public sealed record CalendarEventViewModel(
-    CalendarEvent Event,
+    CalendarEventInfo Event,
     string OwningTeamName,
     IReadOnlyList<CalendarOccurrence> UpcomingOccurrences,
     bool CanEdit,
