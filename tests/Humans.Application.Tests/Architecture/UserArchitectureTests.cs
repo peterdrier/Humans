@@ -135,6 +135,15 @@ public class UserArchitectureTests
     [HumansFact]
     public void NoOAuthTokenInUserEmailServiceOrRepositoryMethodNames()
     {
+        // ReconcileOAuthIdentityAsync (issue nobodies-collective/Humans#697)
+        // is the one allowed exception. The token "OAuth" here is categorical
+        // (OAuth-callback writes are a distinct mutation channel from user-
+        // driven email management), not provider-specific.
+        var allow = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "ReconcileOAuthIdentityAsync",
+        };
+
         var offenders = new List<string>();
         var typesToScan = new[]
         {
@@ -147,7 +156,8 @@ public class UserArchitectureTests
         {
             foreach (var m in t.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
             {
-                if (m.Name.Contains("OAuth", StringComparison.OrdinalIgnoreCase))
+                if (!allow.Contains(m.Name)
+                    && m.Name.Contains("OAuth", StringComparison.OrdinalIgnoreCase))
                     offenders.Add($"{t.Name}.{m.Name} (method)");
             }
 

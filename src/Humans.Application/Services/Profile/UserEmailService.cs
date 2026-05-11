@@ -1208,13 +1208,313 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
     }
 
     /// <inheritdoc />
-    public Task<OAuthReconcileResult> ReconcileOAuthIdentityAsync(
+    public async Task<OAuthReconcileResult> ReconcileOAuthIdentityAsync(
         Guid userId,
         string provider,
         string providerKey,
         string claimEmail,
         bool claimEmailVerified,
         CancellationToken cancellationToken = default)
-        => throw new NotSupportedException(
-            "Issue nobodies-collective/Humans#697 step 3 implements this; this stub exists so the step-1 TDD commit compiles.");
+    {
+        var now = _clock.GetCurrentInstant();
+        var rows = (await _repository.GetByUserIdForMutationAsync(userId, cancellationToken)).ToList();
+
+        var tagged = rows.FirstOrDefault(r =>
+            string.Equals(r.Provider, provider, StringComparison.Ordinal) &&
+            string.Equals(r.ProviderKey, providerKey, StringComparison.Ordinal));
+
+        // 1. NoChange: tagged row already at claim email.
+        if (tagged is not null &&
+            string.Equals(tagged.Email, claimEmail, StringComparison.OrdinalIgnoreCase))
+        {
+            return new OAuthReconcileResult(
+                ReconcileOutcome.NoChange, null, tagged.Id, null, null, null, false);
+        }
+
+        var siblingAtClaim = rows.FirstOrDefault(r =>
+            !ReferenceEquals(r, tagged) &&
+            string.Equals(r.Email, claimEmail, StringComparison.OrdinalIgnoreCase));
+
+        // Every remaining branch (rewrite, tag-move, insert) ends with a
+        // verified row at claimEmail. Cross-user check fires before any of
+        // them mutate.
+        var blocker = await _repository.FindOtherUsersVerifiedRowAsync(
+            claimEmail, userId, cancellationToken);
+
+        // 2. CrossUserBlocked: another user verified-holds the claim and the
+        //    provider's claim is unverified → no mutation, audit the attempt.
+        if (blocker is not null && !claimEmailVerified)
+        {
+            var blockedDescription = await BuildCrossUserDiagnosticAsync(
+                kind: "BLOCKED (unverified provider claim)",
+                userId, provider, providerKey, claimEmail, claimEmailVerified,
+                previousEmail: tagged?.Email,
+                displaced: blocker,
+                displacedUserLeftWithoutVerifiedEmail: false,
+                cancellationToken);
+
+            _logger.LogError(
+                "OAuth cross-user collision BLOCKED (unverified claim): {Description}",
+                blockedDescription);
+
+            await _auditLogService.LogAsync(
+                AuditAction.OAuthRenameCollisionBlocked,
+                nameof(User), userId,
+                blockedDescription,
+                actorUserId: userId,
+                relatedEntityId: blocker.Id, relatedEntityType: nameof(UserEmail));
+
+            return new OAuthReconcileResult(
+                ReconcileOutcome.CrossUserBlocked,
+                PreviousEmail: tagged?.Email,
+                AffectedRowId: null,
+                DisplacedUserId: blocker.UserId,
+                DisplacedRowId: blocker.Id,
+                DisplacedEmail: blocker.Email,
+                DisplacedUserLeftWithoutVerifiedEmail: false);
+        }
+
+        // 3. CrossUserDisplaced pre-step: when provider asserts the claim is
+        //    verified, delete the other user's row. Paired audits + invariants
+        //    run on the displaced user before falling through to the signing
+        //    user's own mutation.
+        var displaced = false;
+        Guid? displacedUserId = null;
+        Guid? displacedRowId = null;
+        string? displacedEmail = null;
+        var displacedUserLeftWithoutVerifiedEmail = false;
+
+        if (blocker is not null && claimEmailVerified)
+        {
+            var displacedUsersRows = await _repository.GetByUserIdForMutationAsync(
+                blocker.UserId, cancellationToken);
+            displacedUserLeftWithoutVerifiedEmail = displacedUsersRows
+                .Count(r => r.IsVerified && r.Id != blocker.Id) == 0;
+
+            displaced = true;
+            displacedUserId = blocker.UserId;
+            displacedRowId = blocker.Id;
+            displacedEmail = blocker.Email;
+
+            var diagnostic = await BuildCrossUserDiagnosticAsync(
+                kind: "DISPLACED",
+                userId, provider, providerKey, claimEmail, claimEmailVerified,
+                previousEmail: tagged?.Email,
+                displaced: blocker,
+                displacedUserLeftWithoutVerifiedEmail: displacedUserLeftWithoutVerifiedEmail,
+                cancellationToken);
+
+            _logger.LogError(
+                "OAuth cross-user displacement (verified claim): {Description}",
+                diagnostic);
+
+            await _auditLogService.LogAsync(
+                AuditAction.OAuthRenameCollision,
+                nameof(User), userId,
+                diagnostic,
+                actorUserId: userId,
+                relatedEntityId: blocker.Id, relatedEntityType: nameof(UserEmail));
+
+            var displacedAuditDescription =
+                $"Row `{blocker.Email}` deleted by OAuth callback for user {userId} " +
+                $"(provider={provider}, sub={providerKey})." +
+                (displacedUserLeftWithoutVerifiedEmail
+                    ? " Displaced user left with zero verified emails."
+                    : string.Empty);
+            await _auditLogService.LogAsync(
+                AuditAction.UserEmailDisplacedByOAuthRename,
+                nameof(User), blocker.UserId,
+                displacedAuditDescription,
+                actorUserId: userId,
+                relatedEntityId: blocker.Id, relatedEntityType: nameof(UserEmail));
+
+            await _repository.RemoveAsync(blocker, cancellationToken);
+
+            // Run invariants + invalidate on the displaced user inside the
+            // same logical reconcile transaction.
+            await EnsurePrimaryInvariantAsync(blocker.UserId, cancellationToken);
+            await EnsureGoogleInvariantAsync(blocker.UserId, cancellationToken);
+            await _fullProfileInvalidator.InvalidateAsync(blocker.UserId, cancellationToken);
+        }
+
+        // 4. Apply the signing user's mutation.
+        ReconcileOutcome outcome;
+        Guid affectedRowId;
+        string? previousEmail = tagged?.Email;
+        AuditAction signingAction;
+        string signingDescription;
+
+        if (tagged is not null && siblingAtClaim is not null)
+        {
+            // Tag-move (explicit old-tagged row + sibling holds claim email).
+            // Union flags onto the matching row, force IsVerified=true,
+            // clear flags on the row about to be deleted so the downstream
+            // invariant doesn't see two primaries / two googles.
+            siblingAtClaim.Provider = provider;
+            siblingAtClaim.ProviderKey = providerKey;
+            siblingAtClaim.IsVerified = true;
+            siblingAtClaim.IsPrimary = siblingAtClaim.IsPrimary || tagged.IsPrimary;
+            siblingAtClaim.IsGoogle = siblingAtClaim.IsGoogle || tagged.IsGoogle;
+            siblingAtClaim.UpdatedAt = now;
+            tagged.IsPrimary = false;
+            tagged.IsGoogle = false;
+
+            await _repository.UpdateAsync(siblingAtClaim, cancellationToken);
+            await _repository.RemoveAsync(tagged, cancellationToken);
+
+            outcome = ReconcileOutcome.TagMoved;
+            affectedRowId = siblingAtClaim.Id;
+            signingAction = AuditAction.GoogleEmailRenamed;
+            signingDescription =
+                $"OAuth tag moved from `{previousEmail}` to `{siblingAtClaim.Email}` " +
+                $"(sub={providerKey}); old row deleted, flags unioned onto matching row.";
+        }
+        else if (tagged is not null)
+        {
+            // Rewrite in place — tagged row holds a different email and no
+            // sibling of the same user holds the claim email.
+            tagged.Email = claimEmail;
+            tagged.IsVerified = true;
+            tagged.UpdatedAt = now;
+            await _repository.UpdateAsync(tagged, cancellationToken);
+
+            outcome = ReconcileOutcome.EmailRewritten;
+            affectedRowId = tagged.Id;
+            signingAction = AuditAction.GoogleEmailRenamed;
+            signingDescription =
+                $"OAuth email renamed `{previousEmail}` -> `{claimEmail}` " +
+                $"(sub={providerKey}).";
+        }
+        else if (siblingAtClaim is not null)
+        {
+            // No tagged row but the user has an existing row at the claim
+            // email — attach the tag (legacy backfill / first OAuth sign-in
+            // after a plain-email account).
+            siblingAtClaim.Provider = provider;
+            siblingAtClaim.ProviderKey = providerKey;
+            siblingAtClaim.IsVerified = true;
+            siblingAtClaim.UpdatedAt = now;
+            await _repository.UpdateAsync(siblingAtClaim, cancellationToken);
+
+            outcome = ReconcileOutcome.TagMoved;
+            affectedRowId = siblingAtClaim.Id;
+            signingAction = AuditAction.GoogleEmailRenamed;
+            signingDescription =
+                $"OAuth tag attached to existing row `{siblingAtClaim.Email}` " +
+                $"(sub={providerKey}).";
+        }
+        else
+        {
+            // Fresh row — no tagged row and no sibling at the claim email.
+            var fresh = new UserEmail
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                Email = claimEmail,
+                IsVerified = true,
+                IsPrimary = false,
+                Provider = provider,
+                ProviderKey = providerKey,
+                CreatedAt = now,
+                UpdatedAt = now,
+            };
+            await _repository.AddAsync(fresh, cancellationToken);
+
+            outcome = ReconcileOutcome.NewRowCreated;
+            affectedRowId = fresh.Id;
+            signingAction = AuditAction.UserEmailLinked;
+            signingDescription =
+                $"OAuth callback: created UserEmail row " +
+                $"(provider={provider}, sub={providerKey}, email={claimEmail}).";
+        }
+
+        // 5 + 6. Invariants + cache invalidation on the signing user.
+        await EnsurePrimaryInvariantAsync(userId, cancellationToken);
+        await EnsureGoogleInvariantAsync(userId, cancellationToken);
+        await _fullProfileInvalidator.InvalidateAsync(userId, cancellationToken);
+
+        // When a cross-user displacement occurred, the OAuthRenameCollision
+        // audit row on the signing user IS the audit row for this callback —
+        // we don't also write a GoogleEmailRenamed / UserEmailLinked on top.
+        // The final outcome reported to the caller is CrossUserDisplaced.
+        if (displaced)
+        {
+            return new OAuthReconcileResult(
+                ReconcileOutcome.CrossUserDisplaced,
+                previousEmail,
+                affectedRowId,
+                displacedUserId,
+                displacedRowId,
+                displacedEmail,
+                displacedUserLeftWithoutVerifiedEmail);
+        }
+
+        await _auditLogService.LogAsync(
+            signingAction,
+            nameof(User), userId,
+            signingDescription,
+            actorUserId: userId,
+            relatedEntityId: affectedRowId, relatedEntityType: nameof(UserEmail));
+
+        return new OAuthReconcileResult(
+            outcome,
+            previousEmail,
+            affectedRowId,
+            displacedUserId,
+            displacedRowId,
+            displacedEmail,
+            displacedUserLeftWithoutVerifiedEmail);
+    }
+
+    /// <summary>
+    /// Builds the structured diagnostic string used by every cross-user
+    /// collision outcome (<see cref="ReconcileOutcome.CrossUserDisplaced"/>
+    /// and <see cref="ReconcileOutcome.CrossUserBlocked"/>). Captures every
+    /// available field so admins can trace what the provider claimed,
+    /// what state both users were in, and which row was deleted or blocked.
+    /// </summary>
+    private async Task<string> BuildCrossUserDiagnosticAsync(
+        string kind,
+        Guid signingUserId,
+        string provider,
+        string providerKey,
+        string claimEmail,
+        bool claimEmailVerified,
+        string? previousEmail,
+        UserEmail displaced,
+        bool displacedUserLeftWithoutVerifiedEmail,
+        CancellationToken ct)
+    {
+        var signingRows = await _repository.GetByUserIdForMutationAsync(signingUserId, ct);
+        var displacedRows = await _repository.GetByUserIdForMutationAsync(displaced.UserId, ct);
+
+        var loginsByUser = await _userService.GetExternalLoginsByUserIdsAsync(
+            new[] { signingUserId, displaced.UserId }, ct);
+        var signingLogins = loginsByUser.TryGetValue(signingUserId, out var sl) ? sl : Array.Empty<(string, string)>();
+        var displacedLogins = loginsByUser.TryGetValue(displaced.UserId, out var dl) ? dl : Array.Empty<(string, string)>();
+
+        var inv = System.Globalization.CultureInfo.InvariantCulture;
+        var sb = new System.Text.StringBuilder();
+        sb.Append(inv, $"OAuth cross-user {kind}: provider={provider} sub={providerKey} ");
+        sb.Append(inv, $"claimEmail={claimEmail} claimEmailVerified={claimEmailVerified} ");
+        sb.Append(inv, $"previousEmail={previousEmail ?? "(none)"} attemptedAt={_clock.GetCurrentInstant()}. ");
+        sb.Append(inv, $"SigningUser={signingUserId} rows=[");
+        sb.Append(string.Join(", ", signingRows.Select(FormatRow)));
+        sb.Append("] logins=[");
+        sb.Append(string.Join(", ", signingLogins.Select(l => $"{l.Provider}/{l.ProviderKey}")));
+        sb.Append(inv, $"]. DisplacedUser={displaced.UserId} displacedRowId={displaced.Id} ");
+        sb.Append(inv, $"displacedEmail={displaced.Email}");
+        if (displacedUserLeftWithoutVerifiedEmail)
+            sb.Append(" — displaced user left with zero verified emails after delete");
+        sb.Append(" rows=[");
+        sb.Append(string.Join(", ", displacedRows.Select(FormatRow)));
+        sb.Append("] logins=[");
+        sb.Append(string.Join(", ", displacedLogins.Select(l => $"{l.Provider}/{l.ProviderKey}")));
+        sb.Append("].");
+        return sb.ToString();
+
+        static string FormatRow(UserEmail r) =>
+            $"{{Id={r.Id} Email={r.Email} V={r.IsVerified} P={r.IsPrimary} G={r.IsGoogle} " +
+            $"Provider={r.Provider ?? "(none)"} Key={r.ProviderKey ?? "(none)"}}}";
+    }
 }

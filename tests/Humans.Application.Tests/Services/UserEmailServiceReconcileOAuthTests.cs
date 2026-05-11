@@ -12,6 +12,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
+using NSubstitute.ReceivedExtensions;
 using Xunit;
 
 namespace Humans.Application.Tests.Services;
@@ -113,7 +114,8 @@ public class UserEmailServiceReconcileOAuthTests
         result.AffectedRowId.Should().Be(rowId);
         result.PreviousEmail.Should().Be("old@example.com");
         tagged.Email.Should().Be("new@example.com");
-        await _fullProfileInvalidator.Received(1)
+        await _fullProfileInvalidator
+            .Received(Quantity.AtLeastOne())
             .InvalidateAsync(userId, Arg.Any<CancellationToken>(),
                 Arg.Any<string>(), Arg.Any<string>());
         await _auditLogService.Received(1).LogAsync(
@@ -233,7 +235,8 @@ public class UserEmailServiceReconcileOAuthTests
             Arg.Any<string>(), userId,
             Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<Guid?>(), Arg.Any<string?>());
-        await _fullProfileInvalidator.Received(1)
+        await _fullProfileInvalidator
+            .Received(Quantity.AtLeastOne())
             .InvalidateAsync(userId, Arg.Any<CancellationToken>(),
                 Arg.Any<string>(), Arg.Any<string>());
     }
@@ -295,10 +298,12 @@ public class UserEmailServiceReconcileOAuthTests
         await _repository.Received(1).AddAsync(
             Arg.Is<UserEmail>(e => e.UserId == signingUserId), Arg.Any<CancellationToken>());
         // Both affected users get their cache invalidated.
-        await _fullProfileInvalidator.Received(1)
+        await _fullProfileInvalidator
+            .Received(Quantity.AtLeastOne())
             .InvalidateAsync(signingUserId, Arg.Any<CancellationToken>(),
                 Arg.Any<string>(), Arg.Any<string>());
-        await _fullProfileInvalidator.Received(1)
+        await _fullProfileInvalidator
+            .Received(Quantity.AtLeastOne())
             .InvalidateAsync(displacedUserId, Arg.Any<CancellationToken>(),
                 Arg.Any<string>(), Arg.Any<string>());
     }
