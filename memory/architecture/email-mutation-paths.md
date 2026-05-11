@@ -10,7 +10,7 @@ HARD RULE. There is exactly one way to modify an existing email address in this 
 
 The service wraps the repo primitive with: (a) `EnsureGoogleInvariantAsync` — same Google-canonical-row reconciliation every other add-row flow (`AddRowWithInvariantsAsync`) uses, so an INSERT case (no prior `(Provider, ProviderKey)` row) lands with `IsGoogle=true` if the user has no other choice; (b) `FullProfile` cache invalidation. Both run only when the repo confirms a write.
 
-XML doc on each declaration names its sole legitimate caller. Build-time enforcement (analyzer that breaks the build on any other call site) is tracked in [nobodies-collective/Humans#695](https://github.com/nobodies-collective/Humans/issues/695) — defer to that issue rather than adding another fragile IL-scan test that the analyzer migration will discard.
+XML doc on each declaration names its sole legitimate caller. Build-time enforcement: analyzers `HUM0005` (service-caller) and `HUM0006` (repo-caller) in `src/Humans.Analyzers/EmailMutationPathsAnalyzer.cs`. Any other call site fails the build with a pointer back to this atom. Pattern + catalogue in `docs/architecture/code-analysis.md`.
 
 **Forbidden:** `(userId, oldEmail, newEmail)` matching, `(userId, Provider != null)` matching, any admin-triggered "fix this email" flow, any `_userManager.SetEmailAsync`, any direct `UPDATE user_emails SET email = ...` outside the one primitive. None of these can produce a correct rewrite — admin lacks the OAuth `sub` in the authoritative moment, and matching by email or `Provider != null` is non-deterministic for users with multiple Google accounts (or future Microsoft / Apple identities).
 
