@@ -1,10 +1,10 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using NodaTime;
 using Humans.Domain.Entities;
-using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Profiles;
 
@@ -18,7 +18,6 @@ public class AccountController : HumansControllerBase
     private readonly ILogger<AccountController> _logger;
     private readonly IUserEmailService _userEmailService;
     private readonly IMagicLinkService _magicLinkService;
-    private readonly IAuditLogService _auditLogService;
     private readonly IProfileService _profileService;
     private readonly IStringLocalizer<SharedResource> _localizer;
 
@@ -29,7 +28,6 @@ public class AccountController : HumansControllerBase
         ILogger<AccountController> logger,
         IUserEmailService userEmailService,
         IMagicLinkService magicLinkService,
-        IAuditLogService auditLogService,
         IProfileService profileService,
         IStringLocalizer<SharedResource> localizer)
         : base(userManager)
@@ -40,7 +38,6 @@ public class AccountController : HumansControllerBase
         _logger = logger;
         _userEmailService = userEmailService;
         _magicLinkService = magicLinkService;
-        _auditLogService = auditLogService;
         _profileService = profileService;
         _localizer = localizer;
     }
@@ -327,34 +324,51 @@ public class AccountController : HumansControllerBase
         // Create the OAuth-linked UserEmail row via the reconcile entry point.
         // For a freshly created user this hits the NewRowCreated branch (no
         // existing rows, no cross-user collision unless the address is already
-        // verified by another user). If reconcile throws after CreateAsync +
-        // AddLoginAsync both succeeded, roll back the User to avoid an orphan
-        // that's unreachable via either OAuth or magic link. Symmetric to
-        // CompleteSignup's cleanup.
+        // verified by another user). On reconcile throw OR a CrossUserBlocked
+        // outcome (another user verified-holds the address and the provider's
+        // email_verified claim is false — so reconcile refused to displace
+        // and did NOT create a UserEmail row), roll back the User to avoid an
+        // orphan that's unreachable via either OAuth or magic link. Symmetric
+        // to CompleteSignup's cleanup.
         try
         {
-            await _userEmailService.ReconcileOAuthIdentityAsync(
+            var reconcile = await _userEmailService.ReconcileOAuthIdentityAsync(
                 user.Id,
                 info.LoginProvider,
                 info.ProviderKey,
                 email,
                 claimEmailVerified: ReadEmailVerifiedClaim(info));
+
+            if (reconcile.Outcome == ReconcileOutcome.CrossUserBlocked)
+            {
+                throw new InvalidOperationException(
+                    $"OAuth signup blocked: {email} is verified by user " +
+                    $"{reconcile.DisplacedUserId} and the provider's email_verified " +
+                    "claim is false.");
+            }
+        }
+        catch (DbUpdateException dbex)
+            when (dbex.InnerException is Npgsql.PostgresException { SqlState: "23505" })
+        {
+            _logger.LogError(dbex,
+                "OAuth signup race (Postgres 23505) on UserEmail unique index " +
+                "for new user {UserId} (provider={Provider}, sub={Sub}, " +
+                "claimEmail={Email}); rolling back user + login. The partial " +
+                "unique index caught a concurrent insert past the reconcile " +
+                "pre-check — investigate via /Profile/Admin/EmailProblems.",
+                user.Id, info.LoginProvider, info.ProviderKey, email);
+            await TryDeleteOrphanUserAsync(user);
+            ModelState.AddModelError(string.Empty,
+                "We couldn't finish setting up your account. Please try again.");
+            ViewData["ReturnUrl"] = returnUrl;
+            return View(nameof(Login));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex,
                 "Failed to reconcile OAuth identity for new user {UserId} ({Email}); rolling back user + login",
                 user.Id, email);
-            try
-            {
-                await _userManager.DeleteAsync(user);
-            }
-            catch (Exception deleteEx)
-            {
-                _logger.LogError(deleteEx,
-                    "Failed to clean up orphan user {UserId} after reconcile failure",
-                    user.Id);
-            }
+            await TryDeleteOrphanUserAsync(user);
             ModelState.AddModelError(string.Empty,
                 "We couldn't finish setting up your account. Please try again.");
             ViewData["ReturnUrl"] = returnUrl;
@@ -398,11 +412,45 @@ public class AccountController : HumansControllerBase
         {
             throw;
         }
+        catch (DbUpdateException dbex)
+            when (dbex.InnerException is Npgsql.PostgresException { SqlState: "23505" })
+        {
+            // The verified-email partial unique index caught a concurrent
+            // insert that beat the reconcile pre-check. Rare race; surface a
+            // structured log so admins can investigate via the
+            // EmailProblems scanner. Sign-in continues (never blocks).
+            _logger.LogError(dbex,
+                "OAuth reconcile race (Postgres 23505) for user {UserId} " +
+                "(provider={Provider}, sub={Sub}, claimEmail={Email}); " +
+                "sign-in continues — investigate via /Profile/Admin/EmailProblems.",
+                userId, info.LoginProvider, info.ProviderKey, claimEmail);
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex,
                 "OAuth reconcile failed for user {UserId} {Provider} sub={Sub}; sign-in continues",
                 userId, info.LoginProvider, info.ProviderKey);
+        }
+    }
+
+    /// <summary>
+    /// Best-effort rollback of a freshly-created user when the OAuth signup
+    /// path fails after <see cref="UserManager{TUser}.CreateAsync"/> +
+    /// <see cref="UserManager{TUser}.AddLoginAsync"/> succeeded. A failure
+    /// here leaves an orphan that's unreachable via either OAuth or magic
+    /// link — logged at Error so admins can clean up manually.
+    /// </summary>
+    private async Task TryDeleteOrphanUserAsync(User user)
+    {
+        try
+        {
+            await _userManager.DeleteAsync(user);
+        }
+        catch (Exception deleteEx)
+        {
+            _logger.LogError(deleteEx,
+                "Failed to clean up orphan user {UserId} after reconcile failure",
+                user.Id);
         }
     }
 

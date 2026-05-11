@@ -135,10 +135,15 @@ public class UserArchitectureTests
     [HumansFact]
     public void NoOAuthTokenInUserEmailServiceOrRepositoryMethodNames()
     {
+        // This test scans METHOD NAMES on the service/repo interfaces — it
+        // enforces "don't bake provider-specific verbs into the surface".
         // ReconcileOAuthIdentityAsync (issue nobodies-collective/Humans#697)
-        // is the one allowed exception. The token "OAuth" here is categorical
-        // (OAuth-callback writes are a distinct mutation channel from user-
-        // driven email management), not provider-specific.
+        // is the one allowed exception: "OAuth" here is categorical (the
+        // OAuth-callback write channel, distinct from user-driven email
+        // management), not provider-specific. The orthogonal "only
+        // AccountController may CALL ReconcileOAuthIdentityAsync" caller
+        // restriction is the Roslyn analyzer pin tracked in #695 — not in
+        // scope for this test.
         var allow = new HashSet<string>(StringComparer.Ordinal)
         {
             "ReconcileOAuthIdentityAsync",

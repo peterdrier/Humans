@@ -1116,9 +1116,14 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
 
         // Every remaining branch (rewrite, tag-move, insert) ends with a
         // verified row at claimEmail. Cross-user check fires before any of
-        // them mutate.
+        // them mutate. Normalize the claim email through the same comparison
+        // rules every other UserEmail lookup uses (gmail/googlemail alternate,
+        // case-insensitive, trimmed) so the security-critical displacement
+        // gate cannot be bypassed by a Gmail dot-alias.
+        var normalizedClaim = EmailNormalization.NormalizeForComparison(claimEmail);
+        var alternateClaim = GetAlternateComparableEmail(normalizedClaim);
         var blocker = await _repository.FindOtherUsersVerifiedRowAsync(
-            claimEmail, userId, cancellationToken);
+            normalizedClaim, alternateClaim, userId, cancellationToken);
 
         // 2. CrossUserBlocked: another user verified-holds the claim and the
         //    provider's claim is unverified → no mutation, audit the attempt.
@@ -1153,15 +1158,15 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
                 DisplacedUserLeftWithoutVerifiedEmail: false);
         }
 
-        // 3. CrossUserDisplaced pre-step: when provider asserts the claim is
-        //    verified, delete the other user's row. Paired audits + invariants
-        //    run on the displaced user before falling through to the signing
-        //    user's own mutation.
+        // 3. Decide the cross-user displacement (snapshot only — does not
+        //    mutate the DB yet). The displacement and the signing user's
+        //    mutation commit together in step 5.
         var displaced = false;
         Guid? displacedUserId = null;
         Guid? displacedRowId = null;
         string? displacedEmail = null;
         var displacedUserLeftWithoutVerifiedEmail = false;
+        string? collisionDiagnostic = null;
 
         if (blocker is not null && claimEmailVerified)
         {
@@ -1175,60 +1180,29 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
             displacedRowId = blocker.Id;
             displacedEmail = blocker.Email;
 
-            var diagnostic = await BuildCrossUserDiagnosticAsync(
+            collisionDiagnostic = await BuildCrossUserDiagnosticAsync(
                 kind: "DISPLACED",
                 userId, provider, providerKey, claimEmail, claimEmailVerified,
                 previousEmail: tagged?.Email,
                 displaced: blocker,
                 displacedUserLeftWithoutVerifiedEmail: displacedUserLeftWithoutVerifiedEmail,
                 cancellationToken);
-
-            _logger.LogError(
-                "OAuth cross-user displacement (verified claim): {Description}",
-                diagnostic);
-
-            await _auditLogService.LogAsync(
-                AuditAction.OAuthRenameCollision,
-                nameof(User), userId,
-                diagnostic,
-                actorUserId: userId,
-                relatedEntityId: blocker.Id, relatedEntityType: nameof(UserEmail));
-
-            var displacedAuditDescription =
-                $"Row `{blocker.Email}` deleted by OAuth callback for user {userId} " +
-                $"(provider={provider}, sub={providerKey})." +
-                (displacedUserLeftWithoutVerifiedEmail
-                    ? " Displaced user left with zero verified emails."
-                    : string.Empty);
-            await _auditLogService.LogAsync(
-                AuditAction.UserEmailDisplacedByOAuthRename,
-                nameof(User), blocker.UserId,
-                displacedAuditDescription,
-                actorUserId: userId,
-                relatedEntityId: blocker.Id, relatedEntityType: nameof(UserEmail));
-
-            await _repository.RemoveAsync(blocker, cancellationToken);
-
-            // Run invariants + invalidate on the displaced user inside the
-            // same logical reconcile transaction.
-            await EnsurePrimaryInvariantAsync(blocker.UserId, cancellationToken);
-            await EnsureGoogleInvariantAsync(blocker.UserId, cancellationToken);
-            await _fullProfileInvalidator.InvalidateAsync(blocker.UserId, cancellationToken);
         }
 
-        // 4. Apply the signing user's mutation.
+        // 4. Build the signing user's mutation plan (in memory).
         ReconcileOutcome outcome;
         Guid affectedRowId;
         string? previousEmail = tagged?.Email;
         AuditAction signingAction;
         string signingDescription;
 
+        UserEmail? rowToUpdate = null;
+        UserEmail? rowToDelete = null;
+        UserEmail? rowToInsert = null;
+
         if (tagged is not null && siblingAtClaim is not null)
         {
             // Tag-move (explicit old-tagged row + sibling holds claim email).
-            // Union flags onto the matching row, force IsVerified=true,
-            // clear flags on the row about to be deleted so the downstream
-            // invariant doesn't see two primaries / two googles.
             siblingAtClaim.Provider = provider;
             siblingAtClaim.ProviderKey = providerKey;
             siblingAtClaim.IsVerified = true;
@@ -1238,8 +1212,8 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
             tagged.IsPrimary = false;
             tagged.IsGoogle = false;
 
-            await _repository.UpdateAsync(siblingAtClaim, cancellationToken);
-            await _repository.RemoveAsync(tagged, cancellationToken);
+            rowToUpdate = siblingAtClaim;
+            rowToDelete = tagged;
 
             outcome = ReconcileOutcome.TagMoved;
             affectedRowId = siblingAtClaim.Id;
@@ -1255,7 +1229,8 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
             tagged.Email = claimEmail;
             tagged.IsVerified = true;
             tagged.UpdatedAt = now;
-            await _repository.UpdateAsync(tagged, cancellationToken);
+
+            rowToUpdate = tagged;
 
             outcome = ReconcileOutcome.EmailRewritten;
             affectedRowId = tagged.Id;
@@ -1273,7 +1248,8 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
             siblingAtClaim.ProviderKey = providerKey;
             siblingAtClaim.IsVerified = true;
             siblingAtClaim.UpdatedAt = now;
-            await _repository.UpdateAsync(siblingAtClaim, cancellationToken);
+
+            rowToUpdate = siblingAtClaim;
 
             outcome = ReconcileOutcome.TagMoved;
             affectedRowId = siblingAtClaim.Id;
@@ -1285,7 +1261,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         else
         {
             // Fresh row — no tagged row and no sibling at the claim email.
-            var fresh = new UserEmail
+            rowToInsert = new UserEmail
             {
                 Id = Guid.NewGuid(),
                 UserId = userId,
@@ -1297,27 +1273,69 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
                 CreatedAt = now,
                 UpdatedAt = now,
             };
-            await _repository.AddAsync(fresh, cancellationToken);
 
             outcome = ReconcileOutcome.NewRowCreated;
-            affectedRowId = fresh.Id;
+            affectedRowId = rowToInsert.Id;
             signingAction = AuditAction.UserEmailLinked;
             signingDescription =
                 $"OAuth callback: created UserEmail row " +
                 $"(provider={provider}, sub={providerKey}, email={claimEmail}).";
         }
 
-        // 5 + 6. Invariants + cache invalidation on the signing user.
+        // 5. Apply the displacement + signing-user mutation atomically — one
+        //    DbContext, one transaction. Either both happen or neither does;
+        //    the displaced user's row cannot be deleted while the signing
+        //    user's mutation is left undone.
+        await _repository.ApplyReconcilePlanAsync(
+            displacedRowToDelete: displaced ? blocker : null,
+            rowToDelete: rowToDelete,
+            rowToUpdate: rowToUpdate,
+            rowToInsert: rowToInsert,
+            cancellationToken);
+
+        // 6. Invariants + cache invalidation on every affected user. These
+        //    run AFTER the data-change commit. They are idempotent and the
+        //    next sign-in re-runs them — when they can't run (process crash
+        //    after step 5), no destructive state is left in the DB.
+        if (displaced)
+        {
+            await EnsurePrimaryInvariantAsync(blocker!.UserId, cancellationToken);
+            await EnsureGoogleInvariantAsync(blocker.UserId, cancellationToken);
+            await _fullProfileInvalidator.InvalidateAsync(blocker.UserId, cancellationToken);
+        }
         await EnsurePrimaryInvariantAsync(userId, cancellationToken);
         await EnsureGoogleInvariantAsync(userId, cancellationToken);
         await _fullProfileInvalidator.InvalidateAsync(userId, cancellationToken);
 
-        // When a cross-user displacement occurred, the OAuthRenameCollision
-        // audit row on the signing user IS the audit row for this callback —
-        // we don't also write a GoogleEmailRenamed / UserEmailLinked on top.
-        // The final outcome reported to the caller is CrossUserDisplaced.
+        // 7. Audit. The cross-user-displaced path writes the OAuthRename-
+        //    Collision pair as the audit for this callback; we don't also
+        //    write GoogleEmailRenamed / UserEmailLinked on top.
         if (displaced)
         {
+            _logger.LogError(
+                "OAuth cross-user displacement (verified claim): {Description}",
+                collisionDiagnostic);
+
+            await _auditLogService.LogAsync(
+                AuditAction.OAuthRenameCollision,
+                nameof(User), userId,
+                collisionDiagnostic!,
+                actorUserId: userId,
+                relatedEntityId: blocker!.Id, relatedEntityType: nameof(UserEmail));
+
+            var displacedAuditDescription =
+                $"Row `{blocker.Email}` deleted by OAuth callback for user {userId} " +
+                $"(provider={provider}, sub={providerKey})." +
+                (displacedUserLeftWithoutVerifiedEmail
+                    ? " Displaced user left with zero verified emails."
+                    : string.Empty);
+            await _auditLogService.LogAsync(
+                AuditAction.UserEmailDisplacedByOAuthRename,
+                nameof(User), blocker.UserId,
+                displacedAuditDescription,
+                actorUserId: userId,
+                relatedEntityId: blocker.Id, relatedEntityType: nameof(UserEmail));
+
             return new OAuthReconcileResult(
                 ReconcileOutcome.CrossUserDisplaced,
                 previousEmail,

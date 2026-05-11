@@ -507,12 +507,11 @@ public sealed class UserEmailRepository : IUserEmailRepository
     }
 
     public async Task<UserEmail?> FindOtherUsersVerifiedRowAsync(
-        string email, Guid excludeUserId, CancellationToken ct = default)
+        string normalizedEmail, string? alternateEmail, Guid excludeUserId,
+        CancellationToken ct = default)
     {
-        var normalized = email.Trim();
-        var alternate = GetAlternateComparableEmail(normalized);
-        var escaped = EscapeLikePattern(normalized);
-        var escapedAlternate = alternate is null ? null : EscapeLikePattern(alternate);
+        var escaped = EscapeLikePattern(normalizedEmail);
+        var escapedAlternate = alternateEmail is null ? null : EscapeLikePattern(alternateEmail);
 
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         var query = ctx.UserEmails
@@ -526,12 +525,45 @@ public sealed class UserEmailRepository : IUserEmailRepository
                      EF.Functions.ILike(e.Email, escapedAlternate, "\\"), ct);
     }
 
-    private static string? GetAlternateComparableEmail(string email)
+    public async Task ApplyReconcilePlanAsync(
+        UserEmail? displacedRowToDelete,
+        UserEmail? rowToDelete,
+        UserEmail? rowToUpdate,
+        UserEmail? rowToInsert,
+        CancellationToken ct = default)
     {
-        if (email.EndsWith("@gmail.com", StringComparison.OrdinalIgnoreCase))
-            return string.Concat(email.AsSpan(0, email.Length - "@gmail.com".Length), "@googlemail.com");
-        if (email.EndsWith("@googlemail.com", StringComparison.OrdinalIgnoreCase))
-            return string.Concat(email.AsSpan(0, email.Length - "@googlemail.com".Length), "@gmail.com");
-        return null;
+        if (displacedRowToDelete is null && rowToDelete is null
+            && rowToUpdate is null && rowToInsert is null)
+            return;
+
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var tx = await ctx.Database.BeginTransactionAsync(ct);
+
+        if (displacedRowToDelete is not null)
+        {
+            ctx.Attach(displacedRowToDelete);
+            ctx.UserEmails.Remove(displacedRowToDelete);
+        }
+
+        if (rowToDelete is not null)
+        {
+            ctx.Attach(rowToDelete);
+            ctx.UserEmails.Remove(rowToDelete);
+        }
+
+        if (rowToUpdate is not null)
+        {
+            ctx.Attach(rowToUpdate);
+            ctx.Entry(rowToUpdate).State = EntityState.Modified;
+            ExcludeLegacyShadowsFromUpdate(ctx.Entry(rowToUpdate));
+        }
+
+        if (rowToInsert is not null)
+        {
+            ctx.UserEmails.Add(rowToInsert);
+        }
+
+        await ctx.SaveChangesAsync(ct);
+        await tx.CommitAsync(ct);
     }
 }

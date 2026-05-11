@@ -1,6 +1,5 @@
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Domain.Entities;
@@ -36,7 +35,6 @@ public class AccountControllerOAuthReconcileTests
 {
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly IMagicLinkService _magicLinkService = Substitute.For<IMagicLinkService>();
-    private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
     private readonly IStringLocalizer<Humans.Web.SharedResource> _localizer =
         Substitute.For<IStringLocalizer<Humans.Web.SharedResource>>();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 5, 11, 12, 0));
@@ -74,7 +72,6 @@ public class AccountControllerOAuthReconcileTests
             NullLogger<AccountController>.Instance,
             _userEmailService,
             _magicLinkService,
-            _auditLogService,
             Substitute.For<IProfileService>(),
             _localizer);
         _controller.Url = Substitute.For<IUrlHelper>();
@@ -142,14 +139,8 @@ public class AccountControllerOAuthReconcileTests
             claimEmailVerified: true, Arg.Any<CancellationToken>());
 
         // Controller writes no audit on the OAuth path — audit is service-owned.
-        await _auditLogService.DidNotReceive().LogAsync(
-            Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
-            Arg.Any<string>(), Arg.Any<Guid>(),
-            Arg.Any<Guid?>(), Arg.Any<string?>());
-        await _auditLogService.DidNotReceive().LogAsync(
-            Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
-            Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<Guid?>(), Arg.Any<string?>());
+        // (The controller no longer takes an IAuditLogService dependency,
+        // so it is structurally impossible to write one from this branch.)
     }
 
     [HumansFact]
@@ -243,6 +234,40 @@ public class AccountControllerOAuthReconcileTests
         await _userEmailService.Received(1).ReconcileOAuthIdentityAsync(
             activeTargetId, Provider, ProviderKey, email,
             claimEmailVerified: true, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task LockoutRelink_UnverifiedEmailClaim_PassedThroughAsFalse()
+    {
+        // Pre-697 the lockout-relink branch had NO UserEmail sync at all;
+        // this is the highest-risk plumbing path. Pin the email_verified=false
+        // case alongside the existing verified case so the claim flows through
+        // every OAuth-success path.
+        var lockedSourceId = Guid.NewGuid();
+        var activeTargetId = Guid.NewGuid();
+        var email = "relink@example.com";
+        var info = MakeInfo(email, emailVerified: false);
+
+        _signInManager.GetExternalLoginInfoAsync().Returns(info);
+        _signInManager.ExternalLoginSignInAsync(Provider, ProviderKey, false, true)
+            .Returns(SignInResult.LockedOut);
+
+        var lockedSource = new User { Id = lockedSourceId };
+        var activeTarget = new User { Id = activeTargetId };
+        _userManager.FindByLoginAsync(Provider, ProviderKey).Returns(lockedSource);
+        _magicLinkService.FindUserByVerifiedEmailAsync(email, Arg.Any<CancellationToken>())
+            .Returns(activeTarget);
+        _userManager.RemoveLoginAsync(lockedSource, Provider, ProviderKey)
+            .Returns(IdentityResult.Success);
+        _userManager.AddLoginAsync(activeTarget, Arg.Any<UserLoginInfo>())
+            .Returns(IdentityResult.Success);
+        _userManager.UpdateAsync(activeTarget).Returns(IdentityResult.Success);
+
+        await _controller.ExternalLoginCallback(returnUrl: null, remoteError: null);
+
+        await _userEmailService.Received(1).ReconcileOAuthIdentityAsync(
+            activeTargetId, Provider, ProviderKey, email,
+            claimEmailVerified: false, Arg.Any<CancellationToken>());
     }
 
     // ─── Path 4: email-match link (unauthenticated, address already known) ───

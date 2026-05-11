@@ -217,15 +217,38 @@ public interface IUserEmailRepository : IRepository
     /// <summary>
     /// Issue nobodies-collective/Humans#697. Returns the first verified
     /// <see cref="UserEmail"/> row whose <c>Email</c> matches
-    /// <paramref name="email"/> (case-insensitive, gmail/googlemail alternate
-    /// recognised) and whose <c>UserId</c> is NOT
+    /// <paramref name="normalizedEmail"/> or <paramref name="alternateEmail"/>
+    /// (case-insensitive) and whose <c>UserId</c> is NOT
     /// <paramref name="excludeUserId"/>. Returns <c>null</c> when no other
-    /// user verified-holds the address. Tracked (the caller may pass the
-    /// returned row to <see cref="RemoveAsync"/> on a cross-user displacement).
-    /// Sole legitimate caller: <c>UserEmailService.ReconcileOAuthIdentityAsync</c>.
+    /// user verified-holds the address. The caller is expected to have
+    /// already normalised the claim email via
+    /// <c>EmailNormalization.NormalizeForComparison</c> so this read uses
+    /// the same comparison rules as every other <c>UserEmail</c> lookup
+    /// (gmail/googlemail alternate, lowercase, trimmed). Sole legitimate
+    /// caller: <c>UserEmailService.ReconcileOAuthIdentityAsync</c>.
     /// </summary>
     Task<UserEmail?> FindOtherUsersVerifiedRowAsync(
-        string email, Guid excludeUserId, CancellationToken ct = default);
+        string normalizedEmail, string? alternateEmail, Guid excludeUserId,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Issue nobodies-collective/Humans#697. Applies a single OAuth-reconcile
+    /// data change inside one <see cref="DbContext"/> + one
+    /// <see cref="Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction"/>.
+    /// Atomicity guarantee: when the plan includes a cross-user displaced
+    /// row alongside the signing user's mutation, either every operation
+    /// commits or none of them do — the displaced user's verified row can
+    /// never be deleted while the signing user's mutation is left undone.
+    /// Sole legitimate caller:
+    /// <c>UserEmailService.ReconcileOAuthIdentityAsync</c>. All parameters
+    /// are optional; a no-op call is allowed but pointless.
+    /// </summary>
+    Task ApplyReconcilePlanAsync(
+        UserEmail? displacedRowToDelete,
+        UserEmail? rowToDelete,
+        UserEmail? rowToUpdate,
+        UserEmail? rowToInsert,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Single-transaction flip: sets <see cref="UserEmail.IsGoogle"/> = true
