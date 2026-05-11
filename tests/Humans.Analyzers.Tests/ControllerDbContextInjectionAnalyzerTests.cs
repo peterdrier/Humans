@@ -48,6 +48,31 @@ public class ControllerDbContextInjectionAnalyzerTests
     }
 
     [HumansFact]
+    public async Task Fires_when_controller_injects_nullable_HumansDbContext()
+    {
+        var source = Stubs + """
+
+            #nullable enable
+            namespace Humans.Web.Controllers
+            {
+                public sealed class ReportsController : Microsoft.AspNetCore.Mvc.Controller
+                {
+                    public ReportsController(Humans.Infrastructure.Data.HumansDbContext? dbContext)
+                    {
+                    }
+                }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new ControllerDbContextInjectionAnalyzer(),
+            "Humans.Web",
+            source);
+
+        diagnostics.Should().ContainSingle(d => IsHum0008(d));
+    }
+
+    [HumansFact]
     public async Task Fires_when_controller_base_subclass_injects_HumansDbContext()
     {
         var source = Stubs + """

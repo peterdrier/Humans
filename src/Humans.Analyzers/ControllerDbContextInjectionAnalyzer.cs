@@ -45,10 +45,14 @@ public sealed class ControllerDbContextInjectionAnalyzer : DiagnosticAnalyzer
         if (!string.Equals(context.Compilation.Assembly.Name, AssemblyScope.Web, System.StringComparison.Ordinal))
             return;
 
-        context.RegisterSymbolAction(AnalyzeNamedType, SymbolKind.NamedType);
+        var dbContextType = context.Compilation.GetTypeByMetadataName(HumansDbContextFullName);
+        if (dbContextType is null)
+            return;
+
+        context.RegisterSymbolAction(c => AnalyzeNamedType(c, dbContextType), SymbolKind.NamedType);
     }
 
-    private static void AnalyzeNamedType(SymbolAnalysisContext context)
+    private static void AnalyzeNamedType(SymbolAnalysisContext context, INamedTypeSymbol dbContextType)
     {
         var type = (INamedTypeSymbol)context.Symbol;
         if (!type.InheritsFromOrEquals(ControllerBaseFullName))
@@ -58,7 +62,7 @@ public sealed class ControllerDbContextInjectionAnalyzer : DiagnosticAnalyzer
         {
             foreach (var parameter in ctor.Parameters)
             {
-                if (!string.Equals(parameter.Type.ToDisplayString(), HumansDbContextFullName, System.StringComparison.Ordinal))
+                if (!SymbolEqualityComparer.Default.Equals(parameter.Type, dbContextType))
                     continue;
 
                 context.ReportDiagnostic(Diagnostic.Create(

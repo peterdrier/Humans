@@ -46,10 +46,8 @@ public sealed class AdminDatabaseDiagnosticsService : IAdminDatabaseDiagnosticsS
         HashSet<Guid> ticketUserIds;
         if (year.HasValue)
         {
-            var yearStart = new DateTime(year.Value, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-            var yearEnd = new DateTime(year.Value + 1, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-            var startInstant = NodaTime.Instant.FromDateTimeUtc(yearStart);
-            var endInstant = NodaTime.Instant.FromDateTimeUtc(yearEnd);
+            var startInstant = NodaTime.Instant.FromUtc(year.Value, 1, 1, 0, 0);
+            var endInstant = NodaTime.Instant.FromUtc(year.Value + 1, 1, 1, 0, 0);
 
             var orderUserIds = await db.TicketOrders
                 .Where(o => o.MatchedUserId != null &&
