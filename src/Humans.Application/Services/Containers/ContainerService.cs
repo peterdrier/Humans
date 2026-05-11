@@ -147,8 +147,10 @@ public sealed class ContainerService : IContainerService
             throw new ArgumentException("GeoJson must not be empty.", nameof(geoJson));
         }
 
-        var container = await _repo.GetByIdAsync(containerId, ct)
-            ?? throw new InvalidOperationException("Container not found.");
+        if (await _repo.GetByIdAsync(containerId, ct) is null)
+        {
+            throw new InvalidOperationException("Container not found.");
+        }
 
         var now = _clock.GetCurrentInstant();
         var existing = await _repo.GetPlacementAsync(containerId, year, ct);
