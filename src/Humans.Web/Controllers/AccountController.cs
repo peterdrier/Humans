@@ -399,7 +399,7 @@ public class AccountController : HumansControllerBase
             }
             else
             {
-                _logger.LogInformation(
+                _logger.LogWarning(
                     "OAuth backfill: created UserEmail row for user {UserId} ({Provider}, sub={Sub}, email={Email}).",
                     userId.Value, info.LoginProvider, info.ProviderKey, claimEmail);
             }

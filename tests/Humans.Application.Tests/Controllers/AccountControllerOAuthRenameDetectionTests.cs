@@ -156,13 +156,12 @@ public class AccountControllerOAuthRenameDetectionTests
     }
 
     [HumansFact]
-    public async Task SuccessBranch_UpdateThrows_NoAuditAndCallbackContinues()
+    public async Task SuccessBranch_UpdateThrowsUnexpected_NoAuditAndCallbackContinues()
     {
-        // OAuth claim email collides with another user's verified row → the
-        // Postgres partial unique index throws 23505 from UpdateEmailAsync.
-        // The controller's catch handles it (LogError), does NOT write an
-        // audit row, and continues — duplicate-account detection surfaces the
-        // conflict on its next sweep.
+        // Unexpected exception out of UpdateEmailAsync (NOT a 23505 — those are
+        // caught inside the repository and surfaced as a `false` return). The
+        // controller's generic catch logs at LogError and continues; no audit
+        // row is written.
         var userId = Guid.NewGuid();
         var emailId = Guid.NewGuid();
         var oldEmail = "old@nobodies.team";
@@ -197,6 +196,52 @@ public class AccountControllerOAuthRenameDetectionTests
         var result = await _controller.ExternalLoginCallback(returnUrl: null, remoteError: null);
 
         result.Should().NotBeNull();
+        await _auditLogService.DidNotReceive().LogAsync(
+            Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task SuccessBranch_UpdateReturnsFalse_NoAuditAndCallbackContinues()
+    {
+        // Cross-user collision: 23505 caught inside UserEmailRepository →
+        // UpdateEmailAsync returns false. Controller's `if (!written) return;`
+        // guard skips the audit row. (Without this test, a regression that
+        // inverted the guard would pass.)
+        var userId = Guid.NewGuid();
+        var emailId = Guid.NewGuid();
+        var oldEmail = "old@nobodies.team";
+        var newEmail = "collides@nobodies.team";
+        var info = MakeInfo(newEmail);
+
+        _signInManager.GetExternalLoginInfoAsync().Returns(info);
+        _signInManager.ExternalLoginSignInAsync(Provider, ProviderKey, false, true)
+            .Returns(SignInResult.Success);
+
+        var existingUser = new User { Id = userId };
+        _userManager.FindByLoginAsync(Provider, ProviderKey).Returns(existingUser);
+        _userManager.UpdateAsync(Arg.Any<User>()).Returns(IdentityResult.Success);
+
+        var existingRow = new UserEmail
+        {
+            Id = emailId,
+            UserId = userId,
+            Email = oldEmail,
+            IsVerified = true,
+            Provider = Provider,
+            ProviderKey = ProviderKey,
+            CreatedAt = _clock.GetCurrentInstant(),
+            UpdatedAt = _clock.GetCurrentInstant()
+        };
+        _userEmailService.FindByProviderKeyAsync(Provider, ProviderKey, Arg.Any<CancellationToken>())
+            .Returns(new UserEmailProviderMatch(existingRow.Id, existingRow.UserId, existingRow.Email));
+        _userEmailService.UpdateEmailAsync(
+                userId, Provider, ProviderKey, newEmail, Arg.Any<CancellationToken>())
+            .Returns(false);
+
+        await _controller.ExternalLoginCallback(returnUrl: null, remoteError: null);
+
         await _auditLogService.DidNotReceive().LogAsync(
             Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<string>(),
