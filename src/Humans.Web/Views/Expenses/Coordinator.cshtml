@@ -64,7 +64,7 @@ else
                                 @r.Id.ToString()[..8]…
                             </a>
                         </td>
-                        <td>@r.SubmitterUserId.ToString()[..8]…</td>
+                        <td>@(Model.SubmitterNames.TryGetValue(r.SubmitterUserId, out var name) ? name : "(unknown)")</td>
                         <td>€@r.Total.ToString("N2")</td>
                         <td>
                             <span class="badge @badgeClass(r.Status)">@r.Status</span>

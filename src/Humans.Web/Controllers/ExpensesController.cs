@@ -2,6 +2,7 @@ using System.Text;
 using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Expenses;
 using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Expenses.Dtos;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
@@ -26,6 +27,7 @@ public sealed class ExpensesController : HumansControllerBase
     private readonly IExpenseAttachmentStorageService _storage;
     private readonly IBudgetService _budgetService;
     private readonly IProfileService _profileService;
+    private readonly IUserService _userService;
     private readonly IClock _clock;
     private readonly IAuthorizationService _authService;
     private readonly ISepaPaymentFileBuilder _sepaBuilder;
@@ -38,6 +40,7 @@ public sealed class ExpensesController : HumansControllerBase
         IExpenseAttachmentStorageService storage,
         IBudgetService budgetService,
         IProfileService profileService,
+        IUserService userService,
         IClock clock,
         IAuthorizationService authService,
         ISepaPaymentFileBuilder sepaBuilder,
@@ -49,6 +52,7 @@ public sealed class ExpensesController : HumansControllerBase
         _storage = storage;
         _budgetService = budgetService;
         _profileService = profileService;
+        _userService = userService;
         _clock = clock;
         _authService = authService;
         _sepaBuilder = sepaBuilder;
@@ -611,7 +615,8 @@ public sealed class ExpensesController : HumansControllerBase
             if (errorResult is not null) return errorResult;
 
             var reports = await _service.GetCoordinatorQueueAsync(user.Id);
-            return View(new ExpenseCoordinatorViewModel { Reports = reports });
+            var submitterNames = await ResolveSubmitterNamesAsync(reports);
+            return View(new ExpenseCoordinatorViewModel { Reports = reports, SubmitterNames = submitterNames });
         }
         catch (Exception ex)
         {
@@ -698,7 +703,8 @@ public sealed class ExpensesController : HumansControllerBase
         try
         {
             var reports = await _service.GetReviewQueueAsync();
-            return View(new ExpenseReviewViewModel { Reports = reports });
+            var submitterNames = await ResolveSubmitterNamesAsync(reports);
+            return View(new ExpenseReviewViewModel { Reports = reports, SubmitterNames = submitterNames });
         }
         catch (Exception ex)
         {
@@ -859,6 +865,29 @@ public sealed class ExpensesController : HumansControllerBase
     }
 
     // ──────────────────────────── Private helpers ─────────────────────────────
+
+    /// <summary>
+    /// Resolves submitter user ids to display names for queue rendering. Prefers
+    /// <c>Profile.BurnerName</c> (per <c>memory/architecture/burnername-is-the-display-name.md</c>);
+    /// falls back to <c>User.DisplayName</c> when no profile exists or BurnerName is blank,
+    /// and to a sentinel when neither resolves.
+    /// </summary>
+    private async Task<IReadOnlyDictionary<Guid, string>> ResolveSubmitterNamesAsync(
+        IReadOnlyCollection<ExpenseReportDto> reports)
+    {
+        var ids = reports.Select(r => r.SubmitterUserId).Distinct().ToList();
+        if (ids.Count == 0) return new Dictionary<Guid, string>();
+
+        var profiles = await _profileService.GetByUserIdsAsync(ids);
+        var users = await _userService.GetByIdsAsync(ids);
+        return ids.ToDictionary(
+            id => id,
+            id => profiles.TryGetValue(id, out var p) && !string.IsNullOrWhiteSpace(p.BurnerName)
+                ? p.BurnerName
+                : users.TryGetValue(id, out var u) && !string.IsNullOrWhiteSpace(u.DisplayName)
+                    ? u.DisplayName
+                    : "(unknown)");
+    }
 
     private async Task<IReadOnlyList<BudgetCategoryOption>> BuildCategoryOptionsAsync()
     {

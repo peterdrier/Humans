@@ -38,6 +38,7 @@ public sealed class ExpenseRepository : IExpenseRepository
         var entities = await ctx.ExpenseReports.AsNoTracking()
             .Include(r => r.Lines).ThenInclude(l => l.Attachment)
             .Where(r => r.SubmitterUserId == submitterUserId)
+            // arch:db-sort-ok submitter's own list — newest-first paging-friendly default
             .OrderByDescending(r => r.CreatedAt)
             .ToListAsync(ct);
         return entities.Select(ExpenseReportMapper.ToDto).ToList();
@@ -50,6 +51,7 @@ public sealed class ExpenseRepository : IExpenseRepository
         var entities = await ctx.ExpenseReports.AsNoTracking()
             .Include(r => r.Lines).ThenInclude(l => l.Attachment)
             .Where(r => r.Status == status)
+            // arch:db-sort-ok FIFO poll order — oldest SubmittedAt first feeds the SepaSent→Paid poller deterministically
             .OrderBy(r => r.SubmittedAt ?? r.CreatedAt)
             .ToListAsync(ct);
         return entities.Select(ExpenseReportMapper.ToDto).ToList();
@@ -65,6 +67,7 @@ public sealed class ExpenseRepository : IExpenseRepository
         var entities = await ctx.ExpenseReports.AsNoTracking()
             .Include(r => r.Lines).ThenInclude(l => l.Attachment)
             .Where(r => r.Status == status && categoryIds.Contains(r.BudgetCategoryId))
+            // arch:db-sort-ok coordinator queue FIFO — oldest pending submissions surface first
             .OrderBy(r => r.SubmittedAt ?? r.CreatedAt)
             .ToListAsync(ct);
         return entities.Select(ExpenseReportMapper.ToDto).ToList();
@@ -78,6 +81,7 @@ public sealed class ExpenseRepository : IExpenseRepository
             .Include(r => r.Lines).ThenInclude(l => l.Attachment)
             .Where(r => r.Status != ExpenseReportStatus.Draft
                      && r.Status != ExpenseReportStatus.Withdrawn)
+            // arch:db-sort-ok finance review queue — newest submissions on top so reviewers see fresh work first
             .OrderByDescending(r => r.SubmittedAt ?? r.CreatedAt)
             .ToListAsync(ct);
         return entities.Select(ExpenseReportMapper.ToDto).ToList();
@@ -213,8 +217,9 @@ public sealed class ExpenseRepository : IExpenseRepository
         var r = await ctx.ExpenseReports
             .FirstOrDefaultAsync(x => x.Id == reportId, ct);
         if (r is null) return false;
-        if (r.Status is ExpenseReportStatus.Approved
-                     or ExpenseReportStatus.SepaSent
+        // Withdrawn from Submitted/CoordinatorEndorsed/Approved per section invariant;
+        // post-payout statuses (SepaSent/Paid) and the terminal Withdrawn itself are blocked.
+        if (r.Status is ExpenseReportStatus.SepaSent
                      or ExpenseReportStatus.Paid
                      or ExpenseReportStatus.Withdrawn) return false;
         r.Status = ExpenseReportStatus.Withdrawn;
@@ -367,6 +372,7 @@ public sealed class ExpenseRepository : IExpenseRepository
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.HoldedExpenseOutboxEvents.AsNoTracking()
             .Where(e => e.ProcessedAt == null && !e.FailedPermanently)
+            // arch:db-sort-ok identity-ordered outbox drain — FIFO is the protocol requirement
             .OrderBy(e => e.OccurredAt)
             .Take(limit)
             .ToListAsync(ct);
@@ -378,6 +384,7 @@ public sealed class ExpenseRepository : IExpenseRepository
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.HoldedExpenseOutboxEvents.AsNoTracking()
             .Where(e => e.FailedPermanently)
+            // arch:db-sort-ok admin diagnostic — most-recent failures on top
             .OrderByDescending(e => e.OccurredAt)
             .ToListAsync(ct);
     }
