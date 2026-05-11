@@ -87,6 +87,32 @@ public class ProfileIsSuspendedWriteAnalyzerTests
     }
 
     [HumansFact]
+    public async Task Fires_on_write_from_arbitrary_Web_type()
+    {
+        // Positive scope test for Web — completes the canary triangle with the
+        // existing Application + Infrastructure positive tests. A scope change
+        // that dropped Web (e.g. ApplicationOrInfrastructure) would otherwise
+        // pass every remaining test silently.
+        var source = DomainStub + """
+
+            namespace Humans.Web.Controllers
+            {
+                public class SomeController
+                {
+                    public void Suspend(Humans.Domain.Entities.Profile p) => p.IsSuspended = true;
+                }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new ProfileIsSuspendedWriteAnalyzer(),
+            "Humans.Web",
+            source);
+
+        diagnostics.Should().ContainSingle(d => IsHum0004(d));
+    }
+
+    [HumansFact]
     public async Task Fires_on_write_from_arbitrary_Infrastructure_type()
     {
         // Positive scope test for Infrastructure — same canary purpose as the
