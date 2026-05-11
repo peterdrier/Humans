@@ -24,11 +24,11 @@ public class UserEmail
     ///
     /// MUTATION: see <c>memory/architecture/email-mutation-paths.md</c>. The only
     /// path that rewrites this field on an existing row is
-    /// <c>UserEmailRepository.UpdateEmailAsync(provider, providerKey, newEmail, ...)</c>,
-    /// matched on <see cref="Provider"/>+<see cref="ProviderKey"/>, called only by
-    /// the OAuth sign-in callback in <c>AccountController</c>. Admin flows, sync
+    /// <c>UserEmailService.ReconcileOAuthIdentityAsync</c>, matched on
+    /// <see cref="Provider"/>+<see cref="ProviderKey"/>, called only by the
+    /// OAuth sign-in callback in <c>AccountController</c>. Admin flows, sync
     /// jobs, and profile UI never rewrite an existing row's address — renames
-    /// self-heal on the user's next Google sign-in. Rows can be added or removed,
+    /// self-heal on the user's next OAuth sign-in. Rows can be added or removed,
     /// not edited.
     /// </summary>
     public string Email { get; set; } = string.Empty;

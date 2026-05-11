@@ -10,16 +10,22 @@
   src/Humans.Web/Controllers/FinanceController.cs
 -->
 <!-- freshness:flag-on-change
-  Holded sync, match-status semantics, manual-reassignment flow, or sync-state singleton may have changed — review when Finance services/entities/job/auth change.
+  FinanceController routes, auth policy (FinanceAdminOrAdmin), or budget-delegation correctness — review when FinanceController or its Budget/Tickets service dependencies change. Holded-specific review guidance lives in the "Planned" sections below; promote it here once Holded services land.
 -->
 
 # Finance — Section Invariants
 
-External-accounting reconciliation: pulls Holded purchase invoices into Humans, matches them to budget categories via tag, and surfaces planned-vs-actual rolls-up to the treasurer.
+Finance is the **treasurer's reality side** of the money story. Budget owns planning and public presentation; Finance owns actuals, reconciliation, and treasurer-facing operational data. The two share `BudgetGroup` / `BudgetCategory` keys; nothing else.
 
-> Finance is the **reality side** of the money story. Budget owns planning and public presentation; Finance owns actuals, reconciliation, and treasurer-facing operational data. They share the `BudgetGroup` / `BudgetCategory` keys but nothing else.
+## Today vs Planned
+
+**Today** (built): `FinanceController` at `/Finance/*` is the treasurer's window over Budget data — Budget years, groups, categories, line items, ticketing projections, audit log, cash-flow view. Gated on `FinanceAdmin` or `Admin`. All reads/writes route through `IBudgetService`, `ITicketingBudgetService`, `ITicketQueryService`. Finance owns no tables and no Application-layer services yet.
+
+**Planned** (specified, not yet implemented): external-accounting reconciliation via Holded integration — pull purchase docs from Holded each cycle, match to `BudgetCategory` via the `{group-slug}-{category-slug}` tag convention, surface unmatched docs in a treasurer queue, and write resolved tags back to Holded. Concepts, data model, and the four `/Finance/Holded*` routes below describe the **target shape**, not current code.
 
 ## Concepts
+
+> All concepts below are **planned** — the Holded integration is specified but not yet implemented as of 2026-05-09. Today's Finance surface uses Budget vocabulary (years, groups, categories, line items).
 
 - A **Holded Transaction** is a purchase invoice pulled from Holded and stored verbatim. Each carries a `MatchStatus` indicating whether it has been resolved to a budget category.
 - The **Tag Convention** is `{group-slug}-{category-slug}` — split on the first `-`, group prefix and category suffix resolve against `BudgetGroup.Slug` and `BudgetCategory.Slug` within the budget year covering the doc's date.
@@ -27,6 +33,8 @@ External-accounting reconciliation: pulls Holded purchase invoices into Humans, 
 - The **Unmatched Queue** is the working surface where the treasurer resolves docs whose `MatchStatus != Matched`.
 
 ## Data Model
+
+> **Not yet built** — no Finance-owned tables exist. The design below is the target schema.
 
 ### HoldedTransaction
 
@@ -97,69 +105,128 @@ Stored as string via `HasConversion<string>()`.
 
 ## Routing
 
+All routes are gated by `[Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]` on `FinanceController`.
+
+### Today — treasurer surface over Budget
+
+| Route | Controller action |
+|-------|-------------------|
+| `GET /Finance` | `Index` — Budget year overview (active year) |
+| `GET /Finance/Years/{id}` | `YearDetail` — Budget year detail |
+| `GET /Finance/Categories/{id}` | `CategoryDetail` — Budget category detail |
+| `GET /Finance/AuditLog/{yearId?}` | `AuditLog` — Budget audit log |
+| `GET /Finance/CashFlow` | `CashFlow` — Cash flow projection |
+| `GET /Finance/Admin` | `Admin` — Budget admin (years/groups) |
+| `POST /Finance/Years/{id}/SyncDepartments` | `SyncDepartments` |
+| `POST /Finance/Years/Create` | `CreateYear` |
+| `POST /Finance/Years/{id}/UpdateStatus` | `UpdateYearStatus` |
+| `POST /Finance/Years/{id}/Update` | `UpdateYear` |
+| `POST /Finance/Years/{id}/Delete` | `DeleteYear` |
+| `POST /Finance/Groups/Create` | `CreateGroup` |
+| `POST /Finance/Groups/{id}/Update` | `UpdateGroup` |
+| `POST /Finance/Groups/{id}/Delete` | `DeleteGroup` |
+| `POST /Finance/Categories/Create` | `CreateCategory` |
+| `POST /Finance/Categories/{id}/Update` | `UpdateCategory` |
+| `POST /Finance/Categories/{id}/Delete` | `DeleteCategory` |
+| `POST /Finance/LineItems/Create` | `CreateLineItem` |
+| `POST /Finance/LineItems/{id}/Update` | `UpdateLineItem` |
+| `POST /Finance/LineItems/{id}/Delete` | `DeleteLineItem` |
+| `POST /Finance/Years/{id}/EnsureTicketingGroup` | `EnsureTicketingGroup` |
+| `POST /Finance/TicketingProjection/{groupId}/Update` | `UpdateTicketingProjection` |
+| `POST /Finance/TicketingBudget/{yearId}/Sync` | `SyncTicketingBudget` |
+
+### Planned — Holded integration
+
 | Route | Purpose |
 |-------|---------|
-| `/Finance` | Existing year-detail accordion, gains an "Actual" column and per-category Holded drill-down |
-| `/Finance/HoldedUnmatched` | Unmatched-queue UI |
-| `/Finance/HoldedTags` | Read-only tag inventory |
-| `POST /Finance/HoldedSync/Run` | Manual "Sync Now" trigger |
+| `GET /Finance/HoldedUnmatched` | Unmatched-queue UI |
+| `GET /Finance/HoldedTags` | Read-only tag inventory |
+| `POST /Finance/HoldedSync/Run` | Manual sync trigger |
 | `POST /Finance/HoldedUnmatched/{id}/Assign` | Manual reassignment |
 
 ## Actors & Roles
 
 | Actor | Capabilities |
 |-------|--------------|
-| FinanceAdmin, Admin | Full access to all Finance routes. View transactions, trigger sync, reassign unmatched docs. |
-| Department coordinator | None — actuals are FinanceAdmin-only in v1. May gain per-team read access in a later iteration. |
+| FinanceAdmin, Admin | Full access to all `/Finance/*` routes. View budget data, manage years/groups/categories/line items, trigger ticketing sync. Will gain: view transactions, trigger Holded sync, reassign unmatched docs (when Holded integration lands). |
+| Department coordinator | None — Finance routes are FinanceAdmin-only. |
 | Any other authenticated human | None |
 
 ## Invariants
 
-- The sync job pulls all purchase docs from Holded each cycle (full-pull, no incremental). Strategy is forced by the Holded API's `?starttmp=&endtmp=` filter operating on `accountingDate`, which is null on real docs.
-- Upsert is keyed on `HoldedDocId`. `CreatedAt` is preserved across re-syncs; every other field is overwritten.
-- Match resolution runs every sync — it is not persisted incrementally beyond the `MatchStatus` value itself. Fixing tags in Holded (or via the unmatched-queue UI) takes effect on next sync.
-- `MatchStatus` is determined by ordered rules (UnsupportedCurrency → NoBudgetYearForDate → NoTags → UnknownTag → MultiMatchConflict → Matched); first failure wins.
-- Tags are computed as `{group-slug}-{category-slug}`; **no separate tag-mapping table exists**. Slug fields on `BudgetGroup` and `BudgetCategory` are the single source of truth.
-- Manual reassignment writes the corrected tag back to Holded via `PUT /api/invoicing/v1/documents/purchase/{id}`. If the PUT fails, the local match is still saved and a warning is surfaced; treasurer is expected to fix tags in Holded directly.
-- Every manual reassignment writes an `AuditLogEntry` via `IAuditLogService` recording actor, timestamp, doc id, and category id.
-- Holded API key is read from env var `HOLDED_API_KEY` only — never `appsettings.json`.
-- `HoldedTransaction.Total` is included in category-level "actual" sums **only when `ApprovedAt IS NOT NULL`**.
+> Most invariants below are **target invariants** for the Holded integration. The two marked "current" apply today.
+
+- **(current)** Only `FinanceAdmin` or `Admin` may access any `/Finance/*` route (`[Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]` on `FinanceController`).
+- **(current)** All budget mutations in `FinanceController` route through `IBudgetService` — the controller owns no Finance-domain tables.
+- *(target)* The sync job pulls all purchase docs from Holded each cycle (full-pull, no incremental). Strategy is forced by the Holded API's `?starttmp=&endtmp=` filter operating on `accountingDate`, which is null on real docs.
+- *(target)* Upsert is keyed on `HoldedDocId`. `CreatedAt` is preserved across re-syncs; every other field is overwritten.
+- *(target)* Match resolution runs every sync — it is not persisted incrementally beyond the `MatchStatus` value itself. Fixing tags in Holded (or via the unmatched-queue UI) takes effect on next sync.
+- *(target)* `MatchStatus` is determined by ordered rules (UnsupportedCurrency → NoBudgetYearForDate → NoTags → UnknownTag → MultiMatchConflict → Matched); first failure wins.
+- *(target)* Tags are computed as `{group-slug}-{category-slug}`; no separate tag-mapping table exists. Slug fields on `BudgetGroup` and `BudgetCategory` are the single source of truth.
+- *(target)* Manual reassignment writes the corrected tag back to Holded via `PUT /api/invoicing/v1/documents/purchase/{id}`. If the PUT fails, the local match is still saved and a warning is surfaced; treasurer is expected to fix tags in Holded directly.
+- *(target)* Every manual reassignment writes an `AuditLogEntry` via `IAuditLogService` recording actor, timestamp, doc id, and category id.
+- *(target)* Holded API key is read from env var `HOLDED_API_KEY` only — never `appsettings.json`.
+- *(target)* `HoldedTransaction.Total` is included in category-level "actual" sums only when `ApprovedAt IS NOT NULL`.
 
 ## Negative Access Rules
 
-- Coordinators **cannot** view `/Finance/*` routes — actuals are FinanceAdmin-only in v1.
-- The sync job **cannot** delete `HoldedTransaction` rows. Holded-side deletions are not yet handled in v1; treasurer cleans up manually.
-- Finance **cannot** read or write Budget tables directly — all cross-section access goes through `IBudgetService`.
-- Finance **cannot** write to `holded_transactions` outside the sync job and `ReassignAsync`. There is no manual create/edit/delete UI for transactions in v1.
+- Coordinators **cannot** view `/Finance/*` routes.
+- *(target)* The sync job **cannot** delete `HoldedTransaction` rows. Holded-side deletions are not handled in v1; treasurer cleans up manually.
+- *(target)* Finance **cannot** read or write Budget tables directly — all cross-section access goes through `IBudgetService`.
+- *(target)* Finance **cannot** write to `holded_transactions` outside the sync job and `ReassignAsync`. No manual create/edit/delete UI for transactions in v1.
 
 ## Triggers
 
-- When a manual reassignment succeeds, an `AuditLogEntry` is written and (best-effort) a `PUT` request is made to Holded to add the corrected tag to the doc.
-- When the sync job starts, `HoldedSyncState.SyncStatus` flips to `Running`. On success it returns to `Idle` with `LastSyncAt` and `LastSyncedDocCount` updated. On exception it goes to `Error` with `LastError` populated; the next scheduled run retries.
+- **(current)** None in the Finance domain layer. Budget mutations via `FinanceController` trigger Budget-section side effects (audit log entries written by `IBudgetService`).
+- *(target)* When a manual reassignment succeeds, an `AuditLogEntry` is written and (best-effort) a `PUT` request is made to Holded to add the corrected tag to the doc.
+- *(target)* When the sync job starts, `HoldedSyncState.SyncStatus` flips to `Running`. On success returns to `Idle` with `LastSyncAt` and `LastSyncedDocCount` updated. On exception goes to `Error` with `LastError` populated; next scheduled run retries.
 
 ## Cross-Section Dependencies
 
-- **Budget:** `IBudgetService.GetCategoryBySlugAsync(year, groupSlug, categorySlug)`, `IBudgetService.GetYearForDateAsync(date)`, `IBudgetService.GetCategoriesByYearAsync(yearId)`, `IBudgetService.GetTagInventoryAsync(yearId)` — all read-only.
-- **Audit Log:** `IAuditLogService.LogAsync(...)` — manual-reassignment audit trail.
+- **(current)** **Budget:** `IBudgetService` (read + write — all budget year/group/category/line-item mutations in `FinanceController` route through it), `ITicketingBudgetService` (ticketing projection and actuals sync).
+- **(current)** **Tickets:** `ITicketQueryService.GetGrossTicketRevenueAsync` (cash flow view).
+- *(target)* **Budget:** `IBudgetService.GetCategoryBySlugAsync`, `GetYearForDateAsync`, `GetCategoriesByYearAsync`, `GetTagInventoryAsync` — all read-only from the Holded sync path.
+- *(target)* **Audit Log:** `IAuditLogService.LogAsync` — manual-reassignment audit trail.
 
 Budget never calls into Finance.
 
 ## Architecture
 
-**Owning services:** `HoldedSyncService`, `HoldedTransactionService`
-**Owned tables:** `holded_transactions`, `holded_sync_states`
-**Status:** (A) Migrated — new section, born under design-rules §15h(1) (new code starts in `Humans.Application` with a repository).
+**Owning services:** `HoldedSyncService`, `HoldedTransactionService` (not yet built)
+**Owned tables:** `holded_transactions`, `holded_sync_states` (not yet built — no EF migration exists)
+**Status:** (C) Pre-migration — `FinanceController` exists as a Budget-backed UI shell; Finance-domain services, entities, repository, and job have not been implemented.
 
-- Services live in `Humans.Application.Services.Finance/` and never import `Microsoft.EntityFrameworkCore`.
-- `IHoldedRepository` (impl `Humans.Infrastructure/Repositories/HoldedRepository.cs`, §15b Singleton + `IDbContextFactory`) is the only file that touches Finance tables via `DbContext`.
-- `IHoldedClient` (impl `Humans.Infrastructure/Services/HoldedClient.cs`) is a typed `HttpClient` wrapper. API key is bound from env var `HOLDED_API_KEY`; never logged.
-- `HoldedSyncJob` (`Humans.Infrastructure/Jobs/HoldedSyncJob.cs`) is a Hangfire recurring job at `0 30 4 * * *` UTC.
-- **Decorator decision — no caching decorator.** Finance is FinanceAdmin-only and low-traffic. Same rationale as Budget / Governance.
-- **Cross-domain navs:** none. `BudgetCategoryId` is FK-only with no navigation property; lookups go through `IBudgetService`.
-- **Cross-section calls** route through `IBudgetService` (read-only) and `IAuditLogService` (write-only).
-- **Architecture test** — `tests/Humans.Application.Tests/Architecture/FinanceArchitectureTests.cs` pins the shape (no EF Core import in service, no cross-section repositories injected, no direct `BudgetCategory` table access).
-- **GDPR** — no `IUserDataContributor`. Finance owns no per-user data; vendor identity is a Holded contact, not a Humans user. If per-user spend ever lands here, revisit per design-rules §8a.
+> **What currently exists:**
+> - `src/Humans.Web/Controllers/FinanceController.cs` — Budget admin + treasurer view. Injects `IBudgetService`, `ITicketingBudgetService`, `ITicketQueryService`. Zero Finance-owned infrastructure.
+> - `PolicyNames.FinanceAdminOrAdmin` and `RoleNames.FinanceAdmin` — role + policy wired in `AuthorizationPolicyExtensions.cs`.
+>
+> **What does not yet exist:**
+> - `src/Humans.Domain/Entities/HoldedTransaction.cs`
+> - `src/Humans.Domain/Entities/HoldedSyncState.cs`
+> - `src/Humans.Application/Services/Finance/` (any file)
+> - `src/Humans.Application/Interfaces/Finance/` (any file)
+> - `src/Humans.Infrastructure/Repositories/HoldedRepository.cs`
+> - `src/Humans.Infrastructure/Services/HoldedClient.cs`
+> - `src/Humans.Infrastructure/Jobs/HoldedSyncJob.cs`
+> - `tests/Humans.Application.Tests/Architecture/FinanceArchitectureTests.cs`
+> - Any EF migration for `holded_transactions` or `holded_sync_states`
 
-### Soft-boundary note
+### For (C) Pre-migration sections
 
-`TicketingProjection` and `TicketingBudgetSyncJob` are conceptually "actuals materialization" but live in Budget today (per V1d). They are not migrated to Finance as part of this work. Treat that as a known soft boundary — separate cleanup, not an active violation.
+> **Status (pre-migration):** Finance-domain services do not yet exist. When the Holded integration is built, it must start in `Humans.Application` per design-rules §15h(1) (new sections start as (A)). **Delete this block once the migration lands and Finance services live in `Humans.Application.Services.Finance/` with `HoldedRepository.cs` in `Humans.Infrastructure/Repositories/`.**
+
+#### Target repositories
+
+- **`IHoldedRepository`** — owns `holded_transactions`, `holded_sync_states`
+  - No cross-domain navs: `BudgetCategoryId` is FK-only, no navigation property
+  - No append-only constraint: transactions are upserted (full overwrite on re-sync)
+
+#### Current violations
+
+None applicable — Finance owns no tables yet. The `FinanceController` is correctly calling Budget/Tickets via their service interfaces; no cross-section DbContext reads.
+
+#### Touch-and-clean guidance
+
+- When the Holded integration lands: add `FinanceArchitectureTests.cs` pinning no-EF-import-in-service, no cross-section repository injection, no direct `BudgetCategory` table access.
+- When the Holded integration lands: update design-rules §15 migration status list to record Finance as migrated (A).
+- **Soft boundary:** `TicketingProjection` and `TicketingBudgetService` are conceptually "actuals materialization" but live in Budget today. Treat as known soft boundary — separate cleanup, not an active violation.

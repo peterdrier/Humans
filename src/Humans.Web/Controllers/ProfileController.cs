@@ -1034,7 +1034,7 @@ public class ProfileController : HumansControllerBase
 
         // Route the OAuth round-trip through AccountController.ExternalLoginCallback
         // so the link-while-signed-in branch (UserManager.AddLoginAsync +
-        // TryLinkProviderForUserEmailAsync) actually fires after the provider
+        // ReconcileOAuthIdentityAsync) actually fires after the provider
         // returns. Redirecting straight back to /Profile/Me/Emails would skip
         // that branch and the linkage would never persist.
         var resolvedReturnUrl = returnUrl ?? Url.Action(nameof(Emails)) ?? "/Profile/Me/Emails";
@@ -2517,6 +2517,43 @@ public class ProfileController : HumansControllerBase
         var workspaceLockedEmail = workspaceCandidates.FirstOrDefault(e => e.IsPrimary)
             ?? workspaceCandidates.FirstOrDefault();
 
+        // Issue nobodies-collective/Humans#697: per-user admin diagnostic —
+        // load AspNetUserLogins alongside UserEmail rows and compute the
+        // store-disagreement flags. Self contexts skip the lookup (the section
+        // is admin-only).
+        IReadOnlyList<(string Provider, string ProviderKey)> userLogins =
+            Array.Empty<(string, string)>();
+        IReadOnlyList<Humans.Domain.Entities.UserEmail> rawUserEmails =
+            Array.Empty<Humans.Domain.Entities.UserEmail>();
+        if (isAdminContext)
+        {
+            var loginsByUser = await _userService.GetExternalLoginsByUserIdsAsync(
+                new[] { user.Id }, ct);
+            if (loginsByUser.TryGetValue(user.Id, out var list))
+                userLogins = list;
+            rawUserEmails = await _userEmailService.GetEntitiesByUserIdAsync(user.Id, ct);
+        }
+
+        bool RowHasOrphanProviderTag(string? provider, string? providerKey) =>
+            isAdminContext
+            && !string.IsNullOrEmpty(provider)
+            && !string.IsNullOrEmpty(providerKey)
+            && !userLogins.Any(l =>
+                string.Equals(l.Provider, provider, StringComparison.Ordinal)
+                && string.Equals(l.ProviderKey, providerKey, StringComparison.Ordinal));
+
+        bool LoginHasOrphanRow(string provider, string providerKey) =>
+            !emails.Any(e =>
+                string.Equals(e.Provider, provider, StringComparison.Ordinal)
+                && string.Equals(e.ProviderKey, providerKey, StringComparison.Ordinal));
+
+        static string HashForDisplay(string s)
+        {
+            var bytes = System.Security.Cryptography.SHA256.HashData(
+                System.Text.Encoding.UTF8.GetBytes(s));
+            return Convert.ToHexString(bytes.AsSpan(0, 8));
+        }
+
         return new EmailsViewModel
         {
             Emails = emails.Select(e => new EmailRowViewModel
@@ -2530,8 +2567,17 @@ public class ProfileController : HumansControllerBase
                 IsPendingVerification = e.IsPendingVerification,
                 IsMergePending = e.IsMergePending,
                 IsNobodiesTeamDomain = e.Email.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase),
-                Provider = e.Provider
+                Provider = e.Provider,
+                HasOrphanProviderTag = RowHasOrphanProviderTag(e.Provider, e.ProviderKey),
             }).ToList(),
+            ExternalLogins = userLogins.Select(l => new ExternalLoginRowViewModel
+            {
+                LoginProvider = l.Provider,
+                ProviderKeyHash = HashForDisplay(l.ProviderKey),
+                ProviderDisplayName = null,
+                HasOrphanLogin = LoginHasOrphanRow(l.Provider, l.ProviderKey),
+            }).ToList(),
+            RawUserEmails = rawUserEmails,
             CanAddEmail = canAdd,
             MinutesUntilResend = minutesUntilResend,
             GoogleServiceEmail = googleServiceEmail,

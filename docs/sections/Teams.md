@@ -21,7 +21,7 @@
 
 # Teams — Section Invariants
 
-Departments and sub-teams, join requests, role definitions, team pages, and linked Google resources. The largest section; migration is in flight.
+Departments and sub-teams, join requests, role definitions, team pages, and linked Google resources.
 
 ## Concepts
 
@@ -38,7 +38,7 @@ Departments and sub-teams, join requests, role definitions, team pages, and link
 
 **Table:** `teams`
 
-Aggregate-local navs kept: `Team.ParentTeam`, `Team.ChildTeams`, `Team.Members`, `Team.JoinRequests`, `Team.RoleDefinitions`. Public/member team page content lives directly on the row as `PageContent` / `PageContentUpdatedAt` / `PageContentUpdatedByUserId` columns (no separate `team_pages` table or entity).
+Aggregate-local navs kept: `Team.ParentTeam`, `Team.ChildTeams`, `Team.Members`, `Team.JoinRequests`, `Team.RoleDefinitions`. Public/member team page content lives directly on the row as `PageContent` / `PageContentUpdatedAt` / `PageContentUpdatedByUserId` / `CallsToAction` (JSONB) / `ShowCoordinatorsOnPublicPage` columns (no separate `team_pages` table or entity). Cross-domain nav `Team.LegalDocuments` (Legal section) is declared on the entity but should be FK-only; not used by `ITeamRepository`.
 
 ### TeamMember
 
@@ -114,6 +114,56 @@ Stored as string via `HasConversion<string>()`.
 | Colaboradors | `00000000-0000-0000-0001-000000000005` |
 | BarrioLeads | `00000000-0000-0000-0001-000000000006` |
 
+## Routing
+
+Three controllers serve this section. `TeamController` (`[Route("Teams")]`) handles both anonymous/member-facing and TeamsAdmin-gated actions. `TeamAdminController` (`[Route("Teams/{slug}")]`) handles per-team management under coordinator/admin authorization via `HumansTeamControllerBase.ResolveTeamManagementAsync` (which calls `TeamAuthorizationHandler` + `TeamOperationRequirement.ManageCoordinators`). Routes that go through `CanManageResourcesAsync` (coordinator-of-department check) are marked separately.
+
+| Route | Method | Controller | Auth |
+|-------|--------|------------|------|
+| `GET /Teams` | `Index` | `TeamController` | `[AllowAnonymous]` — anonymous sees public teams only; authenticated sees full directory |
+| `GET /Teams/{slug}` | `Details` | `TeamController` | `[AllowAnonymous]` — anonymous sees public pages; hidden teams return 404 for non-admin |
+| `GET /Teams/Birthdays` | `Birthdays` | `TeamController` | `[Authorize]` (any authenticated human with profile) |
+| `GET /Teams/Roster` | `Roster` | `TeamController` | `[Authorize]` |
+| `GET /Teams/Map` | `Map` | `TeamController` | `[Authorize]` |
+| `GET /Teams/My` | `MyTeams` | `TeamController` | `[Authorize]` |
+| `GET /Teams/{slug}/Join` | `Join` (GET) | `TeamController` | `[Authorize]` — hidden teams return 404 for non-admin |
+| `POST /Teams/{slug}/Join` | `Join` (POST) | `TeamController` | `[Authorize]` — hidden teams return 404 for non-admin |
+| `POST /Teams/{slug}/Leave` | `Leave` | `TeamController` | `[Authorize]` |
+| `POST /Teams/Requests/{id}/Withdraw` | `WithdrawRequest` | `TeamController` | `[Authorize]` |
+| `GET /Teams/Summary` | `Summary` | `TeamController` | `[Authorize(Policy = TeamsAdminBoardOrAdmin)]` |
+| `GET /Teams/Create` | `CreateTeam` (GET) | `TeamController` | `[Authorize(Policy = TeamsAdminBoardOrAdmin)]` |
+| `POST /Teams/Create` | `CreateTeam` (POST) | `TeamController` | `[Authorize(Policy = TeamsAdminBoardOrAdmin)]` |
+| `GET /Teams/{id:guid}/Edit` | `EditTeam` (GET) | `TeamController` | `[Authorize(Policy = TeamsAdminBoardOrAdmin)]` |
+| `POST /Teams/{id:guid}/Edit` | `EditTeam` (POST) | `TeamController` | `[Authorize(Policy = TeamsAdminBoardOrAdmin)]` |
+| `POST /Teams/{id:guid}/Delete` | `DeleteTeam` | `TeamController` | `[Authorize(Policy = BoardOrAdmin)]` |
+| `GET /Teams/{teamId:guid}/GoogleResources` | `GetTeamGoogleResources` | `TeamController` | `[Authorize(Policy = TeamsAdminBoardOrAdmin)]` — JSON API for resource picker |
+| `GET /Teams/{slug}/Members` | `Members` | `TeamAdminController` | `ResolveTeamManagementAsync` (coordinator or TeamsAdmin/Admin) |
+| `POST /Teams/{slug}/Members/Add` | `AddMember` | `TeamAdminController` | `ResolveTeamManagementAsync` |
+| `POST /Teams/{slug}/Members/{userId}/Remove` | `RemoveMember` | `TeamAdminController` | `ResolveTeamManagementAsync` |
+| `POST /Teams/{slug}/Members/{userId}/ProvisionEmail` | `ProvisionEmail` | `TeamAdminController` | `ResolveTeamManagementAsync` |
+| `GET /Teams/{slug}/Members/Search` | `SearchUsers` | `TeamAdminController` | `ResolveTeamManagementAsync` — AJAX name search |
+| `POST /Teams/{slug}/Requests/{requestId}/Approve` | `ApproveRequest` | `TeamAdminController` | `ResolveTeamManagementAsync` |
+| `POST /Teams/{slug}/Requests/{requestId}/Reject` | `RejectRequest` | `TeamAdminController` | `ResolveTeamManagementAsync` |
+| `GET /Teams/{slug}/Resources` | `Resources` | `TeamAdminController` | `[Authorize]` + `CanManageResourcesAsync` (Coordinator of dept or TeamsAdmin/Admin) |
+| `POST /Teams/{slug}/Resources/LinkDrive` | `LinkDriveResource` | `TeamAdminController` | `[Authorize]` + `CanManageResourcesAsync` |
+| `POST /Teams/{slug}/Resources/LinkGroup` | `LinkGroup` | `TeamAdminController` | `[Authorize]` + `CanManageResourcesAsync` |
+| `POST /Teams/{slug}/Resources/{resourceId}/PermissionLevel` | `UpdatePermissionLevel` | `TeamAdminController` | `[Authorize]` + `CanManageResourcesAsync` |
+| `POST /Teams/{slug}/Resources/{resourceId}/RestrictInheritedAccess` | `ToggleRestrictInheritedAccess` | `TeamAdminController` | `[Authorize]` + `CanManageResourcesAsync` |
+| `POST /Teams/{slug}/Resources/{resourceId}/Unlink` | `UnlinkResource` | `TeamAdminController` | `[Authorize]` + `CanManageResourcesAsync` |
+| `POST /Teams/{slug}/Resources/{resourceId}/Sync` | `SyncResource` | `TeamAdminController` | `[Authorize]` + `CanManageResourcesAsync` |
+| `GET /Teams/{slug}/Roles` | `Roles` | `TeamAdminController` | `ResolveTeamManagementAsync` |
+| `POST /Teams/{slug}/Roles/Create` | `CreateRole` | `TeamAdminController` | `ResolveTeamManagementAsync` |
+| `POST /Teams/{slug}/Roles/{roleId}/Edit` | `EditRole` | `TeamAdminController` | `ResolveTeamManagementAsync` (IsManagement field additionally gated to TeamsAdmin/Admin) |
+| `POST /Teams/{slug}/Roles/{roleId}/Delete` | `DeleteRole` | `TeamAdminController` | `ResolveTeamManagementAsync` |
+| `POST /Teams/{slug}/Roles/{roleId}/ToggleManagement` | `ToggleManagement` | `TeamAdminController` | `ResolveTeamManagementAsync` + explicit `IsTeamsAdmin || IsAdmin` |
+| `POST /Teams/{slug}/Roles/{roleId}/Assign` | `AssignRole` | `TeamAdminController` | `ResolveTeamManagementAsync` |
+| `POST /Teams/{slug}/Roles/{roleId}/Unassign/{memberId}` | `UnassignRole` | `TeamAdminController` | `ResolveTeamManagementAsync` |
+| `GET /Teams/{slug}/EditPage` | `EditPage` (GET) | `TeamAdminController` | `ResolveTeamManagementAsync` |
+| `POST /Teams/{slug}/EditPage` | `EditPage` (POST) | `TeamAdminController` | `ResolveTeamManagementAsync` |
+| `GET /Teams/{slug}/Roles/SearchMembers` | `SearchMembersForRole` | `TeamAdminController` | `ResolveTeamManagementAsync` — AJAX member search |
+
+`ResolveTeamManagementAsync` authorizes via `TeamAuthorizationHandler` + `TeamOperationRequirement.ManageCoordinators`. `CanManageResourcesAsync` checks coordinator-of-department specifically (sub-team managers cannot manage Google resources).
+
 ## Actors & Roles
 
 | Actor | Capabilities |
@@ -179,21 +229,28 @@ Stored as string via `HasConversion<string>()`.
 
 ## Architecture
 
-**Owning services:** `TeamService`, `TeamResourceService`
+**Owning services:** `TeamService`, `TeamResourceService`, `TeamPageService`
 **Owned tables:** `teams`, `team_members`, `team_join_requests`, `team_join_request_state_history`, `team_role_definitions`, `team_role_assignments`, `google_resources`
-**Status:** (A) Migrated (2026-04-23). Both services — `TeamResourceService` and `TeamService` — now live in `Humans.Application.Services.Teams`.
+**Status:** (A) Migrated (2026-04-23). All three services live in `Humans.Application.Services.Teams`.
 
 - `TeamService` goes through `ITeamRepository` for owned-table access and routes every cross-section read through the public service interface (`IUserService`, `IRoleAssignmentService`, `IShiftManagementService`, `ITeamResourceService`).
-- `TeamResourceService` uses `IGoogleResourceRepository` + the `ITeamResourceGoogleClient` connector (PR #274).
-- **Decorator decision - caching decorator.** `CachingTeamService` is a Singleton transparent decorator for `ITeamService`. It owns the canonical `ConcurrentDictionary<Guid, TeamInfo> _byTeamId` read model, warms it at startup through `TeamsWarmupHostedService`, and invalidates it explicitly after team/member writes via `InvalidateActiveTeamsCache()` / `IActiveTeamsCacheInvalidator`. `TeamInfo` / `TeamMemberInfo` are the service read models; the EF `Team` entity remains legacy surface area until the service-entity-boundary cleanup removes it from read APIs.
+- `TeamResourceService` uses `IGoogleResourceRepository` + the `ITeamResourceGoogleClient` connector (PR #274). `IGoogleResourceRepository` lives in `Humans.Application.Interfaces.Repositories` with its EF impl in `Humans.Infrastructure.Repositories.GoogleIntegration`.
+- `TeamPageService` owns no tables — it is a read-only composer over `ITeamService`, `ITeamResourceService`, and sibling services. It has no repository dependency (enforced by `TeamPageArchitectureTests`).
+- **Decorator decision — caching decorator.** `CachingTeamService` is a Singleton transparent decorator for `ITeamService`. It owns the canonical `ConcurrentDictionary<Guid, TeamInfo> _byTeamId` read model, warms it at startup through `TeamsWarmupHostedService`, and invalidates it explicitly after team/member writes via `InvalidateActiveTeamsCache()` / `IActiveTeamsCacheInvalidator`. `TeamInfo` / `TeamMemberInfo` are the service read models; the EF `Team` entity remains legacy surface area until the service-entity-boundary cleanup removes it from read APIs.
 - **Cross-domain navs `[Obsolete]`-marked:** `TeamMember.User`, `TeamJoinRequest.User`, `TeamJoinRequest.ReviewedByUser`, `TeamRoleAssignment.AssignedByUser`, `TeamJoinRequestStateHistory.ChangedByUser`. `TeamService` populates them in-memory via `IUserService.GetByIdsAsync` (§6b); controllers/views still read them under file-wide `#pragma warning disable CS0618` pragmas pending the cross-cutting User-nav strip (§15i).
+
+### Architecture tests
+
+- `tests/Humans.Application.Tests/Architecture/TeamsArchitectureTests.cs` — pins `TeamService` namespace, no-DbContext, `ITeamRepository` dependency, assembly.
+- `tests/Humans.Application.Tests/Architecture/TeamResourceArchitectureTests.cs` — pins `TeamResourceService`.
+- `tests/Humans.Application.Tests/Architecture/TeamPageArchitectureTests.cs` — pins `TeamPageService` namespace, no-DbContext, no-repository dependency (composer-only).
 
 ### Target repositories
 
-- **`ITeamRepository`** — owns `teams`, `team_members`, `team_join_requests`, `team_join_request_state_history`, `team_role_definitions`, `team_role_assignments`
+- **`ITeamRepository`** (`Humans.Application.Interfaces.Repositories`, impl `Humans.Infrastructure.Repositories.Teams.TeamRepository`) — owns `teams`, `team_members`, `team_join_requests`, `team_join_request_state_history`, `team_role_definitions`, `team_role_assignments`
   - Aggregate-local navs kept: `Team.ParentTeam`, `Team.ChildTeams`, `Team.Members`, `Team.JoinRequests`, `Team.RoleDefinitions`, `TeamJoinRequest.StateHistory`, `TeamMember.Team`, `TeamRoleDefinition.Team`, `TeamRoleAssignment.TeamRoleDefinition`, `TeamRoleAssignment.TeamMember`
   - Cross-domain navs stripped: `TeamMember.User → TeamMember.UserId`, `TeamJoinRequest.User → TeamJoinRequest.UserId`, `TeamJoinRequest.ReviewedByUser → TeamJoinRequest.ReviewedByUserId`, `TeamRoleAssignment.AssignedByUser → TeamRoleAssignment.AssignedByUserId`, `TeamJoinRequestStateHistory.ChangedByUser → TeamJoinRequestStateHistory.ChangedByUserId`
-- **`IGoogleResourceRepository`** (landed 2026-04-22, PR for sub-task nobodies-collective/Humans#540c) — owns `google_resources` (Team Resources sub-aggregate).
+- **`IGoogleResourceRepository`** (`Humans.Application.Interfaces.Repositories`, impl `Humans.Infrastructure.Repositories.GoogleIntegration.GoogleResourceRepository` — landed 2026-04-22, PR for sub-task nobodies-collective/Humans#540c) — owns `google_resources` (Team Resources sub-aggregate).
   - Aggregate-local navs kept: `GoogleResource.Team` back-ref is still declared but never `Include`-d by the repository (the one consumer, `GoogleController`, only reads `resource.Name`).
   - Cross-domain navs stripped: none.
   - Companion connector: `ITeamResourceGoogleClient` encapsulates Drive/Cloud-Identity calls so the Application project stays free of `Google.Apis.*`.

@@ -4,9 +4,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
 using NodaTime;
 using Humans.Domain.Entities;
-using Humans.Domain.Enums;
-using Humans.Application.DTOs;
-using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Profiles;
 
@@ -20,7 +17,6 @@ public class AccountController : HumansControllerBase
     private readonly ILogger<AccountController> _logger;
     private readonly IUserEmailService _userEmailService;
     private readonly IMagicLinkService _magicLinkService;
-    private readonly IAuditLogService _auditLogService;
     private readonly IProfileService _profileService;
     private readonly IStringLocalizer<SharedResource> _localizer;
 
@@ -31,7 +27,6 @@ public class AccountController : HumansControllerBase
         ILogger<AccountController> logger,
         IUserEmailService userEmailService,
         IMagicLinkService magicLinkService,
-        IAuditLogService auditLogService,
         IProfileService profileService,
         IStringLocalizer<SharedResource> localizer)
         : base(userManager)
@@ -42,7 +37,6 @@ public class AccountController : HumansControllerBase
         _logger = logger;
         _userEmailService = userEmailService;
         _magicLinkService = magicLinkService;
-        _auditLogService = auditLogService;
         _profileService = profileService;
         _localizer = localizer;
     }
@@ -109,9 +103,9 @@ public class AccountController : HumansControllerBase
             {
                 existingUser.LastLoginAt = _clock.GetCurrentInstant();
                 await _userManager.UpdateAsync(existingUser);
-            }
 
-            await DetectAndApplyRenameAsync(info, existingUser?.Id);
+                await TryReconcileOAuthIdentityAsync(existingUser.Id, info);
+            }
 
             _logger.LogInformation("User logged in with {Provider}", info.LoginProvider);
             return RedirectToLocal(returnUrl);
@@ -145,7 +139,7 @@ public class AccountController : HumansControllerBase
 
                     if (!string.IsNullOrEmpty(email))
                     {
-                        await TryLinkProviderForUserEmailAsync(currentUser.Id, email, info);
+                        await TryReconcileOAuthIdentityAsync(currentUser.Id, info);
                     }
 
                     _logger.LogInformation(
@@ -203,6 +197,9 @@ public class AccountController : HumansControllerBase
                                 activeTarget.LastLoginAt = _clock.GetCurrentInstant();
                                 await _userManager.UpdateAsync(activeTarget);
                                 await _signInManager.SignInAsync(activeTarget, isPersistent: false);
+
+                                await TryReconcileOAuthIdentityAsync(activeTarget.Id, info);
+
                                 _logger.LogInformation(
                                     "Relinked {Provider} login from locked source {SourceId} to active target {TargetId}",
                                     info.LoginProvider, lockedSource.Id, activeTarget.Id);
@@ -256,7 +253,7 @@ public class AccountController : HumansControllerBase
                     }
                     await _userManager.UpdateAsync(existingByEmail);
 
-                    await TryLinkProviderForUserEmailAsync(existingByEmail.Id, email, info);
+                    await TryReconcileOAuthIdentityAsync(existingByEmail.Id, info);
 
                     await _signInManager.SignInAsync(existingByEmail, isPersistent: false);
                     _logger.LogInformation(
@@ -323,35 +320,61 @@ public class AccountController : HumansControllerBase
             return View(nameof(Login));
         }
 
-        // Create the OAuth-linked UserEmail row via LinkAsync (find-or-create
-        // with Provider/ProviderKey tagged). If this fails after CreateAsync +
-        // AddLoginAsync both succeeded, we still have an orphan: the User +
-        // AspNetUserLogins row persist, but no UserEmail row exists, so the
-        // user becomes un-notifiable. Symmetric to CompleteSignup's cleanup.
+        // Create the OAuth-linked UserEmail row via the reconcile entry point.
+        // For a freshly created user this hits the NewRowCreated branch (no
+        // existing rows, no cross-user collision unless the address is already
+        // verified by another user). On reconcile throw OR a CrossUserBlocked
+        // outcome (another user verified-holds the address and the provider's
+        // email_verified claim is false — so reconcile refused to displace
+        // and did NOT create a UserEmail row), roll back the User to avoid an
+        // orphan that's unreachable via either OAuth or magic link. Symmetric
+        // to CompleteSignup's cleanup.
         try
         {
-            await _userEmailService.LinkAsync(
+            var reconcile = await _userEmailService.ReconcileOAuthIdentityAsync(
                 user.Id,
                 info.LoginProvider,
                 info.ProviderKey,
                 email,
-                actorUserId: user.Id);
+                claimEmailVerified: ReadEmailVerifiedClaim(info));
+
+            // CrossUserBlocked: reconcile returned normally with no UserEmail
+            // row created (another user verified-holds the address and the
+            // provider's email_verified claim is false). The service has
+            // already written the OAuthRenameCollisionBlocked audit + the
+            // mother-of-all LogError — we don't re-log here. Roll back the
+            // newly-created User + AspNetUserLogins row so we don't leave
+            // an un-notifiable orphan.
+            if (reconcile.Outcome == ReconcileOutcome.CrossUserBlocked)
+            {
+                await TryDeleteOrphanUserAsync(user);
+                ModelState.AddModelError(string.Empty,
+                    "We couldn't finish setting up your account. Please try again.");
+                ViewData["ReturnUrl"] = returnUrl;
+                return View(nameof(Login));
+            }
+        }
+        catch (OAuthReconcileConcurrencyException race)
+        {
+            _logger.LogError(race,
+                "OAuth signup race on UserEmail unique index for new user " +
+                "{UserId} (provider={Provider}, sub={Sub}, claimEmail={Email}); " +
+                "rolling back user + login. The verified-email partial unique " +
+                "index caught a concurrent insert past the reconcile pre-check " +
+                "— investigate via /Profile/Admin/EmailProblems.",
+                user.Id, info.LoginProvider, info.ProviderKey, email);
+            await TryDeleteOrphanUserAsync(user);
+            ModelState.AddModelError(string.Empty,
+                "We couldn't finish setting up your account. Please try again.");
+            ViewData["ReturnUrl"] = returnUrl;
+            return View(nameof(Login));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex,
-                "Failed to create UserEmail for OAuth signup {UserId} ({Email}); rolling back user + login",
+                "Failed to reconcile OAuth identity for new user {UserId} ({Email}); rolling back user + login",
                 user.Id, email);
-            try
-            {
-                await _userManager.DeleteAsync(user);
-            }
-            catch (Exception deleteEx)
-            {
-                _logger.LogError(deleteEx,
-                    "Failed to clean up orphan user {UserId} after LinkAsync failure",
-                    user.Id);
-            }
+            await TryDeleteOrphanUserAsync(user);
             ModelState.AddModelError(string.Empty,
                 "We couldn't finish setting up your account. Please try again.");
             ViewData["ReturnUrl"] = returnUrl;
@@ -366,84 +389,87 @@ public class AccountController : HumansControllerBase
         return RedirectToLocal(returnUrl);
     }
 
-    private async Task DetectAndApplyRenameAsync(ExternalLoginInfo info, Guid? userId)
+    /// <summary>
+    /// Calls <see cref="IUserEmailService.ReconcileOAuthIdentityAsync"/> for
+    /// every OAuth-success path (existing-user sign-in, already-authenticated
+    /// link, lockout-relink, email-match link). Sign-in must never block on
+    /// reconcile failures — every exception is logged and swallowed. The
+    /// service owns every audit row for the OAuth path; this controller writes
+    /// none. The new-user creation path uses the reconcile result to decide
+    /// whether to roll back, so it calls reconcile inline rather than via
+    /// this helper.
+    /// </summary>
+    private async Task TryReconcileOAuthIdentityAsync(Guid userId, Microsoft.AspNetCore.Identity.ExternalLoginInfo info)
     {
-        if (userId is null)
+        var claimEmail = info.Principal.FindFirstValue(ClaimTypes.Email);
+        if (string.IsNullOrEmpty(claimEmail))
             return;
 
         try
         {
-            var claimEmail = info.Principal.FindFirstValue(ClaimTypes.Email);
-            if (string.IsNullOrEmpty(claimEmail))
-                return;
-
-            var match = await _userEmailService.FindByProviderKeyAsync(
-                info.LoginProvider, info.ProviderKey);
-            if (match is not null &&
-                match.UserId == userId.Value &&
-                string.Equals(match.Email, claimEmail, StringComparison.OrdinalIgnoreCase))
-                return;
-
-            var written = await _userEmailService.UpdateEmailAsync(
-                userId.Value, info.LoginProvider, info.ProviderKey, claimEmail);
-            if (!written)
-                return;
-
-            if (match is not null && match.UserId == userId.Value)
-            {
-                await _auditLogService.LogAsync(
-                    AuditAction.GoogleEmailRenamed,
-                    nameof(User), userId.Value,
-                    $"email rename detected: {match.Email} -> {claimEmail}, sub={info.ProviderKey}",
-                    nameof(AccountController),
-                    relatedEntityId: match.Id, relatedEntityType: nameof(UserEmail));
-            }
-            else
-            {
-                await _auditLogService.LogAsync(
-                    AuditAction.UserEmailLinked,
-                    nameof(User), userId.Value,
-                    $"OAuth backfill: created UserEmail row ({info.LoginProvider}, sub={info.ProviderKey}, email={claimEmail}) on sign-in.",
-                    nameof(AccountController));
-                _logger.LogWarning(
-                    "OAuth backfill: created UserEmail row for user {UserId} ({Provider}, sub={Sub}, email={Email}).",
-                    userId.Value, info.LoginProvider, info.ProviderKey, claimEmail);
-            }
+            await _userEmailService.ReconcileOAuthIdentityAsync(
+                userId,
+                info.LoginProvider,
+                info.ProviderKey,
+                claimEmail,
+                claimEmailVerified: ReadEmailVerifiedClaim(info));
         }
         catch (OperationCanceledException) when (HttpContext.RequestAborted.IsCancellationRequested)
         {
             throw;
         }
+        catch (OAuthReconcileConcurrencyException race)
+        {
+            // The verified-email partial unique index caught a concurrent
+            // insert that beat the reconcile pre-check. Rare race; surface a
+            // structured log so admins can investigate via the EmailProblems
+            // scanner. Sign-in continues (never blocks).
+            _logger.LogError(race,
+                "OAuth reconcile race for user {UserId} " +
+                "(provider={Provider}, sub={Sub}, claimEmail={Email}); " +
+                "sign-in continues — investigate via /Profile/Admin/EmailProblems.",
+                userId, info.LoginProvider, info.ProviderKey, claimEmail);
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex,
-                "OAuth rename/backfill failed for {Provider} sub={Sub}",
-                info.LoginProvider, info.ProviderKey);
+                "OAuth reconcile failed for user {UserId} {Provider} sub={Sub}; sign-in continues",
+                userId, info.LoginProvider, info.ProviderKey);
         }
     }
 
-    private async Task TryLinkProviderForUserEmailAsync(Guid userId, string email, ExternalLoginInfo info)
+    /// <summary>
+    /// Best-effort rollback of a freshly-created user when the OAuth signup
+    /// path fails after <see cref="UserManager{TUser}.CreateAsync"/> +
+    /// <see cref="UserManager{TUser}.AddLoginAsync"/> succeeded. A failure
+    /// here leaves an orphan that's unreachable via either OAuth or magic
+    /// link — logged at Error so admins can clean up manually.
+    /// </summary>
+    private async Task TryDeleteOrphanUserAsync(User user)
     {
         try
         {
-            // The actor for the OAuth callback is the user being authenticated
-            // (themselves) — there is no separate admin/system invoker on this
-            // path. UserEmailService.LinkAsync is find-or-create, so passing the
-            // claim email handles both the "row already exists" and "fresh row"
-            // cases without a separate lookup in the controller.
-            await _userEmailService.LinkAsync(
-                userId,
-                info.LoginProvider,
-                info.ProviderKey,
-                email,
-                actorUserId: userId);
+            await _userManager.DeleteAsync(user);
         }
-        catch (Exception ex)
+        catch (Exception deleteEx)
         {
-            _logger.LogError(ex,
-                "OAuth provider link failed for user {UserId} {Provider} sub={Sub}",
-                userId, info.LoginProvider, info.ProviderKey);
+            _logger.LogError(deleteEx,
+                "Failed to clean up orphan user {UserId} after reconcile failure",
+                user.Id);
         }
+    }
+
+    /// <summary>
+    /// Reads the OIDC <c>email_verified</c> boolean from the principal. Google
+    /// surfaces it via the <c>email_verified</c> claim (mapped in
+    /// <c>Program.cs</c>). Returns <c>false</c> when the claim is missing or
+    /// unparseable — the displacement gate in the service treats this as
+    /// "don't displace another user".
+    /// </summary>
+    private static bool ReadEmailVerifiedClaim(Microsoft.AspNetCore.Identity.ExternalLoginInfo info)
+    {
+        var raw = info.Principal.FindFirstValue("email_verified");
+        return bool.TryParse(raw, out var verified) && verified;
     }
 
     // --- Magic Link Auth ---

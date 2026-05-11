@@ -724,7 +724,7 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
     {
         // Fan out to Admins + section role-holders so handlers get an in-app
         // ping instead of relying on the nav-badge alone (per
-        // docs/features/28-issues-system.md US-28.4). The reporter is
+        // docs/features/issues/issues-system.md US-28.4). The reporter is
         // excluded so a handler filing their own issue doesn't notify
         // themselves.
         var recipients = new HashSet<Guid>();

@@ -12,7 +12,7 @@ public class EmailMutationPathsAnalyzerTests
         {
             public interface IUserEmailService
             {
-                System.Threading.Tasks.Task<bool> UpdateEmailAsync(System.Guid userId, string provider, string providerKey, string newEmail);
+                System.Threading.Tasks.Task<int> ReconcileOAuthIdentityAsync(System.Guid userId, string provider, string providerKey, string email, bool emailVerified);
             }
         }
 
@@ -20,7 +20,7 @@ public class EmailMutationPathsAnalyzerTests
         {
             public interface IUserEmailRepository
             {
-                System.Threading.Tasks.Task<bool> UpdateEmailAsync(System.Guid userId, string provider, string providerKey, string newEmail);
+                System.Threading.Tasks.Task ApplyReconcilePlanAsync(object? a, object? b, object? c, object? d);
             }
         }
         """;
@@ -43,7 +43,7 @@ public class EmailMutationPathsAnalyzerTests
                     public async System.Threading.Tasks.Task Run(
                         Humans.Application.Interfaces.Profiles.IUserEmailService svc)
                     {
-                        await svc.UpdateEmailAsync(System.Guid.Empty, "p", "k", "e@x");
+                        await svc.ReconcileOAuthIdentityAsync(System.Guid.Empty, "p", "k", "e@x", true);
                     }
                 }
             }
@@ -69,7 +69,7 @@ public class EmailMutationPathsAnalyzerTests
                     public async System.Threading.Tasks.Task Run(
                         Humans.Application.Interfaces.Profiles.IUserEmailService svc)
                     {
-                        await svc.UpdateEmailAsync(System.Guid.Empty, "p", "k", "e@x");
+                        await svc.ReconcileOAuthIdentityAsync(System.Guid.Empty, "p", "k", "e@x", true);
                     }
                 }
             }
@@ -95,7 +95,7 @@ public class EmailMutationPathsAnalyzerTests
                     public async System.Threading.Tasks.Task Run(
                         Humans.Application.Interfaces.Repositories.IUserEmailRepository repo)
                     {
-                        await repo.UpdateEmailAsync(System.Guid.Empty, "p", "k", "e@x");
+                        await repo.ApplyReconcilePlanAsync(null, null, null, null);
                     }
                 }
             }
@@ -121,7 +121,7 @@ public class EmailMutationPathsAnalyzerTests
                     public async System.Threading.Tasks.Task Run(
                         Humans.Application.Interfaces.Repositories.IUserEmailRepository repo)
                     {
-                        await repo.UpdateEmailAsync(System.Guid.Empty, "p", "k", "e@x");
+                        await repo.ApplyReconcilePlanAsync(null, null, null, null);
                     }
                 }
             }
@@ -147,11 +147,11 @@ public class EmailMutationPathsAnalyzerTests
             {
                 public class UserEmailService : Humans.Application.Interfaces.Profiles.IUserEmailService
                 {
-                    public async System.Threading.Tasks.Task<bool> UpdateEmailAsync(
-                        System.Guid userId, string provider, string providerKey, string newEmail)
+                    public async System.Threading.Tasks.Task<int> ReconcileOAuthIdentityAsync(
+                        System.Guid userId, string provider, string providerKey, string email, bool emailVerified)
                     {
                         await System.Threading.Tasks.Task.CompletedTask;
-                        return false;
+                        return 0;
                     }
                 }
             }
@@ -163,7 +163,7 @@ public class EmailMutationPathsAnalyzerTests
                     public async System.Threading.Tasks.Task Run(
                         Humans.Application.Services.Profile.UserEmailService concrete)
                     {
-                        await concrete.UpdateEmailAsync(System.Guid.Empty, "p", "k", "e@x");
+                        await concrete.ReconcileOAuthIdentityAsync(System.Guid.Empty, "p", "k", "e@x", true);
                     }
                 }
             }
@@ -186,11 +186,10 @@ public class EmailMutationPathsAnalyzerTests
             {
                 public class UserEmailRepository : Humans.Application.Interfaces.Repositories.IUserEmailRepository
                 {
-                    public async System.Threading.Tasks.Task<bool> UpdateEmailAsync(
-                        System.Guid userId, string provider, string providerKey, string newEmail)
+                    public async System.Threading.Tasks.Task ApplyReconcilePlanAsync(
+                        object? a, object? b, object? c, object? d)
                     {
                         await System.Threading.Tasks.Task.CompletedTask;
-                        return false;
                     }
                 }
             }
@@ -202,7 +201,7 @@ public class EmailMutationPathsAnalyzerTests
                     public async System.Threading.Tasks.Task Run(
                         Humans.Infrastructure.Repositories.Profiles.UserEmailRepository concrete)
                     {
-                        await concrete.UpdateEmailAsync(System.Guid.Empty, "p", "k", "e@x");
+                        await concrete.ApplyReconcilePlanAsync(null, null, null, null);
                     }
                 }
             }
@@ -232,7 +231,7 @@ public class EmailMutationPathsAnalyzerTests
                     public async System.Threading.Tasks.Task Run(
                         Humans.Application.Interfaces.Profiles.IUserEmailService svc)
                     {
-                        await svc.UpdateEmailAsync(System.Guid.Empty, "p", "k", "e@x");
+                        await svc.ReconcileOAuthIdentityAsync(System.Guid.Empty, "p", "k", "e@x", true);
                     }
                 }
             }
@@ -262,7 +261,7 @@ public class EmailMutationPathsAnalyzerTests
                     public async System.Threading.Tasks.Task Run(
                         Humans.Application.Interfaces.Repositories.IUserEmailRepository repo)
                     {
-                        await repo.UpdateEmailAsync(System.Guid.Empty, "p", "k", "e@x");
+                        await repo.ApplyReconcilePlanAsync(null, null, null, null);
                     }
                 }
             }
@@ -288,7 +287,7 @@ public class EmailMutationPathsAnalyzerTests
                     public async System.Threading.Tasks.Task Run(
                         Humans.Application.Interfaces.Profiles.IUserEmailService svc)
                     {
-                        await svc.UpdateEmailAsync(System.Guid.Empty, "p", "k", "e@x");
+                        await svc.ReconcileOAuthIdentityAsync(System.Guid.Empty, "p", "k", "e@x", true);
                     }
                 }
             }
