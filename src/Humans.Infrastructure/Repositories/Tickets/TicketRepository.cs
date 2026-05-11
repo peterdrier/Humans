@@ -421,7 +421,6 @@ public sealed class TicketRepository : ITicketRepository
             .AsNoTracking()
             .Where(o => o.MatchedUserId != null)
             .Select(o => o.PurchasedAt)
-            .Distinct()
             .ToListAsync(ct);
 
         return purchasedAt
