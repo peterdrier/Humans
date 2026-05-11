@@ -52,10 +52,10 @@ Multiple controllers serve this section:
 | `OnboardingReviewController` | `POST /OnboardingReview/BulkClear` | Bulk clear (`PolicyNames.ConsentCoordinatorBoardOrAdmin`) |
 | `OnboardingReviewController` | `POST /OnboardingReview/{userId}/Flag` | CC flag (`PolicyNames.ConsentCoordinatorBoardOrAdmin`) |
 | `OnboardingReviewController` | `POST /OnboardingReview/{userId}/Reject` | CC reject (`PolicyNames.ConsentCoordinatorBoardOrAdmin`) |
-| `OnboardingReviewController` | `GET /OnboardingReview/BoardVoting` | Board voting dashboard (`PolicyNames.BoardOrAdmin`) |
-| `OnboardingReviewController` | `GET /OnboardingReview/BoardVoting/{applicationId}` | Board vote detail (`PolicyNames.BoardOrAdmin`) |
-| `OnboardingReviewController` | `POST /OnboardingReview/BoardVoting/Vote` | Cast vote (`PolicyNames.BoardOnly`) |
-| `OnboardingReviewController` | `POST /OnboardingReview/BoardVoting/Finalize` | Finalize decision (`PolicyNames.BoardOrAdmin`) |
+| `OnboardingReviewController` | `GET /OnboardingReview/BoardVoting` | Board voting dashboard (`PolicyNames.BoardOrAdmin`) — **Governance-owned; see `Governance.md` routing table** |
+| `OnboardingReviewController` | `GET /OnboardingReview/BoardVoting/{applicationId}` | Board vote detail (`PolicyNames.BoardOrAdmin`) — **Governance-owned** |
+| `OnboardingReviewController` | `POST /OnboardingReview/BoardVoting/Vote` | Cast vote (`PolicyNames.BoardOnly`) — **Governance-owned** |
+| `OnboardingReviewController` | `POST /OnboardingReview/BoardVoting/Finalize` | Finalize decision (`PolicyNames.BoardOrAdmin`) — **Governance-owned** |
 | `ProfileController` | `POST /Profile/{id}/Admin/Approve` | Manual volunteer override (`PolicyNames.HumanAdminBoardOrAdmin`) |
 | `AccountController` | Login/logout/OAuth | Exempt from membership gate; no onboarding-specific routes |
 | `MembershipRequiredFilter` | (global filter) | Redirects non-members; profileless → `/Guest`, onboarding → `/Home` |
