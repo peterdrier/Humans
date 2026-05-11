@@ -187,7 +187,7 @@ public sealed class ExpensesController : HumansControllerBase
                 Report = report,
                 CategoryDisplayName = categoryName,
                 CanEdit = report.SubmitterUserId == user.Id && editableStatuses.Contains(report.Status),
-                CanSubmit = report.Status == ExpenseReportStatus.Draft,
+                CanSubmit = report.SubmitterUserId == user.Id && report.Status == ExpenseReportStatus.Draft,
                 CanWithdraw = report.SubmitterUserId == user.Id && withdrawableStatuses.Contains(report.Status),
                 HasIban = !string.IsNullOrEmpty(profile?.Iban),
                 MaskedIban = string.IsNullOrEmpty(profile?.Iban) ? null : IbanFormatter.Mask(profile.Iban)

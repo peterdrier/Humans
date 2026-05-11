@@ -87,15 +87,6 @@ public sealed class ExpenseRepository : IExpenseRepository
         return entities.Select(ExpenseReportMapper.ToDto).ToList();
     }
 
-    public async Task<ExpenseAttachmentDto?> GetAttachmentByIdAsync(
-        Guid id, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var entity = await ctx.ExpenseAttachments.AsNoTracking()
-            .FirstOrDefaultAsync(a => a.Id == id, ct);
-        return entity is null ? null : ExpenseReportMapper.ToAttachmentDto(entity);
-    }
-
     public async Task<Guid?> GetReportIdByAttachmentIdAsync(
         Guid attachmentId, CancellationToken ct = default)
     {
@@ -387,17 +378,6 @@ public sealed class ExpenseRepository : IExpenseRepository
             // arch:db-sort-ok identity-ordered outbox drain — FIFO is the protocol requirement
             .OrderBy(e => e.OccurredAt)
             .Take(limit)
-            .ToListAsync(ct);
-    }
-
-    public async Task<IReadOnlyList<HoldedExpenseOutboxEvent>> GetFailedPermanentlyAsync(
-        CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.HoldedExpenseOutboxEvents.AsNoTracking()
-            .Where(e => e.FailedPermanently)
-            // arch:db-sort-ok admin diagnostic — most-recent failures on top
-            .OrderByDescending(e => e.OccurredAt)
             .ToListAsync(ct);
     }
 

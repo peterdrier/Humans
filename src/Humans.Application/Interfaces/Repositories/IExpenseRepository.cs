@@ -18,7 +18,6 @@ public interface IExpenseRepository : IRepository
         ExpenseReportStatus status,
         CancellationToken ct = default);
     Task<IReadOnlyList<ExpenseReportDto>> GetForReviewQueueAsync(CancellationToken ct = default);
-    Task<ExpenseAttachmentDto?> GetAttachmentByIdAsync(Guid id, CancellationToken ct = default);
     /// <summary>
     /// Resolves the report id that owns the given attachment via the line that
     /// references it. Returns null if no line currently points at the attachment
@@ -87,8 +86,6 @@ public interface IExpenseRepository : IRepository
     // Outbox
     Task<IReadOnlyList<HoldedExpenseOutboxEvent>> GetUnprocessedOutboxAsync(
         int limit, CancellationToken ct = default);
-    Task<IReadOnlyList<HoldedExpenseOutboxEvent>> GetFailedPermanentlyAsync(
-        CancellationToken ct = default);
     /// <summary>
     /// Persists the freshly-issued Holded document id on the report. Caller
     /// invokes this immediately after <c>IHoldedClient.CreatePurchaseDocumentAsync</c>

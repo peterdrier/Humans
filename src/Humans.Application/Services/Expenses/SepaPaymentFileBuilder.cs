@@ -1,3 +1,5 @@
+using System.IO;
+using System.Text;
 using System.Xml.Linq;
 using Humans.Application.Interfaces.Expenses;
 using Humans.Application.Services.Expenses.Dtos;
@@ -36,7 +38,18 @@ public sealed class SepaPaymentFileBuilder : ISepaPaymentFileBuilder
                     BuildGroupHeader(msgId, creDtTm, nbOfTxs, ctrlSum, config),
                     BuildPaymentInfo(msgId, nbOfTxs, ctrlSum, reqExctnDt, config, reports))));
 
-        return doc.ToString();
+        // doc.ToString() silently sets OmitXmlDeclaration=true, dropping the
+        // XDeclaration. SEPA pain.001 processors at many banks expect the
+        // declaration with encoding="utf-8"; Save with a UTF-8 StringWriter
+        // preserves both.
+        using var sw = new Utf8StringWriter();
+        doc.Save(sw);
+        return sw.ToString();
+    }
+
+    private sealed class Utf8StringWriter : StringWriter
+    {
+        public override Encoding Encoding => Encoding.UTF8;
     }
 
     private static XElement BuildGroupHeader(
