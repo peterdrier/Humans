@@ -217,6 +217,36 @@ public class EmailMutationPathsAnalyzerTests
     }
 
     [HumansFact]
+    public async Task Fires_HUM0005_when_service_called_from_Infrastructure_non_AccountController()
+    {
+        // Positive scope test for Infrastructure — mirrors the HUM0006 canary below.
+        // Same regression risk: a future scope narrowing from
+        // IsApplicationWebOrInfrastructure to IsApplicationOrWeb would silently pass
+        // every Application/Web HUM0005 test.
+        var source = InterfaceStubs + """
+
+            namespace Humans.Infrastructure.Jobs
+            {
+                public class SomeBackgroundJob
+                {
+                    public async System.Threading.Tasks.Task Run(
+                        Humans.Application.Interfaces.Profiles.IUserEmailService svc)
+                    {
+                        await svc.UpdateEmailAsync(System.Guid.Empty, "p", "k", "e@x");
+                    }
+                }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new EmailMutationPathsAnalyzer(),
+            "Humans.Infrastructure",
+            source);
+
+        diagnostics.Should().ContainSingle(d => IsHum0005(d));
+    }
+
+    [HumansFact]
     public async Task Fires_HUM0006_when_repository_called_from_Infrastructure_non_UserEmailService()
     {
         // Positive scope test for Infrastructure. The analyzer's
