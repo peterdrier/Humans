@@ -1307,6 +1307,60 @@ public class ProfileController : HumansControllerBase
         return RedirectToAction(nameof(AdminEmails), new { id });
     }
 
+    // Admin-only recovery path: directly insert an already-verified UserEmail
+    // row without sending a verification email. Use when an admin needs to
+    // restore a row that was deleted in error (or otherwise re-attach a known
+    // address to the user without a round-trip to their mailbox).
+    [HttpPost("{id:guid}/Admin/Emails/AddVerified")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AdminAddVerifiedEmail(Guid id, string email, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            SetError(_localizer["Profile_EnterEmail"].Value);
+            return RedirectToAction(nameof(AdminEmails), new { id });
+        }
+
+        var actor = await GetCurrentUserAsync();
+        if (actor is null)
+            return Forbid();
+
+        var targetUser = await FindUserByIdAsync(id);
+        if (targetUser is null)
+            return NotFound();
+
+        try
+        {
+            var inserted = await _userEmailService.AddVerifiedEmailAsync(id, email.Trim(), ct);
+            if (inserted)
+            {
+                _cache.InvalidateNobodiesTeamEmails();
+
+                await _auditLogService.LogAsync(
+                    AuditAction.UserEmailAdded,
+                    nameof(User), id,
+                    $"Admin added pre-verified email {email.Trim()} for user {id} (no verification flow)",
+                    actor.Id);
+
+                SetSuccess($"Verified email {email.Trim()} added.");
+            }
+            else
+            {
+                SetInfo($"Email {email.Trim()} already exists on this user — no change.");
+            }
+        }
+        catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
+        {
+            _logger.LogWarning(
+                "Admin failed to add verified email for user {UserId} ({Email}): {Reason}",
+                id, email, ex.Message);
+            SetError(ex.Message);
+        }
+
+        return RedirectToAction(nameof(AdminEmails), new { id });
+    }
+
     [HttpPost("{id:guid}/Admin/Emails/Verify")]
     [Authorize(Policy = PolicyNames.AdminOnly)]
     [ValidateAntiForgeryToken]

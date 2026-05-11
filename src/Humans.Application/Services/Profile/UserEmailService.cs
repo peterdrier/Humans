@@ -406,14 +406,14 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
             mergedFromUserId, mergedToUserId, now, ct);
     }
 
-    public async Task AddVerifiedEmailAsync(
+    public async Task<bool> AddVerifiedEmailAsync(
         Guid userId, string email, CancellationToken cancellationToken = default)
     {
         var normalizedEmail = EmailNormalization.NormalizeForComparison(email);
         var alternateEmail = GetAlternateComparableEmail(normalizedEmail);
 
         if (await _repository.ExistsForUserAsync(userId, normalizedEmail, alternateEmail, cancellationToken))
-            return;
+            return false;
 
         var now = _clock.GetCurrentInstant();
 
@@ -436,6 +436,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         // so the @nobodies.team row wins automatically without a separate
         // _userService.TrySetGoogleEmailAsync write.
         await AddRowWithInvariantsAsync(userEmail, cancellationToken);
+        return true;
     }
 
     [Obsolete("Issue nobodies-collective/Humans#687: User.GoogleEmail is being deprecated. UserEmailService.EnsureGoogleInvariantAsync now stamps IsGoogle on the canonical row whenever a UserEmail is added; no separate backfill is needed. Method body is now a no-op.")]
