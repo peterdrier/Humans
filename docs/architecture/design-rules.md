@@ -684,7 +684,5 @@ Old names that no longer exist: `CachedProfile`, `IProfileStore`, `ProfileStore`
 - **Email** (PR #266): `IEmailBodyComposer` (Application) renders the message; `IImmediateOutboxProcessor` (Infrastructure) drives MailKit/SMTP. The body-composer is SDK-free so Application-layer services can build messages without pulling MailKit in.
 - **Ticket vendor** (PR #277): `ITicketVendorService` (Application), concrete `TicketTailorService` / `StubTicketVendorService` (Infrastructure). `TicketVendorSettings` lives in `Humans.Application.Configuration` so the Application-layer `TicketSyncService` can read non-sensitive fields without reaching into Infrastructure.
 
-Controllers with direct `DbContext` access (violation of §2a, tracked separately):
-- `AdminController` — admin audience-segmentation / migrations-metadata / Hangfire-lock queries still read `HumansDbContext` directly.
-- `DevLoginController` — dev-only seeding path; low priority.
-- (`ProfileController` and `GoogleController` were cleaned in earlier §15 work — no direct DbContext usage remains.)
+Former controller direct `DbContext` access cleanup status:
+- (`AdminController`, `ProfileController`, and `GoogleController` were cleaned in earlier §15 work — no direct DbContext usage remains. `AdminController` routes database diagnostics through `IAdminDatabaseDiagnosticsService`; audience segmentation composes the owning User/Profile/Tickets services, while infrastructure-only migration metadata and Hangfire lock cleanup stay behind the Infrastructure implementation.)
