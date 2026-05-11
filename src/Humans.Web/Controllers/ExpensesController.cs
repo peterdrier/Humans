@@ -74,11 +74,17 @@ public sealed class ExpensesController : HumansControllerBase
             var activeYear = await _budgetService.GetActiveYearAsync();
             var profile = await _profileService.GetProfileAsync(user.Id);
 
+            var categoryNames = activeYear?.Groups
+                .SelectMany(g => g.Categories.Select(c => (c.Id, Display: $"{g.Name} / {c.Name}")))
+                .ToDictionary(x => x.Id, x => x.Display)
+                ?? new Dictionary<Guid, string>();
+
             var model = new ExpensesIndexViewModel
             {
                 Reports = reports,
                 HasActiveYear = activeYear is not null,
-                HasIban = !string.IsNullOrEmpty(profile?.Iban)
+                HasIban = !string.IsNullOrEmpty(profile?.Iban),
+                CategoryNames = categoryNames,
             };
             return View(model);
         }

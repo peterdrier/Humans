@@ -71,8 +71,8 @@ else
                         _ => "bg-secondary"
                     };
                     <tr>
-                        <td>@r.CreatedAt.ToDateTimeUtc().ToString("yyyy-MM-dd")</td>
-                        <td><small class="text-muted">@r.BudgetCategoryId</small></td>
+                        <td>@r.CreatedAt.ToDisplayDate()</td>
+                        <td><small class="text-muted">@(Model.CategoryNames.TryGetValue(r.BudgetCategoryId, out var cat) ? cat : r.BudgetCategoryId.ToString())</small></td>
                         <td><span class="badge @badgeClass">@r.Status</span></td>
                         <td class="text-end">&euro;@r.Total.ToString("N2")</td>
                         <td class="text-end">

@@ -72,7 +72,7 @@ else
                         <td>
                             @if (r.SubmittedAt.HasValue)
                             {
-                                @r.SubmittedAt.Value.ToDateTimeUtc().ToString("yyyy-MM-dd")
+                                @r.SubmittedAt.Value.ToDisplayDate()
                             }
                         </td>
                         <td class="text-end">

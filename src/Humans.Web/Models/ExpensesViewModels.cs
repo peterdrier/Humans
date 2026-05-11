@@ -12,6 +12,8 @@ public sealed class ExpensesIndexViewModel
     public required IReadOnlyList<ExpenseReportDto> Reports { get; init; }
     public bool HasActiveYear { get; init; }
     public bool HasIban { get; init; }
+    public IReadOnlyDictionary<Guid, string> CategoryNames { get; init; } =
+        new Dictionary<Guid, string>();
 }
 
 // ─────────────────────────────────── New / Edit ──────────────────────────────
