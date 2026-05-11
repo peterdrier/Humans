@@ -87,6 +87,32 @@ public class ProfileIsSuspendedWriteAnalyzerTests
     }
 
     [HumansFact]
+    public async Task Fires_on_write_from_arbitrary_Infrastructure_type()
+    {
+        // Positive scope test for Infrastructure — same canary purpose as the
+        // matching HUM0006 test in EmailMutationPathsAnalyzerTests. Without
+        // this, a scope narrowing from ApplicationWebOrInfrastructure to
+        // ApplicationOrWeb would pass every remaining Application/Web test.
+        var source = DomainStub + """
+
+            namespace Humans.Infrastructure.Repositories.Something
+            {
+                public class SomethingElse
+                {
+                    public void Suspend(Humans.Domain.Entities.Profile p) => p.IsSuspended = true;
+                }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new ProfileIsSuspendedWriteAnalyzer(),
+            "Humans.Infrastructure",
+            source);
+
+        diagnostics.Should().ContainSingle(d => IsHum0004(d));
+    }
+
+    [HumansFact]
     public async Task Fires_on_compound_or_equals_assignment_outside_allowlist()
     {
         var source = DomainStub + """
