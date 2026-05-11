@@ -422,7 +422,17 @@ public sealed class UserEmailRepository : IUserEmailRepository
             .Where(r => string.Equals(r.Email, newEmail, StringComparison.OrdinalIgnoreCase))
             .ToList();
         foreach (var c in conflicts)
+        {
+            // A conflict row carrying its own (Provider, ProviderKey) means the
+            // user had a second OAuth identity at this address — dropping it
+            // permanently orphans FindByProviderKeyAsync for that identity.
+            // Surface it so admins can investigate.
+            if (c.Provider is not null)
+                _logger.LogWarning(
+                    "UpdateEmailAsync: removing same-user OAuth identity row (UserId={UserId}, ConflictProvider={ConflictProvider}, ConflictKey={ConflictKey}, ConflictEmail={ConflictEmail}) — FindByProviderKeyAsync for this identity will return null.",
+                    userId, c.Provider, c.ProviderKey, c.Email);
             ctx.UserEmails.Remove(c);
+        }
 
         var remaining = rows.Where(r => !conflicts.Contains(r)).ToList();
         var primaryCount = remaining.Count(r => r.IsPrimary);

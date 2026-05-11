@@ -255,7 +255,7 @@ public class AccountControllerOAuthRenameDetectionTests
         // row is tagged with this (Provider, ProviderKey) — e.g. a pre-LinkAsync
         // provisioned user. The callback calls UpdateEmailAsync, which upserts
         // (insert when missing) per memory/architecture/email-mutation-paths.md.
-        // No audit row (creation is logged at Information level only).
+        // No audit row (creation is logged at Warning per always-log-problems.md).
         var userId = Guid.NewGuid();
         var claimEmail = "backfill@nobodies.team";
         var info = MakeInfo(claimEmail);
@@ -270,6 +270,9 @@ public class AccountControllerOAuthRenameDetectionTests
 
         _userEmailService.FindByProviderKeyAsync(Provider, ProviderKey, Arg.Any<CancellationToken>())
             .Returns((UserEmailProviderMatch?)null);
+        _userEmailService.UpdateEmailAsync(
+                userId, Provider, ProviderKey, claimEmail, Arg.Any<CancellationToken>())
+            .Returns(true);
 
         await _controller.ExternalLoginCallback(returnUrl: null, remoteError: null);
 
