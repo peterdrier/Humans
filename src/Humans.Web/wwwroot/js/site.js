@@ -264,6 +264,10 @@ function showToast(message, type) {
 (function () {
     var cache = {};
     document.addEventListener('mouseenter', function (e) {
+        // Document-level mouseenter bubbles up with e.target === document
+        // for cursor entries that don't land on an Element; guard so
+        // calling .closest() on a non-Element doesn't throw.
+        if (!e.target || typeof e.target.closest !== 'function') return;
         var el = e.target.closest('[data-human-popover]');
         if (!el || el._popoverInit) return;
         el._popoverInit = true;

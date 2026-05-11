@@ -4169,6 +4169,47 @@ namespace Humans.Infrastructure.Migrations
                     b.ToTable("user_emails", (string)null);
                 });
 
+            modelBuilder.Entity("Humans.Domain.Entities.VolunteerBuildStatus", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<LocalDate?>("BarrioSetupStartDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("DayOffs")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasDefaultValueSql("'[]'::jsonb");
+
+                    b.Property<Guid>("EventSettingsId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Instant?>("SetAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("SetByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EventSettingsId");
+
+                    b.HasIndex("UserId", "EventSettingsId")
+                        .IsUnique();
+
+                    b.ToTable("volunteer_build_statuses", (string)null);
+                });
+
             modelBuilder.Entity("Humans.Domain.Entities.VolunteerEventProfile", b =>
                 {
                     b.Property<Guid>("Id")
@@ -5409,6 +5450,15 @@ namespace Humans.Infrastructure.Migrations
                     b.HasOne("Humans.Domain.Entities.User", null)
                         .WithMany("UserEmails")
                         .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Humans.Domain.Entities.VolunteerBuildStatus", b =>
+                {
+                    b.HasOne("Humans.Domain.Entities.EventSettings", null)
+                        .WithMany()
+                        .HasForeignKey("EventSettingsId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

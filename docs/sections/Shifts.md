@@ -85,6 +85,27 @@ Per-user per-event day availability. `AvailableDayOffsets` stored as jsonb. Uniq
 
 Cross-domain nav `GeneralAvailability.User` was **stripped** in peterdrier/Humans PR for sub-task nobodies-collective/Humans#541c (FK kept via `HasOne<User>().WithMany().HasForeignKey(...)`).
 
+### VolunteerBuildStatus
+
+Per-user per-event build-period coordination state. Drives the Volunteer Tracking sub-page (gap detection, "went to camp set-up" marker, blocked-day list). Tracks two orthogonal facts that the schedule itself cannot infer:
+
+- `BarrioSetupStartDate` (nullable `LocalDate`) — the day a volunteer left scheduled rotas to join camp set-up. From this day onwards their row renders blue and gap detection stops flagging missing days.
+- `BarrioSetupSetByUserId` (nullable `Guid`) and `BarrioSetupSetAt` (nullable `Instant`) — audit fields recording who set the camp-set-up marker and when. Cleared when the marker is cleared.
+- `BlockedDayOffsets` (jsonb `IList<int>`) — day offsets (relative to `EventSettings.GateOpeningDate`, all negative for build days) the volunteer or coordinator marked as unavailable. Blocked days render yellow on the heatmap and are excluded from gap counts.
+
+**Table:** `volunteer_build_statuses`
+
+**Indices:** PK on `Id`; unique on `(UserId, EventSettingsId)` (one row per volunteer per event).
+
+**FK rules:** Bare `Guid UserId` (no nav property — cross-section, per `memory/architecture/no-cross-section-ef-joins.md`). `EventSettingsId` is a same-section FK with cascade delete; deleting an event removes its build statuses.
+
+**Write paths:**
+
+- `VolunteerTrackingController` (Admin / VolunteerCoordinator, gated by the `VolunteerTrackingWrite` policy) writes `BarrioSetupStartDate`, `BarrioSetupSetByUserId`, `BarrioSetupSetAt`, and individual `BlockedDayOffsets` entries via `IVolunteerTrackingService.SetCampSetupAsync` / `ClearCampSetupAsync` / `SetBlockAsync`.
+- `ShiftsController.SaveBlockedDays` (current user only, UserId from `ClaimsPrincipal`) writes the volunteer's own `BlockedDayOffsets` via `IVolunteerTrackingService.SaveOwnBlockedDaysAsync` — used by the "Days you can't volunteer" panel on `/Shifts/Mine`.
+
+All mutations route through `IVolunteerTrackingRepository` and emit `AuditAction.VolunteerCampSetupSet` / `VolunteerCampSetupCleared` / `VolunteerDayBlocked` / `VolunteerDayUnblocked` / `VolunteerOwnBlockedDaysSaved` audit entries with `EntityType = nameof(VolunteerBuildStatus)`.
+
 ### VolunteerEventProfile
 
 Per-user volunteer profile (1:1 with User) capturing `Skills`, `Quirks`, `Languages`, `DietaryPreference`, `Allergies`, `Intolerances`, `AllergyOtherText`, `IntoleranceOtherText`, and `MedicalConditions`. List columns are jsonb. Unique on `UserId`.

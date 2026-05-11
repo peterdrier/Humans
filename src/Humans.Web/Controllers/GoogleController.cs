@@ -304,74 +304,6 @@ public class GoogleController : HumansControllerBase
         return RedirectToAction(nameof(AllGroups));
     }
 
-    // --- Email Backfill (from AdminController) ---
-
-    [HttpPost("CheckEmailMismatches")]
-    [Authorize(Policy = PolicyNames.AdminOnly)]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> CheckEmailMismatches()
-    {
-        try
-        {
-            var result = await _googleSyncService.GetEmailMismatchesAsync();
-            TempData[TempDataKeys.EmailBackfillResult] = System.Text.Json.JsonSerializer.Serialize(result);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to check email mismatches");
-            SetError($"Email mismatch check failed: {ex.Message}");
-            return RedirectToAction(nameof(Index));
-        }
-
-        return RedirectToAction(nameof(EmailBackfillReview));
-    }
-
-    [HttpGet("EmailBackfillReview")]
-    [Authorize(Policy = PolicyNames.AdminOnly)]
-    public IActionResult EmailBackfillReview()
-    {
-        EmailBackfillResult? result = null;
-        if (TempData[TempDataKeys.EmailBackfillResult] is string json)
-        {
-            result = System.Text.Json.JsonSerializer.Deserialize<EmailBackfillResult>(json);
-        }
-
-        if (result is null)
-        {
-            SetInfo("No email mismatch results to display. Run the check first.");
-            return RedirectToAction(nameof(Index));
-        }
-
-        return View(result);
-    }
-
-    [HttpPost("ApplyEmailBackfill")]
-    [Authorize(Policy = PolicyNames.AdminOnly)]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ApplyEmailBackfill(
-        [FromForm] List<Guid> selectedUserIds,
-        [FromForm] Dictionary<string, string> corrections)
-    {
-        if (selectedUserIds.Count == 0)
-        {
-            SetInfo("No users selected.");
-            return RedirectToAction(nameof(Index));
-        }
-
-        var currentUser = await GetCurrentUserAsync();
-        if (currentUser is null) return Unauthorized();
-
-        var result = await _googleAdminService.ApplyEmailBackfillAsync(
-            selectedUserIds, corrections, currentUser.Id);
-
-        if (result.Errors.Count > 0)
-            SetError($"Applied {result.UpdatedCount} correction(s) with {result.Errors.Count} error(s): {string.Join("; ", result.Errors)}");
-        else
-            SetSuccess($"Applied {result.UpdatedCount} email correction(s) successfully.");
-
-        return RedirectToAction(nameof(Index));
-    }
-
     // --- Resource Sync Dashboard (from TeamController) ---
 
     [HttpGet("Sync")]
@@ -882,40 +814,6 @@ public class GoogleController : HumansControllerBase
         }
 
         return View(result);
-    }
-
-    [HttpPost("FixEmailRename")]
-    [Authorize(Policy = PolicyNames.AdminOnly)]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> FixEmailRename(
-        [FromForm] Guid userId, [FromForm] string newEmail)
-    {
-        if (userId == Guid.Empty || string.IsNullOrWhiteSpace(newEmail))
-        {
-            SetError("Invalid request.");
-            return RedirectToAction(nameof(Index));
-        }
-
-        var currentUser = await GetCurrentUserAsync();
-        if (currentUser is null) return Unauthorized();
-
-        try
-        {
-            var result = await _googleAdminService.FixEmailRenameAsync(
-                userId, newEmail, currentUser.Id);
-
-            if (result.Success)
-                SetSuccess(result.Message!);
-            else
-                SetError(result.ErrorMessage!);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to fix email rename for user {UserId}", userId);
-            SetError($"Failed to fix email rename: {ex.Message}");
-        }
-
-        return RedirectToAction(nameof(Index));
     }
 
     // --- Email Flag Violations (admin remediation) ---

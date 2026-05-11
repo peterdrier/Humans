@@ -18,7 +18,7 @@ public class ServiceBoundaryArchitectureTests
     private static readonly IReadOnlyDictionary<Type, string> RepositoryOwners =
         new Dictionary<Type, string>
         {
-            [typeof(IAccountMergeRepository)] = "Profiles",
+            [typeof(IAccountMergeRepository)] = "Humans",
             [typeof(IAgentRepository)] = "Agent",
             [typeof(IApplicationRepository)] = "Governance",
             [typeof(IAuditLogRepository)] = "AuditLog",
@@ -28,9 +28,9 @@ public class ServiceBoundaryArchitectureTests
             [typeof(ICampRepository)] = "Camps",
             [typeof(ICampRoleRepository)] = "Camps",
             [typeof(ICityPlanningRepository)] = "CityPlanning",
-            [typeof(ICommunicationPreferenceRepository)] = "Profiles",
+            [typeof(ICommunicationPreferenceRepository)] = "Humans",
             [typeof(IConsentRepository)] = "Consent",
-            [typeof(IContactFieldRepository)] = "Profiles",
+            [typeof(IContactFieldRepository)] = "Humans",
             [typeof(IDriveActivityMonitorRepository)] = "GoogleIntegration",
             [typeof(IEmailOutboxRepository)] = "Email",
             [typeof(IFeedbackRepository)] = "Feedback",
@@ -40,7 +40,7 @@ public class ServiceBoundaryArchitectureTests
             [typeof(IIssuesRepository)] = "Issues",
             [typeof(ILegalDocumentRepository)] = "Legal",
             [typeof(INotificationRepository)] = "Notifications",
-            [typeof(IProfileRepository)] = "Profiles",
+            [typeof(IProfileRepository)] = "Humans",
             [typeof(IRoleAssignmentRepository)] = "Auth",
             [typeof(IShiftManagementRepository)] = "Shifts",
             [typeof(IShiftSignupRepository)] = "Shifts",
@@ -50,8 +50,9 @@ public class ServiceBoundaryArchitectureTests
             [typeof(ITicketingBudgetRepository)] = "Tickets",
             [typeof(ITicketRepository)] = "Tickets",
             [typeof(ITicketTransferRepository)] = "Tickets",
-            [typeof(IUserEmailRepository)] = "Profiles",
-            [typeof(IUserRepository)] = "Users",
+            [typeof(IUserEmailRepository)] = "Humans",
+            [typeof(IUserRepository)] = "Humans",
+            [typeof(IVolunteerTrackingRepository)] = "Shifts",
         };
 
     [HumansFact]
@@ -96,6 +97,16 @@ public class ServiceBoundaryArchitectureTests
 
         missingOwnership.Should().BeEmpty(
             because: "cross-section repository injection checks must use exact repository ownership, not name prefixes");
+    }
+
+    [HumansFact]
+    public void Users_and_profiles_share_one_repository_ownership_section()
+    {
+        RepositoryOwners[typeof(IUserRepository)].Should().Be("Humans");
+        RepositoryOwners[typeof(IUserEmailRepository)].Should().Be("Humans");
+        RepositoryOwners[typeof(IProfileRepository)].Should().Be("Humans");
+        ServiceSection(typeof(Humans.Application.Services.Users.UserService)).Should().Be("Humans");
+        ServiceSection(typeof(Humans.Application.Services.Profile.ProfileService)).Should().Be("Humans");
     }
 
     [HumansFact]
@@ -189,7 +200,7 @@ public class ServiceBoundaryArchitectureTests
     private static string ServiceSection(Type serviceType)
     {
         var section = serviceType.Namespace!.Split('.')[3];
-        return string.Equals(section, "Profile", StringComparison.Ordinal) ? "Profiles" : section;
+        return section is "Users" or "Profile" or "Profiles" ? "Humans" : section;
     }
 
     private static IEnumerable<ParameterInfo> ConstructorParameters(Type type) =>

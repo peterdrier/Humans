@@ -67,6 +67,7 @@ public class HumansDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
     public DbSet<ShiftSignup> ShiftSignups => Set<ShiftSignup>();
     public DbSet<VolunteerEventProfile> VolunteerEventProfiles => Set<VolunteerEventProfile>();
     public DbSet<GeneralAvailability> GeneralAvailability => Set<GeneralAvailability>();
+    public DbSet<VolunteerBuildStatus> VolunteerBuildStatuses => Set<VolunteerBuildStatus>();
     public DbSet<FeedbackReport> FeedbackReports => Set<FeedbackReport>();
     public DbSet<FeedbackMessage> FeedbackMessages => Set<FeedbackMessage>();
     public DbSet<Issue> Issues => Set<Issue>();
