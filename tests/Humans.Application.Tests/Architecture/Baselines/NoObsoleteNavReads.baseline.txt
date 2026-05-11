@@ -60,8 +60,6 @@ src/Humans.Application/Services/Calendar/CalendarService.cs:OwningTeam#1
 src/Humans.Application/Services/Calendar/CalendarService.cs:OwningTeam#2
 src/Humans.Application/Services/Camps/CampService.cs:User#1
 src/Humans.Application/Services/Consent/ConsentService.cs:Team#1
-src/Humans.Application/Services/Feedback/FeedbackService.cs:AssignedToTeam#1
-src/Humans.Application/Services/Feedback/FeedbackService.cs:User#1
 src/Humans.Application/Services/GoogleIntegration/GoogleWorkspaceSyncService.cs:Team#1
 src/Humans.Application/Services/GoogleIntegration/GoogleWorkspaceSyncService.cs:Team#10
 src/Humans.Application/Services/GoogleIntegration/GoogleWorkspaceSyncService.cs:Team#11
