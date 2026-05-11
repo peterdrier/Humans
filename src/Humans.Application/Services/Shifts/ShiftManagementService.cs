@@ -151,6 +151,11 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
     public Task<EventSettings?> GetByIdAsync(Guid id) =>
         _repo.GetEventSettingsByIdAsync(id);
 
+    public Task<bool> EventExistsAsync(
+        string eventName,
+        CancellationToken cancellationToken = default) =>
+        _repo.EventSettingsExistsByNameAsync(eventName, cancellationToken);
+
     public async Task CreateAsync(EventSettings entity)
     {
         if (entity.IsActive)
@@ -187,6 +192,11 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
                 _cache.Remove(TrendsCacheKey(entity.Id, w, p));
         }
     }
+
+    public Task<int> DeleteEventByNameAsync(
+        string eventName,
+        CancellationToken cancellationToken = default) =>
+        _repo.DeleteEventCascadeByNameAsync(eventName, cancellationToken);
 
     public int GetAvailableEeSlots(EventSettings settings, int dayOffset)
     {

@@ -1156,6 +1156,11 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
         Guid userId, string reason, CancellationToken ct = default) =>
         _repo.CancelActiveSignupsForUserAsync(userId, reason, ct);
 
+    public Task<int> DeleteAllForUsersAsync(
+        IReadOnlyCollection<Guid> userIds,
+        CancellationToken ct = default) =>
+        _repo.DeleteAllForUsersAsync(userIds, ct);
+
     public Task<IReadOnlyList<ShiftSignup>> GetAllForOrphanScanAsync(CancellationToken ct = default) =>
         _repo.GetAllForOrphanScanAsync(ct);
 

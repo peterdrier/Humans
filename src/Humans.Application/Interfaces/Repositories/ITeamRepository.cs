@@ -555,7 +555,7 @@ public interface ITeamRepository : IRepository
     /// plus its members and join requests. Returns the count of teams
     /// removed. Used only by test seeding.
     /// </summary>
-    Task<int> HardDeleteBySuffixAsync(string nameSuffix, CancellationToken ct = default);
+    Task<int> DeleteByNameSuffixAsync(string nameSuffix, CancellationToken ct = default);
 
     /// <summary>
     /// Is the user's Google email status flagged as <see cref="GoogleEmailStatus.Rejected"/>?

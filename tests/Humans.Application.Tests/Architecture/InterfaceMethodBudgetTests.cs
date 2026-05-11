@@ -118,7 +118,10 @@ public class InterfaceMethodBudgetTests
         // into one GetShiftsSummaryAsync(eventId, teamIds) method.
         // 49→48: collapsed GetAllTagsAsync and SearchTagsAsync into one
         // GetTagsAsync(query) method.
-        [typeof(IShiftManagementService)] = 48,
+        // 48->50: HUM0009 Web seeder cleanup. Added EventExistsAsync and
+        // DeleteEventByNameAsync so dev reset/seed orchestration goes through
+        // the Shifts API instead of HumansDbContext.
+        [typeof(IShiftManagementService)] = 50,
         // +1 for SetProfilePictureAsync (nobodies-collective/Humans#532 — Google avatar import button needs a
         // narrow service write that owns its own cache invalidation; controllers can't reach
         // the FullProfile cache directly).
@@ -208,7 +211,9 @@ public class InterfaceMethodBudgetTests
         // DeleteAllExternalLoginsForUserAsync — service surface for the admin
         // "Delete ghost logins" action. Auth-table cleanup; no expiable substitute
         // (only the User section can write to AspNetUserLogins).
-        [typeof(IUserService)] = 31,
+        // 31->32: HUM0009 Web seeder cleanup. Added DeleteUsersAsync for
+        // Admin-gated dev reset after section-owned references are cleared.
+        [typeof(IUserService)] = 32,
     };
 
     [HumansTheory]

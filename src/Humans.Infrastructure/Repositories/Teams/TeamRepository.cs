@@ -1217,7 +1217,7 @@ public sealed class TeamRepository : ITeamRepository
         return memberships.Count;
     }
 
-    public async Task<int> HardDeleteBySuffixAsync(string nameSuffix, CancellationToken ct = default)
+    public async Task<int> DeleteByNameSuffixAsync(string nameSuffix, CancellationToken ct = default)
     {
         await using var db = await _factory.CreateDbContextAsync(ct);
 

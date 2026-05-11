@@ -152,6 +152,11 @@ public class DevSeedController : HumansControllerBase
             return errorResult;
         }
 
+        if (reset && !User.IsInRole(RoleNames.Admin))
+        {
+            return Forbid();
+        }
+
         try
         {
             var seeder = _serviceProvider.GetRequiredService<DevelopmentDashboardSeeder>();

@@ -594,7 +594,7 @@ public interface ITeamService : IApplicationService
     /// <summary>
     /// Adds a team member with an explicit <paramref name="role"/> and <paramref name="joinedAt"/>
     /// timestamp, without emitting audit entries, outbox events, or user-facing emails. This is
-    /// a narrow seed/migration-only path; production membership changes must go through
+    /// a restricted seed/migration-only path; production membership changes must go through
     /// <see cref="AddMemberToTeamAsync"/>, <see cref="ApproveJoinRequestAsync"/>, or the role
     /// assignment APIs. Throws if the user is already an active member of the team.
     /// </summary>
@@ -606,14 +606,12 @@ public interface ITeamService : IApplicationService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Hard-deletes every team whose <see cref="Team.Name"/> ends with
-    /// <paramref name="nameSuffix"/>, along with its <see cref="TeamMember"/> rows and
-    /// <see cref="TeamJoinRequest"/> rows. Narrow seed/test-only cleanup path that
-    /// bypasses <see cref="DeleteTeamAsync"/>'s soft-delete semantics so a subsequent
-    /// reseed can reuse the same slugs without collisions. Returns the number of teams
-    /// deleted.
+    /// Permanently deletes every team whose <see cref="Team.Name"/> ends with
+    /// <paramref name="nameSuffix"/>, along with its <see cref="TeamMember"/>
+    /// and <see cref="TeamJoinRequest"/> rows. Caller is responsible for full
+    /// Admin authorization.
     /// </summary>
-    Task<int> HardDeleteSeededTeamsAsync(
+    Task<int> DeleteTeamsByNameSuffixAsync(
         string nameSuffix,
         CancellationToken cancellationToken = default);
 

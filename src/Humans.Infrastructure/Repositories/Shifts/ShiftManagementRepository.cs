@@ -52,6 +52,14 @@ public sealed class ShiftManagementRepository : IShiftManagementRepository
             .FirstOrDefaultAsync(e => e.Id == id, ct);
     }
 
+    public async Task<bool> EventSettingsExistsByNameAsync(string eventName, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.EventSettings
+            .AsNoTracking()
+            .AnyAsync(e => e.EventName == eventName, ct);
+    }
+
     public async Task<bool> AnyOtherActiveEventSettingsAsync(Guid? excludingId, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
@@ -73,6 +81,50 @@ public sealed class ShiftManagementRepository : IShiftManagementRepository
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         ctx.EventSettings.Update(entity);
         await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task<int> DeleteEventCascadeByNameAsync(string eventName, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+
+        var eventSettingsId = await ctx.EventSettings
+            .Where(e => e.EventName == eventName)
+            .Select(e => (Guid?)e.Id)
+            .FirstOrDefaultAsync(ct);
+        if (eventSettingsId is null)
+            return 0;
+
+        var rotaIds = await ctx.Rotas
+            .Where(r => r.EventSettingsId == eventSettingsId.Value)
+            .Select(r => r.Id)
+            .ToListAsync(ct);
+
+        if (rotaIds.Count > 0)
+        {
+            var shiftIds = await ctx.Shifts
+                .Where(s => rotaIds.Contains(s.RotaId))
+                .Select(s => s.Id)
+                .ToListAsync(ct);
+
+            if (shiftIds.Count > 0)
+            {
+                await ctx.ShiftSignups
+                    .Where(s => shiftIds.Contains(s.ShiftId))
+                    .ExecuteDeleteAsync(ct);
+
+                await ctx.Shifts
+                    .Where(s => shiftIds.Contains(s.Id))
+                    .ExecuteDeleteAsync(ct);
+            }
+
+            await ctx.Rotas
+                .Where(r => rotaIds.Contains(r.Id))
+                .ExecuteDeleteAsync(ct);
+        }
+
+        return await ctx.EventSettings
+            .Where(e => e.Id == eventSettingsId.Value)
+            .ExecuteDeleteAsync(ct);
     }
 
     // ==========================================================================

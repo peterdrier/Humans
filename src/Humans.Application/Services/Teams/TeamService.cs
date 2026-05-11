@@ -34,7 +34,7 @@ namespace Humans.Application.Services.Teams;
 /// structurally enforced by <c>Humans.Application.csproj</c>.
 ///
 /// <para>
-/// Cross-section cache invalidation flows through narrow invalidator interfaces
+/// Cross-section cache invalidation flows through focused invalidator interfaces
 /// (<see cref="INotificationMeterCacheInvalidator"/>,
 /// <see cref="IShiftAuthorizationInvalidator"/>). Active-team read caching is
 /// owned by the transparent caching decorator, not this scoped inner service.
@@ -1610,19 +1610,19 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
         return member;
     }
 
-    public Task<int> HardDeleteSeededTeamsAsync(
+    public Task<int> DeleteTeamsByNameSuffixAsync(
         string nameSuffix,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(nameSuffix))
             throw new ArgumentException("nameSuffix must be a non-empty marker", nameof(nameSuffix));
 
-        return HardDeleteAndRemoveFromCacheAsync(nameSuffix, cancellationToken);
+        return DeleteByNameSuffixAndRemoveFromCacheAsync(nameSuffix, cancellationToken);
     }
 
-    private async Task<int> HardDeleteAndRemoveFromCacheAsync(string nameSuffix, CancellationToken ct)
+    private async Task<int> DeleteByNameSuffixAndRemoveFromCacheAsync(string nameSuffix, CancellationToken ct)
     {
-        var count = await _repo.HardDeleteBySuffixAsync(nameSuffix, ct);
+        var count = await _repo.DeleteByNameSuffixAsync(nameSuffix, ct);
         return count;
     }
 

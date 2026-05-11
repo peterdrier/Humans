@@ -45,6 +45,11 @@ public interface IShiftManagementService : IApplicationService
     Task<EventSettings?> GetByIdAsync(Guid id);
 
     /// <summary>
+    /// Gets an EventSettings by exact event name.
+    /// </summary>
+    Task<bool> EventExistsAsync(string eventName, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Creates a new EventSettings. Validates only one IsActive=true.
     /// </summary>
     Task CreateAsync(EventSettings entity);
@@ -53,6 +58,12 @@ public interface IShiftManagementService : IApplicationService
     /// Updates an existing EventSettings.
     /// </summary>
     Task UpdateAsync(EventSettings entity);
+
+    /// <summary>
+    /// Deletes an event and all Shifts-owned rows beneath it: rotas, shifts,
+    /// and shift signups. Caller is responsible for full Admin authorization.
+    /// </summary>
+    Task<int> DeleteEventByNameAsync(string eventName, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets the available (non-barrios) EE slots for a given day offset.

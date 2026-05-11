@@ -522,11 +522,11 @@ public sealed class CachingTeamService : ITeamService, IUserMerge
         return result;
     }
 
-    public async Task<int> HardDeleteSeededTeamsAsync(
+    public async Task<int> DeleteTeamsByNameSuffixAsync(
         string nameSuffix,
         CancellationToken cancellationToken = default)
     {
-        var result = await WithInner(inner => inner.HardDeleteSeededTeamsAsync(nameSuffix, cancellationToken));
+        var result = await WithInner(inner => inner.DeleteTeamsByNameSuffixAsync(nameSuffix, cancellationToken));
         if (result > 0)
             InvalidateTeamsCache();
         return result;

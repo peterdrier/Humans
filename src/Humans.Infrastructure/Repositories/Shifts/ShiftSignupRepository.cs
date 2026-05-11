@@ -254,6 +254,18 @@ public sealed class ShiftSignupRepository : IShiftSignupRepository
         return cancelled;
     }
 
+    public Task<int> DeleteAllForUsersAsync(
+        IReadOnlyCollection<Guid> userIds,
+        CancellationToken ct = default)
+    {
+        if (userIds.Count == 0)
+            return Task.FromResult(0);
+
+        return _dbContext.ShiftSignups
+            .Where(s => userIds.Contains(s.UserId))
+            .ExecuteDeleteAsync(ct);
+    }
+
     // ============================================================
     // Account-merge fold
     // ============================================================
