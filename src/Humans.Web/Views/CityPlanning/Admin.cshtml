@@ -1,6 +1,6 @@
 @{
     ViewData["Title"] = Localizer["CityPlanning_Admin_Title"].Value;
-    var settings = (CityPlanningSettings)ViewBag.Settings;
+    var settings = (Humans.Application.Interfaces.CitiPlanning.CityPlanningSettingsInfo)ViewBag.Settings;
 }
 
 <div class="container py-4">
