@@ -235,8 +235,8 @@ Map admin = `RoleChecks.IsCampAdmin(User)` **or** member of the City Planning te
 | `POST /api/city-planning/camp-polygons/{campSeasonId}/restore/{historyId}` | Restore a historical version |
 | `GET /api/city-planning/export.geojson?year={year}` | Export all barrio polygons as GeoJSON |
 | `GET /api/city-planning/containers/{year}` | All containers for year with `canEdit` flag |
-| `PUT /api/city-planning/containers/{id}/placement` | Set container location GeoJSON |
-| `DELETE /api/city-planning/containers/{id}/placement` | Remove container from map |
+| `PUT /api/city-planning/containers/{id}/placement/{year}` | Set container location GeoJSON |
+| `DELETE /api/city-planning/containers/{id}/placement/{year}` | Remove container from map |
 | `GET /api/city-planning/containers/{year}/export.geojson` | Export placed containers as GeoJSON |
 
 ### SignalR Hub
