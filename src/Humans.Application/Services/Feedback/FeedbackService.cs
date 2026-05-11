@@ -429,13 +429,14 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
         if (rows.Count == 0)
             return [];
 
-        var userIds = rows.Select(r => r.UserId).ToList();
+        var userIds = rows.Select(r => r.UserId).ToHashSet();
         var users = await _userService.GetByIdsAsync(userIds, cancellationToken);
+        var displayNames = await BuildDisplayNamesAsync(userIds, users, cancellationToken);
 
         return rows
             .Select(r =>
             {
-                var name = users.TryGetValue(r.UserId, out var u) ? u.DisplayName : r.UserId.ToString();
+                var name = displayNames.TryGetValue(r.UserId, out var dn) ? dn : r.UserId.ToString();
                 return (r.UserId, name, r.Count);
             })
             .OrderBy(r => r.name, StringComparer.OrdinalIgnoreCase)
