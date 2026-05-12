@@ -418,6 +418,29 @@ public class AccountDeletionServiceTests
     }
 
     [HumansFact]
+    public async Task AnonymizeExpiredAccountAsync_ForgottenEmailCancellation_Propagates()
+    {
+        var userId = Guid.NewGuid();
+        var user = MakeUser(userId, email: "expired@example.com");
+
+        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
+        _userService.ApplyExpiredDeletionAnonymizationAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ExpiredDeletionAnonymizationResult(
+                OriginalEmail: "expired@example.com",
+                OriginalDisplayName: "Expired Human",
+                PreferredLanguage: "es",
+                DeletedEmailAddresses: ["expired@example.com"]));
+        _forgottenEmailService
+            .RecordForgottenAsync(userId, Arg.Any<IReadOnlyCollection<string>>(),
+                Arg.Any<NodaTime.Instant>(), Arg.Any<CancellationToken>())
+            .Returns<int>(_ => throw new OperationCanceledException());
+
+        var action = () => _service.AnonymizeExpiredAccountAsync(userId);
+
+        await action.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [HumansFact]
     public async Task AnonymizeExpiredAccountAsync_CascadeFailurePreservesDeletionFields()
     {
         // If a mid-cascade step throws, the identity-collapse step never runs,

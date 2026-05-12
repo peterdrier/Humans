@@ -310,7 +310,7 @@ public sealed class AccountDeletionService : IAccountDeletionService
             _logger.LogInformation(
                 "Recorded {Count} forgotten emails for user {UserId}", inserted, userId);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             _logger.LogWarning(ex,
                 "Failed to record forgotten emails for user {UserId}; anonymization already committed",
