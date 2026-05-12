@@ -8,7 +8,7 @@
   src/Humans.Domain/Entities/CampHistoricalName.cs
   src/Humans.Domain/Entities/CampSettings.cs
   src/Humans.Infrastructure/Data/Configurations/Camps/**
-  src/Humans.Infrastructure/Data/Configurations/CampMemberConfiguration.cs
+  src/Humans.Infrastructure/Data/Configurations/Camps/CampMemberConfiguration.cs
   src/Humans.Infrastructure/Repositories/Camps/CampRepository.cs
   src/Humans.Infrastructure/Repositories/Camps/CampRoleRepository.cs
   src/Humans.Web/Controllers/CampController.cs
@@ -283,4 +283,5 @@ Admin pages live under `/Camps/Admin/*` — never `/Admin/Camps/*` (per `docs/ar
 
 - `Camp.CreatedByUser` and `CampSeason.ReviewedByUser` are declared but never read. Safe targets for the cross-cutting User nav strip when the wider effort lands.
 - `IsLead` on `CampMemberRow` / `CampMemberRowViewModel` and the synthesis union in `CampService.GetCampMembersAsync` (~line 1654) are temporary — pending a follow-up issue that subsumes `CampLead` into `CampRoleDefinition` (Team-style). When that lands: remove the union block, drop `IsLead` from `CampMemberRow` and its view model, and drop the `camp_leads` table after migrating existing lead rows to role assignments.
-- `CampMemberConfiguration.cs` lives in `src/Humans.Infrastructure/Data/Configurations/` (root level), not in the `Camps/` subdirectory. Relocate when touching that file.
+- `CampMemberConfiguration.cs` is now located in
+  `src/Humans.Infrastructure/Data/Configurations/Camps/` with other Camps entity configuration.
