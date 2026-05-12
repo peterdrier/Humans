@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Humans.Application.DTOs;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.AuditLog;
@@ -56,6 +57,16 @@ public sealed class TicketTransferService : ITicketTransferService
     }
 
     private const int MaxBurnerNameMatches = 10;
+
+    private static readonly JsonSerializerOptions VendorStepsJsonOptions = new(JsonSerializerDefaults.Web);
+
+    private static void AppendStep(TicketTransferRequest request, TicketTransferVendorStep step)
+    {
+        var list = JsonSerializer.Deserialize<List<TicketTransferVendorStep>>(
+            request.VendorStepsJson, VendorStepsJsonOptions) ?? new();
+        list.Add(step);
+        request.VendorStepsJson = JsonSerializer.Serialize(list, VendorStepsJsonOptions);
+    }
 
     public async Task<IReadOnlyList<ReceiverLookupResultDto>> LookupReceiversAsync(
         string query, Guid senderUserId, CancellationToken ct = default)
@@ -367,9 +378,25 @@ public sealed class TicketTransferService : ITicketTransferService
         {
             voidResult = await _vendor.VoidIssuedTicketAsync(
                 attendee.VendorTicketId, voidToHold: true, ct);
+            AppendStep(request, new TicketTransferVendorStep(
+                Kind: TicketTransferVendorStepKind.Void,
+                Success: true,
+                OccurredAt: _clock.GetCurrentInstant(),
+                VendorReferenceId: voidResult.HoldId,
+                RequestSummary: $"void {attendee.VendorTicketId}",
+                ResponseSummary: $"hold {voidResult.HoldId}",
+                ErrorMessage: null));
         }
         catch (TicketVendorWriteException ex)
         {
+            AppendStep(request, new TicketTransferVendorStep(
+                Kind: TicketTransferVendorStepKind.Void,
+                Success: false,
+                OccurredAt: _clock.GetCurrentInstant(),
+                VendorReferenceId: null,
+                RequestSummary: $"void {attendee.VendorTicketId}",
+                ResponseSummary: null,
+                ErrorMessage: ex.Message));
             request.VendorResult = TicketTransferVendorResult.Failed;
             request.VendorMessage = $"Void failed ({ex.Kind}): {ex.Message}";
             _logger.LogWarning(
@@ -390,9 +417,25 @@ public sealed class TicketTransferService : ITicketTransferService
                 Email: request.ReceiverEmail,
                 SendEmail: true,
                 ExternalReference: request.Id.ToString("N")), ct);
+            AppendStep(request, new TicketTransferVendorStep(
+                Kind: TicketTransferVendorStepKind.Issue,
+                Success: true,
+                OccurredAt: _clock.GetCurrentInstant(),
+                VendorReferenceId: issued.VendorTicketId,
+                RequestSummary: $"issue for {request.ReceiverEmail} hold {voidResult.HoldId}",
+                ResponseSummary: $"ticket {issued.VendorTicketId}",
+                ErrorMessage: null));
         }
         catch (TicketVendorWriteException ex)
         {
+            AppendStep(request, new TicketTransferVendorStep(
+                Kind: TicketTransferVendorStepKind.Issue,
+                Success: false,
+                OccurredAt: _clock.GetCurrentInstant(),
+                VendorReferenceId: null,
+                RequestSummary: $"issue for {request.ReceiverEmail} hold {voidResult.HoldId}",
+                ResponseSummary: null,
+                ErrorMessage: ex.Message));
             request.VendorResult = TicketTransferVendorResult.VoidSucceededIssueFailed;
             request.VendorMessage = $"Issue failed ({ex.Kind}): {ex.Message} (hold {voidResult.HoldId})";
             _logger.LogError(ex,
@@ -433,6 +476,14 @@ public sealed class TicketTransferService : ITicketTransferService
             },
             attendee,
         }, ct);
+        AppendStep(request, new TicketTransferVendorStep(
+            Kind: TicketTransferVendorStepKind.LocalWriteback,
+            Success: true,
+            OccurredAt: _clock.GetCurrentInstant(),
+            VendorReferenceId: null,
+            RequestSummary: $"upsert void {attendee.VendorTicketId} + new {issued.VendorTicketId}",
+            ResponseSummary: null,
+            ErrorMessage: null));
 
         request.VendorResult = TicketTransferVendorResult.Succeeded;
         request.NewVendorTicketId = issued.VendorTicketId;
