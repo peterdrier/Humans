@@ -109,7 +109,22 @@ public sealed class MailerLiteClient : IMailerLiteService
                 $"MailerLite client is read-only. Attempted {method} {url}. " +
                 "Outbound writes belong to a separate slice with its own review.");
         using var req = new HttpRequestMessage(method, url);
-        var resp = await _http.SendAsync(req, ct);
+        HttpResponseMessage resp;
+        try
+        {
+            resp = await _http.SendAsync(req, ct);
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "MailerLite HTTP call failed: {Method} {Url}", method, url);
+            throw;
+        }
+        catch (TaskCanceledException ex) when (!ct.IsCancellationRequested)
+        {
+            // Timeout (HttpClient timeout fires TaskCanceledException with no token cancel).
+            _logger.LogError(ex, "MailerLite HTTP call timed out: {Method} {Url}", method, url);
+            throw;
+        }
         if (resp.Headers.TryGetValues("X-RateLimit-Remaining", out var values)
             && int.TryParse(values.FirstOrDefault(), CultureInfo.InvariantCulture, out var remaining) && remaining < 20)
             _logger.LogWarning("MailerLite rate limit remaining: {Remaining}", remaining);

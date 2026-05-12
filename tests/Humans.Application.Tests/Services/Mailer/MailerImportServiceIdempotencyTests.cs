@@ -82,8 +82,8 @@ internal sealed class IdempotencyHarness
 
         // Pass 1: no verified human match → CreateContact path.
         _userEmails
-            .FindVerifiedEmailWithUserAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<UserEmailWithUser?>(null));
+            .GetDistinctVerifiedUserIdsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<Guid>>(Array.Empty<Guid>()));
 
         _userEmails
             .FindAnyEmailRowByAddressAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
@@ -117,15 +117,14 @@ internal sealed class IdempotencyHarness
     }
 
     /// <summary>
-    /// Called after pass 1. Re-wires FindVerifiedEmailWithUserAsync to return the created user
+    /// Called after pass 1. Re-wires GetDistinctVerifiedUserIdsAsync to return the created user
     /// so pass 2 takes the AttachVerified path (not CreateContact).
     /// </summary>
     public void PromoteToVerifiedUser()
     {
         _userEmails
-            .FindVerifiedEmailWithUserAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<UserEmailWithUser?>(
-                new UserEmailWithUser(_userId, Email, null, null)));
+            .GetDistinctVerifiedUserIdsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<Guid>>(new[] { _userId }));
     }
 
     private void WirePrefsAlreadyMatching()

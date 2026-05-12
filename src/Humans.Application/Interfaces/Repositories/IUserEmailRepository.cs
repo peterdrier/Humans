@@ -206,6 +206,17 @@ public interface IUserEmailRepository : IRepository
         string email, CancellationToken ct = default);
 
     /// <summary>
+    /// Returns the distinct UserIds whose verified UserEmail matches the given
+    /// normalized address (or its gmail/googlemail alternate). Same matching
+    /// semantics as <see cref="FindVerifiedWithUserAsync"/>, but returns the
+    /// full set rather than picking one arbitrary owner — so classifiers can
+    /// detect service-level uniqueness drift instead of silently attaching to
+    /// the wrong account.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetDistinctVerifiedUserIdsAsync(
+        string normalizedEmail, string? alternateEmail, CancellationToken ct = default);
+
+    /// <summary>
     /// Returns the id of any user, other than <paramref name="excludeUserId"/>,
     /// whose <c>user_emails</c> rows contain the given address (case-insensitive).
     /// Used by @nobodies.team provisioning to block a prefix that is already

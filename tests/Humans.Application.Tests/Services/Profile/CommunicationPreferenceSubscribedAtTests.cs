@@ -130,4 +130,37 @@ public class CommunicationPreferenceSubscribedAtTests : IDisposable
         var marketing = prefs.Single(p => p.Category == MessageCategory.Marketing);
         marketing.SubscribedAt.Should().NotBeNull();
     }
+
+    [HumansFact]
+    public async Task UpdatePreferenceAsync_FourArg_StampsSubscribedAt_OnFirstOptIn()
+    {
+        var userId = Guid.NewGuid();
+        // Seed defaults so GetPreferencesAsync returns the full set after Update
+        // (matches the 3-arg test pattern).
+        await _service.GetPreferencesAsync(userId);
+
+        await _service.UpdatePreferenceAsync(
+            userId, MessageCategory.Marketing, optedOut: false, inboxEnabled: true, source: "Profile");
+
+        var prefs = await _service.GetPreferencesAsync(userId);
+        var marketing = prefs.Single(p => p.Category == MessageCategory.Marketing);
+        marketing.SubscribedAt.Should().NotBeNull();
+    }
+
+    [HumansFact]
+    public async Task UpdatePreferenceAsync_FourArg_StampsSubscribedAt_OnOptOutToOptInTransition()
+    {
+        var userId = Guid.NewGuid();
+
+        // Seed defaults (Marketing.OptedOut=true, SubscribedAt=null)
+        await _service.GetPreferencesAsync(userId);
+
+        // Transition existing row: opted-out → opted-in via 4-arg overload
+        await _service.UpdatePreferenceAsync(
+            userId, MessageCategory.Marketing, optedOut: false, inboxEnabled: true, source: "Profile");
+
+        var prefs = await _service.GetPreferencesAsync(userId);
+        var marketing = prefs.Single(p => p.Category == MessageCategory.Marketing);
+        marketing.SubscribedAt.Should().NotBeNull();
+    }
 }

@@ -258,7 +258,7 @@ Each section's service owns these tables. Cross-service access goes through the 
 | **Campaigns** | `CampaignService` | `campaigns`, `campaign_codes`, `campaign_grants` |
 | **Google Integration** | `GoogleSyncService`, `GoogleAdminService`, `GoogleWorkspaceSyncService`, `GoogleWorkspaceUserService`, `DriveActivityMonitorService`, `SyncSettingsService`, `EmailProvisioningService` | `sync_service_settings`, `google_sync_outbox_events` |
 | **Email** | `EmailOutboxService`, `OutboxEmailService`, `EmailService` | `email_outbox_messages`; owns `system_settings` key `email_outbox_paused` |
-| **Mailer** | `MailerImportService`, `MailerLiteClient`, `ForgottenEmailService` | `forgotten_emails` |
+| **Mailer** | `MailerImportService`, `MailerLiteClient`, `ForgottenEmailService` | `forgotten_emails` (provenance-only — see §8a note) |
 | **Feedback** | `FeedbackService` | `feedback_reports`, `feedback_messages` |
 | **Issues** | `IssuesService` | `issues`, `issue_comments` |
 | **Notifications** | `NotificationService`, `NotificationInboxService`, `NotificationMeterProvider` | `notifications`, `notification_recipients` |
@@ -300,6 +300,8 @@ The architecture test suite in `GdprExportDependencyInjectionTests.cs` enforces 
 **Uncaught case (convention, not test):** if a new user-scoped section is added to §8 but its owning service never implements `IUserDataContributor` at all, reflection finds nothing to enumerate and the suite passes vacuously. The four-step list above is the prose-level guardrail — reviewers should reject any §8 edit that adds a user-scoped row without touching `ExpectedContributorTypes` in the same PR.
 
 **Provenance FKs are not user-scoped data.** A section's tables can carry user FK columns that record *who performed an action* (`AddedByUserId`, `RecordedByUserId`, `IssuedByUserId`, etc.) without the section's data being user-scoped. The rule of thumb: if you delete the user, do their rows go with them, or do they belong to a different aggregate (a camp, a team, an event) and merely lose their actor reference? If the latter, the section is not user-scoped — the FKs are provenance and belong to audit-style "what happened" data, not to the user's "what's mine" export. The **Store** section is the canonical example: store orders, lines, payments, and invoices belong to a camp season; the user FKs only record which lead clicked which button. Store data flows out of GDPR export through the audit log, not through a Store-section contributor.
+
+**Mailer / `forgotten_emails` is a deliberate exception.** The `forgotten_emails` table holds SHA-256 hashes written *during* user anonymization specifically to outlive the user — the row's purpose is to keep the right-to-deletion guarantee intact after the user is gone. The `UserId` column is provenance, not user-scoped data: by the time the row exists, there is no live user to export. `ForgottenEmailService` therefore does NOT implement `IUserDataContributor` and Mailer is intentionally absent from `ExpectedContributorTypes`.
 
 See [`docs/features/global/gdpr-export.md`](../features/global/gdpr-export.md) for the JSON output shape, the contributor table, and a worked example of adding a new section.
 

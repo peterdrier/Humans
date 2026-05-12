@@ -165,9 +165,17 @@ public sealed class MailerAdminController : HumansControllerBase
 
         int? humansInMlAbsent = null; // TODO: cross-reference once IUserEmailService supports it
 
+        // The "Forgotten (GDPR) but still active in ML" dashboard tile counts
+        // only ML-active rows. SkippedForgotten lumps in non-active statuses
+        // (unsubscribed/bounced/junk) — including those would overstate GDPR
+        // drift risk and trigger spurious admin alarms.
+        var forgottenButMlActive = plan.Decisions.Count(d =>
+            d.Outcome == SubscriberOutcome.ForgottenSkipped
+            && string.Equals(d.Status, "active", StringComparison.OrdinalIgnoreCase));
+
         return new DriftReport(
             HumansOptedOutMlActive: humansOutMlIn,
             HumansOptedInMlAbsent: humansInMlAbsent,
-            ForgottenButMlActive: plan.Counts.SkippedForgotten);
+            ForgottenButMlActive: forgottenButMlActive);
     }
 }

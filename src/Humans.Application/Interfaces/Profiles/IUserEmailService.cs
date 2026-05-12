@@ -209,6 +209,18 @@ public interface IUserEmailService : IApplicationService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Returns the distinct UserIds whose verified UserEmail matches the given
+    /// address (including gmail/googlemail alternate). Same matching semantics
+    /// as <see cref="FindVerifiedEmailWithUserAsync"/> but exposes the full
+    /// set. Callers that mutate user state (e.g. the Mailer import classifier)
+    /// must treat count &gt; 1 as ambiguous and skip — service-enforced
+    /// verified-email uniqueness can drift.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetDistinctVerifiedUserIdsAsync(
+        string email,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Gets @nobodies.team email status for all users who have one.
     /// Returns a dictionary of userId → isNotificationTarget (i.e., is it their primary email).
     /// Used for admin listing pages.

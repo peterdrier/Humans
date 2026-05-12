@@ -174,6 +174,7 @@ public sealed class CommunicationPreferenceService : ICommunicationPreferenceSer
                 InboxEnabled = inboxEnabled,
                 UpdatedAt = now,
                 UpdateSource = source,
+                SubscribedAt = optedOut ? null : now,
             };
             await _repository.AddAsync(pref, cancellationToken);
         }
@@ -181,6 +182,9 @@ public sealed class CommunicationPreferenceService : ICommunicationPreferenceSer
         {
             if (pref.OptedOut == optedOut && pref.InboxEnabled == inboxEnabled)
                 return; // idempotent
+
+            if (!optedOut && pref.SubscribedAt is null)
+                pref.SubscribedAt = now;
 
             pref.OptedOut = optedOut;
             pref.InboxEnabled = inboxEnabled;

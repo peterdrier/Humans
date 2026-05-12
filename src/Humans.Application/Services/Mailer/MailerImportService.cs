@@ -49,6 +49,11 @@ public sealed class MailerImportService : IMailerImportService
         var subs = new List<MailerLiteSubscriber>();
         await foreach (var s in _ml.ListSubscribersAsync(ct)) subs.Add(s);
 
+        // Pre-load the forgotten skip-list in one round-trip instead of one
+        // IsForgottenAsync call per subscriber (N+1).
+        var forgottenSet = await _forgotten.GetForgottenAsync(
+            subs.Select(s => s.Email).ToList(), ct);
+
         foreach (var s in subs)
         {
             // 1. Unconfirmed
@@ -60,18 +65,27 @@ public sealed class MailerImportService : IMailerImportService
             }
 
             // 2. Forgotten
-            if (await _forgotten.IsForgottenAsync(s.Email, ct))
+            if (forgottenSet.Contains(s.Email))
             {
                 decisions.Add(new SubscriberDecision(s.Email, s.Status,
                     SubscriberOutcome.ForgottenSkipped, null, null, null));
                 continue;
             }
 
-            // 3. Verified match
-            var verified = await _userEmails.FindVerifiedEmailWithUserAsync(s.Email, ct);
-            if (verified is not null)
+            // 3. Verified match — count distinct owners so service-level
+            // uniqueness drift (multiple users sharing the same verified
+            // address) surfaces as AmbiguousMultipleVerified instead of
+            // silently mutating one arbitrary user's preferences.
+            var verifiedUserIds = await _userEmails.GetDistinctVerifiedUserIdsAsync(s.Email, ct);
+            if (verifiedUserIds.Count > 1)
             {
-                var targetId = await ResolveTombstoneAsync(verified.UserId, ct);
+                decisions.Add(new SubscriberDecision(s.Email, s.Status,
+                    SubscriberOutcome.AmbiguousMultipleVerified, null, null, verifiedUserIds));
+                continue;
+            }
+            if (verifiedUserIds.Count == 1)
+            {
+                var targetId = await ResolveTombstoneAsync(verifiedUserIds[0], ct);
                 decisions.Add(new SubscriberDecision(s.Email, s.Status,
                     SubscriberOutcome.AttachVerified, targetId, null, null));
                 continue;
@@ -141,33 +155,33 @@ public sealed class MailerImportService : IMailerImportService
                         break;
 
                     case SubscriberOutcome.AttachVerified:
-                    {
-                        var delta = await ApplyMarketingDeltaAsync(d.TargetUserId!.Value, subscriber, ct);
-                        if (delta == DeltaResult.Flipped) flipped++;
-                        else if (delta == DeltaResult.Preserved) preserved++;
-                        break;
-                    }
+                        {
+                            var delta = await ApplyMarketingDeltaAsync(d.TargetUserId!.Value, subscriber, ct);
+                            if (delta == DeltaResult.Flipped) flipped++;
+                            else if (delta == DeltaResult.Preserved) preserved++;
+                            break;
+                        }
 
                     case SubscriberOutcome.DeleteUnverifiedThenCreate:
-                    {
-                        if (d.UnverifiedEmailIdToDelete is Guid emailId && d.TargetUserId is Guid uid)
-                            await _userEmails.DeleteEmailAsync(uid, emailId, ct);
-                        var (provUser, provCreated) = await _provisioning.FindOrCreateUserByEmailAsync(
-                            subscriber.Email, displayName: null, ContactSource.MailerLite, ct);
-                        if (provCreated) created++;
-                        await ApplyMarketingDeltaAsync(provUser.Id, subscriber, ct);
-                        deletedAndCreated++;
-                        break;
-                    }
+                        {
+                            if (d.UnverifiedEmailIdToDelete is Guid emailId && d.TargetUserId is Guid uid)
+                                await _userEmails.DeleteEmailAsync(uid, emailId, ct);
+                            var (provUser, provCreated) = await _provisioning.FindOrCreateUserByEmailAsync(
+                                subscriber.Email, displayName: null, ContactSource.MailerLite, ct);
+                            if (provCreated) created++;
+                            await ApplyMarketingDeltaAsync(provUser.Id, subscriber, ct);
+                            deletedAndCreated++;
+                            break;
+                        }
 
                     case SubscriberOutcome.CreateContact:
-                    {
-                        var (provUser, provCreated) = await _provisioning.FindOrCreateUserByEmailAsync(
-                            subscriber.Email, displayName: null, ContactSource.MailerLite, ct);
-                        if (provCreated) created++;
-                        await ApplyMarketingDeltaAsync(provUser.Id, subscriber, ct);
-                        break;
-                    }
+                        {
+                            var (provUser, provCreated) = await _provisioning.FindOrCreateUserByEmailAsync(
+                                subscriber.Email, displayName: null, ContactSource.MailerLite, ct);
+                            if (provCreated) created++;
+                            await ApplyMarketingDeltaAsync(provUser.Id, subscriber, ct);
+                            break;
+                        }
                 }
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
@@ -212,7 +226,7 @@ public sealed class MailerImportService : IMailerImportService
         var marketing = prefs.FirstOrDefault(p => p.Category == MessageCategory.Marketing);
 
         bool isBounceOrJunk = string.Equals(ml.Status, "bounced", StringComparison.OrdinalIgnoreCase)
-                           || string.Equals(ml.Status, "junk",    StringComparison.OrdinalIgnoreCase);
+                           || string.Equals(ml.Status, "junk", StringComparison.OrdinalIgnoreCase);
         bool isUserAction = marketing is not null
             && (marketing.UpdateSource is "Profile" or "Guest" or "MagicLink" or "OneClick");
         bool humansNewerThanMl = marketing is not null

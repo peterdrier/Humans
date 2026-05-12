@@ -346,6 +346,20 @@ public sealed class UserEmailRepository : IUserEmailRepository
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<Guid>> GetDistinctVerifiedUserIdsAsync(
+        string normalizedEmail, string? alternateEmail, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var query = ctx.UserEmails.AsNoTracking().Where(ue => ue.IsVerified);
+
+        query = alternateEmail is null
+            ? query.Where(ue => EF.Functions.ILike(ue.Email, normalizedEmail))
+            : query.Where(ue => EF.Functions.ILike(ue.Email, normalizedEmail)
+                             || EF.Functions.ILike(ue.Email, alternateEmail));
+
+        return await query.Select(ue => ue.UserId).Distinct().ToListAsync(ct);
+    }
+
     public async Task<Guid?> GetOtherUserIdHavingEmailAsync(
         string email, Guid excludeUserId, CancellationToken ct = default)
     {

@@ -105,6 +105,23 @@ public class MailerImportServiceClassifierTests
 
         plan.Decisions.Single().Outcome.Should().Be(SubscriberOutcome.CreateContact);
     }
+
+    [HumansFact]
+    public async Task Classifies_MultipleVerifiedOwnersAsAmbiguous()
+    {
+        var harness = new ClassifierHarness();
+        var userA = Guid.NewGuid();
+        var userB = Guid.NewGuid();
+        harness.MlReturns(Active("shared@x.com"));
+        harness.VerifiedOwners["shared@x.com"] = [userA, userB];
+
+        var plan = await harness.Service.BuildPlanAsync();
+
+        var d = plan.Decisions.Single();
+        d.Outcome.Should().Be(SubscriberOutcome.AmbiguousMultipleVerified);
+        d.TargetUserId.Should().BeNull();
+        d.AmbiguousUserIds.Should().BeEquivalentTo(new[] { userA, userB });
+    }
 }
 
 /// <summary>
@@ -120,8 +137,16 @@ internal sealed class ClassifierHarness
     /// <summary>Emails whose hash is in the forgotten skip-list.</summary>
     public HashSet<string> ForgottenHashes { get; } = [];
 
-    /// <summary>email → userId for verified email matches.</summary>
+    /// <summary>email → userId for verified email matches (single owner).</summary>
     public Dictionary<string, Guid> VerifiedMatches { get; } = [];
+
+    /// <summary>
+    /// email → list of owners when the same verified address appears on
+    /// multiple users (service-level uniqueness drift). Takes precedence
+    /// over <see cref="VerifiedMatches"/> when both are populated for the
+    /// same email.
+    /// </summary>
+    public Dictionary<string, IReadOnlyList<Guid>> VerifiedOwners { get; } = [];
 
     /// <summary>userId → merged-to userId for tombstone chain.</summary>
     public Dictionary<Guid, Guid> MergedToTargets { get; } = [];
@@ -133,25 +158,31 @@ internal sealed class ClassifierHarness
 
     public ClassifierHarness()
     {
-        // IForgottenEmailService.IsForgottenAsync: true when the email's hash is in the set.
+        // IForgottenEmailService.GetForgottenAsync: returns the subset of emails
+        // whose hash is in the skip-list (batch — one call per BuildPlanAsync).
         _forgotten
-            .IsForgottenAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .GetForgottenAsync(Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>())
             .Returns(ci =>
             {
-                var email = (string)ci[0];
-                return Task.FromResult(ForgottenHashes.Contains(EmailHasher.Hash(email)));
+                var emails = (IReadOnlyCollection<string>)ci[0];
+                var matched = emails
+                    .Where(e => ForgottenHashes.Contains(EmailHasher.Hash(e)))
+                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+                return Task.FromResult<IReadOnlySet<string>>(matched);
             });
 
-        // IUserEmailService.FindVerifiedEmailWithUserAsync: returns a match when the email is in VerifiedMatches.
+        // IUserEmailService.GetDistinctVerifiedUserIdsAsync: returns the list of
+        // verified owners. VerifiedOwners (multi) wins over VerifiedMatches (single).
         _userEmails
-            .FindVerifiedEmailWithUserAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .GetDistinctVerifiedUserIdsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(ci =>
             {
                 var email = (string)ci[0];
+                if (VerifiedOwners.TryGetValue(email, out var owners))
+                    return Task.FromResult<IReadOnlyList<Guid>>(owners);
                 if (VerifiedMatches.TryGetValue(email, out var uid))
-                    return Task.FromResult<UserEmailWithUser?>(
-                        new UserEmailWithUser(uid, email, null, null));
-                return Task.FromResult<UserEmailWithUser?>(null);
+                    return Task.FromResult<IReadOnlyList<Guid>>(new[] { uid });
+                return Task.FromResult<IReadOnlyList<Guid>>(Array.Empty<Guid>());
             });
 
         // IUserEmailService.FindAnyEmailRowByAddressAsync: returns a match when the email is in AnyEmailRows.
