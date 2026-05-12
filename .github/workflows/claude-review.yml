@@ -47,19 +47,14 @@ name: claude-review
 on:
   pull_request:
     types: [opened, synchronize, ready_for_review]
-    # Docs-only pushes don't trigger a review. /section-align handles
-    # invariant drift across docs/sections/ and docs/architecture/; this
-    # auto-reviewer is for code. paths-ignore filters per-event push diffs,
-    # so a code commit still fires synchronize even on a PR that also
-    # touches docs.
-    paths-ignore:
-      - '**/*.md'
-      - 'docs/**'
   pull_request_target:
     types: [opened, synchronize, ready_for_review]
-    paths-ignore:
-      - '**/*.md'
-      - 'docs/**'
+  # Note: do NOT use trigger-level paths-ignore here. For pull_request /
+  # pull_request_target, GitHub evaluates path filters against the PR's
+  # cumulative diff vs base, not the push delta — so once any code is in
+  # the PR, every later docs-only push still triggers the workflow. The
+  # docs-only-push skip is enforced by the `skip-if-docs-only` step
+  # below, which checks the actual push delta via the compare API.
 
 jobs:
   review:
@@ -89,7 +84,51 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: anthropics/claude-code-action@v1
+      # Skip the review when this event's push delta is docs-only.
+      # Compares github.event.before...github.event.after via the compare
+      # API (works across forks because PR head SHAs are mirrored into
+      # refs/pull/N/head in the base repo). On 'opened' / 'ready_for_review',
+      # before is absent or all-zeros — fall back to base.sha → head.sha,
+      # which is the full PR diff and correctly catches all-docs-from-open.
+      # Fails open: if the compare endpoint errors, run the review.
+      - name: skip-if-docs-only
+        id: guard
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          BEFORE='${{ github.event.before }}'
+          AFTER='${{ github.event.after }}'
+          if [[ -z "$BEFORE" || "$BEFORE" == "0000000000000000000000000000000000000000" ]]; then
+            BEFORE='${{ github.event.pull_request.base.sha }}'
+          fi
+          if [[ -z "$AFTER" ]]; then
+            AFTER='${{ github.event.pull_request.head.sha }}'
+          fi
+          echo "Comparing $BEFORE...$AFTER"
+          if ! files=$(gh api "repos/${{ github.repository }}/compare/${BEFORE}...${AFTER}" --jq '.files[].filename' 2>&1); then
+            echo "Compare API failed; running review anyway."
+            echo "$files"
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [[ -z "$files" ]]; then
+            echo "No file changes in this delta; skipping review."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "Changed files in delta:"
+          echo "$files"
+          if echo "$files" | grep -qvE '(^docs/|\.md$)'; then
+            echo "Non-docs files present; running review."
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Docs-only delta; skipping review."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - if: steps.guard.outputs.skip != 'true'
+        uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           # On pull_request_target, skip OIDC (see #713 above) by handing the
