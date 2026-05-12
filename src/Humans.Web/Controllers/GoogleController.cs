@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
 using Humans.Application.DTOs;
 using Humans.Application.Extensions;
+using Humans.Application.Services.AuditLog;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Authorization;
@@ -849,4 +850,41 @@ public class GoogleController : HumansControllerBase
         SyncServiceType.Discord => "Discord",
         _ => type.ToString()
     };
+
+    private IActionResult GoogleSyncAuditView(
+        string title,
+        string? backUrl,
+        string? backLabel,
+        IEnumerable<AuditEvent> events)
+    {
+        return View("GoogleSyncAudit", BuildGoogleSyncAuditViewModel(title, backUrl, backLabel, events));
+    }
+
+    private static GoogleSyncAuditListViewModel BuildGoogleSyncAuditViewModel(
+        string title,
+        string? backUrl,
+        string? backLabel,
+        IEnumerable<AuditEvent> events)
+    {
+        return new GoogleSyncAuditListViewModel
+        {
+            Title = title,
+            BackUrl = backUrl,
+            BackLabel = backLabel,
+            Entries = events.Select(static ev => new GoogleSyncAuditEntryViewModel
+            {
+                Action = ev.Action,
+                Description = ev.Description,
+                UserEmail = ev.UserEmail,
+                Role = ev.Role,
+                SyncSource = ev.SyncSource,
+                OccurredAt = ev.OccurredAt.ToDateTimeUtc(),
+                Success = ev.Success,
+                ErrorMessage = ev.ErrorMessage,
+                ResourceName = ev.ResourceName,
+                ResourceId = ev.ResourceId,
+                RelatedEntityId = ev.RelatedEntityId
+            }).ToList()
+        };
+    }
 }
