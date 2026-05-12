@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
@@ -38,6 +39,7 @@ public sealed class UserServiceContactSourceCountTests : IDisposable
             userRepo,
             userEmailRepo,
             Substitute.For<IFullProfileInvalidator>(),
+            Substitute.For<IAdminAuthorizationService>(),
             new FakeClock(Instant.FromUtc(2026, 1, 1, 0, 0)),
             NullLogger<UserService>.Instance);
     }

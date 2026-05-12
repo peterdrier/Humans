@@ -231,6 +231,13 @@ public interface IShiftSignupRepository : IRepository
         Guid userId, string reason, CancellationToken ct = default);
 
     /// <summary>
+    /// Deletes every signup row owned by the supplied users. Returns deleted row count.
+    /// </summary>
+    Task<int> DeleteAllForUsersAsync(
+        IReadOnlyCollection<Guid> userIds,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Account-merge fold: re-FKs <c>shift_signups</c> rows from
     /// <paramref name="sourceUserId"/> to <paramref name="targetUserId"/>.
     /// Plain re-FK with one defensive guard — when source and target both

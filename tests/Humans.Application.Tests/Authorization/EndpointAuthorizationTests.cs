@@ -35,6 +35,7 @@ public class EndpointAuthorizationTests
         { typeof(OnboardingReviewController), "Flag", "ConsentCoordinatorBoardOrAdmin" },
         { typeof(OnboardingReviewController), "Reject", "ConsentCoordinatorBoardOrAdmin" },
         { typeof(FinanceController), null, "FinanceAdminOrAdmin" },
+        { typeof(ScannerController), null, "TicketAdminBoardOrAdmin" },
         { typeof(ShiftDashboardController), null, "ShiftDepartmentManager" },
         { typeof(ShiftDashboardController), "SearchVolunteers", "ShiftDashboardAccess" },
         { typeof(ShiftDashboardController), "Voluntell", "ShiftDashboardAccess" },
@@ -173,6 +174,28 @@ public class EndpointAuthorizationTests
         violations.Should().BeEmpty(
             "[AllowAnonymous] on an [Authorize] controller must be explicitly allowlisted in this test. " +
             "New anonymous endpoints: " + string.Join(", ", violations));
+    }
+
+    [HumansFact]
+    public void ScannerController_Remains_ClientOnly_GetSurface()
+    {
+        var constructor = typeof(ScannerController).GetConstructors(BindingFlags.Public | BindingFlags.Instance)
+            .Should().ContainSingle()
+            .Subject;
+        constructor.GetParameters().Should().BeEmpty(
+            "Scanner is documented as a browser-only section with no server-side service, repository, or cache dependencies");
+
+        var actions = typeof(ScannerController).GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
+
+        actions.Should().OnlyContain(
+            m => m.GetCustomAttribute<HttpGetAttribute>() != null,
+            "Scanner endpoints must not write server-side state");
+        actions.Should().OnlyContain(
+            m => m.GetCustomAttribute<HttpPostAttribute>() == null &&
+                 m.GetCustomAttribute<HttpPutAttribute>() == null &&
+                 m.GetCustomAttribute<HttpDeleteAttribute>() == null &&
+                 m.GetCustomAttribute<HttpPatchAttribute>() == null,
+            "the current Scanner section is explicitly not a check-in or persistence gateway");
     }
 
     private static void AssertHasPolicy(Type controllerType, string? actionName, string expectedPolicy)

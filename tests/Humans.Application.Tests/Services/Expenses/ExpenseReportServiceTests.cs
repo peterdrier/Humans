@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Expenses;
@@ -28,7 +29,7 @@ public class ExpenseReportServiceTests
 
     private readonly IDbContextFactory<HumansDbContext> _factory;
     private readonly IExpenseRepository _expenseRepo;
-    private readonly IExpenseAttachmentStorageService _storage;
+    private readonly IFileStorage _fileStorage;
     private readonly IBudgetService _budgetService;
     private readonly ITeamService _teamService;
     private readonly IUserService _userService;
@@ -44,7 +45,7 @@ public class ExpenseReportServiceTests
         _factory = new TestDbContextFactory(options);
         _expenseRepo = new ExpenseRepository(_factory, NullLogger<ExpenseRepository>.Instance);
 
-        _storage = Substitute.For<IExpenseAttachmentStorageService>();
+        _fileStorage = Substitute.For<IFileStorage>();
         _budgetService = Substitute.For<IBudgetService>();
         _teamService = Substitute.For<ITeamService>();
         _userService = Substitute.For<IUserService>();
@@ -53,7 +54,7 @@ public class ExpenseReportServiceTests
 
         _sut = new ExpenseReportService(
             _expenseRepo,
-            _storage,
+            _fileStorage,
             _budgetService,
             _teamService,
             _userService,
@@ -211,17 +212,18 @@ public class ExpenseReportServiceTests
         var id = await _sut.CreateDraftAsync(submitter, category.Id, null);
         var lineId = await _sut.AddLineAsync(id, submitter, "Item", 10m);
 
-        var fakeAttachId = Guid.NewGuid();
-        _storage.StoreAsync(Arg.Any<Stream>(), ".pdf", "application/pdf", Arg.Any<CancellationToken>())
-            .Returns(fakeAttachId);
-
         await using var stream = new MemoryStream([1, 2, 3]);
         var attachId = await _sut.AttachFileToLineAsync(
             id, submitter, lineId, "receipt.pdf", "application/pdf", stream);
 
-        attachId.Should().Be(fakeAttachId);
+        attachId.Should().NotBe(Guid.Empty);
         var loaded = await _sut.GetAsync(id);
-        loaded!.Lines[0].AttachmentId.Should().Be(fakeAttachId);
+        loaded!.Lines[0].AttachmentId.Should().Be(attachId);
+
+        await _fileStorage.Received(1).SaveAsync(
+            $"uploads/expense-attachments/{attachId}.pdf",
+            Arg.Any<Stream>(),
+            Arg.Any<CancellationToken>());
 
         await _auditLogService.Received(1).LogAsync(
             AuditAction.ExpenseAttachmentUploaded,
@@ -278,7 +280,9 @@ public class ExpenseReportServiceTests
         var loaded = await _sut.GetAsync(id);
         loaded!.Lines[0].AttachmentId.Should().BeNull();
 
-        await _storage.Received(1).DeleteAsync(attach.Id, attach.Extension, Arg.Any<CancellationToken>());
+        await _fileStorage.Received(1).DeleteAsync(
+            $"uploads/expense-attachments/{attach.Id}{attach.Extension}",
+            Arg.Any<CancellationToken>());
         await _auditLogService.Received(1).LogAsync(
             AuditAction.ExpenseAttachmentRemoved,
             "ExpenseReport", id,
@@ -297,7 +301,7 @@ public class ExpenseReportServiceTests
         // No attachment on the line — should not throw
         var act = async () => await _sut.RemoveAttachmentFromLineAsync(id, submitter, lineId);
         await act.Should().NotThrowAsync();
-        await _storage.DidNotReceiveWithAnyArgs().DeleteAsync(default, default!, default);
+        await _fileStorage.DidNotReceiveWithAnyArgs().DeleteAsync(default!, default);
     }
 
     // ─────────────────────────────── 4.4 ─────────────────────────────────────

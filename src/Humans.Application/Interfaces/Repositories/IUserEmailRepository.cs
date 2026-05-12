@@ -194,6 +194,15 @@ public interface IUserEmailRepository : IRepository
         string email, CancellationToken ct = default);
 
     /// <summary>
+    /// Returns distinct user ids whose email starts with <paramref name="prefix"/>
+    /// and ends with <paramref name="suffix"/>.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetUserIdsByEmailPrefixAndSuffixAsync(
+        string prefix,
+        string suffix,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Returns all distinct <c>UserId</c> values whose verified email rows
     /// contain an address that matches <paramref name="email"/> exactly
     /// (case-sensitive, no gmail/googlemail aliasing). The caller uses this

@@ -1,6 +1,8 @@
 using AwesomeAssertions;
+using Humans.Application.Enums;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
+using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Shifts;
@@ -79,6 +81,7 @@ public class ShiftManagementServiceTests : IDisposable
         _service = new ShiftManagementService(
             repo,
             Substitute.For<IAuditLogService>(),
+            Substitute.For<IAdminAuthorizationService>(),
             serviceProvider,
             new MemoryCache(new MemoryCacheOptions()),
             _clock,
@@ -94,6 +97,48 @@ public class ShiftManagementServiceTests : IDisposable
     // ============================================================
     // CreateBuildStrikeShiftsAsync
     // ============================================================
+
+    [HumansFact]
+    public async Task DeleteEventAsync_EvictsDashboardCaches()
+    {
+        var eventId = Guid.NewGuid();
+        var repo = Substitute.For<IShiftManagementRepository>();
+        repo.DeleteEventCascadeAsync(eventId, Arg.Any<CancellationToken>())
+            .Returns(1);
+        var adminAuthorization = Substitute.For<IAdminAuthorizationService>();
+        using var cache = new MemoryCache(new MemoryCacheOptions());
+
+        var periods = new ShiftPeriod?[] { null }.Concat(Enum.GetValues<ShiftPeriod>().Cast<ShiftPeriod?>());
+        foreach (var period in periods)
+        {
+            cache.Set(ShiftManagementService.OverviewCacheKey(eventId, period), new object());
+            cache.Set(ShiftManagementService.CoordinatorActivityCacheKey(eventId, period), new object());
+            foreach (var window in Enum.GetValues<TrendWindow>())
+                cache.Set(ShiftManagementService.TrendsCacheKey(eventId, window, period), new object());
+        }
+
+        var service = new ShiftManagementService(
+            repo,
+            Substitute.For<IAuditLogService>(),
+            adminAuthorization,
+            Substitute.For<IServiceProvider>(),
+            cache,
+            _clock,
+            NullLogger<ShiftManagementService>.Instance);
+
+        var deleted = await service.DeleteEventAsync(eventId);
+
+        deleted.Should().Be(1);
+        await adminAuthorization.Received(1)
+            .RequireCurrentUserIsAdminAsync(Arg.Any<CancellationToken>());
+        foreach (var period in periods)
+        {
+            cache.TryGetValue(ShiftManagementService.OverviewCacheKey(eventId, period), out _).Should().BeFalse();
+            cache.TryGetValue(ShiftManagementService.CoordinatorActivityCacheKey(eventId, period), out _).Should().BeFalse();
+            foreach (var window in Enum.GetValues<TrendWindow>())
+                cache.TryGetValue(ShiftManagementService.TrendsCacheKey(eventId, window, period), out _).Should().BeFalse();
+        }
+    }
 
     [HumansFact]
     public async Task CreateBuildStrikeShifts_CreatesOneAllDayShiftPerDay()

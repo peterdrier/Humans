@@ -182,6 +182,15 @@ public interface IUserRepository : IRepository
     Task<IReadOnlyList<Guid>> GetUsersWithLoginsButNoEmailsAsync(CancellationToken ct = default);
 
     /// <summary>
+    /// Permanently deletes users after the caller has cleared cross-section
+    /// references. Also removes user_emails and AspNetUserLogins rows for
+    /// those users. Returns the number of user rows deleted.
+    /// </summary>
+    Task<int> DeleteUsersAsync(
+        IReadOnlyCollection<Guid> userIds,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Deletes every <c>AspNetUserLogins</c> row for the given user. Returns the
     /// number of rows deleted. Used by EmailProblems ghost-login cleanup.
     /// </summary>

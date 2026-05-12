@@ -69,9 +69,11 @@ public interface IShiftManagementService : IApplicationService
     Task UpdateAsync(EventSettings entity);
 
     /// <summary>
-    /// Gets the available (non-barrios) EE slots for a given day offset.
+    /// Deletes an event and all Shifts-owned rows beneath it: rotas, shifts,
+    /// and shift signups. Requires the current authenticated user to hold the
+    /// full Admin role.
     /// </summary>
-    int GetAvailableEeSlots(EventSettings settings, int dayOffset);
+    Task<int> DeleteEventAsync(Guid eventSettingsId, CancellationToken cancellationToken = default);
 
     // === Rota ===
 

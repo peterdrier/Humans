@@ -31,6 +31,9 @@ public class IssueStatusTransitionTests
     {
         IssueSectionRouting.RolesFor(IssueSectionRouting.Tickets)
             .Should().Contain(RoleNames.TicketAdmin);
+
+        IssueSectionRouting.RolesFor(IssueSectionRouting.Scanner)
+            .Should().Contain([RoleNames.TicketAdmin, RoleNames.Board]);
     }
 
     [HumansFact]
@@ -41,6 +44,9 @@ public class IssueStatusTransitionTests
         sections.Should().Contain(IssueSectionRouting.Camps);
         sections.Should().Contain(IssueSectionRouting.CityPlanning);
         sections.Should().NotContain(IssueSectionRouting.Tickets);
+
+        IssueSectionRouting.SectionsForRoles([RoleNames.TicketAdmin])
+            .Should().Contain([IssueSectionRouting.Tickets, IssueSectionRouting.Scanner]);
     }
 
     [HumansFact]

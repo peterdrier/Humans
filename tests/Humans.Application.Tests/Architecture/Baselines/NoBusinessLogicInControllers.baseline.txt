@@ -41,7 +41,6 @@ src/Humans.Web/Controllers/ConsentController.cs:Submit/1
 src/Humans.Web/Controllers/DevLoginController.cs:SignIn/2
 src/Humans.Web/Controllers/DevSeedController.cs:SeedBudget/1
 src/Humans.Web/Controllers/DevSeedController.cs:SeedCampRoles/1
-src/Humans.Web/Controllers/DevSeedController.cs:SeedDashboard/2
 src/Humans.Web/Controllers/EmailController.cs:EmailPreview/2
 src/Humans.Web/Controllers/ExpensesController.cs:Approve/2
 src/Humans.Web/Controllers/ExpensesController.cs:AttachFile/3

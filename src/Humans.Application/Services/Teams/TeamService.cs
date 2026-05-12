@@ -34,7 +34,7 @@ namespace Humans.Application.Services.Teams;
 /// structurally enforced by <c>Humans.Application.csproj</c>.
 ///
 /// <para>
-/// Cross-section cache invalidation flows through narrow invalidator interfaces
+/// Cross-section cache invalidation flows through focused invalidator interfaces
 /// (<see cref="INotificationMeterCacheInvalidator"/>,
 /// <see cref="IShiftAuthorizationInvalidator"/>). Active-team read caching is
 /// owned by the transparent caching decorator, not this scoped inner service.
@@ -48,6 +48,7 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
     private readonly IShiftManagementService _shiftManagementService;
     private readonly INotificationMeterCacheInvalidator _notificationMeterInvalidator;
     private readonly IShiftAuthorizationInvalidator _shiftAuthInvalidator;
+    private readonly IAdminAuthorizationService _adminAuthorization;
     private readonly IServiceProvider _serviceProvider;
     private readonly IClock _clock;
     private readonly ILogger<TeamService> _logger;
@@ -80,6 +81,7 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
         IShiftManagementService shiftManagementService,
         INotificationMeterCacheInvalidator notificationMeterInvalidator,
         IShiftAuthorizationInvalidator shiftAuthInvalidator,
+        IAdminAuthorizationService adminAuthorization,
         IServiceProvider serviceProvider,
         IClock clock,
         ILogger<TeamService> logger)
@@ -90,6 +92,7 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
         _shiftManagementService = shiftManagementService;
         _notificationMeterInvalidator = notificationMeterInvalidator;
         _shiftAuthInvalidator = shiftAuthInvalidator;
+        _adminAuthorization = adminAuthorization;
         _serviceProvider = serviceProvider;
         _clock = clock;
         _logger = logger;
@@ -1610,20 +1613,30 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
         return member;
     }
 
-    public Task<int> HardDeleteSeededTeamsAsync(
-        string nameSuffix,
+    public async Task<bool> PermanentlyDeleteTeamAsync(
+        Guid teamId,
         CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrEmpty(nameSuffix))
-            throw new ArgumentException("nameSuffix must be a non-empty marker", nameof(nameSuffix));
+        await _adminAuthorization.RequireCurrentUserIsAdminAsync(cancellationToken);
 
-        return HardDeleteAndRemoveFromCacheAsync(nameSuffix, cancellationToken);
-    }
+        var team = await _repo.GetByIdAsync(teamId, cancellationToken)
+            ?? throw new InvalidOperationException($"Team {teamId} not found");
 
-    private async Task<int> HardDeleteAndRemoveFromCacheAsync(string nameSuffix, CancellationToken ct)
-    {
-        var count = await _repo.HardDeleteBySuffixAsync(nameSuffix, ct);
-        return count;
+        if (team.IsSystemTeam)
+            throw new InvalidOperationException("Cannot permanently delete system team");
+
+        var hasActiveChildren = await _repo.HasActiveChildrenAsync(teamId, cancellationToken);
+        if (hasActiveChildren)
+            throw new InvalidOperationException("Cannot permanently delete a team that has active sub-teams. Remove or reassign sub-teams first.");
+
+        // GoogleResource → Team is OnDelete(Restrict): any row referencing this
+        // team blocks the delete with an FK violation. Catch it here with a
+        // clear message instead of surfacing a raw DbUpdateException.
+        var resources = await TeamResourceService.GetTeamResourcesAsync(teamId, cancellationToken);
+        if (resources.Count > 0)
+            throw new InvalidOperationException("Cannot permanently delete a team that has Google resources linked. Unlink resources first.");
+
+        return await _repo.PermanentlyDeleteTeamAsync(teamId, cancellationToken);
     }
 
     public Task<IReadOnlyDictionary<Guid, int>> GetPendingRequestCountsByTeamIdsAsync(

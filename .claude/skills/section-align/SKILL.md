@@ -532,7 +532,8 @@ Push. Final bot-review loop until merge-ready. Report: PR/branch URL, commits pe
 **"Done" = bot-review-clean**, not pushed+green (`feedback_done_means_codex_clean`).
 
 - Push every 3–5 commits within a phase; trigger-review push at phase boundary.
-- First push: get explicit user go-ahead. Standing approval after that unless revoked.
+- Phase 0 plan file: commit AND push without asking — it's a checkpoint artifact the user reads in the browser to decide whether to greenlight Phase 1. After pushing, give the user the GitHub URL for the plan file (`https://github.com/peterdrier/Humans/blob/<branch>/docs/plans/<file>.md`) so they can review it inline.
+- Subsequent phase pushes: push without asking (standing approval). Push at each phase boundary so bot review fires.
 - Never push to `main`; never `--no-verify`.
 - Each sub-loop: push → wait for Codex + Claude → thread-reply each finding (fix or reject with reasoning) → commit + push → repeat until clean.
 

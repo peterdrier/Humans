@@ -65,6 +65,7 @@ public class PromoteWidgetPendingSignupsAfterAdmissionTests : IDisposable
         _shiftMgmt = new ShiftManagementService(
             shiftRepo,
             _auditLog,
+            Substitute.For<IAdminAuthorizationService>(),
             serviceProvider,
             new MemoryCache(new MemoryCacheOptions()),
             _clock,
@@ -77,6 +78,7 @@ public class PromoteWidgetPendingSignupsAfterAdmissionTests : IDisposable
             _membership,
             _auditLog,
             Substitute.For<INotificationService>(),
+            Substitute.For<IAdminAuthorizationService>(),
             serviceProvider,
             _clock,
             NullLogger<ShiftSignupService>.Instance);
