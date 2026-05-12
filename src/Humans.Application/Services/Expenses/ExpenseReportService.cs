@@ -263,17 +263,15 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
             throw new InvalidOperationException("Please select a file.");
         if (content.Length > AttachmentMaxBytes)
             throw new InvalidOperationException($"File too large. Maximum size is {AttachmentMaxBytes / (1024 * 1024)} MB.");
-        if (!AllowedContentTypes.Contains(contentType))
+
+        var extension = Path.GetExtension(originalFileName).ToLowerInvariant();
+        if (!AllowedContentTypes.Contains(contentType) || !AllowedExtensions.Contains(extension))
             throw new InvalidOperationException("Unsupported file type. Upload PDF, JPEG, PNG, or HEIC.");
 
         var report = await RequireEditableReportAsync(reportId, submitterUserId, ct);
 
         if (!report.Lines.Any(l => l.Id == lineId))
             throw new UnauthorizedAccessException("Line does not belong to the specified report.");
-
-        var extension = Path.GetExtension(originalFileName).ToLowerInvariant();
-        if (!AllowedExtensions.Contains(extension))
-            throw new InvalidOperationException("Unsupported file type. Upload PDF, JPEG, PNG, or HEIC.");
 
         var attachmentId = Guid.NewGuid();
         await _fileStorage.SaveAsync(AttachmentKey(attachmentId, extension), content, ct);
