@@ -156,6 +156,14 @@ public interface IUserEmailService : IApplicationService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Returns (userId, userEmailId) for any UserEmail row matching the address,
+    /// or null if no row matches. Used by Mailer import to identify the specific
+    /// unverified row to delete before creating a contact.
+    /// </summary>
+    Task<(Guid UserId, Guid EmailId)?> FindAnyEmailRowByAddressAsync(
+        string email, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Legacy backfill that wrote the verified @nobodies.team email into the
     /// <c>User.GoogleEmail</c> shadow column. With the column deprecated and
     /// the new <c>EnsureGoogleInvariantAsync</c> running on every UserEmail

@@ -847,6 +847,18 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
     }
 
     /// <inheritdoc />
+    public async Task<(Guid UserId, Guid EmailId)?> FindAnyEmailRowByAddressAsync(
+        string email, CancellationToken cancellationToken = default)
+    {
+        var normalizedEmail = EmailNormalization.NormalizeForComparison(email);
+        var alternateEmail = GetAlternateComparableEmail(normalizedEmail);
+        var match = await _repository.FindByNormalizedEmailAsync(
+            normalizedEmail, alternateEmail, cancellationToken);
+        if (match is null) return null;
+        return (match.UserId, match.Id);
+    }
+
+    /// <inheritdoc />
     public async Task<bool> SetGoogleAsync(
         Guid userId, Guid userEmailId, Guid actorUserId,
         CancellationToken cancellationToken = default)
