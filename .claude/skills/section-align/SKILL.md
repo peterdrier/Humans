@@ -28,10 +28,14 @@ A section is "aligned" when **all three axes hold**:
 
 ## Boundary-fix protocol
 
+**Zero-tolerance rule:** the only allowed cross-section data link going forward is the **User ↔ Profile** relationship (identity row ↔ volunteer profile). Every other cross-section read or write is a violation, including patterns previously documented as "sanctioned exceptions" in section docs (narrow display lookups like `ctx.Users.Select(u => u.DisplayName)`, `ctx.Teams.Select(t => t.Name)`, etc.). "Sanctioned" is not a category in this skill.
+
 When the inventory finds cross-section access (either direction), apply this protocol — **never just "fix the offending file" silently**, because that violates section ownership.
 
 - **We are the producer** (another section reads or writes our tables / navs into our entities): our job in THIS PR is to ensure the public API on our service satisfies the caller's need. Add the API if missing. Then flag the calling section as the next /section-align target — they own the call-site migration.
-- **We are the consumer** (we read or write into another section's tables / `.Include` across into another section's entity): flag the missing API on THEIR section. Don't fix it here. Document the gap, tolerate the current code (or fall back to a less-bad path), and surface the other section as the next /section-align target.
+- **We are the consumer** (we read or write into another section's tables / `.Include` across into another section's entity): if their public service API exists and delivers what we need, switch to it in THIS PR. If their API doesn't exist, flag their section as the next /section-align target, document the gap in our plan's follow-up list, and pause that specific fix until they're aligned. Then we come back and close out our section.
+
+Result-oriented framing: a section is **provisionally aligned** when all in-section work is done; **fully aligned** when every follow-up supplier has caught up and the last consumer-side fixes land. The Phase 4 doc polish acknowledges any provisional state by naming the pending suppliers.
 
 Output every Phase 0 plan with an explicit **Follow-up /section-align targets** list naming each section that surfaced as needing its own pass.
 
@@ -66,6 +70,22 @@ Phase 4  Doc polish — Opus; final review loop until merge-ready
 ```
 
 Sequential phases. Within a phase, parallel subagents up to **hard cap of 3** (`~/.claude-shared/shared/claude.md`). Escalate model: Sonnet for Phase 1 mechanical work → Opus for Phases 2–4.
+
+## Context discipline
+
+Phase 0 inventory reads a lot of the section's code and grows the context fast. By the time Phase 0 lands as a committed plan file, the main-session context is typically 100k–250k tokens.
+
+**Split rule:**
+1. Phase 0 runs in the initial session. End by committing + pushing the plan file under `docs/plans/<YYYY-MM-DD>-section-align-<target>.md`.
+2. **Start a fresh session (`/cls` or new conversation) before Phase 1** so impl begins on cached context.
+3. The impl session runs as an **Opus orchestrator over subagents** via the `superpowers:subagent-driven-development` pattern. The orchestrator:
+   - Reads the plan file once at the start.
+   - Stays under **100k tokens** by dispatching each plan item to a subagent.
+   - Aims to finish impl by **200k tokens**; if approaching that ceiling without convergence, commit progress and `/cls` again, resuming via the plan file.
+4. Each subagent gets one bounded job (one rename group, one boundary fix with API+caller, one test-folder reorg) and returns a 200-word summary. The orchestrator never reads subagent intermediate output — only the final summary.
+5. The closing /section-align re-run (Phase 4 tail) runs in the **same impl session** if budget allows, otherwise a third session.
+
+This keeps the orchestrator focused on plan-execution decisions; the heavy reading/editing happens in disposable subagent contexts.
 
 ## Mode detection
 
@@ -174,27 +194,56 @@ Caching belongs in the service layer **only** per §15 — either via a `Caching
 - has no Update/Delete if entity is append-only (§12)
 - lives at `Infrastructure/Repositories/<Section>/`
 
-**A2.5 ViewComponent presence and reuse.** If this section's data appears on other sections' pages (audit history on profile pages, profile cards in directories, notification meters in nav), there should be a `<Section>ViewComponent` and partial views under `Views/Shared/Components/<Section>/`. Inverse check: section pages with inline rendering of "should-be-a-VC" content (10+ lines of Razor stitching this section's data into another section's view).
+**A2.5 Shared visual components — inventory by type, ViewComponent preferred.** Cross-page UI for this section's data can live as one of three things; this skill is opinionated about which:
 
-Grep for invocations:
+| Type | Preference | Use when |
+|------|-----------|----------|
+| **ViewComponent** | ✓ preferred | Section data rendered on other sections' pages, needs DI to call section services, has parameter-driven invocation. |
+| **TagHelper** | call out | Wrap small reusable markup primitives (badges, buttons, formatters). Often candidates for promotion to ViewComponent if they take section data. |
+| **Partial view** (`_Partial.cshtml`) | call out | Acceptable for fragmenting one section's own view; **not** for cross-section reuse. Often candidates for promotion to ViewComponent if invoked across sections. |
+
+Inventory all three categories for this section:
+```bash
+git grep -ln 'ViewComponent' src/Humans.Web/ViewComponents/<Section>*.cs src/Humans.Web/ViewComponents/*<Section>*.cs
+git grep -ln 'ITagHelper\|TagHelper\b' src/Humans.Web/TagHelpers/ 2>/dev/null | grep -i <section>
+find src/Humans.Web/Views -name '_*.cshtml' | xargs grep -l '<section-related-pattern>'
+```
+
+For each shared component, classify and decide: keep, convert TagHelper→ViewComponent, convert Partial→ViewComponent, or leave (intra-section partials). Inverse check: section pages with inline rendering of "should-be-a-VC" content (10+ lines of Razor stitching this section's data into another section's view).
+
+Grep for ViewComponent invocations to verify reuse:
 ```bash
 git grep -nE '<vc:<section-kebab>|Component\.InvokeAsync\("<Section>"' src/Humans.Web/Views/
 ```
 
-**A2.6 Interface budget + segregation.** Count methods on each public interface. For each interface ≥10 methods, ensure `InterfaceMethodBudgetTests.Budgets` entry exists with current count. Beyond the budget number itself, flag:
-- Methods on the section's main service that exist only to be called by *another service within the same section* (UI plumbing leaking through the main interface — should be private or moved). Example: `IAuditLogService.GetUserDisplayNamesAsync` called only by `AuditViewerService`.
-- Multiple interfaces carrying overlapping read shapes (Service returns raw entity, ViewerService returns resolved record). Phase 3 candidate.
-- "Replace 2 methods with 1 broader bag-of-flags method" anti-pattern.
+**A2.6 Interface budget + segregation + consolidation.** Count methods on each public interface. For each interface ≥10 methods, ensure `InterfaceMethodBudgetTests.Budgets` entry exists with current count. Beyond the budget number, flag:
 
-**A2.7 Architecture test coverage.** For each service in the section, the section's `<Section>ArchitectureTests.cs` should pin:
-- Lives in `Humans.Application.Services.<Section>` namespace
-- No `DbContext` constructor parameter
-- No `IMemoryCache` constructor parameter (or has one, if caching is in-service)
-- Takes the section's repository
-- For append-only entities: repo has no Update/Delete/Remove methods
-- For sections that own DbSets: only `<Section>Repository` references `ctx.<SectionDbSet>` (Roslyn or reflection scan)
+- **Status-split methods that should be a single `GetAll()` + caller-side filter.** The canonical anti-pattern: `GetActiveUsers()`, `GetSuspendedUsers()`, `GetDeletedUsers()` instead of `GetUsers()` with callers writing `.Where(u => u.IsActive)`. At ~500-user scale most data fits in RAM; in-memory filtering is cheaper and clearer than predicate-pushed splits. Consolidate to `GetAll`/`GetByX` and let callers project. Architecture: the service holds the data; callers filter.
+- **Exception sections** where DB predicate-push genuinely matters because the dataset is large or unbounded (AuditLog, EmailOutbox, file storage indexes, anything append-only with long retention). For those, predicate-on-DB methods stay on the interface; the section doc must justify the exception explicitly under `## Architecture`.
+- **UI plumbing leaking through the main service interface** (methods that exist only to be called by *another service within the same section*). Example: `IAuditLogService.GetUserDisplayNamesAsync` called only by `AuditViewerService`. Move private, or move to the consumer.
+- **Multiple interfaces carrying overlapping read shapes** (Service returns raw entity, ViewerService returns resolved record). Phase 3 candidate.
+- **"Replace 2 methods with 1 broader bag-of-flags method"** — anti-pattern; count drops but surface grows.
 
-List missing tests. Each missing test is a Phase 2 add.
+**A2.7 Architecture test coverage — prefer generic over per-section.** Tests that apply to *every* section's same-shape class should be **one reflection-based test** over the matching interface, not a per-section copy. Prefer:
+
+| Generic test (preferred) | Replaces per-section copies |
+|--------------------------|------------------------------|
+| `IRepository_Implementations_AreAllSealed` (reflect over all `IRepository` impls) | `FooRepository_IsSealed`, `BarRepository_IsSealed`, … |
+| `Application_Services_TakeNoDbContext` (reflect over `IApplicationService` impls) | per-section `FooService_HasNoDbContextConstructorParameter` |
+| `Application_Services_TakeNoIMemoryCache_UnlessRegistered` | per-section copies |
+| `Repository_Implementations_LiveInInfrastructure` | per-section namespace tests |
+
+Section-specific tests are reserved for **section-specific invariants** that don't generalize:
+- Append-only repo shape (only some sections — `IAuditLogRepository_HasNoUpdateOrDeleteMethods`).
+- Single-writer DbSet rule (`Only<Section>Repository_References_<DbSet>` — Roslyn or reflection scan).
+- Domain-specific authorization handler shape.
+
+Phase 0 inventory:
+1. List section-specific tests in `<Section>ArchitectureTests.cs`.
+2. For each, ask: does this generalize to all sections? If yes, propose moving it to a generic test in a single shared file (e.g. `tests/Humans.Application.Tests/Architecture/Rules/RepositorySealing.cs`).
+3. List genuinely-section-specific invariants that need keeping or adding.
+
+Missing tests (in either category) are Phase 2 adds. Per-section duplicates of generic patterns are Phase 3 prunes.
 
 ### Axis 3 — test focus
 
@@ -364,7 +413,16 @@ Surface to user. If `--inventory-only`, stop. Otherwise: "Phase 0 complete. Proc
 
 ## Phase 1 — Surface alignment (axis 1)
 
-Sonnet subagents. `/reforge` for impact analysis before bulk edits. Build must stay green after each step.
+Sonnet subagents. Build must stay green after each step.
+
+**Tooling discipline (applies to all Phase 1+):**
+- **`/reforge`** before any rename, move, or interface change. The reforge skill returns the exact callers, references, and impact list so the subsequent Edit/Write is one-shot rather than iterative. Use it for: rename impact, find-references for a method, trace-call-chain when moving a route handler. **Always call /reforge before the Edit, never instead of testing after.**
+- **Long-running processes run in the background, scoped to the phase.** At phase start, kick off `dotnet build` + `dotnet test` watchers in background via `Bash run_in_background: true`; tail with `BashOutput` between commits. At phase end, stop the background processes with `KillShell`. Pattern:
+  ```bash
+  # Phase start (background)
+  dotnet watch --project Humans.slnx test -v quiet     # tail across commits
+  ```
+  Always inside the worktree. Don't leak background processes across phases or sessions.
 
 **Create what's missing** (not only rename):
 1. **Invariant doc** — `git mv docs/sections/<Old>.md docs/sections/<New>.md` if renamed.
@@ -455,6 +513,7 @@ Opus.
 
 - **Invariant doc** — verify all `SECTION-TEMPLATE.md` sections. Correct any false claims surfaced in Phase 0 (e.g., "only repo writes the table" claims that turned out false until Phase 2 fixed them — restore once truly true).
 - **Cross-Section Dependencies** — record any §6 violations still pending an upstream API (consumer-side gaps not fixable in this PR), naming the supplier section as the follow-up target.
+- **`docs/architecture/dependency-graph.md`** — update the section's inbound/outbound edges to reflect actual state after Phase 2. Add new dependencies introduced; remove ones eliminated by the cross-section fixes. The dependency graph is the at-a-glance map reviewers consult; if it's stale, alignment work is invisible.
 - **Feature specs** (`docs/features/*.md`) — match implementation; rename if section name changed.
 - **`data-model.md`** — update owned-entity index.
 - **`todos.md`** — per `feedback_todos_update_after_commits`.
@@ -463,6 +522,8 @@ Opus.
 - **`/freshness-sweep`** — if catalog covers touched docs.
 
 Push. Final bot-review loop until merge-ready. Report: PR/branch URL, commits per phase, **follow-up /section-align targets**, one-line status. Do not offer `/schedule` follow-ups (`feedback_no_schedule_offers`).
+
+**Re-run /section-align at the end** (still in the same worktree) as the closing audit. If the second run finds anything beyond the documented follow-up targets, that's leftover Phase 1–3 work — go back and finish before merging. Ideal end-state: the closing run returns "clean except for `<list of pending suppliers>`."
 
 ---
 

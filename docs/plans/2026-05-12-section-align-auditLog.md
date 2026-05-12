@@ -1,15 +1,13 @@
-# Section Align — AuditLog (Two-Axis Re-Evaluation)
+# Section Align — AuditLog
 **Run started:** 2026-05-12 | **Mode:** existing-section | **Worktree:** `H:\source\Humans\.worktrees\section-align-AuditLog`
 **Branch:** `align/auditlog` (off `origin/main` @ `760d98f2`)
 
-> **Re-evaluation note (2026-05-12):** the first pass treated convention exceptions in the section doc as closed questions and missed the second axis entirely. Peter clarified the framing:
->
-> 1. **Boundary integrity (axis 1)** — the lines around the section. Other sections never reach across, our publics are clean, our routes/views/models are addressable under our name.
-> 2. **Internal cohesion (axis 2)** — the contents of the slice match current app standards. No EF leak from service, no caching outside service layer, proper interfaces, reusable view components, architecture-test coverage.
->
-> **Boundary-fix protocol:** when an external section reaches across our boundary, our job is to *first* ensure the right public API exists on our service to satisfy that consumer. *Only then* do we flag the external section as needing its own /section-align. We own the API surface; they own the migration.
->
-> Same flipped: when we reach across someone else's boundary, we flag the missing API on THEIR section. We don't fix it here — they become the next /section-align target. We document the gap and either live with the current code or fall back to a less-bad path.
+Phase 0 inventory across three axes per `.claude/skills/section-align/SKILL.md`:
+1. **Boundary integrity** — clean section name, addressable routes/views/models, no cross-section DB access (except User ↔ Profile).
+2. **Internal cohesion** — no EF leak from service layer, caching only in service layer, proper interfaces, reusable ViewComponents, architecture-test coverage.
+3. **Test focus** — section-aligned tests in one canonical folder, 1-to-1 production-class to test-file mapping, coverage maps to invariants/negatives/triggers, redundancy pruned.
+
+Boundary-fix protocol: producers own the API surface; consumers own the call site. When we can't fix our consumer-side cross-section access because the supplier doesn't have the API yet, we flag the supplier as a follow-up /section-align target and the section becomes **provisionally aligned**.
 
 ---
 
@@ -132,54 +130,70 @@ Violates design-rules §6 (no cross-domain `.Include`). The `Resource` nav exist
 - **GoogleIntegration becomes a /section-align target.** Its work includes: introduce `IGoogleResourceService` (or extend an existing one) with `GetByIdsAsync` for batched name resolution, then AuditLog migrates off the Include in a follow-up.
 - Flag for the AuditLog section doc: Cross-Section Dependencies should explicitly name "GoogleIntegration — currently joined via EF `Include(e => e.Resource)`; awaiting `IGoogleResourceService.GetByIdsAsync` to migrate to in-memory stitching."
 
-### 2.6 OUTBOUND cross-section access — sanctioned (1)
+### 2.6 OUTBOUND cross-section access — **§2c VIOLATIONS** (2) — fix now
 
-`AuditLogRepository.GetUserDisplayNamesAsync` reads `ctx.Users`; `GetTeamNamesAsync` reads `ctx.Teams`. Both batch-load name dictionaries. The section doc owns this as a sanctioned exception ("narrow cross-table lookups behind the repository"). Could be migrated to `IUserService.GetByIdsAsync` / `ITeamService.GetTeamNamesByIdsAsync` (both exist per the doc — verify) — same pattern as the Camps section already follows for stripped navs. Pre-existing pattern; not blocking, but candidate for Phase 3 (`/simplify`) once verified those service methods deliver the right shape.
+Zero-tolerance rule (updated 2026-05-12): only User ↔ Profile cross-section access is allowed. The previously-"sanctioned" reads are now violations.
 
-### 2.7 Cross-domain navs on AuditLog entity
+| File:Line | Read | Disposition |
+|-----------|------|-------------|
+| `AuditLogRepository.GetUserDisplayNamesAsync` (line 221) | `ctx.Users.Where(u => userIds.Contains(u.Id)).Select(...)` | **Phase 2 fix.** Move the resolution out of the Infrastructure repo into `AuditLogService` (Application layer); have the service call `IUserService.GetByIdsAsync(IReadOnlyList<Guid>)`. Verify the return shape includes `DisplayName`; if not, **Users section is a follow-up target** to expose the right shape. |
+| `AuditLogRepository.GetTeamNamesAsync` (line 234) | `ctx.Teams.Where(t => teamIds.Contains(t.Id)).Select(...)` | **Phase 2 fix.** Same shape: lift to `AuditLogService` calling `ITeamService.GetTeamNamesByIdsAsync` (referenced in Camps section doc as the existing pattern). Verify shape `Dictionary<Guid, (Name, Slug)>`; if not, **Teams section is a follow-up target**. |
 
-`AuditLogEntry.ActorUser` (→ User) and `AuditLogEntry.Resource` (→ GoogleResource). Section doc claims "declared but never read" — **partly false**: `AuditLogRepository` actively uses `Resource` via Include (§2.5 above). `ActorUser` does appear unread. Phase 4 doc correction: revise the claim to "ActorUser declared but never read; Resource read by AuditLogRepository.GetGoogleSync* via Include — pending IGoogleResourceService batch API."
+Side effect: `AuditLogRepository` drops two methods (15 → 13); both cross-table helpers move into `AuditLogService` as private compose-step + service-call. `IAuditLogService` surface unchanged (still exposes `GetUserDisplayNamesAsync`/`GetTeamNamesAsync` for `AuditViewerService` to consume — these now delegate to the cross-section service calls instead of the repo).
 
-### 2.8 Interface segregation — moderate issue
+### 2.7 Cross-domain navs on AuditLog entity — fix now
+
+| Nav | Status | Disposition |
+|-----|--------|-------------|
+| `AuditLogEntry.ActorUser` (→ User) | Declared, never read | **Phase 2 delete.** Drop the nav; keep `ActorUserId` scalar FK. EF config `OnDelete: SetNull` already present and stays. |
+| `AuditLogEntry.Resource` (→ GoogleResource) | Read by `AuditLogRepository.GetGoogleSyncByUserAsync` (line 64) and `GetGoogleSyncByUserIdsAsync` (line 80) via `.Include` | **§6 violation, blocked.** Cannot delete until `.Include` is removed. `.Include` cannot be removed until GoogleIntegration exposes batched name resolution. **Follow-up: GoogleIntegration.** Section becomes provisionally aligned; we return here to close out once GoogleIntegration ships `IGoogleResourceService.GetByIdsAsync` (or equivalent). |
+
+### 2.8 Interface segregation + consolidation evaluation
 
 | Interface | Methods | Budgeted? | Notes |
 |-----------|---------|-----------|-------|
-| `IAuditLogService` | 14 | ❌ no | 3 writes + 8 reads + 2 UI-batch helpers (`GetUserDisplayNamesAsync`, `GetTeamNamesAsync`) + 2 specialized lookups |
+| `IAuditLogService` | 14 | ❌ no | 3 writes + 8 reads + 2 cross-section display helpers + 2 specialized lookups |
 | `IAuditViewerService` | 6 | n/a | wraps Service for resolved-event reads |
-| `IAuditLogRepository` | 15 | ❌ no | 1 write + 13 reads + 2 cross-table |
+| `IAuditLogRepository` | 15 → 13 after §2.6 | ❌ no | 1 write + reads (cross-table helpers removed in Phase 2) |
 
 **Issues:**
-- `IAuditLogService.GetUserDisplayNamesAsync` and `GetTeamNamesAsync` exist purely so `AuditViewerService` can call them. UI-rendering plumbing on the section's main write/read interface. Phase 3 candidate: move these private to AuditViewerService (it can inject the repo directly for those two methods, or AuditLogService keeps them but moves them to an internal helper).
-- IAuditLogService and IAuditViewerService both expose `GetRecentAsync`/`GetByResource`/`GetGoogleSyncByUser`/`GetFilteredEntries` shapes — Service returns raw `AuditLogEntry`, ViewerService returns resolved `AuditEvent`. Few callers outside AuditViewerService consume the raw-entry shape (jobs + GDPR contributor). Phase 3: trim IAuditLogService reads down to what non-UI callers actually need; route all UI reads through IAuditViewerService.
-- Both over-threshold interfaces need `InterfaceMethodBudgetTests.Budgets` entries even if Phase 3 isn't run — pin current size to start the ratchet.
+- **Consolidation check (axis 2.6 anti-pattern):** AuditLog has many `GetByUser` / `GetGoogleSyncByUser` / `GetFiltered` / `GetByResource` methods rather than `GetAll().Where(...)`. **This section is one of the legitimate exceptions** — `audit_log` is a large append-only table where predicate-push to DB is required (~96 writers across the app, retention is indefinite). Keep the predicate-pushed reads on the interface; the section doc must justify this under `## Architecture` (Phase 4 doc add).
+- **UI plumbing on the main interface:** `IAuditLogService.GetUserDisplayNamesAsync` / `GetTeamNamesAsync` exist only so `AuditViewerService` can call them. After §2.6's move (resolution out of repo, into service), these become thin facade methods. Phase 3 candidate: move them private to AuditViewerService.
+- **Read-shape duplication between Service and ViewerService** — Service returns raw `AuditLogEntry`, ViewerService returns resolved `AuditEvent`. Few callers outside ViewerService consume raw entries (jobs + GDPR contributor). Phase 3: trim Service reads down to what non-UI callers need.
+- **Budget entries (Phase 2 add):** `InterfaceMethodBudgetTests.Budgets` entries for `IAuditLogService` (14) and `IAuditLogRepository` (post-§2.6 count, expected 13).
 
-### 2.9 ViewComponent reuse — ✓ EXCELLENT
+### 2.9 Shared visual components — inventory by type
 
-`AuditLogViewComponent` (`src/Humans.Web/ViewComponents/AuditLogViewComponent.cs`) takes optional `entityType`/`entityId`/`userId`/`actions`/`limit`/`title`/`showCard` parameters and calls `IAuditViewerService.GetFilteredAsync`. Active usage:
-- `Views/Calendar/Event.cshtml:130`
-- `Views/Profile/AdminDetail.cshtml:218`
-- `Views/TeamAdmin/Members.cshtml:292`
-- `Views/WidgetGallery/Index.cshtml:794` (demo)
+| Type | Component | Location | Verdict |
+|------|-----------|----------|---------|
+| **ViewComponent** ✓ preferred | `AuditLogViewComponent` | `src/Humans.Web/ViewComponents/AuditLogViewComponent.cs` | Keep. Strong reuse (Calendar/Event, Profile/AdminDetail, TeamAdmin/Members, WidgetGallery demo). Partials at `Views/Shared/Components/AuditLog/{Default,_Entry,_EntryList}.cshtml`. Wired to `IAuditViewerService.GetFilteredAsync`. |
+| **TagHelper** | none for AuditLog | — | n/a |
+| **Partial view** | `Views/Shared/_AuditLogContent.cshtml`, `_AuditLogScripts.cshtml` | Shared root | **Evaluate.** Used by `Views/Shared/AuditLog.cshtml` (the list page). If only the list page uses these, they should move with the page into `Views/AuditLog/_Content.cshtml` and `_Scripts.cshtml` (intra-section partials, not cross-section shared). Phase 1 verification step. |
 
-Strong reuse pattern. Partials at `Views/Shared/Components/AuditLog/` properly placed.
+The ViewComponent dominates the cross-section render path. No conversion candidates (no TagHelpers wrapping audit data, no cross-section partials).
 
-### 2.10 Architecture test coverage — partial
+### 2.10 Architecture test coverage — partial, plus per-section duplication to generalize
 
 Present:
-- ✓ `AuditLogService_LivesInHumansApplicationServicesAuditLogNamespace`
-- ✓ `AuditLogService_HasNoDbContextConstructorParameter`
-- ✓ `AuditLogService_HasNoIMemoryCacheConstructorParameter`
-- ✓ `AuditLogService_TakesRepository`
-- ✓ `AuditLogService_ConstructorTakesNoStoreType`
-- ✓ `IAuditLogRepository_LivesInApplicationInterfacesRepositoriesNamespace`
-- ✓ `AuditLogRepository_IsSealed`
-- ✓ `IAuditLogRepository_HasNoUpdateOrDeleteMethods`
+- ✓ `AuditLogService_LivesInHumansApplicationServicesAuditLogNamespace` — **per-section duplicate** of a generalizable pattern
+- ✓ `AuditLogService_HasNoDbContextConstructorParameter` — **per-section duplicate** (every section's service has the same constraint)
+- ✓ `AuditLogService_HasNoIMemoryCacheConstructorParameter` — **per-section duplicate**
+- ✓ `AuditLogService_TakesRepository` — **per-section duplicate**
+- ✓ `AuditLogService_ConstructorTakesNoStoreType` — **per-section duplicate**
+- ✓ `IAuditLogRepository_LivesInApplicationInterfacesRepositoriesNamespace` — **per-section duplicate**
+- ✓ `AuditLogRepository_IsSealed` — **per-section duplicate** — Peter explicitly called out: should become a generic `IRepository_Implementations_AreAllSealed` reflecting over every `IRepository` impl
+- ✓ `IAuditLogRepository_HasNoUpdateOrDeleteMethods` — **section-specific** (append-only invariant; keep)
 
-Missing (Phase 2 additions):
-- ✗ `AuditViewerService_HasNoDbContextConstructorParameter` (mirror for the second service)
-- ✗ `AuditViewerService_HasNoIMemoryCacheConstructorParameter`
-- ✗ `OnlyAuditLogRepository_TouchesAuditLogEntriesDbSet` — Roslyn/reflection scan over `Infrastructure/**` for any file outside `Repositories/AuditLog/` referencing `AuditLogEntries`. Would catch DriveActivityMonitorRepository.cs:81 today and prevent regressions tomorrow.
-- ✗ Interface budget entries for both over-threshold interfaces.
+Missing (Phase 2 additions, section-specific):
+- ✗ `Only<Section>Repository_References_AuditLogEntries_DbSet` — Roslyn/reflection scan; catches DriveActivityMonitorRepository.cs:81 today and prevents regression. Append-only-DbSet sole-writer rule is section-specific.
+
+Missing (Phase 2 additions, **as new generic tests** in `tests/Humans.Application.Tests/Architecture/Rules/`):
+- ✗ `Application_Services_TakeNoDbContext` — reflect over all `IApplicationService` impls
+- ✗ `Application_Services_TakeNoIMemoryCache_UnlessRegistered` — same
+- ✗ `IRepository_Implementations_AreAllSealed` — reflect over all `IRepository` impls
+- ✗ `Repository_Implementations_LiveInInfrastructureRepositories` — namespace check across all repos
+
+Phase 3 prune: once the generic tests exist and pass, delete the per-section `AuditLogService_*` / `AuditLogRepository_IsSealed` duplicates. Section-specific arch tests retained: append-only repo shape, sole-writer DbSet rule.
 
 ### 2.11 Migrations — clean
 
@@ -196,9 +210,16 @@ Missing (Phase 2 additions):
 
 ---
 
+## Tooling & process for impl
+
+- **Worktree:** `H:\source\Humans\.worktrees\section-align-AuditLog\`. All commands run from there. Branch `align/auditlog` already pushed.
+- **/reforge** before any rename, move, or interface signature change. Use `reforge references`, `reforge callers`, `reforge call-chain` to get the exact impact set before editing. If the binary isn't installed, the new `.claude/skills/reforge/SKILL.md` will prompt for install permission.
+- **Background processes**: at the start of each phase, kick off `dotnet watch test` in background; tail with `BashOutput` between commits. `KillShell` at phase end. Don't leak background watchers across phases.
+- **Subagent orchestration**: Phase 1+ runs as an **Opus orchestrator over Sonnet subagents** in a fresh `/cls` session. Orchestrator stays under 100k tokens; each subagent gets one bounded job and returns a 200-word summary. See `.claude/skills/section-align/SKILL.md` § "Context discipline."
+
 ## Phase plan
 
-### Phase 1 — surface alignment (axis 1)
+### Phase 1 — surface alignment (axis 1 + axis 3 mechanical)
 
 1. Create `AuditLogController.cs` with `[Route("AuditLog")]` and section-appropriate policies (BoardOrAdmin globally, HumanAdminBoardOrAdmin on the per-user route).
 2. Move 4 route handlers (Board.AuditLog, Google.CheckDriveActivity, Google.GoogleSyncResourceAudit, Google.HumanGoogleSyncAudit) into the new controller; rename action methods to match the cleaner route shape.
@@ -209,62 +230,55 @@ Missing (Phase 2 additions):
 7. Update inbound links: `RedirectToAction(nameof(BoardController.AuditLog), "Board", ...)` (e.g. `GoogleController.cs:413`) becomes the new `AuditLogController.Index` target. Same for tag-helper links in views and any tests/nav that reference the old paths.
 8. Build + tests green after each commit. 4–6 commits expected.
 
-### Phase 2 — fix arch violations (axis 1 + axis 2)
+### Phase 2 — fix arch violations + boundary protocol
 
-1. **Axis 2 — Add architecture test** `OnlyAuditLogRepository_TouchesAuditLogEntriesDbSet` (this PR's enforcement). Mark it `[Skip]` initially and document expected failures, OR add it red and fix in step 2 same PR. Adding it green is the goal.
-2. **Axis 1 — Inbound write boundary fix.** Decision: API surface for `DriveActivityMonitorRepository.PersistAnomaliesAsync`:
-   - Recommended path: no new API. The caller switches to per-anomaly `IAuditLogService.LogAsync` after writing LastRunAt. AuditLog gains no new method, GoogleIntegration owns the call-site change. Document in this section's plan: "GoogleIntegration is the next /section-align target — needs to switch off direct ctx.AuditLogEntries write."
-   - Alternative: add `LogAnomaliesAsync` if benchmarking shows per-call overhead matters. Pushes IAuditLogService 14 → 15; needs budget entry.
-3. **Axis 2 — Add architecture tests** for `AuditViewerService`: no DbContext, no IMemoryCache (mirror the AuditLogService tests).
-4. **Axis 2 — Add `InterfaceMethodBudgetTests.Budgets` entries** for `IAuditLogService` (14) and `IAuditLogRepository` (15), with current counts.
+Order matters — boundary fixes that depend on supplier APIs go last in case they get blocked.
 
-### Phase 3 — /simplify (axis 2)
+1. **Axis 1 — Inbound write boundary (DriveActivityMonitorRepository.cs:81).** Our API: `IAuditLogService.LogAsync` already covers per-entry writes; no new method needed. AuditLog work in this PR: none beyond documenting. **Follow-up target: GoogleIntegration** (owns switching `PersistAnomaliesAsync` off direct `ctx.AuditLogEntries`).
+2. **Axis 1 — Outbound cross-section reads (§2.6).** Verify `IUserService.GetByIdsAsync` returns display names and `ITeamService.GetTeamNamesByIdsAsync` returns `(Name, Slug)`. Use `/reforge members IUserService` and `/reforge members ITeamService` to confirm. If yes, lift `GetUserDisplayNamesAsync`/`GetTeamNamesAsync` out of `AuditLogRepository` into `AuditLogService` calling the cross-section services. If either shape is wrong, **flag that section as a follow-up** and pause this specific fix.
+3. **Axis 1 — Cross-domain nav delete (§2.7).** Drop `AuditLogEntry.ActorUser` nav (unread). Keep `AuditLogEntry.Resource` nav — blocked on GoogleIntegration follow-up.
+4. **Axis 2 — Section-specific arch tests.** Add `Only<Section>Repository_References_AuditLogEntries_DbSet` (Roslyn or reflection scan). Adding it green is the goal — it should be green after step 1 documents and follow-up routing puts the call-site fix on GoogleIntegration's plate. *(Note: the test will go red until GoogleIntegration migrates. Decide: gate this test on follow-up completion vs ship with a tracking comment.)*
+5. **Axis 2 — Generic arch tests (new, lift from per-section duplicates).** In `tests/Humans.Application.Tests/Architecture/Rules/`: `IRepository_Implementations_AreAllSealed`, `Application_Services_TakeNoDbContext`, `Application_Services_TakeNoIMemoryCache_UnlessRegistered`, `Repository_Implementations_LiveInInfrastructureRepositories`. These benefit every section, not just AuditLog.
+6. **Axis 2 — `AuditViewerService` arch test pair** (no DbContext, no IMemoryCache) — only needed if step 5's generic tests don't cover it via interface reflection. Likely covered; delete this step in that case.
+7. **Axis 2 — `InterfaceMethodBudgetTests.Budgets` entries** for `IAuditLogService` (14) and `IAuditLogRepository` (final post-§2.6 count, expected 13).
+8. **Axis 3 — Missing test coverage.** Per A3.2 coverage map: add tests for invariants/negatives/triggers that don't have one. Specifically:
+   - Append-only invariant — direct DbSet write rejected (covered at DB by trigger; an arch test now covers it at compile time too via step 4).
+   - Self-persisting semantics — `LogAsync` saves immediately without caller `SaveChanges`.
+   - Best-effort — `LogAsync` swallows repo failures and logs at Error.
+   - Cross-merge chain-follow — `GetByUserAsync` surfaces source-tombstone rows for the fold target.
+9. **Axis 3 — Add missing 1-to-1 unit-test file.** `AuditLogRepositoryTests.cs` doesn't exist (only `AuditLogArchitectureTests`). Add a minimal happy-path test file or document why none is needed.
+10. **Axis 3 — Split bundled-class test file.** `AuditEventRenderTests.cs` covers `AuditEvent` + `AuditEventTextualizer` — split into `AuditEventTests.cs` + `AuditEventTextualizerTests.cs`.
 
-- Move UI display-name helpers (`GetUserDisplayNamesAsync`, `GetTeamNamesAsync`) off `IAuditLogService`. They exist only for `AuditViewerService`; can become internal helpers or move to ViewerService (which then takes `IUserService.GetByIdsAsync` / `ITeamService.GetTeamNamesByIdsAsync` directly).
-- Trim `IAuditLogService` read methods that aren't consumed outside the section. Candidates: `GetByResourceAsync`, `GetGoogleSyncByUserAsync`, `GetFilteredAsync`, `GetByUserAsync`, `GetFilteredEntriesAsync` — verify each has at least one non-AuditViewerService caller before removing.
-- Migrate `AuditLogRepository.GetUserDisplayNamesAsync` / `GetTeamNamesAsync` off direct `ctx.Users`/`ctx.Teams` reads, onto `IUserService.GetByIdsAsync` / `ITeamService.GetTeamNamesByIdsAsync` if those service methods deliver the right shape. Removes two cross-table §6-adjacent reads (sanctioned but cleanable).
-- Lower volume target (section is small).
+### Phase 3 — /simplify
+
+- **Per-section arch test prune** — after step 5 above lands, delete per-section duplicates: `AuditLogService_HasNoDbContextConstructorParameter`, `AuditLogService_HasNoIMemoryCacheConstructorParameter`, `AuditLogService_TakesRepository`, `AuditLogService_ConstructorTakesNoStoreType`, `AuditLogService_LivesInHumansApplicationServicesAuditLogNamespace`, `AuditLogRepository_IsSealed`, `IAuditLogRepository_LivesInApplicationInterfacesRepositoriesNamespace`. Keep `IAuditLogRepository_HasNoUpdateOrDeleteMethods` (section-specific append-only invariant). Net test-attribute delta: substantial negative.
+- Move display-name helpers private (`AuditViewerService` owns them after §2.6 has lifted resolution into `AuditLogService`).
+- Trim `IAuditLogService` reads not consumed outside `AuditViewerService` (verify with `/reforge callers IAuditLogService.<method>` per candidate).
+- **Stryker probe** — propose creating `tests/Humans.Application.Tests/stryker-auditlog-config.json` mirroring the Profile-section probe pattern. Run `analyze-test-utility.ps1` against the resulting report. Prune from the High-Confidence queue.
+- Move list-page partials (`_AuditLogContent`, `_AuditLogScripts`) from `Views/Shared/` into `Views/AuditLog/` if they aren't reused by the Board dashboard (Phase 1 already split this open).
 
 ### Phase 4 — doc polish
 
-- AuditLog.md § Routing — rewrite around `AuditLogController` after Phase 1.
-- AuditLog.md § Architecture — once Phase 2 fixes land in this PR, restore "only AuditLogRepository touches ctx.AuditLogEntries" (now actually true and test-pinned).
-- AuditLog.md § Negative Access Rules — same.
-- AuditLog.md § Cross-Section Dependencies — note GoogleResource Include as a known §6 violation pending `IGoogleResourceService.GetByIdsAsync`.
-- AuditLog.md § Data Model — correct the "ActorUser and Resource navs declared but never read" claim — `Resource` is read by AuditLogRepository.GetGoogleSync*.
+- `docs/sections/AuditLog.md § Routing` — rewrite around `AuditLogController`.
+- `docs/sections/AuditLog.md § Architecture` — restore "only `AuditLogRepository` touches `ctx.AuditLogEntries`" once it's truly true and test-pinned. Add the predicate-pushed-reads exception justification (axis 2.6 — large-dataset section).
+- `docs/sections/AuditLog.md § Negative Access Rules` — same.
+- `docs/sections/AuditLog.md § Cross-Section Dependencies` — explicit "GoogleIntegration: `AuditLogEntry.Resource` Include retained pending `IGoogleResourceService.GetByIdsAsync`" + "Users: display names via `IUserService.GetByIdsAsync`" + "Teams: names via `ITeamService.GetTeamNamesByIdsAsync`."
+- `docs/sections/AuditLog.md § Data Model` — correct entity-nav claims: `ActorUser` deleted; `Resource` retained, awaiting GoogleIntegration.
+- **`docs/architecture/dependency-graph.md`** — update AuditLog node's outbound edges to: IUserService (display names), ITeamService (team names), GoogleResource Include (pending — flag as provisional). Remove any references to direct `ctx.Users`/`ctx.Teams` reads.
+- **Closing /section-align re-run** — same worktree, same impl session if budget allows. Should return: "clean except for [GoogleIntegration follow-up]."
 
 ---
 
 ## Follow-up /section-align targets surfaced by this run
 
-- **GoogleIntegration** — needs to (a) introduce `IGoogleResourceService` (or extend an existing service) with a batched `GetByIdsAsync` returning name dictionary, and (b) switch `DriveActivityMonitorRepository.PersistAnomaliesAsync` off direct `ctx.AuditLogEntries` writes.
+- **GoogleIntegration** — (a) introduce `IGoogleResourceService` (or extend an existing service) with batched `GetByIdsAsync` returning name dictionary so AuditLog can drop the `Include(e => e.Resource)`. (b) Switch `DriveActivityMonitorRepository.PersistAnomaliesAsync` off direct `ctx.AuditLogEntries` writes onto `IAuditLogService.LogAsync` per-anomaly.
+- **Users** — verify `IUserService.GetByIdsAsync` returns a display-name dictionary shape suitable for AuditLog's display stitching. If not, add or extend that method. (Likely already correct — Camps section align previously consumed it. Verify in Phase 2 step 2.)
+- **Teams** — verify `ITeamService.GetTeamNamesByIdsAsync` exists and returns `Dictionary<Guid, (Name, Slug)>`. (Referenced in Camps section doc as the canonical pattern. Verify in Phase 2 step 2.)
+
+Section status after this PR lands: **provisionally aligned** — fully aligned once GoogleIntegration ships its follow-up and we return to drop the Include + Resource nav.
 
 ---
 
-## Skill gaps surfaced by this re-evaluation
+## Status
 
-Items the current skill misses that the two-axis framing demands:
-
-### Axis 1 (boundary) gaps
-1. **Controller existence check** — does `<Section>Controller` exist? Routes hosted elsewhere = drift.
-2. **`Views/<Section>/` folder check** — section-owned page views in `Views/Shared/` = drift unless they are true cross-section partials.
-3. **ViewModel placement check** — section ViewModels in `Models/<Section>ViewModels.cs` or `Models/<Section>/`; types in grab-bag files (`AdminViewModels.cs`) = drift.
-4. **Controller-base leak check** — section-specific helpers on `HumansControllerBase` (or equivalent) = drift.
-5. **`Extensions/Sections/` placement** — section helpers should live under `Extensions/Sections/`, not the Extensions root.
-6. **Write-side cross-section DB access** — current regex hunts only reads (`Where|FirstOrDefault|FindAsync|ToListAsync`). Add writes (`Add|AddRange|Update|Remove|Attach`) and pure `DbSet` references.
-7. **EF nav inbound** — search other entities for navs pointing AT this section's entities.
-8. **Don't trust the section doc's exceptions** — when the doc declares "served from two controllers — required because…", treat as drift to evaluate, not as a closed question. The doc records what exists; it doesn't sanctify convention violations.
-
-### Axis 2 (internal cohesion) gaps — entirely absent today
-9. **EF leakage from service layer** — grep the section's `Application/Services/<Section>/**` for `Microsoft.EntityFrameworkCore`, `IQueryable`, `DbContext`, `DbSet`, EF query operators. Architecture test should pin if missing.
-10. **Caching placement** — grep service layer + repo + controllers for `IMemoryCache`/`MemoryCache`/`IDistributedCache`. Caching belongs in the service layer per §15 (decorator or inline `IMemoryCache`); never in repos or controllers.
-11. **DI lifetimes** — verify `<Section>SectionExtensions` registers repo as Singleton (factory-based), services as Scoped, decorator as Singleton if applicable.
-12. **Architecture test coverage** — for each service in the section, ensure tests pin: lives in correct namespace, has no DbContext ctor param, has no IMemoryCache ctor param, takes the repository. For each over-threshold interface, ensure InterfaceMethodBudgetTests has an entry.
-13. **ViewComponent reuse** — for sections whose data is rendered on other sections' pages (audit history, profile cards, notification meters), verify a `<Section>ViewComponent` exists and is invoked from the host views. Inverse check: section pages that bake in inline rendering of "should-be-a-VC" content.
-14. **Interface segregation** — flag plumbing methods that exist solely for one consumer ("`GetUserDisplayNamesAsync` is called only by `AuditViewerService`, move it private").
-
-### Boundary-fix protocol gap
-15. The skill currently treats cross-section DB access as "fix the offending file." The correct protocol is:
-    - **We are the producer (someone reads/writes our tables):** our job is to ensure the public API on our service satisfies the caller's need. Add it if missing (in THIS PR). Then flag the calling section as the next /section-align target — they own the migration.
-    - **We are the consumer (we cross into someone else's tables/nav):** flag the API gap on THEIR section. Don't fix it here — they're the next /section-align target. Document the gap and either tolerate the current code or fall back to a less-bad path.
-    - Never "we'll just fix the caller's file" — that violates the section ownership model and lets one section silently mutate another.
+Phase 0 complete. This plan is the impl-ready handoff. The skill's "Context discipline" rule applies — open a fresh `/cls` before Phase 1 and run the impl as an Opus orchestrator over Sonnet subagents in this same `align/auditlog` worktree.
