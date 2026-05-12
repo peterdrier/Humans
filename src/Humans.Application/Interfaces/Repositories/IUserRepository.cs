@@ -393,12 +393,7 @@ public interface IUserRepository : IRepository
 /// </param>
 /// <param name="OriginalDisplayName">Display name on the user before the write.</param>
 /// <param name="PreferredLanguage">Preferred language on the user before the write.</param>
-/// <param name="DeletedEmailAddresses">
-/// All <c>UserEmail</c> addresses removed during anonymization. Used by the
-/// deletion cascade to hash and record in <c>forgotten_emails</c>.
-/// </param>
 public record ExpiredDeletionAnonymizationResult(
     string? OriginalEmail,
     string OriginalDisplayName,
-    string PreferredLanguage,
-    IReadOnlyList<string> DeletedEmailAddresses);
+    string PreferredLanguage);

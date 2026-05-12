@@ -9,12 +9,10 @@ public sealed record MailerDashboardViewModel(
     int HumansMailerLiteContacts,
     int HumansMarketingOptedIn,
     int HumansMarketingOptedOut,
-    int ForgottenSkipListSize,
     Instant? LastReconciliationAt,
     string? LastReconciliationSummary,
     DriftReport Drift);
 
 public sealed record DriftReport(
     int HumansOptedOutMlActive,           // legal-trouble row
-    int? HumansOptedInMlAbsent,           // service-quality row (null = not yet computed)
-    int ForgottenButMlActive);            // GDPR row
+    int? HumansOptedInMlAbsent);          // service-quality row (null = not yet computed)

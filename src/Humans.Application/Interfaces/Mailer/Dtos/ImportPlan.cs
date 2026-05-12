@@ -10,7 +10,6 @@ public sealed record ImportPlan(
         Decisions.Count(d => d.Outcome == SubscriberOutcome.AttachVerifiedConfirmOnly),
         Decisions.Count(d => d.Outcome == SubscriberOutcome.AttachVerifiedConflictKept),
         Decisions.Count(d => d.Outcome == SubscriberOutcome.DeleteUnverifiedThenCreate),
-        Decisions.Count(d => d.Outcome == SubscriberOutcome.ForgottenSkipped),
         Decisions.Count(d => d.Outcome == SubscriberOutcome.AmbiguousMultipleVerified),
         Decisions.Count(d => d.Outcome == SubscriberOutcome.UnconfirmedSkipped));
 }
@@ -21,6 +20,5 @@ public sealed record ImportPlanCounts(
     int WillAttachConfirmOnly,
     int WillKeepHumansState,
     int WillDeleteUnverifiedAndCreate,
-    int SkippedForgotten,
     int SkippedAmbiguous,
     int SkippedUnconfirmed);

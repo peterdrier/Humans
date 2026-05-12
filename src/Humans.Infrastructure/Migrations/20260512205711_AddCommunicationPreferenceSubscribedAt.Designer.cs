@@ -13,8 +13,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Humans.Infrastructure.Migrations
 {
     [DbContext(typeof(HumansDbContext))]
-    [Migration("20260512132858_AddMailerInboundImport")]
-    partial class AddMailerInboundImport
+    [Migration("20260512205711_AddCommunicationPreferenceSubscribedAt")]
+    partial class AddCommunicationPreferenceSubscribedAt
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -2178,35 +2178,6 @@ namespace Humans.Infrastructure.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("feedback_reports", (string)null);
-                });
-
-            modelBuilder.Entity("Humans.Domain.Entities.ForgottenEmail", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Instant>("AnonymizedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("EmailHash")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("AnonymizedAt");
-
-                    b.HasIndex("EmailHash");
-
-                    b.HasIndex("UserId", "EmailHash")
-                        .IsUnique();
-
-                    b.ToTable("forgotten_emails", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.GeneralAvailability", b =>

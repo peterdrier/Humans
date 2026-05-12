@@ -45,10 +45,6 @@
                     <td class="text-end">@Model.Plan.Counts.WillDeleteUnverifiedAndCreate.ToString("N0")</td>
                 </tr>
                 <tr class="text-muted">
-                    <td>Skipped — forgotten (GDPR)</td>
-                    <td class="text-end">@Model.Plan.Counts.SkippedForgotten.ToString("N0")</td>
-                </tr>
-                <tr class="text-muted">
                     <td>Skipped — ambiguous multiple verified</td>
                     <td class="text-end">@Model.Plan.Counts.SkippedAmbiguous.ToString("N0")</td>
                 </tr>
@@ -74,7 +70,6 @@
         (Outcome: SubscriberOutcome.AttachVerifiedConfirmOnly,    Label: "Attach Verified (Confirm Only)",          ShowFull: false),
         (Outcome: SubscriberOutcome.AttachVerifiedConflictKept,   Label: "Attach Verified (Keep Humans State)",     ShowFull: false),
         (Outcome: SubscriberOutcome.DeleteUnverifiedThenCreate,   Label: "Delete Unverified Then Create",           ShowFull: true),
-        (Outcome: SubscriberOutcome.ForgottenSkipped,             Label: "Skipped — Forgotten (GDPR)",              ShowFull: false),
         (Outcome: SubscriberOutcome.AmbiguousMultipleVerified,    Label: "Skipped — Ambiguous Multiple Verified",   ShowFull: false),
         (Outcome: SubscriberOutcome.UnconfirmedSkipped,           Label: "Skipped — Unconfirmed",                   ShowFull: false),
     };
@@ -110,7 +105,6 @@
                                     <th>Ambiguous User Ids</th>
                                 }
                                 else if (cat.Outcome != SubscriberOutcome.CreateContact
-                                      && cat.Outcome != SubscriberOutcome.ForgottenSkipped
                                       && cat.Outcome != SubscriberOutcome.UnconfirmedSkipped)
                                 {
                                     <th>Matched User</th>
@@ -145,7 +139,6 @@
                                         </td>
                                     }
                                     else if (cat.Outcome != SubscriberOutcome.CreateContact
-                                          && cat.Outcome != SubscriberOutcome.ForgottenSkipped
                                           && cat.Outcome != SubscriberOutcome.UnconfirmedSkipped)
                                     {
                                         <td>

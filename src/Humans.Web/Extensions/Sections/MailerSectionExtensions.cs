@@ -30,9 +30,6 @@ internal static class MailerSectionExtensions
         // Import orchestrator — stateless plan+apply, injected by the Admin controller.
         services.AddScoped<IMailerImportService, MailerImportService>();
 
-        // IForgottenEmailRepository + IForgottenEmailService are registered in
-        // UsersSectionExtensions.AddUsersSection() — do NOT duplicate here.
-
         return services;
     }
 }

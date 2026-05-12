@@ -71,12 +71,6 @@ public class GdprExportDependencyInjectionTests
     /// pass vacuously. The §8a cross-cutting note in <c>design-rules.md</c>
     /// is the prose-level guardrail against that.
     /// </summary>
-    //
-    // Sections deliberately absent (documented in design-rules.md §8a):
-    //   - Mailer (`forgotten_emails`) — rows hold SHA-256 hashes written
-    //     during anonymization to outlive the user. By the time a row exists
-    //     there is no live user to export. UserId is provenance, not
-    //     user-scoped data.
     public static readonly Type[] ExpectedContributorTypes =
     [
         typeof(ProfilesProfileService),

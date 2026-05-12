@@ -110,7 +110,6 @@ internal sealed class IdempotencyHarness
             Substitute.For<IUserService>(),
             _provisioning,
             _prefs,
-            Substitute.For<IForgottenEmailService>(),
             Audit.Mock,
             new FakeClock(Instant.FromUtc(2026, 5, 12, 12, 0)),
             NullLogger<MailerImportService>.Instance);

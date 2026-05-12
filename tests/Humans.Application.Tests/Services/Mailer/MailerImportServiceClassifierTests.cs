@@ -38,18 +38,6 @@ public class MailerImportServiceClassifierTests
     }
 
     [HumansFact]
-    public async Task Classifies_ForgottenAsSkipped()
-    {
-        var harness = new ClassifierHarness();
-        harness.MlReturns(Active("ghost@x.com"));
-        harness.ForgottenHashes.Add(EmailHasher.Hash("ghost@x.com"));
-
-        var plan = await harness.Service.BuildPlanAsync();
-
-        plan.Decisions.Single().Outcome.Should().Be(SubscriberOutcome.ForgottenSkipped);
-    }
-
-    [HumansFact]
     public async Task Classifies_VerifiedMatchAsAttachVerified()
     {
         var harness = new ClassifierHarness();
@@ -132,10 +120,6 @@ internal sealed class ClassifierHarness
     private readonly IMailerLiteService _ml = Substitute.For<IMailerLiteService>();
     private readonly IUserEmailService _userEmails = Substitute.For<IUserEmailService>();
     private readonly IUserService _users = Substitute.For<IUserService>();
-    private readonly IForgottenEmailService _forgotten = Substitute.For<IForgottenEmailService>();
-
-    /// <summary>Emails whose hash is in the forgotten skip-list.</summary>
-    public HashSet<string> ForgottenHashes { get; } = [];
 
     /// <summary>email → userId for verified email matches (single owner).</summary>
     public Dictionary<string, Guid> VerifiedMatches { get; } = [];
@@ -158,19 +142,6 @@ internal sealed class ClassifierHarness
 
     public ClassifierHarness()
     {
-        // IForgottenEmailService.GetForgottenAsync: returns the subset of emails
-        // whose hash is in the skip-list (batch — one call per BuildPlanAsync).
-        _forgotten
-            .GetForgottenAsync(Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>())
-            .Returns(ci =>
-            {
-                var emails = (IReadOnlyCollection<string>)ci[0];
-                var matched = emails
-                    .Where(e => ForgottenHashes.Contains(EmailHasher.Hash(e)))
-                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
-                return Task.FromResult<IReadOnlySet<string>>(matched);
-            });
-
         // IUserEmailService.GetDistinctVerifiedUserIdsAsync: returns the list of
         // verified owners. VerifiedOwners (multi) wins over VerifiedMatches (single).
         _userEmails
@@ -214,7 +185,6 @@ internal sealed class ClassifierHarness
             _users,
             Substitute.For<IAccountProvisioningService>(),
             Substitute.For<ICommunicationPreferenceService>(),
-            _forgotten,
             Substitute.For<IAuditLogService>(),
             new FakeClock(Instant.FromUtc(2026, 1, 1, 0, 0)),
             NullLogger<MailerImportService>.Instance);

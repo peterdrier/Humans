@@ -4,6 +4,8 @@
 **Author / facilitator:** brainstorming session 2026-05-11 → 2026-05-12.
 **Related issues:** nobodies-collective/Humans#450 (umbrella bidirectional infra), #200 (push opt-ins + timestamp conflict resolution), #205 (contact tier — already largely landed via `ContactSource` + `AccountProvisioningService`), #524 (admin-hosted newsletter signup — separate later slice).
 
+> **Post-implementation note (2026-05-12):** The `forgotten_emails` skip-list described below was removed during PR review — it isn't needed. When a user is deleted, Humans already removes them from MailerLite; if they later re-add themselves on ML, that's fine and they can be re-imported. The deletion-cascade write and the classifier skip step are gone; the rest of the spec is historically accurate.
+
 ## 1. Context
 
 Humans needs to integrate with MailerLite bidirectionally. Tonight's slice ships **inbound-only**: an admin-driven, human-in-the-loop import that pulls ML subscribers and reconciles them against Humans users + `CommunicationPreference[Marketing]` state. Outbound (push to ML), webhooks, group sync, and GDPR forget cascade are deferred to later slices.

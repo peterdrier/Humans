@@ -638,7 +638,6 @@ public sealed class UserRepository : IUserRepository
         // account so the unique index does not block future accounts from
         // reusing the same addresses and so the anonymized row cannot be
         // discovered by email lookup.
-        var deletedEmails = user.UserEmails.Select(ue => ue.Email).ToList();
         ctx.UserEmails.RemoveRange(user.UserEmails);
 
         // Remove AspNetUserLogins for the same reason we drop UserEmails:
@@ -666,7 +665,7 @@ public sealed class UserRepository : IUserRepository
 
         await ctx.SaveChangesAsync(ct);
         return new ExpiredDeletionAnonymizationResult(
-            originalEmail, originalDisplayName, preferredLanguage, deletedEmails);
+            originalEmail, originalDisplayName, preferredLanguage);
     }
 
     // ==========================================================================

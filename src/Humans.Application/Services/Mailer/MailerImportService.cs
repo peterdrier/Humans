@@ -16,7 +16,6 @@ public sealed class MailerImportService : IMailerImportService
     private readonly IUserService _users;
     private readonly IAccountProvisioningService _provisioning;
     private readonly ICommunicationPreferenceService _prefs;
-    private readonly IForgottenEmailService _forgotten;
     private readonly IAuditLogService _audit;
     private readonly IClock _clock;
     private readonly ILogger<MailerImportService> _logger;
@@ -27,7 +26,6 @@ public sealed class MailerImportService : IMailerImportService
         IUserService users,
         IAccountProvisioningService provisioning,
         ICommunicationPreferenceService prefs,
-        IForgottenEmailService forgotten,
         IAuditLogService audit,
         IClock clock,
         ILogger<MailerImportService> logger)
@@ -37,7 +35,6 @@ public sealed class MailerImportService : IMailerImportService
         _users = users;
         _provisioning = provisioning;
         _prefs = prefs;
-        _forgotten = forgotten;
         _audit = audit;
         _clock = clock;
         _logger = logger;
@@ -49,11 +46,6 @@ public sealed class MailerImportService : IMailerImportService
         var subs = new List<MailerLiteSubscriber>();
         await foreach (var s in _ml.ListSubscribersAsync(ct)) subs.Add(s);
 
-        // Pre-load the forgotten skip-list in one round-trip instead of one
-        // IsForgottenAsync call per subscriber (N+1).
-        var forgottenSet = await _forgotten.GetForgottenAsync(
-            subs.Select(s => s.Email).ToList(), ct);
-
         foreach (var s in subs)
         {
             // 1. Unconfirmed
@@ -64,15 +56,7 @@ public sealed class MailerImportService : IMailerImportService
                 continue;
             }
 
-            // 2. Forgotten
-            if (forgottenSet.Contains(s.Email))
-            {
-                decisions.Add(new SubscriberDecision(s.Email, s.Status,
-                    SubscriberOutcome.ForgottenSkipped, null, null, null));
-                continue;
-            }
-
-            // 3. Verified match — count distinct owners so service-level
+            // 2. Verified match — count distinct owners so service-level
             // uniqueness drift (multiple users sharing the same verified
             // address) surfaces as AmbiguousMultipleVerified instead of
             // silently mutating one arbitrary user's preferences.
@@ -91,7 +75,7 @@ public sealed class MailerImportService : IMailerImportService
                 continue;
             }
 
-            // 4. Unverified match
+            // 3. Unverified match
             var row = await _userEmails.FindAnyEmailRowByAddressAsync(s.Email, ct);
             if (row is var (uid, emailId))
             {
@@ -100,7 +84,7 @@ public sealed class MailerImportService : IMailerImportService
                 continue;
             }
 
-            // 5. No match
+            // 4. No match
             decisions.Add(new SubscriberDecision(s.Email, s.Status,
                 SubscriberOutcome.CreateContact, null, null, null));
         }
@@ -149,7 +133,6 @@ public sealed class MailerImportService : IMailerImportService
                 switch (d.Outcome)
                 {
                     case SubscriberOutcome.UnconfirmedSkipped:
-                    case SubscriberOutcome.ForgottenSkipped:
                     case SubscriberOutcome.AmbiguousMultipleVerified:
                     case SubscriberOutcome.AttachVerifiedConfirmOnly:
                         break;
@@ -198,7 +181,6 @@ public sealed class MailerImportService : IMailerImportService
             PrefsFlipped: flipped,
             PrefsPreservedByConflict: preserved,
             UnverifiedRowsDeletedAndSuperseded: deletedAndCreated,
-            ForgottenSkipped: plan.Counts.SkippedForgotten,
             AmbiguousSkipped: plan.Counts.SkippedAmbiguous,
             UnconfirmedSkipped: plan.Counts.SkippedUnconfirmed,
             VanishedBetweenPlanAndApply: vanishedBetweenPlanAndApply,

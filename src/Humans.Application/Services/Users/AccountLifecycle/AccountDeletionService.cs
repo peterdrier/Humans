@@ -49,7 +49,6 @@ public sealed class AccountDeletionService : IAccountDeletionService
     private readonly IShiftAuthorizationInvalidator _shiftAuthorizationInvalidator;
     private readonly IAuditLogService _auditLogService;
     private readonly IEmailService _emailService;
-    private readonly IForgottenEmailService _forgottenEmailService;
     private readonly IClock _clock;
     private readonly ILogger<AccountDeletionService> _logger;
 
@@ -66,7 +65,6 @@ public sealed class AccountDeletionService : IAccountDeletionService
         IShiftAuthorizationInvalidator shiftAuthorizationInvalidator,
         IAuditLogService auditLogService,
         IEmailService emailService,
-        IForgottenEmailService forgottenEmailService,
         IClock clock,
         ILogger<AccountDeletionService> logger)
     {
@@ -82,7 +80,6 @@ public sealed class AccountDeletionService : IAccountDeletionService
         _shiftAuthorizationInvalidator = shiftAuthorizationInvalidator;
         _auditLogService = auditLogService;
         _emailService = emailService;
-        _forgottenEmailService = forgottenEmailService;
         _clock = clock;
         _logger = logger;
     }
@@ -298,24 +295,6 @@ public sealed class AccountDeletionService : IAccountDeletionService
         _teamService.RemoveMemberFromAllTeamsCache(userId);
         _roleAssignmentClaimsInvalidator.Invalidate(userId);
         _shiftAuthorizationInvalidator.Invalidate(userId);
-
-        // 8. Record deleted email addresses in the forgotten-emails skip-list so
-        //    Mailer import can suppress re-contact of this user. Wrapped in
-        //    try/catch — a side-table write failure must not roll back the
-        //    anonymization that already committed.
-        try
-        {
-            var inserted = await _forgottenEmailService.RecordForgottenAsync(
-                userId, identity.DeletedEmailAddresses, _clock.GetCurrentInstant(), ct);
-            _logger.LogInformation(
-                "Recorded {Count} forgotten emails for user {UserId}", inserted, userId);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            _logger.LogError(ex,
-                "Failed to record forgotten emails for user {UserId}; anonymization already committed",
-                userId);
-        }
 
         return new AnonymizedAccountSummary(
             identity.OriginalEmail,

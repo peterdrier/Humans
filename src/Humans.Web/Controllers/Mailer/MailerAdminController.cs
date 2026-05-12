@@ -22,7 +22,6 @@ public sealed class MailerAdminController : HumansControllerBase
     private readonly IMailerImportService _import;
     private readonly IUserService _users;
     private readonly ICommunicationPreferenceService _prefs;
-    private readonly IForgottenEmailService _forgotten;
     private readonly IAuditLogService _audit;
 
     public MailerAdminController(
@@ -30,7 +29,6 @@ public sealed class MailerAdminController : HumansControllerBase
         IMailerImportService import,
         IUserService users,
         ICommunicationPreferenceService prefs,
-        IForgottenEmailService forgotten,
         IAuditLogService audit,
         UserManager<User> userManager)
         : base(userManager)
@@ -39,7 +37,6 @@ public sealed class MailerAdminController : HumansControllerBase
         _import = import;
         _users = users;
         _prefs = prefs;
-        _forgotten = forgotten;
         _audit = audit;
     }
 
@@ -51,7 +48,6 @@ public sealed class MailerAdminController : HumansControllerBase
         var mlContacts = await _users.GetCountByContactSourceAsync(ContactSource.MailerLite, ct);
         var optedIn = await _prefs.GetCountByCategoryAndStateAsync(MessageCategory.Marketing, optedOut: false, ct);
         var optedOut = await _prefs.GetCountByCategoryAndStateAsync(MessageCategory.Marketing, optedOut: true, ct);
-        var forgottenCount = await _forgotten.CountAsync(ct);
 
         var recent = await _audit.GetFilteredEntriesAsync(
             actions: new[] { AuditAction.MailerLiteReconciliationCompleted },
@@ -62,7 +58,7 @@ public sealed class MailerAdminController : HumansControllerBase
         var drift = await ComputeDriftAsync(ct);
 
         var vm = new MailerDashboardViewModel(
-            summary, groups, mlContacts, optedIn, optedOut, forgottenCount,
+            summary, groups, mlContacts, optedIn, optedOut,
             last?.OccurredAt, last?.Description, drift);
         return View("~/Views/Mailer/Admin/Index.cshtml", vm);
     }
@@ -100,7 +96,6 @@ public sealed class MailerAdminController : HumansControllerBase
             || D(a.WillAttachConfirmOnly, b.WillAttachConfirmOnly)
             || D(a.WillKeepHumansState, b.WillKeepHumansState)
             || D(a.WillDeleteUnverifiedAndCreate, b.WillDeleteUnverifiedAndCreate)
-            || D(a.SkippedForgotten, b.SkippedForgotten)
             || D(a.SkippedAmbiguous, b.SkippedAmbiguous)
             || D(a.SkippedUnconfirmed, b.SkippedUnconfirmed);
     }
@@ -152,17 +147,8 @@ public sealed class MailerAdminController : HumansControllerBase
 
         int? humansInMlAbsent = null; // TODO: cross-reference once IUserEmailService supports it
 
-        // The "Forgotten (GDPR) but still active in ML" dashboard tile counts
-        // only ML-active rows. SkippedForgotten lumps in non-active statuses
-        // (unsubscribed/bounced/junk) — including those would overstate GDPR
-        // drift risk and trigger spurious admin alarms.
-        var forgottenButMlActive = plan.Decisions.Count(d =>
-            d.Outcome == SubscriberOutcome.ForgottenSkipped
-            && string.Equals(d.Status, "active", StringComparison.OrdinalIgnoreCase));
-
         return new DriftReport(
             HumansOptedOutMlActive: humansOutMlIn,
-            HumansOptedInMlAbsent: humansInMlAbsent,
-            ForgottenButMlActive: forgottenButMlActive);
+            HumansOptedInMlAbsent: humansInMlAbsent);
     }
 }

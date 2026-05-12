@@ -13,7 +13,6 @@ public class ImportResultTests
         int prefsFlipped = 2,
         int prefsPreservedByConflict = 1,
         int unverifiedRowsDeletedAndSuperseded = 0,
-        int forgottenSkipped = 4,
         int ambiguousSkipped = 0,
         int unconfirmedSkipped = 5,
         int vanishedBetweenPlanAndApply = 1,
@@ -25,7 +24,6 @@ public class ImportResultTests
             PrefsFlipped: prefsFlipped,
             PrefsPreservedByConflict: prefsPreservedByConflict,
             UnverifiedRowsDeletedAndSuperseded: unverifiedRowsDeletedAndSuperseded,
-            ForgottenSkipped: forgottenSkipped,
             AmbiguousSkipped: ambiguousSkipped,
             UnconfirmedSkipped: unconfirmedSkipped,
             VanishedBetweenPlanAndApply: vanishedBetweenPlanAndApply,
@@ -46,7 +44,6 @@ public class ImportResultTests
             totalPulled: 50,
             contactsCreated: 3,
             prefsFlipped: 2,
-            forgottenSkipped: 4,
             unconfirmedSkipped: 5,
             vanishedBetweenPlanAndApply: 1,
             errors: 0,
@@ -57,7 +54,6 @@ public class ImportResultTests
         summary.Should().Contain("50 pulled");
         summary.Should().Contain("3 contacts created");
         summary.Should().Contain("2 prefs updated");
-        summary.Should().Contain("4 forgotten skipped");
         summary.Should().Contain("5 unconfirmed skipped");
         summary.Should().Contain("1 vanished");
         summary.Should().Contain("7.0s elapsed");

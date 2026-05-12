@@ -133,7 +133,6 @@ internal sealed class ApplyHarness
             Substitute.For<IUserService>(),
             Substitute.For<IAccountProvisioningService>(),
             _prefs,
-            Substitute.For<IForgottenEmailService>(),
             _audit,
             new FakeClock(Instant.FromUtc(2026, 5, 12, 12, 0)),
             NullLogger<MailerImportService>.Instance);

@@ -7,7 +7,6 @@ namespace Humans.Application.Interfaces.Mailer.Dtos;
 public enum SubscriberOutcome
 {
     UnconfirmedSkipped,
-    ForgottenSkipped,
     AttachVerified,
     AttachVerifiedConfirmOnly,    // pref already matches; no flip needed
     AttachVerifiedConflictKept,   // Humans state wins per conflict rule

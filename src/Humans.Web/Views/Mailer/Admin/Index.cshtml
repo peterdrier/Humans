@@ -60,7 +60,6 @@
                             <th>ML Contacts in Humans</th>
                             <th>Marketing Opted-In</th>
                             <th>Marketing Opted-Out</th>
-                            <th>Forgotten Skip-List</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -68,7 +67,6 @@
                             <td>@Model.HumansMailerLiteContacts.ToString("N0")</td>
                             <td>@Model.HumansMarketingOptedIn.ToString("N0")</td>
                             <td>@Model.HumansMarketingOptedOut.ToString("N0")</td>
-                            <td>@Model.ForgottenSkipListSize.ToString("N0")</td>
                         </tr>
                     </tbody>
                 </table>
@@ -122,23 +120,6 @@
                                 @if (Model.Drift.HumansOptedInMlAbsent > 0)
                                 {
                                     <span class="badge bg-warning text-dark">Service quality</span>
-                                }
-                                else
-                                {
-                                    <span class="text-muted">—</span>
-                                }
-                            </td>
-                        </tr>
-                        @{
-                            var forgottenActiveClass = Model.Drift.ForgottenButMlActive > 0 ? "table-warning" : "";
-                        }
-                        <tr class="@forgottenActiveClass">
-                            <td>Forgotten (GDPR) but still active in ML</td>
-                            <td>@Model.Drift.ForgottenButMlActive.ToString("N0")</td>
-                            <td>
-                                @if (Model.Drift.ForgottenButMlActive > 0)
-                                {
-                                    <span class="badge" style="background-color: #fd7e14;">GDPR risk</span>
                                 }
                                 else
                                 {

@@ -1,10 +1,8 @@
 using Humans.Application.Interfaces.Dashboard;
 using Humans.Application.Interfaces.Gdpr;
-using Humans.Application.Interfaces.Mailer;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Users.AccountLifecycle;
-using Humans.Infrastructure.Repositories.Mailer;
 using Humans.Infrastructure.Repositories.Users;
 using DashboardAdminDashboardService = Humans.Application.Services.Dashboard.AdminDashboardService;
 using DashboardDashboardService = Humans.Application.Services.Dashboard.DashboardService;
@@ -34,11 +32,6 @@ internal static class UsersSectionExtensions
         // via their service interfaces so UserService/ProfileService retain
         // no outbound edges to higher-level sections.
         services.AddScoped<IAccountDeletionService, AccountDeletionService>();
-
-        // Forgotten-email skip-list: written by the deletion cascade, read by
-        // Mailer inbound import to suppress re-contact of anonymized users.
-        services.AddSingleton<IForgottenEmailRepository, ForgottenEmailRepository>();
-        services.AddScoped<IForgottenEmailService, ForgottenEmailService>();
 
         services.AddScoped<IDashboardService, DashboardDashboardService>();
         // Admin dashboard aggregator — owns no tables; aggregates user

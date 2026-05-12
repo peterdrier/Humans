@@ -33,7 +33,6 @@ public class MailerAdminControllerTests
     private readonly IMailerLiteService _mlService = Substitute.For<IMailerLiteService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly ICommunicationPreferenceService _prefs = Substitute.For<ICommunicationPreferenceService>();
-    private readonly IForgottenEmailService _forgotten = Substitute.For<IForgottenEmailService>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
 
     public MailerAdminControllerTests()
@@ -46,7 +45,7 @@ public class MailerAdminControllerTests
     private MailerAdminController BuildSut(ImportPlanCounts? snapshotCounts = null)
     {
         var ctrl = new MailerAdminController(
-            _mlService, _importService, _userService, _prefs, _forgotten, _audit, _userManager);
+            _mlService, _importService, _userService, _prefs, _audit, _userManager);
 
         var http = new DefaultHttpContext
         {
@@ -71,7 +70,7 @@ public class MailerAdminControllerTests
     private static ImportResult StubResult() =>
         new(TotalPulled: 10, ContactsCreated: 2, PrefsFlipped: 3,
             PrefsPreservedByConflict: 0, UnverifiedRowsDeletedAndSuperseded: 0,
-            ForgottenSkipped: 0, AmbiguousSkipped: 0, UnconfirmedSkipped: 0,
+            AmbiguousSkipped: 0, UnconfirmedSkipped: 0,
             VanishedBetweenPlanAndApply: 0, Errors: 0, Elapsed: Duration.Zero);
 
     // -----------------------------------------------------------------------
@@ -88,7 +87,6 @@ public class MailerAdminControllerTests
             WillAttachConfirmOnly: 0,
             WillKeepHumansState: 0,
             WillDeleteUnverifiedAndCreate: 0,
-            SkippedForgotten: 0,
             SkippedAmbiguous: 0,
             SkippedUnconfirmed: 0);
 
@@ -150,7 +148,6 @@ public class MailerAdminControllerTests
         _prefs.GetCountByCategoryAndStateAsync(
                 Arg.Any<MessageCategory>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns(0);
-        _forgotten.CountAsync(Arg.Any<CancellationToken>()).Returns(0);
         _audit.GetFilteredEntriesAsync(
                 entityType: Arg.Any<string?>(),
                 entityId: Arg.Any<Guid?>(),
@@ -185,7 +182,6 @@ public class MailerAdminControllerTests
             WillAttachConfirmOnly: 2,
             WillKeepHumansState: 0,
             WillDeleteUnverifiedAndCreate: 0,
-            SkippedForgotten: 1,
             SkippedAmbiguous: 0,
             SkippedUnconfirmed: 0);
 
@@ -193,10 +189,9 @@ public class MailerAdminControllerTests
             .Repeat(Decision(SubscriberOutcome.CreateContact), 10)
             .Concat(Enumerable.Repeat(Decision(SubscriberOutcome.AttachVerified), 5))
             .Concat(Enumerable.Repeat(Decision(SubscriberOutcome.AttachVerifiedConfirmOnly), 2))
-            .Concat(Enumerable.Repeat(Decision(SubscriberOutcome.ForgottenSkipped), 1))
             .ToList()
             .AsReadOnly();
-        var freshPlan = new ImportPlan(freshDecisions, TotalPulled: 18);
+        var freshPlan = new ImportPlan(freshDecisions, TotalPulled: 17);
 
         _importService.BuildPlanAsync(Arg.Any<CancellationToken>()).Returns(freshPlan);
         _importService.ApplyAsync(Arg.Any<ImportPlan>(), Arg.Any<CancellationToken>())
