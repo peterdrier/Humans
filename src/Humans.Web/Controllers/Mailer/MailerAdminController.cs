@@ -1,0 +1,76 @@
+using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.Mailer;
+using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Users;
+using Humans.Domain.Entities;
+using Humans.Domain.Enums;
+using Humans.Web.Authorization;
+using Humans.Web.Models.Mailer;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+
+namespace Humans.Web.Controllers.Mailer;
+
+[Authorize(Policy = PolicyNames.AdminOnly)]
+[Route("Mailer/Admin")]
+public sealed class MailerAdminController : HumansControllerBase
+{
+    private readonly IMailerLiteService _ml;
+    private readonly IMailerImportService _import;
+    private readonly IUserService _users;
+    private readonly ICommunicationPreferenceService _prefs;
+    private readonly IForgottenEmailService _forgotten;
+    private readonly IAuditLogService _audit;
+
+    public MailerAdminController(
+        IMailerLiteService ml,
+        IMailerImportService import,
+        IUserService users,
+        ICommunicationPreferenceService prefs,
+        IForgottenEmailService forgotten,
+        IAuditLogService audit,
+        UserManager<User> userManager)
+        : base(userManager)
+    {
+        _ml = ml;
+        _import = import;
+        _users = users;
+        _prefs = prefs;
+        _forgotten = forgotten;
+        _audit = audit;
+    }
+
+    [HttpGet("")]
+    public async Task<IActionResult> Index(CancellationToken ct)
+    {
+        var summary = await _ml.GetAccountSummaryAsync(ct);
+        var groups = await _ml.ListGroupsAsync(ct);
+        var mlContacts = await _users.GetCountByContactSourceAsync(ContactSource.MailerLite, ct);
+        var optedIn = await _prefs.GetCountByCategoryAndStateAsync(MessageCategory.Marketing, optedOut: false, ct);
+        var optedOut = await _prefs.GetCountByCategoryAndStateAsync(MessageCategory.Marketing, optedOut: true, ct);
+        var forgottenCount = await _forgotten.CountAsync(ct);
+
+        var recent = await _audit.GetFilteredEntriesAsync(
+            actions: new[] { AuditAction.MailerLiteReconciliationCompleted },
+            limit: 1,
+            ct: ct);
+        var last = recent.FirstOrDefault();
+
+        var drift = await ComputeDriftAsync(ct);
+
+        var vm = new MailerDashboardViewModel(
+            summary, groups, mlContacts, optedIn, optedOut, forgottenCount,
+            last?.OccurredAt, last?.Description, drift);
+        return View("~/Views/Mailer/Admin/Index.cshtml", vm);
+    }
+
+    private async Task<DriftReport> ComputeDriftAsync(CancellationToken ct)
+    {
+        var plan = await _import.BuildPlanAsync(ct);
+        return new DriftReport(
+            HumansOptedOutMlActive: 0, // TODO: derive in Task 28
+            HumansOptedInMlAbsent: 0,  // TODO: derive in Task 28
+            ForgottenButMlActive: plan.Counts.SkippedForgotten);
+    }
+}
