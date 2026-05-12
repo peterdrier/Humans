@@ -950,9 +950,17 @@ public sealed class TicketRepository : ITicketRepository
     public async Task<IReadOnlyList<OrderDriftRow>> GetOrderDriftAsync(CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
+        // Filter must run against the source entity, not the projected record:
+        // EF can't translate a Where over a Select-projected DTO's properties
+        // (it tries to re-evaluate the constructor inside SQL and fails). Push
+        // the IssuedCount > ValidCount predicate upstream as a subquery on the
+        // attendee collection.
         return await ctx.TicketOrders
             .AsNoTracking()
             .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid)
+            .Where(o => o.Attendees.Count(a => a.Status == TicketAttendeeStatus.Valid
+                                               || a.Status == TicketAttendeeStatus.CheckedIn)
+                        < o.Attendees.Count())
             .Select(o => new OrderDriftRow(
                 o.Id,
                 o.VendorOrderId,
@@ -961,7 +969,6 @@ public sealed class TicketRepository : ITicketRepository
                 o.Attendees.Count(a => a.Status == TicketAttendeeStatus.Valid
                                        || a.Status == TicketAttendeeStatus.CheckedIn),
                 o.VendorDashboardUrl))
-            .Where(r => r.ValidCount < r.IssuedCount)
             .OrderByDescending(r => r.IssuedCount - r.ValidCount) // arch:db-sort-ok — diagnostic prioritisation, not display sort
             .ToListAsync(ct);
     }
