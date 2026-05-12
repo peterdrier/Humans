@@ -153,13 +153,14 @@ Used by the shift dashboard's set-up sub-filter to narrow per-day staffing data,
 
 ## Routing
 
-Three controllers serve this section, each with distinct URL scope and authorization:
+Four controllers serve this section, each with distinct URL scope and authorization:
 
 | Controller | Base route | Auth |
 |---|---|---|
 | `ShiftsController` | `/Shifts` | `[Authorize]` (per-action for admin/settings) |
 | `ShiftAdminController` | `/Teams/{slug}/Shifts` | `[Authorize]` + `CanManageDepartment` / `CanApproveDepartment` |
 | `ShiftDashboardController` | `/Shifts/Dashboard` | `[Authorize(Policy = PolicyNames.ShiftDepartmentManager)]` |
+| `VolunteerTrackingController` | `/Shifts/Dashboard/VolunteerTracking` | `[Authorize(Policy = PolicyNames.VolunteerTrackingWrite)]` (Admin / VolunteerCoordinator) |
 
 Selected routes:
 
