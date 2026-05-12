@@ -221,7 +221,7 @@
                 {
                     <div class="mb-1">
                         <i class="fa-solid fa-clock me-1 text-muted"></i>
-                        <strong>@Model.LastReconciliationAt.Value.ToDateTimeUtc().ToString("u")</strong>
+                        <strong>@Model.LastReconciliationAt.ToDisplayDateTime()</strong>
                     </div>
                     @if (!string.IsNullOrWhiteSpace(Model.LastReconciliationSummary))
                     {

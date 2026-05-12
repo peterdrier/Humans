@@ -47,6 +47,7 @@ public static class AdminNavTree
             new("Campaigns",          "Campaign", "Index",      null, null, "fa-solid fa-bullhorn",  PolicyNames.AdminOnly),
             new("Workspace accounts", "Google",  "Accounts",    null, null, "fa-solid fa-at",        PolicyNames.AdminOnly),
             new("Email flag violations", "Google", "EmailFlagViolations", null, null, "fa-solid fa-triangle-exclamation", PolicyNames.AdminOnly),
+            new("Mailer",                "MailerAdmin", "Index",           null, null, "fa-solid fa-paper-plane",          PolicyNames.AdminOnly),
         }),
         new("Agent", new AdminNavItem[]
         {
