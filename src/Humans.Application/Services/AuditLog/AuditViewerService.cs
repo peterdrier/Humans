@@ -1,4 +1,6 @@
 using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Teams;
 using Humans.Domain.Entities;
 
 namespace Humans.Application.Services.AuditLog;
@@ -8,20 +10,28 @@ namespace Humans.Application.Services.AuditLog;
 /// </summary>
 /// <remarks>
 /// Pure read-side service — wraps <see cref="IAuditLogService"/> for the raw
-/// queries and uses its
-/// <see cref="IAuditLogService.GetUserDisplayNamesAsync"/> /
-/// <see cref="IAuditLogService.GetTeamNamesAsync"/> batch lookups for actor,
-/// subject, and target-team name resolution. No DB access, no caching, no
-/// merge-chain logic of its own — those concerns stay in
+/// queries and resolves actor, subject, and target-team names via
+/// <see cref="IProfileService"/> and <see cref="ITeamService"/>. No DB access,
+/// no caching, no merge-chain logic of its own — those concerns stay in
 /// <see cref="IAuditLogService"/> where the audit-log table is owned.
 /// </remarks>
 public sealed class AuditViewerService : IAuditViewerService
 {
     private readonly IAuditLogService _auditLog;
+    private readonly IProfileService _profileService;
+    private readonly ITeamService _teamService;
+    private readonly ITeamResourceService _teamResourceService;
 
-    public AuditViewerService(IAuditLogService auditLog)
+    public AuditViewerService(
+        IAuditLogService auditLog,
+        IProfileService profileService,
+        ITeamService teamService,
+        ITeamResourceService teamResourceService)
     {
         _auditLog = auditLog;
+        _profileService = profileService;
+        _teamService = teamService;
+        _teamResourceService = teamResourceService;
     }
 
     public async Task<IReadOnlyList<AuditEvent>> GetRecentAsync(int count, CancellationToken ct = default)
@@ -62,15 +72,9 @@ public sealed class AuditViewerService : IAuditViewerService
 
     public async Task<AuditEventPage> GetPageAsync(string? actionFilter, int page, int pageSize, CancellationToken ct = default)
     {
-        // Reuse the existing single-trip page query so we get items + counts
-        // + already-batched name lookups in one round-trip; we just rewrap
-        // the result into resolved AuditEvent shape so view-layer callers
-        // never see the raw entry / dictionary pair.
-        var raw = await _auditLog.GetAuditLogPageAsync(actionFilter, page, pageSize, ct);
-        var events = raw.Items
-            .Select(e => Resolve(e, raw.UserDisplayNames, raw.TeamNames))
-            .ToList();
-        return new AuditEventPage(events, raw.TotalCount, raw.AnomalyCount);
+        var (items, totalCount, anomalyCount) = await _auditLog.GetFilteredAsync(actionFilter, page, pageSize, ct);
+        var events = await ResolveAsync(items, ct);
+        return new AuditEventPage(events, totalCount, anomalyCount);
     }
 
     // ==========================================================================
@@ -83,24 +87,28 @@ public sealed class AuditViewerService : IAuditViewerService
         if (entries.Count == 0)
             return Array.Empty<AuditEvent>();
 
-        var (userIds, teamIds) = CollectIds(entries);
+        var (userIds, teamIds, resourceIds) = CollectIds(entries);
         var users = userIds.Count == 0
             ? new Dictionary<Guid, string>()
-            : await _auditLog.GetUserDisplayNamesAsync(userIds, ct);
+            : await GetUserDisplayNamesAsync(userIds, ct);
         var teams = teamIds.Count == 0
             ? new Dictionary<Guid, (string Name, string Slug)>()
-            : await _auditLog.GetTeamNamesAsync(teamIds, ct);
+            : await GetTeamNamesAsync(teamIds, ct);
+        var resources = resourceIds.Count == 0
+            ? (IReadOnlyDictionary<Guid, string>)new Dictionary<Guid, string>()
+            : await _teamResourceService.GetResourceNamesByIdsAsync(resourceIds, ct);
 
         var result = new List<AuditEvent>(entries.Count);
         foreach (var entry in entries)
-            result.Add(Resolve(entry, users, teams));
+            result.Add(Resolve(entry, users, teams, resources));
         return result;
     }
 
     private static AuditEvent Resolve(
         AuditLogEntry entry,
         IReadOnlyDictionary<Guid, string> users,
-        IReadOnlyDictionary<Guid, (string Name, string Slug)> teams)
+        IReadOnlyDictionary<Guid, (string Name, string Slug)> teams,
+        IReadOnlyDictionary<Guid, string> resources)
     {
         var subjectId = ResolveSubjectId(entry);
         var targetTeamId = ResolveTargetTeamId(entry);
@@ -114,6 +122,7 @@ public sealed class AuditViewerService : IAuditViewerService
             teamName = team.Name;
             teamSlug = team.Slug;
         }
+        string? resourceName = entry.ResourceId.HasValue && resources.TryGetValue(entry.ResourceId.Value, out var rn) ? rn : null;
 
         return new AuditEvent(
             Id: entry.Id,
@@ -137,13 +146,34 @@ public sealed class AuditViewerService : IAuditViewerService
             ErrorMessage: entry.ErrorMessage,
             SyncSource: entry.SyncSource,
             ResourceId: entry.ResourceId,
-            ResourceName: entry.Resource?.Name);
+            ResourceName: resourceName);
     }
 
-    private static (List<Guid> UserIds, List<Guid> TeamIds) CollectIds(IReadOnlyList<AuditLogEntry> entries)
+    private async Task<Dictionary<Guid, string>> GetUserDisplayNamesAsync(
+        IReadOnlyList<Guid> userIds, CancellationToken ct)
+    {
+        // Use IProfileService so BurnerName is returned when the profile has one
+        // (memory/architecture/burnername-is-the-display-name.md). For users
+        // without a profile, or with a null BurnerName (Stub), the entry is
+        // absent from the dict — callers already handle null display names.
+        var profiles = await _profileService.GetByUserIdsAsync(userIds, ct);
+        return profiles
+            .Where(kvp => !string.IsNullOrWhiteSpace(kvp.Value.BurnerName))
+            .ToDictionary(kvp => kvp.Key, kvp => kvp.Value.BurnerName!);
+    }
+
+    private async Task<Dictionary<Guid, (string Name, string Slug)>> GetTeamNamesAsync(
+        IReadOnlyList<Guid> teamIds, CancellationToken ct)
+    {
+        var teams = await _teamService.GetByIdsWithParentsAsync(teamIds, ct);
+        return teams.ToDictionary(kvp => kvp.Key, kvp => (kvp.Value.Name, kvp.Value.Slug));
+    }
+
+    private static (List<Guid> UserIds, List<Guid> TeamIds, List<Guid> ResourceIds) CollectIds(IReadOnlyList<AuditLogEntry> entries)
     {
         var users = new HashSet<Guid>();
         var teams = new HashSet<Guid>();
+        var resources = new HashSet<Guid>();
         foreach (var e in entries)
         {
             if (e.ActorUserId.HasValue)
@@ -156,8 +186,11 @@ public sealed class AuditViewerService : IAuditViewerService
             var teamId = ResolveTargetTeamId(e);
             if (teamId.HasValue)
                 teams.Add(teamId.Value);
+
+            if (e.ResourceId.HasValue)
+                resources.Add(e.ResourceId.Value);
         }
-        return (users.ToList(), teams.ToList());
+        return (users.ToList(), teams.ToList(), resources.ToList());
     }
 
     private static Guid? ResolveSubjectId(AuditLogEntry e)

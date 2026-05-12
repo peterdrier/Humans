@@ -180,17 +180,6 @@ public class EndRoleAssignmentViewModel
     public string? Notes { get; set; }
 }
 
-public class AuditLogListViewModel : PagedListViewModel
-{
-    public AuditLogListViewModel() : base(50)
-    {
-    }
-
-    public IReadOnlyList<Humans.Application.Services.AuditLog.AuditEvent> Events { get; set; } = [];
-    public string? ActionFilter { get; set; }
-    public int AnomalyCount { get; set; }
-}
-
 public class ConfigurationItemViewModel
 {
     public string Section { get; set; } = string.Empty;

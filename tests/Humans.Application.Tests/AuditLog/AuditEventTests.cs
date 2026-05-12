@@ -6,7 +6,15 @@ using Xunit;
 
 namespace Humans.Application.Tests.AuditLog;
 
-public class AuditEventRenderTests
+/// <summary>
+/// Tests for <see cref="AuditEvent"/> — the resolved, display-ready view of
+/// an audit log entry. Covers <see cref="AuditEvent.RenderPlainText"/> and
+/// <see cref="AuditEvent.RenderStructured"/>.
+///
+/// Tests for the underlying verb tables live in
+/// <see cref="AuditEventTextualizerTests"/>.
+/// </summary>
+public class AuditEventTests
 {
     private static readonly Instant FixedAt = Instant.FromUtc(2026, 4, 30, 17, 0);
     private const string ExpectedDate = "2026-04-30";
@@ -47,7 +55,6 @@ public class AuditEventRenderTests
 
         var line = ev.RenderPlainText(viewer);
 
-        // ShiftSignupVoluntold has transitive verb "voluntold" → "Frank voluntold You — shift 'Cantina dinner'"
         line.Should().Be($"{ExpectedDate} — Frank voluntold You — shift 'Cantina dinner'");
     }
 
