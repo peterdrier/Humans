@@ -110,7 +110,7 @@ public sealed class MailerImportService : IMailerImportService
     public async Task<ImportResult> ApplyAsync(ImportPlan plan, CancellationToken ct = default)
     {
         var start = _clock.GetCurrentInstant();
-        int created = 0, flipped = 0, preserved = 0, deletedAndCreated = 0, errors = 0;
+        int created = 0, flipped = 0, preserved = 0, deletedAndCreated = 0, vanishedBetweenPlanAndApply = 0, errors = 0;
         var pulledIds = new HashSet<string>(StringComparer.Ordinal);
 
         // Re-pull ML so plan/apply are stateless.
@@ -125,7 +125,12 @@ public sealed class MailerImportService : IMailerImportService
         {
             try
             {
-                if (!subsByEmail.TryGetValue(d.Email, out var subscriber)) continue;
+                if (!subsByEmail.TryGetValue(d.Email, out var subscriber))
+                {
+                    vanishedBetweenPlanAndApply++;
+                    _logger.LogWarning("Subscriber {Email} vanished between plan and apply", d.Email);
+                    continue;
+                }
 
                 switch (d.Outcome)
                 {
@@ -182,6 +187,7 @@ public sealed class MailerImportService : IMailerImportService
             ForgottenSkipped: plan.Counts.SkippedForgotten,
             AmbiguousSkipped: plan.Counts.SkippedAmbiguous,
             UnconfirmedSkipped: plan.Counts.SkippedUnconfirmed,
+            VanishedBetweenPlanAndApply: vanishedBetweenPlanAndApply,
             Errors: errors,
             Elapsed: elapsed);
 

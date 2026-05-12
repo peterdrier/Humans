@@ -72,7 +72,7 @@ public class MailerAdminControllerTests
         new(TotalPulled: 10, ContactsCreated: 2, PrefsFlipped: 3,
             PrefsPreservedByConflict: 0, UnverifiedRowsDeletedAndSuperseded: 0,
             ForgottenSkipped: 0, AmbiguousSkipped: 0, UnconfirmedSkipped: 0,
-            Errors: 0, Elapsed: Duration.Zero);
+            VanishedBetweenPlanAndApply: 0, Errors: 0, Elapsed: Duration.Zero);
 
     // -----------------------------------------------------------------------
     // Commit — drift detected (>10%), redirects back to Import with banner.

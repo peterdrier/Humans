@@ -11,6 +11,7 @@ public sealed record ImportResult(
     int ForgottenSkipped,
     int AmbiguousSkipped,
     int UnconfirmedSkipped,
+    int VanishedBetweenPlanAndApply,
     int Errors,
     Duration Elapsed)
 {
@@ -21,5 +22,6 @@ public sealed record ImportResult(
         $"{UnverifiedRowsDeletedAndSuperseded} unverified rows deleted-and-superseded, " +
         $"{AmbiguousSkipped} ambiguous skipped, {ForgottenSkipped} forgotten skipped, " +
         $"{UnconfirmedSkipped} unconfirmed skipped, " +
+        $"{VanishedBetweenPlanAndApply} vanished, " +
         $"{Elapsed.TotalSeconds:F1}s elapsed, {Errors} errors.";
 }
