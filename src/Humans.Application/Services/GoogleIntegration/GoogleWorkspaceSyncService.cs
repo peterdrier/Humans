@@ -163,8 +163,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         return resource;
     }
 
-    /// <inheritdoc />
-    public async Task<GoogleResource> ProvisionTeamGroupAsync(
+    private async Task<GoogleResource> ProvisionTeamGroupAsync(
         Guid teamId,
         string groupEmail,
         string groupName,

@@ -53,29 +53,6 @@ public class StubGoogleSyncService : IGoogleSyncService
         return Task.CompletedTask;
     }
 
-    public Task<GoogleResource> ProvisionTeamGroupAsync(
-        Guid teamId,
-        string groupEmail,
-        string groupName,
-        CancellationToken cancellationToken = default)
-    {
-        _logger.LogInformation("[STUB] Would provision Google Group '{GroupEmail}' ({GroupName}) for team {TeamId}", groupEmail, groupName, teamId);
-
-        var resource = new GoogleResource
-        {
-            Id = Guid.NewGuid(),
-            TeamId = teamId,
-            ResourceType = Domain.Enums.GoogleResourceType.Group,
-            GoogleId = groupEmail,
-            Name = groupName,
-            Url = $"https://groups.google.com/a/nobodies.team/g/{groupEmail.Split('@')[0]}",
-            ProvisionedAt = NodaTime.SystemClock.Instance.GetCurrentInstant(),
-            IsActive = true
-        };
-
-        return Task.FromResult(resource);
-    }
-
     public Task AddUserToGroupAsync(Guid groupResourceId, string userEmail, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("[STUB] Would add {UserEmail} to group {GroupResourceId}", userEmail, groupResourceId);

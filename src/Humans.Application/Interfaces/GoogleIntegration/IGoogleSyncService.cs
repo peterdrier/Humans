@@ -12,11 +12,12 @@ namespace Humans.Application.Interfaces.GoogleIntegration;
 /// <remarks>
 /// Budget history:
 /// <list type="bullet">
+///   <item>17→16 — section-align GoogleIntegration Phase 3 Tier 1B: made ProvisionTeamGroupAsync private (single in-class caller).</item>
 ///   <item>20→17 — section-align GoogleIntegration Phase 3 Tier 1A: deleted 3 fully-dead methods (GetResourceStatusAsync, SyncTeamGroupMembersAsync, RestoreUserToAllTeamsAsync).</item>
 ///   <item>2026-05-12 — section-align GoogleIntegration baseline at 20 methods.</item>
 /// </list>
 /// </remarks>
-[SurfaceBudget(17)]
+[SurfaceBudget(16)]
 public interface IGoogleSyncService : IApplicationService
 {
     /// <summary>
@@ -70,20 +71,6 @@ public interface IGoogleSyncService : IApplicationService
     /// resource exists, creates or links the group. Called when prefix is set on a team.
     /// </summary>
     Task<GroupLinkResult> EnsureTeamGroupAsync(Guid teamId, bool confirmReactivation = false, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Provisions a new Google Group for a team.
-    /// </summary>
-    /// <param name="teamId">The team ID.</param>
-    /// <param name="groupEmail">The group email address (e.g., team-name@nobodies.team).</param>
-    /// <param name="groupName">Display name for the group.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>The created Google resource.</returns>
-    Task<GoogleResource> ProvisionTeamGroupAsync(
-        Guid teamId,
-        string groupEmail,
-        string groupName,
-        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Adds a user to a Google Group.
