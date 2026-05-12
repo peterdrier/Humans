@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Expenses;
@@ -27,7 +28,7 @@ public class ExpenseReportServiceHoldedOutboxTests
     private readonly IBudgetService _budgetService;
     private readonly IUserService _userService;
     private readonly IHoldedClient _holdedClient;
-    private readonly IExpenseAttachmentStorageService _attachmentStorage;
+    private readonly IFileStorage _fileStorage;
     private readonly FakeClock _clock;
     private readonly ExpenseReportService _sut;
 
@@ -57,7 +58,7 @@ public class ExpenseReportServiceHoldedOutboxTests
         _budgetService = Substitute.For<IBudgetService>();
         _userService = Substitute.For<IUserService>();
         _holdedClient = Substitute.For<IHoldedClient>();
-        _attachmentStorage = Substitute.For<IExpenseAttachmentStorageService>();
+        _fileStorage = Substitute.For<IFileStorage>();
         _clock = new FakeClock(Now);
 
         _budgetService.GetCategoryByIdAsync(CategoryId)
@@ -71,7 +72,7 @@ public class ExpenseReportServiceHoldedOutboxTests
 
         _sut = new ExpenseReportService(
             _repo,
-            _attachmentStorage,
+            _fileStorage,
             _budgetService,
             Substitute.For<ITeamService>(),
             _userService,
@@ -224,12 +225,14 @@ public class ExpenseReportServiceHoldedOutboxTests
         _holdedClient.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
             .Returns(holdedDocId);
 
-        var stream1 = new MemoryStream([1, 2]);
-        var stream2 = new MemoryStream([3, 4]);
-        _attachmentStorage.OpenReadAsync(attachment1.Id, ".pdf", Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<Stream>(stream1));
-        _attachmentStorage.OpenReadAsync(attachment2.Id, ".jpg", Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<Stream>(stream2));
+        _fileStorage.TryReadAsync(
+                $"uploads/expense-attachments/{attachment1.Id}.pdf",
+                Arg.Any<CancellationToken>())
+            .Returns(new byte[] { 1, 2 });
+        _fileStorage.TryReadAsync(
+                $"uploads/expense-attachments/{attachment2.Id}.jpg",
+                Arg.Any<CancellationToken>())
+            .Returns(new byte[] { 3, 4 });
 
         await _sut.DrainHoldedOutboxAsync(BatchSize);
 
@@ -391,7 +394,7 @@ public class ExpenseReportServiceHoldedOutboxTests
         var logger = Substitute.For<ILogger<ExpenseReportService>>();
         var sut = new ExpenseReportService(
             _repo,
-            _attachmentStorage,
+            _fileStorage,
             _budgetService,
             Substitute.For<ITeamService>(),
             _userService,

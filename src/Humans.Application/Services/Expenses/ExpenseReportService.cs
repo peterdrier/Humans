@@ -1,5 +1,6 @@
 using Humans.Application.Extensions;
 using Humans.Application.Helpers;
+using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Expenses;
@@ -26,7 +27,7 @@ namespace Humans.Application.Services.Expenses;
 public sealed class ExpenseReportService : IExpenseReportService, IUserDataContributor
 {
     private readonly IExpenseRepository _repo;
-    private readonly IExpenseAttachmentStorageService _storage;
+    private readonly IFileStorage _fileStorage;
     private readonly IBudgetService _budgetService;
     private readonly ITeamService _teamService;
     private readonly IUserService _userService;
@@ -38,7 +39,7 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
 
     public ExpenseReportService(
         IExpenseRepository repo,
-        IExpenseAttachmentStorageService storage,
+        IFileStorage fileStorage,
         IBudgetService budgetService,
         ITeamService teamService,
         IUserService userService,
@@ -49,7 +50,7 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
         ILogger<ExpenseReportService> logger)
     {
         _repo = repo;
-        _storage = storage;
+        _fileStorage = fileStorage;
         _budgetService = budgetService;
         _teamService = teamService;
         _userService = userService;
@@ -59,6 +60,15 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
         _clock = clock;
         _logger = logger;
     }
+
+    public static string AttachmentKey(Guid id, string extension) =>
+        $"uploads/expense-attachments/{id}{extension}";
+
+    private static readonly HashSet<string> AllowedExtensions =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            ".pdf", ".jpg", ".jpeg", ".png", ".heic"
+        };
 
     // ─────────────────────────────── Reads ───────────────────────────────────
 
@@ -221,7 +231,8 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
             await _repo.RemoveAttachmentAsync(line.Attachment.Id, ct);
             try
             {
-                await _storage.DeleteAsync(line.Attachment.Id, line.Attachment.Extension, ct);
+                await _fileStorage.DeleteAsync(
+                    AttachmentKey(line.Attachment.Id, line.Attachment.Extension), ct);
             }
             catch (Exception ex)
             {
@@ -261,7 +272,11 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
             throw new UnauthorizedAccessException("Line does not belong to the specified report.");
 
         var extension = Path.GetExtension(originalFileName).ToLowerInvariant();
-        var attachmentId = await _storage.StoreAsync(content, extension, contentType, ct);
+        if (!AllowedExtensions.Contains(extension))
+            throw new InvalidOperationException("Unsupported file type. Upload PDF, JPEG, PNG, or HEIC.");
+
+        var attachmentId = Guid.NewGuid();
+        await _fileStorage.SaveAsync(AttachmentKey(attachmentId, extension), content, ct);
 
         var attachment = new ExpenseAttachment
         {
@@ -303,7 +318,8 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
 
         try
         {
-            await _storage.DeleteAsync(line.Attachment.Id, line.Attachment.Extension, ct);
+            await _fileStorage.DeleteAsync(
+                AttachmentKey(line.Attachment.Id, line.Attachment.Extension), ct);
         }
         catch (Exception ex)
         {
@@ -720,24 +736,25 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
                 continue;
             }
 
-            var stream = await _storage.OpenReadAsync(
-                line.Attachment.Id, line.Attachment.Extension, ct);
-            try
+            var bytes = await _fileStorage.TryReadAsync(
+                AttachmentKey(line.Attachment.Id, line.Attachment.Extension), ct);
+            if (bytes is null)
             {
-                await _holdedClient.UploadAttachmentAsync(
-                    holdedDocId,
-                    new HoldedAttachmentInput
-                    {
-                        FileName = line.Attachment.OriginalFileName,
-                        ContentType = line.Attachment.ContentType,
-                        Content = stream,
-                    },
-                    ct);
+                _logger.LogWarning(
+                    "Attachment file {AttachmentId} missing on disk while uploading to Holded doc {HoldedDocId}",
+                    line.Attachment.Id, holdedDocId);
+                continue;
             }
-            finally
-            {
-                await stream.DisposeAsync();
-            }
+            using var stream = new MemoryStream(bytes, writable: false);
+            await _holdedClient.UploadAttachmentAsync(
+                holdedDocId,
+                new HoldedAttachmentInput
+                {
+                    FileName = line.Attachment.OriginalFileName,
+                    ContentType = line.Attachment.ContentType,
+                    Content = stream,
+                },
+                ct);
         }
 
         await _repo.MarkOutboxProcessedAsync(outboxEventId, now, ct);

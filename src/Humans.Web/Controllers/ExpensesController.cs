@@ -1,8 +1,10 @@
 using System.Text;
+using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Expenses;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
+using Humans.Application.Services.Expenses;
 using Humans.Application.Services.Expenses.Dtos;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
@@ -24,7 +26,7 @@ namespace Humans.Web.Controllers;
 public sealed class ExpensesController : HumansControllerBase
 {
     private readonly IExpenseReportService _service;
-    private readonly IExpenseAttachmentStorageService _storage;
+    private readonly IFileStorage _fileStorage;
     private readonly IBudgetService _budgetService;
     private readonly IProfileService _profileService;
     private readonly IUserService _userService;
@@ -37,7 +39,7 @@ public sealed class ExpensesController : HumansControllerBase
     public ExpensesController(
         UserManager<User> userManager,
         IExpenseReportService service,
-        IExpenseAttachmentStorageService storage,
+        IFileStorage fileStorage,
         IBudgetService budgetService,
         IProfileService profileService,
         IUserService userService,
@@ -49,7 +51,7 @@ public sealed class ExpensesController : HumansControllerBase
         : base(userManager)
     {
         _service = service;
-        _storage = storage;
+        _fileStorage = fileStorage;
         _budgetService = budgetService;
         _profileService = profileService;
         _userService = userService;
@@ -595,8 +597,10 @@ public sealed class ExpensesController : HumansControllerBase
                 .FirstOrDefault(a => a?.Id == attachmentId);
             if (attachment is null) return NotFound();
 
-            var stream = await _storage.OpenReadAsync(attachment.Id, attachment.Extension);
-            return File(stream, attachment.ContentType, attachment.OriginalFileName);
+            var bytes = await _fileStorage.TryReadAsync(
+                ExpenseReportService.AttachmentKey(attachment.Id, attachment.Extension));
+            if (bytes is null) return NotFound();
+            return File(bytes, attachment.ContentType, attachment.OriginalFileName);
         }
         catch (Exception ex)
         {
