@@ -163,7 +163,7 @@ public sealed class MailerAdminController : HumansControllerBase
             if (isOptedOut) humansOutMlIn++;
         }
 
-        int humansInMlAbsent = 0; // TODO: cross-reference once IUserEmailService supports it
+        int? humansInMlAbsent = null; // TODO: cross-reference once IUserEmailService supports it
 
         return new DriftReport(
             HumansOptedOutMlActive: humansOutMlIn,

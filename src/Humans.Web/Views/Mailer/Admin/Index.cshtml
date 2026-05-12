@@ -117,7 +117,7 @@
                         }
                         <tr class="@optedInAbsentClass">
                             <td>Opted-in in Humans but absent from ML</td>
-                            <td>@Model.Drift.HumansOptedInMlAbsent.ToString("N0")</td>
+                            <td>@(Model.Drift.HumansOptedInMlAbsent?.ToString("N0") ?? "—")</td>
                             <td>
                                 @if (Model.Drift.HumansOptedInMlAbsent > 0)
                                 {

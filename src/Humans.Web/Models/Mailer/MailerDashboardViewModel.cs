@@ -16,5 +16,5 @@ public sealed record MailerDashboardViewModel(
 
 public sealed record DriftReport(
     int HumansOptedOutMlActive,           // legal-trouble row
-    int HumansOptedInMlAbsent,            // service-quality row
+    int? HumansOptedInMlAbsent,           // service-quality row (null = not yet computed)
     int ForgottenButMlActive);            // GDPR row
