@@ -233,6 +233,7 @@ public sealed class HumansMetricsService : IHumansMetrics, IDisposable
             var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
             var membershipCalc = scope.ServiceProvider.GetRequiredService<IMembershipCalculator>();
             var applicationDecisionService = scope.ServiceProvider.GetRequiredService<IApplicationDecisionService>();
+            var teamService = scope.ServiceProvider.GetRequiredService<ITeamService>();
             var clock = scope.ServiceProvider.GetRequiredService<IClock>();
             var now = clock.GetCurrentInstant();
 
@@ -282,12 +283,12 @@ public sealed class HumansMetricsService : IHumansMetrics, IDisposable
                 .ToListAsync();
 
             // teams
-            var teamsActive = await db.Teams.CountAsync(t => t.IsActive);
-            var teamsInactive = await db.Teams.CountAsync(t => !t.IsActive);
+            var teams = await teamService.GetTeamsAsync(CancellationToken.None);
+            var teamsActive = teams.Values.Count(t => t.IsActive);
+            var teamsInactive = teams.Count - teamsActive;
 
             // team_join_requests_pending
-            var teamJoinRequestsPending = await db.TeamJoinRequests
-                .CountAsync(r => r.Status == TeamJoinRequestStatus.Pending);
+            var teamJoinRequestsPending = await teamService.GetTotalPendingJoinRequestCountAsync();
 
             // google_resources
             var teamResourceService = scope.ServiceProvider.GetRequiredService<ITeamResourceService>();
