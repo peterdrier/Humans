@@ -256,7 +256,7 @@ Each section's service owns these tables. Cross-service access goes through the 
 | **Store** | `StoreService` | `store_products`, `store_orders`, `store_order_lines`, `store_payments`, `store_invoices`, `store_treasury_sync_state` |
 | **Scanner** | none (phase 1 is presentational) | none |
 | **Campaigns** | `CampaignService` | `campaigns`, `campaign_codes`, `campaign_grants` |
-| **Google Integration** | `GoogleSyncService`, `GoogleAdminService`, `GoogleWorkspaceSyncService`, `GoogleWorkspaceUserService`, `DriveActivityMonitorService`, `SyncSettingsService`, `EmailProvisioningService` | `sync_service_settings`, `google_sync_outbox_events` |
+| **Google Integration** | `GoogleSyncService`, `GoogleAdminService`, `GoogleWorkspaceSyncService`, `GoogleWorkspaceUserService`, `DriveActivityMonitorService`, `SyncSettingsService`, `EmailProvisioningService` | `sync_service_settings`, `google_sync_outbox` |
 | **Email** | `EmailOutboxService`, `OutboxEmailService`, `EmailService` | `email_outbox_messages`; owns `system_settings` key `email_outbox_paused` |
 | **Feedback** | `FeedbackService` | `feedback_reports`, `feedback_messages` |
 | **Issues** | `IssuesService` | `issues`, `issue_comments` |
