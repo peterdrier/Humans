@@ -128,6 +128,9 @@ public sealed class MailerLiteClient : IMailerLiteService
         if (resp.Headers.TryGetValues("X-RateLimit-Remaining", out var values)
             && int.TryParse(values.FirstOrDefault(), CultureInfo.InvariantCulture, out var remaining) && remaining < 20)
             _logger.LogWarning("MailerLite rate limit remaining: {Remaining}", remaining);
+        if (!resp.IsSuccessStatusCode)
+            _logger.LogWarning("MailerLite returned {StatusCode}: {Method} {Url}",
+                (int)resp.StatusCode, method, url);
         return resp;
     }
 
