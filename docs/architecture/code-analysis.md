@@ -67,9 +67,10 @@ HUM0003 | UserManager.FindByEmailAsync / FindByNameAsync must not be called from
 HUM0004 | Profile.IsSuspended must not be written outside the allowlisted dual-writers                  | Error
 HUM0005 | IUserEmailService.UpdateEmailAsync may only be called from AccountController                  | Error
 HUM0006 | IUserEmailRepository.UpdateEmailAsync may only be called from UserEmailService                | Error
-HUM0008 | Controllers may not inject HumansDbContext                                                     | Error
-HUM0015 | Type decorated with [SurfaceBudget(N)] declares more than N public-instance methods            | Error
-HUM0016 | Type decorated with [SurfaceBudget(N)] declares fewer than N public-instance methods (slack)  | Error
+HUM0008 | Controllers may not inject HumansDbContext                                                    | Error
+HUM0009 | Class uses HumansDbContext but does not implement IRepository                                 | Error
+HUM0015 | Type decorated with [SurfaceBudget(N)] declares more than N public-instance methods           | Error
+HUM0016 | Type decorated with [SurfaceBudget(N)] declares fewer than N public-instance methods (slack) | Error
 
 Authoritative declaration: `src/Humans.Analyzers/AnalyzerReleases.Unshipped.md`
 (plus `AnalyzerReleases.Shipped.md` once we cut a 1.0).

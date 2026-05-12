@@ -240,6 +240,16 @@ public interface IUserEmailService : IApplicationService
         string email,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Returns distinct user ids whose email rows match the supplied prefix
+    /// and suffix. Used by Admin-only maintenance flows that resolve marked
+    /// account sets through the Profile-owned email table.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetUserIdsByEmailPrefixAndSuffixAsync(
+        string prefix,
+        string suffix,
+        CancellationToken cancellationToken = default);
+
     /// <summary>Resolve a user by exact, case-insensitive email match against UserEmails. Returns null if zero or ambiguous matches.</summary>
     Task<Guid?> GetUserIdByExactEmailAsync(string email, CancellationToken ct = default);
 

@@ -21,6 +21,7 @@ using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Infrastructure.Repositories.Governance;
 
 namespace Humans.Application.Tests.Services;
@@ -51,7 +52,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             .Options;
 
         _dbContext = new HumansDbContext(options);
-        _repository = new ApplicationRepository(_dbContext);
+        _repository = new ApplicationRepository(new TestDbContextFactory(options));
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
 
         // Default stubs — tests that need stitched user data override these.
@@ -173,6 +174,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         var result = await _service.WithdrawAsync(app.Id, userId);
 
         result.Success.Should().BeTrue();
+        _dbContext.ChangeTracker.Clear();
         var updated = await _dbContext.Applications.FirstAsync(a => a.Id == app.Id);
         updated.Status.Should().Be(ApplicationStatus.Withdrawn);
         _metrics.Received().RecordApplicationProcessed("withdrawn");
@@ -214,6 +216,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         var result = await _service.ApproveAsync(app.Id, Guid.NewGuid(), "Approved", null);
 
         result.Success.Should().BeTrue();
+        _dbContext.ChangeTracker.Clear();
         var updated = await _dbContext.Applications.FirstAsync(a => a.Id == app.Id);
         updated.Status.Should().Be(ApplicationStatus.Approved);
     }
@@ -225,6 +228,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
 
         await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, null);
 
+        _dbContext.ChangeTracker.Clear();
         var updated = await _dbContext.Applications.FirstAsync(a => a.Id == app.Id);
         var today = _clock.GetCurrentInstant().InUtc().Date;
         var expectedExpiry = TermExpiryCalculator.ComputeTermExpiry(today);
@@ -452,6 +456,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         var result = await _service.RejectAsync(app.Id, Guid.NewGuid(), "Not ready", null);
 
         result.Success.Should().BeTrue();
+        _dbContext.ChangeTracker.Clear();
         var updated = await _dbContext.Applications.FirstAsync(a => a.Id == app.Id);
         updated.Status.Should().Be(ApplicationStatus.Rejected);
         updated.DecisionNote.Should().Be("Not ready");

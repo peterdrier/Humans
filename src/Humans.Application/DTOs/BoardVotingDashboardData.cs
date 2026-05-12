@@ -3,7 +3,7 @@ using Humans.Application.DTOs.Governance;
 namespace Humans.Application.DTOs;
 
 /// <summary>
-/// Shape returned by <c>IOnboardingService.GetBoardVotingDashboardAsync</c>.
+/// Shape returned by <c>IApplicationDecisionService.GetBoardVotingDashboardAsync</c>.
 /// Holds a stitched list of application rows (applicant display/picture
 /// resolved via IUserService after the cross-domain nav was stripped) plus
 /// the set of current Board members the view renders columns for.

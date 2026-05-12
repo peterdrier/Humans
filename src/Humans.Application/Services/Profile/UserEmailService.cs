@@ -544,6 +544,12 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         string email, CancellationToken cancellationToken = default) =>
         _repository.GetUserIdByVerifiedEmailAsync(email, cancellationToken);
 
+    public Task<IReadOnlyList<Guid>> GetUserIdsByEmailPrefixAndSuffixAsync(
+        string prefix,
+        string suffix,
+        CancellationToken cancellationToken = default) =>
+        _repository.GetUserIdsByEmailPrefixAndSuffixAsync(prefix, suffix, cancellationToken);
+
     public async Task<Guid?> GetUserIdByExactEmailAsync(string email, CancellationToken ct = default)
     {
         // Returns null on zero matches (unverified-only or unknown address) and

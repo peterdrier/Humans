@@ -15,6 +15,15 @@
     <SatelliteResourceLanguages>en;es</SatelliteResourceLanguages>
 
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!--
+      Grandfathered analyzer rule IDs that emit some diagnostics at Warning
+      severity (via [Grandfathered("HUM####", ...)] on the violating class).
+      Listed here so those warnings don't fail the build; everything else
+      (nullable-reference CS8xxx, Roslynator RCS, Meziantou MA0xxx, …) stays
+      strict. Add an ID when you ship a new rule with grandfathered cases;
+      remove it once the last [Grandfathered] is deleted.
+    -->
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);HUM0009</WarningsNotAsErrors>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <AnalysisLevel>latest</AnalysisLevel>

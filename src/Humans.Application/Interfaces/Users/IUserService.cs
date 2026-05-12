@@ -13,6 +13,7 @@ namespace Humans.Application.Interfaces.Users;
 /// <remarks>
 /// Surface-budget recent history (newest first):
 /// <list type="bullet">
+///   <item>31→30 — issue-695 HUM0009 service-DbContext analyzer PR: net -1 (removed two [Obsolete] Google-email methods TrySetGoogleEmailAsync + SetGoogleEmailAsync; added DeleteUsersAsync for admin dev-reset).</item>
 ///   <item>2026-05-11 — InterfaceMethodBudgetTests retired; budget migrated to [SurfaceBudget(31)] (issue nobodies-collective/Humans#700).</item>
 ///   <item>30→31 — issue-660 EmailProblems case 8 cleanup: added DeleteAllExternalLoginsForUserAsync — service surface for the admin "Delete ghost logins" action. Auth-table cleanup; no expiable substitute (only the User section can write to AspNetUserLogins).</item>
 ///   <item>29→30 — issue-660 EmailProblems case 8: added GetUsersWithLoginsButNoEmailsAsync to surface ghost AspNetUserLogins rows. Authorized by repo owner — no expiable substitute exists at the service surface (UserLogins is auth-internal).</item>
@@ -22,7 +23,7 @@ namespace Humans.Application.Interfaces.Users;
 ///   <item>-1 GetContactUsersAsync removed (/Contacts surface deleted in PR 2 of email-identity-decoupling — only ContactService called it).</item>
 /// </list>
 /// </remarks>
-[SurfaceBudget(31)]
+[SurfaceBudget(30)]
 public interface IUserService : IApplicationService
 {
     /// <summary>
@@ -139,26 +140,6 @@ public interface IUserService : IApplicationService
         Guid userId, CancellationToken ct = default);
 
     // ---- Methods added for Profile-section migration (§15 Step 0) ----
-
-    /// <summary>
-    /// Sets <c>User.GoogleEmail</c> if it is currently null. No-op if the
-    /// user already has a GoogleEmail set or the user does not exist.
-    /// Returns true if the GoogleEmail was set.
-    /// </summary>
-    [Obsolete("Issue nobodies-collective/Humans#687: User.GoogleEmail is being deprecated. The Google identity now lives on the UserEmail row (UserEmail.IsGoogle), maintained by UserEmailService.EnsureGoogleInvariantAsync on every row creation. Read FullProfile.GoogleEmail; promote a row with IUserEmailService.SetGoogleAsync.")]
-    Task<bool> TrySetGoogleEmailAsync(Guid userId, string email, CancellationToken ct = default);
-
-    /// <summary>
-    /// Unconditionally sets <c>User.GoogleEmail</c>, overwriting any existing
-    /// value. Used by <c>EmailProvisioningService</c> after a successful
-    /// Google Workspace provisioning, where the new <c>@nobodies.team</c>
-    /// address must become the authoritative Google identity even if the
-    /// user previously signed in with a personal Google account. Returns
-    /// true if the user exists and the value was written, false if the user
-    /// does not exist.
-    /// </summary>
-    [Obsolete("Issue nobodies-collective/Humans#687: User.GoogleEmail is being deprecated. Promote the desired UserEmail row via IUserEmailService.SetGoogleAsync (sets IsGoogle exclusively); read via FullProfile.GoogleEmail.")]
-    Task<bool> SetGoogleEmailAsync(Guid userId, string email, CancellationToken ct = default);
 
     /// <summary>
     /// Sync-driven <see cref="User.GoogleEmailStatus"/> write that preserves
@@ -285,6 +266,16 @@ public interface IUserService : IApplicationService
     /// UserEmail rows. Used by EmailProblems admin scan.
     /// </summary>
     Task<IReadOnlyList<Guid>> GetUsersWithLoginsButNoEmailsAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Permanently deletes the requested user rows after the caller has cleared
+    /// cross-section references. Also removes the users' email rows and
+    /// external login rows. Requires the current authenticated user to hold
+    /// the full Admin role.
+    /// </summary>
+    Task<int> DeleteUsersAsync(
+        IReadOnlyCollection<Guid> userIds,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Deletes every <c>AspNetUserLogins</c> row for the given user. Returns the

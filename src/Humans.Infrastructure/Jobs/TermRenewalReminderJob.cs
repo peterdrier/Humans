@@ -151,7 +151,7 @@ public class TermRenewalReminderJob : IRecurringJob
                             $"Your {application.MembershipTier} term expires {expiresFormatted}",
                             [application.UserId],
                             body: "Submit a renewal application to maintain your membership tier.",
-                            actionUrl: "/Application",
+                            actionUrl: "/Governance/Applications",
                             actionLabel: "Renew →",
                             cancellationToken: cancellationToken);
                     }

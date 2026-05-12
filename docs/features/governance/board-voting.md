@@ -1,8 +1,8 @@
 <!-- freshness:triggers
   src/Humans.Application/Services/Governance/**
-  src/Humans.Web/Controllers/OnboardingReviewController.cs
+  src/Humans.Web/Controllers/GovernanceBoardVotingController.cs
   src/Humans.Web/Controllers/BoardController.cs
-  src/Humans.Web/Views/OnboardingReview/**
+  src/Humans.Web/Views/Governance/BoardVoting/**
   src/Humans.Domain/Entities/BoardVote.cs
   src/Humans.Domain/Entities/Application.cs
   src/Humans.Domain/Entities/ApplicationStateHistory.cs
@@ -11,7 +11,7 @@
   src/Humans.Infrastructure/Data/Configurations/ApplicationConfiguration.cs
 -->
 <!-- freshness:flag-on-change
-  Board voting workflow, finalize/approve/reject effects, BoardVote deletion-on-finalization rule, and voting routes — review when ApplicationDecisionService, BoardVote entity, or OnboardingReview voting actions change.
+  Board voting workflow, finalize/approve/reject effects, BoardVote deletion-on-finalization rule, and voting routes — review when ApplicationDecisionService, BoardVote entity, or GovernanceBoardVotingController actions change.
 -->
 
 # Board Voting
@@ -227,10 +227,10 @@ Any Board member finalizes decision
 
 | Route | Method | Action | Access |
 |-------|--------|--------|--------|
-| `/OnboardingReview/BoardVoting` | GET | Voting dashboard | Board, Admin |
-| `/OnboardingReview/BoardVoting/{applicationId}` | GET | Application detail + vote form | Board, Admin |
-| `/OnboardingReview/BoardVoting/{applicationId}/Vote` | POST | Cast/update vote | Board |
-| `/OnboardingReview/BoardVoting/{applicationId}/Finalize` | POST | Finalize decision | Board, Admin |
+| `/Governance/BoardVoting` | GET | Voting dashboard | Board, Admin |
+| `/Governance/BoardVoting/{applicationId}` | GET | Application detail + vote form | Board, Admin |
+| `/Governance/BoardVoting/Vote` | POST | Cast/update vote | Board |
+| `/Governance/BoardVoting/Finalize` | POST | Finalize decision | Board, Admin |
 
 ## Business Rules
 

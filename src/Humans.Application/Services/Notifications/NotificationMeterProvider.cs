@@ -112,7 +112,7 @@ public sealed class NotificationMeterProvider : INotificationMeterProvider
                     {
                         Title = "Applications pending your vote",
                         Count = pendingVoteCount,
-                        ActionUrl = "/OnboardingReview/BoardVoting",
+                        ActionUrl = "/Governance/BoardVoting",
                         Priority = 9,
                     });
                 }

@@ -49,9 +49,12 @@
         {
             <span class="badge bg-light text-dark border me-1 mb-1" style="font-size: 0.7rem;">@team</span>
         }
-        @if (Model.HiddenTeams.Count > 0)
+        @if (Model.HiddenTeams.Count > 0 && Model.Teams.Count > 0)
         {
             <hr class="my-2" />
+        }
+        @if (Model.HiddenTeams.Count > 0)
+        {
             @foreach (var team in Model.HiddenTeams)
             {
                 <span class="badge bg-light text-dark border border-warning me-1 mb-1" style="font-size: 0.7rem;"

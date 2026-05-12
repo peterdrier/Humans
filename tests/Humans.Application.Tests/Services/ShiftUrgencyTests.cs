@@ -39,6 +39,7 @@ public class ShiftUrgencyTests
         _service = new ShiftManagementService(
             Substitute.For<IShiftManagementRepository>(),
             Substitute.For<IAuditLogService>(),
+            Substitute.For<IAdminAuthorizationService>(),
             serviceProvider,
             new MemoryCache(new MemoryCacheOptions()),
             new FakeClock(TestNow),

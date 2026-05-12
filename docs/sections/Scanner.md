@@ -55,4 +55,4 @@ None — this section is a pure client-side tool with no server-side side effect
 - **Decorator decision:** no caching decorator. No server-side data to cache.
 - **Cross-domain navs:** none.
 - **Cross-section calls:** none.
-- **Architecture test:** `EndpointAuthorizationTests.ScannerController_Remains_ClientOnly_GetSurface` pins the no-server-state surface; the general `HUM0008` controller analyzer and `NoServiceInjectsDbContext` ratchet test cover direct DbContext injection.
+- **Architecture test:** `EndpointAuthorizationTests.ScannerController_Remains_ClientOnly_GetSurface` pins the no-server-state surface; the `HUM0008` controller analyzer and `HUM0009` analyzer cover direct DbContext injection.

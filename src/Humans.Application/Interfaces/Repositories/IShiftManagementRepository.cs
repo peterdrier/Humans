@@ -54,6 +54,12 @@ public interface IShiftManagementRepository : IRepository
     /// <summary>Updates an existing <see cref="EventSettings"/>.</summary>
     Task UpdateEventSettingsAsync(EventSettings entity, CancellationToken ct = default);
 
+    /// <summary>
+    /// Deletes an <see cref="EventSettings"/> row and all Shifts-owned rows beneath it.
+    /// Returns the number of event rows deleted.
+    /// </summary>
+    Task<int> DeleteEventCascadeAsync(Guid eventSettingsId, CancellationToken ct = default);
+
     // ==========================================================================
     // Rota
     // ==========================================================================
