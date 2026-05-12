@@ -66,6 +66,6 @@ public sealed class ForgottenEmailRepository : IForgottenEmailRepository
     public async Task<int> CountAsync(CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.ForgottenEmails.CountAsync(ct);
+        return await ctx.ForgottenEmails.AsNoTracking().CountAsync(ct);
     }
 }

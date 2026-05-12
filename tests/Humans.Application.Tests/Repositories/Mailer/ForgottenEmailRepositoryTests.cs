@@ -9,9 +9,8 @@ using Xunit;
 
 namespace Humans.Application.Tests.Repositories.Mailer;
 
-public sealed class ForgottenEmailRepositoryTests : IDisposable
+public sealed class ForgottenEmailRepositoryTests
 {
-    private readonly HumansDbContext _dbContext;
     private readonly ForgottenEmailRepository _repo;
 
     public ForgottenEmailRepositoryTests()
@@ -19,14 +18,7 @@ public sealed class ForgottenEmailRepositoryTests : IDisposable
         var options = new DbContextOptionsBuilder<HumansDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
-        _dbContext = new HumansDbContext(options);
         _repo = new ForgottenEmailRepository(new TestDbContextFactory(options));
-    }
-
-    public void Dispose()
-    {
-        _dbContext.Dispose();
-        GC.SuppressFinalize(this);
     }
 
     [HumansFact]
