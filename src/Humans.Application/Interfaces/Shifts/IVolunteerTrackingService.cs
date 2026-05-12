@@ -1,8 +1,10 @@
+using Humans.Application.Architecture;
 using Humans.Application.DTOs;
 using NodaTime;
 
 namespace Humans.Application.Interfaces.Shifts;
 
+[SurfaceBudget(5)]
 public interface IVolunteerTrackingService : IApplicationService
 {
     Task<VolunteerTrackingViewModel> GetTrackingDataAsync(CancellationToken ct = default);
