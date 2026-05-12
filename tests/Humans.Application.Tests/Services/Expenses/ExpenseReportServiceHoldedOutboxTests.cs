@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Expenses;
@@ -27,7 +28,7 @@ public class ExpenseReportServiceHoldedOutboxTests
     private readonly IBudgetService _budgetService;
     private readonly IUserService _userService;
     private readonly IHoldedClient _holdedClient;
-    private readonly IExpenseAttachmentStorageService _attachmentStorage;
+    private readonly IFileStorage _fileStorage;
     private readonly FakeClock _clock;
     private readonly ExpenseReportService _sut;
 
@@ -57,7 +58,7 @@ public class ExpenseReportServiceHoldedOutboxTests
         _budgetService = Substitute.For<IBudgetService>();
         _userService = Substitute.For<IUserService>();
         _holdedClient = Substitute.For<IHoldedClient>();
-        _attachmentStorage = Substitute.For<IExpenseAttachmentStorageService>();
+        _fileStorage = Substitute.For<IFileStorage>();
         _clock = new FakeClock(Now);
 
         _budgetService.GetCategoryByIdAsync(CategoryId)
@@ -71,7 +72,7 @@ public class ExpenseReportServiceHoldedOutboxTests
 
         _sut = new ExpenseReportService(
             _repo,
-            _attachmentStorage,
+            _fileStorage,
             _budgetService,
             Substitute.For<ITeamService>(),
             _userService,
@@ -224,12 +225,14 @@ public class ExpenseReportServiceHoldedOutboxTests
         _holdedClient.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
             .Returns(holdedDocId);
 
-        var stream1 = new MemoryStream([1, 2]);
-        var stream2 = new MemoryStream([3, 4]);
-        _attachmentStorage.OpenReadAsync(attachment1.Id, ".pdf", Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<Stream>(stream1));
-        _attachmentStorage.OpenReadAsync(attachment2.Id, ".jpg", Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<Stream>(stream2));
+        _fileStorage.TryReadAsync(
+                $"uploads/expense-attachments/{attachment1.Id}.pdf",
+                Arg.Any<CancellationToken>())
+            .Returns(new byte[] { 1, 2 });
+        _fileStorage.TryReadAsync(
+                $"uploads/expense-attachments/{attachment2.Id}.jpg",
+                Arg.Any<CancellationToken>())
+            .Returns(new byte[] { 3, 4 });
 
         await _sut.DrainHoldedOutboxAsync(BatchSize);
 
@@ -277,6 +280,50 @@ public class ExpenseReportServiceHoldedOutboxTests
             report.Id, "doc-no-att", Now, Arg.Any<CancellationToken>());
         await _repo.Received(1).MarkOutboxProcessedAsync(
             outboxEvent.Id, Now, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task CreateIncomingDoc_AttachmentBytesMissing_ThrowsAndDoesNotMarkProcessed()
+    {
+        // IFileStorage.TryReadAsync returns null for both missing files and IO errors.
+        // Either case must keep the outbox event unprocessed so Hangfire can retry —
+        // silently skipping would permanently lose the receipt upload to Holded.
+        var attachment = new ExpenseAttachmentDto
+        {
+            Id = Guid.NewGuid(),
+            OriginalFileName = "receipt.pdf",
+            Extension = ".pdf",
+            ContentType = "application/pdf",
+            SizeBytes = 100,
+            UploadedByUserId = Guid.NewGuid(),
+            UploadedAt = Instant.FromUtc(2026, 5, 1, 0, 0),
+        };
+        var report = MakeReport() with
+        {
+            Lines = new List<ExpenseLineDto>
+            {
+                new() { Id = Guid.NewGuid(), ExpenseReportId = Guid.NewGuid(), Description = "Line A", Amount = 10m, SortOrder = 1, AttachmentId = attachment.Id, Attachment = attachment },
+            }
+        };
+        var outboxEvent = MakeEvent(report.Id, HoldedExpenseOutboxEventType.CreateIncomingDoc);
+
+        _repo.GetUnprocessedOutboxAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns([outboxEvent]);
+        _repo.GetByIdAsync(report.Id, Arg.Any<CancellationToken>())
+            .Returns(report);
+        _holdedClient.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
+            .Returns("doc-missing-bytes");
+        _fileStorage.TryReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns((byte[]?)null);
+
+        var act = async () => await _sut.DrainHoldedOutboxAsync(BatchSize);
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*could not be read from storage*");
+
+        await _holdedClient.DidNotReceiveWithAnyArgs()
+            .UploadAttachmentAsync(default!, default!, default);
+        await _repo.DidNotReceiveWithAnyArgs()
+            .MarkOutboxProcessedAsync(default, default, default);
     }
 
     [HumansFact]
@@ -391,7 +438,7 @@ public class ExpenseReportServiceHoldedOutboxTests
         var logger = Substitute.For<ILogger<ExpenseReportService>>();
         var sut = new ExpenseReportService(
             _repo,
-            _attachmentStorage,
+            _fileStorage,
             _budgetService,
             Substitute.For<ITeamService>(),
             _userService,

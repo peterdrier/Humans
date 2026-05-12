@@ -5,7 +5,6 @@ using Humans.Application.Services.Expenses;
 using Humans.Application.Services.Expenses.Dtos;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Repositories.Expenses;
-using Humans.Infrastructure.Services.Expenses;
 using ExpensesExpenseReportService = Humans.Application.Services.Expenses.ExpenseReportService;
 
 namespace Humans.Web.Extensions.Sections;
@@ -15,10 +14,6 @@ internal static class ExpensesSectionExtensions
     internal static IServiceCollection AddExpensesSection(
         this IServiceCollection services, IConfiguration config)
     {
-        services.Configure<ExpenseAttachmentFilesystemStorageOptions>(
-            config.GetSection(ExpenseAttachmentFilesystemStorageOptions.Section));
-        services.AddSingleton<IExpenseAttachmentStorageService,
-            ExpenseAttachmentFilesystemStorage>();
         services.AddSingleton<IExpenseRepository, ExpenseRepository>();
         // Dual-register: IExpenseReportService and IUserDataContributor resolve to the same instance.
         services.AddScoped<ExpensesExpenseReportService>();
