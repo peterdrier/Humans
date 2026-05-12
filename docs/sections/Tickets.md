@@ -120,6 +120,8 @@ Sender-initiated transfer request. `OriginalTicketAttendeeId` FK → `ticket_att
 | `/Tickets/Export/Orders` | GET | `TicketAdminOrAdmin` | CSV export of orders |
 | `/Welcome` | GET | `[AllowAnonymous]` | Post-purchase landing page (WelcomeController) |
 
+`/Welcome` is an intentional post-purchase landing route owned by Tickets logic while physically handled by `WelcomeController` in `Humans.Web`; it is documented here to avoid it being treated as a routing boundary drift in future alignments.
+
 ## Triggers
 
 - When ticket sync runs: vendor orders and issued tickets are upserted into `ticket_orders` / `ticket_attendees` (existing rows keyed by `VendorOrderId` / `VendorTicketId` retain their `Id` and their already-enriched fields), Stripe fees are enriched for newly-paid orders, VAT is recomputed for every order, vendor discount codes are matched to `CampaignGrants` via `ICampaignService.MarkGrantsRedeemedAsync`, and event participation is reconciled. On success, `LastSyncAt` is set to the start-of-sync instant; `_cache.Remove(CacheKeys.TicketEventSummary(eventId))` and `_cache.InvalidateTicketCaches()` both run (together clearing `TicketDashboardStats`, `UserIdsWithTickets`, `ValidAttendeeEmails`, and the per-event `TicketEventSummary:{eventId}`). Per-user `UserTicketCount:{userId}` entries are intentionally excluded from bulk invalidation — they have no enumerable key set and expire naturally via their 5-minute TTL.
