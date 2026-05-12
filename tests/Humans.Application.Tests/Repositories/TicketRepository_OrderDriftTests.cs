@@ -55,15 +55,23 @@ public sealed class TicketRepository_OrderDriftTests : IDisposable
         });
         _dbContext.TicketAttendees.Add(new TicketAttendee
         {
-            Id = Guid.NewGuid(), VendorTicketId = "tk_c1", TicketOrderId = cleanOrderId,
-            AttendeeName = "A1", Status = TicketAttendeeStatus.Valid,
-            VendorEventId = "ev_1", SyncedAt = now,
+            Id = Guid.NewGuid(),
+            VendorTicketId = "tk_c1",
+            TicketOrderId = cleanOrderId,
+            AttendeeName = "A1",
+            Status = TicketAttendeeStatus.Valid,
+            VendorEventId = "ev_1",
+            SyncedAt = now,
         });
         _dbContext.TicketAttendees.Add(new TicketAttendee
         {
-            Id = Guid.NewGuid(), VendorTicketId = "tk_c2", TicketOrderId = cleanOrderId,
-            AttendeeName = "A2", Status = TicketAttendeeStatus.Valid,
-            VendorEventId = "ev_1", SyncedAt = now,
+            Id = Guid.NewGuid(),
+            VendorTicketId = "tk_c2",
+            TicketOrderId = cleanOrderId,
+            AttendeeName = "A2",
+            Status = TicketAttendeeStatus.Valid,
+            VendorEventId = "ev_1",
+            SyncedAt = now,
         });
 
         // "drift" order: 3 attendees, 2 Valid + 1 Void → in result, IssuedCount=3, ValidCount=2
@@ -83,21 +91,33 @@ public sealed class TicketRepository_OrderDriftTests : IDisposable
         });
         _dbContext.TicketAttendees.Add(new TicketAttendee
         {
-            Id = Guid.NewGuid(), VendorTicketId = "tk_d1", TicketOrderId = driftOrderId,
-            AttendeeName = "B1", Status = TicketAttendeeStatus.Valid,
-            VendorEventId = "ev_1", SyncedAt = now,
+            Id = Guid.NewGuid(),
+            VendorTicketId = "tk_d1",
+            TicketOrderId = driftOrderId,
+            AttendeeName = "B1",
+            Status = TicketAttendeeStatus.Valid,
+            VendorEventId = "ev_1",
+            SyncedAt = now,
         });
         _dbContext.TicketAttendees.Add(new TicketAttendee
         {
-            Id = Guid.NewGuid(), VendorTicketId = "tk_d2", TicketOrderId = driftOrderId,
-            AttendeeName = "B2", Status = TicketAttendeeStatus.Valid,
-            VendorEventId = "ev_1", SyncedAt = now,
+            Id = Guid.NewGuid(),
+            VendorTicketId = "tk_d2",
+            TicketOrderId = driftOrderId,
+            AttendeeName = "B2",
+            Status = TicketAttendeeStatus.Valid,
+            VendorEventId = "ev_1",
+            SyncedAt = now,
         });
         _dbContext.TicketAttendees.Add(new TicketAttendee
         {
-            Id = Guid.NewGuid(), VendorTicketId = "tk_d3", TicketOrderId = driftOrderId,
-            AttendeeName = "B3", Status = TicketAttendeeStatus.Void,
-            VendorEventId = "ev_1", SyncedAt = now,
+            Id = Guid.NewGuid(),
+            VendorTicketId = "tk_d3",
+            TicketOrderId = driftOrderId,
+            AttendeeName = "B3",
+            Status = TicketAttendeeStatus.Void,
+            VendorEventId = "ev_1",
+            SyncedAt = now,
         });
 
         // "refunded" order: 2 attendees, 1 Valid + 1 Void, PaymentStatus=Refunded → not in result
@@ -117,15 +137,23 @@ public sealed class TicketRepository_OrderDriftTests : IDisposable
         });
         _dbContext.TicketAttendees.Add(new TicketAttendee
         {
-            Id = Guid.NewGuid(), VendorTicketId = "tk_r1", TicketOrderId = refundedOrderId,
-            AttendeeName = "C1", Status = TicketAttendeeStatus.Valid,
-            VendorEventId = "ev_1", SyncedAt = now,
+            Id = Guid.NewGuid(),
+            VendorTicketId = "tk_r1",
+            TicketOrderId = refundedOrderId,
+            AttendeeName = "C1",
+            Status = TicketAttendeeStatus.Valid,
+            VendorEventId = "ev_1",
+            SyncedAt = now,
         });
         _dbContext.TicketAttendees.Add(new TicketAttendee
         {
-            Id = Guid.NewGuid(), VendorTicketId = "tk_r2", TicketOrderId = refundedOrderId,
-            AttendeeName = "C2", Status = TicketAttendeeStatus.Void,
-            VendorEventId = "ev_1", SyncedAt = now,
+            Id = Guid.NewGuid(),
+            VendorTicketId = "tk_r2",
+            TicketOrderId = refundedOrderId,
+            AttendeeName = "C2",
+            Status = TicketAttendeeStatus.Void,
+            VendorEventId = "ev_1",
+            SyncedAt = now,
         });
 
         await _dbContext.SaveChangesAsync();

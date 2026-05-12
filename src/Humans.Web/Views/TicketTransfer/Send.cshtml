@@ -33,8 +33,25 @@
                 <input type="hidden" name="attendeeId" value="@Model.AttendeeId" />
                 <input type="hidden" name="query" value="@Model.Query" />
                 <input type="hidden" name="selectedUserId" value="@r.UserId" />
-                <button type="submit" class="btn btn-link text-decoration-none text-reset w-100 d-flex align-items-center p-3" style="text-align:left">
+                <button type="submit" class="btn btn-link text-decoration-none text-reset w-100 d-flex align-items-start gap-3 p-3" style="text-align:left">
                     <vc:human user-id="@r.UserId" layout="AvatarName" link="None" size="48" />
+                    @if (!string.IsNullOrEmpty(r.BurnerName) || !string.IsNullOrEmpty(r.PreferredEmail))
+                    {
+                        <div class="text-muted small lh-sm mt-1">
+                            @if (!string.IsNullOrEmpty(r.BurnerName) && !string.IsNullOrEmpty(r.PreferredEmail))
+                            {
+                                @($"@{r.BurnerName} · {r.PreferredEmail}")
+                            }
+                            else if (!string.IsNullOrEmpty(r.BurnerName))
+                            {
+                                @($"@{r.BurnerName}")
+                            }
+                            else
+                            {
+                                @r.PreferredEmail
+                            }
+                        </div>
+                    }
                 </button>
             </form>
         }

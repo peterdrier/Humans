@@ -197,4 +197,39 @@ public sealed class TicketTransferService_RetryIssueTests
             Arg.Any<TicketAttendee>(),
             Arg.Any<CancellationToken>());
     }
+
+    [HumansFact]
+    public async Task RetryIssue_VendorSuccess_LocalFailure_AuditsAndRethrows()
+    {
+        var attendeeId = Guid.NewGuid();
+        var request = await BuildPartiallyFailedRequestAsync(attendeeId);
+
+        var voidedAttendee = ValidAttendee(attendeeId);
+        voidedAttendee.Status = TicketAttendeeStatus.Void;
+        _ticketRepo.GetAttendeeByIdAsync(attendeeId, Arg.Any<CancellationToken>())
+            .Returns(voidedAttendee);
+        _vendor.IssueTicketAsync(Arg.Any<IssueTicketRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new VendorTicketDto("tt_new3", null, "Alice", "alice@example.com", "Standard", 50m, "valid"));
+
+        // Simulate a DB failure on the local writeback.
+        var dbError = new InvalidOperationException("simulated db error");
+        _ticketRepo.UpsertAttendeeAsync(Arg.Any<TicketAttendee>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(dbError);
+
+        var act = async () => await _service.RetryIssueAsync(request.Id, AdminId, null);
+
+        // Exception bubbles out.
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("simulated db error");
+
+        // Audit log received a PARTIAL STATE call.
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.TicketTransferApproved,
+            nameof(TicketTransferRequest),
+            request.Id,
+            Arg.Is<string>(s => s.Contains("PARTIAL STATE")),
+            AdminId,
+            SenderId,
+            nameof(User));
+    }
 }

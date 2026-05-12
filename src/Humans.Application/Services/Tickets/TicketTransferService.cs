@@ -435,40 +435,60 @@ public sealed class TicketTransferService : ITicketTransferService
             return await BuildRowDtoAsync(request, ct);
         }
 
-        // Issue succeeded — insert receiver attendee row, flip result, audit.
-        await _ticketRepo.UpsertAttendeeAsync(new TicketAttendee
+        // Vendor issued the new ticket. From here local work must not throw
+        // unrecorded — if it does, the next retry would consume the same hold
+        // again. Wrap in try/catch and audit any local failure.
+        try
         {
-            Id = Guid.NewGuid(),
-            VendorTicketId = issued.VendorTicketId,
-            TicketOrderId = attendee.TicketOrderId,
-            AttendeeName = request.ReceiverLegalName,
-            AttendeeEmail = request.ReceiverEmail,
-            TicketTypeName = attendee.TicketTypeName,
-            Price = attendee.Price,
-            Status = TicketAttendeeStatus.Valid,
-            VendorEventId = attendee.VendorEventId,
-            SyncedAt = now,
-            MatchedUserId = request.ReceiverUserId,
-        }, ct);
+            await _ticketRepo.UpsertAttendeeAsync(new TicketAttendee
+            {
+                Id = Guid.NewGuid(),
+                VendorTicketId = issued.VendorTicketId,
+                TicketOrderId = attendee.TicketOrderId,
+                AttendeeName = request.ReceiverLegalName,
+                AttendeeEmail = request.ReceiverEmail,
+                TicketTypeName = attendee.TicketTypeName,
+                Price = attendee.Price,
+                Status = TicketAttendeeStatus.Valid,
+                VendorEventId = attendee.VendorEventId,
+                SyncedAt = now,
+                MatchedUserId = request.ReceiverUserId,
+            }, ct);
 
-        request.VendorResult = TicketTransferVendorResult.Succeeded;
-        request.NewVendorTicketId = issued.VendorTicketId;
-        request.VendorMessage = $"hold {lastVoid.VendorReferenceId} (retry)";
-        if (!string.IsNullOrWhiteSpace(adminNotes))
-            request.AdminNotes = string.IsNullOrEmpty(request.AdminNotes)
-                ? adminNotes
-                : request.AdminNotes + "\nretry: " + adminNotes;
+            request.VendorResult = TicketTransferVendorResult.Succeeded;
+            request.NewVendorTicketId = issued.VendorTicketId;
+            request.VendorMessage = $"hold {lastVoid.VendorReferenceId} (retry)";
+            if (!string.IsNullOrWhiteSpace(adminNotes))
+                request.AdminNotes = string.IsNullOrEmpty(request.AdminNotes)
+                    ? adminNotes
+                    : request.AdminNotes + "\nretry: " + adminNotes;
 
-        AppendStep(request, new TicketTransferVendorStep(
-            Kind: TicketTransferVendorStepKind.RetryIssue,
-            Success: true,
-            OccurredAt: now,
-            VendorReferenceId: issued.VendorTicketId,
-            RequestSummary: $"retry-issue hold={lastVoid.VendorReferenceId} name={request.ReceiverLegalName}",
-            ResponseSummary: $"issue ok ticket={issued.VendorTicketId}",
-            ErrorMessage: null));
+            AppendStep(request, new TicketTransferVendorStep(
+                Kind: TicketTransferVendorStepKind.RetryIssue,
+                Success: true,
+                OccurredAt: now,
+                VendorReferenceId: issued.VendorTicketId,
+                RequestSummary: $"retry-issue hold={lastVoid.VendorReferenceId} name={request.ReceiverLegalName}",
+                ResponseSummary: $"issue ok ticket={issued.VendorTicketId}",
+                ErrorMessage: null));
 
-        await _transferRepo.UpdateAsync(request, ct);
+            await _transferRepo.UpdateAsync(request, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogCritical(ex,
+                "PARTIAL STATE: retry-issue succeeded at vendor (ticket {NewVendorTicketId}, hold {HoldId}) but local writeback failed for transfer {TransferId}. Manual reconciliation required.",
+                issued.VendorTicketId, lastVoid.VendorReferenceId, request.Id);
+            await _auditLog.LogAsync(
+                AuditAction.TicketTransferApproved,
+                nameof(TicketTransferRequest),
+                request.Id,
+                $"PARTIAL STATE: retry-issue produced vendor ticket {issued.VendorTicketId} but local update failed: {ex.Message}",
+                adminUserId,
+                request.SenderUserId,
+                nameof(User));
+            throw;
+        }
 
         _ticketQueryService.InvalidateAfterTransfer(request.SenderUserId, request.ReceiverUserId);
 
