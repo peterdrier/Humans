@@ -2021,11 +2021,7 @@ public class ProfileController : HumansControllerBase
                 .OrderBy(m => m.TeamName, StringComparer.OrdinalIgnoreCase)
                 .ToList();
             var publicTeams = memberships.Where(m => !m.IsHidden).Select(m => m.TeamName).ToList();
-            var viewerCanSeeHidden =
-                (await _authorizationService.AuthorizeAsync(User, PolicyNames.TeamsAdminBoardOrAdmin)).Succeeded;
-            var hiddenTeams = viewerCanSeeHidden
-                ? memberships.Where(m => m.IsHidden).Select(m => m.TeamName).ToList()
-                : [];
+            var hiddenTeams = memberships.Where(m => m.IsHidden).Select(m => m.TeamName).ToList();
             var profileLanguages = await _profileService.GetProfileLanguagesAsync(profile.Id, ct);
 
             var effectivePictureUrl = profile.HasCustomProfilePicture
