@@ -349,6 +349,48 @@ Scope: small. The section is already clean. Candidates:
 2. **Mutation testing (optional)** — author `stryker-shifts-config.json` and run; surface high-confidence prune candidates. (3.6) — Peter to decide whether to include in this PR or skip.
 3. **`[Slow]` markers** on dashboard-metrics tests if profiling shows >100 ms cases. (3.5)
 
+### Phase 3 — outcome (Stryker run, 2026-05-12)
+
+Item 1 (generic arch-rule promotion) **deferred** — touches every section's arch test file, properly its own cross-section refactor.
+
+Item 2 (Stryker pass) **done**. Config at `tests/Humans.Application.Tests/stryker-shifts-config.json`. Run command:
+
+```
+cd tests/Humans.Application.Tests
+dotnet tool run dotnet-stryker --config-file stryker-shifts-config.json --output ../../local/stryker-runs/shifts
+```
+
+Runtime: 6m34s. Mutation level Standard. Mutate glob: `**/Services/Shifts/*.cs` (4 files). Of 13,021 mutants generated, 1,267 were tested (rest skipped by Stryker filters or compile-error from mutation conflicts). Top-line score: **10.73%**.
+
+Per-file breakdown (Killed / Survived / CompileError / Ignored / Timeout):
+
+| Service | Killed | Survived | CompileError | Ignored | Timeout |
+|---|---:|---:|---:|---:|---:|
+| `GeneralAvailabilityService.cs` | 1 | 2 | 0 | 0 | 0 |
+| `ShiftManagementService.cs` | 130 | 482 | 187 | 95 | 5 |
+| `ShiftSignupService.cs` | **0** | 513 | 73 | 75 | 0 |
+| `VolunteerTrackingService.cs` | **0** | 134 | 36 | 8 | 0 |
+
+**`ShiftSignupService.cs` and `VolunteerTrackingService.cs` showing 0 killed mutants is almost certainly the MTP-runner test-discovery bug** that `docs/testing/mutation-testing.md` already warns about (`Stryker's MTP runner currently does not reliably honor test-case-filter in this project`). Both services have substantial behavior tests that pass when run directly via `dotnet test`. A genuine 0-killed across 513 mutants would mean the tests don't exercise the service at all — falsified by the Phase 2B run where `ShiftCoverageGap_FiresOnBail_*` and the medical-gating tests pass against real service code. Treat these two services' Stryker scores as **unreliable** until the MTP runner discovery issue is fixed.
+
+**`ShiftManagementService.cs` Stryker results ARE trustworthy.** 482 surviving mutants in 1500 LOC of production code, with 130 killed (21% kill rate). Top survivor categories:
+- 174 Equality mutations (boundary checks, status comparisons, capacity math)
+- 53 Statement mutations (block removal — high-signal undertested code)
+- 45 String mutations (mostly log messages — low signal)
+- 31 Logical mutations (`&&`/`||` swaps)
+- 23 Arithmetic, 22 Negate-expression, 30 Conditional
+
+Sampled high-value survivors (file:line, `ShiftManagementService.cs`) that **do not map to existing tests** and would warrant coverage in a dedicated follow-up:
+- L197–205 — early-entry-allocation step function boundaries (`key > dayOffset`, `key >= applicableKey`, `applicableKey == int.MinValue` sentinel).
+- L220–222 — team is-system / SystemTeamType validation on rota move target.
+- L246–252 — `targetTeam.ParentTeamId is null`, `rota.TeamId != targetTeamId`, system-team-type rejection on rota move.
+- L281, L289 — `confirmedCount >= 0`, `d.Status != SignupStatus.Pending` filter.
+- L350–360 — period boundaries (`rota.Period != RotaPeriod.Build`, `dayOffset > es.BuildStartOffset`, etc.) for shift creation.
+
+**Decision:** addressing the 482 ShiftManagementService survivors is **out of section-align scope** — it would unbounded-grow the test suite (likely 50–100 new tests). The Stryker artifact + config are committed so a dedicated `test(shifts): close ShiftManagementService Stryker coverage gaps` follow-up can pick this up. The section doc may also need invariants added that pin the system-team / parent-team validation rules currently only implicit in code.
+
+Item 3 (`[Slow]` markers) **deferred** — requires profiling timing data that wasn't captured in this run; trivial to add later.
+
 ### Phase 4 — Doc polish (Opus)
 
 1. **Section invariant doc** — verify `Shifts.md` accurately describes the new test placements, the new arch test file, and the corrected `VolunteerTrackingController` route. Confirm Architecture footer correctness.
