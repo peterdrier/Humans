@@ -205,7 +205,8 @@ public sealed class MailerImportService : IMailerImportService
         var prefs = await _prefs.GetPreferencesAsync(userId, ct);
         var marketing = prefs.FirstOrDefault(p => p.Category == MessageCategory.Marketing);
 
-        bool isBounceOrJunk = ml.Status is "bounced" or "junk";
+        bool isBounceOrJunk = string.Equals(ml.Status, "bounced", StringComparison.OrdinalIgnoreCase)
+                           || string.Equals(ml.Status, "junk",    StringComparison.OrdinalIgnoreCase);
         bool isUserAction = marketing is not null
             && (marketing.UpdateSource is "Profile" or "Guest" or "MagicLink" or "OneClick");
         bool humansNewerThanMl = marketing is not null
