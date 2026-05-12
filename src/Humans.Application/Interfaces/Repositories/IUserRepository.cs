@@ -268,6 +268,13 @@ public interface IUserRepository : IRepository
     Task<int> GetRejectedGoogleEmailCountAsync(CancellationToken ct = default);
 
     /// <summary>
+    /// Returns the count of users whose <c>ContactSource</c> equals
+    /// <paramref name="source"/>. Used by the admin dashboard to show
+    /// per-source import totals.
+    /// </summary>
+    Task<int> GetCountByContactSourceAsync(ContactSource source, CancellationToken ct = default);
+
+    /// <summary>
     /// Returns the ids of every user whose <c>DeletionScheduledFor</c> is at
     /// or before <paramref name="now"/> and whose <c>DeletionEligibleAfter</c>
     /// is either null or at or before <paramref name="now"/>. Used by the

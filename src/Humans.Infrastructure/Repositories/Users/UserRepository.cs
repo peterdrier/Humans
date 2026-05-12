@@ -568,6 +568,13 @@ public sealed class UserRepository : IUserRepository
         return await ctx.Users.CountAsync(u => u.GoogleEmailStatus == GoogleEmailStatus.Rejected, ct);
     }
 
+    public async Task<int> GetCountByContactSourceAsync(ContactSource source, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.Users.AsNoTracking()
+            .CountAsync(u => u.ContactSource == source, ct);
+    }
+
     public async Task<IReadOnlyList<Guid>> GetAccountsDueForAnonymizationAsync(
         Instant now, CancellationToken ct = default)
     {
