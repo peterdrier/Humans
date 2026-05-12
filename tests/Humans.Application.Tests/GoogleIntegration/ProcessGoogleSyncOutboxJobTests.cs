@@ -19,7 +19,7 @@ using Humans.Infrastructure.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
-namespace Humans.Application.Tests.Jobs;
+namespace Humans.Application.Tests.GoogleIntegration;
 
 public class ProcessGoogleSyncOutboxJobTests : IDisposable
 {

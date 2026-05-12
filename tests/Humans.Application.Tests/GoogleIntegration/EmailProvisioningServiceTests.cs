@@ -13,7 +13,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Xunit;
 
-namespace Humans.Application.Tests.Services;
+namespace Humans.Application.Tests.GoogleIntegration;
 
 public class EmailProvisioningServiceTests
 {

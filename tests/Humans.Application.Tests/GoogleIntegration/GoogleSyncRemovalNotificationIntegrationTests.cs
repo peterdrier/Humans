@@ -19,7 +19,7 @@ using NodaTime.Testing;
 using NSubstitute;
 using Xunit;
 
-namespace Humans.Application.Tests.Services;
+namespace Humans.Application.Tests.GoogleIntegration;
 
 /// <summary>
 /// End-to-end test of the sync removal-notification flow (issue

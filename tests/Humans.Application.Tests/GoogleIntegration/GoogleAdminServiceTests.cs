@@ -15,7 +15,7 @@ using NSubstitute.ExceptionExtensions;
 using Xunit;
 using GoogleAdminService = Humans.Application.Services.GoogleIntegration.GoogleAdminService;
 
-namespace Humans.Application.Tests.Services;
+namespace Humans.Application.Tests.GoogleIntegration;
 
 /// <summary>
 /// Unit tests for the migrated Google Integration

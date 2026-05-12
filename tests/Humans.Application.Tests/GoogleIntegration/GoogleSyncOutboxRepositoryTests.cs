@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using Xunit;
 
-namespace Humans.Application.Tests.Repositories;
+namespace Humans.Application.Tests.GoogleIntegration;
 
 /// <summary>
 /// Behavior tests for <see cref="GoogleSyncOutboxRepository"/> — the narrow

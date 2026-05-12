@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Xunit;
 
-namespace Humans.Application.Tests.Infrastructure.GoogleWorkspace;
+namespace Humans.Application.Tests.GoogleIntegration.Infrastructure;
 
 /// <summary>
 /// Resolution-level tests for the §15 Part 2a bridge DI wiring. The full

@@ -3,7 +3,7 @@ using Google.Apis.Requests;
 using Humans.Infrastructure.Services.GoogleWorkspace;
 using Xunit;
 
-namespace Humans.Application.Tests.Infrastructure.GoogleWorkspace;
+namespace Humans.Application.Tests.GoogleIntegration.Infrastructure;
 
 /// <summary>
 /// Focused unit tests for <see cref="GoogleDrivePermissionsClient.IsDuplicatePermissionError"/>,

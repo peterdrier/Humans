@@ -3,7 +3,7 @@ using Humans.Infrastructure.Services.GoogleWorkspace;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
-namespace Humans.Application.Tests.Infrastructure.GoogleWorkspace;
+namespace Humans.Application.Tests.GoogleIntegration.Infrastructure;
 
 /// <summary>
 /// Contract tests for <see cref="StubGoogleDirectoryClient"/>. The stub

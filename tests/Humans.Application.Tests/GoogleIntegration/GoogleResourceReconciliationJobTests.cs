@@ -12,7 +12,7 @@ using Xunit;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Notifications;
 
-namespace Humans.Application.Tests.Jobs;
+namespace Humans.Application.Tests.GoogleIntegration;
 
 public class GoogleResourceReconciliationJobTests : IDisposable
 {
