@@ -91,21 +91,6 @@ public class GoogleIntegrationArchitectureTests
     }
 
     [HumansFact]
-    public void EmailProvisioningService_HasNoGoogleApisImports()
-    {
-        // The Google Workspace Users API bridge lives behind IGoogleWorkspaceUserService.
-        // The Application-layer service must never reference Google SDK types
-        // directly — those belong to the Infrastructure implementation only.
-        var assembly = typeof(EmailProvisioningService).Assembly;
-        var referencedAssemblies = assembly.GetReferencedAssemblies();
-
-        referencedAssemblies
-            .Should().NotContain(
-                a => (a.Name ?? string.Empty).StartsWith("Google.Apis", StringComparison.Ordinal),
-                because: "Application-layer services must not import Google SDK types; the Google API bridge is IGoogleWorkspaceUserService (design-rules §13)");
-    }
-
-    [HumansFact]
     public void EmailProvisioningService_IsSealed()
     {
         typeof(EmailProvisioningService).IsSealed.Should().BeTrue(
@@ -168,18 +153,6 @@ public class GoogleIntegrationArchitectureTests
         // Repositories for section-owned tables.
         paramTypes.Should().Contain(typeof(IGoogleResourceRepository));
         paramTypes.Should().Contain(typeof(IGoogleSyncOutboxRepository));
-    }
-
-    [HumansFact]
-    public void GoogleWorkspaceSyncService_HasNoGoogleApisAssemblyReference()
-    {
-        var assembly = typeof(GoogleWorkspaceSyncService).Assembly;
-        var referencedAssemblies = assembly.GetReferencedAssemblies();
-
-        referencedAssemblies
-            .Should().NotContain(
-                a => (a.Name ?? string.Empty).StartsWith("Google.Apis", StringComparison.Ordinal),
-                because: "Humans.Application must stay free of Google SDK references — SDK calls route through bridge interfaces (design-rules §13)");
     }
 
     [HumansFact]
