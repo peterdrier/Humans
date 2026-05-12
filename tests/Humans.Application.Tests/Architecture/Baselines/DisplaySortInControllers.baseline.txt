@@ -69,7 +69,6 @@ src/Humans.Infrastructure/Repositories/Consent/ConsentRepository.cs:OrderByDesce
 src/Humans.Infrastructure/Repositories/Consent/ConsentRepository.cs:OrderByDescending#3
 src/Humans.Infrastructure/Repositories/Email/EmailOutboxRepository.cs:OrderBy#1
 src/Humans.Infrastructure/Repositories/Feedback/FeedbackRepository.cs:OrderBy#1
-src/Humans.Infrastructure/Repositories/Feedback/FeedbackRepository.cs:OrderBy#2
 src/Humans.Infrastructure/Repositories/GoogleIntegration/GoogleResourceRepository.cs:OrderBy#1
 src/Humans.Infrastructure/Repositories/GoogleIntegration/GoogleResourceRepository.cs:OrderBy#2
 src/Humans.Infrastructure/Repositories/GoogleIntegration/GoogleSyncOutboxRepository.cs:OrderBy#1

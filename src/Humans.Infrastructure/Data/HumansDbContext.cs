@@ -97,6 +97,11 @@ public class HumansDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
     public DbSet<StorePayment> StorePayments => Set<StorePayment>();
     public DbSet<StoreInvoice> StoreInvoices => Set<StoreInvoice>();
     public DbSet<StoreTreasurySyncState> StoreTreasurySyncStates => Set<StoreTreasurySyncState>();
+    public DbSet<ExpenseReport> ExpenseReports => Set<ExpenseReport>();
+    public DbSet<ExpenseLine> ExpenseLines => Set<ExpenseLine>();
+    public DbSet<ExpenseAttachment> ExpenseAttachments => Set<ExpenseAttachment>();
+    public DbSet<HoldedExpenseOutboxEvent> HoldedExpenseOutboxEvents
+        => Set<HoldedExpenseOutboxEvent>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

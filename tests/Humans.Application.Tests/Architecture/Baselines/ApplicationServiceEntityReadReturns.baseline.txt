@@ -25,13 +25,6 @@ Humans.Application.Interfaces.Campaigns.ICampaignService.GetAllGrantsForUserAsyn
 Humans.Application.Interfaces.Campaigns.ICampaignService.GetByIdAsync:Humans.Domain.Entities.Campaign
 Humans.Application.Interfaces.Campaigns.ICampaignService.GetDetailPageAsync:Humans.Domain.Entities.Campaign
 Humans.Application.Interfaces.Campaigns.ICampaignService.GetSendWavePageAsync:Humans.Domain.Entities.Campaign
-Humans.Application.Interfaces.Camps.ICampRoleService.GetAssignmentByIdAsync:Humans.Domain.Entities.CampRoleAssignment
-Humans.Application.Interfaces.Camps.ICampRoleService.GetDefinitionByIdAsync:Humans.Domain.Entities.CampRoleDefinition
-Humans.Application.Interfaces.Camps.ICampRoleService.ListDefinitionsAsync:Humans.Domain.Entities.CampRoleDefinition
-Humans.Application.Interfaces.Camps.ICampService.GetCampBySlugAsync:Humans.Domain.Entities.Camp
-Humans.Application.Interfaces.Camps.ICampService.GetCampSeasonByIdAsync:Humans.Domain.Entities.CampSeason
-Humans.Application.Interfaces.Camps.ICampService.GetSeasonMembersAsync:Humans.Domain.Entities.CampMember
-Humans.Application.Interfaces.Camps.ICampService.GetSettingsAsync:Humans.Domain.Entities.CampSettings
 Humans.Application.Interfaces.Consent.IConsentService.GetConsentDashboardAsync:Humans.Domain.Entities.ConsentRecord
 Humans.Application.Interfaces.Consent.IConsentService.GetConsentDashboardAsync:Humans.Domain.Entities.DocumentVersion
 Humans.Application.Interfaces.Consent.IConsentService.GetConsentDashboardAsync:Humans.Domain.Entities.Team
@@ -43,9 +36,6 @@ Humans.Application.Interfaces.Dashboard.IDashboardService.GetMemberDashboardAsyn
 Humans.Application.Interfaces.Dashboard.IDashboardService.GetMemberDashboardAsync:Humans.Domain.Entities.Profile
 Humans.Application.Interfaces.Dashboard.IDashboardService.GetMemberDashboardAsync:Humans.Domain.Entities.Shift
 Humans.Application.Interfaces.Dashboard.IDashboardService.GetMemberDashboardAsync:Humans.Domain.Entities.ShiftSignup
-Humans.Application.Interfaces.Feedback.IFeedbackService.GetFeedbackByIdAsync:Humans.Domain.Entities.FeedbackReport
-Humans.Application.Interfaces.Feedback.IFeedbackService.GetFeedbackListAsync:Humans.Domain.Entities.FeedbackReport
-Humans.Application.Interfaces.Feedback.IFeedbackService.GetMessagesAsync:Humans.Domain.Entities.FeedbackMessage
 Humans.Application.Interfaces.GoogleIntegration.IGoogleSyncService.GetRecentOutboxEventsAsync:Humans.Domain.Entities.GoogleSyncOutboxEvent
 Humans.Application.Interfaces.GoogleIntegration.IGoogleSyncService.GetResourceStatusAsync:Humans.Domain.Entities.GoogleResource
 Humans.Application.Interfaces.Governance.IApplicationDecisionService.GetApprovedInWindowAsync:Humans.Domain.Entities.Application

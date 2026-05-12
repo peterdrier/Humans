@@ -290,7 +290,7 @@ public sealed class DevPersonaSeeder
         var camp = await _campService.GetCampBySlugAsync(campSlug);
         if (camp is null)
         {
-            camp = await _campService.CreateCampAsync(
+            var created = await _campService.CreateCampAsync(
                 leadUserId,
                 campName,
                 $"dev-{campSlug}@localhost",
@@ -320,8 +320,8 @@ public sealed class DevPersonaSeeder
                 historicalNames: null,
                 year);
 
-            var createdCamp = await _campService.GetCampBySlugAsync(camp.Slug);
-            var season = createdCamp?.Seasons.FirstOrDefault(s => s.Year == year);
+            camp = await _campService.GetCampBySlugAsync(created.Slug);
+            var season = camp?.Seasons.FirstOrDefault(s => s.Year == year);
             if (season is not null)
             {
                 await _campService.ApproveSeasonAsync(
@@ -330,8 +330,11 @@ public sealed class DevPersonaSeeder
                     "Dev persona auto-seeded");
             }
 
-            _logger.LogInformation("DEV: seeded camp {Slug} ({Id})", camp.Slug, camp.Id);
+            _logger.LogInformation("DEV: seeded camp {Slug} ({Id})", created.Slug, created.Id);
         }
+
+        if (camp is null)
+            return;
 
         if (!await _campService.IsUserCampLeadAsync(leadUserId, camp.Id))
         {

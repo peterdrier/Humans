@@ -54,8 +54,9 @@ public class CampAdminController : HumansControllerBase
             var allCamps = await _campService.GetCampsForYearAsync(settings.PublicYear);
             var pendingSeasons = await _campService.GetPendingSeasonsAsync();
 
-            var nameLockDates = settings.OpenSeasons.Count > 0
-                ? await _campService.GetNameLockDatesAsync(settings.OpenSeasons)
+            var openSeasons = settings.OpenSeasons.ToList();
+            var nameLockDates = openSeasons.Count > 0
+                ? await _campService.GetNameLockDatesAsync(openSeasons)
                 : new Dictionary<int, NodaTime.LocalDate?>();
 
             var withdrawnSeasons = allCamps
@@ -111,7 +112,7 @@ public class CampAdminController : HumansControllerBase
             var vm = new CampAdminViewModel
             {
                 PublicYear = settings.PublicYear,
-                OpenSeasons = settings.OpenSeasons,
+                OpenSeasons = openSeasons,
                 TotalCamps = allCamps.Count,
                 ActiveCamps = allCamps.Count(b => b.Seasons.Any(s =>
                     s.Year == settings.PublicYear && (s.Status == CampSeasonStatus.Active || s.Status == CampSeasonStatus.Full))),
@@ -474,7 +475,7 @@ public class CampAdminController : HumansControllerBase
         return View(new CampRoleDefinitionListViewModel { Active = active, Deactivated = deactivated });
     }
 
-    private static CampRoleDefinitionListRowViewModel MapRow(CampRoleDefinition d) =>
+    private static CampRoleDefinitionListRowViewModel MapRow(CampRoleDefinitionInfo d) =>
         new(d.Id, d.Name, d.Description, d.SlotCount, d.MinimumRequired, d.SortOrder, d.IsActive);
 
     [HttpGet("Roles/Create")]

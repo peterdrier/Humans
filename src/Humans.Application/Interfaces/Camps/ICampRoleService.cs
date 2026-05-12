@@ -1,6 +1,7 @@
 using Humans.Application.Interfaces;
 using Humans.Application.Services.Camps;
 using Humans.Domain.Entities;
+using NodaTime;
 
 namespace Humans.Application.Interfaces.Camps;
 
@@ -8,9 +9,9 @@ public interface ICampRoleService : IApplicationService
 {
     // Definitions
 
-    Task<IReadOnlyList<CampRoleDefinition>> ListDefinitionsAsync(bool includeDeactivated, CancellationToken ct = default);
+    Task<IReadOnlyList<CampRoleDefinitionInfo>> ListDefinitionsAsync(bool includeDeactivated, CancellationToken ct = default);
 
-    Task<CampRoleDefinition?> GetDefinitionByIdAsync(Guid id, CancellationToken ct = default);
+    Task<CampRoleDefinitionInfo?> GetDefinitionByIdAsync(Guid id, CancellationToken ct = default);
 
     Task<CampRoleDefinition> CreateDefinitionAsync(CreateCampRoleDefinitionInput input, Guid actorUserId, CancellationToken ct = default);
 
@@ -31,7 +32,7 @@ public interface ICampRoleService : IApplicationService
     /// camp ownership before mutating it. Used by the per-camp UnassignRole
     /// controller action for the C2 cross-camp ownership check.
     /// </summary>
-    Task<CampRoleAssignment?> GetAssignmentByIdAsync(Guid assignmentId, CancellationToken ct = default);
+    Task<CampRoleAssignmentInfo?> GetAssignmentByIdAsync(Guid assignmentId, CancellationToken ct = default);
 
     Task<bool> UnassignAsync(Guid assignmentId, Guid actorUserId, CancellationToken ct = default);
 
@@ -60,3 +61,23 @@ public sealed record UpdateCampRoleDefinitionInput(
     int SlotCount,
     int MinimumRequired,
     int SortOrder);
+
+public sealed record CampRoleDefinitionInfo(
+    Guid Id,
+    string Name,
+    string? Description,
+    int SlotCount,
+    int MinimumRequired,
+    int SortOrder,
+    Instant CreatedAt,
+    Instant UpdatedAt,
+    Instant? DeactivatedAt)
+{
+    public bool IsActive => DeactivatedAt is null;
+}
+
+public sealed record CampRoleAssignmentInfo(
+    Guid Id,
+    Guid CampSeasonId,
+    Guid CampRoleDefinitionId,
+    Guid CampMemberId);

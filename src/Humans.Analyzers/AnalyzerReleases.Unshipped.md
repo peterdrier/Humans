@@ -10,3 +10,5 @@ HUM0005 | Humans.Architecture   | Error    | IUserEmailService.UpdateEmailAsync 
 HUM0006 | Humans.Architecture   | Error    | IUserEmailRepository.UpdateEmailAsync called from outside UserEmailService
 HUM0008 | Humans.Architecture   | Error    | Controller constructor injects HumansDbContext
 HUM0009 | Humans.Architecture   | Error    | Application service constructor injects HumansDbContext
+HUM0015 | Humans.Architecture   | Error    | Type decorated with [SurfaceBudget(N)] declares more than N public-instance methods
+HUM0016 | Humans.Architecture   | Error    | Type decorated with [SurfaceBudget(N)] declares fewer than N public-instance methods (slack — decrement budget)

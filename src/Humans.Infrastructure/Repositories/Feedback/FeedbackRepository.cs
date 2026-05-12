@@ -84,17 +84,6 @@ public sealed class FeedbackRepository : IFeedbackRepository
             .ToListAsync(ct);
     }
 
-    public async Task<IReadOnlyList<FeedbackMessage>> GetMessagesAsync(
-        Guid reportId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.FeedbackMessages
-            .AsNoTracking()
-            .Where(m => m.FeedbackReportId == reportId)
-            .OrderBy(m => m.CreatedAt)
-            .ToListAsync(ct);
-    }
-
     public async Task<int> GetActionableCountAsync(CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);

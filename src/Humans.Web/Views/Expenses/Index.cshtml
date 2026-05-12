@@ -1,0 +1,86 @@
+@model Humans.Web.Models.ExpensesIndexViewModel
+@using Humans.Domain.Enums
+@{
+    ViewData["Title"] = "My Expense Reports";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="mb-0">My Expense Reports</h1>
+    @if (Model.HasActiveYear)
+    {
+        <a asp-action="New" class="btn btn-primary">
+            <i class="fa-solid fa-plus me-1"></i>New Report
+        </a>
+    }
+</div>
+
+<vc:temp-data-alerts />
+
+@if (!Model.HasActiveYear)
+{
+    <div class="alert alert-info">
+        There is no active budget year at the moment. Expense reports cannot be filed until a budget year is activated.
+    </div>
+}
+else if (!Model.HasIban)
+{
+    <div class="alert alert-warning">
+        <i class="fa-solid fa-circle-exclamation me-1"></i>
+        You have not yet set your payment IBAN. You will be prompted to set it when you submit a report.
+    </div>
+}
+
+@if (Model.Reports.Count == 0)
+{
+    <div class="card">
+        <div class="card-body text-center text-muted py-5">
+            <i class="fa-solid fa-receipt fa-2x mb-3 d-block"></i>
+            <p class="mb-0">No expense reports yet.</p>
+            @if (Model.HasActiveYear)
+            {
+                <a asp-action="New" class="btn btn-outline-primary mt-3">File your first report</a>
+            }
+        </div>
+    </div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Created</th>
+                    <th>Category</th>
+                    <th>Status</th>
+                    <th class="text-end">Total</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var r in Model.Reports.OrderByDescending(x => x.CreatedAt))
+                {
+                    var badgeClass = r.Status switch
+                    {
+                        ExpenseReportStatus.Draft => "bg-secondary",
+                        ExpenseReportStatus.Submitted => "bg-primary",
+                        ExpenseReportStatus.CoordinatorEndorsed => "bg-info text-dark",
+                        ExpenseReportStatus.Approved => "bg-success",
+                        ExpenseReportStatus.SepaSent => "bg-warning text-dark",
+                        ExpenseReportStatus.Paid => "bg-success",
+                        ExpenseReportStatus.Withdrawn => "bg-secondary",
+                        _ => "bg-secondary"
+                    };
+                    <tr>
+                        <td>@r.CreatedAt.ToDisplayDate()</td>
+                        <td><small class="text-muted">@(Model.CategoryNames.TryGetValue(r.BudgetCategoryId, out var cat) ? cat : r.BudgetCategoryId.ToString())</small></td>
+                        <td><span class="badge @badgeClass">@r.Status</span></td>
+                        <td class="text-end">&euro;@r.Total.ToString("N2")</td>
+                        <td class="text-end">
+                            <a asp-action="Detail" asp-route-id="@r.Id" class="btn btn-sm btn-outline-secondary">View</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

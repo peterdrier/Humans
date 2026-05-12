@@ -1,0 +1,224 @@
+@model Humans.Web.Models.ExpenseReviewViewModel
+@using Humans.Domain.Enums
+@{
+    ViewData["Title"] = "Expense Reports — Finance Review";
+    var badgeClass = (ExpenseReportStatus s) => s switch
+    {
+        ExpenseReportStatus.Draft => "bg-secondary",
+        ExpenseReportStatus.Submitted => "bg-primary",
+        ExpenseReportStatus.CoordinatorEndorsed => "bg-info text-dark",
+        ExpenseReportStatus.Approved => "bg-success",
+        ExpenseReportStatus.SepaSent => "bg-warning text-dark",
+        ExpenseReportStatus.Paid => "bg-success",
+        _ => "bg-secondary"
+    };
+}
+
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item active" aria-current="page">Finance Review</li>
+    </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Finance Review</h1>
+</div>
+
+@if (TempData["Success"] is string success)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @success
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@if (TempData["Error"] is string error)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @error
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@if (!Model.Reports.Any())
+{
+    <div class="alert alert-info">
+        <i class="fa-solid fa-inbox me-2"></i>No reports require review.
+    </div>
+}
+else
+{
+    @* TODO Phase 9: wire form action to SepaGenerate POST for multi-select SEPA payout. *@
+    <form asp-action="SepaGenerate" method="post" id="reviewForm">
+        @Html.AntiForgeryToken()
+        <div class="d-flex justify-content-end mb-3">
+            <button type="submit" class="btn btn-primary" disabled id="sepaBtn">
+                <i class="fa-solid fa-file-export me-1"></i>Generate SEPA payout
+                <span class="badge bg-white text-primary ms-1" id="sepaBadge">0</span>
+            </button>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>
+                            <input type="checkbox" id="selectAll" class="form-check-input"
+                                   title="Select all Approved reports">
+                        </th>
+                        <th>Report</th>
+                        <th>Submitter</th>
+                        <th>Total</th>
+                        <th>Status</th>
+                        <th>Submitted</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var r in Model.Reports)
+                    {
+                        <tr>
+                            <td>
+                                @if (r.Status == ExpenseReportStatus.Approved)
+                                {
+                                    <input type="checkbox" name="ids" value="@r.Id"
+                                           class="form-check-input sepa-check">
+                                }
+                            </td>
+                            <td>
+                                <a asp-action="Detail" asp-route-id="@r.Id">
+                                    @r.Id.ToString()[..8]…
+                                </a>
+                            </td>
+                            <td>@(Model.SubmitterNames.TryGetValue(r.SubmitterUserId, out var name) ? name : "(unknown)")</td>
+                            <td>€@r.Total.ToString("N2")</td>
+                            <td>
+                                <span class="badge @badgeClass(r.Status)">@r.Status</span>
+                            </td>
+                            <td>
+                                @if (r.SubmittedAt.HasValue)
+                                {
+                                    @r.SubmittedAt.Value.ToDisplayDate()
+                                }
+                            </td>
+                            <td class="text-end">
+                                <div class="d-flex gap-2 justify-content-end">
+                                    <a asp-action="Detail" asp-route-id="@r.Id"
+                                       class="btn btn-sm btn-outline-secondary">
+                                        <i class="fa-solid fa-eye me-1"></i>View
+                                    </a>
+                                    @if (r.Status is ExpenseReportStatus.Submitted or ExpenseReportStatus.CoordinatorEndorsed)
+                                    {
+                                        <button type="button" class="btn btn-sm btn-success"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#approveModal-@r.Id">
+                                            <i class="fa-solid fa-check me-1"></i>Approve
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-danger"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#rejectModal-@r.Id">
+                                            <i class="fa-solid fa-xmark me-1"></i>Reject
+                                        </button>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </form>
+
+    @* Approve modals *@
+    @foreach (var r in Model.Reports.Where(x =>
+        x.Status is ExpenseReportStatus.Submitted or ExpenseReportStatus.CoordinatorEndorsed))
+    {
+        <div class="modal fade" id="approveModal-@r.Id" tabindex="-1"
+             aria-labelledby="approveModalLabel-@r.Id" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <form asp-action="Approve" asp-route-id="@r.Id" method="post">
+                        @Html.AntiForgeryToken()
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="approveModalLabel-@r.Id">Approve Report</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p class="mb-3">
+                                Total: <strong>€@r.Total.ToString("N2")</strong>
+                            </p>
+                            <div class="mb-3">
+                                <label class="form-label">Category override (optional)</label>
+                                <input type="text" class="form-control" name="OverrideCategoryId"
+                                       placeholder="Category GUID to override, or leave blank">
+                                <div class="form-text">Leave blank to keep the original category.</div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-success">Approve</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    }
+
+    @* Reject modals *@
+    @foreach (var r in Model.Reports.Where(x =>
+        x.Status is ExpenseReportStatus.Submitted or ExpenseReportStatus.CoordinatorEndorsed))
+    {
+        <div class="modal fade" id="rejectModal-@r.Id" tabindex="-1"
+             aria-labelledby="rejectModalLabel-@r.Id" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <form asp-action="Reject" asp-route-id="@r.Id" method="post">
+                        @Html.AntiForgeryToken()
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="rejectModalLabel-@r.Id">Reject Report</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p class="text-muted">
+                                The submitter will see this reason. Explain clearly why the report is being rejected.
+                            </p>
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">
+                                    Rejection reason <span class="text-danger">*</span>
+                                </label>
+                                <textarea class="form-control" name="Reason"
+                                          rows="3" maxlength="1000" required
+                                          placeholder="e.g. Missing documentation for line 3"></textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-danger">Reject</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    }
+
+    <script>
+        // SEPA multi-select: enable button and update badge as user selects Approved rows.
+        const checkboxes = document.querySelectorAll('.sepa-check');
+        const sepaBtn = document.getElementById('sepaBtn');
+        const sepaBadge = document.getElementById('sepaBadge');
+        const selectAll = document.getElementById('selectAll');
+
+        function updateSepaButton() {
+            const checked = document.querySelectorAll('.sepa-check:checked').length;
+            sepaBtn.disabled = checked === 0;
+            sepaBadge.textContent = checked;
+        }
+
+        checkboxes.forEach(cb => cb.addEventListener('change', updateSepaButton));
+
+        selectAll.addEventListener('change', () => {
+            checkboxes.forEach(cb => { cb.checked = selectAll.checked; });
+            updateSepaButton();
+        });
+    </script>
+}

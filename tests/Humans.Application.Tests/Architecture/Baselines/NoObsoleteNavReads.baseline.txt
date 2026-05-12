@@ -60,8 +60,6 @@ src/Humans.Application/Services/Calendar/CalendarService.cs:OwningTeam#1
 src/Humans.Application/Services/Calendar/CalendarService.cs:OwningTeam#2
 src/Humans.Application/Services/Camps/CampService.cs:User#1
 src/Humans.Application/Services/Consent/ConsentService.cs:Team#1
-src/Humans.Application/Services/Feedback/FeedbackService.cs:AssignedToTeam#1
-src/Humans.Application/Services/Feedback/FeedbackService.cs:User#1
 src/Humans.Application/Services/GoogleIntegration/GoogleWorkspaceSyncService.cs:Team#1
 src/Humans.Application/Services/GoogleIntegration/GoogleWorkspaceSyncService.cs:Team#10
 src/Humans.Application/Services/GoogleIntegration/GoogleWorkspaceSyncService.cs:Team#11
@@ -196,6 +194,11 @@ src/Humans.Infrastructure/Services/GoogleWorkspace/GoogleDriveActivityClient.cs:
 src/Humans.Infrastructure/Services/GoogleWorkspace/GoogleDriveActivityClient.cs:User#2
 src/Humans.Web/Authorization/MembershipRequiredFilter.cs:User#1
 src/Humans.Web/Authorization/Requirements/ActiveMemberOrShiftAccessHandler.cs:User#1
+src/Humans.Web/Authorization/Requirements/ExpenseReportAuthorizationHandler.cs:User#1
+src/Humans.Web/Authorization/Requirements/ExpenseReportAuthorizationHandler.cs:User#2
+src/Humans.Web/Authorization/Requirements/IbanAccessHandler.cs:User#1
+src/Humans.Web/Authorization/Requirements/IbanAccessHandler.cs:User#2
+src/Humans.Web/Authorization/Requirements/IbanAccessHandler.cs:User#3
 src/Humans.Web/Authorization/Requirements/BudgetAuthorizationHandler.cs:User#1
 src/Humans.Web/Authorization/Requirements/BudgetAuthorizationHandler.cs:User#2
 src/Humans.Web/Authorization/Requirements/CampAuthorizationHandler.cs:User#1

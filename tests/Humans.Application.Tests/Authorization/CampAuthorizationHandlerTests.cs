@@ -49,13 +49,19 @@ public sealed class CampAuthorizationHandlerTests
 
         var user = CreateUser(userKind, regularUserId);
         var camp = CreateCamp(campKind);
+        var campLookup = CreateCampLookup(campKind);
+        var campId = camp.Id;
 
         var result = await EvaluateAsync(user, camp);
+        var lookupResult = await EvaluateAsync(user, campLookup);
+        var idResult = await EvaluateAsync(user, campId);
 
         result.Should().Be(expected);
+        lookupResult.Should().Be(expected);
+        idResult.Should().Be(expected);
     }
 
-    private async Task<bool> EvaluateAsync(ClaimsPrincipal user, Camp resource)
+    private async Task<bool> EvaluateAsync(ClaimsPrincipal user, object resource)
     {
         var requirement = CampOperationRequirement.Manage;
         var context = new AuthorizationHandlerContext([requirement], user, resource);
@@ -74,6 +80,19 @@ public sealed class CampAuthorizationHandlerTests
                 _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
             }
         };
+
+    private static CampLookup CreateCampLookup(string kind) =>
+        new(
+            kind switch
+            {
+                "lead" => LeadCampId,
+                "other" => OtherCampId,
+                _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
+            },
+            Slug: "camp",
+            ContactEmail: "camp@example.com",
+            Seasons: [],
+            Leads: []);
 
     private static ClaimsPrincipal CreateUser(string kind, Guid regularUserId) =>
         kind switch
