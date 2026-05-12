@@ -68,7 +68,7 @@ HUM0004 | Profile.IsSuspended must not be written outside the allowlisted dual-w
 HUM0005 | IUserEmailService.UpdateEmailAsync may only be called from AccountController                  | Error
 HUM0006 | IUserEmailRepository.UpdateEmailAsync may only be called from UserEmailService                | Error
 HUM0008 | Controllers may not inject HumansDbContext                                                    | Error
-HUM0009 | Application services may not inject HumansDbContext                                           | Error
+HUM0009 | Class uses HumansDbContext but does not implement IRepository                                 | Error
 HUM0015 | Type decorated with [SurfaceBudget(N)] declares more than N public-instance methods           | Error
 HUM0016 | Type decorated with [SurfaceBudget(N)] declares fewer than N public-instance methods (slack) | Error
 

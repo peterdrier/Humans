@@ -5,7 +5,7 @@ using NSubstitute;
 using Xunit;
 using GoogleWorkspaceUserService = Humans.Application.Services.GoogleIntegration.GoogleWorkspaceUserService;
 
-namespace Humans.Application.Tests.Services;
+namespace Humans.Application.Tests.GoogleIntegration;
 
 /// <summary>
 /// Unit tests for the migrated Google Integration

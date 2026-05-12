@@ -47,6 +47,7 @@ public static class IssueSectionInference
         "board" or "voting" => IssueSectionRouting.Governance,
         "legal" or "consent" => IssueSectionRouting.Legal,
         "city" => IssueSectionRouting.CityPlanning,
+        "scanner" => IssueSectionRouting.Scanner,
         _ => null
     };
 }

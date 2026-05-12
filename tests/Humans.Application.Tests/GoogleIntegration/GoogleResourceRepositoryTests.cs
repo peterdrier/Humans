@@ -9,7 +9,7 @@ using NodaTime;
 using NodaTime.Testing;
 using Xunit;
 
-namespace Humans.Application.Tests.Repositories;
+namespace Humans.Application.Tests.GoogleIntegration;
 
 /// <summary>
 /// Behavior tests for <see cref="GoogleResourceRepository"/> — the only

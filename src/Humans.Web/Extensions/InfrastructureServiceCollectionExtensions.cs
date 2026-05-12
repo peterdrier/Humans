@@ -49,6 +49,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddAuditLogSection();
         services.AddGdprSection();
         services.AddAdminSection();
+        services.AddGoogleIntegrationSection();
         services.AddGuideSection(configuration);
         services.AddAgentSection(configuration);
         services.AddSearchSection();

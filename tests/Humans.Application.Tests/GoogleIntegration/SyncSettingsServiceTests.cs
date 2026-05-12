@@ -10,7 +10,7 @@ using Humans.Infrastructure.Repositories.GoogleIntegration;
 using Xunit;
 using SyncSettingsService = Humans.Application.Services.GoogleIntegration.SyncSettingsService;
 
-namespace Humans.Application.Tests.Services;
+namespace Humans.Application.Tests.GoogleIntegration;
 
 public class SyncSettingsServiceTests : IDisposable
 {

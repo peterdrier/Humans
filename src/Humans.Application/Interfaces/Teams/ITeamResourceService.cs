@@ -142,6 +142,24 @@ public interface ITeamResourceService : IApplicationService
     Task<string> GetServiceAccountEmailAsync(CancellationToken ct = default);
 
     /// <summary>
+    /// Returns the display name for each resource id. Missing ids are absent from the dictionary.
+    /// </summary>
+    /// <remarks>
+    /// Producer-side API added by section-align GoogleIntegration (PR #500) so the
+    /// AuditLog section's future align run can drop <c>AuditLogEntry.Resource</c>
+    /// nav + the two <c>.Include(e =&gt; e.Resource)</c> calls in
+    /// <c>AuditLogRepository.cs</c> (§6 cross-domain Include violation) and switch
+    /// to a service-side label lookup. Has no Web-layer caller in this PR by
+    /// design — the producer ships the API, the consumer migrates in their own
+    /// section pass per the boundary-fix protocol. Until then,
+    /// <c>memory/architecture/interface-method-additions-are-debt.md</c> is
+    /// satisfied by this remark; remove it when AuditLog wires the call.
+    /// </remarks>
+    Task<IReadOnlyDictionary<Guid, string>> GetResourceNamesByIdsAsync(
+        IReadOnlyCollection<Guid> resourceIds,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Gets a single Google resource by ID, including its team.
     /// </summary>
     Task<GoogleResource?> GetResourceByIdAsync(Guid resourceId, CancellationToken ct = default);

@@ -11,7 +11,7 @@ using NSubstitute;
 using Xunit;
 using DriveActivityMonitorService = Humans.Application.Services.GoogleIntegration.DriveActivityMonitorService;
 
-namespace Humans.Application.Tests.Services;
+namespace Humans.Application.Tests.GoogleIntegration;
 
 /// <summary>
 /// Behavioral tests for the §15-migrated
