@@ -67,6 +67,44 @@ public sealed class MailerAdminController : HumansControllerBase
         return View("~/Views/Mailer/Admin/Index.cshtml", vm);
     }
 
+    [HttpPost("Import/Commit")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Commit(CancellationToken ct)
+    {
+        var fresh = await _import.BuildPlanAsync(ct);
+
+        if (TempData["PlanCountsSnapshot"] is string snapshotJson)
+        {
+            var snapshot = JsonSerializer.Deserialize<ImportPlanCounts>(snapshotJson);
+            if (snapshot is not null && DriftedMoreThanTenPercent(snapshot, fresh.Counts))
+            {
+                TempData["Banner"] = "Plan changed since preview — review and re-confirm.";
+                return RedirectToAction(nameof(Import));
+            }
+        }
+
+        var result = await _import.ApplyAsync(fresh, ct);
+        TempData["Banner"] = result.FormatSummary();
+        return RedirectToAction(nameof(Index));
+    }
+
+    private static bool DriftedMoreThanTenPercent(ImportPlanCounts a, ImportPlanCounts b)
+    {
+        bool D(int prev, int now)
+        {
+            if (prev == 0) return now > 0;
+            return Math.Abs(now - prev) / (double)prev > 0.10;
+        }
+        return D(a.WillCreateContact, b.WillCreateContact)
+            || D(a.WillAttachWithFlip, b.WillAttachWithFlip)
+            || D(a.WillAttachConfirmOnly, b.WillAttachConfirmOnly)
+            || D(a.WillKeepHumansState, b.WillKeepHumansState)
+            || D(a.WillDeleteUnverifiedAndCreate, b.WillDeleteUnverifiedAndCreate)
+            || D(a.SkippedForgotten, b.SkippedForgotten)
+            || D(a.SkippedAmbiguous, b.SkippedAmbiguous)
+            || D(a.SkippedUnconfirmed, b.SkippedUnconfirmed);
+    }
+
     [HttpGet("Import")]
     public async Task<IActionResult> Import(CancellationToken ct)
     {
