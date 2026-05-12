@@ -71,6 +71,7 @@ Append-only per design-rules §12. Enforced at two layers: the architecture test
 - **Feedback / Communications:** `FeedbackResponseSent`, `FeedbackStatusChanged`, `FeedbackAssignmentChanged`, `FacilitatedMessageSent`.
 - **Issues:** `IssueStatusChanged`, `IssueAssigneeChanged`, `IssueSectionChanged`, `IssueGitHubLinked`.
 - **Store:** `StoreOrderCreated`, `StoreLineAdded`, `StoreLineRemoved`, `StoreCounterpartyEdited`, `StoreProductCreated`, `StoreProductUpdated`, `StoreProductDeactivated`, `StorePaymentRecorded`.
+- **Mailer / Imports:** `MailerLiteReconciliationCompleted` — job-level summary written at the end of each Mailer import. Description carries counts as a structured string; no per-row PII.
 
 Note: `BudgetAuditLog` is a separate per-section append-only log owned by Budget — it is **not** an `AuditAction` value and does not write to `audit_log`.
 
