@@ -69,6 +69,35 @@ public sealed class TicketTransferAdminController : HumansControllerBase
         return RedirectToAction(nameof(Index));
     }
 
+    [HttpPost("{id:guid}/RetryIssue")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RetryIssue(
+        Guid id, string? adminNotes, CancellationToken ct)
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return errorResult;
+
+        try
+        {
+            var result = await _service.RetryIssueAsync(id, user.Id, adminNotes, ct);
+            if (result.VendorResult == TicketTransferVendorResult.Succeeded)
+            {
+                SetSuccess($"Retry succeeded — new ticket {result.VendorMessage ?? result.Id.ToString()}.");
+            }
+            else
+            {
+                SetError($"Retry failed: {result.VendorMessage}.");
+            }
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning("Retry-issue rejected for transfer {TransferId}: {Message}",
+                id, ex.Message);
+            SetError(ex.Message);
+        }
+        return RedirectToAction(nameof(Detail), new { id });
+    }
+
     private void ApplyDecisionFeedback(bool approve, TicketTransferRowDto result)
     {
         if (!approve)
