@@ -60,6 +60,7 @@ public class ProfileControllerEditTests
     private readonly IApplicationDecisionService _applicationDecisionService =
         Substitute.For<IApplicationDecisionService>();
     private readonly IConfiguration _configuration = Substitute.For<IConfiguration>();
+    private readonly IShiftManagementService _shiftMgmt = Substitute.For<IShiftManagementService>();
     private readonly ProfileController _controller;
     private readonly Guid _userId = Guid.NewGuid();
 
@@ -97,7 +98,7 @@ public class ProfileControllerEditTests
             Substitute.For<IHumanLifecycleService>(),
             Substitute.For<IRoleAssignmentService>(),
             Substitute.For<IShiftSignupService>(),
-            Substitute.For<IShiftManagementService>(),
+            _shiftMgmt,
             Substitute.For<IGdprExportService>(),
             _configuration,
             new ConfigurationRegistry(),
@@ -244,6 +245,65 @@ public class ProfileControllerEditTests
             .UpdateDraftApplicationAsync(default, default, default!, default, default, default, default);
         await _applicationDecisionService.DidNotReceiveWithAnyArgs()
             .GetUserApplicationsAsync(default, default);
+    }
+
+    [HumansFact]
+    public async Task Edit_Post_WithShiftTagIds_CallsSetVolunteerTagPreferencesAsync()
+    {
+        _profileService.GetProfileAsync(_userId, Arg.Any<CancellationToken>()).Returns((Profile?)null);
+        _applicationDecisionService.GetUserApplicationsAsync(_userId, Arg.Any<CancellationToken>())
+            .Returns(Array.Empty<MemberApplication>());
+
+        var tagId1 = Guid.NewGuid();
+        var tagId2 = Guid.NewGuid();
+        var model = MakeValidModel(MembershipTier.Volunteer);
+        model.EditableShiftTagIds = [tagId1, tagId2];
+
+        await _controller.Edit(model);
+
+        await _shiftMgmt.Received(1).SetVolunteerTagPreferencesAsync(
+            _userId,
+            Arg.Is<IReadOnlyList<Guid>>(ids => ids.Count == 2 && ids.Contains(tagId1) && ids.Contains(tagId2)));
+    }
+
+    [HumansFact]
+    public async Task Edit_Post_WithEmptyShiftTagIds_CallsSetVolunteerTagPreferencesAsyncWithEmptyList()
+    {
+        _profileService.GetProfileAsync(_userId, Arg.Any<CancellationToken>()).Returns((Profile?)null);
+        _applicationDecisionService.GetUserApplicationsAsync(_userId, Arg.Any<CancellationToken>())
+            .Returns(Array.Empty<MemberApplication>());
+
+        var model = MakeValidModel(MembershipTier.Volunteer);
+        model.EditableShiftTagIds = [];
+
+        await _controller.Edit(model);
+
+        await _shiftMgmt.Received(1).SetVolunteerTagPreferencesAsync(
+            _userId,
+            Arg.Is<IReadOnlyList<Guid>>(ids => ids.Count == 0));
+    }
+
+    [HumansFact]
+    public async Task Edit_Post_ValidationFailure_RepopulatesAllShiftTagsAndDoesNotCallSetPreferences()
+    {
+        var tag1 = new ShiftTag { Id = Guid.NewGuid(), Name = "Heavy lifting" };
+        var tag2 = new ShiftTag { Id = Guid.NewGuid(), Name = "Working in the sun" };
+        _shiftMgmt.GetTagsAsync(Arg.Any<string?>())
+            .Returns(new List<ShiftTag> { tag1, tag2 });
+
+        // Force ModelState invalid before the action runs.
+        _controller.ModelState.AddModelError("BurnerName", "Required");
+
+        var model = MakeValidModel(MembershipTier.Volunteer);
+
+        var result = await _controller.Edit(model);
+
+        var viewResult = result.Should().BeOfType<ViewResult>().Subject;
+        var returnedModel = viewResult.Model.Should().BeOfType<ProfileViewModel>().Subject;
+        returnedModel.AllShiftTags.Should().HaveCountGreaterThan(0);
+
+        await _shiftMgmt.DidNotReceiveWithAnyArgs()
+            .SetVolunteerTagPreferencesAsync(default, default!);
     }
 
     private static ProfileViewModel MakeValidModel(
