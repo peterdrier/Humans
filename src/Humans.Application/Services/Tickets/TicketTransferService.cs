@@ -364,6 +364,112 @@ public sealed class TicketTransferService : ITicketTransferService
     public Task<int> CountPendingAsync(CancellationToken ct = default) =>
         _transferRepo.CountPendingAsync(ct);
 
+    public async Task<TicketTransferRowDto> RetryIssueAsync(
+        Guid transferRequestId, Guid adminUserId, string? adminNotes, CancellationToken ct = default)
+    {
+        var request = await _transferRepo.GetByIdAsync(transferRequestId, ct)
+            ?? throw new InvalidOperationException("Transfer not found.");
+        if (request.Status != TicketTransferStatus.Approved
+            || request.VendorResult != TicketTransferVendorResult.VoidSucceededIssueFailed)
+        {
+            throw new InvalidOperationException(
+                "Retry is only allowed when the transfer is Approved with VendorResult=VoidSucceededIssueFailed.");
+        }
+
+        var steps = JsonSerializer.Deserialize<List<TicketTransferVendorStep>>(
+            request.VendorStepsJson, VendorStepsJsonOptions) ?? new();
+        var lastVoid = steps.LastOrDefault(s =>
+            s.Kind == TicketTransferVendorStepKind.Void && s.Success && s.VendorReferenceId is not null);
+        if (lastVoid is null)
+            throw new InvalidOperationException("No recorded hold id to retry against.");
+
+        var attendee = await _ticketRepo.GetAttendeeByIdAsync(request.OriginalTicketAttendeeId, ct)
+            ?? throw new InvalidOperationException("Original attendee missing.");
+
+        var now = _clock.GetCurrentInstant();
+        VendorTicketDto issued;
+        try
+        {
+            issued = await _vendor.IssueTicketAsync(new IssueTicketRequest(
+                EventId: null,
+                TicketTypeId: null,
+                HoldId: lastVoid.VendorReferenceId,
+                FullName: request.ReceiverLegalName,
+                Email: request.ReceiverEmail,
+                SendEmail: true,
+                ExternalReference: request.Id.ToString("N")), ct);
+        }
+        catch (TicketVendorWriteException ex)
+        {
+            AppendStep(request, new TicketTransferVendorStep(
+                Kind: TicketTransferVendorStepKind.RetryIssue,
+                Success: false,
+                OccurredAt: now,
+                VendorReferenceId: null,
+                RequestSummary: $"retry-issue hold={lastVoid.VendorReferenceId} name={request.ReceiverLegalName}",
+                ResponseSummary: null,
+                ErrorMessage: $"({ex.Kind}) {ex.Message}"));
+            await _transferRepo.UpdateAsync(request, ct);
+            await _auditLog.LogAsync(
+                AuditAction.TicketTransferApproved,
+                nameof(TicketTransferRequest),
+                request.Id,
+                $"Retry-issue failed: {ex.Message}",
+                adminUserId,
+                request.SenderUserId,
+                nameof(User));
+            return await BuildRowDtoAsync(request, ct);
+        }
+
+        // Issue succeeded — insert receiver attendee row, flip result, audit.
+        await _ticketRepo.UpsertAttendeeAsync(new TicketAttendee
+        {
+            Id = Guid.NewGuid(),
+            VendorTicketId = issued.VendorTicketId,
+            TicketOrderId = attendee.TicketOrderId,
+            AttendeeName = request.ReceiverLegalName,
+            AttendeeEmail = request.ReceiverEmail,
+            TicketTypeName = attendee.TicketTypeName,
+            Price = attendee.Price,
+            Status = TicketAttendeeStatus.Valid,
+            VendorEventId = attendee.VendorEventId,
+            SyncedAt = now,
+            MatchedUserId = request.ReceiverUserId,
+        }, ct);
+
+        request.VendorResult = TicketTransferVendorResult.Succeeded;
+        request.NewVendorTicketId = issued.VendorTicketId;
+        request.VendorMessage = $"hold {lastVoid.VendorReferenceId} (retry)";
+        if (!string.IsNullOrWhiteSpace(adminNotes))
+            request.AdminNotes = string.IsNullOrEmpty(request.AdminNotes)
+                ? adminNotes
+                : request.AdminNotes + "\nretry: " + adminNotes;
+
+        AppendStep(request, new TicketTransferVendorStep(
+            Kind: TicketTransferVendorStepKind.RetryIssue,
+            Success: true,
+            OccurredAt: now,
+            VendorReferenceId: issued.VendorTicketId,
+            RequestSummary: $"retry-issue hold={lastVoid.VendorReferenceId} name={request.ReceiverLegalName}",
+            ResponseSummary: $"issue ok ticket={issued.VendorTicketId}",
+            ErrorMessage: null));
+
+        await _transferRepo.UpdateAsync(request, ct);
+
+        _ticketQueryService.InvalidateAfterTransfer(request.SenderUserId, request.ReceiverUserId);
+
+        await _auditLog.LogAsync(
+            AuditAction.TicketTransferApproved,
+            nameof(TicketTransferRequest),
+            request.Id,
+            $"Retry-issue success: ticket {issued.VendorTicketId}",
+            adminUserId,
+            request.SenderUserId,
+            nameof(User));
+
+        return await BuildRowDtoAsync(request, ct);
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────────
 
     private async Task WriteToVendorAsync(TicketTransferRequest request, CancellationToken ct)

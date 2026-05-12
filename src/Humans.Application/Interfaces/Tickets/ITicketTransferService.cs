@@ -5,7 +5,7 @@ using Humans.Application.Architecture;
 
 namespace Humans.Application.Interfaces.Tickets;
 
-[SurfaceBudget(11)]
+[SurfaceBudget(12)]
 public interface ITicketTransferService : IApplicationService
 {
     /// <summary>
@@ -76,4 +76,20 @@ public interface ITicketTransferService : IApplicationService
         Guid transferRequestId, CancellationToken ct = default);
 
     Task<int> CountPendingAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Retry the issue half of a void+reissue that previously failed. Requires
+    /// the request to be in state <c>Approved</c> with vendor result
+    /// <c>VoidSucceededIssueFailed</c>; the hold id is read from the most
+    /// recent successful <c>Void</c> step in <c>VendorStepsJson</c>. On
+    /// success, inserts the new <c>TicketAttendee</c> row, sets
+    /// <c>VendorResult=Succeeded</c>, appends a <c>RetryIssue</c> step, and
+    /// audits + cache-invalidates. On failure, appends a failed
+    /// <c>RetryIssue</c> step; state otherwise unchanged.
+    /// </summary>
+    Task<TicketTransferRowDto> RetryIssueAsync(
+        Guid transferRequestId,
+        Guid adminUserId,
+        string? adminNotes,
+        CancellationToken ct = default);
 }
