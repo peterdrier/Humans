@@ -10,6 +10,7 @@ using Humans.Domain.Enums;
 using Humans.Web.Authorization;
 using Humans.Web.Constants;
 using Humans.Web.Models;
+using Humans.Web.Models.Google;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Profiles;
