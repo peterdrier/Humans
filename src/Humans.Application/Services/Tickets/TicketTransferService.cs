@@ -348,13 +348,17 @@ public sealed class TicketTransferService : ITicketTransferService
         var senderCard = await BuildReceiverCardAsync(request.SenderUserId, ct);
         var receiverCard = await BuildReceiverCardAsync(request.ReceiverUserId, ct);
 
+        var attendee = await _ticketRepo.GetAttendeeByIdAsync(request.OriginalTicketAttendeeId, ct);
+
         // Cards fall back to a minimal stub if a profile somehow can't be built
         // (e.g. user soft-deleted between request and admin review). The row's
         // snapshot fields still carry the names we need.
         return new TicketTransferDetailDto(
             Row: row,
             SenderCard: senderCard ?? StubCard(request.SenderUserId, row.SenderDisplayName),
-            ReceiverCard: receiverCard ?? StubCard(request.ReceiverUserId, row.ReceiverLegalName));
+            ReceiverCard: receiverCard ?? StubCard(request.ReceiverUserId, row.ReceiverLegalName),
+            OrderDashboardUrl: attendee?.TicketOrder?.VendorDashboardUrl,
+            VendorStepsJson: request.VendorStepsJson);
     }
 
     private static ReceiverLookupResultDto StubCard(Guid userId, string displayName) =>
