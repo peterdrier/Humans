@@ -6,8 +6,10 @@ using Humans.Application.Interfaces.Mailer.Dtos;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
+using Humans.Domain.Enums;
 using Humans.Testing;
 using Humans.Web.Controllers.Mailer;
+using Humans.Web.Models.Mailer;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -109,6 +111,64 @@ public class MailerAdminControllerTests
             "Plan changed since preview — review and re-confirm.",
             ctrl.TempData["Banner"]);
         await _importService.DidNotReceive().ApplyAsync(Arg.Any<ImportPlan>(), Arg.Any<CancellationToken>());
+    }
+
+    // -----------------------------------------------------------------------
+    // Index — drift: HumansOptedOutMlActive counted correctly.
+    // -----------------------------------------------------------------------
+
+    [HumansFact]
+    public async Task Drift_CountsHumansOptedOutButMlActive()
+    {
+        // Arrange: one AttachVerified decision for user A, ML status "active".
+        var userId = Guid.NewGuid();
+        var decision = new SubscriberDecision(
+            Email: "a@example.com",
+            Status: "active",
+            Outcome: SubscriberOutcome.AttachVerified,
+            TargetUserId: userId,
+            UnverifiedEmailIdToDelete: null,
+            AmbiguousUserIds: null);
+
+        var plan = new ImportPlan(
+            Decisions: new[] { decision }.ToList().AsReadOnly(),
+            TotalPulled: 1);
+
+        _importService.BuildPlanAsync(Arg.Any<CancellationToken>()).Returns(plan);
+
+        // Prefs: user A is opted out of Marketing.
+        _prefs.IsOptedOutAsync(userId, MessageCategory.Marketing, Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        // Stub remaining Index dependencies with neutral defaults.
+        _mlService.GetAccountSummaryAsync(Arg.Any<CancellationToken>())
+            .Returns(new MailerLiteAccountSummary(0, 0, 0, 0, 0));
+        _mlService.ListGroupsAsync(Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyList<MailerLiteGroup>)Array.Empty<MailerLiteGroup>());
+        _userService.GetCountByContactSourceAsync(Arg.Any<ContactSource>(), Arg.Any<CancellationToken>())
+            .Returns(0);
+        _prefs.GetCountByCategoryAndStateAsync(
+                Arg.Any<MessageCategory>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns(0);
+        _forgotten.CountAsync(Arg.Any<CancellationToken>()).Returns(0);
+        _audit.GetFilteredEntriesAsync(
+                entityType: Arg.Any<string?>(),
+                entityId: Arg.Any<Guid?>(),
+                userId: Arg.Any<Guid?>(),
+                actions: Arg.Any<IReadOnlyList<AuditAction>?>(),
+                limit: Arg.Any<int>(),
+                ct: Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyList<AuditLogEntry>)Array.Empty<AuditLogEntry>());
+
+        var ctrl = BuildSut();
+
+        // Act
+        var result = await ctrl.Index(CancellationToken.None);
+
+        // Assert: drift report should count 1 Humans-opted-out / ML-active disagreement.
+        var view = Assert.IsType<ViewResult>(result);
+        var vm = Assert.IsType<MailerDashboardViewModel>(view.Model);
+        Assert.Equal(1, vm.Drift.HumansOptedOutMlActive);
     }
 
     // -----------------------------------------------------------------------

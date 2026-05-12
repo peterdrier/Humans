@@ -152,9 +152,22 @@ public sealed class MailerAdminController : HumansControllerBase
     private async Task<DriftReport> ComputeDriftAsync(CancellationToken ct)
     {
         var plan = await _import.BuildPlanAsync(ct);
+
+        int humansOutMlIn = 0;
+        foreach (var d in plan.Decisions.Where(d => d.Outcome == SubscriberOutcome.AttachVerified
+                                                || d.Outcome == SubscriberOutcome.AttachVerifiedConflictKept))
+        {
+            if (d.TargetUserId is not Guid uid) continue;
+            if (!string.Equals(d.Status, "active", StringComparison.OrdinalIgnoreCase)) continue;
+            var isOptedOut = await _prefs.IsOptedOutAsync(uid, MessageCategory.Marketing, ct);
+            if (isOptedOut) humansOutMlIn++;
+        }
+
+        int humansInMlAbsent = 0; // TODO: cross-reference once IUserEmailService supports it
+
         return new DriftReport(
-            HumansOptedOutMlActive: 0, // TODO: derive in Task 28
-            HumansOptedInMlAbsent: 0,  // TODO: derive in Task 28
+            HumansOptedOutMlActive: humansOutMlIn,
+            HumansOptedInMlAbsent: humansInMlAbsent,
             ForgottenButMlActive: plan.Counts.SkippedForgotten);
     }
 }
