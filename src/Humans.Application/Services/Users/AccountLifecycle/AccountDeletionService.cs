@@ -312,7 +312,7 @@ public sealed class AccountDeletionService : IAccountDeletionService
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            _logger.LogWarning(ex,
+            _logger.LogError(ex,
                 "Failed to record forgotten emails for user {UserId}; anonymization already committed",
                 userId);
         }
