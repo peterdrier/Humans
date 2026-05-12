@@ -283,6 +283,50 @@ public class ExpenseReportServiceHoldedOutboxTests
     }
 
     [HumansFact]
+    public async Task CreateIncomingDoc_AttachmentBytesMissing_ThrowsAndDoesNotMarkProcessed()
+    {
+        // IFileStorage.TryReadAsync returns null for both missing files and IO errors.
+        // Either case must keep the outbox event unprocessed so Hangfire can retry —
+        // silently skipping would permanently lose the receipt upload to Holded.
+        var attachment = new ExpenseAttachmentDto
+        {
+            Id = Guid.NewGuid(),
+            OriginalFileName = "receipt.pdf",
+            Extension = ".pdf",
+            ContentType = "application/pdf",
+            SizeBytes = 100,
+            UploadedByUserId = Guid.NewGuid(),
+            UploadedAt = Instant.FromUtc(2026, 5, 1, 0, 0),
+        };
+        var report = MakeReport() with
+        {
+            Lines = new List<ExpenseLineDto>
+            {
+                new() { Id = Guid.NewGuid(), ExpenseReportId = Guid.NewGuid(), Description = "Line A", Amount = 10m, SortOrder = 1, AttachmentId = attachment.Id, Attachment = attachment },
+            }
+        };
+        var outboxEvent = MakeEvent(report.Id, HoldedExpenseOutboxEventType.CreateIncomingDoc);
+
+        _repo.GetUnprocessedOutboxAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns([outboxEvent]);
+        _repo.GetByIdAsync(report.Id, Arg.Any<CancellationToken>())
+            .Returns(report);
+        _holdedClient.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
+            .Returns("doc-missing-bytes");
+        _fileStorage.TryReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns((byte[]?)null);
+
+        var act = async () => await _sut.DrainHoldedOutboxAsync(BatchSize);
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*could not be read from storage*");
+
+        await _holdedClient.DidNotReceiveWithAnyArgs()
+            .UploadAttachmentAsync(default!, default!, default);
+        await _repo.DidNotReceiveWithAnyArgs()
+            .MarkOutboxProcessedAsync(default, default, default);
+    }
+
+    [HumansFact]
     public async Task CreateIncomingDoc_HoldedDocIdAlreadySet_SkipsCreateAndOnlyMarksProcessed()
     {
         // Idempotency guard: if a previous retry already issued the Holded document

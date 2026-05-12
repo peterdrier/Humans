@@ -738,10 +738,12 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
                 AttachmentKey(line.Attachment.Id, line.Attachment.Extension), ct);
             if (bytes is null)
             {
-                _logger.LogWarning(
-                    "Attachment file {AttachmentId} missing on disk while uploading to Holded doc {HoldedDocId}",
-                    line.Attachment.Id, holdedDocId);
-                continue;
+                // TryReadAsync returns null for both missing files and IO errors; either
+                // way, swallowing it would mark the outbox event processed without ever
+                // uploading the receipt to Holded. Throw so the outer handler leaves the
+                // event unprocessed and Hangfire retries the job.
+                throw new InvalidOperationException(
+                    $"Attachment file for {line.Attachment.Id}{line.Attachment.Extension} could not be read from storage.");
             }
             using var stream = new MemoryStream(bytes, writable: false);
             await _holdedClient.UploadAttachmentAsync(
