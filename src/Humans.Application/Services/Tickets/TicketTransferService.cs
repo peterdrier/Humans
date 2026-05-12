@@ -121,7 +121,7 @@ public sealed class TicketTransferService : ITicketTransferService
                     AttendeeName: a.AttendeeName,
                     TicketTypeName: a.TicketTypeName,
                     CanSendTransfer: a.Status == TicketAttendeeStatus.Valid
-                        && a.TicketOrder.MatchedUserId == userId
+                        && TicketAttendeeOwnership.IsCurrentOwner(a, userId)
                         && !pending,
                     HasPendingOutgoingTransfer: pending,
                     PendingTransferRequestId: pending ? transferId : null);
@@ -138,9 +138,11 @@ public sealed class TicketTransferService : ITicketTransferService
         var attendee = await _ticketRepo.GetAttendeeByIdAsync(dto.OriginalAttendeeId, ct)
             ?? throw new InvalidOperationException("Attendee not found.");
 
-        // Sender must own the parent order's MatchedUserId
-        if (attendee.TicketOrder.MatchedUserId != senderUserId)
-            throw new InvalidOperationException("You can only transfer tickets from your own orders.");
+        // Sender must be the current holder of this attendee. Cascade rule
+        // (TicketAttendeeOwnership): attendee.MatchedUserId wins; falls back
+        // to the parent order's MatchedUserId if the attendee is unmatched.
+        if (!TicketAttendeeOwnership.IsCurrentOwner(attendee, senderUserId))
+            throw new InvalidOperationException("You can only transfer tickets you currently hold.");
 
         if (attendee.Status != TicketAttendeeStatus.Valid)
             throw new InvalidOperationException("Only Valid tickets can be transferred.");

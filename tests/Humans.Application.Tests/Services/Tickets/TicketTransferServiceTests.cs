@@ -263,7 +263,7 @@ public sealed class TicketTransferServiceTests
         var act = () => _service.CreateRequestAsync(dto, _senderId);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*your own orders*");
+            .WithMessage("*currently hold*");
     }
 
     [HumansFact]
@@ -714,8 +714,9 @@ public sealed class TicketTransferServiceTests
         pendingRow.HasPendingOutgoingTransfer.Should().BeTrue();
         pendingRow.PendingTransferRequestId.Should().Be(pendingTransferId);
 
-        // Transferred-in attendee (we're the matched recipient, not the order owner) → cannot send
-        rows.Single(r => r.AttendeeId == transferredInAttendeeId).CanSendTransfer.Should().BeFalse();
+        // Transferred-in attendee: MatchedUserId == _senderId → ownership cascade makes them the
+        // current holder, so they CAN send an onward transfer.
+        rows.Single(r => r.AttendeeId == transferredInAttendeeId).CanSendTransfer.Should().BeTrue();
     }
 
     [HumansFact]
