@@ -1,3 +1,4 @@
+using Humans.Application.Architecture;
 using Humans.Application.Interfaces;
 using Humans.Application.DTOs;
 using Humans.Domain.Entities;
@@ -8,6 +9,13 @@ namespace Humans.Application.Interfaces.GoogleIntegration;
 /// <summary>
 /// Service for provisioning and syncing Google resources.
 /// </summary>
+/// <remarks>
+/// Budget history:
+/// <list type="bullet">
+///   <item>2026-05-12 — section-align GoogleIntegration baseline at 20 methods.</item>
+/// </list>
+/// </remarks>
+[SurfaceBudget(20)]
 public interface IGoogleSyncService : IApplicationService
 {
     /// <summary>
