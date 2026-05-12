@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 namespace Humans.Web.Models;
 
 /// <summary>
-/// Form binding for <c>POST /ShiftDashboard/VolunteerTracking/SetCampSetup</c>.
+/// Form binding for <c>POST /Shifts/Dashboard/VolunteerTracking/SetCampSetup</c>.
 /// <see cref="Date"/> is a wire-format ISO 8601 calendar date (yyyy-MM-dd) —
 /// NodaTime <c>LocalDate</c> cannot bind directly from form input
 /// (the project does not register an MVC <c>LocalDate</c> model binder).
