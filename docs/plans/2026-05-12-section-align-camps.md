@@ -86,14 +86,22 @@ Canonical section name is `Camps` and is consistent across:
 - `CampMember.UserId` is still not folded during account merges; this remains a known section-design gap already called out in `Camps.md`.
 - Confirm no lingering docs still refer to the legacy Camps config path after longer-term doc audits.
 
+### 3.3 Full-run validation
+
+- Searched Axis 1/2 surfaces end-to-end (controllers, views, models, services, repositories, DI extensions, and boundary points).
+- Ran broader Camps-scoped test sweep:
+  - `dotnet test tests/Humans.Application.Tests/Humans.Application.Tests.csproj --filter "FullyQualifiedName~Camp"`
+  - Result: 165 passed, 0 failed.
+- No additional in-scope Camps code edits were identified beyond the configuration placement fix above.
+
 ## Test-attribute delta
 
 - Baseline gate target from repository is `2139`.
 - This pass: `+0 / -0 = 0`.
 - Focused test pass: `CampsArchitectureTests` (`dotnet test --filter "FullyQualifiedName~CampsArchitectureTests"`): pass (11/11).
+- Supplemental Camps-scoped pass: `dotnet test ... --filter "FullyQualifiedName~Camp"`: pass (165/165).
 
 ## Decision
 
 Axis 1/2 are clean for existing section ownership.  
 Axis 3 has one implemented boundary-organization fix (configuration location/namespace) and two explicit follow-ups for dev-seeding and account-merge folding behavior.
-
