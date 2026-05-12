@@ -148,6 +148,11 @@ public sealed partial class TeamResourceService : ITeamResourceService
     public Task<int> GetResourceCountAsync(CancellationToken ct = default)
         => _repository.GetCountAsync(ct);
 
+    public Task<IReadOnlyDictionary<Guid, string>> GetResourceNamesByIdsAsync(
+        IReadOnlyCollection<Guid> resourceIds,
+        CancellationToken ct = default)
+        => _repository.GetNamesByIdsAsync(resourceIds, ct);
+
     public Task<GoogleResource?> GetResourceByIdAsync(Guid resourceId, CancellationToken ct = default)
         => _repository.GetByIdAsync(resourceId, ct);
 

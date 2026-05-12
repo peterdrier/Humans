@@ -47,6 +47,14 @@ public interface IGoogleResourceRepository : IRepository
         CancellationToken ct = default);
 
     /// <summary>
+    /// Returns the display name for each resource id in <paramref name="resourceIds"/>.
+    /// Missing ids are absent from the dictionary. Read-only.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, string>> GetNamesByIdsAsync(
+        IReadOnlyCollection<Guid> resourceIds,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Returns the total active-resource count for every team that currently has
     /// at least one active resource. Read-only.
     /// </summary>
