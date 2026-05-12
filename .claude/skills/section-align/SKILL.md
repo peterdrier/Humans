@@ -454,7 +454,9 @@ git grep -nE "\"/${OLD}/" tests/
 git grep -nE "\"${OLD}\"" tests/Humans.Web.Tests/ tests/Humans.Integration.Tests/
 
 # 6. Config keys, localization resources, navigation menus, sitemaps
-git grep -nE "${OLD}" src/Humans.Web/appsettings*.json src/Humans.Web/Resources/ src/Humans.Web/ViewComponents/*Nav*.cs
+#    Whole-word match — bare ${OLD} would false-positive when NEW contains OLD as a substring
+#    (e.g. OLD=Application, NEW=GovernanceApplications).
+git grep -nE "\b${OLD}\b" src/Humans.Web/appsettings*.json src/Humans.Web/Resources/ src/Humans.Web/ViewComponents/*Nav*.cs
 
 # 7. Docs that name the symbol
 git grep -nE "\b${OLD}(Controller|Service|Repository)?\b" docs/ memory/
