@@ -81,17 +81,17 @@ Living document. Last updated: 2026-05-12 (Scanner refresh).
 | Accept | /Admin/MergeRequests/{id}/Accept | POST | Accept a merge request | OK |
 | Reject | /Admin/MergeRequests/{id}/Reject | POST | Reject a merge request | OK |
 
-## ApplicationController
+## GovernanceApplicationsController
 
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|
-| Index | /Application | GET | User's own applications list | OK |
-| Create | /Application/Create | GET | New tier application form | OK |
-| Create | /Application/Create | POST | Submit tier application | OK |
-| Details | /Application/Details | GET | View own application detail | OK |
-| Withdraw | /Application/Withdraw | POST | Withdraw own application | OK |
-| Applications | /Application/Admin | GET | Admin: filtered applications list | → `AdminList` ? ("Applications" on `ApplicationController` reads as a duplicate of `Index`; this is the admin list view) |
-| ApplicationDetail | /Application/Admin/{id} | GET | Admin: application detail with voting | OK |
+| Index | /Governance/Applications | GET | User's own applications list | OK |
+| Create | /Governance/Applications/Create | GET | New tier application form | OK |
+| Create | /Governance/Applications/Create | POST | Submit tier application | OK |
+| Details | /Governance/Applications/Details/{id} | GET | View own application detail | OK |
+| Withdraw | /Governance/Applications/Withdraw/{id} | POST | Withdraw own application | OK |
+| Admin | /Governance/Applications/Admin | GET | Admin: filtered applications list | OK |
+| AdminDetail | /Governance/Applications/Admin/{id} | GET | Admin: application detail with voting | OK |
 
 ## BoardController
 
@@ -434,10 +434,15 @@ Living document. Last updated: 2026-05-12 (Scanner refresh).
 | Clear | /OnboardingReview/{userId}/Clear | POST | Clear consent check | OK |
 | Flag | /OnboardingReview/{userId}/Flag | POST | Flag consent check | OK |
 | Reject | /OnboardingReview/{userId}/Reject | POST | Reject a signup | OK |
-| BoardVoting | /OnboardingReview/BoardVoting | GET | Board voting dashboard | OK |
-| BoardVotingDetail | /OnboardingReview/BoardVoting/{applicationId} | GET | Board voting detail | OK |
-| Vote | /OnboardingReview/BoardVoting/Vote | POST | Cast a board vote | OK |
-| Finalize | /OnboardingReview/BoardVoting/Finalize | POST | Finalize application decision | OK |
+
+## GovernanceBoardVotingController
+
+| Method | Route | Verb | Purpose | Suggestion |
+|--------|-------|------|---------|------------|
+| BoardVoting | /Governance/BoardVoting | GET | Board voting dashboard | OK |
+| BoardVotingDetail | /Governance/BoardVoting/{applicationId} | GET | Board voting detail | OK |
+| Vote | /Governance/BoardVoting/Vote | POST | Cast a board vote | OK |
+| Finalize | /Governance/BoardVoting/Finalize | POST | Finalize application decision | OK |
 
 ## ProfileApiController
 
@@ -649,7 +654,6 @@ ViewComponents don't have routes — they are invoked from views via `@await Com
 
 | Controller | Current | Suggested | Reason |
 |------------|---------|-----------|--------|
-| ApplicationController | `Applications` | `AdminList` ? | On `ApplicationController`, "Applications" reads as a duplicate of `Index` — this is the admin filtered list |
 | EmailController | `EmailOutbox` / `RetryEmailOutboxMessage` / `DiscardEmailOutboxMessage` / `EmailPreview` | `Outbox` / `RetryOutboxMessage` / `DiscardOutboxMessage` / `Preview` | The `Email` prefix duplicates the controller name |
 | GoogleController | `GoogleSyncResourceAudit` | `ResourceAudit` | The `Google` prefix duplicates the controller name |
 | GoogleController | `HumanGoogleSyncAudit` | `HumanSyncAudit` | The `Google` prefix duplicates the controller name |
@@ -692,19 +696,11 @@ Several of the splits proposed in the original audit have since shipped:
 | `Roster` | TeamController | Shift roster — belongs with shift domain | **ShiftsController** |
 | `Summary`, `CreateTeam`, `EditTeam`, `DeleteTeam` | TeamController | Admin team CRUD | **TeamAdminController** already exists — move these there (route: `/Teams/Admin/...`) |
 
-#### ApplicationController — user + admin on one controller
-
-| Action Group | Current Location | Problem | Better Home |
-|-------------|-----------------|---------|------------|
-| `Index`, `Create`, `Details`, `Withdraw` | ApplicationController | User-facing — fine here | Stay |
-| `Applications`, `ApplicationDetail` | ApplicationController | Admin filtered list + admin detail — different audience, different auth | **ApplicationAdminController** or fold into **OnboardingReviewController** (which already handles the board voting side of the same workflow) |
-
-#### OnboardingReviewController — two workflows in one (9 actions)
+#### OnboardingReviewController
 
 | Action Group | Current Location | Problem | Better Home |
 |-------------|-----------------|---------|------------|
 | `Index`, `Detail`, `Clear`, `Flag`, `Reject` | OnboardingReviewController | Consent review queue | Stay |
-| `BoardVoting`, `BoardVotingDetail`, `Vote`, `Finalize` | OnboardingReviewController | Board voting on tier applications — conceptually distinct from consent review | **BoardVotingController** (`/Board/Voting/...`) |
 
 #### ProfileController — five concerns in one (~37 actions)
 
@@ -739,7 +735,5 @@ If tackling this incrementally, ordered by impact:
 1. **ProfileController → HumanAdminController** — highest impact, ~10 admin actions on a user-profile controller; clear `[Authorize]`-policy boundary makes the split mechanical.
 2. **ProfileController → ProfileEmailController + ProfilePrivacyController** — ~12 actions across two clear sub-domains.
 3. **TeamController → TeamManagementController + CommunityController** — community features (`Birthdays`, `Map`, `Roster`) hiding on a team controller; admin team CRUD belongs on `TeamAdminController`.
-4. **OnboardingReviewController → BoardVotingController** — clean conceptual split, two distinct workflows.
-5. **ApplicationController → ApplicationAdminController** — small but clean split.
-6. **ShiftsController → EventSettingsController** — minor, just 2 actions.
-7. **GovernanceController → RoleAdminController** — minor, just 1 action.
+4. **ShiftsController → EventSettingsController** — minor, just 2 actions.
+5. **GovernanceController → RoleAdminController** — minor, just 1 action.

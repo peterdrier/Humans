@@ -1,6 +1,5 @@
 using Humans.Application.Interfaces.Dashboard;
 using Humans.Application.Interfaces.Gdpr;
-using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Mailer;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
@@ -9,8 +8,6 @@ using Humans.Infrastructure.Repositories.Mailer;
 using Humans.Infrastructure.Repositories.Users;
 using DashboardAdminDashboardService = Humans.Application.Services.Dashboard.AdminDashboardService;
 using DashboardDashboardService = Humans.Application.Services.Dashboard.DashboardService;
-using GovernanceMembershipCalculator = Humans.Application.Services.Governance.MembershipCalculator;
-using GovernanceMembershipQuery = Humans.Application.Services.Governance.MembershipQuery;
 using UsersUserService = Humans.Application.Services.Users.UserService;
 
 namespace Humans.Web.Extensions.Sections;
@@ -43,12 +40,6 @@ internal static class UsersSectionExtensions
         services.AddSingleton<IForgottenEmailRepository, ForgottenEmailRepository>();
         services.AddScoped<IForgottenEmailService, ForgottenEmailService>();
 
-        // Query adapter breaks the circular DI graph between IMembershipCalculator
-        // and ITeamService / IRoleAssignmentService (both of which inject
-        // ISystemTeamSync, whose implementation injects IMembershipCalculator back).
-        // Only MembershipCalculator depends on the query adapter.
-        services.AddScoped<IMembershipQuery, GovernanceMembershipQuery>();
-        services.AddScoped<IMembershipCalculator, GovernanceMembershipCalculator>();
         services.AddScoped<IDashboardService, DashboardDashboardService>();
         // Admin dashboard aggregator — owns no tables; aggregates user
         // partition, application stats, and language distribution from

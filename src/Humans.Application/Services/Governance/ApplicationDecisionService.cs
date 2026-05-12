@@ -387,7 +387,7 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
                 $"New {tier} application submitted",
                 RoleNames.Board,
                 body: $"A new {tier} application requires Board review.",
-                actionUrl: "/OnboardingReview/BoardVoting",
+                actionUrl: "/Governance/BoardVoting",
                 actionLabel: "Review \u2192",
                 cancellationToken: ct);
         }

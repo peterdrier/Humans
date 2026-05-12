@@ -150,7 +150,7 @@
                 <div class="list-group list-group-flush">
                     @foreach (var app in Model.Applications)
                     {
-                        <a asp-controller="Application" asp-action="ApplicationDetail" asp-route-id="@app.Id" class="list-group-item list-group-item-action d-flex justify-content-between">
+                        <a asp-controller="GovernanceApplications" asp-action="AdminDetail" asp-route-id="@app.Id" class="list-group-item list-group-item-action d-flex justify-content-between">
                                     <span>@app.SubmittedAt.ToDisplayDate()</span>
                             <span class="badge bg-secondary">@app.Status</span>
                         </a>

@@ -93,7 +93,7 @@
                         <span class="badge bg-warning">@Model.PendingApproval</span>
                     }
                 </a>
-                <a asp-controller="Application" asp-action="Applications" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                <a asp-controller="GovernanceApplications" asp-action="Admin" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
                     @Localizer["Admin_ReviewApplications"]
                     @if (Model.PendingApplications > 0)
                     {
