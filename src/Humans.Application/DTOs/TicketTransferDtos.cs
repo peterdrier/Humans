@@ -57,7 +57,9 @@ public sealed record TicketTransferRowDto(
 public sealed record TicketTransferDetailDto(
     TicketTransferRowDto Row,
     ReceiverLookupResultDto SenderCard,
-    ReceiverLookupResultDto ReceiverCard);
+    ReceiverLookupResultDto ReceiverCard,
+    string? OrderDashboardUrl,
+    string VendorStepsJson);
 
 /// <summary>
 /// One row in the homepage "My tickets" attendee list, with eligibility flags

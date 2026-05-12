@@ -33,21 +33,25 @@
                 <input type="hidden" name="attendeeId" value="@Model.AttendeeId" />
                 <input type="hidden" name="query" value="@Model.Query" />
                 <input type="hidden" name="selectedUserId" value="@r.UserId" />
-                <button type="submit" class="btn btn-link text-decoration-none text-reset w-100 d-flex align-items-center p-3" style="text-align:left">
-                    @if (r.HasCustomProfilePicture && r.ProfilePictureUrl is not null)
+                <button type="submit" class="btn btn-link text-decoration-none text-reset w-100 d-flex align-items-start gap-3 p-3" style="text-align:left">
+                    <vc:human user-id="@r.UserId" layout="AvatarName" link="None" size="48" />
+                    @if (!string.IsNullOrEmpty(r.BurnerName) || !string.IsNullOrEmpty(r.PreferredEmail))
                     {
-                        <img src="@r.ProfilePictureUrl" alt="" class="rounded-circle me-3" style="width:48px;height:48px" />
-                    }
-                    else
-                    {
-                        <div class="me-3 text-muted" style="width:48px;height:48px;display:flex;align-items:center;justify-content:center;background:#eee;border-radius:50%">
-                            <strong>@(r.DisplayName.FirstOrDefault())</strong>
+                        <div class="text-muted small lh-sm mt-1">
+                            @if (!string.IsNullOrEmpty(r.BurnerName) && !string.IsNullOrEmpty(r.PreferredEmail))
+                            {
+                                @($"@{r.BurnerName} · {r.PreferredEmail}")
+                            }
+                            else if (!string.IsNullOrEmpty(r.BurnerName))
+                            {
+                                @($"@{r.BurnerName}")
+                            }
+                            else
+                            {
+                                @r.PreferredEmail
+                            }
                         </div>
                     }
-                    <div>
-                        <div><strong>@r.DisplayName</strong></div>
-                        @if (r.BurnerName is not null) { <div class="text-muted small">@r.BurnerName</div> }
-                    </div>
                 </button>
             </form>
         }
@@ -56,24 +60,8 @@
 else if (Model.Receivers.Count == 1)
 {
     var receiver = Model.Receivers[0];
-    <div class="card mb-3">
-        <div class="card-body d-flex align-items-center">
-            @if (receiver.HasCustomProfilePicture && receiver.ProfilePictureUrl is not null)
-            {
-                <img src="@receiver.ProfilePictureUrl" alt="" class="rounded-circle me-3" style="width:64px;height:64px" />
-            }
-            else
-            {
-                <div class="me-3 text-muted" style="width:64px;height:64px;display:flex;align-items:center;justify-content:center;background:#eee;border-radius:50%">
-                    <strong>@(receiver.DisplayName.FirstOrDefault())</strong>
-                </div>
-            }
-            <div>
-                <div><strong>@receiver.DisplayName</strong></div>
-                @if (receiver.BurnerName is not null) { <div class="text-muted">@receiver.BurnerName</div> }
-                @if (receiver.PreferredEmail is not null) { <div class="text-muted">@receiver.PreferredEmail</div> }
-            </div>
-        </div>
+    <div class="mb-3">
+        <vc:human user-id="@receiver.UserId" layout="Card" link="None" />
     </div>
 
     <form asp-action="Submit" method="post">

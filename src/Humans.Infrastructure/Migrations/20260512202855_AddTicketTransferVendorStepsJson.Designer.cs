@@ -3,6 +3,7 @@ using System;
 using Humans.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NodaTime;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
@@ -12,9 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Humans.Infrastructure.Migrations
 {
     [DbContext(typeof(HumansDbContext))]
-    partial class HumansDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260512202855_AddTicketTransferVendorStepsJson")]
+    partial class AddTicketTransferVendorStepsJson
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1505,10 +1508,6 @@ namespace Humans.Infrastructure.Migrations
 
                     b.Property<bool>("OptedOut")
                         .HasColumnType("boolean");
-
-                    b.Property<Instant?>("SubscribedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("SubscribedAt");
 
                     b.Property<string>("UpdateSource")
                         .IsRequired()

@@ -1,4 +1,5 @@
 using Humans.Application.DTOs;
+using Humans.Application.Interfaces.Tickets;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
@@ -306,6 +307,15 @@ public interface ITicketRepository : IRepository
         Instant now,
         string errorMessage,
         CancellationToken ct = default);
+
+    // ── Admin diagnostics ────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Returns paid orders whose live-ticket count (Valid or CheckedIn) is
+    /// less than their total attendee count. Used by the admin order-drift
+    /// diagnostic.
+    /// </summary>
+    Task<IReadOnlyList<OrderDriftRow>> GetOrderDriftAsync(CancellationToken ct = default);
 
     // ── Account-merge fold ───────────────────────────────────────────────────
 

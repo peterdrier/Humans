@@ -155,6 +155,8 @@
     @if (Model.IsOwnProfile)
     {
         <div class="col-md-4">
+            <vc:ticket-holdings user-id="@Model.UserId" />
+
             <div class="card mb-4">
                 <div class="card-header">@Localizer["Profile_QuickActions"]</div>
                 <div class="list-group list-group-flush">
