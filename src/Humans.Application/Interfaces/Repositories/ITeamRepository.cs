@@ -557,12 +557,6 @@ public interface ITeamRepository : IRepository
         Guid userId, Instant now, CancellationToken ct = default);
 
     /// <summary>
-    /// Hard-deletes every team whose <c>Name.EndsWith</c> marker matches,
-    /// plus its members and join requests. Returns the count of teams
-    /// removed. Used only by test seeding.
-    /// </summary>
-
-    /// <summary>
     /// Is the user's Google email status flagged as <see cref="GoogleEmailStatus.Rejected"/>?
     /// Used to suppress outbox events for users whose Google account is dead.
     /// The caller already owns the outbox semantics — this is a plain
