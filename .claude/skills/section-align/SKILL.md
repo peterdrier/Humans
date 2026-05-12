@@ -424,9 +424,52 @@ Sonnet subagents. Build must stay green after each step.
   ```
   Always inside the worktree. Don't leak background processes across phases or sessions.
 
+### Inbound-link sweep — MANDATORY after every rename/move
+
+`/reforge` finds C# symbol references but **misses string-typed references** (Razor tag helpers, allow-lists, route strings, doc links). Renames that ship without sweeping these break user-facing navigation silently — the build is green, the code is broken. This has bitten us twice (e.g. PR 505: `ApplicationController` → `GovernanceApplicationsController` left 6 `asp-controller="Application"` view links and a stale `MembershipRequiredFilter.ExemptControllers` entry).
+
+**After every rename or move of a controller / service / view / route / role / config key, run the full sweep below before committing.** Both OLD and NEW name; OLD must return zero matches.
+
+```bash
+OLD=Application       # e.g. controller name minus 'Controller' suffix
+NEW=GovernanceApplications
+
+# 1. Razor tag-helper attributes (controllers, views)
+git grep -nE "asp-controller=\"${OLD}\"" src/
+git grep -nE "asp-(action|route|page)=\"[^\"]*${OLD}[^\"]*\"" src/
+
+# 2. Url.Action / Url.RouteUrl / Url.Page / redirects (controller name as string arg)
+git grep -nE "Url\.(Action|RouteUrl|Page)\([^)]*\"${OLD}\"" src/
+git grep -nE "RedirectToAction\([^)]*\"${OLD}\"" src/
+git grep -nE "RedirectToRoute\([^)]*\"${OLD}\"" src/
+
+# 3. Allow-lists / filter sets keyed by controller name string
+git grep -nE "\"${OLD}\"" src/Humans.Web/Authorization/ src/Humans.Web/Middleware/ src/Humans.Web/Filters/
+
+# 4. ViewComponent invocations (tag-helper + Html.InvokeAsync forms)
+git grep -nE "<vc:${OLD,,}|Component\.InvokeAsync\(\"${OLD}\"" src/
+
+# 5. Test fixtures referencing route paths or controller names
+git grep -nE "\"/${OLD}/" tests/
+git grep -nE "\"${OLD}\"" tests/Humans.Web.Tests/ tests/Humans.Integration.Tests/
+
+# 6. Config keys, localization resources, navigation menus, sitemaps
+git grep -nE "${OLD}" src/Humans.Web/appsettings*.json src/Humans.Web/Resources/ src/Humans.Web/ViewComponents/*Nav*.cs
+
+# 7. Docs that name the symbol
+git grep -nE "\b${OLD}(Controller|Service|Repository)?\b" docs/ memory/
+```
+
+For service / interface renames, swap to grep `I${OLD}Service` / `${OLD}Service` and check DI registrations, decorators, and ctor params.
+For entity / DbSet renames, additionally check `[Table(...)]` attributes, EF configuration files, and `OnModelCreating` — but per `architecture_no_drops_until_prod_verified`, prefer keeping the DB table name and renaming only the C# symbol.
+
+**Verification gate:** before staging the rename commit, the OLD-name grep across all 7 buckets must return zero matches (or each remaining match has an explicit "intentional — historical reference" rationale captured in the commit message). String references don't fail CI; they fail in production navigation. "I'll catch the rest when CI fails" is not an acceptable plan.
+
+If the sweep finds non-trivial inbound work (>10 fixes, or fixes that touch other sections' views), surface as a stop-condition decision: bundle into this PR vs. flag the consumer section as a follow-up /section-align target. Bundling is usually correct for view-link fixes (mechanical, reviewers expect renames to be complete); a follow-up is correct only when the consumer needs a deeper structural change.
+
 **Create what's missing** (not only rename):
 1. **Invariant doc** — `git mv docs/sections/<Old>.md docs/sections/<New>.md` if renamed.
-2. **Controller** — if `<Section>Controller.cs` doesn't exist and routes live on foreign controllers, create it. Migrate route handlers off `BoardController` / `GoogleController` / etc. Update `RedirectToAction` targets and tag-helper links across views/tests.
+2. **Controller** — if `<Section>Controller.cs` doesn't exist and routes live on foreign controllers, create it. Migrate route handlers off `BoardController` / `GoogleController` / etc. **Run the inbound-link sweep (above) before committing** — controller renames must update `asp-controller=`, `Url.Action`, `RedirectToAction`, allow-lists in auth filters/middleware, and test fixtures. `/reforge` does not catch these.
 3. **Views folder** — if `Views/<Section>/` doesn't exist and page views live in `Views/Shared/<Section>.cshtml`, create it and move the page views. Keep genuine cross-section partials in Shared.
 4. **ViewModels file** — extract section types out of `Models/AdminViewModels.cs` or other grab-bag files into `Models/<Section>ViewModels.cs`.
 5. **Controller-base helpers** — move section-specific helpers off `HumansControllerBase` into `<Section>Controller` (or section-local helpers).
@@ -535,6 +578,7 @@ Push. Final bot-review loop until merge-ready. Report: PR/branch URL, commits pe
 - Phase 0 plan file: commit AND push without asking — it's a checkpoint artifact the user reads in the browser to decide whether to greenlight Phase 1. After pushing, give the user the GitHub URL for the plan file (`https://github.com/peterdrier/Humans/blob/<branch>/docs/plans/<file>.md`) so they can review it inline.
 - Subsequent phase pushes: push without asking (standing approval). Push at each phase boundary so bot review fires.
 - Never push to `main`; never `--no-verify`.
+- **Renames/moves require the inbound-link sweep (see Phase 1) before commit.** Green build ≠ correct rename. Skipping the sweep has broken navigation in shipped PRs.
 - Each sub-loop: push → wait for Codex + Claude → thread-reply each finding (fix or reject with reasoning) → commit + push → repeat until clean.
 
 ---
