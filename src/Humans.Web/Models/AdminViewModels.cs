@@ -4,42 +4,6 @@ using Humans.Application.Interfaces.Email;
 
 namespace Humans.Web.Models;
 
-public class BoardDashboardViewModel
-{
-    public int TotalMembers { get; set; }
-    public int IncompleteSignup { get; set; }
-    public int PendingApproval { get; set; }
-    public int ActiveMembers { get; set; }
-    public int MissingConsents { get; set; }
-    public int Suspended { get; set; }
-    public int PendingDeletion { get; set; }
-    public int PendingApplications { get; set; }
-    public List<RecentActivityViewModel> RecentActivity { get; set; } = [];
-
-    // Application statistics
-    public int TotalApplications { get; set; }
-    public int ApprovedApplications { get; set; }
-    public int RejectedApplications { get; set; }
-    public int ColaboradorApplied { get; set; }
-    public int AsociadoApplied { get; set; }
-
-    // Language distribution
-    public List<LanguageCountViewModel> LanguageDistribution { get; set; } = [];
-}
-
-public class LanguageCountViewModel
-{
-    public string Language { get; set; } = string.Empty;
-    public int Count { get; set; }
-}
-
-public class RecentActivityViewModel
-{
-    public string Description { get; set; } = string.Empty;
-    public DateTime Timestamp { get; set; }
-    public AuditAction Type { get; set; }
-}
-
 public class AdminHumanListViewModel : PagedListViewModel
 {
     public AdminHumanListViewModel() : base()
@@ -306,6 +270,15 @@ public class ProfileSummaryViewModel
     public string? CountryCode { get; set; }
     public bool IsSuspended { get; set; }
     public List<string> Teams { get; set; } = [];
+
+    /// <summary>
+    /// Teams the subject belongs to that are flagged <c>IsHidden</c>. Only populated
+    /// in the popover render path when the viewer is TeamsAdmin/Board/Admin — kept
+    /// separate from <see cref="Teams"/> so the popover can render an admin-only
+    /// section below a separator.
+    /// </summary>
+    public List<string> HiddenTeams { get; set; } = [];
+
     public IReadOnlyList<ProfileLanguageDisplayViewModel> Languages { get; set; } = [];
 
     /// <summary>

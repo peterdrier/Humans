@@ -1552,7 +1552,10 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
             var membership = team.Members.FirstOrDefault(m => m.UserId == userId);
             if (membership is null)
                 continue;
-            rows.Add(new Humans.Application.Models.TeamMembership(team.Name, membership.Role));
+            rows.Add(new Humans.Application.Models.TeamMembership(team.Name, membership.Role)
+            {
+                IsHidden = team.IsHidden,
+            });
         }
         // No display sort here — callers sort at the rendering layer
         // (memory/architecture/display-sort-in-controllers.md).

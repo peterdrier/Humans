@@ -33,11 +33,19 @@ public static class AdminNavTree
             new("Finance",        "Finance",      "Index",   null, null, "fa-solid fa-coins",     PolicyNames.FinanceAdminOrAdmin),
             new("Store catalog",  "StoreAdmin",   "Catalog", null, null, "fa-solid fa-tags",      PolicyNames.StoreCatalogAdmin),
         }),
+        new("Expenses", new AdminNavItem[]
+        {
+            new("Expenses",          "Expenses", "Index",       null, null, "fa-solid fa-receipt",        PolicyNames.IsActiveMember),
+            new("Coordinator Queue", "Expenses", "Coordinator", null, null, "fa-solid fa-list-check",     PolicyNames.IsActiveMember),
+            new("Expense Review",    "Expenses", "Review",      null, null, "fa-solid fa-magnifying-glass-dollar", PolicyNames.FinanceAdminOrAdmin),
+        }),
         new("Governance", new AdminNavItem[]
         {
             new("Voting", "GovernanceBoardVoting", "BoardVoting", null, null, "fa-solid fa-check-to-slot", PolicyNames.BoardOrAdmin,
                  PillCount: PillCounts.VotingQueue),
-            new("Board",  "Board", "Index",                  null, null, "fa-solid fa-gavel",          PolicyNames.BoardOrAdmin),
+            new("Applications", "GovernanceApplications", "Admin", null, null, "fa-solid fa-file-signature", PolicyNames.BoardOrAdmin),
+            new("Roles",        "Governance",  "Roles",            null, null, "fa-solid fa-id-badge",       PolicyNames.BoardOrAdmin),
+            new("Audit log",    "Board",       "AuditLog",         null, null, "fa-solid fa-book-open",      PolicyNames.BoardOrAdmin),
         }),
         new("Integrations", new AdminNavItem[]
         {

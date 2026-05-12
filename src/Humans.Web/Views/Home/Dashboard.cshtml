@@ -1,6 +1,10 @@
+@using Microsoft.AspNetCore.Authorization
+@using Humans.Web.Authorization
+@inject IAuthorizationService AuthService
 @model Humans.Web.Models.DashboardViewModel
 @{
     ViewData["Title"] = Localizer["Dashboard_Title"].Value;
+    var canSendTicketTransfer = (await AuthService.AuthorizeAsync(User, PolicyNames.AnyAdminRole)).Succeeded;
 }
 
 <vc:temp-data-alerts />
@@ -202,13 +206,17 @@
                                                 </form>
                                             }
                                         }
-                                        else if (att.CanSendTransfer)
+                                        else if (att.CanSendTransfer && canSendTicketTransfer)
                                         {
                                             <a class="btn btn-sm btn-outline-secondary"
                                                asp-controller="TicketTransfer" asp-action="Send"
                                                asp-route-attendeeId="@att.AttendeeId">
                                                 @Localizer["TicketTransfer_SendButton"]
                                             </a>
+                                        }
+                                        else if (att.CanSendTransfer)
+                                        {
+                                            <small class="text-muted fst-italic">Ticket Transfers coming soon…</small>
                                         }
                                     </div>
                                 </li>
