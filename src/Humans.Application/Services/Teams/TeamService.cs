@@ -1629,6 +1629,13 @@ public sealed class TeamService : ITeamService, IUserDataContributor, IUserMerge
         if (hasActiveChildren)
             throw new InvalidOperationException("Cannot permanently delete a team that has active sub-teams. Remove or reassign sub-teams first.");
 
+        // GoogleResource → Team is OnDelete(Restrict): any row referencing this
+        // team blocks the delete with an FK violation. Catch it here with a
+        // clear message instead of surfacing a raw DbUpdateException.
+        var resources = await TeamResourceService.GetTeamResourcesAsync(teamId, cancellationToken);
+        if (resources.Count > 0)
+            throw new InvalidOperationException("Cannot permanently delete a team that has Google resources linked. Unlink resources first.");
+
         return await _repo.PermanentlyDeleteTeamAsync(teamId, cancellationToken);
     }
 

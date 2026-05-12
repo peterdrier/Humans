@@ -607,7 +607,10 @@ public interface ITeamService : IApplicationService
 
     /// <summary>
     /// Permanently deletes a team and its Teams-owned child rows. Requires the
-    /// current authenticated user to hold the full Admin role.
+    /// current authenticated user to hold the full Admin role. The team must
+    /// have no linked Google resources — <c>GoogleResource → Team</c> is
+    /// configured with <c>OnDelete(Restrict)</c>, so the caller must unlink
+    /// resources via <see cref="ITeamResourceService"/> first.
     /// </summary>
     Task<bool> PermanentlyDeleteTeamAsync(
         Guid teamId,
