@@ -135,6 +135,9 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
     public Task<int> GetRejectedGoogleEmailCountAsync(CancellationToken ct = default) =>
         _repo.GetRejectedGoogleEmailCountAsync(ct);
 
+    public Task<int> GetCountByContactSourceAsync(ContactSource source, CancellationToken ct = default) =>
+        _repo.GetCountByContactSourceAsync(source, ct);
+
     public Task<IReadOnlyList<Guid>> GetAccountsDueForAnonymizationAsync(
         Instant now, CancellationToken ct = default) =>
         _repo.GetAccountsDueForAnonymizationAsync(now, ct);

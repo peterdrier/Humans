@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
@@ -6,14 +7,16 @@ using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.AuditLog;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 using Xunit;
 using AuditLogService = Humans.Application.Services.AuditLog.AuditLogService;
 
-namespace Humans.Application.Tests.Services;
+namespace Humans.Application.Tests.AuditLog;
 
 public class AuditLogServiceTests : IDisposable
 {
@@ -176,19 +179,10 @@ public class AuditLogServiceTests : IDisposable
     // ===== GetGoogleSyncByUserAsync =====
 
     [HumansFact]
-    public async Task GetGoogleSyncByUserAsync_ReturnsEntriesWithResourceAndRelatedEntity()
+    public async Task GetGoogleSyncByUserAsync_ReturnsEntriesWithResourceId()
     {
         var userId = Guid.NewGuid();
         var resourceId = Guid.NewGuid();
-        _dbContext.GoogleResources.Add(new GoogleResource
-        {
-            Id = resourceId,
-            TeamId = Guid.NewGuid(),
-            GoogleId = "google-123",
-            Name = "Test Resource",
-            ResourceType = GoogleResourceType.DriveFolder,
-            IsActive = true
-        });
         SeedAuditLogEntry(AuditAction.GoogleResourceAccessGranted, "GoogleResource", resourceId,
             _clock.GetCurrentInstant(), resourceId: resourceId, relatedEntityId: userId);
         await _dbContext.SaveChangesAsync();
@@ -198,8 +192,6 @@ public class AuditLogServiceTests : IDisposable
         result.Should().HaveCount(1);
         result[0].ResourceId.Should().Be(resourceId);
         result[0].RelatedEntityId.Should().Be(userId);
-        result[0].Resource.Should().NotBeNull();
-        result[0].Resource!.Name.Should().Be("Test Resource");
     }
 
     [HumansFact]
@@ -390,6 +382,89 @@ public class AuditLogServiceTests : IDisposable
         result[2].Id.Should().Be(older.Id);
     }
 
+    // ===== Best-effort failure semantics =====
+
+    [HumansFact]
+    public async Task LogAsync_SwallowsRepoFailure_DoesNotThrow()
+    {
+        // Arrange: replace the service with one backed by a repo mock that throws.
+        var throwingRepo = Substitute.For<IAuditLogRepository>();
+        throwingRepo.AddAsync(Arg.Any<AuditLogEntry>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("DB unavailable"));
+
+        using var loggerFactory = new Microsoft.Extensions.Logging.LoggerFactory();
+        var logger = loggerFactory.CreateLogger<AuditLogService>();
+
+        var svc = new AuditLogService(
+            throwingRepo, _userService, _clock, logger);
+
+        // Act + Assert: must not throw — audit is best-effort.
+        var act = () => svc.LogAsync(
+            AuditAction.VolunteerApproved, nameof(User), Guid.NewGuid(),
+            "Auto-approved", "TestJob");
+
+        await act.Should().NotThrowAsync(
+            because: "audit failures are best-effort and must never propagate to the caller");
+    }
+
+    [HumansFact]
+    public async Task LogAsync_SwallowsRepoFailure_LogsAtErrorLevel()
+    {
+        // Arrange: a repo that throws + a capturing logger.
+        var throwingRepo = Substitute.For<IAuditLogRepository>();
+        throwingRepo.AddAsync(Arg.Any<AuditLogEntry>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("DB unavailable"));
+
+        var capturing = new CapturingLogger<AuditLogService>();
+        var svc = new AuditLogService(
+            throwingRepo, _userService, _clock, capturing);
+
+        // Act.
+        await svc.LogAsync(
+            AuditAction.MemberSuspended, nameof(User), Guid.NewGuid(),
+            "Suspended", "TestJob");
+
+        // Assert: at least one Error-level message was emitted.
+        capturing.Entries.Should().Contain(
+            e => e.Level == Microsoft.Extensions.Logging.LogLevel.Error,
+            because: "a repo save failure must be logged at Error level per design-rules §7a");
+    }
+
+    // ===== Cross-merge chain-follow =====
+
+    [HumansFact]
+    public async Task GetByUserAsync_SurfacesMergedSourceRows_ForFoldTarget()
+    {
+        // Arrange: two source IDs were merged into targetId.
+        var targetId = Guid.NewGuid();
+        var source1 = Guid.NewGuid();
+        var source2 = Guid.NewGuid();
+        var unrelated = Guid.NewGuid();
+
+        _userService.GetMergedSourceIdsAsync(targetId, Arg.Any<CancellationToken>())
+            .Returns((IReadOnlySet<Guid>)new HashSet<Guid> { source1, source2 });
+
+        var now = _clock.GetCurrentInstant();
+
+        // Rows attributed to each merged source should surface.
+        SeedAuditLogEntry(AuditAction.VolunteerApproved, "User", source1, now - Duration.FromHours(3));
+        SeedAuditLogEntry(AuditAction.MemberSuspended, "User", source2, now - Duration.FromHours(2));
+        // Row attributed directly to the target.
+        SeedAuditLogEntry(AuditAction.RoleAssigned, "User", targetId, now - Duration.FromHours(1));
+        // Row for an unrelated user — must NOT appear.
+        SeedAuditLogEntry(AuditAction.RoleEnded, "User", unrelated, now);
+        await _dbContext.SaveChangesAsync();
+
+        // Act.
+        var result = await _service.GetByUserAsync(targetId, 10);
+
+        // Assert: all three rows (source1, source2, targetId) surface; unrelated does not.
+        result.Should().HaveCount(3,
+            because: "GetByUserAsync chain-follows merge tombstones so source rows are visible on the fold target");
+        result.Should().NotContain(e => e.EntityId == unrelated,
+            because: "rows belonging to unrelated users must not bleed into the merged view");
+    }
+
     // --- Helpers ---
 
     private AuditLogEntry SeedAuditLogEntry(
@@ -409,5 +484,31 @@ public class AuditLogServiceTests : IDisposable
         };
         _dbContext.AuditLogEntries.Add(entry);
         return entry;
+    }
+}
+
+/// <summary>
+/// Minimal <see cref="ILogger{T}"/> that captures log entries in memory so
+/// tests can assert on level and message without involving a real logging
+/// framework.
+/// </summary>
+internal sealed class CapturingLogger<T> : ILogger<T>
+{
+    public sealed record LogEntry(LogLevel Level, string Message, Exception? Exception);
+
+    public List<LogEntry> Entries { get; } = new();
+
+    public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+    public bool IsEnabled(LogLevel logLevel) => true;
+
+    public void Log<TState>(
+        LogLevel logLevel,
+        EventId eventId,
+        TState state,
+        Exception? exception,
+        Func<TState, Exception?, string> formatter)
+    {
+        Entries.Add(new LogEntry(logLevel, formatter(state, exception), exception));
     }
 }

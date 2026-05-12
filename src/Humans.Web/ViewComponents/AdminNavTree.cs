@@ -45,7 +45,7 @@ public static class AdminNavTree
                  PillCount: PillCounts.VotingQueue),
             new("Applications", "GovernanceApplications", "Admin", null, null, "fa-solid fa-file-signature", PolicyNames.BoardOrAdmin),
             new("Roles",        "Governance",  "Roles",            null, null, "fa-solid fa-id-badge",       PolicyNames.BoardOrAdmin),
-            new("Audit log",    "Board",       "AuditLog",         null, null, "fa-solid fa-book-open",      PolicyNames.BoardOrAdmin),
+            new("Audit log",    "AuditLog",    "Index",            null, null, "fa-solid fa-book-open",      PolicyNames.BoardOrAdmin),
         }),
         new("Integrations", new AdminNavItem[]
         {
@@ -55,6 +55,7 @@ public static class AdminNavTree
             new("Campaigns",          "Campaign", "Index",      null, null, "fa-solid fa-bullhorn",  PolicyNames.AdminOnly),
             new("Workspace accounts", "Google",  "Accounts",    null, null, "fa-solid fa-at",        PolicyNames.AdminOnly),
             new("Email flag violations", "Google", "EmailFlagViolations", null, null, "fa-solid fa-triangle-exclamation", PolicyNames.AdminOnly),
+            new("Mailer",                "MailerAdmin", "Index",           null, null, "fa-solid fa-paper-plane",          PolicyNames.AdminOnly),
         }),
         new("Agent", new AdminNavItem[]
         {

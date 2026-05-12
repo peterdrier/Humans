@@ -90,6 +90,14 @@ public sealed class CommunicationPreferenceRepository : ICommunicationPreference
             .ToListAsync(ct);
     }
 
+    public async Task<int> GetCountByCategoryAndStateAsync(
+        MessageCategory category, bool optedOut, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.CommunicationPreferences.AsNoTracking()
+            .CountAsync(p => p.Category == category && p.OptedOut == optedOut, ct);
+    }
+
     public async Task AddAsync(CommunicationPreference preference, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);

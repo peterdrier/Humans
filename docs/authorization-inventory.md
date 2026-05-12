@@ -51,9 +51,9 @@ The `Source` column reflects the constant referenced in the attribute as it appe
 | `GoogleController.SyncPreview` | Action | `TeamsAdmin, Board, Admin` | `PolicyNames.TeamsAdminBoardOrAdmin` |
 | `GoogleController.SyncExecute` | Action | `Admin` | `PolicyNames.AdminOnly` |
 | `GoogleController.SyncExecuteAll` | Action | `Admin` | `PolicyNames.AdminOnly` |
-| `GoogleController.CheckDriveActivity` | Action | `Board, Admin` | `PolicyNames.BoardOrAdmin` |
-| `GoogleController.GoogleSyncResourceAudit` | Action | `Board, Admin` | `PolicyNames.BoardOrAdmin` |
-| `GoogleController.HumanGoogleSyncAudit` | Action | `HumanAdmin, Board, Admin` | `PolicyNames.HumanAdminBoardOrAdmin` |
+| `AuditLogController.CheckDriveActivity` | Action | `Board, Admin` | `PolicyNames.BoardOrAdmin` |
+| `AuditLogController.Resource` | Action | `Board, Admin` | `PolicyNames.BoardOrAdmin` |
+| `AuditLogController.Human` | Action | `HumanAdmin, Board, Admin` | `PolicyNames.HumanAdminBoardOrAdmin` |
 | `GoogleController.ProvisionEmail` | Action | `HumanAdmin, Admin` | `PolicyNames.HumanAdminOrAdmin` |
 | `GoogleController.Accounts` | Action | `Admin` | `PolicyNames.AdminOnly` |
 | `GoogleController.ProvisionAccount` | Action | `Admin` | `PolicyNames.AdminOnly` |

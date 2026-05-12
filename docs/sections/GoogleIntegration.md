@@ -63,8 +63,6 @@ All Google integration management is consolidated in `GoogleController` (`[Route
 | `/Google/Sync/Execute/{resourceId}` | POST | Admin | Execute sync for one resource |
 | `/Google/Sync/ExecuteAll/{resourceType}` | POST | Admin | Execute sync for all resources of a type |
 | `/Google/SyncOutbox` | GET | Admin | Recent outbox events with user/team/resource display |
-| `/Google/Sync/Resource/{id}/Audit` | GET | Board, Admin | Per-resource sync audit |
-| `/Google/Human/{id}/SyncAudit` | GET | HumanAdmin, Board, Admin | Per-human sync audit |
 | `/Google/Human/{id}/ProvisionEmail` | POST | HumanAdmin, Admin | Provision @nobodies.team email for a human |
 | `/Google/AllGroups` | GET | Admin | Domain-wide group listing with drift status |
 | `/Google/CheckGroupSettings` | POST | Admin | Trigger group settings drift check |
@@ -83,7 +81,6 @@ All Google integration management is consolidated in `GoogleController` (`[Route
 | `/Google/Accounts/ResetPassword` | POST | Admin | Reset password (shown once in modal) |
 | `/Google/Accounts/ResetPasswordAndGenerate2Fa` | POST | Admin | Reset password + issue one backup 2FA code |
 | `/Google/Accounts/Link` | POST | Admin | Link existing Workspace account to a human |
-| `/Google/AuditLog/CheckDriveActivity` | POST | Board, Admin | Manual Drive activity anomaly check |
 
 ## Actors & Roles
 

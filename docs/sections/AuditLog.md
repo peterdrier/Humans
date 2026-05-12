@@ -7,8 +7,7 @@
   src/Humans.Application/Interfaces/AuditLog/IAuditLogService.cs
   src/Humans.Application/Interfaces/AuditLog/IAuditViewerService.cs
   src/Humans.Domain/Enums/AuditAction.cs
-  src/Humans.Web/Controllers/BoardController.cs
-  src/Humans.Web/Controllers/GoogleController.cs
+  src/Humans.Web/Controllers/AuditLogController.cs
 -->
 <!-- freshness:flag-on-change
   Audit log append-only invariant, AuditAction enum surface, and self-persisting semantics — review when AuditLog service/repo/entity changes.
@@ -41,19 +40,17 @@ Append-only per design-rules §12. Enforced at two layers: the architecture test
 | EntityId | Guid | Id of the primary affected entity (non-nullable) |
 | Description | string (4000) | Human-readable description of what happened |
 | OccurredAt | Instant | When the action occurred — callers stamp via `IClock` |
-| ActorUserId | Guid? | FK → User. Nullable because system jobs write audit with no actor. `OnDelete: SetNull` |
-| ActorUser | User? | EF nav (set, not init) — required by EF for the FK relationship |
+| ActorUserId | Guid? | FK → User. Nullable because system jobs write audit with no actor. `OnDelete: SetNull`. No nav property — EF uses a shadow navigation internally; the `ActorUser` nav was dropped in the 2026-05 alignment (unread nav, unnecessary cross-domain link). |
 | RelatedEntityId | Guid? | Id of a secondary related entity (e.g. UserId when EntityType=Team) |
 | RelatedEntityType | string? (100) | Type of the secondary related entity |
-| ResourceId | Guid? | FK → GoogleResource. Only set for Google sync entries. `OnDelete: SetNull` |
-| Resource | GoogleResource? | EF nav (set, not init) for the Google resource |
+| ResourceId | Guid? | FK → GoogleResource. Only set for Google sync entries. No FK constraint (dropped in the 2026-05 alignment) — bare `Guid?` column. |
 | Success | bool? | Whether the Google API call succeeded. Null for non-Google entries |
 | ErrorMessage | string? (4000) | Error details if the Google API call failed. Null for non-Google entries |
 | Role | string? (100) | The role granted or revoked (e.g. `"writer"`, `"MEMBER"`). Null for non-Google entries |
 | SyncSource | GoogleSyncSource? | Stored as string (max 100). What triggered the Google sync action. Null for non-Google entries |
 | UserEmail | string? (500) | Email at time of the Google sync action — denormalized so history survives anonymization |
 
-**Indexes:** `(EntityType, EntityId)`, `(RelatedEntityType, RelatedEntityId)`, `OccurredAt`, `Action`, `ResourceId`. (`ActorUserId` has a FK constraint via `HasOne`/`HasForeignKey` but no explicit `HasIndex` call in `AuditLogEntryConfiguration.cs`.)
+**Indexes:** `(EntityType, EntityId)`, `(RelatedEntityType, RelatedEntityId)`, `OccurredAt`, `Action`, `ResourceId`.
 
 ### AuditAction (cross-section enum)
 
@@ -71,31 +68,34 @@ Append-only per design-rules §12. Enforced at two layers: the architecture test
 - **Feedback / Communications:** `FeedbackResponseSent`, `FeedbackStatusChanged`, `FeedbackAssignmentChanged`, `FacilitatedMessageSent`.
 - **Issues:** `IssueStatusChanged`, `IssueAssigneeChanged`, `IssueSectionChanged`, `IssueGitHubLinked`.
 - **Store:** `StoreOrderCreated`, `StoreLineAdded`, `StoreLineRemoved`, `StoreCounterpartyEdited`, `StoreProductCreated`, `StoreProductUpdated`, `StoreProductDeactivated`, `StorePaymentRecorded`.
+- **Mailer / Imports:** `MailerLiteReconciliationCompleted` — job-level summary written at the end of each Mailer import. Description carries counts as a structured string; no per-row PII.
 
 Note: `BudgetAuditLog` is a separate per-section append-only log owned by Budget — it is **not** an `AuditAction` value and does not write to `audit_log`.
 
 ## Routing
 
-Audit Log is served from two controllers — required because `BoardController` owns the global admin dashboard and `GoogleController` owns per-resource and per-user Google sync views.
+All Audit Log routes are owned by `AuditLogController` (`[Route("AuditLog")]`).
 
-| Route | Controller | Auth policy |
-|-------|-----------|------------|
-| `GET /Board/AuditLog` | `BoardController.AuditLog` | `BoardOrAdmin` |
-| `POST /Google/AuditLog/CheckDriveActivity` | `GoogleController.CheckDriveActivity` | `BoardOrAdmin` |
-| `GET /Google/Sync/Resource/{id}/Audit` | `GoogleController.GoogleSyncResourceAudit` | `BoardOrAdmin` |
-| `GET /Google/Human/{id}/SyncAudit` | `GoogleController.HumanGoogleSyncAudit` | `HumanAdminBoardOrAdmin` |
+| Route | Action | Auth policy |
+|-------|--------|------------|
+| `GET /AuditLog` | `AuditLogController.Index` | `BoardOrAdmin` |
+| `POST /AuditLog/CheckDriveActivity` | `AuditLogController.CheckDriveActivity` | `BoardOrAdmin` |
+| `GET /AuditLog/Resource/{id}` | `AuditLogController.Resource` | `BoardOrAdmin` |
+| `GET /AuditLog/Human/{id}` | `AuditLogController.Human` | `HumanAdminBoardOrAdmin` |
 
-Both controllers inject `IAuditViewerService` — no controller touches `IAuditLogService` or any repository directly.
+`AuditLogController` injects `IAuditViewerService` — no controller touches `IAuditLogService` or any repository directly.
+
+Note: `BoardController.Index` still consumes `IAuditViewerService.GetRecentAsync(15)` for the dashboard activity widget. That is widget consumption from another section's service, not route ownership. AuditLog does not own any Board routes.
 
 ## Actors & Roles
 
 | Actor | Capabilities |
 |-------|--------------|
 | Any service / job | Write audit entries via `IAuditLogService.LogAsync(...)` (human or job overload) and `IAuditLogService.LogGoogleSyncAsync(...)`. No authorization check at the log site — the caller has already authorized the underlying action |
-| Board, Admin | View the system audit log via `GET /Board/AuditLog` (`[Authorize(Policy = PolicyNames.BoardOrAdmin)]`), with filter + pagination via `IAuditViewerService.GetPageAsync` |
+| Board, Admin | View the system audit log via `GET /AuditLog` (`[Authorize(Policy = PolicyNames.BoardOrAdmin)]`), with filter + pagination via `IAuditViewerService.GetPageAsync` |
 | Any authenticated viewer of an entity page | See per-entity audit history rendered through the shared `AuditLogViewComponent` (e.g. on Profile, Team, Calendar, Google resource pages) — entries are scoped by `entityType` / `entityId` / `userId` / `actions` filters and inherit the host page's authorization |
 
-No one reads audit entries anonymously. The `/Board/AuditLog` dashboard is gated to BoardOrAdmin; per-entity audit history is gated by the host page's policy.
+No one reads audit entries anonymously. The `/AuditLog` dashboard is gated to BoardOrAdmin; per-entity audit history is gated by the host page's policy.
 
 ## Invariants
 
@@ -113,9 +113,9 @@ No one reads audit entries anonymously. The `/Board/AuditLog` dashboard is gated
 
 - Callers **cannot** `UpdateAsync`, `DeleteAsync`, or `RemoveAsync` an audit entry. The repository exposes no such methods, and the database triggers reject the operation even if a caller went around the repository.
 - Services **cannot** call `IAuditLogService.LogAsync` inside an outer `DbContext` transaction expecting audit to roll back with it — audit uses its own context via `IDbContextFactory`.
-- Services **cannot** bypass `IAuditLogService` and write `audit_log` directly. `AuditLogRepository` is the only non-test file that touches `DbContext.AuditLogEntries`.
+- Services **cannot** bypass `IAuditLogService` and write `audit_log` directly. `AuditLogRepository` is the only non-test file that should touch `DbContext.AuditLogEntries`. The architecture test `Only_AuditLogRepository_Writes_AuditLogEntries_DbSet` enforces this; the current baseline records one known violation: `DriveActivityMonitorRepository.cs:81` (GoogleIntegration section writes `ctx.AuditLogEntries.AddRange(anomalies)` directly — this is a tracked violation pending GoogleIntegration's /section-align, which will switch it to call `IAuditLogService.LogAsync` per anomaly).
 - The log **cannot** be pruned by production admins. There is no retention/cleanup job — entries persist indefinitely.
-- Controllers **cannot** read `audit_log` (or `users`/`teams` for audit display) directly. The Board/Admin dashboard goes through `IAuditViewerService.GetPageAsync`, and per-entity / per-user views go through the other `IAuditViewerService` overloads — the viewer service composes the page (entries + actor/subject/team display batching) inside the Audit Log section. `IAuditLogService` is the write side; the read+render path is `IAuditViewerService`.
+- Controllers **cannot** read `audit_log` directly. The Board/Admin dashboard goes through `IAuditViewerService.GetPageAsync`, and per-entity / per-user views go through the other `IAuditViewerService` overloads — the viewer service composes the page (entries + actor/subject/team display batching, with display-name resolution delegated to `IProfileService` and `ITeamService`) inside the Audit Log section. `IAuditLogService` is the write side; the read+render path is `IAuditViewerService`.
 
 ## Triggers
 
@@ -128,9 +128,9 @@ No one reads audit entries anonymously. The `/Board/AuditLog` dashboard is gated
 
 Nearly every other section **writes** into this section via `IAuditLogService`. This section depends on almost nothing:
 
-- **Users (display lookup):** `AuditLogRepository.GetUserDisplayNamesAsync` reads `ctx.Users` directly to batch-resolve actor and subject display names. This is a sanctioned read-only cross-table lookup that lives behind the repository so controllers and view components never touch other domains' tables.
-- **Teams (display lookup):** `AuditLogRepository.GetTeamNamesAsync` reads `ctx.Teams` directly to batch-resolve team name + slug for entries that reference a team.
-- **GoogleResource (FK):** the `ResourceId` column FKs to `google_resources` (`OnDelete: SetNull`) and the entity exposes a `Resource` nav used by `GetGoogleSyncByUserAsync`.
+- **Profiles (display lookup):** `AuditViewerService` calls `IProfileService.GetByUserIdsAsync` to batch-resolve actor and subject display names for audit list rendering, using `Profile.BurnerName` per `memory/architecture/burnername-is-the-display-name.md`. This is a service-layer call through the public Profiles interface — no direct `ctx.Profiles` access.
+- **Teams (display lookup):** `AuditViewerService` calls `ITeamService.GetByIdsWithParentsAsync` to batch-resolve team name + slug for entries that reference a team. Same pattern — service-layer call, no direct `ctx.Teams` access.
+- **GoogleIntegration (resource name lookup):** `AuditViewerService` calls `ITeamResourceService.GetResourceNamesByIdsAsync` to batch-resolve resource display names for entries that reference a Google resource. Same pattern as Users/Teams above — service-layer call, no direct `ctx.GoogleResources` access, no nav property, no FK constraint.
 - **GDPR (`IUserDataContributor`):** `AuditLogService` contributes per-user audit slices to the GDPR export orchestrator via `ContributeForUserAsync`.
 - **Users/Identity:** `IUserService.GetMergedSourceIdsAsync` — chain-follow merge tombstones on every per-user audit read so source-attributed entries surface for the fold target.
 
@@ -140,13 +140,14 @@ No other cross-section writes from this section outward. Audit is a sink.
 
 **Owning services:** `AuditLogService` (write), `AuditViewerService` (read+render). `AuditEventTextualizer` is the stateless verb-table helper backing both `RenderPlainText` (agent tool output, with viewer-GUID → "You" substitution) and `RenderStructured` (view-component HTML composition).
 **Owned tables:** `audit_log`
-**Status:** (A) Migrated (issue nobodies-collective/Humans#552).
+**Status:** Fully aligned (2026-05 /section-align run). Original migration: nobodies-collective/Humans#552.
 
 - `AuditLogService` lives in `Humans.Application.Services.AuditLog/` and depends only on Application-layer abstractions (no `DbContext`, no `IMemoryCache`).
-- `IAuditLogRepository` (impl `Humans.Infrastructure/Repositories/AuditLog/AuditLogRepository.cs`, sealed) is the only non-test file that touches `DbContext.AuditLogEntries`. Uses `IDbContextFactory<HumansDbContext>` with short-lived contexts per call.
+- `IAuditLogRepository` (impl `Humans.Infrastructure/Repositories/AuditLog/AuditLogRepository.cs`, sealed) is the only non-test file that should touch `DbContext.AuditLogEntries`. The architecture test `Only_AuditLogRepository_Writes_AuditLogEntries_DbSet` enforces this. The baseline file `OnlyAuditLogRepositoryWritesAuditLogEntries.baseline.txt` records one allowed violation: `DriveActivityMonitorRepository.cs:81` — a tracked cross-section write pending GoogleIntegration's /section-align. Uses `IDbContextFactory<HumansDbContext>` with short-lived contexts per call.
 - **Decorator decision — no caching decorator (§15 Option A).** Writes are scattered across every section (~96 call sites at migration time); reads are admin-only and already filtered server-side by index. No benefit from a section-owned cache.
+- **Predicate-pushed reads (§2.8 exception).** Unlike most sections where in-memory filtering is preferred, `IAuditLogRepository` keeps predicate-pushed query methods (`GetByUserAsync`, `GetGoogleSyncByUserAsync`, `GetFilteredAsync`, `GetByResourceAsync`, etc.) rather than exposing a `GetAll().Where(...)` surface. Reason: `audit_log` is a large append-only table with ~96 writers, indefinite retention, and no ceiling on row count — loading all rows into RAM for in-memory filtering does not scale here. The section doc explicitly justifies this exception.
 - **Append-only enforcement:** two-layer — the architecture test `AuditLogArchitectureTests.IAuditLogRepository_HasNoUpdateOrDeleteMethods` reflects over `IAuditLogRepository` and fails the build if any `Update*` / `Delete*` / `Remove*` method is added; the Postgres triggers `prevent_audit_log_update` and `prevent_audit_log_delete` enforce the same constraint at the database.
-- **Cross-domain navs on the entity:** `ActorUserId` has an `ActorUser` nav and `ResourceId` has a `Resource` nav (both with `set` accessors as required by EF Core for FK relationships). The Google sync read path uses `Include(e => e.Resource)`. Batch display-name lookups for actors and subjects go through `AuditLogRepository.GetUserDisplayNamesAsync` / `GetTeamNamesAsync`, which read `users` and `teams` directly inside the Audit Log section.
+- **Cross-domain navs on the entity:** `ActorUserId` is a scalar FK (no nav property — `ActorUser` nav was dropped in the 2026-05 alignment; EF uses a shadow navigation). `ResourceId` is a bare `Guid?` column with no FK constraint and no nav property (dropped in the 2026-05 alignment). Display-name lookups for actors and subjects are resolved in-memory inside `AuditViewerService` via `IProfileService.GetByUserIdsAsync` (returns `Profile.BurnerName` per `memory/architecture/burnername-is-the-display-name.md`); team names are resolved via `ITeamService.GetByIdsWithParentsAsync`; resource names are resolved via `ITeamResourceService.GetResourceNamesByIdsAsync`.
 
 ### Touch-and-clean guidance
 

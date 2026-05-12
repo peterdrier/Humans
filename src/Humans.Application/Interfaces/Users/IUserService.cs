@@ -13,7 +13,10 @@ namespace Humans.Application.Interfaces.Users;
 /// <remarks>
 /// Surface-budget recent history (newest first):
 /// <list type="bullet">
-///   <item>31→30 — issue-695 HUM0009 service-DbContext analyzer PR: net -1 (removed two [Obsolete] Google-email methods TrySetGoogleEmailAsync + SetGoogleEmailAsync; added DeleteUsersAsync for admin dev-reset).</item>
+///   <item>32→31 — mailer-inbound-import follow-up: removed GetDisplayNamesByIdsAsync. HumanViewComponent already renders the cached DisplayName from a userId Guid; pre-fetching the dictionary was redundant.</item>
+///   <item>33→32 — merge with main: issue-695 HUM0009 service-DbContext analyzer PR landed on main with net -1 (removed two [Obsolete] Google-email methods TrySetGoogleEmailAsync + SetGoogleEmailAsync; added DeleteUsersAsync for admin dev-reset).</item>
+///   <item>32→33 — mailer-inbound-import: added GetDisplayNamesByIdsAsync for import preview — batch DisplayName lookup keyed by user id.</item>
+///   <item>31→32 — mailer-inbound-import: added GetCountByContactSourceAsync for admin dashboard per-source import totals.</item>
 ///   <item>2026-05-11 — InterfaceMethodBudgetTests retired; budget migrated to [SurfaceBudget(31)] (issue nobodies-collective/Humans#700).</item>
 ///   <item>30→31 — issue-660 EmailProblems case 8 cleanup: added DeleteAllExternalLoginsForUserAsync — service surface for the admin "Delete ghost logins" action. Auth-table cleanup; no expiable substitute (only the User section can write to AspNetUserLogins).</item>
 ///   <item>29→30 — issue-660 EmailProblems case 8: added GetUsersWithLoginsButNoEmailsAsync to surface ghost AspNetUserLogins rows. Authorized by repo owner — no expiable substitute exists at the service surface (UserLogins is auth-internal).</item>
@@ -23,7 +26,7 @@ namespace Humans.Application.Interfaces.Users;
 ///   <item>-1 GetContactUsersAsync removed (/Contacts surface deleted in PR 2 of email-identity-decoupling — only ContactService called it).</item>
 /// </list>
 /// </remarks>
-[SurfaceBudget(30)]
+[SurfaceBudget(31)]
 public interface IUserService : IApplicationService
 {
     /// <summary>
@@ -224,6 +227,13 @@ public interface IUserService : IApplicationService
     /// table directly (design-rules §2c).
     /// </summary>
     Task<int> GetRejectedGoogleEmailCountAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the count of users whose <see cref="User.ContactSource"/>
+    /// equals <paramref name="source"/>. Used by the admin dashboard to
+    /// show per-source import totals.
+    /// </summary>
+    Task<int> GetCountByContactSourceAsync(ContactSource source, CancellationToken ct = default);
 
     /// <summary>
     /// Returns the user ids of every account with <c>DeletionScheduledFor</c>
