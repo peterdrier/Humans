@@ -12,12 +12,6 @@ using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
 
-// FeedbackReport / FeedbackMessage cross-domain nav properties (User, ResolvedByUser,
-// AssignedToUser, AssignedToTeam, SenderUser) are [Obsolete] — FeedbackService stitches
-// them in memory from IUserService / ITeamService so controllers can continue to read
-// them for view-model shaping. Nav-strip follow-up tracked in design-rules §15i.
-#pragma warning disable CS0618
-
 namespace Humans.Web.Controllers;
 
 [Authorize]
@@ -64,9 +58,16 @@ public class FeedbackController : HumansControllerBase
         if (activeIds.Count == 0) return new List<AssigneeOption>();
 
         var users = await _userService.GetByIdsAsync(activeIds, ct);
+        var profiles = await _profileService.GetByUserIdsAsync(activeIds, ct);
+
         return users.Values
-            .OrderBy(u => u.DisplayName, StringComparer.OrdinalIgnoreCase)
-            .Select(u => new AssigneeOption { Id = u.Id, DisplayName = u.DisplayName })
+            .Select(u =>
+            {
+                var burnerName = profiles.TryGetValue(u.Id, out var p) ? p.BurnerName : null;
+                var displayName = !string.IsNullOrWhiteSpace(burnerName) ? burnerName : u.DisplayName;
+                return new AssigneeOption { Id = u.Id, DisplayName = displayName };
+            })
+            .OrderBy(o => o.DisplayName, StringComparer.OrdinalIgnoreCase)
             .ToList();
     }
 
@@ -128,7 +129,7 @@ public class FeedbackController : HumansControllerBase
                 Category = r.Category,
                 Status = r.Status,
                 Description = r.Description.Length > 100 ? r.Description[..100] + "..." : r.Description,
-                ReporterName = r.User.DisplayName,
+                ReporterName = r.ReporterName,
                 ReporterUserId = r.UserId,
                 PageUrl = r.PageUrl,
                 CreatedAt = r.CreatedAt.ToDateTimeUtc(),
@@ -138,9 +139,9 @@ public class FeedbackController : HumansControllerBase
                 NeedsReply = (r.LastReporterMessageAt.HasValue &&
                     (!r.LastAdminMessageAt.HasValue || r.LastReporterMessageAt > r.LastAdminMessageAt)) ||
                     (r.Status == FeedbackStatus.Open && !r.LastAdminMessageAt.HasValue),
-                AssignedToName = r.AssignedToUser?.DisplayName,
+                AssignedToName = r.AssignedToName,
                 AssignedToUserId = r.AssignedToUserId,
-                AssignedToTeamName = r.AssignedToTeam?.Name,
+                AssignedToTeamName = r.AssignedToTeamName,
                 AssignedToTeamId = r.AssignedToTeamId
             }).ToList()
         };
@@ -332,7 +333,7 @@ public class FeedbackController : HumansControllerBase
         return RedirectToAction(nameof(Index), new { selected = id });
     }
 
-    private static FeedbackDetailViewModel MapDetailViewModel(FeedbackReport report, bool isAdmin)
+    private static FeedbackDetailViewModel MapDetailViewModel(FeedbackReportInfo report, bool isAdmin)
     {
         return new FeedbackDetailViewModel
         {
@@ -345,22 +346,22 @@ public class FeedbackController : HumansControllerBase
             AdditionalContext = report.AdditionalContext,
             ScreenshotUrl = report.ScreenshotStoragePath is not null
                 ? $"/{report.ScreenshotStoragePath}" : null,
-            ReporterName = report.User.DisplayName,
+            ReporterName = report.ReporterName,
             ReporterUserId = report.UserId,
             GitHubIssueNumber = report.GitHubIssueNumber,
             CreatedAt = report.CreatedAt.ToDateTimeUtc(),
             UpdatedAt = report.UpdatedAt.ToDateTimeUtc(),
             ResolvedAt = report.ResolvedAt?.ToDateTimeUtc(),
-            ResolvedByName = report.ResolvedByUser?.DisplayName,
+            ResolvedByName = report.ResolvedByName,
             IsAdmin = isAdmin,
             AssignedToUserId = report.AssignedToUserId,
-            AssignedToName = report.AssignedToUser?.DisplayName,
+            AssignedToName = report.AssignedToName,
             AssignedToTeamId = report.AssignedToTeamId,
-            AssignedToTeamName = report.AssignedToTeam?.Name,
+            AssignedToTeamName = report.AssignedToTeamName,
             Messages = report.Messages.Select(m => new FeedbackMessageViewModel
             {
                 Id = m.Id,
-                SenderName = m.SenderUser?.DisplayName ?? "Unknown",
+                SenderName = m.SenderName ?? "Unknown",
                 SenderUserId = m.SenderUserId,
                 Content = m.Content,
                 CreatedAt = m.CreatedAt.ToDateTimeUtc(),
