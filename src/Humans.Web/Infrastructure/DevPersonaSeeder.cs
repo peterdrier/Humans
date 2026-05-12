@@ -4,6 +4,7 @@ using Humans.Application.DTOs;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Camps;
+using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
@@ -19,20 +20,30 @@ using NodaTime;
 namespace Humans.Web.Infrastructure;
 
 /// <summary>
-/// Dev-only persona seeding helper. Web orchestration stays here; writes flow
-/// through the owning section services.
+/// Dev-only persona seeding helper. Owns the writes that
+/// <see cref="Controllers.DevLoginController"/> used to do directly against
+/// <see cref="HumansDbContext"/>.
+///
+/// Cross-section writes (User, Profile, UserEmail) flow through the owning
+/// section's services per design-rules §2c
+/// (<see cref="UserManager{TUser}"/> / <see cref="IProfileService"/> /
+/// <see cref="IUserEmailService"/>). All dev fixtures (system-team
+/// memberships, dev test department, dev barrio camp/season/lead, city-planning
+/// team, role assignments, sample contact fields) also go through section
+/// ownership services, so this seeder no longer depends on DbContext writes.
 /// </summary>
 public sealed class DevPersonaSeeder
 {
     private readonly UserManager<User> _userManager;
     private readonly IProfileService _profileService;
-    private readonly IContactFieldService _contactFieldService;
     private readonly IUserEmailService _userEmailService;
+    private readonly IContactFieldService _contactFieldService;
+    private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly IFullProfileInvalidator _fullProfileInvalidator;
     private readonly ITeamService _teamService;
-    private readonly IRoleAssignmentService _roleAssignmentService;
-    private readonly ICampService _campService;
+    private readonly ISystemTeamSync _systemTeamSync;
     private readonly IUserService _userService;
+    private readonly ICampService _campService;
     private readonly IClock _clock;
     private readonly IMemoryCache _cache;
     private readonly IOptions<CityPlanningOptions> _cityPlanningOptions;
@@ -41,13 +52,14 @@ public sealed class DevPersonaSeeder
     public DevPersonaSeeder(
         UserManager<User> userManager,
         IProfileService profileService,
-        IContactFieldService contactFieldService,
         IUserEmailService userEmailService,
+        IContactFieldService contactFieldService,
+        IRoleAssignmentService roleAssignmentService,
         IFullProfileInvalidator fullProfileInvalidator,
         ITeamService teamService,
-        IRoleAssignmentService roleAssignmentService,
-        ICampService campService,
+        ISystemTeamSync systemTeamSync,
         IUserService userService,
+        ICampService campService,
         IClock clock,
         IMemoryCache cache,
         IOptions<CityPlanningOptions> cityPlanningOptions,
@@ -55,13 +67,14 @@ public sealed class DevPersonaSeeder
     {
         _userManager = userManager;
         _profileService = profileService;
-        _contactFieldService = contactFieldService;
         _userEmailService = userEmailService;
+        _contactFieldService = contactFieldService;
+        _roleAssignmentService = roleAssignmentService;
         _fullProfileInvalidator = fullProfileInvalidator;
         _teamService = teamService;
-        _roleAssignmentService = roleAssignmentService;
-        _campService = campService;
+        _systemTeamSync = systemTeamSync;
         _userService = userService;
+        _campService = campService;
         _clock = clock;
         _cache = cache;
         _cityPlanningOptions = cityPlanningOptions;
@@ -80,7 +93,7 @@ public sealed class DevPersonaSeeder
 
         var email = $"dev-{slug}@localhost";
 
-        // Legacy personas may exist with old hardcoded GUIDs - reuse them.
+        // Legacy personas may exist with old hardcoded GUIDs â€” reuse them.
         var byEmailUserId = await _userEmailService.GetUserIdByVerifiedEmailAsync(email);
         if (byEmailUserId is not null)
         {
@@ -102,17 +115,10 @@ public sealed class DevPersonaSeeder
         var firstName = nameParts[0];
         var lastName = nameParts.Length > 1 ? nameParts[1] : displayNameSuffix;
 
-        // Determine role and team assignments
+        // Determine role assignments
         var isCoordinatorPersona = string.Equals(slug, "coordinator", StringComparison.OrdinalIgnoreCase);
         var roleName = isCoordinatorPersona ? null : RoleNameFromSlug(slug);
         var roles = roleName is not null ? new[] { roleName } : Array.Empty<string>();
-        Guid[] teams;
-        if (roleName is not null && string.Equals(roleName, RoleNames.Board, StringComparison.Ordinal))
-            teams = [SystemTeamIds.Volunteers, SystemTeamIds.Board];
-        else if (IsBarrioLeadSlug(slug))
-            teams = [SystemTeamIds.Volunteers, SystemTeamIds.BarrioLeads];
-        else
-            teams = [SystemTeamIds.Volunteers];
 
         var user = new User
         {
@@ -165,17 +171,17 @@ public sealed class DevPersonaSeeder
         // Mark approved + cleared so the dev persona skips the consent gate
         // and lands on the dashboard. Routes through ProfileService so the
         // CachingProfileService decorator handles the FullProfile cache
-        // refresh atomically with the DB write (issue #474 - Profiles is the
+        // refresh atomically with the DB write (issue #474 â€” Profiles is the
         // single writer to the profile state fields).
         var consentCheckResult = await _profileService.RecordConsentCheckAsync(
             id, reviewerId: id, ConsentCheckStatus.Cleared,
-            notes: "Dev persona - auto-seeded");
+            notes: "Dev persona â€” auto-seeded");
         if (!consentCheckResult.Success)
             _logger.LogWarning(
                 "DEV: consent-check approval failed for persona {UserId}: {ErrorKey}",
                 id, consentCheckResult.ErrorKey);
 
-        // Seed sample contact fields so profile page exercises the contact rendering path.
+        // Seed sample contact fields through the profile service.
         await _contactFieldService.SaveContactFieldsAsync(
             profileId,
             [
@@ -192,45 +198,47 @@ public sealed class DevPersonaSeeder
                     CustomLabel: null,
                     Value: $"@dev_{slug}",
                     Visibility: ContactFieldVisibility.MyTeams,
-                    DisplayOrder: 1),
+                    DisplayOrder: 1)
             ]);
 
-        foreach (var teamId in teams)
-        {
-            if (await _teamService.IsUserMemberOfTeamAsync(teamId, id))
-            {
-                continue;
-            }
+        // All seeded personas should be in Volunteers (unless explicitly restricted later).
+        await _systemTeamSync.SyncMembershipForUserAsync(id, SystemTeamType.Volunteers);
 
-            await _teamService.ApplySystemTeamMembershipDeltaAsync(
-                teamId,
-                [id],
-                [],
-                now);
+        if (IsBarrioLeadSlug(slug))
+        {
+            await _systemTeamSync.SyncMembershipForUserAsync(id, SystemTeamType.BarrioLeads);
         }
 
         foreach (var role in roles)
         {
-            var assignResult = await _roleAssignmentService.AssignRoleAsync(
-                id,
-                role,
-                id,
-                "Dev persona - auto-seeded");
-            if (!assignResult.Success)
-            {
-                _logger.LogWarning(
-                    "DEV: role assignment failed for persona {UserId}, role {Role}: {ErrorKey}",
-                    id,
-                    role,
-                    assignResult.ErrorKey);
-            }
+            await EnsureSeededRoleAsync(id, role, id);
         }
-        _cache.InvalidateUserAccess(id);
 
-        _logger.LogInformation("DEV: seeded persona {Email} with roles [{Roles}] and teams [{Teams}]",
-            email, string.Join(", ", roles), string.Join(", ", teams.Select(t => t)));
+        _cache.InvalidateUserAccess(id);
+        await _fullProfileInvalidator.InvalidateAsync(id);
+
+        _logger.LogInformation(
+            "DEV: seeded persona {Email} with roles [{Roles}]",
+            email,
+            string.Join(", ", roles));
 
         return id;
+    }
+
+    /// <summary>
+    /// Ensures a governance role assignment exists. Existing active assignments are accepted.
+    /// </summary>
+    private async Task EnsureSeededRoleAsync(Guid userId, string roleName, Guid assignerId)
+    {
+        var result = await _roleAssignmentService.AssignRoleAsync(
+            userId, roleName, assignerId, "Dev persona â€” auto-seeded");
+
+        if (!result.Success && !string.Equals(result.ErrorKey, "RoleAlreadyActive", StringComparison.Ordinal))
+        {
+            _logger.LogWarning(
+                "DEV: failed to seed role {Role} for user {UserId}: {ErrorKey}",
+                roleName, userId, result.ErrorKey);
+        }
     }
 
     /// <summary>
@@ -251,7 +259,7 @@ public sealed class DevPersonaSeeder
     }
 
     /// <summary>
-    /// Seeds a profileless user - just User + UserEmail, no Profile, no teams, no roles.
+    /// Seeds a profileless user â€” just User + UserEmail, no Profile, no teams, no roles.
     /// Used for testing the Guest dashboard and profileless account flows.
     /// </summary>
     private async Task SeedProfilelessUserAsync(Guid id, string email, string displayName, Instant now)
@@ -287,59 +295,120 @@ public sealed class DevPersonaSeeder
         campName = string.Concat(campName[..1].ToUpperInvariant(), campName.AsSpan(1));
 
         var year = (await _campService.GetSettingsAsync()).PublicYear;
+        if (year <= 0)
+            year = _clock.GetCurrentInstant().InUtc().Date.Year;
+
         var camp = await _campService.GetCampBySlugAsync(campSlug);
+        var created = false;
+
         if (camp is null)
         {
-            var created = await _campService.CreateCampAsync(
+            var seasonData = new CampSeasonData(
+                BlurbLong: $"{campName} is a development test barrio used for local and preview environment testing. Feel free to edit this description.",
+                BlurbShort: $"A dev test barrio ({campName}).",
+                Languages: "English, Spanish",
+                AcceptingMembers: YesNoMaybe.Yes,
+                KidsWelcome: YesNoMaybe.No,
+                KidsVisiting: KidsVisitingPolicy.DaytimeOnly,
+                KidsAreaDescription: null,
+                HasPerformanceSpace: PerformanceSpaceStatus.No,
+                PerformanceTypes: string.Empty,
+                Vibes: [],
+                AdultPlayspace: AdultPlayspacePolicy.No,
+                MemberCount: 42,
+                SpaceRequirement: SpaceSize.Sqm600,
+                SoundZone: null,
+                ContainerCount: 0,
+                ContainerNotes: null,
+                ElectricalGrid: null);
+
+            await _campService.CreateCampAsync(
                 leadUserId,
                 campName,
                 $"dev-{campSlug}@localhost",
                 "+34 600 000 000",
                 webOrSocialUrl: null,
-                links: null,
+                links: [],
                 isSwissCamp: false,
                 timesAtNowhere: 0,
-                new CampSeasonData(
-                    BlurbLong: $"{campName} is a development test barrio used for local and preview environment testing. Feel free to edit this description.",
-                    BlurbShort: $"A dev test barrio ({campName}).",
-                    Languages: "English, Spanish",
-                    AcceptingMembers: YesNoMaybe.Yes,
-                    KidsWelcome: YesNoMaybe.Maybe,
-                    KidsVisiting: KidsVisitingPolicy.DaytimeOnly,
-                    KidsAreaDescription: null,
-                    HasPerformanceSpace: PerformanceSpaceStatus.No,
-                    PerformanceTypes: null,
-                    Vibes: [],
-                    AdultPlayspace: AdultPlayspacePolicy.No,
-                    MemberCount: 42,
-                    SpaceRequirement: null,
-                    SoundZone: null,
-                    ContainerCount: 0,
-                    ContainerNotes: null,
-                    ElectricalGrid: null),
-                historicalNames: null,
+                seasonData,
+                historicalNames: [],
                 year);
 
-            camp = await _campService.GetCampBySlugAsync(created.Slug);
-            var season = camp?.Seasons.FirstOrDefault(s => s.Year == year);
-            if (season is not null)
-            {
-                await _campService.ApproveSeasonAsync(
-                    season.Id,
-                    leadUserId,
-                    "Dev persona auto-seeded");
-            }
-
-            _logger.LogInformation("DEV: seeded camp {Slug} ({Id})", created.Slug, created.Id);
+            _logger.LogInformation("DEV: seeded camp {Slug}", campSlug);
+            created = true;
+            camp = await _campService.GetCampBySlugAsync(campSlug);
         }
 
         if (camp is null)
+        {
+            _logger.LogError("DEV: failed to resolve barrio camp {Slug} after creation", campSlug);
             return;
+        }
 
-        if (!await _campService.IsUserCampLeadAsync(leadUserId, camp.Id))
+        var currentYearSeason = camp.Seasons.FirstOrDefault(s => s.Year == year);
+        if (currentYearSeason is null)
+        {
+            try
+            {
+                await _campService.OptInToSeasonAsync(camp.Id, year);
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("has a season", StringComparison.Ordinal))
+            {
+                _logger.LogInformation(
+                    "DEV: barrio camp {Slug} already has a season for {Year}: {Message}",
+                    campSlug, year, ex.Message);
+            }
+
+            camp = await _campService.GetCampBySlugAsync(campSlug);
+            if (camp is null)
+            {
+                _logger.LogError("DEV: failed to resolve barrio camp {Slug} after season creation", campSlug);
+                return;
+            }
+
+            currentYearSeason = camp.Seasons.FirstOrDefault(s => s.Year == year);
+        }
+
+        if (currentYearSeason is not null && currentYearSeason.Status == CampSeasonStatus.Pending)
+        {
+            try
+            {
+                await _campService.ApproveSeasonAsync(currentYearSeason.Id, leadUserId, "Dev persona seed");
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("Cannot approve a season", StringComparison.Ordinal))
+            {
+                // Idempotent: another seed/admin path likely moved it first.
+            }
+        }
+
+        if (await EnsureCampLeadAsync(camp, leadUserId))
+        {
+            _logger.LogInformation(
+                "DEV: ensured barrio lead for {CampId} user {UserId}",
+                camp.Id, leadUserId);
+        }
+
+        if (created && IsBarrioLeadSlug(personaSlug))
+        {
+            // Ensure barrio-lead sync runs on fresh camp creation.
+            await _systemTeamSync.SyncMembershipForUserAsync(leadUserId, SystemTeamType.BarrioLeads);
+        }
+    }
+
+    private async Task<bool> EnsureCampLeadAsync(CampLookup camp, Guid leadUserId)
+    {
+        if (camp.Leads.Any(l => l.UserId == leadUserId))
+            return false;
+
+        try
         {
             await _campService.AddLeadAsync(camp.Id, leadUserId);
-            _logger.LogInformation("DEV: seeded camp lead for {Slug} user {UserId}", campSlug, leadUserId);
+            return true;
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("already an active lead", StringComparison.Ordinal))
+        {
+            return false;
         }
     }
 
@@ -350,75 +419,64 @@ public sealed class DevPersonaSeeder
     {
         var now = _clock.GetCurrentInstant();
         var changed = false;
-        var dept = await EnsureTeamAsync(
-            name: "Dev Test Department",
-            slug: "dev-test-department",
-            description: "Test department for coordinator e2e tests",
-            requiresApproval: true);
-        var subTeam = await EnsureTeamAsync(
-            name: "Dev Test SubTeam",
-            slug: "dev-test-subteam",
-            description: "Test sub-team for coordinator e2e tests",
-            requiresApproval: true,
-            parentTeamId: dept.Id);
 
-        changed |= await EnsureSeededMembershipAsync(dept.Id, coordinatorUserId, TeamMemberRole.Coordinator, now);
-        changed |= await EnsureSeededMembershipAsync(subTeam.Id, coordinatorUserId, TeamMemberRole.Member, now);
+        var department = await _teamService.GetTeamBySlugAsync("dev-test-department");
+        if (department is null)
+        {
+            department = await _teamService.CreateTeamAsync(
+                "Dev Test Department",
+                "Test department for coordinator e2e tests",
+                requiresApproval: true,
+                cancellationToken: default);
+            changed = true;
+        }
+
+        var subTeam = await _teamService.GetTeamBySlugAsync("dev-test-subteam");
+        if (subTeam is null)
+        {
+            subTeam = await _teamService.CreateTeamAsync(
+                "Dev Test SubTeam",
+                "Test sub-team for coordinator e2e tests",
+                requiresApproval: true,
+                parentTeamId: department.Id,
+                cancellationToken: default);
+            changed = true;
+        }
+
+        changed |= await EnsureSeededTeamMembershipAsync(department.Id, coordinatorUserId, TeamMemberRole.Coordinator, now);
+        changed |= await EnsureSeededTeamMembershipAsync(subTeam.Id, coordinatorUserId, TeamMemberRole.Member, now);
 
         if (changed)
         {
+            _teamService.InvalidateActiveTeamsCache();
             _cache.InvalidateUserAccess(coordinatorUserId);
             // Team membership changes ripple into FullProfile (active-teams shape)
-            // - InvalidateUserAccess only evicts ActiveTeams/role/shift caches,
-            // not the FullProfile dict in CachingProfileService.
             await _fullProfileInvalidator.InvalidateAsync(coordinatorUserId);
             _logger.LogInformation(
-                "DEV: ensured coordinator teams - department {DeptId}, sub-team {SubTeamId}",
-                dept.Id, subTeam.Id);
+                "DEV: ensured coordinator teams â€” department {DeptId}, sub-team {SubTeamId}",
+                department.Id, subTeam.Id);
         }
     }
 
-    private async Task<Team> EnsureTeamAsync(
-        string name,
-        string slug,
-        string description,
-        bool requiresApproval,
-        Guid? parentTeamId = null)
-    {
-        var team = await _teamService.GetTeamBySlugAsync(slug);
-        if (team is not null)
-        {
-            return team;
-        }
-
-        return await _teamService.CreateTeamAsync(
-            name,
-            description,
-            requiresApproval,
-            parentTeamId);
-    }
-
-    private async Task<bool> EnsureSeededMembershipAsync(
+    private async Task<bool> EnsureSeededTeamMembershipAsync(
         Guid teamId,
         Guid userId,
         TeamMemberRole expectedRole,
         Instant now)
     {
-        var existing = (await _teamService.GetUserTeamsAsync(userId))
-            .FirstOrDefault(tm => tm.TeamId == teamId);
-
-        if (existing is null)
+        var team = await _teamService.GetTeamAsync(teamId);
+        var existingMember = team?.Members.FirstOrDefault(m => m.UserId == userId);
+        if (existingMember is null)
         {
             await _teamService.AddSeededMemberAsync(teamId, userId, expectedRole, now);
             return true;
         }
 
-        if (existing.Role != expectedRole)
-        {
-            await _teamService.SetMemberRoleAsync(teamId, userId, expectedRole, userId);
-            return true;
-        }
-        return false;
+        if (existingMember.Role == expectedRole)
+            return false;
+
+        await _teamService.SetMemberRoleAsync(teamId, userId, expectedRole, userId);
+        return true;
     }
 
     /// <summary>
@@ -433,25 +491,33 @@ public sealed class DevPersonaSeeder
             return;
         }
 
-        var now = _clock.GetCurrentInstant();
-        var team = await EnsureTeamAsync(
-            name: "City Planning",
-            slug: teamSlug,
-            description: "Dev-seeded city planning team",
-            requiresApproval: false);
+        var changed = false;
+        var team = await _teamService.GetTeamBySlugAsync(teamSlug);
+        if (team is null)
+        {
+            if (!string.Equals(teamSlug, "city-planning", StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogWarning(
+                    "DEV: city-planning config slug '{Slug}' is not supported by team service APIs; cannot create deterministic team with custom slug",
+                    teamSlug);
+                return;
+            }
 
-        var changed = await EnsureSeededMembershipAsync(
-            team.Id,
-            userId,
-            TeamMemberRole.Coordinator,
-            now);
+            team = await _teamService.CreateTeamAsync(
+                "City Planning",
+                "Dev-seeded city planning team",
+                requiresApproval: false);
+            changed = true;
+            _logger.LogInformation("DEV: seeded city planning team {Slug}", teamSlug);
+        }
+
+        changed |= await EnsureSeededTeamMembershipAsync(team.Id, userId, TeamMemberRole.Coordinator, _clock.GetCurrentInstant());
 
         if (changed)
         {
+            _teamService.InvalidateActiveTeamsCache();
             _cache.InvalidateUserAccess(userId);
             // Team membership changes ripple into FullProfile (active-teams shape)
-            // - InvalidateUserAccess only evicts ActiveTeams/role/shift caches,
-            // not the FullProfile dict in CachingProfileService.
             await _fullProfileInvalidator.InvalidateAsync(userId);
         }
     }
@@ -463,8 +529,9 @@ public sealed class DevPersonaSeeder
         CancellationToken ct = default)
     {
         var users = await _userService.GetAllUsersAsync(ct);
+
         return users
-            .OrderBy(u => u.DisplayName, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(u => u.DisplayName, StringComparer.Ordinal)
             .Take(100)
             .Select(u => (u.Id, u.DisplayName ?? u.Email ?? "Unknown", u.Email ?? string.Empty))
             .ToList();
@@ -478,7 +545,7 @@ public sealed class DevPersonaSeeder
         string.Equals(slug, "city-planning", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
-    /// Deterministic GUID from persona slug - stable across restarts for idempotent seeding.
+    /// Deterministic GUID from persona slug â€” stable across restarts for idempotent seeding.
     /// </summary>
     public static Guid PersonaGuid(string slug)
     {
