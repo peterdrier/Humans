@@ -24,7 +24,7 @@ public sealed partial class TeamResourceService : ITeamResourceService
 {
     private readonly IGoogleResourceRepository _repository;
     private readonly ITeamResourceGoogleClient _googleClient;
-    private readonly IGoogleSyncService _googleSyncService;
+    private readonly IGoogleDrivePermissionsClient _drivePermissions;
     private readonly ITeamService _teamService;
     private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly IAuditLogService _auditLogService;
@@ -35,7 +35,7 @@ public sealed partial class TeamResourceService : ITeamResourceService
     public TeamResourceService(
         IGoogleResourceRepository repository,
         ITeamResourceGoogleClient googleClient,
-        IGoogleSyncService googleSyncService,
+        IGoogleDrivePermissionsClient drivePermissions,
         ITeamService teamService,
         IRoleAssignmentService roleAssignmentService,
         IAuditLogService auditLogService,
@@ -45,7 +45,7 @@ public sealed partial class TeamResourceService : ITeamResourceService
     {
         _repository = repository;
         _googleClient = googleClient;
-        _googleSyncService = googleSyncService;
+        _drivePermissions = drivePermissions;
         _teamService = teamService;
         _roleAssignmentService = roleAssignmentService;
         _auditLogService = auditLogService;
@@ -492,7 +492,12 @@ public sealed partial class TeamResourceService : ITeamResourceService
 
         try
         {
-            await _googleSyncService.SetInheritedPermissionsDisabledAsync(mutated.GoogleId, restrict, ct);
+            var error = await _drivePermissions.SetInheritedPermissionsDisabledAsync(mutated.GoogleId, restrict, ct);
+            if (error is not null)
+            {
+                throw new InvalidOperationException(
+                    $"Google Drive inheritedPermissionsDisabled update failed for {mutated.GoogleId}: HTTP {error.StatusCode} — {error.RawMessage}");
+            }
             _logger.LogInformation("Set RestrictInheritedAccess={Restrict} for resource {ResourceId} ({GoogleId})",
                 restrict, resourceId, mutated.GoogleId);
         }

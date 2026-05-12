@@ -48,7 +48,7 @@ public class TeamResourceServiceDeactivateTests : IDisposable
         _service = new TeamResourceService(
             repository,
             googleClient: Substitute.For<ITeamResourceGoogleClient>(),
-            googleSyncService: Substitute.For<IGoogleSyncService>(),
+            drivePermissions: Substitute.For<IGoogleDrivePermissionsClient>(),
             teamService: Substitute.For<ITeamService>(),
             roleAssignmentService: Substitute.For<IRoleAssignmentService>(),
             auditLogService: _auditLogService,
