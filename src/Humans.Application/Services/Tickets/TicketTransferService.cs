@@ -68,6 +68,13 @@ public sealed class TicketTransferService : ITicketTransferService
         request.VendorStepsJson = JsonSerializer.Serialize(list, VendorStepsJsonOptions);
     }
 
+    // Deliberately diverges from /api/profiles/search (the canonical
+    // _HumanSearchInput backend). That endpoint matches name+burner only;
+    // ticket-transfer senders typically have the recipient's email, not their
+    // burner name, so we keep an exact-email match path here. If/when email-
+    // exact lands in the canonical search API, this method can be retired in
+    // favour of <vc:_HumanSearchInput scope="…" /> on the Send view.
+    // See: memory/architecture/person-search.md.
     public async Task<IReadOnlyList<ReceiverLookupResultDto>> LookupReceiversAsync(
         string query, Guid senderUserId, CancellationToken ct = default)
     {
