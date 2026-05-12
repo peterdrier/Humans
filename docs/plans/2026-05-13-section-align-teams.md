@@ -28,7 +28,9 @@ Team UI and admin actions are in section-local controllers (`Team*`). No `Teams`
 ### 1.3 URL surface - mostly clean
 Known routes are primarily:
 - `/Teams/*`
-- `/TeamAdmin/*`
+- `/Team/Admin/*` (documented canonical path for team admin flow)
+
+Note: runtime route currently appears as `TeamAdminController` mounted at `Teams/{slug}` in implementation; if canonical docs require `/Team/Admin/*`, route shape should be reconciled before calling this clean.
 
 No clear section-collision was found in this pass.
 
@@ -57,6 +59,9 @@ Cross-section inbound Team entity navigation usage observed:
 - `src/Humans.Application/Models/Team/...` has obsolete Team references in other sections (`OwningTeam`, `Team`, `AssignedToTeam` navs documented as obsolete).
 
 These should be migrated to interface contracts or explicitly accepted/approved in follow-up section work.
+For each follow-up, validate first that each caller needs exactly what Teams currently provides, and that caller requirements are available on the Teams API surface:
+- caller field or object requirements should map to existing methods on `ITeamService`/other `Humans.Application.Interfaces.Teams` contracts
+- if missing, extend Teams service contracts before removing DB-level reads
 
 ### 1.11 Outbound cross-section access - mostly clean
 No obvious Teams service direct repository access outside its section was found during this pass.
@@ -133,8 +138,10 @@ None.
 
 1. [`section-align-auditLog`](../../docs/plans/2026-05-12-section-align-auditLog.md)
    - Remove/replace `AuditLogRepository` direct `ctx.Teams` reads.
+   - Verify `AuditLogRepository` callers only need display fields already exposed by Teams service interfaces (`team name`, `slug`, `id`, and any other referenced Team metadata).
 2. [`section-align-scanner` or metrics-adjacent pass](../../docs/plans/2026-05-12-section-align-scanner.md)
    - Remove/replace `HumansMetricsService` direct `Teams`/`TeamJoinRequests` access.
+   - Confirm `HumansMetricsService` can be satisfied via Teams API contracts (`ITeamService` reads needed by metrics) before changing any EF reads.
 3. `[section-align-docs for section owning obsolete Team navs]`
    - Consolidate deprecated Team navigation usage in non-Team entities (`BudgetCategory.Team`, `CalendarEvent.OwningTeam`, `FeedbackReport.AssignedToTeam`) to section-owned service contracts.
 
