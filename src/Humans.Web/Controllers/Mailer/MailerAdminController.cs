@@ -61,7 +61,7 @@ public sealed class MailerAdminController : HumansControllerBase
         }
         catch (HttpRequestException ex)
         {
-            _logger.LogError(ex, "MailerLite API call failed in Mailer dashboard");
+            _logger.LogWarning("MailerLite API call failed: {StatusCode} {Message}", ex.StatusCode, ex.Message);
             mlError = FormatMailerLiteError(ex);
         }
 
