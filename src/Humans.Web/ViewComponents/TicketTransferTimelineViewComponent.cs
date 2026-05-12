@@ -1,12 +1,15 @@
 using System.Text.Json;
 using Humans.Application.DTOs;
 using Microsoft.AspNetCore.Mvc;
+using NodaTime.Serialization.SystemTextJson;
 
 namespace Humans.Web.ViewComponents;
 
 public sealed class TicketTransferTimelineViewComponent : ViewComponent
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions JsonOptions =
+        new JsonSerializerOptions(JsonSerializerDefaults.Web)
+            .ConfigureForNodaTime(NodaTime.DateTimeZoneProviders.Tzdb);
 
     public IViewComponentResult Invoke(TicketTransferRowDto request, string vendorStepsJson)
     {

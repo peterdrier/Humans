@@ -12,6 +12,7 @@ using Humans.Domain.Enums;
 using Humans.Testing;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
+using NodaTime.Serialization.SystemTextJson;
 using NodaTime.Testing;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
@@ -73,7 +74,9 @@ public sealed class TicketTransferService_VendorStepsTests
         TicketOrderId = Guid.NewGuid(),
     };
 
-    private static readonly JsonSerializerOptions WebOptions = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions WebOptions =
+        new JsonSerializerOptions(JsonSerializerDefaults.Web)
+            .ConfigureForNodaTime(NodaTime.DateTimeZoneProviders.Tzdb);
 
     private static IReadOnlyList<TicketTransferVendorStep> StepsOf(TicketTransferRequest r) =>
         JsonSerializer.Deserialize<List<TicketTransferVendorStep>>(r.VendorStepsJson, WebOptions)!;
@@ -102,6 +105,7 @@ public sealed class TicketTransferService_VendorStepsTests
         steps[1].VendorReferenceId.Should().Be("tt_new");
         steps[2].Kind.Should().Be(TicketTransferVendorStepKind.LocalWriteback);
         steps[2].Success.Should().BeTrue();
+        steps[0].OccurredAt.Should().Be(Now);
     }
 
     [HumansFact]

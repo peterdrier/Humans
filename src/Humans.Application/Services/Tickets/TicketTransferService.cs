@@ -11,6 +11,7 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging;
 using NodaTime;
+using NodaTime.Serialization.SystemTextJson;
 
 namespace Humans.Application.Services.Tickets;
 
@@ -58,7 +59,9 @@ public sealed class TicketTransferService : ITicketTransferService
 
     private const int MaxBurnerNameMatches = 10;
 
-    private static readonly JsonSerializerOptions VendorStepsJsonOptions = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions VendorStepsJsonOptions =
+        new JsonSerializerOptions(JsonSerializerDefaults.Web)
+            .ConfigureForNodaTime(NodaTime.DateTimeZoneProviders.Tzdb);
 
     private static void AppendStep(TicketTransferRequest request, TicketTransferVendorStep step)
     {
