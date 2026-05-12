@@ -147,20 +147,20 @@ public sealed class MailerImportService : IMailerImportService
                     {
                         if (d.UnverifiedEmailIdToDelete is Guid emailId && d.TargetUserId is Guid uid)
                             await _userEmails.DeleteEmailAsync(uid, emailId, ct);
-                        var prov = await _provisioning.FindOrCreateUserByEmailAsync(
+                        var (provUser, provCreated) = await _provisioning.FindOrCreateUserByEmailAsync(
                             subscriber.Email, displayName: null, ContactSource.MailerLite, ct);
-                        if (prov.Created) created++;
-                        await ApplyMarketingDeltaAsync(prov.User.Id, subscriber, ct);
+                        if (provCreated) created++;
+                        await ApplyMarketingDeltaAsync(provUser.Id, subscriber, ct);
                         deletedAndCreated++;
                         break;
                     }
 
                     case SubscriberOutcome.CreateContact:
                     {
-                        var prov = await _provisioning.FindOrCreateUserByEmailAsync(
+                        var (provUser, provCreated) = await _provisioning.FindOrCreateUserByEmailAsync(
                             subscriber.Email, displayName: null, ContactSource.MailerLite, ct);
-                        if (prov.Created) created++;
-                        await ApplyMarketingDeltaAsync(prov.User.Id, subscriber, ct);
+                        if (provCreated) created++;
+                        await ApplyMarketingDeltaAsync(provUser.Id, subscriber, ct);
                         break;
                     }
                 }
