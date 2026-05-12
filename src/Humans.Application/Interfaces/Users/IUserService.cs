@@ -13,6 +13,7 @@ namespace Humans.Application.Interfaces.Users;
 /// <remarks>
 /// Surface-budget recent history (newest first):
 /// <list type="bullet">
+///   <item>32→33 — mailer-inbound-import: added GetDisplayNamesByIdsAsync for import preview — batch DisplayName lookup keyed by user id.</item>
 ///   <item>31→32 — mailer-inbound-import: added GetCountByContactSourceAsync for admin dashboard per-source import totals.</item>
 ///   <item>2026-05-11 — InterfaceMethodBudgetTests retired; budget migrated to [SurfaceBudget(31)] (issue nobodies-collective/Humans#700).</item>
 ///   <item>30→31 — issue-660 EmailProblems case 8 cleanup: added DeleteAllExternalLoginsForUserAsync — service surface for the admin "Delete ghost logins" action. Auth-table cleanup; no expiable substitute (only the User section can write to AspNetUserLogins).</item>
@@ -23,7 +24,7 @@ namespace Humans.Application.Interfaces.Users;
 ///   <item>-1 GetContactUsersAsync removed (/Contacts surface deleted in PR 2 of email-identity-decoupling — only ContactService called it).</item>
 /// </list>
 /// </remarks>
-[SurfaceBudget(32)]
+[SurfaceBudget(33)]
 public interface IUserService : IApplicationService
 {
     /// <summary>
@@ -55,6 +56,16 @@ public interface IUserService : IApplicationService
     /// </summary>
     Task<IReadOnlyDictionary<Guid, User>> GetByIdsWithEmailsAsync(
         IReadOnlyCollection<Guid> userIds,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns a dictionary mapping each id in <paramref name="ids"/> to that
+    /// user's <c>DisplayName</c>. Missing users are absent from the result.
+    /// Used by the mailer import preview to label matched users without
+    /// loading full <see cref="User"/> entities.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, string>> GetDisplayNamesByIdsAsync(
+        IReadOnlyCollection<Guid> ids,
         CancellationToken ct = default);
 
     /// <summary>

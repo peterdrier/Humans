@@ -1,5 +1,7 @@
+using System.Text.Json;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Mailer;
+using Humans.Application.Interfaces.Mailer.Dtos;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
@@ -63,6 +65,50 @@ public sealed class MailerAdminController : HumansControllerBase
             summary, groups, mlContacts, optedIn, optedOut, forgottenCount,
             last?.OccurredAt, last?.Description, drift);
         return View("~/Views/Mailer/Admin/Index.cshtml", vm);
+    }
+
+    [HttpGet("Import")]
+    public async Task<IActionResult> Import(CancellationToken ct)
+    {
+        var plan = await _import.BuildPlanAsync(ct);
+        var rows = await ProjectRowsAsync(plan, ct);
+
+        // Snapshot counts in TempData for the >10% delta check on Commit (Task 27).
+        TempData["PlanCountsSnapshot"] = JsonSerializer.Serialize(plan.Counts);
+
+        return View("~/Views/Mailer/Admin/Import.cshtml",
+            new MailerImportPreviewViewModel(plan, rows));
+    }
+
+    private async Task<IReadOnlyList<SubscriberDecisionRow>> ProjectRowsAsync(
+        ImportPlan plan, CancellationToken ct)
+    {
+        var matchedUserIds = plan.Decisions
+            .Where(d => d.TargetUserId is not null)
+            .Select(d => d.TargetUserId!.Value)
+            .Distinct()
+            .ToList();
+        var users = matchedUserIds.Count == 0
+            ? new Dictionary<Guid, string>()
+            : await _users.GetDisplayNamesByIdsAsync(matchedUserIds, ct);
+
+        return plan.Decisions.Select(d => new SubscriberDecisionRow(
+            EmailRedacted: Redact(d.Email),
+            EmailFull: d.Email,
+            MlStatus: d.Status,
+            MlLastActionAt: null,
+            MatchedDisplayName: d.TargetUserId is Guid uid && users.TryGetValue(uid, out var n) ? n : null,
+            MatchedUserId: d.TargetUserId,
+            Outcome: d.Outcome)).ToList();
+    }
+
+    private static string Redact(string email)
+    {
+        var at = email.IndexOf('@');
+        if (at < 0 || at < 2) return email;
+        var local = email[..at];
+        var domain = email[(at + 1)..];
+        return $"{local[..2]}***@{domain[..Math.Min(3, domain.Length)]}***";
     }
 
     private async Task<DriftReport> ComputeDriftAsync(CancellationToken ct)
