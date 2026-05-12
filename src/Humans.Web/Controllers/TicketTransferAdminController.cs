@@ -3,6 +3,7 @@ using Humans.Application.Interfaces.Tickets;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Authorization;
+using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -15,25 +16,60 @@ namespace Humans.Web.Controllers;
 public sealed class TicketTransferAdminController : HumansControllerBase
 {
     private readonly ITicketTransferService _service;
+    private readonly ITicketQueryService _ticketQueryService;
     private readonly ILogger<TicketTransferAdminController> _logger;
 
     public TicketTransferAdminController(
         ITicketTransferService service,
+        ITicketQueryService ticketQueryService,
         UserManager<User> userManager,
         ILogger<TicketTransferAdminController> logger)
         : base(userManager)
     {
         _service = service;
+        _ticketQueryService = ticketQueryService;
         _logger = logger;
     }
 
     [HttpGet("")]
-    public async Task<IActionResult> Index(CancellationToken ct)
+    public async Task<IActionResult> Index(string? tab, CancellationToken ct)
     {
-        var pending = (await _service.GetByStatusAsync(TicketTransferStatus.Pending, ct))
-            .OrderBy(r => r.RequestedAt) // FIFO admin queue
+        tab ??= "pending";
+
+        var pendingAll = await _service.GetByStatusAsync(TicketTransferStatus.Pending, ct);
+        var pending = pendingAll.OrderBy(r => r.RequestedAt).ToList();
+
+        var approvedAll = await _service.GetByStatusAsync(TicketTransferStatus.Approved, ct);
+        var needsAttention = approvedAll
+            .Where(r => r.VendorResult == TicketTransferVendorResult.Failed
+                     || r.VendorResult == TicketTransferVendorResult.VoidSucceededIssueFailed)
+            .OrderByDescending(r => r.DecidedAt)
             .ToList();
-        return View(pending);
+
+        IReadOnlyList<TicketTransferRowDto> rows = tab switch
+        {
+            "needs-attention" => needsAttention,
+            "all" => await BuildAllAsync(ct),
+            _ => pending,
+        };
+
+        var drift = await _ticketQueryService.GetOrderDriftAsync(ct);
+
+        return View(new TicketTransferIndexViewModel(
+            ActiveTab: tab,
+            PendingCount: pending.Count,
+            NeedsAttentionCount: needsAttention.Count,
+            Rows: rows,
+            Drift: drift));
+    }
+
+    private async Task<IReadOnlyList<TicketTransferRowDto>> BuildAllAsync(CancellationToken ct)
+    {
+        var statuses = Enum.GetValues<TicketTransferStatus>();
+        var combined = new List<TicketTransferRowDto>();
+        foreach (var s in statuses)
+            combined.AddRange(await _service.GetByStatusAsync(s, ct));
+        return combined.OrderByDescending(r => r.RequestedAt).ToList();
     }
 
     [HttpGet("Detail/{id:guid}")]
