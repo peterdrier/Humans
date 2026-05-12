@@ -195,6 +195,38 @@ public class ApplicationServiceDbContextInjectionAnalyzerTests
     }
 
     [HumansFact]
+    public async Task Fires_on_HumansDbContext_as_generic_type_argument_of_base_class()
+    {
+        // Pins the recursive type-argument walk in TypeReferences. Without it
+        // the analyzer would silently miss UserStore<…, HumansDbContext, …>
+        // — the LoggingUserStoreDecorator case that motivated the walk.
+        var source = Stubs + """
+
+            namespace System.Identity
+            {
+                public class UserStore<TUser, TContext> where TContext : class { }
+            }
+
+            namespace Humans.Infrastructure.Identity
+            {
+                public sealed class LoggingUserStoreDecorator
+                    : System.Identity.UserStore<object, Humans.Infrastructure.Data.HumansDbContext>
+                {
+                }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new ApplicationServiceDbContextInjectionAnalyzer(),
+            "Humans.Infrastructure",
+            source);
+
+        var hits = diagnostics.Where(IsHum0009).ToList();
+        hits.Should().ContainSingle();
+        hits[0].Severity.Should().Be(DiagnosticSeverity.Error);
+    }
+
+    [HumansFact]
     public async Task Does_not_fire_outside_Infrastructure_assembly()
     {
         var source = Stubs + """
