@@ -3,6 +3,7 @@ using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Email;
+using Humans.Application.Interfaces.Mailer;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
@@ -43,6 +44,7 @@ public class AccountDeletionServiceTests
         Substitute.For<IShiftAuthorizationInvalidator>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
+    private readonly IForgottenEmailService _forgottenEmailService = Substitute.For<IForgottenEmailService>();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 3, 14, 12, 0));
     private readonly AccountDeletionService _service;
 
@@ -61,6 +63,7 @@ public class AccountDeletionServiceTests
             _shiftAuthorizationInvalidator,
             _auditLogService,
             _emailService,
+            _forgottenEmailService,
             _clock,
             NullLogger<AccountDeletionService>.Instance);
     }
@@ -315,7 +318,8 @@ public class AccountDeletionServiceTests
             .Returns(new ExpiredDeletionAnonymizationResult(
                 OriginalEmail: "expired@example.com",
                 OriginalDisplayName: "Expired Human",
-                PreferredLanguage: "es"));
+                PreferredLanguage: "es",
+                DeletedEmailAddresses: ["expired@example.com"]));
 
         var result = await _service.AnonymizeExpiredAccountAsync(userId);
 
@@ -359,6 +363,58 @@ public class AccountDeletionServiceTests
         _teamService.DidNotReceive().RemoveMemberFromAllTeamsCache(userId);
         _roleAssignmentClaimsInvalidator.DidNotReceive().Invalidate(userId);
         _shiftAuthorizationInvalidator.DidNotReceive().Invalidate(userId);
+    }
+
+    [HumansFact]
+    public async Task AnonymizeExpiredAccountAsync_RecordsForgottenEmailsAfterIdentityWrite()
+    {
+        var userId = Guid.NewGuid();
+        var user = MakeUser(userId, email: "expired@example.com");
+
+        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
+        _userService.ApplyExpiredDeletionAnonymizationAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ExpiredDeletionAnonymizationResult(
+                OriginalEmail: "expired@example.com",
+                OriginalDisplayName: "Expired Human",
+                PreferredLanguage: "es",
+                DeletedEmailAddresses: ["expired@example.com", "alt@example.com"]));
+        _forgottenEmailService
+            .RecordForgottenAsync(userId, Arg.Any<IReadOnlyCollection<string>>(),
+                Arg.Any<NodaTime.Instant>(), Arg.Any<CancellationToken>())
+            .Returns(2);
+
+        await _service.AnonymizeExpiredAccountAsync(userId);
+
+        await _forgottenEmailService.Received(1).RecordForgottenAsync(
+            userId,
+            Arg.Is<IReadOnlyCollection<string>>(emails =>
+                emails.Contains("expired@example.com") && emails.Contains("alt@example.com")),
+            Arg.Any<NodaTime.Instant>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task AnonymizeExpiredAccountAsync_ForgottenEmailFailure_DoesNotPropagateException()
+    {
+        var userId = Guid.NewGuid();
+        var user = MakeUser(userId, email: "expired@example.com");
+
+        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
+        _userService.ApplyExpiredDeletionAnonymizationAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ExpiredDeletionAnonymizationResult(
+                OriginalEmail: "expired@example.com",
+                OriginalDisplayName: "Expired Human",
+                PreferredLanguage: "es",
+                DeletedEmailAddresses: ["expired@example.com"]));
+        _forgottenEmailService
+            .RecordForgottenAsync(userId, Arg.Any<IReadOnlyCollection<string>>(),
+                Arg.Any<NodaTime.Instant>(), Arg.Any<CancellationToken>())
+            .Returns<int>(_ => throw new InvalidOperationException("db failure"));
+
+        // Should not throw — swallowed to warning
+        var result = await _service.AnonymizeExpiredAccountAsync(userId);
+
+        result.Should().NotBeNull();
     }
 
     [HumansFact]
