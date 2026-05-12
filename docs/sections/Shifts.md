@@ -275,17 +275,17 @@ Selected routes:
 
 ## Architecture
 
-**Owning services:** `ShiftManagementService`, `ShiftSignupService`, `GeneralAvailabilityService`
-**Owned tables:** `rotas`, `shifts`, `shift_signups`, `event_settings`, `general_availability`, `volunteer_event_profiles`, `shift_tags`, `volunteer_tag_preferences`, `rota_shift_tags` (join table). `event_participations` is owned by Users (see [`Users.md`](Users.md)); Shifts only reads it via `IUserService`.
-**Status:** (A) Fully migrated. All three services live in `Humans.Application.Services.Shifts` and route through `IShiftManagementRepository` / `IShiftSignupRepository` / `IGeneralAvailabilityRepository`. Cross-domain navs on Shifts-owned entities deleted 2026-04-25 in nobodies-collective/Humans#541 final pass; FKs stay wired in EF via the typed-FK form.
+**Owning services:** `ShiftManagementService`, `ShiftSignupService`, `GeneralAvailabilityService`, `VolunteerTrackingService`
+**Owned tables:** `rotas`, `shifts`, `shift_signups`, `event_settings`, `general_availability`, `volunteer_event_profiles`, `volunteer_build_statuses`, `shift_tags`, `volunteer_tag_preferences`, `rota_shift_tags` (join table). `event_participations` is owned by Users (see [`Users.md`](Users.md)); Shifts only reads it via `IUserService`.
+**Status:** (A) Fully migrated. All four services live in `Humans.Application.Services.Shifts` and route through `IShiftManagementRepository` / `IShiftSignupRepository` / `IGeneralAvailabilityRepository` / `IVolunteerTrackingRepository`. Cross-domain navs on Shifts-owned entities deleted 2026-04-25 in nobodies-collective/Humans#541 final pass; FKs stay wired in EF via the typed-FK form.
 
 - Services live in `Humans.Application.Services.Shifts/` and never import `Microsoft.EntityFrameworkCore`.
-- `IShiftManagementRepository`, `IShiftSignupRepository`, `IGeneralAvailabilityRepository` (impls in `Humans.Infrastructure/Repositories/Shifts/`) are the only code paths touching this section's tables via `DbContext`.
+- `IShiftManagementRepository`, `IShiftSignupRepository`, `IGeneralAvailabilityRepository`, `IVolunteerTrackingRepository` (impls in `Humans.Infrastructure/Repositories/Shifts/`) are the only code paths touching this section's tables via `DbContext`.
 - **Caching:**
   - `ShiftManagementService` takes `IMemoryCache` directly (no decorator). Auth cache (`shift-auth:{userId}`, 60 s absolute) wraps `ITeamService.GetUserCoordinatedTeamIdsAsync` on a hot per-request path. Dashboard queries (overview / coordinator-activity / trends) use a 5-minute sliding cache. External sections (Teams, Profiles) invalidate the auth cache via `IShiftAuthorizationInvalidator.Invalidate(userId)` rather than poking `IMemoryCache` directly. `ShiftSignupService` and `GeneralAvailabilityService` use no cache (§15 Option A).
 - **Cross-domain navs stripped** 2026-04-25 (#541 final pass): `Rota.Team`, `ShiftSignup.User` / `EnrolledByUser` / `ReviewedByUser`, `VolunteerEventProfile.User`, `VolunteerTagPreference.User`. Display stitching routes through `IUserService.GetByIdsAsync` and `ITeamService.GetTeamNamesByIdsAsync`.
 - **Cross-section calls:** `ITeamService`, `IUserService`, `IRoleAssignmentService` (lazy), `ITicketQueryService` (lazy, dashboard only), `IAuditLogService`, `INotificationService`.
-- **Architecture tests:** `tests/Humans.Application.Tests/Architecture/ShiftManagementArchitectureTests.cs`, `ShiftSignupArchitectureTests.cs`, `GeneralAvailabilityArchitectureTests.cs`.
+- **Architecture tests:** `tests/Humans.Application.Tests/Architecture/ShiftManagementArchitectureTests.cs`, `ShiftSignupArchitectureTests.cs`, `GeneralAvailabilityArchitectureTests.cs`, `VolunteerTrackingArchitectureTests.cs`.
 
 ### Repository surface
 
