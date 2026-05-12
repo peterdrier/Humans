@@ -558,74 +558,6 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         return $"{prefix}@{_options.Domain}";
     }
 
-    // ==========================================================================
-    // Per-team helpers
-    // ==========================================================================
-
-    /// <inheritdoc />
-    public async Task SyncTeamGroupMembersAsync(Guid teamId, CancellationToken cancellationToken = default)
-    {
-        _logger.LogInformation("Syncing group members for team {TeamId}", teamId);
-
-        var resources = await _resourceRepository.GetActiveByTeamIdAsync(teamId, cancellationToken);
-        var groupResource = resources.FirstOrDefault(r => r.ResourceType == GoogleResourceType.Group);
-        if (groupResource is null)
-        {
-            _logger.LogWarning("No active Google Group found for team {TeamId}", teamId);
-            return;
-        }
-
-        // Active team members (skip rejected), resolved via the Teams service
-        // so this service does not read team_members directly.
-        var teamMembers = await _teamService.GetActiveMembersForTeamsAsync([teamId], cancellationToken);
-        var emailsByUserId = await LoadEmailsForMembersAsync(teamMembers, cancellationToken);
-        var teamEmails = teamMembers
-            .Select(tm => TryGetGoogleEmail(tm, emailsByUserId))
-            .OfType<string>()
-            .ToList();
-
-        // Current Google Group members via Cloud Identity.
-        var currentGroupMembers = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var listResult = await _groupMembership.ListMembershipsAsync(groupResource.GoogleId, cancellationToken);
-        if (listResult.Memberships is null)
-        {
-            var code = listResult.Error?.StatusCode ?? 0;
-            if (code == 404 || code == 403)
-            {
-                _logger.LogWarning("Group {GroupId} not found in Google (HTTP {Code})", groupResource.GoogleId, code);
-                return;
-            }
-            _logger.LogWarning(
-                "Failed to list memberships for group {GroupId} (HTTP {Code}: {Message})",
-                groupResource.GoogleId, code, listResult.Error?.RawMessage);
-            return;
-        }
-
-        foreach (var m in listResult.Memberships)
-        {
-            if (!string.IsNullOrEmpty(m.MemberEmail))
-                currentGroupMembers.Add(m.MemberEmail);
-        }
-
-        // Add missing members (removal disabled — sync is add-only until automated sync is validated).
-        foreach (var email in teamEmails)
-        {
-            if (!currentGroupMembers.Contains(email))
-            {
-                await AddUserToGroupAsync(groupResource.Id, email, cancellationToken);
-            }
-        }
-
-        await _resourceRepository.MarkSyncedAsync(groupResource.Id, _clock.GetCurrentInstant(), cancellationToken);
-
-        _logger.LogInformation("Synced group members for team {TeamId}: {MemberCount} members", teamId, teamEmails.Count);
-    }
-
-    /// <inheritdoc />
-    public Task<GoogleResource?> GetResourceStatusAsync(
-        Guid resourceId,
-        CancellationToken cancellationToken = default)
-        => _resourceRepository.GetByIdAsync(resourceId, cancellationToken);
 
     /// <inheritdoc />
     public async Task AddUserToTeamResourcesAsync(
@@ -769,62 +701,6 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
             "Per-user removal deferred to reconciliation for user {UserId} team {TeamId}",
             userId, teamId);
         return Task.CompletedTask;
-    }
-
-    /// <inheritdoc />
-    public async Task RestoreUserToAllTeamsAsync(Guid userId, CancellationToken cancellationToken = default)
-    {
-        _logger.LogInformation("Restoring Google resource access for user {UserId}", userId);
-
-        var user = await _userService.GetByIdAsync(userId, cancellationToken);
-        if (user is null)
-        {
-            _logger.LogWarning("User {UserId} not found for access restoration", userId);
-            return;
-        }
-
-        // Merge-fold redirect (issue peterdrier/Humans#646): if the caller
-        // passed a folded source id, follow the MergedToUserId chain to the
-        // terminal target — A→B→C possible if B was later merged into C.
-        var hops = 0;
-        while (user is { MergedToUserId: { } targetUserId } && hops < 16)
-        {
-            _logger.LogInformation(
-                "Following merge-fold redirect for RestoreUserToAllTeams: source {SourceUserId} → target {TargetUserId}",
-                userId, targetUserId);
-            userId = targetUserId;
-            user = await _userService.GetByIdAsync(userId, cancellationToken);
-            hops++;
-        }
-
-        if (user is null)
-        {
-            _logger.LogWarning(
-                "RestoreUserToAllTeams: terminal merge target {UserId} not found after following redirect chain",
-                userId);
-            return;
-        }
-
-        if (hops >= 16 && user.MergedToUserId is not null)
-        {
-            _logger.LogWarning(
-                "Merge-fold chain exceeded 16 hops for user {UserId} on RestoreUserToAllTeams; provisioning against intermediate node",
-                userId);
-        }
-
-        var memberships = await _teamService.GetUserTeamsAsync(userId, cancellationToken);
-        foreach (var membership in memberships.Where(tm => tm.LeftAt is null))
-        {
-            try
-            {
-                await AddUserToTeamResourcesAsync(membership.TeamId, userId, cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error restoring access for user {UserId} to team {TeamId}",
-                    userId, membership.TeamId);
-            }
-        }
     }
 
     // ==========================================================================

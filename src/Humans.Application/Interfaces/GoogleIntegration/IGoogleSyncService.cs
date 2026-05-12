@@ -12,10 +12,11 @@ namespace Humans.Application.Interfaces.GoogleIntegration;
 /// <remarks>
 /// Budget history:
 /// <list type="bullet">
+///   <item>20→17 — section-align GoogleIntegration Phase 3 Tier 1A: deleted 3 fully-dead methods (GetResourceStatusAsync, SyncTeamGroupMembersAsync, RestoreUserToAllTeamsAsync).</item>
 ///   <item>2026-05-12 — section-align GoogleIntegration baseline at 20 methods.</item>
 /// </list>
 /// </remarks>
-[SurfaceBudget(20)]
+[SurfaceBudget(17)]
 public interface IGoogleSyncService : IApplicationService
 {
     /// <summary>
@@ -47,14 +48,6 @@ public interface IGoogleSyncService : IApplicationService
         Guid resourceId,
         SyncAction action,
         CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Gets the status of a Google resource.
-    /// </summary>
-    /// <param name="resourceId">The Google resource ID.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>The resource if found.</returns>
-    Task<GoogleResource?> GetResourceStatusAsync(Guid resourceId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Adds a user to all Google resources associated with a team.
@@ -107,21 +100,6 @@ public interface IGoogleSyncService : IApplicationService
     /// <param name="userEmail">The user's email address.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     Task RemoveUserFromGroupAsync(Guid groupResourceId, string userEmail, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Syncs all members of a team to its associated Google Group.
-    /// </summary>
-    /// <param name="teamId">The team ID.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    Task SyncTeamGroupMembersAsync(Guid teamId, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Restores a user to all their team-related Google resources.
-    /// Used when a user returns to Active status (e.g., after signing documents).
-    /// </summary>
-    /// <param name="userId">The user ID.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    Task RestoreUserToAllTeamsAsync(Guid userId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Checks all active Google Groups for settings drift against the expected configuration.
