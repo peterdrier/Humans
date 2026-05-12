@@ -60,8 +60,10 @@ public class ShiftDashboardController : HumansControllerBase
     // When a period/sub-period is selected, JS auto-populates the date inputs
     // with that range as a visual cue — dates are display-only in that case.
     // Only when period is null AND a date is present do dates take over as the
-    // filter on the urgent-shifts list.
-    private static (LocalDate? activeStart, LocalDate? activeEnd) ResolveActiveDateRange(
+    // filter on the urgent-shifts list. Internal for unit-test access; this is
+    // the server's enforcement of the period↔date-range mutex
+    // (Shifts.md invariant line 237).
+    internal static (LocalDate? activeStart, LocalDate? activeEnd) ResolveActiveDateRange(
         ShiftPeriod? period, LocalDate? filterStartDate, LocalDate? filterEndDate)
     {
         var datesAreFilter = !period.HasValue && (filterStartDate.HasValue || filterEndDate.HasValue);

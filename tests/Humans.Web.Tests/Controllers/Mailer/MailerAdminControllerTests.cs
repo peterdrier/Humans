@@ -14,8 +14,10 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
+using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 using Xunit;
 
 namespace Humans.Web.Tests.Controllers.Mailer;
@@ -45,7 +47,8 @@ public class MailerAdminControllerTests
     private MailerAdminController BuildSut(ImportPlanCounts? snapshotCounts = null)
     {
         var ctrl = new MailerAdminController(
-            _mlService, _importService, _userService, _prefs, _audit, _userManager);
+            _mlService, _importService, _userService, _prefs, _audit,
+            NullLogger<MailerAdminController>.Instance, _userManager);
 
         var http = new DefaultHttpContext
         {
@@ -165,7 +168,55 @@ public class MailerAdminControllerTests
         // Assert: drift report should count 1 Humans-opted-out / ML-active disagreement.
         var view = Assert.IsType<ViewResult>(result);
         var vm = Assert.IsType<MailerDashboardViewModel>(view.Model);
-        Assert.Equal(1, vm.Drift.HumansOptedOutMlActive);
+        Assert.NotNull(vm.Drift);
+        Assert.Equal(1, vm.Drift!.HumansOptedOutMlActive);
+        Assert.Null(vm.MlError);
+    }
+
+    // -----------------------------------------------------------------------
+    // Index — MailerLite outage: page still renders with MlError set.
+    // -----------------------------------------------------------------------
+
+    [HumansFact]
+    public async Task Index_RendersWithMlError_WhenMailerLiteApiUnauthorized()
+    {
+        // Arrange: ML call throws 401 (e.g., missing/invalid MAILERLITE_API_KEY).
+        _mlService.GetAccountSummaryAsync(Arg.Any<CancellationToken>())
+            .ThrowsAsync(new HttpRequestException(
+                "Response status code does not indicate success: 401 (Unauthorized).",
+                inner: null,
+                statusCode: System.Net.HttpStatusCode.Unauthorized));
+
+        // Humans-side dependencies still succeed.
+        _userService.GetCountByContactSourceAsync(Arg.Any<ContactSource>(), Arg.Any<CancellationToken>())
+            .Returns(7);
+        _prefs.GetCountByCategoryAndStateAsync(
+                Arg.Any<MessageCategory>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns(3);
+        _audit.GetFilteredEntriesAsync(
+                entityType: Arg.Any<string?>(),
+                entityId: Arg.Any<Guid?>(),
+                userId: Arg.Any<Guid?>(),
+                actions: Arg.Any<IReadOnlyList<AuditAction>?>(),
+                limit: Arg.Any<int>(),
+                ct: Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyList<AuditLogEntry>)Array.Empty<AuditLogEntry>());
+
+        var ctrl = BuildSut();
+
+        // Act
+        var result = await ctrl.Index(CancellationToken.None);
+
+        // Assert: page rendered with friendly error, Humans-side data preserved, no ML data.
+        var view = Assert.IsType<ViewResult>(result);
+        var vm = Assert.IsType<MailerDashboardViewModel>(view.Model);
+        Assert.NotNull(vm.MlError);
+        Assert.Contains("401", vm.MlError, StringComparison.Ordinal);
+        Assert.Contains("MAILERLITE_API_KEY", vm.MlError, StringComparison.Ordinal);
+        Assert.Null(vm.MlSummary);
+        Assert.Null(vm.Groups);
+        Assert.Null(vm.Drift);
+        Assert.Equal(7, vm.HumansMailerLiteContacts);
     }
 
     // -----------------------------------------------------------------------

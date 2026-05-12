@@ -21,7 +21,7 @@ using NodaTime.Testing;
 using NSubstitute;
 using Xunit;
 
-namespace Humans.Application.Tests.Services;
+namespace Humans.Application.Tests.Services.Shifts;
 
 public class ShiftDashboardMetricsTests : IDisposable
 {
@@ -702,6 +702,41 @@ public class ShiftDashboardMetricsTests : IDisposable
         result.Days.Should().Contain(d => d.DayOffset < 0 && d.Period == ShiftPeriod.Build);
         result.Days.Should().Contain(d => d.DayOffset >= 0 && d.DayOffset <= es.EventEndOffset && d.Period == ShiftPeriod.Event);
         result.Days.Should().Contain(d => d.DayOffset > es.EventEndOffset && d.Period == ShiftPeriod.Strike);
+    }
+
+    // ================================================================
+    // BuildSubPeriod narrowing — Shifts.md invariant line 238
+    // ================================================================
+
+    [HumansFact]
+    public async Task GetDashboardOverview_SubPeriodWithNonBuildPeriod_IsIgnored()
+    {
+        // Sub-period only narrows when period == Build. For any other period
+        // the call must behave as if sub-period were null. Arrange a mixed
+        // event with shifts spread across Build and Event periods.
+        var es = await SeedEventAsync();
+        var team = await SeedTeamAsync("Gate");
+        var buildRota = await SeedRotaAsync(team, es, RotaPeriod.Build);
+        var eventRota = await SeedRotaAsync(team, es, RotaPeriod.Event);
+
+        // Build-period shift far in the past
+        await SeedShiftAsync(buildRota, dayOffset: -10, min: 2, max: 4);
+        // Event-period shifts
+        await SeedShiftAsync(eventRota, dayOffset: 1, min: 2, max: 4);
+        await SeedShiftAsync(eventRota, dayOffset: 3, min: 2, max: 4);
+
+        // Act: period=Event with sub-period set (FirstCrew) and without.
+        var withSubPeriod = await _service.GetDashboardOverviewAsync(
+            es.Id, period: ShiftPeriod.Event, subPeriod: BuildSubPeriod.FirstCrew);
+        var withoutSubPeriod = await _service.GetDashboardOverviewAsync(
+            es.Id, period: ShiftPeriod.Event, subPeriod: null);
+
+        // Assert: sub-period silently ignored when period != Build. The two
+        // counters must agree on totals — anything else means narrowing
+        // leaked into a period it should not.
+        withSubPeriod.TotalShifts.Should().Be(withoutSubPeriod.TotalShifts);
+        withSubPeriod.TotalSlots.Should().Be(withoutSubPeriod.TotalSlots);
+        withSubPeriod.FilledShifts.Should().Be(withoutSubPeriod.FilledShifts);
     }
 
     // ================================================================

@@ -64,6 +64,7 @@ graph LR
     ShiftMgmt[ShiftManagementService]:::shifts
     ShiftSign[ShiftSignupService]:::shifts
     GenAvail[GeneralAvailabilityService]:::shifts
+    VolTrack[VolunteerTrackingService]:::shifts
 
     AppDec[ApplicationDecisionService]:::governance
     MembershipCalc[MembershipCalculator]:::governance
@@ -169,6 +170,7 @@ graph LR
     ShiftSign --> ShiftMgmt
     ShiftSign --> Notif
     ShiftSign --> Audit
+    VolTrack --> User
 
     %% Governance section
     AppDec --> User

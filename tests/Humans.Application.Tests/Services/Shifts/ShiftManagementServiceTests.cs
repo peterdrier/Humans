@@ -19,7 +19,7 @@ using NodaTime.Testing;
 using NSubstitute;
 using Xunit;
 
-namespace Humans.Application.Tests.Services;
+namespace Humans.Application.Tests.Services.Shifts;
 
 public class ShiftManagementServiceTests : IDisposable
 {
@@ -28,6 +28,7 @@ public class ShiftManagementServiceTests : IDisposable
     private readonly ITeamService _teamService;
     private readonly IUserService _userService;
     private readonly IRoleAssignmentService _roleAssignmentService;
+    private readonly IAuditLogService _auditLog;
     private readonly ShiftManagementService _service;
 
     private static readonly Instant TestNow = Instant.FromUtc(2026, 6, 15, 12, 0);
@@ -78,9 +79,10 @@ public class ShiftManagementServiceTests : IDisposable
 
         var repo = new ShiftManagementRepository(new TestDbContextFactory(options));
 
+        _auditLog = Substitute.For<IAuditLogService>();
         _service = new ShiftManagementService(
             repo,
-            Substitute.For<IAuditLogService>(),
+            _auditLog,
             Substitute.For<IAdminAuthorizationService>(),
             serviceProvider,
             new MemoryCache(new MemoryCacheOptions()),
@@ -678,5 +680,252 @@ public class ShiftManagementServiceTests : IDisposable
         filled.Should().Be(0);
         total.Should().Be(0);
         ratio.Should().Be(0d);
+    }
+
+    // ============================================================
+    // EventSettings singleton — Shifts.md invariant line 229
+    // ============================================================
+
+    [HumansFact]
+    public async Task CreateEventSettingsAsync_WithIsActiveTrue_WhenActiveAlreadyExists_Throws()
+    {
+        // Arrange: one active EventSettings already in the DB
+        var existing = new EventSettings
+        {
+            Id = Guid.NewGuid(),
+            EventName = "Existing 2026",
+            TimeZoneId = "Europe/Madrid",
+            GateOpeningDate = new LocalDate(2026, 7, 1),
+            BuildStartOffset = -14,
+            EventEndOffset = 6,
+            StrikeEndOffset = 9,
+            IsActive = true,
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow
+        };
+        _dbContext.EventSettings.Add(existing);
+        await _dbContext.SaveChangesAsync();
+
+        var second = new EventSettings
+        {
+            Id = Guid.NewGuid(),
+            EventName = "Second 2027",
+            TimeZoneId = "Europe/Madrid",
+            GateOpeningDate = new LocalDate(2027, 7, 1),
+            BuildStartOffset = -14,
+            EventEndOffset = 6,
+            StrikeEndOffset = 9,
+            IsActive = true,
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow
+        };
+
+        // Act + Assert: CreateAsync rejects the second IsActive=true row
+        var act = () => _service.CreateAsync(second);
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*one*active*");
+    }
+
+    [HumansFact]
+    public async Task UpdateEventSettingsAsync_SettingIsActiveTrue_WhenOtherActiveExists_Throws()
+    {
+        // Arrange: one active EventSettings already exists, plus an inactive
+        // one we want to flip to active.
+        var existing = new EventSettings
+        {
+            Id = Guid.NewGuid(),
+            EventName = "Active 2026",
+            TimeZoneId = "Europe/Madrid",
+            GateOpeningDate = new LocalDate(2026, 7, 1),
+            BuildStartOffset = -14,
+            EventEndOffset = 6,
+            StrikeEndOffset = 9,
+            IsActive = true,
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow
+        };
+        _dbContext.EventSettings.Add(existing);
+
+        var inactive = new EventSettings
+        {
+            Id = Guid.NewGuid(),
+            EventName = "Inactive 2027",
+            TimeZoneId = "Europe/Madrid",
+            GateOpeningDate = new LocalDate(2027, 7, 1),
+            BuildStartOffset = -14,
+            EventEndOffset = 6,
+            StrikeEndOffset = 9,
+            IsActive = false,
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow
+        };
+        _dbContext.EventSettings.Add(inactive);
+        await _dbContext.SaveChangesAsync();
+
+        // Act: flip the inactive row to IsActive=true
+        inactive.IsActive = true;
+        var act = () => _service.UpdateAsync(inactive);
+
+        // Assert
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*one*active*");
+    }
+
+    // ============================================================
+    // Medical data gating — Shifts.md invariant line 231
+    // ============================================================
+
+    [HumansFact]
+    public async Task GetShiftProfileAsync_IncludeMedicalFalse_StripsMedicalConditions()
+    {
+        // Arrange: profile with MedicalConditions populated
+        var userId = Guid.NewGuid();
+        var profile = new VolunteerEventProfile
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            MedicalConditions = "Asthma; severe nut allergy",
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow
+        };
+        _dbContext.VolunteerEventProfiles.Add(profile);
+        await _dbContext.SaveChangesAsync();
+
+        // Act
+        var result = await _service.GetShiftProfileAsync(userId, includeMedical: false);
+
+        // Assert: MedicalConditions stripped
+        result.Should().NotBeNull();
+        result!.MedicalConditions.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task GetShiftProfileAsync_IncludeMedicalTrue_PreservesMedicalConditions()
+    {
+        // Arrange: same profile as above
+        var userId = Guid.NewGuid();
+        var profile = new VolunteerEventProfile
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            MedicalConditions = "Asthma; severe nut allergy",
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow
+        };
+        _dbContext.VolunteerEventProfiles.Add(profile);
+        await _dbContext.SaveChangesAsync();
+
+        // Act
+        var result = await _service.GetShiftProfileAsync(userId, includeMedical: true);
+
+        // Assert: MedicalConditions intact
+        result.Should().NotBeNull();
+        result!.MedicalConditions.Should().Be("Asthma; severe nut allergy");
+    }
+
+    // ============================================================
+    // Rota delete — Shifts.md trigger line 262
+    // ============================================================
+
+    [HumansFact]
+    public async Task DeleteRotaAsync_WithConfirmedSignup_Throws()
+    {
+        // Arrange: rota with one Confirmed signup
+        var (es, rota) = SeedRotaScenario(RotaPeriod.Event);
+        var shift = SeedShift(rota, dayOffset: 1);
+        var user = SeedUser("Alice");
+        SeedSignup(shift, user, SignupStatus.Confirmed);
+        await _dbContext.SaveChangesAsync();
+
+        // Act + Assert
+        var act = () => _service.DeleteRotaAsync(rota.Id);
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*confirmed*");
+    }
+
+    [HumansFact]
+    public async Task DeleteRotaAsync_WithOnlyPendingSignups_CancelsThemAndDeletes()
+    {
+        // Arrange: rota with two Pending signups (no Confirmed)
+        var (es, rota) = SeedRotaScenario(RotaPeriod.Event);
+        var shift = SeedShift(rota, dayOffset: 1);
+        var user1 = SeedUser("Bob");
+        var user2 = SeedUser("Carol");
+        var pending1 = new ShiftSignup
+        {
+            Id = Guid.NewGuid(),
+            ShiftId = shift.Id,
+            UserId = user1.Id,
+            Status = SignupStatus.Pending,
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow
+        };
+        var pending2 = new ShiftSignup
+        {
+            Id = Guid.NewGuid(),
+            ShiftId = shift.Id,
+            UserId = user2.Id,
+            Status = SignupStatus.Pending,
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow
+        };
+        await _dbContext.ShiftSignups.AddRangeAsync(pending1, pending2);
+        await _dbContext.SaveChangesAsync();
+
+        // Act
+        await _service.DeleteRotaAsync(rota.Id);
+
+        // Assert: rota gone, pending signups removed by cascade-delete. We query
+        // through the service so we hit the same factory-managed context the
+        // delete used (the test's _dbContext caches the tracked rota).
+        (await _service.GetRotaByIdAsync(rota.Id)).Should().BeNull();
+        (await _dbContext.ShiftSignups
+            .AsNoTracking()
+            .Where(s => s.Id == pending1.Id || s.Id == pending2.Id)
+            .ToListAsync())
+            .Should().BeEmpty();
+    }
+
+    // ============================================================
+    // Rota move audit — Shifts.md trigger line 261
+    // ============================================================
+
+    [HumansFact]
+    public async Task MoveRotaToTeamAsync_WritesRotaMovedToTeamAuditEntry()
+    {
+        // Arrange: rota currently on team A, target team B (no parent).
+        var (es, rota) = SeedRotaScenario(RotaPeriod.Event);
+        await _dbContext.SaveChangesAsync();
+
+        var targetTeamId = Guid.NewGuid();
+        var actorUserId = Guid.NewGuid();
+
+        var sourceTeam = await _dbContext.Teams.FirstAsync(t => t.Id == rota.TeamId);
+        _teamService.GetTeamByIdAsync(rota.TeamId, Arg.Any<CancellationToken>())
+            .Returns(sourceTeam);
+        _teamService.GetTeamByIdAsync(targetTeamId, Arg.Any<CancellationToken>())
+            .Returns(new Team
+            {
+                Id = targetTeamId,
+                Name = "Target Department",
+                Slug = "target-dept",
+                SystemTeamType = SystemTeamType.None,
+                ParentTeamId = null,
+                CreatedAt = TestNow,
+                UpdatedAt = TestNow
+            });
+
+        // Act
+        await _service.MoveRotaToTeamAsync(rota.Id, targetTeamId, actorUserId);
+
+        // Assert: audit entry written with action=RotaMovedToTeam, related team=target.
+        await _auditLog.Received(1).LogAsync(
+            AuditAction.RotaMovedToTeam,
+            nameof(Rota),
+            rota.Id,
+            Arg.Any<string>(),
+            actorUserId,
+            targetTeamId,
+            nameof(Team));
     }
 }

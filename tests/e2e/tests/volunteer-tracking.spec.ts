@@ -27,9 +27,9 @@ import { loginAsVolunteer, loginAsVolunteerCoordinator, expectBlocked } from '..
  */
 
 test.describe('Volunteer Tracking (feature 47)', () => {
-  test('boundary: volunteer cannot access /ShiftDashboard/VolunteerTracking', async ({ page }) => {
+  test('boundary: volunteer cannot access /Shifts/Dashboard/VolunteerTracking', async ({ page }) => {
     await loginAsVolunteer(page);
-    await expectBlocked(page, '/ShiftDashboard/VolunteerTracking');
+    await expectBlocked(page, '/Shifts/Dashboard/VolunteerTracking');
   });
 
   test('US-47.1 / US-47.3: VC marks camp set-up, blocks/unblocks day, sees unbooked cohort', async ({ page }) => {
@@ -41,7 +41,7 @@ test.describe('Volunteer Tracking (feature 47)', () => {
     await page.goto('/Shifts');
     await page.getByRole('link', { name: /shift dashboard/i }).click();
     await page.getByRole('link', { name: /volunteer tracking/i }).click();
-    await expect(page).toHaveURL(/\/ShiftDashboard\/VolunteerTracking/);
+    await expect(page).toHaveURL(/\/Shifts\/Dashboard\/VolunteerTracking/);
     await expect(page.getByRole('heading', { name: /volunteer tracking/i })).toBeVisible();
 
     // 2. Locate seeded volunteer with a known gap.
@@ -101,7 +101,7 @@ test.describe('Volunteer Tracking (feature 47)', () => {
     test.fixme(true, 'blocked on dev seeder extension — needs a VolTrack-Gap volunteer with at least one Gap cell on the build window so the Mark-day-off form renders');
 
     await loginAsVolunteerCoordinator(page);
-    await page.goto('/ShiftDashboard/VolunteerTracking');
+    await page.goto('/Shifts/Dashboard/VolunteerTracking');
     await expect(page.getByRole('heading', { name: /volunteer tracking/i })).toBeVisible();
 
     const gapRow = page.locator('tr', { hasText: /VolTrack-Gap-Volunteer/i });
@@ -130,7 +130,7 @@ test.describe('Volunteer Tracking (feature 47)', () => {
     test.fixme(true, 'blocked on dev seeder extension — needs a VolTrack-Confirmed volunteer with at least one Confirmed signup on the build window');
 
     await loginAsVolunteerCoordinator(page);
-    await page.goto('/ShiftDashboard/VolunteerTracking');
+    await page.goto('/Shifts/Dashboard/VolunteerTracking');
 
     const confirmedRow = page.locator('tr', { hasText: /VolTrack-Confirmed-Volunteer/i });
     await expect(confirmedRow).toBeVisible();
@@ -176,7 +176,7 @@ test.describe('Volunteer Tracking (feature 47)', () => {
     const vcContext = await browser.newContext();
     const vcPage = await vcContext.newPage();
     await loginAsVolunteerCoordinator(vcPage);
-    await vcPage.goto('/ShiftDashboard/VolunteerTracking');
+    await vcPage.goto('/Shifts/Dashboard/VolunteerTracking');
 
     // The same volunteer should have yellow (blocked) cells for the two offsets.
     const volunteerRow = vcPage.locator('tr', { hasText: /VolTrack-SelfBlock-Volunteer/i });

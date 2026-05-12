@@ -1,8 +1,10 @@
+using Humans.Application.Architecture;
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 
 namespace Humans.Application.Interfaces.Shifts;
 
+[SurfaceBudget(4)]
 public interface IGeneralAvailabilityService : IApplicationService
 {
     Task SetAvailabilityAsync(Guid userId, Guid eventSettingsId, List<int> dayOffsets);

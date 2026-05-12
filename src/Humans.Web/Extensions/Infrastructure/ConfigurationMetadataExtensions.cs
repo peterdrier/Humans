@@ -55,6 +55,40 @@ internal static class ConfigurationMetadataExtensions
             configuration.GetOptionalSetting(configRegistry, "TicketVendor:Provider", "Ticket Vendor");
             configuration.GetOptionalSetting(configRegistry, "TicketVendor:SyncIntervalMinutes", "Ticket Vendor");
 
+            // MailerLite — env var is the production path; dotted key is the dev/user-secrets path.
+            configuration.GetOptionalSetting(configRegistry, "MailerLite:ApiKey", "MailerLite", isSensitive: true,
+                importance: ConfigurationImportance.Recommended);
+
+            // Holded (Expenses) — env var is the production path; BaseUrl has a default.
+            configuration.GetOptionalSetting(configRegistry, "Holded:BaseUrl", "Holded");
+
+            // Anthropic (Agent section)
+            configuration.GetOptionalSetting(configRegistry, "Anthropic:ApiKey", "Anthropic", isSensitive: true,
+                importance: ConfigurationImportance.Recommended);
+            configuration.GetOptionalSetting(configRegistry, "Anthropic:DefaultModel", "Anthropic");
+
+            // SEPA — read by Expenses payment file generation. Without these, payment files are unusable.
+            configuration.GetOptionalSetting(configRegistry, "Sepa:CreditorName", "SEPA",
+                importance: ConfigurationImportance.Recommended);
+            configuration.GetOptionalSetting(configRegistry, "Sepa:CreditorIban", "SEPA", isSensitive: true,
+                importance: ConfigurationImportance.Recommended);
+            configuration.GetOptionalSetting(configRegistry, "Sepa:CreditorBic", "SEPA",
+                importance: ConfigurationImportance.Recommended);
+            configuration.GetOptionalSetting(configRegistry, "Sepa:CreditorIdentifier", "SEPA",
+                importance: ConfigurationImportance.Recommended);
+            configuration.GetOptionalSetting(configRegistry, "Sepa:ChargeBearer", "SEPA");
+
+            // City Planning team slug — without it, only admins can edit polygons.
+            configuration.GetOptionalSetting(configRegistry, "CityPlanning:CityPlanningTeamSlug", "City Planning");
+
+            // Team Resource Management toggle
+            configuration.GetOptionalSetting(configRegistry, "TeamResourceManagement:AllowCoordinatorsToManageResources",
+                "Teams");
+
+            // Stripe webhook cleanup (operational — GitHub repo that runs the cleanup workflow)
+            configuration.GetOptionalSetting(configRegistry, "Stripe:WebhookCleanupOwner", "Stripe (Store)");
+            configuration.GetOptionalSetting(configRegistry, "Stripe:WebhookCleanupRepository", "Stripe (Store)");
+
             // Dev auth
             configuration.GetOptionalSetting(configRegistry, "DevAuth:Enabled", "Development");
 
@@ -65,6 +99,14 @@ internal static class ConfigurationMetadataExtensions
                 importance: ConfigurationImportance.Recommended);
             configRegistry.RegisterEnvironmentVariable("LOG_API_KEY", "Log API", isSensitive: true);
             configRegistry.RegisterEnvironmentVariable("AGENT_API_KEY", "Agent API", isSensitive: true);
+            // MailerLite flat env-var fallback — primary path in PR/prod (Coolify can't use dotted keys).
+            configRegistry.RegisterEnvironmentVariable("MAILERLITE_API_KEY", "MailerLite", isSensitive: true,
+                importance: ConfigurationImportance.Recommended);
+            // Holded flat env-var — required for Expenses integration.
+            configRegistry.RegisterEnvironmentVariable("HOLDED_API_KEY", "Holded", isSensitive: true,
+                importance: ConfigurationImportance.Recommended);
+            // SEPA IBAN override — env-var wins over Sepa:CreditorIban appsetting.
+            configRegistry.RegisterEnvironmentVariable("SEPA_CREDITOR_IBAN", "SEPA", isSensitive: true);
             // Stripe — one key per account/purpose; production keys must be Restricted API Keys (rk_*).
             configRegistry.RegisterEnvironmentVariable("STRIPE_TICKETS_KEY", "Stripe (Tickets)", isSensitive: true);
             configRegistry.RegisterEnvironmentVariable("STRIPE_STORE_KEY", "Stripe (Store)", isSensitive: true,

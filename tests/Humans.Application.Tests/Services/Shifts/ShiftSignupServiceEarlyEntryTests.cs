@@ -22,7 +22,7 @@ using Humans.Application.Interfaces.Auth;
 using Humans.Domain.Constants;
 using Humans.Infrastructure.Repositories.Shifts;
 
-namespace Humans.Application.Tests.Services;
+namespace Humans.Application.Tests.Services.Shifts;
 
 public class ShiftSignupServiceEarlyEntryTests : IDisposable
 {
