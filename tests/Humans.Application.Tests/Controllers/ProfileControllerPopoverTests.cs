@@ -45,6 +45,7 @@ public class ProfileControllerPopoverTests
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly IProfileService _profileService = Substitute.For<IProfileService>();
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
+    private readonly IAuthorizationService _authorizationService = Substitute.For<IAuthorizationService>();
     private readonly ProfileController _controller;
     private readonly Guid _viewerId = Guid.NewGuid();
 
@@ -91,7 +92,7 @@ public class ProfileControllerPopoverTests
             Substitute.For<IEmailOutboxService>(),
             new MemoryCache(new MemoryCacheOptions()),
             new FakeClock(Instant.FromUtc(2026, 5, 9, 12, 0)),
-            Substitute.For<IAuthorizationService>(),
+            _authorizationService,
             _userService,
             Substitute.For<IConsentService>(),
             Substitute.For<IApplicationDecisionService>(),
@@ -110,6 +111,10 @@ public class ProfileControllerPopoverTests
         var httpContext = new DefaultHttpContext { User = principal };
         _controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
         _controller.TempData = new TempDataDictionary(httpContext, Substitute.For<ITempDataProvider>());
+
+        _authorizationService.AuthorizeAsync(
+                Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<string>())
+            .Returns(AuthorizationResult.Failed());
     }
 
     [HumansFact]

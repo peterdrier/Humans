@@ -2017,10 +2017,15 @@ public class ProfileController : HumansControllerBase
                 return PartialView("_HumanPopover", fallbackVm);
             }
 
-            var teams = (await _teamService.GetActiveTeamMembershipsForUserAsync(id, ct))
+            var memberships = (await _teamService.GetActiveTeamMembershipsForUserAsync(id, ct))
                 .OrderBy(m => m.TeamName, StringComparer.OrdinalIgnoreCase)
-                .Select(m => m.TeamName)
                 .ToList();
+            var publicTeams = memberships.Where(m => !m.IsHidden).Select(m => m.TeamName).ToList();
+            var viewerCanSeeHidden =
+                (await _authorizationService.AuthorizeAsync(User, PolicyNames.TeamsAdminBoardOrAdmin)).Succeeded;
+            var hiddenTeams = viewerCanSeeHidden
+                ? memberships.Where(m => m.IsHidden).Select(m => m.TeamName).ToList()
+                : [];
             var profileLanguages = await _profileService.GetProfileLanguagesAsync(profile.Id, ct);
 
             var effectivePictureUrl = profile.HasCustomProfilePicture
@@ -2041,7 +2046,8 @@ public class ProfileController : HumansControllerBase
                 City = profile.City,
                 CountryCode = profile.CountryCode,
                 IsSuspended = profile.IsSuspended,
-                Teams = teams.ToList(),
+                Teams = publicTeams,
+                HiddenTeams = hiddenTeams,
                 Languages = profileLanguages.Select(pl => new ProfileLanguageDisplayViewModel
                 {
                     LanguageCode = pl.LanguageCode,

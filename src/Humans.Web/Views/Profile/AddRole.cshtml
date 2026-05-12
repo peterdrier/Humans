@@ -6,7 +6,7 @@
 
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-controller="Board" asp-action="Index">@Localizer["Nav_Admin"]</a></li>
+        <li class="breadcrumb-item"><a asp-controller="Admin" asp-action="Index">@Localizer["Nav_Admin"]</a></li>
         <li class="breadcrumb-item"><a asp-action="AdminList">@Localizer["AdminHumans_Title"]</a></li>
         <li class="breadcrumb-item"><a asp-action="AdminDetail" asp-route-id="@Model.UserId">@Model.UserDisplayName</a></li>
         <li class="breadcrumb-item active" aria-current="page">@Localizer["AdminAddRole_Title"]</li>
