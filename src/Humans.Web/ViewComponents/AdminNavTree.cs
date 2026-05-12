@@ -45,7 +45,7 @@ public static class AdminNavTree
                  PillCount: PillCounts.VotingQueue),
             new("Applications", "GovernanceApplications", "Admin", null, null, "fa-solid fa-file-signature", PolicyNames.BoardOrAdmin),
             new("Roles",        "Governance",  "Roles",            null, null, "fa-solid fa-id-badge",       PolicyNames.BoardOrAdmin),
-            new("Audit log",    "Board",       "AuditLog",         null, null, "fa-solid fa-book-open",      PolicyNames.BoardOrAdmin),
+            new("Audit log",    "AuditLog",    "Index",            null, null, "fa-solid fa-book-open",      PolicyNames.BoardOrAdmin),
         }),
         new("Integrations", new AdminNavItem[]
         {

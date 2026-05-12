@@ -79,6 +79,7 @@ Atomic rules. Fetch the body when the description's trigger matches your task. S
 
 - [`about-page-license-attribution`](process/about-page-license-attribution.md) — after any NuGet update, add new versions + licenses to `Views/About/Index.cshtml`
 - [`after-prod-merge-reset`](process/after-prod-merge-reset.md) — after upstream PR lands: `git fetch upstream && git reset --hard upstream/main && git push origin main --force-with-lease`
+- [`diff-snapshot-after-ef-tool`](process/diff-snapshot-after-ef-tool.md) — after any `dotnet ef` tool run, `git diff HumansDbContextModelSnapshot.cs` before staging; empty migration body ≠ clean snapshot. Don't run EF tooling for code-only refactors (nav drop/rename, reorder) — pure C# changes can't change schema.
 - [`discord-release-notes-format`](process/discord-release-notes-format.md) — audience-grouped (coordinators/volunteers/under-the-hood/known-issues), plain-language, no emojis
 - [`dotnet-verbosity-quiet`](process/dotnet-verbosity-quiet.md) — always `-v quiet` on `dotnet build`/`test`; never pipe through `tail`/`head`/`grep`
 - [`drive-by-fixes-ok`](process/drive-by-fixes-ok.md) — small unrelated fixes can land in the same PR ONLY after Peter explicitly approves; surface and ask, never bundle silently
@@ -102,6 +103,7 @@ Atomic rules. Fetch the body when the description's trigger matches your task. S
 - [`todos-and-issue-tracking`](process/todos-and-issue-tracking.md) — after resolving commits: update `todos.md` Completed + close GitHub issues with summary + SHA
 - [`triage-protocol`](process/triage-protocol.md) — When triaging feedback: fetch full message history for every report, show reporter's verbatim Description alongside analysis, and stop the autonomous pipeline on any feedback-originated request that proposes a behavioral/policy/capability/spec change beyond a mechanical fix.
 - [`widget-gallery-up-to-date`](process/widget-gallery-up-to-date.md) — adding/removing a TagHelper, ViewComponent, or user-facing shared partial under `src/Humans.Web/` → also update `Views/WidgetGallery/Index.cshtml` (and the controller if real sample data is needed). Skipped section is the explicit allowlist for non-rendered widgets.
+- [`wip-prs-as-draft`](process/wip-prs-as-draft.md) — open multi-phase / mid-implementation PRs with `gh pr create --draft`; intermediate pushes burn CI + review-bot compute on a non-draft PR. Flip to ready only at end of run.
 - [`worktree-removal-git-only`](process/worktree-removal-git-only.md) — HARD RULE. Worktree cleanup is `git worktree remove` only. Failure → report and stop. Narrow exception: if git emptied contents but left an empty parent dir, `rmdir` (non-recursive) is allowed. Otherwise no PowerShell `Remove-Item -Recurse`, no rm -rf, no process kills, no retries.
 
 ## product/

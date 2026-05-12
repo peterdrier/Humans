@@ -1,6 +1,6 @@
 using Humans.Domain.Enums;
 
-namespace Humans.Web.Extensions;
+namespace Humans.Web.Extensions.Sections;
 
 public static class AuditLogUiExtensions
 {

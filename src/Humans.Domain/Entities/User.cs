@@ -121,6 +121,7 @@ public class User : IdentityUser<Guid>
     /// </remarks>
 #pragma warning disable CS0809 // Obsolete override of non-obsolete base — intentional: marks application reads as non-canonical.
     [Obsolete("NormalizedEmail is shadow-populated by Identity. Use User.Email or IUserEmailRepository for canonical email lookup.", DiagnosticId = "HUM_USER_NORMALIZEDEMAIL", UrlFormat = "https://github.com/nobodies-collective/Humans/issues/635")]
+    [Humans.Domain.Architecture.ExpiresOn("2026-05-18", reason: "Issue #635 — Identity shadow column; application reads should go through User.Email / IUserEmailRepository.")]
     public override string? NormalizedEmail
     {
         get => Email?.ToUpperInvariant();

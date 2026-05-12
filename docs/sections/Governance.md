@@ -122,7 +122,7 @@ Three controllers serve this section directly. `BoardController` composes Govern
 | `GovernanceController` | `GET /Governance` — overview + tier counts + statutes | `GET /Governance/Roles` — role assignment list (BoardOrAdmin) |
 | `GovernanceApplicationsController` | `GET /Governance/Applications` — user's own applications | `GET /Governance/Applications/Create`, `POST /Governance/Applications/Create` — submit | `GET /Governance/Applications/Details/{id}`, `POST /Governance/Applications/Withdraw/{id}` | `GET /Governance/Applications/Admin` — admin list (BoardOrAdmin) | `GET /Governance/Applications/Admin/{id}` — admin detail (BoardOrAdmin) |
 | `GovernanceBoardVotingController` | `GET /Governance/BoardVoting` — voting dashboard (BoardOrAdmin) | `GET /Governance/BoardVoting/{id}` — voting detail (BoardOrAdmin) | `POST /Governance/BoardVoting/Vote` — cast vote (BoardOnly) | `POST /Governance/BoardVoting/Finalize` — approve/reject (BoardOrAdmin) |
-| `BoardController` | `GET /Board` — Board dashboard (BoardOrAdmin) | `GET /Board/AuditLog` — audit log viewer (BoardOrAdmin) — **not governance-owned; see Orphans note** |
+| `BoardController` | `GET /Board` — Board dashboard (BoardOrAdmin) |
 
 `OnboardingReviewController` also owns the Consent Coordinator review queue (`GET /OnboardingReview`, `POST /OnboardingReview/{id}/Clear`, etc.) — those routes belong to the Onboarding section, not Governance.
 
