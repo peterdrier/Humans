@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Expenses;
@@ -53,7 +54,7 @@ public class ExpenseReportServiceGdprTests
 
         _sut = new ExpenseReportService(
             _repo,
-            Substitute.For<IExpenseAttachmentStorageService>(),
+            Substitute.For<IFileStorage>(),
             Substitute.For<IBudgetService>(),
             Substitute.For<ITeamService>(),
             _userService,

@@ -59,7 +59,6 @@ public class HumansWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
                 ["GitHub:Repository"] = "",
                 ["GitHub:AccessToken"] = "",
                 ["GoogleMaps:ApiKey"] = "test-api-key",
-                ["ExpenseAttachments:Root"] = Path.Combine(Path.GetTempPath(), "humans-test-expense-attachments"),
             });
         });
 

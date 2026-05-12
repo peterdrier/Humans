@@ -23,7 +23,7 @@ Members submit expense reports for reimbursement. Finance Admin approves and pro
 
 - An **ExpenseReport** is the top-level reimbursement request. It moves through a state machine (see Invariants) and is owned by the submitter until submitted.
 - An **ExpenseLine** is one line item within a report — a description, amount, and required attachment.
-- An **ExpenseAttachment** is a receipt or supporting document uploaded to a line item. Stored on disk via `IExpenseAttachmentStorageService`; metadata only in the DB.
+- An **ExpenseAttachment** is a receipt or supporting document uploaded to a line item. Files are stored on disk via the shared `IFileStorage` abstraction (key `uploads/expense-attachments/{attachmentId}{.ext}`); the download route at `/Expenses/Attachment/{id}` re-authorizes the caller and streams bytes with the original filename via `Content-Disposition`. Metadata only in the DB.
 - A **HoldedExpenseOutboxEvent** is an async task queued when a report is approved or its category tag changes — drained by `HoldedExpenseOutboxJob` to create/update Holded purchase documents.
 - **SEPA** — Finance Admin generates a pain.001 XML batch for all Approved/unpaid reports, then confirms sending; reports transition to `SepaSent`. `ExpensePaidPollingJob` polls Holded every 15 minutes and transitions `SepaSent` → `Paid` when Holded confirms payment.
 - **IBAN** — snapshotted from `Profile.Iban` at submit time into `ExpenseReport.PayeeIban`. Raw IBAN appears only in the SEPA XML and in Holded API request bodies. All log/audit/error output goes through `IbanFormatter.Mask`.
@@ -75,7 +75,7 @@ Members submit expense reports for reimbursement. Finance Admin approves and pro
 
 **Table:** `expense_attachments`
 
-Metadata only; bytes on disk managed by `IExpenseAttachmentStorageService`.
+Metadata only; bytes on disk managed by the shared `IFileStorage` (key `uploads/expense-attachments/{Id}{Extension}`). See `memory/architecture/one-ifilestorage.md`.
 
 ### HoldedExpenseOutboxEvent
 

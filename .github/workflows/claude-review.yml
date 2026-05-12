@@ -49,6 +49,12 @@ on:
     types: [opened, synchronize, ready_for_review]
   pull_request_target:
     types: [opened, synchronize, ready_for_review]
+  # Note: do NOT use trigger-level paths-ignore here. For pull_request /
+  # pull_request_target, GitHub evaluates path filters against the PR's
+  # cumulative diff vs base, not the push delta — so once any code is in
+  # the PR, every later docs-only push still triggers the workflow. The
+  # docs-only-push skip is enforced by the `skip-if-docs-only` step
+  # below, which checks the actual push delta via the compare API.
 
 jobs:
   review:
@@ -78,7 +84,51 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: anthropics/claude-code-action@v1
+      # Skip the review when this event's push delta is docs-only.
+      # Compares github.event.before...github.event.after via the compare
+      # API (works across forks because PR head SHAs are mirrored into
+      # refs/pull/N/head in the base repo). On 'opened' / 'ready_for_review',
+      # before is absent or all-zeros — fall back to base.sha → head.sha,
+      # which is the full PR diff and correctly catches all-docs-from-open.
+      # Fails open: if the compare endpoint errors, run the review.
+      - name: skip-if-docs-only
+        id: guard
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          BEFORE='${{ github.event.before }}'
+          AFTER='${{ github.event.after }}'
+          if [[ -z "$BEFORE" || "$BEFORE" == "0000000000000000000000000000000000000000" ]]; then
+            BEFORE='${{ github.event.pull_request.base.sha }}'
+          fi
+          if [[ -z "$AFTER" ]]; then
+            AFTER='${{ github.event.pull_request.head.sha }}'
+          fi
+          echo "Comparing $BEFORE...$AFTER"
+          if ! files=$(gh api "repos/${{ github.repository }}/compare/${BEFORE}...${AFTER}" --jq '.files[].filename' 2>&1); then
+            echo "Compare API failed; running review anyway."
+            echo "$files"
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [[ -z "$files" ]]; then
+            echo "No file changes in this delta; skipping review."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "Changed files in delta:"
+          echo "$files"
+          if echo "$files" | grep -qvE '(^docs/|\.md$)'; then
+            echo "Non-docs files present; running review."
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Docs-only delta; skipping review."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - if: steps.guard.outputs.skip != 'true'
+        uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           # On pull_request_target, skip OIDC (see #713 above) by handing the
@@ -92,26 +142,53 @@ jobs:
             Anchor your review on the project's own rule documents (read them
             from the checkout):
               - CLAUDE.md
-              - memory/INDEX.md (atomic project rules; fetch atoms whose
-                description matches the change under review)
+              - memory/INDEX.md (atomic project rules; fetch ONLY the
+                atoms whose description matches the change under review —
+                do not read the whole atom set)
               - docs/architecture/code-review-rules.md
               - docs/architecture/design-rules.md
 
-            For any section the PR touches, also consult the matching
-            invariant doc under docs/sections/ and the feature spec under
-            docs/features/.
+            Do NOT read docs/sections/ or docs/features/ as part of this
+            review. Section invariants and feature specs are reviewed
+            separately by /section-align on demand; including them here
+            burns budget and produces cross-document nits this workflow
+            should not gate on.
 
-            Cover correctness, security, the project's design/coding rules
-            (services own their data, no cross-service DB access, NodaTime,
-            append-only ConsentRecord, no concurrency tokens, etc.), and
-            adherence to documented invariants. Do not flag stylistic nits.
+            Cover correctness, security, and the project's design/coding
+            rules (services own their data, no cross-service DB access,
+            NodaTime, append-only ConsentRecord, no concurrency tokens,
+            etc.). Do not flag stylistic nits. Do not flag doc-only
+            concerns (typos in markdown, missing doc cross-links, etc.) —
+            those are out of scope for this reviewer.
+
+            ## Budget
+
+            Aim for ≤30 turns of analysis before you start posting
+            findings. If you reach 60 turns of analysis still not having
+            posted anything, STOP analyzing, post the findings you have,
+            and include in the summary `WARN — review was budget-truncated,
+            partial coverage only.` The hard `--max-turns 100` ceiling is
+            a crash backstop, not a target — never spend it all on
+            analysis.
+
+            ## Severity floor
+
+            Post only P0 (BLOCK — bug, security, rule violation), P1
+            (WARN — likely-wrong or risky), and P2 (WARN — concrete fix
+            suggested, ≥80% confidence) findings. P3 stylistic nits,
+            preference-level commentary, and "consider also..." asides
+            are forbidden. No upper cap on count — if you find 12 valid
+            P0/P1/P2 findings, post all 12.
+
+            Prefix bodies with `BLOCK —` for P0 and `WARN —` for P1/P2,
+            then the rule reference, what's wrong, and the fix.
 
             ## Existing thread state — fetch BEFORE deciding what to flag
 
             Synchronize fires on every push. To avoid re-flagging the same
-            finding across pushes, fetch the existing review threads FIRST,
-            then suppress any new finding that matches a resolved-or-declined
-            existing thread.
+            finding across pushes, fetch the existing review threads FIRST
+            and build a deny-list. Then run your review pass. Then filter
+            findings against the deny-list before posting.
 
             Use GraphQL — the REST `/pulls/{N}/comments` endpoint does NOT
             expose `isResolved`, so it cannot tell you which threads have
@@ -128,6 +205,7 @@ jobs:
                         reviewThreads(first: 100) {
                           nodes {
                             isResolved
+                            isOutdated
                             path
                             line
                             comments(first: 50) {
@@ -140,27 +218,56 @@ jobs:
                   }
                 '
 
-            For each thread node in the response:
+            For each thread node in the response, classify as
+            **suppressed** if EITHER:
 
             - **Resolved** (`isResolved == true` — the GitHub UI "Resolve
-              conversation" button was clicked, or a reviewer marked the
-              thread done): the finding is acknowledged. Don't re-flag.
+              conversation" button was clicked).
             - **Declined / not-doing**: any reply in the thread's `comments`
-              chain containing "not doing", "declined", "out of scope",
-              "won't fix", "leaving as-is", "Peter authorized", "wontfix",
-              or similar accepted-as-is language. The deviation is
-              sanctioned. Don't re-flag.
+              chain contains "not doing", "declined", "out of scope",
+              "won't fix", "wontfix", "leaving as-is", "leaving as is",
+              "Peter authorized", "by design", "intentional", "no change",
+              "skip", or similar accepted-as-is language. The deviation
+              is sanctioned.
 
-            Skip any finding you would post if it matches a
-            resolved-or-declined existing thread on the same file +
-            neighborhood. Only post genuinely new findings on the latest push.
+            Include OUTDATED threads (`isOutdated == true`) in the
+            deny-list — across pushes, line numbers shift and GitHub
+            marks the original thread outdated, but the underlying issue
+            is the same. Do not re-flag.
+
+            For each suppressed thread, extract a **finding identity**
+            and match a new finding against the deny-list using ALL of:
+
+            1. **Rule reference** — the atom path (e.g.
+               `memory/code/...`), doc anchor, or rule citation quoted in
+               the suppressed thread's first comment. The new finding
+               cites the same rule.
+            2. **Finding category** — what's wrong in plain terms
+               (e.g. "cross-service DB write", "missing authorization
+               handler", "EF type leaking into Application layer"). The
+               new finding describes the same category.
+            3. **Site identity** — at least ONE of:
+               - same file path, OR
+               - same symbol / method / type / endpoint name quoted in
+                 the bodies (handles refactors that move the same
+                 violation to a sibling file), OR
+               - the suppressed thread's offending code snippet
+                 substantially overlaps the new finding's code snippet.
+
+            Suppress the new finding ONLY if (1) AND (2) AND (3) all
+            match. Same rule + same category on a DIFFERENT site is a
+            legitimately new finding — post it. Two distinct violations
+            of the same rule on the same PR are both valid, even if one
+            was declined.
 
             ## How to post the review (STRICT)
 
             Do ALL of your analysis before posting anything. Do every
-            review pass — atom rules, code-review-rules, design-rules,
-            section invariants, feature spec — entirely in your head /
-            scratch reasoning, NOT as posted comments.
+            review pass — atom rules, code-review-rules, design-rules —
+            entirely in your head / scratch reasoning, NOT as posted
+            comments. (Section invariants and feature specs are out of
+            scope per the reading-list block above; do not include them
+            in the analysis pass.)
 
             Findings post in TWO channels:
 
