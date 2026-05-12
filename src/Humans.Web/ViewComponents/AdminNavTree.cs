@@ -35,7 +35,7 @@ public static class AdminNavTree
         }),
         new("Governance", new AdminNavItem[]
         {
-            new("Voting", "OnboardingReview", "BoardVoting", null, null, "fa-solid fa-check-to-slot", PolicyNames.BoardOrAdmin,
+            new("Voting", "GovernanceBoardVoting", "BoardVoting", null, null, "fa-solid fa-check-to-slot", PolicyNames.BoardOrAdmin,
                  PillCount: PillCounts.VotingQueue),
             new("Board",  "Board", "Index",                  null, null, "fa-solid fa-gavel",          PolicyNames.BoardOrAdmin),
         }),

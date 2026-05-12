@@ -52,13 +52,11 @@ Multiple controllers serve this section:
 | `OnboardingReviewController` | `POST /OnboardingReview/BulkClear` | Bulk clear (`PolicyNames.ConsentCoordinatorBoardOrAdmin`) |
 | `OnboardingReviewController` | `POST /OnboardingReview/{userId}/Flag` | CC flag (`PolicyNames.ConsentCoordinatorBoardOrAdmin`) |
 | `OnboardingReviewController` | `POST /OnboardingReview/{userId}/Reject` | CC reject (`PolicyNames.ConsentCoordinatorBoardOrAdmin`) |
-| `OnboardingReviewController` | `GET /OnboardingReview/BoardVoting` | Board voting dashboard (`PolicyNames.BoardOrAdmin`) — **Governance-owned; see `Governance.md` routing table** |
-| `OnboardingReviewController` | `GET /OnboardingReview/BoardVoting/{applicationId}` | Board vote detail (`PolicyNames.BoardOrAdmin`) — **Governance-owned** |
-| `OnboardingReviewController` | `POST /OnboardingReview/BoardVoting/Vote` | Cast vote (`PolicyNames.BoardOnly`) — **Governance-owned** |
-| `OnboardingReviewController` | `POST /OnboardingReview/BoardVoting/Finalize` | Finalize decision (`PolicyNames.BoardOrAdmin`) — **Governance-owned** |
 | `ProfileController` | `POST /Profile/{id}/Admin/Approve` | Manual volunteer override (`PolicyNames.HumanAdminBoardOrAdmin`) |
 | `AccountController` | Login/logout/OAuth | Exempt from membership gate; no onboarding-specific routes |
 | `MembershipRequiredFilter` | (global filter) | Redirects non-members; profileless → `/Guest`, onboarding → `/Home` |
+
+Board voting moved to Governance: `/Governance/BoardVoting`. Onboarding only consumes `IApplicationDecisionService` for pending-application badges and detail context.
 
 ## Actors & Roles
 
@@ -85,7 +83,7 @@ Multiple controllers serve this section:
 ## Negative Access Rules
 
 - VolunteerCoordinator **cannot** clear, flag, or reject in the review queue. They have read-only access only (`PolicyNames.ReviewQueueAccess` lets them view; the Clear/Flag/Reject POST endpoints all require `PolicyNames.ConsentCoordinatorBoardOrAdmin`).
-- ConsentCoordinator **cannot** cast Board votes on tier applications, **cannot** finalize tier-application Approve/Reject decisions (Board+Admin only via `OnboardingReviewController.Vote` / `Finalize`), and **cannot** manually `ApproveVolunteerAsync` a flagged profile (HumanAdmin+Board+Admin only via `ProfileController.ApproveVolunteer`, `PolicyNames.HumanAdminBoardOrAdmin`).
+- ConsentCoordinator **cannot** cast Board votes on tier applications, **cannot** finalize tier-application Approve/Reject decisions (Board+Admin only via `GovernanceBoardVotingController.Vote` / `Finalize`), and **cannot** manually `ApproveVolunteerAsync` a flagged profile (HumanAdmin+Board+Admin only via `ProfileController.ApproveVolunteer`, `PolicyNames.HumanAdminBoardOrAdmin`).
 - Regular humans still onboarding **cannot** access most of the application (teams, shifts, budget, tickets, governance, etc.) until they become active Volunteers.
 - Profileless accounts **cannot** access the Home dashboard, City Planning, Budget, Shifts, Governance, or any member-only features. They are redirected to the Guest dashboard. **Exception:** profileless mid-widget users see the priority-shift list rendered inside `/OnboardingWidget` Step 2; direct navigation to `/Shifts` still routes them through the membership filter as today.
 

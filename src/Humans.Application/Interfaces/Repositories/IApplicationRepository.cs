@@ -1,4 +1,5 @@
 using NodaTime;
+using Humans.Application.Architecture;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using MemberApplication = Humans.Domain.Entities.Application;
@@ -16,6 +17,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// but never cross-domain navs — those are FK-only after the migration.
 /// See <c>docs/architecture/design-rules.md</c> §3 for the canonical shape.
 /// </remarks>
+[SurfaceBudget(28)]
 public interface IApplicationRepository : IRepository
 {
     /// <summary>
@@ -45,7 +47,7 @@ public interface IApplicationRepository : IRepository
 
     /// <summary>
     /// Paginated filtered list of applications for the admin
-    /// <c>Applications.cshtml</c> view. Default <paramref name="status"/>
+    /// <c>Views/Governance/Applications/Admin.cshtml</c> view. Default <paramref name="status"/>
     /// (null) maps to <see cref="ApplicationStatus.Submitted"/>, preserving
     /// pre-migration behavior.
     /// </summary>

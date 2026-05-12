@@ -14,17 +14,18 @@ using Humans.Web.Models;
 namespace Humans.Web.Controllers;
 
 [Authorize]
-public class ApplicationController : HumansControllerBase
+[Route("Governance/Applications")]
+public class GovernanceApplicationsController : HumansControllerBase
 {
     private readonly IApplicationDecisionService _applicationDecisionService;
     private readonly IStringLocalizer<SharedResource> _localizer;
-    private readonly ILogger<ApplicationController> _logger;
+    private readonly ILogger<GovernanceApplicationsController> _logger;
 
-    public ApplicationController(
+    public GovernanceApplicationsController(
         IApplicationDecisionService applicationDecisionService,
         UserManager<Domain.Entities.User> userManager,
         IStringLocalizer<SharedResource> localizer,
-        ILogger<ApplicationController> logger)
+        ILogger<GovernanceApplicationsController> logger)
         : base(userManager)
     {
         _applicationDecisionService = applicationDecisionService;
@@ -32,6 +33,7 @@ public class ApplicationController : HumansControllerBase
         _logger = logger;
     }
 
+    [HttpGet("")]
     public async Task<IActionResult> Index()
     {
         var user = await GetCurrentUserAsync();
@@ -61,10 +63,10 @@ public class ApplicationController : HumansControllerBase
             IsApprovedColaborador = isApprovedColaborador
         };
 
-        return View(viewModel);
+        return View("~/Views/Governance/Applications/Index.cshtml", viewModel);
     }
 
-    [HttpGet]
+    [HttpGet("Create")]
     public async Task<IActionResult> Create()
     {
         var user = await GetCurrentUserAsync();
@@ -83,13 +85,13 @@ public class ApplicationController : HumansControllerBase
         var isApprovedColaborador = applications.Any(a =>
             a.Status == ApplicationStatus.Approved && a.MembershipTier == MembershipTier.Colaborador);
 
-        return View(new ApplicationCreateViewModel
+        return View("~/Views/Governance/Applications/Create.cshtml", new ApplicationCreateViewModel
         {
             MembershipTier = isApprovedColaborador ? MembershipTier.Asociado : MembershipTier.Colaborador
         });
     }
 
-    [HttpPost]
+    [HttpPost("Create")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(ApplicationCreateViewModel model)
     {
@@ -100,7 +102,7 @@ public class ApplicationController : HumansControllerBase
 
         if (!ModelState.IsValid)
         {
-            return View(model);
+            return View("~/Views/Governance/Applications/Create.cshtml", model);
         }
 
         var user = await GetCurrentUserAsync();
@@ -111,7 +113,7 @@ public class ApplicationController : HumansControllerBase
         if (model.MembershipTier == MembershipTier.Volunteer)
         {
             ModelState.AddModelError(nameof(model.MembershipTier), _localizer["Application_InvalidTier"].Value);
-            return View(model);
+            return View("~/Views/Governance/Applications/Create.cshtml", model);
         }
 
         // Validate Asociado-specific fields
@@ -129,7 +131,7 @@ public class ApplicationController : HumansControllerBase
             }
             if (!ModelState.IsValid)
             {
-                return View(model);
+                return View("~/Views/Governance/Applications/Create.cshtml", model);
             }
         }
 
@@ -158,6 +160,7 @@ public class ApplicationController : HumansControllerBase
         }
     }
 
+    [HttpGet("Details/{id:guid}")]
     public async Task<IActionResult> Details(Guid id)
     {
         var user = await GetCurrentUserAsync();
@@ -193,10 +196,10 @@ public class ApplicationController : HumansControllerBase
                 }).ToList()
         };
 
-        return View(viewModel);
+        return View("~/Views/Governance/Applications/Details.cshtml", viewModel);
     }
 
-    [HttpPost]
+    [HttpPost("Withdraw/{id:guid}")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Withdraw(Guid id)
     {
@@ -226,9 +229,9 @@ public class ApplicationController : HumansControllerBase
         }
     }
 
-    [HttpGet("Application/Admin")]
+    [HttpGet("Admin")]
     [Authorize(Policy = PolicyNames.BoardOrAdmin)]
-    public async Task<IActionResult> Applications(string? status, string? tier, int page = 1)
+    public async Task<IActionResult> Admin(string? status, string? tier, int page = 1)
     {
         var pageSize = 20;
         var (items, totalCount) = await _applicationDecisionService.GetFilteredApplicationsAsync(
@@ -257,12 +260,12 @@ public class ApplicationController : HumansControllerBase
             PageSize = pageSize
         };
 
-        return View("~/Views/Shared/Applications.cshtml", viewModel);
+        return View("~/Views/Governance/Applications/Admin.cshtml", viewModel);
     }
 
-    [HttpGet("Application/Admin/{id:guid}")]
+    [HttpGet("Admin/{id:guid}")]
     [Authorize(Policy = PolicyNames.BoardOrAdmin)]
-    public async Task<IActionResult> ApplicationDetail(Guid id)
+    public async Task<IActionResult> AdminDetail(Guid id)
     {
         var application = await _applicationDecisionService.GetApplicationDetailAsync(id);
 
@@ -300,6 +303,6 @@ public class ApplicationController : HumansControllerBase
                 }).ToList()
         };
 
-        return View(viewModel);
+        return View("~/Views/Governance/Applications/AdminDetail.cshtml", viewModel);
     }
 }

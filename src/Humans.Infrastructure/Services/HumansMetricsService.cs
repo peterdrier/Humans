@@ -232,6 +232,7 @@ public sealed class HumansMetricsService : IHumansMetrics, IDisposable
             using var scope = _scopeFactory.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
             var membershipCalc = scope.ServiceProvider.GetRequiredService<IMembershipCalculator>();
+            var applicationDecisionService = scope.ServiceProvider.GetRequiredService<IApplicationDecisionService>();
             var clock = scope.ServiceProvider.GetRequiredService<IClock>();
             var now = clock.GetCurrentInstant();
 
@@ -270,7 +271,8 @@ public sealed class HumansMetricsService : IHumansMetrics, IDisposable
             var pendingDeletions = await db.Users.CountAsync(u => u.DeletionScheduledFor != null);
 
             // asociados
-            var asociados = await db.Applications.CountAsync(a => a.Status == ApplicationStatus.Approved);
+            var applicationStats = await applicationDecisionService.GetAdminStatsAsync();
+            var asociados = applicationStats.Approved;
 
             // role_assignments_active
             var roleAssignments = await db.RoleAssignments
@@ -296,8 +298,7 @@ public sealed class HumansMetricsService : IHumansMetrics, IDisposable
                 .CountAsync(d => d.IsActive && d.IsRequired);
 
             // applications_pending
-            var applicationsSubmitted = await db.Applications
-                .CountAsync(a => a.Status == ApplicationStatus.Submitted);
+            var applicationsSubmitted = await applicationDecisionService.GetPendingApplicationCountAsync();
 
             // google_sync_outbox_pending — goes through the repository so this
             // service doesn't read google_sync_outbox_events directly (issue #554

@@ -5,19 +5,19 @@
 
 ## Axis 1 - Boundary Integrity
 1. Name consistency: Canonical service/DTO/doc namespace is `Governance`, but public web surface is split across `Governance`, `Application`, `OnboardingReview`, and `Board`.
-2. Controller existence: `GovernanceController` exists, but governance-owned routes also live in `ApplicationController` and the Board-voting actions on `OnboardingReviewController`. `BoardController.Index` includes governance stats but is broader admin/board dashboard composition.
+2. Controller existence: `GovernanceController` exists. This branch moved governance-owned application routes to `GovernanceApplicationsController` and Board-voting actions to `GovernanceBoardVotingController`. `BoardController.Index` includes governance stats but is broader admin/board dashboard composition.
 3. URL surface:
 
 | Current route | Owner today | Section-align disposition |
 | --- | --- | --- |
 | `GET /Governance` | `GovernanceController.Index` | Canonical. |
 | `GET /Governance/Roles` | `GovernanceController.Roles` | Canonical route, but role-assignment ownership likely belongs to Auth/Users follow-up. |
-| `GET/POST /Application`, `/Application/Create`, `/Application/Details/{id}`, `/Application/Withdraw/{id}` | `ApplicationController` | Drift. Governance-owned tier application surface should move under `/Governance/Applications/*` or an explicitly approved exception. |
-| `GET /Application/Admin`, `/Application/Admin/{id}` | `ApplicationController` | Drift. Admin tier application surface should move under `/Governance/Admin/Applications/*` or an explicitly approved exception. |
-| `GET /OnboardingReview/BoardVoting`, `/OnboardingReview/BoardVoting/{id}`, `POST /OnboardingReview/BoardVoting/Vote`, `POST /OnboardingReview/BoardVoting/Finalize` | `OnboardingReviewController` | Drift. Board voting is Governance-owned and should move under `/Governance/BoardVoting/*` or `/Governance/Admin/BoardVoting/*`. |
+| `GET/POST /Application`, `/Application/Create`, `/Application/Details/{id}`, `/Application/Withdraw/{id}` | `ApplicationController` | Resolved in this branch: moved to `/Governance/Applications/*`. |
+| `GET /Application/Admin`, `/Application/Admin/{id}` | `ApplicationController` | Resolved in this branch per user decision: moved to `/Governance/Applications/Admin` and `/Governance/Applications/Admin/{id}`. |
+| `GET /OnboardingReview/BoardVoting`, `/OnboardingReview/BoardVoting/{id}`, `POST /OnboardingReview/BoardVoting/Vote`, `POST /OnboardingReview/BoardVoting/Finalize` | `OnboardingReviewController` | Resolved in this branch: moved to `/Governance/BoardVoting/*`. |
 | `GET /Board` | `BoardController.Index` | Composite Board dashboard. Governance stats are consumed via `IAdminDashboardService`; not a pure Governance page. |
 
-4. Views folder: `Views/Governance`, `Views/Application`, and `Views/OnboardingReview/BoardVoting*.cshtml` all render Governance-owned flows. `Views/Shared/Applications.cshtml`, `_ApplicationsListContent.cshtml`, `_ApplicationResponseSections.cshtml`, and `_ApplicationHistory.cshtml` contain application page fragments and should be evaluated for move/partial scope.
+4. Views folder: Governance-owned application and Board voting views moved under `Views/Governance/Applications` and `Views/Governance/BoardVoting`. `_ApplicationsListContent.cshtml`, `_ApplicationResponseSections.cshtml`, and `_ApplicationHistory.cshtml` remain shared partials used by those views.
 5. ViewModel placement: `GovernanceViewModels.cs`, `ApplicationViewModels.cs`, and `BoardVotingViewModels.cs` are section-specific and OK by file name. `AdminApplication*` and `BoardDashboardViewModel` live in `AdminViewModels.cs`, which is grab-bag drift for the tier application admin surface.
 6. Controller-base leak: No Governance-specific helper found on `HumansControllerBase` in this pass.
 7. Extensions placement: `GovernanceSectionExtensions.cs` exists, but `IMembershipCalculator` and `IMembershipQuery` are registered from `UsersSectionExtensions.cs`. That is Governance service wiring living in the Users section extension.
@@ -49,7 +49,7 @@
 | `ApplicationRepository` | `Repositories/ApplicationRepositoryTests.cs` exists. |
 | `MembershipCalculator` | `Services/MembershipCalculatorTests.cs` and `Services/MembershipPartitionTests.cs` exist. |
 | `MembershipQuery` | No direct behavior test; may be acceptable as thin pass-through, but should be documented. |
-| `GovernanceController` / `ApplicationController` / Board-voting actions | No focused controller tests found in this pass. |
+| `GovernanceController` / `GovernanceApplicationsController` / `GovernanceBoardVotingController` | No focused controller tests found in this pass. |
 
 2. Coverage map: Strong service/repository tests exist for application decisions, board-vote cleanup, repository operations, and membership partitioning. Gaps remain for route access / canonical route behavior, "regular human cannot view others/cast votes/manage roles" controller-level negatives, and admin-vs-board finalize UI/endpoint split.
 3. Redundancy flags: Not enough signal for deletion without a deeper Phase 3 pass. Existing service tests directly exercise behavior and repository outcomes.
@@ -63,21 +63,18 @@
 - Justification if net > 0: Not applicable for Phase 0.
 
 ## Stop Conditions Tripped
-1. Route/canonical-surface decision: Governance-owned flows currently live at `/Application/*` and `/OnboardingReview/BoardVoting*`. Moving them to `/<Section>/*` is user-visible and broad. Decision needed:
-   - A: Full canonical move to `/Governance/Applications/*`, `/Governance/Admin/Applications/*`, and `/Governance/BoardVoting/*`, updating nav/docs/notifications/tests and deciding whether to keep temporary redirects.
-   - B: Keep `/Application/*` and `/OnboardingReview/BoardVoting*` as approved exceptions and document why Governance is not following the route convention here.
-   - C: Phase in canonical routes first with legacy redirects, then remove legacy routes in a later release.
+1. Route/canonical-surface decision: Resolved by user decision on 2026-05-12. This branch performs the full canonical move to `/Governance/Applications/*`, admin applications at `/Governance/Applications/Admin`, and `/Governance/BoardVoting/*`, updating nav/docs/notifications/tests without adding legacy redirects.
 2. Role ownership decision: `/Governance/Roles` renders role assignments through Auth/role-assignment services. Decide whether this remains Governance UI composition or moves to an Auth/Users section pass.
 3. Repository standard decision: Moving `ApplicationRepository` to `IDbContextFactory<HumansDbContext>` + Singleton is mechanical but touches tests and DI. This can proceed in Phase 2 if the route decision does not block.
 
 ## Follow-up /section-align Targets
 - Metrics / Observability: `HumansMetricsService` reads `db.Applications` directly despite existing Governance service APIs.
 - Auth / Users: Role assignment browse/manage UI and service ownership are mixed into `GovernanceController.Roles`; the role surface needs its own owner decision.
-- Onboarding: Board-voting routes/views are still hosted in `OnboardingReviewController` and `Views/OnboardingReview`.
+- Onboarding: Board-voting routes/views moved out of `OnboardingReviewController` and `Views/OnboardingReview` in this branch.
 - AuditLog / Administration: `/Board` dashboard and `/Board/AuditLog` are composite/global surfaces that overlap Governance docs and navigation.
 
 ## Phase Plan
-- Phase 1 (axis 1 + route/view/test mechanical): after user decision, move or explicitly document `/Application/*` and `/OnboardingReview/BoardVoting*`; move application admin ViewModels out of `AdminViewModels.cs`; move Governance service registrations out of `UsersSectionExtensions.cs`; update route references in docs/resources/nav/tests.
-- Phase 2 (arch + boundary fixes): convert `ApplicationRepository` to `IDbContextFactory<HumansDbContext>` + Singleton; add/update architecture tests for repository shape and only-repository DbSet access; add `[SurfaceBudget]` ratchets or trim candidates for Governance interfaces; update `HumansMetricsService` to use Governance APIs if treating metrics as in-scope, otherwise leave as follow-up.
-- Phase 3 (simplify / tests): consolidate scattered Governance tests under a canonical folder, split or document bundled test files, add focused negative/controller coverage, then prune any redundant shape tests found by inspection.
-- Phase 4 (docs): update `docs/sections/Governance.md`, `docs/guide/Governance.md`, governance feature docs, dependency graph, data model, and any admin/global docs affected by the route decision.
+- Phase 1 (axis 1 + route/view/test mechanical): implemented route/view move for `/Application/*` and `/OnboardingReview/BoardVoting*`; moved Governance service registrations out of `UsersSectionExtensions.cs`; updated route references in docs/resources/nav/tests. Application admin ViewModels remain in `AdminViewModels.cs` as follow-up.
+- Phase 2 (arch + boundary fixes): implemented `ApplicationRepository` conversion to `IDbContextFactory<HumansDbContext>` + Singleton, added repository-shape architecture coverage, added `[SurfaceBudget]` ratchets for Governance interfaces, and updated `HumansMetricsService` to use Governance APIs.
+- Phase 3 (simplify / tests): follow-up. Consolidate scattered Governance tests under a canonical folder, split or document bundled test files, add focused negative/controller coverage, then prune any redundant shape tests found by inspection.
+- Phase 4 (docs): implemented route-related updates to `docs/sections/Governance.md`, `docs/guide/Governance.md`, Governance feature docs, Profiles, and Onboarding docs.

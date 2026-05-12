@@ -233,7 +233,7 @@ public class NotificationServiceTests : IDisposable
             NotificationPriority.Normal,
             "New tier application submitted",
             "Board",
-            actionUrl: "/OnboardingReview/BoardVoting");
+            actionUrl: "/Governance/BoardVoting");
 
         var notifications = await _dbContext.Notifications
             .Include(n => n.Recipients)

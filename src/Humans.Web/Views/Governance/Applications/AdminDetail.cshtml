@@ -6,7 +6,7 @@
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a asp-controller="Board" asp-action="Index">@Localizer["Nav_Admin"]</a></li>
-        <li class="breadcrumb-item"><a asp-action="Applications">@Localizer["AdminApplications_Title"]</a></li>
+        <li class="breadcrumb-item"><a asp-action="Admin">@Localizer["AdminApplications_Title"]</a></li>
         <li class="breadcrumb-item active" aria-current="page">@Localizer["AdminApp_Review"]</li>
     </ol>
 </nav>
@@ -75,7 +75,7 @@
         {
             <div class="card mb-4">
                 <div class="card-body text-center">
-                    <a asp-controller="OnboardingReview" asp-action="BoardVotingDetail" asp-route-applicationId="@Model.Id"
+                    <a asp-controller="GovernanceBoardVoting" asp-action="BoardVotingDetail" asp-route-applicationId="@Model.Id"
                        class="btn btn-primary w-100">
                         <i class="fa-solid fa-gavel me-1"></i> @Localizer["BoardVoting_Title"] <i class="fa-solid fa-lock auth-lock-icon"></i>
                     </a>

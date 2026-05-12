@@ -7,9 +7,9 @@
   src/Humans.Infrastructure/Data/Configurations/ApplicationStateHistoryConfiguration.cs
   src/Humans.Infrastructure/Data/Configurations/BoardVoteConfiguration.cs
   src/Humans.Infrastructure/Repositories/Governance/ApplicationRepository.cs
-  src/Humans.Web/Controllers/ApplicationController.cs
+  src/Humans.Web/Controllers/GovernanceApplicationsController.cs
+  src/Humans.Web/Controllers/GovernanceBoardVotingController.cs
   src/Humans.Web/Controllers/GovernanceController.cs
-  src/Humans.Web/Controllers/OnboardingReviewController.cs
 -->
 <!-- freshness:flag-on-change
   Application state machine, Board voting flow, term-expiry calculation, and BoardVote deletion-on-finalize — review when Governance service/entities/controllers change.
@@ -32,7 +32,7 @@ Colaborador and Asociado tier applications, Board voting workflow, term lifecycl
 
 ### Application
 
-Tier application entity with state machine workflow. Used for Colaborador and Asociado applications (never Volunteer). During initial signup, created inline alongside the profile. After onboarding, created via the dedicated Application route.
+Tier application entity with state machine workflow. Used for Colaborador and Asociado applications (never Volunteer). During initial signup, created inline alongside the profile. After onboarding, created via the Governance Applications route.
 
 **Table:** `applications`
 
@@ -115,13 +115,13 @@ Colaborador and Asociado memberships have 2-year synchronized terms expiring Dec
 
 ## Routing
 
-Four controllers serve this section — non-obvious because Board voting and finalization live in `OnboardingReviewController`, not `BoardController`.
+Three controllers serve this section directly. `BoardController` composes Governance data into the broader Board dashboard but does not own Governance workflows.
 
 | Controller | Routes | Notes |
 |------------|--------|-------|
 | `GovernanceController` | `GET /Governance` — overview + tier counts + statutes | `GET /Governance/Roles` — role assignment list (BoardOrAdmin) |
-| `ApplicationController` | `GET /Application` — user's own applications | `GET /Application/Create`, `POST /Application/Create` — submit | `GET /Application/Details/{id}`, `POST /Application/Withdraw/{id}` | `GET /Application/Admin` — admin list (BoardOrAdmin) | `GET /Application/Admin/{id}` — admin detail (BoardOrAdmin) |
-| `OnboardingReviewController` | `GET /OnboardingReview/BoardVoting` — voting dashboard (BoardOrAdmin) | `GET /OnboardingReview/BoardVoting/{id}` — voting detail (BoardOrAdmin) | `POST /OnboardingReview/BoardVoting/Vote` — cast vote (BoardOnly) | `POST /OnboardingReview/BoardVoting/Finalize` — approve/reject (BoardOrAdmin) |
+| `GovernanceApplicationsController` | `GET /Governance/Applications` — user's own applications | `GET /Governance/Applications/Create`, `POST /Governance/Applications/Create` — submit | `GET /Governance/Applications/Details/{id}`, `POST /Governance/Applications/Withdraw/{id}` | `GET /Governance/Applications/Admin` — admin list (BoardOrAdmin) | `GET /Governance/Applications/Admin/{id}` — admin detail (BoardOrAdmin) |
+| `GovernanceBoardVotingController` | `GET /Governance/BoardVoting` — voting dashboard (BoardOrAdmin) | `GET /Governance/BoardVoting/{id}` — voting detail (BoardOrAdmin) | `POST /Governance/BoardVoting/Vote` — cast vote (BoardOnly) | `POST /Governance/BoardVoting/Finalize` — approve/reject (BoardOrAdmin) |
 | `BoardController` | `GET /Board` — Board dashboard (BoardOrAdmin) | `GET /Board/AuditLog` — audit log viewer (BoardOrAdmin) — **not governance-owned; see Orphans note** |
 
 `OnboardingReviewController` also owns the Consent Coordinator review queue (`GET /OnboardingReview`, `POST /OnboardingReview/{id}/Clear`, etc.) — those routes belong to the Onboarding section, not Governance.

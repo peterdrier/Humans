@@ -4,7 +4,7 @@ using NodaTime;
 namespace Humans.Application.DTOs.Governance;
 
 /// <summary>
-/// Row projection for the admin applications list (<c>Applications.cshtml</c>).
+/// Row projection for the admin applications list (<c>Views/Governance/Applications/Admin.cshtml</c>).
 /// Replaces the old <c>Application</c> entity whose <c>.User</c> nav was hydrated
 /// via cross-domain <c>.Include</c>.
 /// </summary>
