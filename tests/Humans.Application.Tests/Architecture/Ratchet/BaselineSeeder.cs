@@ -39,18 +39,6 @@ public class BaselineSeeder
 
         WriteBaseline(
             repoRoot,
-            "tests/Humans.Application.Tests/Architecture/Baselines/NoServiceInjectsDbContext.baseline.txt",
-            NoServiceInjectsDbContextRule.Scan(repoRoot),
-            "no Application service injects HumansDbContext (memory/architecture/repository-required-for-db-access.md)");
-
-        WriteBaseline(
-            repoRoot,
-            "tests/Humans.Application.Tests/Architecture/Baselines/NoControllerInjectsDbContext.baseline.txt",
-            NoControllerInjectsDbContextRule.Scan(repoRoot),
-            "no controller injects HumansDbContext (docs/architecture/code-review-rules.md)");
-
-        WriteBaseline(
-            repoRoot,
             "tests/Humans.Application.Tests/Architecture/Baselines/NoConcurrencyTokens.baseline.txt",
             NoConcurrencyTokensRule.Scan(repoRoot),
             "no concurrency tokens (memory/architecture/no-concurrency-tokens.md)");

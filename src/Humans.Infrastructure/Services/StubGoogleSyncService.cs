@@ -41,12 +41,6 @@ public class StubGoogleSyncService : IGoogleSyncService
         return Task.FromResult(resource);
     }
 
-    public Task<GoogleResource?> GetResourceStatusAsync(Guid resourceId, CancellationToken cancellationToken = default)
-    {
-        _logger.LogInformation("[STUB] Would get status for resource {ResourceId}", resourceId);
-        return Task.FromResult<GoogleResource?>(null);
-    }
-
     public Task AddUserToTeamResourcesAsync(Guid teamId, Guid userId, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("[STUB] Would add user {UserId} to team {TeamId} Google resources", userId, teamId);
@@ -56,35 +50,6 @@ public class StubGoogleSyncService : IGoogleSyncService
     public Task RemoveUserFromTeamResourcesAsync(Guid teamId, Guid userId, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("[STUB] Would remove user {UserId} from team {TeamId} Google resources", userId, teamId);
-        return Task.CompletedTask;
-    }
-
-    public Task<GoogleResource> ProvisionTeamGroupAsync(
-        Guid teamId,
-        string groupEmail,
-        string groupName,
-        CancellationToken cancellationToken = default)
-    {
-        _logger.LogInformation("[STUB] Would provision Google Group '{GroupEmail}' ({GroupName}) for team {TeamId}", groupEmail, groupName, teamId);
-
-        var resource = new GoogleResource
-        {
-            Id = Guid.NewGuid(),
-            TeamId = teamId,
-            ResourceType = Domain.Enums.GoogleResourceType.Group,
-            GoogleId = groupEmail,
-            Name = groupName,
-            Url = $"https://groups.google.com/a/nobodies.team/g/{groupEmail.Split('@')[0]}",
-            ProvisionedAt = NodaTime.SystemClock.Instance.GetCurrentInstant(),
-            IsActive = true
-        };
-
-        return Task.FromResult(resource);
-    }
-
-    public Task RestoreUserToAllTeamsAsync(Guid userId, CancellationToken cancellationToken = default)
-    {
-        _logger.LogInformation("[STUB] Would restore user {UserId} to all team Google resources", userId);
         return Task.CompletedTask;
     }
 
@@ -98,12 +63,6 @@ public class StubGoogleSyncService : IGoogleSyncService
     {
         _logger.LogInformation("[STUB] Would check Google Group settings for drift");
         return Task.FromResult(new GroupSettingsDriftResult());
-    }
-
-    public Task<EmailBackfillResult> GetEmailMismatchesAsync(CancellationToken cancellationToken = default)
-    {
-        _logger.LogInformation("[STUB] Would check email mismatches against Admin SDK");
-        return Task.FromResult(new EmailBackfillResult());
     }
 
     public Task<bool> RemediateGroupSettingsAsync(string groupEmail, CancellationToken cancellationToken = default)

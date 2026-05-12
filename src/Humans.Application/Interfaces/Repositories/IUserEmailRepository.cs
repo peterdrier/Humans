@@ -194,6 +194,15 @@ public interface IUserEmailRepository : IRepository
         string email, CancellationToken ct = default);
 
     /// <summary>
+    /// Returns distinct user ids whose email starts with <paramref name="prefix"/>
+    /// and ends with <paramref name="suffix"/>.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetUserIdsByEmailPrefixAndSuffixAsync(
+        string prefix,
+        string suffix,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Returns all distinct <c>UserId</c> values whose verified email rows
     /// contain an address that matches <paramref name="email"/> exactly
     /// (case-sensitive, no gmail/googlemail aliasing). The caller uses this
@@ -215,51 +224,40 @@ public interface IUserEmailRepository : IRepository
         string email, Guid excludeUserId, CancellationToken ct = default);
 
     /// <summary>
-    /// Rewrites the <c>Email</c> of the user's OAuth-sourced <see cref="UserEmail"/>
-    /// row (if one exists) to <paramref name="newEmail"/>. Used by the admin
-    /// email-backfill workflow. Returns true when a row was updated. No-op if the
-    /// user has no OAuth email row.
+    /// Issue nobodies-collective/Humans#697. Returns the first verified
+    /// <see cref="UserEmail"/> row whose <c>Email</c> matches
+    /// <paramref name="normalizedEmail"/> or <paramref name="alternateEmail"/>
+    /// (case-insensitive) and whose <c>UserId</c> is NOT
+    /// <paramref name="excludeUserId"/>. Returns <c>null</c> when no other
+    /// user verified-holds the address. The caller is expected to have
+    /// already normalised the claim email via
+    /// <c>EmailNormalization.NormalizeForComparison</c> so this read uses
+    /// the same comparison rules as every other <c>UserEmail</c> lookup
+    /// (gmail/googlemail alternate, lowercase, trimmed). Sole legitimate
+    /// caller: <c>UserEmailService.ReconcileOAuthIdentityAsync</c>.
     /// </summary>
-    Task<bool> RewriteLinkedEmailAsync(Guid userId, string newEmail, CancellationToken ct = default);
-
-    /// <summary>
-    /// Rewrites the <c>Email</c> of the user's existing <see cref="UserEmail"/> row
-    /// (case-insensitive match on <paramref name="oldEmail"/>) to
-    /// <paramref name="newEmail"/> and stamps <c>UpdatedAt</c> with
-    /// <paramref name="updatedAt"/>. Used by the admin rename-fix flow and by
-    /// the OAuth rename detector.
-    ///
-    /// Three-way pre-UPDATE conflict resolution on the unique <c>Email</c>
-    /// index:
-    /// <list type="bullet">
-    /// <item>No conflicting row → standard UPDATE
-    ///   (<see cref="RewriteEmailAddressOutcome.Rewritten"/>).</item>
-    /// <item>Conflicting row owned by the same user → drop the source row and
-    ///   mark the existing target row verified, in a single transaction
-    ///   (<see cref="RewriteEmailAddressOutcome.MergedIntoExistingRowForSameUser"/>).</item>
-    /// <item>Conflicting row owned by a DIFFERENT user → no UPDATE, no exception
-    ///   (<see cref="RewriteEmailAddressOutcome.CrossUserConflict"/>). The caller
-    ///   logs a warning and lets the duplicate-account detection flow surface
-    ///   the conflict to admins.</item>
-    /// </list>
-    ///
-    /// No-op if no row matches <paramref name="oldEmail"/> for this user
-    /// (<see cref="RewriteEmailAddressOutcome.SourceRowNotFound"/>).
-    /// </summary>
-    Task<RewriteEmailAddressOutcome> RewriteEmailAddressAsync(
-        Guid userId, string oldEmail, string newEmail, Instant updatedAt,
+    Task<UserEmail?> FindOtherUsersVerifiedRowAsync(
+        string normalizedEmail, string? alternateEmail, Guid excludeUserId,
         CancellationToken ct = default);
 
     /// <summary>
-    /// Returns every <see cref="UserEmail"/> row with matching
-    /// <paramref name="provider"/> / <paramref name="providerKey"/>.
-    /// Read-only (AsNoTracking). Used by
-    /// <c>UserEmailService.FindByProviderKeyAsync</c> for OAuth-callback rename
-    /// detection. The single-row-per-pair invariant is service-enforced; a
-    /// healthy database returns 0 or 1 rows.
+    /// Issue nobodies-collective/Humans#697. Applies a single OAuth-reconcile
+    /// data change inside one <see cref="DbContext"/> + one
+    /// <see cref="Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction"/>.
+    /// Atomicity guarantee: when the plan includes a cross-user displaced
+    /// row alongside the signing user's mutation, either every operation
+    /// commits or none of them do — the displaced user's verified row can
+    /// never be deleted while the signing user's mutation is left undone.
+    /// Sole legitimate caller:
+    /// <c>UserEmailService.ReconcileOAuthIdentityAsync</c>. All parameters
+    /// are optional; a no-op call is allowed but pointless.
     /// </summary>
-    Task<IReadOnlyList<UserEmail>> FindAllByProviderKeyAsync(
-        string provider, string providerKey, CancellationToken ct = default);
+    Task ApplyReconcilePlanAsync(
+        UserEmail? displacedRowToDelete,
+        UserEmail? rowToDelete,
+        UserEmail? rowToUpdate,
+        UserEmail? rowToInsert,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Single-transaction flip: sets <see cref="UserEmail.IsGoogle"/> = true

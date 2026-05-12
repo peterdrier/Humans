@@ -6,46 +6,46 @@ Business requirements, user stories, data model, and workflows for each feature 
 
 | Document | Description |
 |----------|-------------|
-| [User Authentication & Accounts](features/01-authentication.md) | Secure, streamlined authentication integrated with Google Workspace and temporal role tracking for governance compliance |
-| [Profiles](features/02-profiles.md) | Personal information management distinguishing legal names from public "burner names" with location data for event planning |
-| [Tier Applications](features/03-asociado-applications.md) | Application entity for Colaborador and Asociado tier-based membership applications with Board voting workflow |
-| [Legal Documents & Consent Management](features/04-legal-documents-consent.md) | GDPR-compliant document version tracking with immutable consent audit trail, team-scoped, multi-language, configurable through admin GUI |
-| [Volunteer Status](features/05-volunteer-status.md) | Volunteer status determined by presence in the system-managed Volunteers team requiring consent check clearance and legal document consents |
-| [Teams & Working Groups](features/06-teams.md) | Self-organizing working groups with optional department hierarchy and three system-managed teams tracking key organizational roles |
-| [Google Integration](features/07-google-integration.md) | Integration with Google Workspace Shared Drives and Google Groups for managing team shared resources |
-| [Background Jobs](features/08-background-jobs.md) | Hangfire-scheduled automated operations for syncing, reminders, compliance enforcement, and system team maintenance |
-| [Administration](features/09-administration.md) | Admin dashboards and management screens for members, applications, teams, and organizational compliance |
-| [Contact Fields with Granular Visibility](features/10-contact-fields.md) | Per-field contact information sharing (Signal, Telegram, WhatsApp, Discord, phone) with per-context privacy levels |
-| [Email Management](features/11-preferred-email.md) | Multiple email addresses per user with per-email verification, visibility, and notification targeting |
-| [F-12: Audit Log](features/12-audit-log.md) | Structured, queryable audit trail for background job and admin actions beyond Serilog text logs |
-| [F-13: Drive Activity Monitoring](features/13-drive-activity-monitoring.md) | Detection and logging of Google Shared Drive permission changes made outside the system |
-| [Profile Pictures & Birthday Calendar](features/14-profile-pictures-birthdays.md) | Custom avatar uploads superseding Google OAuth photos, plus a community birthday calendar |
-| [Membership Tiers](features/15-membership-tiers.md) | Four-tier membership model (Volunteer / Colaborador / Asociado / Board) with three tiers managed in-system |
-| [Onboarding Pipeline](features/16-onboarding-pipeline.md) | End-to-end signup-to-active-membership journey with parallel legal-consent and Consent Coordinator review tracks |
-| [Coordinator Roles](features/17-coordinator-roles.md) | Consent Coordinator and Volunteer Coordinator roles adding structured safety and facilitation gates to onboarding |
-| [Board Voting](features/18-board-voting.md) | Structured Board vote on Colaborador/Asociado tier applications with individual votes, meeting date, and collective decision |
-| [Camps](features/20-camps.md) | Annual camping area ("barrio") registration, admin approval, public listing, and seasonal opt-ins |
-| [Feature 21: Email Outbox](features/21-email-outbox.md) | Outbox pattern for reliable transactional email delivery with retry and crash recovery |
-| [Feature 22: Campaigns](features/22-campaigns.md) | Bulk individualized code distribution (e.g., presale ticket codes) sent in team-filtered email waves |
-| [Membership Status Partition](features/23-membership-status.md) | Six-bucket mutually exclusive status model used by Board dashboard, Admin filters, and Volunteers team sync |
-| [Ticket Vendor Integration](features/24-ticket-vendor-integration.md) | Dedicated Tickets section with TicketTailor sync, sales dashboard, revenue metrics, and attendee tracking |
-| [Shift Management](features/25-shift-management.md) | Multi-day event shift configuration, signup workflows, urgency scoring, and coordinator tooling |
-| [Shift Signup Visibility](features/26-shift-signup-visibility.md) | Visibility rules letting coordinators and admins see who has signed up for upcoming shifts |
-| [Feedback System](features/27-feedback-system.md) | In-app feedback page with reporter↔admin conversation threads and FeedbackAdmin triage |
-| [Feature 29: Contact Accounts](features/29-contact-accounts.md) | Pre-provisioned Identity users for external mailing-list, ticket-purchase, and admin-entered contacts |
-| [Feature 30: Magic Link Authentication](features/30-magic-link-auth.md) | Email-based passwordless login and signup as the foundation for non-Google auth methods |
-| [Budget](features/31-budget.md) | Seasonal budget planning, tracking, and transparency replacing the spreadsheet as the financial source of truth |
-| [Workspace Account Provisioning](features/32-workspace-account-provisioning.md) | Admin-driven creation of @nobodies.team Google Workspace accounts linked to a human's profile |
-| [Shift Preference Wizard](features/33-shift-preference-wizard.md) | Guided 3-step mobile-friendly wizard collecting skills, work style, and languages for shift matching |
-| [Dietary & Medical Nudge Modal](features/35-dietary-medical-nudge.md) | Placeholder for a dashboard nudge collecting dietary, allergy, and medical info for 6+ hour cantina-fed shifts |
-| [Hidden Teams](features/36-hidden-teams.md) | Privacy-sensitive teams invisible to non-admin users for campaign targeting (e.g., low-income ticket programs) |
-| [Notification Inbox](features/37-notification-inbox.md) | Central "what needs my attention" view with shared resolution for group-targeted notifications |
-| [City Planning](features/38-city-planning.md) | Real-time collaborative aerial-map polygon tool for camp leads to stake out their barrio before the event |
-| [Community Calendar](features/39-community-calendar.md) | Centralized calendar of team-organized events with month/agenda views and recurrence support |
-| [In-App Guide](features/39-in-app-guide.md) | Embedded `/Guide` rendering of the `docs/guide/` markdown with role-aware filtering and in-app navigation |
-| [Communication Preferences](features/communication-preferences.md) | GDPR/CAN-SPAM-compliant per-category email and in-app alert opt-in/opt-out controls |
-| [Event Participation Tracking](features/event-participation.md) | Yearly event participation status per human, including self-service opt-out and ticket-driven auto-tracking |
-| [GDPR Data Export](features/gdpr-export.md) | Self-service download fulfilling GDPR Article 15 right to a copy of all personal data held |
+| [User Authentication & Accounts](features/auth/authentication.md) | Secure, streamlined authentication integrated with Google Workspace and temporal role tracking for governance compliance |
+| [Profiles](features/profiles/profiles.md) | Personal information management distinguishing legal names from public "burner names" with location data for event planning |
+| [Tier Applications](features/governance/asociado-applications.md) | Application entity for Colaborador and Asociado tier-based membership applications with Board voting workflow |
+| [Legal Documents & Consent Management](features/legal-and-consent/legal-documents-consent.md) | GDPR-compliant document version tracking with immutable consent audit trail, team-scoped, multi-language, configurable through admin GUI |
+| [Volunteer Status](features/onboarding/volunteer-status.md) | Volunteer status determined by presence in the system-managed Volunteers team requiring consent check clearance and legal document consents |
+| [Teams & Working Groups](features/teams/teams.md) | Self-organizing working groups with optional department hierarchy and three system-managed teams tracking key organizational roles |
+| [Google Integration](features/google-integration/google-integration.md) | Integration with Google Workspace Shared Drives and Google Groups for managing team shared resources |
+| [Background Jobs](features/global/background-jobs.md) | Hangfire-scheduled automated operations for syncing, reminders, compliance enforcement, and system team maintenance |
+| [Administration](features/global/administration.md) | Admin dashboards and management screens for members, applications, teams, and organizational compliance |
+| [Contact Fields with Granular Visibility](features/profiles/contact-fields.md) | Per-field contact information sharing (Signal, Telegram, WhatsApp, Discord, phone) with per-context privacy levels |
+| [Email Management](features/profiles/preferred-email.md) | Multiple email addresses per user with per-email verification, visibility, and notification targeting |
+| [F-12: Audit Log](features/audit-log/audit-log.md) | Structured, queryable audit trail for background job and admin actions beyond Serilog text logs |
+| [F-13: Drive Activity Monitoring](features/google-integration/drive-activity-monitoring.md) | Detection and logging of Google Shared Drive permission changes made outside the system |
+| [Profile Pictures & Birthday Calendar](features/profiles/profile-pictures-birthdays.md) | Custom avatar uploads superseding Google OAuth photos, plus a community birthday calendar |
+| [Membership Tiers](features/governance/membership-tiers.md) | Four-tier membership model (Volunteer / Colaborador / Asociado / Board) with three tiers managed in-system |
+| [Onboarding Pipeline](features/onboarding/onboarding-pipeline.md) | End-to-end signup-to-active-membership journey with parallel legal-consent and Consent Coordinator review tracks |
+| [Coordinator Roles](features/shifts/coordinator-roles.md) | Consent Coordinator and Volunteer Coordinator roles adding structured safety and facilitation gates to onboarding |
+| [Board Voting](features/governance/board-voting.md) | Structured Board vote on Colaborador/Asociado tier applications with individual votes, meeting date, and collective decision |
+| [Camps](features/camps/camps.md) | Annual camping area ("barrio") registration, admin approval, public listing, and seasonal opt-ins |
+| [Feature 21: Email Outbox](features/email/email-outbox.md) | Outbox pattern for reliable transactional email delivery with retry and crash recovery |
+| [Feature 22: Campaigns](features/campaigns/campaigns.md) | Bulk individualized code distribution (e.g., presale ticket codes) sent in team-filtered email waves |
+| [Membership Status Partition](features/governance/membership-status.md) | Six-bucket mutually exclusive status model used by Board dashboard, Admin filters, and Volunteers team sync |
+| [Ticket Vendor Integration](features/tickets/ticket-vendor-integration.md) | Dedicated Tickets section with TicketTailor sync, sales dashboard, revenue metrics, and attendee tracking |
+| [Shift Management](features/shifts/shift-management.md) | Multi-day event shift configuration, signup workflows, urgency scoring, and coordinator tooling |
+| [Shift Signup Visibility](features/shifts/shift-signup-visibility.md) | Visibility rules letting coordinators and admins see who has signed up for upcoming shifts |
+| [Feedback System](features/feedback/feedback-system.md) | In-app feedback page with reporter↔admin conversation threads and FeedbackAdmin triage |
+| [Feature 29: Contact Accounts](features/profiles/contact-accounts.md) | Pre-provisioned Identity users for external mailing-list, ticket-purchase, and admin-entered contacts |
+| [Feature 30: Magic Link Authentication](features/auth/magic-link-auth.md) | Email-based passwordless login and signup as the foundation for non-Google auth methods |
+| [Budget](features/budget/budget.md) | Seasonal budget planning, tracking, and transparency replacing the spreadsheet as the financial source of truth |
+| [Workspace Account Provisioning](features/google-integration/workspace-account-provisioning.md) | Admin-driven creation of @nobodies.team Google Workspace accounts linked to a human's profile |
+| [Shift Preference Wizard](features/shifts/shift-preference-wizard.md) | Guided 3-step mobile-friendly wizard collecting skills, work style, and languages for shift matching |
+| [Dietary & Medical Nudge Modal](features/profiles/dietary-medical-nudge.md) | Placeholder for a dashboard nudge collecting dietary, allergy, and medical info for 6+ hour cantina-fed shifts |
+| [Hidden Teams](features/teams/hidden-teams.md) | Privacy-sensitive teams invisible to non-admin users for campaign targeting (e.g., low-income ticket programs) |
+| [Notification Inbox](features/notifications/notification-inbox.md) | Central "what needs my attention" view with shared resolution for group-targeted notifications |
+| [City Planning](features/city-planning/city-planning.md) | Real-time collaborative aerial-map polygon tool for camp leads to stake out their barrio before the event |
+| [Community Calendar](features/calendar/community-calendar.md) | Centralized calendar of team-organized events with month/agenda views and recurrence support |
+| [In-App Guide](features/guide/in-app-guide.md) | Embedded `/Guide` rendering of the `docs/guide/` markdown with role-aware filtering and in-app navigation |
+| [Communication Preferences](features/profiles/communication-preferences.md) | GDPR/CAN-SPAM-compliant per-category email and in-app alert opt-in/opt-out controls |
+| [Event Participation Tracking](features/tickets/event-participation.md) | Yearly event participation status per human, including self-service opt-out and ticket-driven auto-tracking |
+| [GDPR Data Export](features/global/gdpr-export.md) | Self-service download fulfilling GDPR Article 15 right to a copy of all personal data held |
 
 ## Section Invariants
 

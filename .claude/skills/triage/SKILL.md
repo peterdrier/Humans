@@ -286,7 +286,7 @@ If report has ScreenshotUrl: "Screenshot: {BASE_URL}{ScreenshotUrl}"
 **Classifications:**
 
 - **Mechanical fix** — improves existing experience without changing what the system does or allows: typos, broken links, error-message wording, layout glitches, hidden stack traces. Standard action options apply, `Proposed fix` shown.
-- **Spec / policy / capability change** — alters what the system does, who can do it, what data is shown, what policy applies. Per `memory/process/user-feedback-spec-changes-need-review.md`, default to "Surface to Peter" (option 6). If an issue is created: label `blocked:needs-design`, no `Proposed fix` section, no Sprint Metadata. `Proposed fix` suppressed in display.
+- **Spec / policy / capability change** — alters what the system does, who can do it, what data is shown, what policy applies. Per `memory/process/triage-protocol.md`, default to "Surface to Peter" (option 6). If an issue is created: label `blocked:needs-design`, no `Proposed fix` section, no Sprint Metadata. `Proposed fix` suppressed in display.
 - **Privilege / permission change** — strict subset of spec change. Per `memory/process/privilege-changes-need-explicit-approval.md`, force option 6. Label `needs-owner-review`. NEVER auto-create with tier or proposed fix.
 
 If unsure mechanical vs spec: treat as spec. If unsure spec vs privilege: treat as privilege.

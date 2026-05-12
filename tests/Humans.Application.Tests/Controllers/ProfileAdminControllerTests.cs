@@ -189,27 +189,11 @@ public class ProfileAdminControllerTests
     }
 
     [HumansFact]
-    public async Task DeleteGhostLogins_RowsDeleted_AuditsWithCount()
-    {
-        var userId = Guid.NewGuid();
-        _emailProblems.IsGhostExternalLoginsUserAsync(userId, Arg.Any<CancellationToken>()).Returns(true);
-        _users.DeleteAllExternalLoginsForUserAsync(userId, Arg.Any<CancellationToken>()).Returns(3);
-
-        var result = await BuildController().DeleteGhostLogins(userId, default);
-
-        await _audit.Received(1).LogAsync(
-            AuditAction.GhostExternalLoginsDeleted, nameof(User), userId,
-            Arg.Is<string>(s => s.Contains("3")),
-            _adminUserId);
-        result.Should().BeOfType<RedirectToActionResult>();
-    }
-
-    [HumansFact]
     public async Task BackfillLegacyEmails_AuditsEachReturnedRow()
     {
         var u1 = Guid.NewGuid();
         var u2 = Guid.NewGuid();
-        _emailProblems.BackfillLegacyIdentityEmailsAsync(Arg.Any<CancellationToken>())
+        _emailProblems.BackfillLegacyIdentityEmailsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(new List<(Guid, string)> { (u1, "a@x.com"), (u2, "b@x.com") });
 
         var result = await BuildController().BackfillLegacyEmails(default);
@@ -229,7 +213,7 @@ public class ProfileAdminControllerTests
     [HumansFact]
     public async Task BackfillLegacyEmails_NoneToBackfill_NoAudit()
     {
-        _emailProblems.BackfillLegacyIdentityEmailsAsync(Arg.Any<CancellationToken>())
+        _emailProblems.BackfillLegacyIdentityEmailsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(new List<(Guid, string)>());
 
         var result = await BuildController().BackfillLegacyEmails(default);
@@ -240,19 +224,4 @@ public class ProfileAdminControllerTests
         result.Should().BeOfType<RedirectToActionResult>();
     }
 
-    [HumansFact]
-    public async Task DeleteGhostLogins_NotInGhostSet_NoOpsAndNoAudit()
-    {
-        var userId = Guid.NewGuid();
-        _emailProblems.IsGhostExternalLoginsUserAsync(userId, Arg.Any<CancellationToken>()).Returns(false);
-
-        var result = await BuildController().DeleteGhostLogins(userId, default);
-
-        await _users.DidNotReceive().DeleteAllExternalLoginsForUserAsync(
-            Arg.Any<Guid>(), Arg.Any<CancellationToken>());
-        await _audit.DidNotReceive().LogAsync(
-            Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
-            Arg.Any<string>(), Arg.Any<Guid>());
-        result.Should().BeOfType<RedirectToActionResult>();
-    }
 }

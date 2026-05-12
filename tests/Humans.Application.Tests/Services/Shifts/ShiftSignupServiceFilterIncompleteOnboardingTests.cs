@@ -54,6 +54,7 @@ public class ShiftSignupServiceFilterIncompleteOnboardingTests : IDisposable
         var shiftMgmt = new ShiftManagementService(
             shiftRepo,
             auditLog,
+            Substitute.For<IAdminAuthorizationService>(),
             serviceProvider,
             new MemoryCache(new MemoryCacheOptions()),
             clock,
@@ -66,6 +67,7 @@ public class ShiftSignupServiceFilterIncompleteOnboardingTests : IDisposable
             _membership,
             auditLog,
             Substitute.For<INotificationService>(),
+            Substitute.For<IAdminAuthorizationService>(),
             serviceProvider,
             clock,
             NullLogger<ShiftSignupService>.Instance);

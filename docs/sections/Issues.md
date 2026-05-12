@@ -160,7 +160,7 @@ Two controllers serve this section:
 - **Email:** `IEmailService.SendIssueCommentAsync` — comment-thread emails (queued through the outbox in production).
 - **Notifications:** `INotificationService.SendAsync` — `NotificationSource.IssueSubmitted`, `NotificationSource.IssueComment`, `NotificationSource.IssueStatusChanged`, `NotificationSource.IssueAssigned` in-app notifications.
 - **Audit Log:** `IAuditLogService.LogAsync` — every mutation (`AuditAction.IssueStatusChanged`, `AuditAction.IssueAssigneeChanged`, `AuditAction.IssueSectionChanged`, `AuditAction.IssueGitHubLinked`).
-- **Caching:** `INavBadgeCacheInvalidator` — invalidated whenever the actionable count for a viewer could have changed.
+- **Caching:** `INavBadgeCacheInvalidator` (global nav count) and `IIssuesBadgeCacheInvalidator` (per-viewer actionable count) — both invalidated whenever the actionable count for a viewer could have changed.
 - **GDPR:** implements `IUserDataContributor` to export the user's reported issues and their comments under `GdprExportSections.Issues`.
 
 ## Architecture
@@ -174,14 +174,14 @@ Two controllers serve this section:
 - **Aggregate-local navs kept:** `Issue.Comments ↔ IssueComment.Issue`. Both sides live in Issues-owned tables, so `.Include(i => i.Comments)` is legal inside the repository.
 - **Decorator decision — no caching decorator.** Issues are per-section queues triaged by handlers, not a hot bulk-read path. Same rationale as Feedback / User / Governance.
 - **Cross-domain navs `[Obsolete]`-marked:** `Issue.Reporter`, `.Assignee`, `.ResolvedByUser`, `IssueComment.SenderUser`. The repository does not `.Include()` them; `IssuesService.StitchCrossDomainNavsAsync` resolves display data in memory from `IUserService` (design-rules §6b). EF still needs the nav refs to wire the DB-level FK + cascade behavior — those references are inside `#pragma warning disable CS0618` blocks in the EF configurations.
-- **Cross-section calls** — the public interfaces this section consumes: `IUserService`, `IUserEmailService`, `IRoleAssignmentService`, `IEmailService`, `INotificationService`, `IAuditLogService`, `INavBadgeCacheInvalidator`.
-- **Nav-badge cache invalidation** routes through `INavBadgeCacheInvalidator` instead of `IMemoryCache` directly.
+- **Cross-section calls** — the public interfaces this section consumes: `IUserService`, `IUserEmailService`, `IRoleAssignmentService`, `IEmailService`, `INotificationService`, `IAuditLogService`, `INavBadgeCacheInvalidator`, `IIssuesBadgeCacheInvalidator`.
+- **Nav-badge cache invalidation** uses two invalidators: `INavBadgeCacheInvalidator` (global nav count) and `IIssuesBadgeCacheInvalidator` (per-viewer actionable count). `IssuesService` holds both; the architecture test pins `IIssuesBadgeCacheInvalidator` explicitly. `IssuesBadgeCacheInvalidator` (impl in `Humans.Infrastructure/Caching/MemoryCacheInvalidators.cs`) is registered Scoped.
 - **Architecture test** — `tests/Humans.Application.Tests/Architecture/IssuesArchitectureTests.cs` pins the shape (no EF imports in `IssuesService`, repository is the only `DbContext` consumer for the `issues` / `issue_comments` tables).
 
 ### Touch-and-clean guidance
 
 - Do **not** reintroduce `.Include(i => i.Reporter | i.Assignee | i.ResolvedByUser)` or `.Include(c => c.SenderUser)` anywhere — new read paths should go through the repository's existing methods (or extend the repository with a new narrowly-shaped query) and stitch display data in `IssuesService` via `IUserService`.
 - Aggregate-local `.Include(i => i.Comments)` is fine — `issue_comments` is Issues-owned.
-- Do **not** inject `IMemoryCache` into `IssuesService`. Use `INavBadgeCacheInvalidator` for cache-staleness signaling.
+- `IssuesService` injects `IMemoryCache` for the per-viewer actionable-count cache (`CacheKeys.IssuesBadge(userId)`, short-TTL). This is appropriate per design-rules §15 (short-TTL request-acceleration cache, not a canonical domain-data cache). Do **not** add new `IMemoryCache` entries for domain data — use `IIssuesBadgeCacheInvalidator.Invalidate/InvalidateMany` to evict the count cache after mutations, and `INavBadgeCacheInvalidator` to invalidate the global nav count.
 - New section names referenced in `Issue.Section` must be added to `IssueSectionRouting.AllKnownSections` and have an entry in `IssueSectionRouting.RolesFor`. Do not invent free-form section strings outside this constant set.
 - New tables that logically belong to Issues must be added to `design-rules.md §8`; do not silently grow the section's footprint.

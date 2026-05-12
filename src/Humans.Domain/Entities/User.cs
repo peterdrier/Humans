@@ -60,6 +60,14 @@ public class User : IdentityUser<Guid>
     /// <c>base.Email</c> when no UserEmails are loaded (test fixtures,
     /// post-anonymization reads). Requires <see cref="UserEmails"/> to be
     /// loaded for production reads.
+    ///
+    /// MUTATION: see <c>memory/architecture/email-mutation-paths.md</c>. This is
+    /// a vestigial ASP.NET Identity field. Application code never writes it —
+    /// its value changes only as a consequence of the underlying
+    /// <see cref="UserEmails"/> data changing (the verified
+    /// <see cref="UserEmail.IsPrimary"/> row's <c>Email</c> rewritten via the
+    /// OAuth callback path, or the <see cref="UserEmail.IsPrimary"/> flag
+    /// flipping between rows).
     /// </summary>
     /// <remarks>
     /// SILENT-FALLBACK FOOTGUN: when <see cref="UserEmails"/> is not loaded
@@ -113,6 +121,7 @@ public class User : IdentityUser<Guid>
     /// </remarks>
 #pragma warning disable CS0809 // Obsolete override of non-obsolete base — intentional: marks application reads as non-canonical.
     [Obsolete("NormalizedEmail is shadow-populated by Identity. Use User.Email or IUserEmailRepository for canonical email lookup.", DiagnosticId = "HUM_USER_NORMALIZEDEMAIL", UrlFormat = "https://github.com/nobodies-collective/Humans/issues/635")]
+    [Humans.Domain.Architecture.ExpiresOn("2026-05-18", reason: "Issue #635 — Identity shadow column; application reads should go through User.Email / IUserEmailRepository.")]
     public override string? NormalizedEmail
     {
         get => Email?.ToUpperInvariant();

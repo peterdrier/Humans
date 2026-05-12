@@ -2,6 +2,7 @@ using System.Diagnostics;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Humans.Application.Architecture;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
 
@@ -41,6 +42,11 @@ namespace Humans.Infrastructure.Identity;
 /// emitted raw, not obfuscated.
 /// </para>
 /// </remarks>
+[Grandfathered(
+    ruleId: "HUM0009",
+    justification: "ASP.NET Identity's UserStore<TUser,TRole,TContext,TKey> base class requires HumansDbContext as a type argument; this is an Identity-owned shape, not a service. Resolve when the lookup-rerouting store from issue #635 ships and this decorator can be dropped.",
+    since: "2026-05-12",
+    issueRef: "nobodies-collective/Humans#701")]
 public sealed class LoggingUserStoreDecorator
     : UserStore<User, IdentityRole<Guid>, HumansDbContext, Guid>
 {

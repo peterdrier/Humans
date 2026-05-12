@@ -42,5 +42,5 @@ public interface IEmailProblemsService : IApplicationService
     /// the caller can audit per row.
     /// </summary>
     Task<IReadOnlyList<(Guid UserId, string Email)>> BackfillLegacyIdentityEmailsAsync(
-        CancellationToken ct = default);
+        Guid actorUserId, CancellationToken ct = default);
 }

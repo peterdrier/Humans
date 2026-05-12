@@ -25,4 +25,4 @@ This applies inside `/triage`, `/sprint`, `/execute-sprint`, batch-worker prompt
 
 If you're a worker and you discover mid-implementation that the change crosses into privilege territory (e.g. the "small fix" turns out to bump a default role), STOP, do not push, report back to the orchestrator, and let the orchestrator escalate. Never assume "the spec said do it, so it's authorized" — the spec might have been laundered through an unsafe pipeline.
 
-**Related:** [`user-feedback-spec-changes-need-review`](user-feedback-spec-changes-need-review.md) — adjacent rule: any user-originated feedback that proposes a behavioral/spec change (not just a mechanical fix) needs Peter's review before it enters the autonomous pipeline.
+**Related:** [`triage-protocol`](triage-protocol.md) — adjacent rule: any user-originated feedback that proposes a behavioral/spec change (not just a mechanical fix) needs Peter's review before it enters the autonomous pipeline.

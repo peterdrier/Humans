@@ -1,4 +1,5 @@
 using Humans.Application.Extensions;
+using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
@@ -38,6 +39,7 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
 {
     private readonly IUserRepository _repo;
     private readonly IFullProfileInvalidator _fullProfileInvalidator;
+    private readonly IAdminAuthorizationService _adminAuthorization;
     private readonly IClock _clock;
     private readonly ILogger<UserService> _logger;
 
@@ -47,12 +49,14 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
         IUserRepository repo,
         IUserEmailRepository userEmailRepo,
         IFullProfileInvalidator fullProfileInvalidator,
+        IAdminAuthorizationService adminAuthorization,
         IClock clock,
         ILogger<UserService> logger)
     {
         _repo = repo;
         _userEmailRepo = userEmailRepo;
         _fullProfileInvalidator = fullProfileInvalidator;
+        _adminAuthorization = adminAuthorization;
         _clock = clock;
         _logger = logger;
     }
@@ -139,24 +143,6 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
     // User writes
     // ==========================================================================
 
-    [Obsolete("Issue nobodies-collective/Humans#687: User.GoogleEmail is being deprecated. UserEmailService.EnsureGoogleInvariantAsync owns the IsGoogle flag on every row creation.")]
-    public async Task<bool> TrySetGoogleEmailAsync(Guid userId, string email, CancellationToken ct = default)
-    {
-        var set = await _repo.TrySetGoogleEmailAsync(userId, email, ct);
-        if (set)
-            await _fullProfileInvalidator.InvalidateAsync(userId, ct);
-        return set;
-    }
-
-    [Obsolete("Issue nobodies-collective/Humans#687: User.GoogleEmail is being deprecated. Use IUserEmailService.SetGoogleAsync to promote a UserEmail row.")]
-    public async Task<bool> SetGoogleEmailAsync(Guid userId, string email, CancellationToken ct = default)
-    {
-        var set = await _repo.SetGoogleEmailAsync(userId, email, ct);
-        if (set)
-            await _fullProfileInvalidator.InvalidateAsync(userId, ct);
-        return set;
-    }
-
     public async Task<bool> TrySetGoogleEmailStatusFromSyncAsync(
         Guid userId, GoogleEmailStatus status, CancellationToken ct = default)
     {
@@ -184,20 +170,6 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
         if (set)
             await _fullProfileInvalidator.InvalidateAsync(userId, ct);
         return set;
-    }
-
-    public async Task<(bool Updated, string? OldEmail)> ApplyEmailBackfillAsync(
-        Guid userId, string newEmail, CancellationToken ct = default)
-    {
-        var (updated, oldEmail) = await _repo.RewritePrimaryEmailAsync(userId, newEmail, ct);
-        if (!updated)
-            return (false, null);
-
-        // Keep the OAuth UserEmail row in lock-step so login against the new
-        // provider email continues to succeed (no-op if none exists).
-        await _userEmailRepo.RewriteLinkedEmailAsync(userId, newEmail, ct);
-        await _fullProfileInvalidator.InvalidateAsync(userId, ct);
-        return (true, oldEmail);
     }
 
     public async Task UpdateDisplayNameAsync(Guid userId, string displayName, CancellationToken ct = default)
@@ -413,6 +385,22 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
     public Task<IReadOnlyList<Guid>> GetUsersWithLoginsButNoEmailsAsync(CancellationToken ct = default) =>
         _repo.GetUsersWithLoginsButNoEmailsAsync(ct);
 
+    public async Task<int> DeleteUsersAsync(
+        IReadOnlyCollection<Guid> userIds,
+        CancellationToken ct = default)
+    {
+        await _adminAuthorization.RequireCurrentUserIsAdminAsync(ct);
+        var deleted = await _repo.DeleteUsersAsync(userIds, ct);
+        foreach (var userId in userIds)
+            await _fullProfileInvalidator.InvalidateAsync(userId, ct);
+        return deleted;
+    }
+
     public Task<int> DeleteAllExternalLoginsForUserAsync(Guid userId, CancellationToken ct = default) =>
         _repo.DeleteAllExternalLoginsForUserAsync(userId, ct);
+
+    public Task<IReadOnlyDictionary<Guid, IReadOnlyList<(string Provider, string ProviderKey)>>>
+        GetExternalLoginsByUserIdsAsync(
+            IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
+        _repo.GetExternalLoginsByUserIdsAsync(userIds, ct);
 }

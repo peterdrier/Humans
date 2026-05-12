@@ -414,11 +414,15 @@ public class EmailProblemsServiceTests
     [HumansFact]
     public async Task BackfillLegacyIdentityEmails_FlaggedUser_CallsAddVerifiedAndReturnsPair()
     {
+        // Issue nobodies-collective/Humans#697: the OAuth-aware "tag via
+        // LinkAsync when an external login exists" branch is gone. The legacy
+        // address is added as a plain verified row; the next OAuth sign-in's
+        // reconcile attaches the provider tag via TagMoved.
         var userId = Guid.NewGuid();
         var user = MakeUser(userId, "legacy@x.com");
         SetUsersWithProfiles((user, MakeProfile(userId)));
 
-        var result = await Sut.BackfillLegacyIdentityEmailsAsync();
+        var result = await Sut.BackfillLegacyIdentityEmailsAsync(Guid.NewGuid());
 
         result.Should().ContainSingle()
             .Which.Should().Be((userId, "legacy@x.com"));
@@ -434,7 +438,7 @@ public class EmailProblemsServiceTests
         SetUsersWithProfiles((user, MakeProfile(userId,
             new UserEmailSnapshot(Guid.NewGuid(), "match@x.com", true, true, false))));
 
-        var result = await Sut.BackfillLegacyIdentityEmailsAsync();
+        var result = await Sut.BackfillLegacyIdentityEmailsAsync(Guid.NewGuid());
 
         result.Should().BeEmpty();
         await _userEmailService.DidNotReceive().AddVerifiedEmailAsync(
@@ -448,7 +452,7 @@ public class EmailProblemsServiceTests
         var user = MakeUser(userId, legacyEmail: null);
         SetUsersWithProfiles((user, MakeProfile(userId)));
 
-        var result = await Sut.BackfillLegacyIdentityEmailsAsync();
+        var result = await Sut.BackfillLegacyIdentityEmailsAsync(Guid.NewGuid());
 
         result.Should().BeEmpty();
     }
@@ -516,7 +520,7 @@ public class EmailProblemsServiceTests
             IsVerified = true
         });
 
-        var result = await Sut.BackfillLegacyIdentityEmailsAsync();
+        var result = await Sut.BackfillLegacyIdentityEmailsAsync(Guid.NewGuid());
 
         result.Should().BeEmpty();
         await _userEmailService.DidNotReceive().AddVerifiedEmailAsync(

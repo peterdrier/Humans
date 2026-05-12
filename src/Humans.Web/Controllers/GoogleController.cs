@@ -4,11 +4,13 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
 using Humans.Application.DTOs;
 using Humans.Application.Extensions;
+using Humans.Application.Services.AuditLog;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Authorization;
 using Humans.Web.Constants;
 using Humans.Web.Models;
+using Humans.Web.Models.Google;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Profiles;
@@ -305,74 +307,6 @@ public class GoogleController : HumansControllerBase
             SetSuccess(result.Message);
 
         return RedirectToAction(nameof(AllGroups));
-    }
-
-    // --- Email Backfill (from AdminController) ---
-
-    [HttpPost("CheckEmailMismatches")]
-    [Authorize(Policy = PolicyNames.AdminOnly)]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> CheckEmailMismatches()
-    {
-        try
-        {
-            var result = await _googleSyncService.GetEmailMismatchesAsync();
-            TempData[TempDataKeys.EmailBackfillResult] = System.Text.Json.JsonSerializer.Serialize(result);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to check email mismatches");
-            SetError($"Email mismatch check failed: {ex.Message}");
-            return RedirectToAction(nameof(Index));
-        }
-
-        return RedirectToAction(nameof(EmailBackfillReview));
-    }
-
-    [HttpGet("EmailBackfillReview")]
-    [Authorize(Policy = PolicyNames.AdminOnly)]
-    public IActionResult EmailBackfillReview()
-    {
-        EmailBackfillResult? result = null;
-        if (TempData[TempDataKeys.EmailBackfillResult] is string json)
-        {
-            result = System.Text.Json.JsonSerializer.Deserialize<EmailBackfillResult>(json);
-        }
-
-        if (result is null)
-        {
-            SetInfo("No email mismatch results to display. Run the check first.");
-            return RedirectToAction(nameof(Index));
-        }
-
-        return View(result);
-    }
-
-    [HttpPost("ApplyEmailBackfill")]
-    [Authorize(Policy = PolicyNames.AdminOnly)]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ApplyEmailBackfill(
-        [FromForm] List<Guid> selectedUserIds,
-        [FromForm] Dictionary<string, string> corrections)
-    {
-        if (selectedUserIds.Count == 0)
-        {
-            SetInfo("No users selected.");
-            return RedirectToAction(nameof(Index));
-        }
-
-        var currentUser = await GetCurrentUserAsync();
-        if (currentUser is null) return Unauthorized();
-
-        var result = await _googleAdminService.ApplyEmailBackfillAsync(
-            selectedUserIds, corrections, currentUser.Id);
-
-        if (result.Errors.Count > 0)
-            SetError($"Applied {result.UpdatedCount} correction(s) with {result.Errors.Count} error(s): {string.Join("; ", result.Errors)}");
-        else
-            SetSuccess($"Applied {result.UpdatedCount} email correction(s) successfully.");
-
-        return RedirectToAction(nameof(Index));
     }
 
     // --- Resource Sync Dashboard (from TeamController) ---
@@ -894,40 +828,6 @@ public class GoogleController : HumansControllerBase
         return View(result);
     }
 
-    [HttpPost("FixEmailRename")]
-    [Authorize(Policy = PolicyNames.AdminOnly)]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> FixEmailRename(
-        [FromForm] Guid userId, [FromForm] string newEmail)
-    {
-        if (userId == Guid.Empty || string.IsNullOrWhiteSpace(newEmail))
-        {
-            SetError("Invalid request.");
-            return RedirectToAction(nameof(Index));
-        }
-
-        var currentUser = await GetCurrentUserAsync();
-        if (currentUser is null) return Unauthorized();
-
-        try
-        {
-            var result = await _googleAdminService.FixEmailRenameAsync(
-                userId, newEmail, currentUser.Id);
-
-            if (result.Success)
-                SetSuccess(result.Message!);
-            else
-                SetError(result.ErrorMessage!);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to fix email rename for user {UserId}", userId);
-            SetError($"Failed to fix email rename: {ex.Message}");
-        }
-
-        return RedirectToAction(nameof(Index));
-    }
-
     // --- Email Flag Violations (admin remediation) ---
 
     [HttpGet("EmailFlagViolations")]
@@ -961,4 +861,41 @@ public class GoogleController : HumansControllerBase
         SyncServiceType.Discord => "Discord",
         _ => type.ToString()
     };
+
+    private IActionResult GoogleSyncAuditView(
+        string title,
+        string? backUrl,
+        string? backLabel,
+        IEnumerable<AuditEvent> events)
+    {
+        return View("GoogleSyncAudit", BuildGoogleSyncAuditViewModel(title, backUrl, backLabel, events));
+    }
+
+    private static GoogleSyncAuditListViewModel BuildGoogleSyncAuditViewModel(
+        string title,
+        string? backUrl,
+        string? backLabel,
+        IEnumerable<AuditEvent> events)
+    {
+        return new GoogleSyncAuditListViewModel
+        {
+            Title = title,
+            BackUrl = backUrl,
+            BackLabel = backLabel,
+            Entries = events.Select(static ev => new GoogleSyncAuditEntryViewModel
+            {
+                Action = ev.Action,
+                Description = ev.Description,
+                UserEmail = ev.UserEmail,
+                Role = ev.Role,
+                SyncSource = ev.SyncSource,
+                OccurredAt = ev.OccurredAt.ToDateTimeUtc(),
+                Success = ev.Success,
+                ErrorMessage = ev.ErrorMessage,
+                ResourceName = ev.ResourceName,
+                ResourceId = ev.ResourceId,
+                RelatedEntityId = ev.RelatedEntityId
+            }).ToList()
+        };
+    }
 }

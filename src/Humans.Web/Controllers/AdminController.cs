@@ -1,17 +1,18 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Humans.Application.Configuration;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Admin;
 using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.Dashboard;
 using Humans.Application.Interfaces.Feedback;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Domain.Entities;
-using Humans.Web.Authorization;
 using Humans.Infrastructure.Data;
+using Humans.Web.Authorization;
 using Humans.Web.Models;
 using Humans.Application.Interfaces.Users;
 
@@ -20,7 +21,6 @@ namespace Humans.Web.Controllers;
 [Route("Admin")]
 public class AdminController : HumansControllerBase
 {
-    private readonly HumansDbContext _dbContext;
     private readonly UserManager<User> _userManager;
     private readonly ILogger<AdminController> _logger;
     private readonly IWebHostEnvironment _environment;
@@ -29,9 +29,9 @@ public class AdminController : HumansControllerBase
     private readonly QueryStatistics _queryStatistics;
     private readonly ICacheStatsProvider _cacheStatsProvider;
     private readonly IUserEmailProviderBackfillService _userEmailProviderBackfillService;
+    private readonly IAdminDatabaseDiagnosticsService _databaseDiagnostics;
 
     public AdminController(
-        HumansDbContext dbContext,
         UserManager<User> userManager,
         ILogger<AdminController> logger,
         IWebHostEnvironment environment,
@@ -39,10 +39,10 @@ public class AdminController : HumansControllerBase
         ConfigurationRegistry configRegistry,
         QueryStatistics queryStatistics,
         ICacheStatsProvider cacheStatsProvider,
-        IUserEmailProviderBackfillService userEmailProviderBackfillService)
+        IUserEmailProviderBackfillService userEmailProviderBackfillService,
+        IAdminDatabaseDiagnosticsService databaseDiagnostics)
         : base(userManager)
     {
-        _dbContext = dbContext;
         _userManager = userManager;
         _logger = logger;
         _environment = environment;
@@ -51,6 +51,7 @@ public class AdminController : HumansControllerBase
         _queryStatistics = queryStatistics;
         _cacheStatsProvider = cacheStatsProvider;
         _userEmailProviderBackfillService = userEmailProviderBackfillService;
+        _databaseDiagnostics = databaseDiagnostics;
     }
 
     // Dashboard is reachable by any admin-shaped role (FinanceAdmin etc.) so the
@@ -64,6 +65,7 @@ public class AdminController : HumansControllerBase
         [FromServices] IShiftManagementService shifts,
         [FromServices] IFeedbackService feedback,
         [FromServices] IAuditViewerService auditViewer,
+        [FromServices] IAdminDashboardService adminDashboardService,
         CancellationToken ct)
     {
         var firstName = User.Identity?.Name?.Split(' ').FirstOrDefault() ?? "";
@@ -75,6 +77,17 @@ public class AdminController : HumansControllerBase
             .ToArray();
         var staffing = Array.Empty<DepartmentCoverage>();
 
+        var dashboardData = await adminDashboardService.GetAdminDashboardAsync(ct);
+        var appStats = new DashboardApplicationStats(
+            Total: dashboardData.TotalApplications,
+            Approved: dashboardData.ApprovedApplications,
+            Rejected: dashboardData.RejectedApplications,
+            Colaborador: dashboardData.ColaboradorApplied,
+            Asociado: dashboardData.AsociadoApplied);
+        var languages = dashboardData.LanguageDistribution
+            .Select(l => new DashboardLanguageCount(l.Language, l.Count))
+            .ToArray();
+
         var vm = new AdminDashboardViewModel(
             GreetingFirstName: firstName,
             ActiveHumans: activeHumans,
@@ -83,7 +96,9 @@ public class AdminController : HumansControllerBase
             ShiftTotalOf: total > 0 ? total : null,
             OpenFeedback: openFeedback,
             StaffingByDepartment: staffing,
-            RecentActivity: recent);
+            RecentActivity: recent,
+            AppStats: appStats,
+            LanguageDistribution: languages);
         return View(vm);
     }
 
@@ -205,14 +220,13 @@ public class AdminController : HumansControllerBase
     [Produces("application/json")]
     public async Task<IActionResult> DbVersion(CancellationToken ct)
     {
-        var applied = (await _dbContext.Database.GetAppliedMigrationsAsync(ct)).ToList();
-        var pending = await _dbContext.Database.GetPendingMigrationsAsync(ct);
+        var status = await _databaseDiagnostics.GetMigrationStatusAsync(ct);
 
         return Ok(new
         {
-            lastApplied = applied.LastOrDefault(),
-            appliedCount = applied.Count,
-            pendingCount = pending.Count()
+            lastApplied = status.LastApplied,
+            appliedCount = status.AppliedCount,
+            pendingCount = status.PendingCount
         });
     }
 
@@ -269,9 +283,9 @@ public class AdminController : HumansControllerBase
     [HttpPost("ClearHangfireLocks")]
     [Authorize(Policy = PolicyNames.AdminOnly)]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ClearHangfireLocks()
+    public async Task<IActionResult> ClearHangfireLocks(CancellationToken ct)
     {
-        var deleted = await _dbContext.Database.ExecuteSqlRawAsync("DELETE FROM hangfire.lock");
+        var deleted = await _databaseDiagnostics.ClearHangfireLocksAsync(ct);
 
         _logger.LogWarning("Admin cleared {Count} stale Hangfire locks", deleted);
         SetSuccess($"Cleared {deleted} Hangfire lock(s). Restart the app to re-register recurring jobs.");
@@ -396,95 +410,17 @@ public class AdminController : HumansControllerBase
     {
         try
         {
-            var allUserIds = await _dbContext.Users
-                .Select(u => u.Id)
-                .ToListAsync();
-
-            var profileUserIds = await _dbContext.Profiles
-                .Select(p => p.UserId)
-                .ToHashSetAsync();
-
-            // Get user IDs with tickets, optionally filtered by year
-            HashSet<Guid> ticketUserIds;
-            if (year.HasValue)
-            {
-                var yearStart = new DateTime(year.Value, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-                var yearEnd = new DateTime(year.Value + 1, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-
-                var orderUserIds = await _dbContext.TicketOrders
-                    .Where(o => o.MatchedUserId != null &&
-                                o.PurchasedAt >= NodaTime.Instant.FromDateTimeUtc(yearStart) &&
-                                o.PurchasedAt < NodaTime.Instant.FromDateTimeUtc(yearEnd))
-                    .Select(o => o.MatchedUserId!.Value)
-                    .Distinct()
-                    .ToListAsync();
-
-                var attendeeUserIds = await _dbContext.TicketAttendees
-                    .Where(a => a.MatchedUserId != null &&
-                                a.TicketOrder.PurchasedAt >= NodaTime.Instant.FromDateTimeUtc(yearStart) &&
-                                a.TicketOrder.PurchasedAt < NodaTime.Instant.FromDateTimeUtc(yearEnd))
-                    .Select(a => a.MatchedUserId!.Value)
-                    .Distinct()
-                    .ToListAsync();
-
-                ticketUserIds = orderUserIds.Concat(attendeeUserIds).ToHashSet();
-            }
-            else
-            {
-                var orderUserIds = await _dbContext.TicketOrders
-                    .Where(o => o.MatchedUserId != null)
-                    .Select(o => o.MatchedUserId!.Value)
-                    .Distinct()
-                    .ToListAsync();
-
-                var attendeeUserIds = await _dbContext.TicketAttendees
-                    .Where(a => a.MatchedUserId != null)
-                    .Select(a => a.MatchedUserId!.Value)
-                    .Distinct()
-                    .ToListAsync();
-
-                ticketUserIds = orderUserIds.Concat(attendeeUserIds).ToHashSet();
-            }
-
-            var totalAccounts = allUserIds.Count;
-            var withProfile = 0;
-            var withTicket = 0;
-            var withBoth = 0;
-            var withNeither = 0;
-
-            foreach (var userId in allUserIds)
-            {
-                var hasProfile = profileUserIds.Contains(userId);
-                var hasTicket = ticketUserIds.Contains(userId);
-
-                if (hasProfile) withProfile++;
-                if (hasTicket) withTicket++;
-                if (hasProfile && hasTicket) withBoth++;
-                if (!hasProfile && !hasTicket) withNeither++;
-            }
-
-            // Get available years from ticket orders
-            var availableYears = await _dbContext.TicketOrders
-                .Where(o => o.MatchedUserId != null)
-                .Select(o => o.PurchasedAt)
-                .Distinct()
-                .ToListAsync();
-
-            var years = availableYears
-                .Select(i => i.ToDateTimeUtc().Year)
-                .Distinct()
-                .OrderDescending()
-                .ToList();
+            var segmentation = await _databaseDiagnostics.GetAudienceSegmentationAsync(year);
 
             var model = new AudienceSegmentationViewModel
             {
-                TotalAccounts = totalAccounts,
-                WithTicket = withTicket,
-                WithProfile = withProfile,
-                WithBoth = withBoth,
-                WithNeither = withNeither,
-                AvailableYears = years,
-                SelectedYear = year,
+                TotalAccounts = segmentation.TotalAccounts,
+                WithTicket = segmentation.WithTicket,
+                WithProfile = segmentation.WithProfile,
+                WithBoth = segmentation.WithBoth,
+                WithNeither = segmentation.WithNeither,
+                AvailableYears = segmentation.AvailableYears.ToList(),
+                SelectedYear = segmentation.SelectedYear,
             };
 
             return View(model);

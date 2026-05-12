@@ -1,5 +1,6 @@
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Notifications;
@@ -53,6 +54,7 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
     private readonly IMembershipCalculator _membership;
     private readonly IAuditLogService _auditLogService;
     private readonly INotificationService _notificationService;
+    private readonly IAdminAuthorizationService _adminAuthorization;
     private readonly IServiceProvider _serviceProvider;
     private readonly IClock _clock;
     private readonly ILogger<ShiftSignupService> _logger;
@@ -67,6 +69,7 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
         IMembershipCalculator membership,
         IAuditLogService auditLogService,
         INotificationService notificationService,
+        IAdminAuthorizationService adminAuthorization,
         IServiceProvider serviceProvider,
         IClock clock,
         ILogger<ShiftSignupService> logger)
@@ -76,6 +79,7 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
         _membership = membership;
         _auditLogService = auditLogService;
         _notificationService = notificationService;
+        _adminAuthorization = adminAuthorization;
         _serviceProvider = serviceProvider;
         _clock = clock;
         _logger = logger;
@@ -983,7 +987,7 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
 
     private async Task<string?> CheckEeCapAsync(EventSettings es, int dayOffset)
     {
-        var availableSlots = _shiftMgmt.GetAvailableEeSlots(es, dayOffset);
+        var availableSlots = EarlyEntryCapacityCalculator.GetAvailableEeSlots(es, dayOffset);
         if (availableSlots <= 0)
             return "Early entry capacity reached for this day.";
 
@@ -1155,6 +1159,14 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
     public Task<IReadOnlyList<(Guid SignupId, Guid ShiftId)>> CancelActiveSignupsForUserAsync(
         Guid userId, string reason, CancellationToken ct = default) =>
         _repo.CancelActiveSignupsForUserAsync(userId, reason, ct);
+
+    public async Task<int> DeleteAllForUsersAsync(
+        IReadOnlyCollection<Guid> userIds,
+        CancellationToken ct = default)
+    {
+        await _adminAuthorization.RequireCurrentUserIsAdminAsync(ct);
+        return await _repo.DeleteAllForUsersAsync(userIds, ct);
+    }
 
     public Task<IReadOnlyList<ShiftSignup>> GetAllForOrphanScanAsync(CancellationToken ct = default) =>
         _repo.GetAllForOrphanScanAsync(ct);

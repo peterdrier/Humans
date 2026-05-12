@@ -207,6 +207,31 @@ public interface ITicketRepository : IRepository
 
     Task<IReadOnlyList<Guid>> GetAllMatchedOrderUserIdsAsync(CancellationToken ct = default);
 
+    /// <summary>
+    /// Returns distinct <c>MatchedUserId</c> values for orders whose
+    /// <c>PurchasedAt</c> falls within <c>[fromInclusive, toExclusive)</c>. Used
+    /// by the admin audience-segmentation diagnostic to compute year-scoped
+    /// ticket buckets without reading the orders table directly.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetMatchedOrderUserIdsInWindowAsync(
+        Instant fromInclusive, Instant toExclusive, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns distinct <c>MatchedUserId</c> values for attendees whose owning
+    /// order's <c>PurchasedAt</c> falls within <c>[fromInclusive, toExclusive)</c>.
+    /// Mirrors <see cref="GetMatchedOrderUserIdsInWindowAsync"/> for the attendee
+    /// side of the audience-segmentation diagnostic.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetMatchedAttendeeUserIdsInWindowAsync(
+        Instant fromInclusive, Instant toExclusive, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the distinct calendar years (UTC) of <c>PurchasedAt</c> for
+    /// every order with <c>MatchedUserId</c> set. Used by the admin
+    /// audience-segmentation diagnostic to populate the year picker.
+    /// </summary>
+    Task<IReadOnlyList<int>> GetMatchedOrderYearsAsync(CancellationToken ct = default);
+
     Task<IReadOnlyList<Guid>> GetMatchedUserIdsForPaidOrdersAsync(CancellationToken ct = default);
 
     Task<bool> HasAnyTicketMatchAsync(Guid userId, CancellationToken ct = default);

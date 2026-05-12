@@ -120,17 +120,13 @@ public class CampController : HumansCampControllerBase
     [HttpGet("{slug}")]
     public async Task<IActionResult> Details(string slug, CancellationToken cancellationToken)
     {
-        var camp = await GetCampBySlugAsync(slug, cancellationToken);
-        if (camp is null)
-            return NotFound();
-
-        var campDetail = await _campService.BuildCampDetailDataAsync(camp, cancellationToken: cancellationToken);
+        var campDetail = await _campService.BuildCampDetailDataBySlugAsync(slug, cancellationToken: cancellationToken);
         if (campDetail is null)
             return NotFound();
 
         var currentUser = User.Identity?.IsAuthenticated == true ? await GetCurrentUserAsync() : null;
-        var (isLead, isCampAdmin) = await ResolveCampViewerStateAsync(camp, currentUser, cancellationToken);
-        var membership = await ResolveCurrentUserMembershipStateAsync(camp.Id, currentUser);
+        var (isLead, isCampAdmin) = await ResolveCampViewerStateAsync(campDetail.Id, currentUser, cancellationToken);
+        var membership = await ResolveCurrentUserMembershipStateAsync(campDetail.Id, currentUser);
         await PopulateCityPlanningViewBagAsync(currentUser, cancellationToken);
 
         return View(MapCampDetailViewModel(campDetail, isLead, isCampAdmin, membership));
@@ -140,12 +136,8 @@ public class CampController : HumansCampControllerBase
     [HttpGet("{slug}/Season/{year:int}")]
     public async Task<IActionResult> SeasonDetails(string slug, int year, CancellationToken cancellationToken)
     {
-        var camp = await GetCampBySlugAsync(slug, cancellationToken);
-        if (camp is null)
-            return NotFound();
-
-        var campDetail = await _campService.BuildCampDetailDataAsync(
-            camp,
+        var campDetail = await _campService.BuildCampDetailDataBySlugAsync(
+            slug,
             preferredYear: year,
             fallbackToLatestSeason: false,
             cancellationToken: cancellationToken);
@@ -153,8 +145,8 @@ public class CampController : HumansCampControllerBase
             return NotFound();
 
         var currentUser = User.Identity?.IsAuthenticated == true ? await GetCurrentUserAsync() : null;
-        var (isLead, isCampAdmin) = await ResolveCampViewerStateAsync(camp, currentUser, cancellationToken);
-        var membership = await ResolveCurrentUserMembershipStateAsync(camp.Id, currentUser);
+        var (isLead, isCampAdmin) = await ResolveCampViewerStateAsync(campDetail.Id, currentUser, cancellationToken);
+        var membership = await ResolveCurrentUserMembershipStateAsync(campDetail.Id, currentUser);
         await PopulateCityPlanningViewBagAsync(currentUser, cancellationToken);
 
         return View(nameof(Details), MapCampDetailViewModel(campDetail, isLead, isCampAdmin, membership));
@@ -249,7 +241,6 @@ public class CampController : HumansCampControllerBase
             try
             {
                 var leadUserIds = camp.Leads
-                    .Where(l => l.LeftAt == null)
                     .Select(l => l.UserId)
                     .Distinct()
                     .ToList();

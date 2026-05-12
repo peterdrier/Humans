@@ -1,3 +1,4 @@
+using Humans.Application.Architecture;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
@@ -9,6 +10,20 @@ namespace Humans.Application.Interfaces.Users;
 /// <summary>
 /// Service owning user-level concerns. Currently focused on event participation.
 /// </summary>
+/// <remarks>
+/// Surface-budget recent history (newest first):
+/// <list type="bullet">
+///   <item>31→30 — issue-695 HUM0009 service-DbContext analyzer PR: net -1 (removed two [Obsolete] Google-email methods TrySetGoogleEmailAsync + SetGoogleEmailAsync; added DeleteUsersAsync for admin dev-reset).</item>
+///   <item>2026-05-11 — InterfaceMethodBudgetTests retired; budget migrated to [SurfaceBudget(31)] (issue nobodies-collective/Humans#700).</item>
+///   <item>30→31 — issue-660 EmailProblems case 8 cleanup: added DeleteAllExternalLoginsForUserAsync — service surface for the admin "Delete ghost logins" action. Auth-table cleanup; no expiable substitute (only the User section can write to AspNetUserLogins).</item>
+///   <item>29→30 — issue-660 EmailProblems case 8: added GetUsersWithLoginsButNoEmailsAsync to surface ghost AspNetUserLogins rows. Authorized by repo owner — no expiable substitute exists at the service surface (UserLogins is auth-internal).</item>
+///   <item>31→29 — account-merge fold final consolidation: removed ReassignLoginsToUserAsync and ReassignEventParticipationToUserAsync from IUserService. Both moves now happen through IUserMerge.ReassignAsync on UserService; DuplicateAccountService routes the logins move directly via IUserRepository.</item>
+///   <item>31→31 — account-merge fold redesign Phase 4.1: added GetMergedSourceIdsAsync (the chain-follow service primitive AuditLog/Consent/BudgetAuditLog reads call to surface rows still attributed to merged source tombstones); removed GetPendingDeletionCountAsync. Three callers derive the count in-memory from the full user list per design-rules in-memory caching guidance.</item>
+///   <item>31→31 — account-merge fold redesign Phase 3.4: added 3 fold primitives (AnonymizeForMergeAsync, ReassignLoginsToUserAsync, ReassignEventParticipationToUserAsync); removed 3 to match: SetGoogleEmailStatusAsync (interface-surface-dead), BackfillNobodiesTeamGoogleEmailsAsync (sole caller now iterates per-user via IUserEmailService.TryBackfillGoogleEmailAsync), GetAllUserIdsAsync (callers derive ids from GetAllUsersAsync).</item>
+///   <item>-1 GetContactUsersAsync removed (/Contacts surface deleted in PR 2 of email-identity-decoupling — only ContactService called it).</item>
+/// </list>
+/// </remarks>
+[SurfaceBudget(30)]
 public interface IUserService : IApplicationService
 {
     /// <summary>
@@ -127,26 +142,6 @@ public interface IUserService : IApplicationService
     // ---- Methods added for Profile-section migration (§15 Step 0) ----
 
     /// <summary>
-    /// Sets <c>User.GoogleEmail</c> if it is currently null. No-op if the
-    /// user already has a GoogleEmail set or the user does not exist.
-    /// Returns true if the GoogleEmail was set.
-    /// </summary>
-    [Obsolete("Issue nobodies-collective/Humans#687: User.GoogleEmail is being deprecated. The Google identity now lives on the UserEmail row (UserEmail.IsGoogle), maintained by UserEmailService.EnsureGoogleInvariantAsync on every row creation. Read FullProfile.GoogleEmail; promote a row with IUserEmailService.SetGoogleAsync.")]
-    Task<bool> TrySetGoogleEmailAsync(Guid userId, string email, CancellationToken ct = default);
-
-    /// <summary>
-    /// Unconditionally sets <c>User.GoogleEmail</c>, overwriting any existing
-    /// value. Used by <c>EmailProvisioningService</c> after a successful
-    /// Google Workspace provisioning, where the new <c>@nobodies.team</c>
-    /// address must become the authoritative Google identity even if the
-    /// user previously signed in with a personal Google account. Returns
-    /// true if the user exists and the value was written, false if the user
-    /// does not exist.
-    /// </summary>
-    [Obsolete("Issue nobodies-collective/Humans#687: User.GoogleEmail is being deprecated. Promote the desired UserEmail row via IUserEmailService.SetGoogleAsync (sets IsGoogle exclusively); read via FullProfile.GoogleEmail.")]
-    Task<bool> SetGoogleEmailAsync(Guid userId, string email, CancellationToken ct = default);
-
-    /// <summary>
     /// Sync-driven <see cref="User.GoogleEmailStatus"/> write that preserves
     /// the "Rejected is terminal" invariant: once flagged
     /// <see cref="GoogleEmailStatus.Rejected"/> (Google HTTP 403 on a
@@ -159,17 +154,6 @@ public interface IUserService : IApplicationService
     /// </summary>
     Task<bool> TrySetGoogleEmailStatusFromSyncAsync(
         Guid userId, GoogleEmailStatus status, CancellationToken ct = default);
-
-    /// <summary>
-    /// Rewrites <c>User.Email</c>, <c>User.UserName</c>, and their normalized
-    /// counterparts to <paramref name="newEmail"/>. If the user has an
-    /// OAuth-sourced <see cref="UserEmail"/> row, it is
-    /// rewritten to match so login continues to succeed against the new email.
-    /// Invalidates the Profile cache on success. Returns the previous email on
-    /// success, or (<c>false</c>, <c>null</c>) if the user does not exist.
-    /// </summary>
-    Task<(bool Updated, string? OldEmail)> ApplyEmailBackfillAsync(
-        Guid userId, string newEmail, CancellationToken ct = default);
 
     /// <summary>
     /// Updates <c>User.DisplayName</c>. No-op if the user does not exist.
@@ -284,10 +268,31 @@ public interface IUserService : IApplicationService
     Task<IReadOnlyList<Guid>> GetUsersWithLoginsButNoEmailsAsync(CancellationToken ct = default);
 
     /// <summary>
+    /// Permanently deletes the requested user rows after the caller has cleared
+    /// cross-section references. Also removes the users' email rows and
+    /// external login rows. Requires the current authenticated user to hold
+    /// the full Admin role.
+    /// </summary>
+    Task<int> DeleteUsersAsync(
+        IReadOnlyCollection<Guid> userIds,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Deletes every <c>AspNetUserLogins</c> row for the given user. Returns the
     /// number of rows deleted. Used by EmailProblems ghost-login cleanup.
     /// </summary>
     Task<int> DeleteAllExternalLoginsForUserAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns every <c>AspNetUserLogins</c> <c>(LoginProvider, ProviderKey)</c>
+    /// row for each of the given users, grouped by <c>UserId</c>. Users without
+    /// any external login are absent from the dictionary. Used by the per-user
+    /// admin emails diagnostic and the OAuth-reconcile mother-of-all
+    /// cross-user-collision log.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, IReadOnlyList<(string Provider, string ProviderKey)>>>
+        GetExternalLoginsByUserIdsAsync(
+            IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
 }
 
 /// <summary>

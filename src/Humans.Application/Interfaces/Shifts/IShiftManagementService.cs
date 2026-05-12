@@ -1,3 +1,4 @@
+using Humans.Application.Architecture;
 using Humans.Application.Interfaces;
 using Humans.Application.DTOs;
 using Humans.Application.Enums;
@@ -11,6 +12,19 @@ namespace Humans.Application.Interfaces.Shifts;
 /// Consolidated service for shift management: authorization, event settings,
 /// rotas, shifts, and urgency scoring.
 /// </summary>
+/// <remarks>
+/// Surface-budget recent history (newest first):
+/// <list type="bullet">
+///   <item>2026-05-11 — InterfaceMethodBudgetTests retired; budget migrated to [SurfaceBudget(48)] (issue nobodies-collective/Humans#700).</item>
+///   <item>49→48 — collapsed GetAllTagsAsync and SearchTagsAsync into one GetTagsAsync(query) method.</item>
+///   <item>50→49 — tech-debt interface consolidation: collapsed GetShiftsSummaryAsync(single team) and GetShiftsSummaryForTeamsAsync into one GetShiftsSummaryAsync(eventId, teamIds) method.</item>
+///   <item>49→50 — issue-682 global search: added SearchAsync(query, max). Authorized exception (Peter, 2026-05-09): queries against rotas must live in the owning section per design-rules §6.</item>
+///   <item>50→49 — account-merge fold final consolidation: removed ReassignProfilesAndTagPrefsToUserAsync from IShiftManagementService (moved to IUserMerge.ReassignAsync, dispatched via fan-out).</item>
+///   <item>50→50 — account-merge fold redesign Phase 3.2: added ReassignProfilesAndTagPrefsToUserAsync; removed CanManageShiftsAsync (zero production callers, zero tests — fully dead since the shift-management slice 1/2 plan that introduced it never wired it up; controllers use IsDeptCoordinatorAsync + role checks directly).</item>
+///   <item>+1 GetOverallCoverageAsync for admin dashboard shift-coverage tile (peterdrier#349).</item>
+/// </list>
+/// </remarks>
+[SurfaceBudget(48)]
 public interface IShiftManagementService : IApplicationService
 {
     // === Authorization ===
@@ -55,9 +69,11 @@ public interface IShiftManagementService : IApplicationService
     Task UpdateAsync(EventSettings entity);
 
     /// <summary>
-    /// Gets the available (non-barrios) EE slots for a given day offset.
+    /// Deletes an event and all Shifts-owned rows beneath it: rotas, shifts,
+    /// and shift signups. Requires the current authenticated user to hold the
+    /// full Admin role.
     /// </summary>
-    int GetAvailableEeSlots(EventSettings settings, int dayOffset);
+    Task<int> DeleteEventAsync(Guid eventSettingsId, CancellationToken cancellationToken = default);
 
     // === Rota ===
 

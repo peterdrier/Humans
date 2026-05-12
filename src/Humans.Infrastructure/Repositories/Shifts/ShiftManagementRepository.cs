@@ -75,6 +75,47 @@ public sealed class ShiftManagementRepository : IShiftManagementRepository
         await ctx.SaveChangesAsync(ct);
     }
 
+    public async Task<int> DeleteEventCascadeAsync(Guid eventSettingsId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var tx = await ctx.Database.BeginTransactionAsync(ct);
+
+        var rotaIds = await ctx.Rotas
+            .Where(r => r.EventSettingsId == eventSettingsId)
+            .Select(r => r.Id)
+            .ToListAsync(ct);
+
+        if (rotaIds.Count > 0)
+        {
+            var shiftIds = await ctx.Shifts
+                .Where(s => rotaIds.Contains(s.RotaId))
+                .Select(s => s.Id)
+                .ToListAsync(ct);
+
+            if (shiftIds.Count > 0)
+            {
+                await ctx.ShiftSignups
+                    .Where(s => shiftIds.Contains(s.ShiftId))
+                    .ExecuteDeleteAsync(ct);
+
+                await ctx.Shifts
+                    .Where(s => shiftIds.Contains(s.Id))
+                    .ExecuteDeleteAsync(ct);
+            }
+
+            await ctx.Rotas
+                .Where(r => rotaIds.Contains(r.Id))
+                .ExecuteDeleteAsync(ct);
+        }
+
+        var deleted = await ctx.EventSettings
+            .Where(e => e.Id == eventSettingsId)
+            .ExecuteDeleteAsync(ct);
+
+        await tx.CommitAsync(ct);
+        return deleted;
+    }
+
     // ==========================================================================
     // Rota
     // ==========================================================================

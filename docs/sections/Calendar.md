@@ -11,7 +11,7 @@
 
 # Calendar — Section Invariants
 
-Community calendar: one-off and recurring events per team, with per-occurrence overrides/cancellations.
+Community calendar: one-off and recurring events per team, with per-occurrence overrides/cancellations. Spec: [`docs/features/calendar/community-calendar.md`](../features/calendar/community-calendar.md).
 
 ## Concepts
 
@@ -72,6 +72,23 @@ Per-occurrence override or cancellation for a recurring `CalendarEvent`. Cascade
 | UpdatedAt | Instant | |
 
 **Indexes:** unique `(EventId, OriginalOccurrenceStartUtc)` — one exception per (event, occurrence).
+
+## Routing
+
+All routes are under `[Route("Calendar")]` on `CalendarController`.
+
+| Method | Route | Action |
+|--------|-------|--------|
+| GET | `/Calendar` | Month grid (`Index`); `?year`, `?month`, `?teamId` |
+| GET | `/Calendar/List` | List view of same month window |
+| GET | `/Calendar/Agenda` | Upcoming-events agenda; `?from`, `?to`, `?teamId` (defaults: today → today+60d) |
+| GET | `/Calendar/Team/{teamId:guid}` | Per-team month grid; `?year`, `?month` |
+| GET | `/Calendar/Event/{id:guid}` | Event detail + next 5 upcoming occurrences |
+| GET/POST | `/Calendar/Event/Create` | Create form; `?teamId` pre-selects team |
+| GET/POST | `/Calendar/Event/{id:guid}/Edit` | Edit form |
+| POST | `/Calendar/Event/{id:guid}/Delete` | Soft-delete (CSRF-protected) |
+| GET/POST | `/Calendar/Event/{id:guid}/Occurrence/{originalStartUtc}/Edit` | Override a single occurrence |
+| POST | `/Calendar/Event/{id:guid}/Occurrence/{originalStartUtc}/Cancel` | Cancel a single occurrence |
 
 ## Actors & Roles
 

@@ -79,6 +79,7 @@ public class TeamServiceTests : IDisposable
         var shiftManagementService = new ShiftManagementService(
             shiftRepo,
             Substitute.For<IAuditLogService>(),
+            Substitute.For<IAdminAuthorizationService>(),
             serviceProvider,
             _cache,
             _clock,
@@ -139,6 +140,7 @@ public class TeamServiceTests : IDisposable
             shiftManagementService,
             Substitute.For<INotificationMeterCacheInvalidator>(),
             _shiftAuthInvalidator,
+            Substitute.For<IAdminAuthorizationService>(),
             serviceProvider,
             _clock,
             NullLogger<TeamService>.Instance);

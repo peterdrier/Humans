@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Infrastructure.Data;
 using Xunit;
 using MemberApplication = Humans.Domain.Entities.Application;
@@ -21,7 +22,7 @@ public sealed class ApplicationRepositoryTests : IDisposable
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
         _dbContext = new HumansDbContext(options);
-        _repo = new ApplicationRepository(_dbContext);
+        _repo = new ApplicationRepository(new TestDbContextFactory(options));
     }
 
     public void Dispose()

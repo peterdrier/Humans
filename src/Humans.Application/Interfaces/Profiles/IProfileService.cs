@@ -1,3 +1,4 @@
+using Humans.Application.Architecture;
 using Humans.Application.Interfaces;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Onboarding;
@@ -9,6 +10,22 @@ using NodaTime;
 
 namespace Humans.Application.Interfaces.Profiles;
 
+/// <summary>
+/// Service for managing profile data and profile-side merge fan-out.
+/// </summary>
+/// <remarks>
+/// Surface-budget recent history (newest first):
+/// <list type="bullet">
+///   <item>2026-05-12 — 30→31: Expenses Phase 6 (PR #491). Added SetIbanAsync — IBAN set/clear on Profile via the expense-report IBAN modal. Profile section owns the write; no expiable substitute (must go through the caching decorator and the audit log, which both require the IProfileService surface). Carried over from the retired InterfaceMethodBudgetTests at the rebase onto origin/main.</item>
+///   <item>2026-05-11 — InterfaceMethodBudgetTests retired; budget migrated to [SurfaceBudget(30)] (issue nobodies-collective/Humans#700).</item>
+///   <item>36→30 — issue nobodies-collective/Humans#685: removed RequestDeletionAsync, CancelDeletionAsync, GetEventHoldDateAsync (deletion orchestration moved to IAccountDeletionService), and GetProfileIndexDataAsync, GetProfileEditDataAsync, GetAdminHumanDetailAsync (Profile-section bundling moved to ProfileController composition).</item>
+///   <item>39→36 — peterdrier#673 person-search consolidation: removed SearchHumansAsync, SearchHumansByNameAsync, SearchApprovedUsersAsync, GetFilteredHumansAsync (4 surfaces accreted across past PRs — each tiny variant). Added SearchProfilesAsync(query, PersonSearchFields, limit) — single bit-flag API. Net -3.</item>
+///   <item>39→39 — §15i swap (issue #635): added EnsureStubProfileAsync to satisfy design-rules §2a/§2c after Claude PR review (#403); removed GetActiveApprovedCountAsync (sole caller AdminController dashboard tile — the existing GetActiveApprovedUserIdsAsync method on the same interface returns the same conceptual data; caller does .Count on the result).</item>
+///   <item>40→39 — barrio-mgmt-fixes audit (peterdrier#390). Net -1 after adding SearchHumansByNameAsync (+1) and merging two pairs of sibling state-setters (-2): ClearConsentCheckAsync + FlagConsentCheckAsync → RecordConsentCheckAsync; SuspendAsync + UnsuspendAsync → SetSuspendedAsync.</item>
+///   <item>41→40 — account-merge fold final consolidation: removed ReassignSubAggregatesToUserAsync from IProfileService (moved to IUserMerge.ReassignAsync, dispatched via fan-out).</item>
+/// </list>
+/// </remarks>
+[SurfaceBudget(31)]
 public interface IProfileService : IApplicationService, IUserMerge
 {
     Task<Profile?> GetProfileAsync(Guid userId, CancellationToken ct = default);
@@ -275,4 +292,15 @@ public interface IProfileService : IApplicationService, IUserMerge
             IReadOnlyDictionary<Guid, MembershipTier> fallbackTierByUser,
             Instant now,
             CancellationToken ct = default);
+
+    /// <summary>
+    /// Sets, updates, or clears the IBAN on the user's profile.
+    /// Pass <c>null</c> or an empty string to clear. The caller is
+    /// responsible for validating the IBAN before calling (use
+    /// <c>IbanValidator.IsValid</c>). Writes <see cref="Domain.Enums.AuditAction.IbanSet"/>
+    /// or <see cref="Domain.Enums.AuditAction.IbanRemove"/> via
+    /// <see cref="IAuditLogService"/>. No-op (returns false) if the user has no
+    /// profile. Used exclusively by the expense-report IBAN modal route.
+    /// </summary>
+    Task<bool> SetIbanAsync(Guid userId, string? iban, CancellationToken ct = default);
 }

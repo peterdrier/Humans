@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.DTOs;
+using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -19,14 +19,10 @@ namespace Humans.Infrastructure.Repositories.Profiles;
 public sealed class UserEmailRepository : IUserEmailRepository
 {
     private readonly IDbContextFactory<HumansDbContext> _factory;
-    private readonly ILogger<UserEmailRepository> _logger;
 
-    public UserEmailRepository(
-        IDbContextFactory<HumansDbContext> factory,
-        ILogger<UserEmailRepository> logger)
+    public UserEmailRepository(IDbContextFactory<HumansDbContext> factory)
     {
         _factory = factory;
-        _logger = logger;
     }
 
     public async Task<IReadOnlyList<UserEmail>> GetByUserIdReadOnlyAsync(
@@ -337,6 +333,20 @@ public sealed class UserEmailRepository : IUserEmailRepository
             .FirstOrDefaultAsync(ct);
     }
 
+    public async Task<IReadOnlyList<Guid>> GetUserIdsByEmailPrefixAndSuffixAsync(
+        string prefix,
+        string suffix,
+        CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.UserEmails
+            .AsNoTracking()
+            .Where(ue => ue.Email.StartsWith(prefix) && ue.Email.EndsWith(suffix))
+            .Select(ue => ue.UserId)
+            .Distinct()
+            .ToListAsync(ct);
+    }
+
     public async Task<IReadOnlyList<Guid>> GetDistinctUserIdsByVerifiedEmailAsync(
         string email, CancellationToken ct = default)
     {
@@ -364,106 +374,6 @@ public sealed class UserEmailRepository : IUserEmailRepository
             .Where(ue => EF.Functions.ILike(ue.Email, escaped, "\\") && ue.UserId != excludeUserId)
             .Select(ue => (Guid?)ue.UserId)
             .FirstOrDefaultAsync(ct);
-    }
-
-    public async Task<bool> RewriteLinkedEmailAsync(
-        Guid userId, string newEmail, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var oauth = await ctx.UserEmails
-            .FirstOrDefaultAsync(e => e.UserId == userId && e.Provider != null, ct);
-        if (oauth is null)
-            return false;
-
-        oauth.Email = newEmail;
-        await ctx.SaveChangesAsync(ct);
-        return true;
-    }
-
-    public async Task<RewriteEmailAddressOutcome> RewriteEmailAddressAsync(
-        Guid userId, string oldEmail, string newEmail, Instant updatedAt,
-        CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-
-        // Escape '_' and '%' in the inputs so ILIKE treats them as literals
-        // (matches GetOtherUserIdHavingEmailAsync semantics — without this an
-        // address containing '_' could falsely match unrelated rows).
-        var escapedOld = EscapeLikePattern(oldEmail);
-        var escapedNew = EscapeLikePattern(newEmail);
-
-        var sourceRow = await ctx.UserEmails
-            .FirstOrDefaultAsync(e => e.UserId == userId &&
-                EF.Functions.ILike(e.Email, escapedOld, "\\"), ct);
-        if (sourceRow is null)
-            return RewriteEmailAddressOutcome.SourceRowNotFound;
-
-        // Pre-UPDATE conflict check matching the partial unique index
-        // (IX_user_emails_Email has HasFilter("\"IsVerified\" = true")). Only
-        // verified rows can produce a Postgres 23505 on the UPDATE, so
-        // classifying any case-insensitive match — including unverified rows —
-        // as a conflict would over-block the rewrite and route legitimate
-        // OAuth renames into duplicate-account handling. Issue
-        // nobodies-collective/Humans#622.
-        var conflictRow = await ctx.UserEmails
-            .FirstOrDefaultAsync(e => e.Id != sourceRow.Id &&
-                e.IsVerified &&
-                EF.Functions.ILike(e.Email, escapedNew, "\\"), ct);
-
-        if (conflictRow is null)
-        {
-            sourceRow.Email = newEmail;
-            sourceRow.UpdatedAt = updatedAt;
-            await ctx.SaveChangesAsync(ct);
-            return RewriteEmailAddressOutcome.Rewritten;
-        }
-
-        if (conflictRow.UserId != userId)
-        {
-            // Cross-user collision. Don't UPDATE — let the duplicate-account
-            // detection flow surface this to admins. Caller logs a warning.
-            return RewriteEmailAddressOutcome.CrossUserConflict;
-        }
-
-        // Same-user collision: the user already has a verified row with
-        // newEmail. Drop the source row instead of UPDATEing it (which would
-        // violate the unique index). Propagate IsPrimary from the source so
-        // we don't strand the user without a primary verified email when the
-        // source row was the only IsPrimary=true row — the "exactly one
-        // verified IsPrimary per user" invariant is service-enforced (no DB
-        // partial unique index) and would otherwise stay broken until some
-        // later repair path runs. Also propagate Provider/ProviderKey: the
-        // OAuth rename detector finds sourceRow by (Provider, ProviderKey),
-        // so deleting it without copying the linkage would orphan the OAuth
-        // identity and break future FindByProviderKeyAsync lookups. IsGoogle
-        // is intentionally NOT propagated — it is user-controlled and must
-        // never be auto-derived.
-        ctx.UserEmails.Remove(sourceRow);
-        if (sourceRow.IsPrimary)
-        {
-            conflictRow.IsPrimary = true;
-        }
-        if (sourceRow.Provider is not null && conflictRow.Provider is null)
-        {
-            conflictRow.Provider = sourceRow.Provider;
-            conflictRow.ProviderKey = sourceRow.ProviderKey;
-        }
-        else if (sourceRow.Provider is not null && conflictRow.Provider is not null)
-        {
-            // Both rows carry an OAuth identity — same user holds two Provider
-            // rows (e.g., Google + future Apple). Deleting sourceRow drops its
-            // OAuth linkage; we cannot copy it onto conflictRow without
-            // clobbering conflictRow's existing identity. Log so the loss is
-            // visible — the caller has no signal in the return enum.
-            _logger.LogWarning(
-                "RewriteEmailAddressAsync: same-user merge dropping sourceRow OAuth identity " +
-                "(UserId={UserId}, sourceProvider={SourceProvider}, conflictProvider={ConflictProvider}). " +
-                "FindByProviderKeyAsync for the dropped (provider, key) will return null.",
-                userId, sourceRow.Provider, conflictRow.Provider);
-        }
-        conflictRow.UpdatedAt = updatedAt;
-        await ctx.SaveChangesAsync(ct);
-        return RewriteEmailAddressOutcome.MergedIntoExistingRowForSameUser;
     }
 
     public async Task SetGoogleExclusiveAsync(
@@ -611,13 +521,82 @@ public sealed class UserEmailRepository : IUserEmailRepository
         entry.Property("DisplayOrder").IsModified = false;
     }
 
-    public async Task<IReadOnlyList<UserEmail>> FindAllByProviderKeyAsync(
-        string provider, string providerKey, CancellationToken ct = default)
+    public async Task<UserEmail?> FindOtherUsersVerifiedRowAsync(
+        string normalizedEmail, string? alternateEmail, Guid excludeUserId,
+        CancellationToken ct = default)
     {
+        var escaped = EscapeLikePattern(normalizedEmail);
+        var escapedAlternate = alternateEmail is null ? null : EscapeLikePattern(alternateEmail);
+
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.UserEmails
-            .AsNoTracking()
-            .Where(e => e.Provider == provider && e.ProviderKey == providerKey)
-            .ToListAsync(ct);
+        var query = ctx.UserEmails
+            .Where(e => e.IsVerified && e.UserId != excludeUserId);
+
+        return escapedAlternate is null
+            ? await query.FirstOrDefaultAsync(
+                e => EF.Functions.ILike(e.Email, escaped, "\\"), ct)
+            : await query.FirstOrDefaultAsync(
+                e => EF.Functions.ILike(e.Email, escaped, "\\") ||
+                     EF.Functions.ILike(e.Email, escapedAlternate, "\\"), ct);
+    }
+
+    public async Task ApplyReconcilePlanAsync(
+        UserEmail? displacedRowToDelete,
+        UserEmail? rowToDelete,
+        UserEmail? rowToUpdate,
+        UserEmail? rowToInsert,
+        CancellationToken ct = default)
+    {
+        if (displacedRowToDelete is null && rowToDelete is null
+            && rowToUpdate is null && rowToInsert is null)
+            return;
+
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var tx = await ctx.Database.BeginTransactionAsync(ct);
+
+        if (displacedRowToDelete is not null)
+        {
+            ctx.Attach(displacedRowToDelete);
+            ctx.UserEmails.Remove(displacedRowToDelete);
+        }
+
+        if (rowToDelete is not null)
+        {
+            ctx.Attach(rowToDelete);
+            ctx.UserEmails.Remove(rowToDelete);
+        }
+
+        if (rowToUpdate is not null)
+        {
+            ctx.Attach(rowToUpdate);
+            ctx.Entry(rowToUpdate).State = EntityState.Modified;
+            ExcludeLegacyShadowsFromUpdate(ctx.Entry(rowToUpdate));
+        }
+
+        if (rowToInsert is not null)
+        {
+            ctx.UserEmails.Add(rowToInsert);
+        }
+
+        try
+        {
+            await ctx.SaveChangesAsync(ct);
+            await tx.CommitAsync(ct);
+        }
+        catch (DbUpdateException dbex)
+            when (dbex.InnerException is Npgsql.PostgresException { SqlState: "23505" })
+        {
+            // The verified-email partial unique index caught a concurrent
+            // cross-user insert that beat the in-service pre-check. Translate
+            // here so the Web layer never imports Npgsql / Postgres types
+            // (clean architecture per design-rules §1). Sole catcher in the
+            // Web layer is AccountController.TryReconcileOAuthIdentityAsync
+            // (and the new-user inline catch) — both swallow + log so sign-in
+            // never blocks.
+            throw new OAuthReconcileConcurrencyException(
+                "OAuth reconcile race: a concurrent insert violated the " +
+                "verified-email partial unique index (Postgres 23505).",
+                dbex);
+        }
     }
 }

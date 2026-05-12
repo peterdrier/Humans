@@ -137,7 +137,20 @@ public class DevSeedController : HumansControllerBase
     [Authorize(Policy = PolicyNames.ShiftDashboardAccess)]
     [HttpPost("dashboard")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> SeedDashboard(bool reset, CancellationToken cancellationToken)
+    public async Task<IActionResult> SeedDashboard(CancellationToken cancellationToken)
+    {
+        return await SeedDashboardCoreAsync(reset: false, cancellationToken);
+    }
+
+    [Authorize(Roles = RoleNames.Admin)]
+    [HttpPost("dashboard/reset")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ResetDashboard(CancellationToken cancellationToken)
+    {
+        return await SeedDashboardCoreAsync(reset: true, cancellationToken);
+    }
+
+    private async Task<IActionResult> SeedDashboardCoreAsync(bool reset, CancellationToken cancellationToken)
     {
         // Stricter than IsDevSeedEnabled: dashboard seed runs only on local Development
         // (ASPNETCORE_ENVIRONMENT=Development), never on QA / preview / prod.
@@ -166,7 +179,7 @@ public class DevSeedController : HumansControllerBase
 
             if (result.AlreadySeeded)
             {
-                SetSuccess("Dashboard demo data already present — no changes. Pass ?reset=true to reseed.");
+                SetSuccess("Dashboard demo data already present — no changes. Use reset to reseed.");
             }
             else
             {

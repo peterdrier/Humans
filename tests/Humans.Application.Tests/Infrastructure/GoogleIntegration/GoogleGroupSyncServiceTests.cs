@@ -93,7 +93,7 @@ public sealed class GoogleGroupSyncServiceTests
         scheduled.RetryAttempt.Should().Be(1);
         await _auditLogService.Received(1).LogAsync(
             AuditAction.GoogleSyncRetryScheduled,
-            "GoogleGroup",
+            nameof(GoogleResource),
             Guid.Empty,
             Arg.Is<string>(s => s.Contains("Scheduled retry")),
             nameof(GoogleGroupSyncService));
@@ -309,7 +309,7 @@ public sealed class GoogleGroupSyncServiceTests
             .LookupGroupIdAsync(default!, default);
         await _auditLogService.Received(1).LogAsync(
             AuditAction.AnomalousPermissionDetected,
-            "GoogleGroup",
+            nameof(GoogleResource),
             Guid.Empty,
             Arg.Is<string>(s => s.Contains("collision")),
             nameof(GoogleGroupSyncService));

@@ -2,7 +2,7 @@
 
 Originally produced as Phase 0 of the [first-class authorization transition plan](plans/2026-04-03-first-class-authorization-transition.md) (kept linked for historical context). **Phase 1 is complete:** every canonical policy in §5 is registered in `AuthorizationPolicyExtensions.AddHumansAuthorizationPolicies`, all controllers use `[Authorize(Policy = PolicyNames.X)]`, the `authorize-policy` TagHelper resolves through `IAuthorizationService`, and views no longer call `RoleChecks.*` / `ShiftRoleChecks.*` directly. **Phase 2 (resource-based authorization)** has shipped its first vertical slices — see §6 (`TeamAuthorizationHandler`, `CampAuthorizationHandler`, `BudgetAuthorizationHandler`, `RoleAssignmentAuthorizationHandler`). **Phase 3 (service-layer enforcement) is cancelled** — see the tombstone in the transition plan.
 
-Generated 2026-04-03. Refreshed 2026-04-25 (Section 2 fully re-scanned 2026-04-26). Covers every `[Authorize(Policy)]` / `[Authorize(Roles)]` attribute on controllers and actions in `src/Humans.Web/Controllers/`, every `RoleChecks.*` / `ShiftRoleChecks.*` invocation across `src/Humans.Web/` and `src/Humans.Application/`, every `IAuthorizationService.AuthorizeAsync` call site, every `authorize-policy` TagHelper attribute and `User.IsInRole` / `Model.X` authorization check across `src/Humans.Web/Views/` and `src/Humans.Web/ViewComponents/`, and every `AuthorizationHandler<T, R>` under `src/Humans.Web/Authorization/` and `src/Humans.Application/Authorization/`.
+Generated 2026-04-03. Refreshed 2026-04-25 (Section 2 fully re-scanned 2026-04-26; Scanner controller row refreshed 2026-05-12). Covers every `[Authorize(Policy)]` / `[Authorize(Roles)]` attribute on controllers and actions in `src/Humans.Web/Controllers/`, every `RoleChecks.*` / `ShiftRoleChecks.*` invocation across `src/Humans.Web/` and `src/Humans.Application/`, every `IAuthorizationService.AuthorizeAsync` call site, every `authorize-policy` TagHelper attribute and `User.IsInRole` / `Model.X` authorization check across `src/Humans.Web/Views/` and `src/Humans.Web/ViewComponents/`, and every `AuthorizationHandler<T, R>` under `src/Humans.Web/Authorization/` and `src/Humans.Application/Authorization/`.
 
 The `Source` column reflects the constant referenced in the attribute as it appears in the code today.
 
@@ -76,6 +76,12 @@ The `Source` column reflects the constant referenced in the attribute as it appe
 | `TicketController.ExportAttendees` | Action | `TicketAdmin, Admin` | `PolicyNames.TicketAdminOrAdmin` |
 | `TicketController.ExportOrders` | Action | `TicketAdmin, Admin` | `PolicyNames.TicketAdminOrAdmin` |
 
+### Scanner Section
+
+| Controller | Scope | Roles | Source |
+|---|---|---|---|
+| `ScannerController` | Class | `TicketAdmin, Admin, Board` | `PolicyNames.TicketAdminBoardOrAdmin` |
+
 ### Campaigns Section
 
 | Controller | Scope | Roles | Source |
@@ -119,10 +125,6 @@ The `Source` column reflects the constant referenced in the attribute as it appe
 | `OnboardingReviewController.Clear` | Action | `ConsentCoordinator, Board, Admin` | `PolicyNames.ConsentCoordinatorBoardOrAdmin` |
 | `OnboardingReviewController.Flag` | Action | `ConsentCoordinator, Board, Admin` | `PolicyNames.ConsentCoordinatorBoardOrAdmin` |
 | `OnboardingReviewController.Reject` | Action | `ConsentCoordinator, Board, Admin` | `PolicyNames.ConsentCoordinatorBoardOrAdmin` |
-| `OnboardingReviewController.BoardVoting` | Action | `Board, Admin` | `PolicyNames.BoardOrAdmin` |
-| `OnboardingReviewController.BoardVotingDetail` | Action | `Board, Admin` | `PolicyNames.BoardOrAdmin` |
-| `OnboardingReviewController.Vote` | Action | `Board` | `PolicyNames.BoardOnly` |
-| `OnboardingReviewController.Finalize` | Action | `Board, Admin` | `PolicyNames.BoardOrAdmin` |
 
 ### Governance / Application Section
 
@@ -130,9 +132,12 @@ The `Source` column reflects the constant referenced in the attribute as it appe
 |---|---|---|---|
 | `GovernanceController` | Class | `[Authorize]` (authenticated) | — |
 | `GovernanceController.Roles` | Action | `Board, Admin` | `PolicyNames.BoardOrAdmin` |
-| `ApplicationController` | Class | `[Authorize]` (authenticated) | — |
-| `ApplicationController.Applications` | Action | `Board, Admin` | `PolicyNames.BoardOrAdmin` |
-| `ApplicationController.ApplicationDetail` | Action | `Board, Admin` | `PolicyNames.BoardOrAdmin` |
+| `GovernanceApplicationsController` | Class | `[Authorize]` (authenticated) | — |
+| `GovernanceApplicationsController.Admin` | Action | `Board, Admin` | `PolicyNames.BoardOrAdmin` |
+| `GovernanceApplicationsController.AdminDetail` | Action | `Board, Admin` | `PolicyNames.BoardOrAdmin` |
+| `GovernanceBoardVotingController` | Class | `Board, Admin` | `PolicyNames.BoardOrAdmin` |
+| `GovernanceBoardVotingController.Vote` | Action | `Board` | `PolicyNames.BoardOnly` |
+| `GovernanceBoardVotingController.Finalize` | Action | `Board, Admin` | `PolicyNames.BoardOrAdmin` |
 
 ### Profile / Contacts Section
 
@@ -336,8 +341,8 @@ Views express authorization four ways today:
 
 | View | Line | Check | Controls |
 |---|---|---|---|
-| `OnboardingReview/BoardVotingDetail.cshtml` | 115 | `authorize-policy="BoardOnly"` | Vote casting card |
-| `OnboardingReview/BoardVotingDetail.cshtml` | 153 | `Model.CanFinalize` | Finalize decision card |
+| `Governance/BoardVoting/Detail.cshtml` | 115 | `authorize-policy="BoardOnly"` | Vote casting card |
+| `Governance/BoardVoting/Detail.cshtml` | 153 | `Model.CanFinalize` | Finalize decision card |
 | `OnboardingReview/Detail.cshtml` | 30 | `Model.HasPendingApplication` | Application tier badge |
 
 ### Team Views

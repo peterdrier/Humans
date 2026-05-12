@@ -6,9 +6,9 @@
   src/Humans.Infrastructure/Data/Configurations/ApplicationConfiguration.cs
   src/Humans.Infrastructure/Data/Configurations/ApplicationStateHistoryConfiguration.cs
   src/Humans.Infrastructure/Data/Configurations/BoardVoteConfiguration.cs
-  src/Humans.Infrastructure/Repositories/ApplicationRepository.cs
-  src/Humans.Web/Controllers/ApplicationController.cs
-  src/Humans.Web/Controllers/BoardController.cs
+  src/Humans.Infrastructure/Repositories/Governance/ApplicationRepository.cs
+  src/Humans.Web/Controllers/GovernanceApplicationsController.cs
+  src/Humans.Web/Controllers/GovernanceBoardVotingController.cs
   src/Humans.Web/Controllers/GovernanceController.cs
 -->
 <!-- freshness:flag-on-change
@@ -32,7 +32,7 @@ Colaborador and Asociado tier applications, Board voting workflow, term lifecycl
 
 ### Application
 
-Tier application entity with state machine workflow. Used for Colaborador and Asociado applications (never Volunteer). During initial signup, created inline alongside the profile. After onboarding, created via the dedicated Application route.
+Tier application entity with state machine workflow. Used for Colaborador and Asociado applications (never Volunteer). During initial signup, created inline alongside the profile. After onboarding, created via the Governance Applications route.
 
 **Table:** `applications`
 
@@ -44,8 +44,8 @@ Tier application entity with state machine workflow. Used for Colaborador and As
 | Status | ApplicationStatus | Current state (Submitted, Approved, Rejected, Withdrawn), stored as string |
 | Motivation | string (4000) | Required motivation statement |
 | AdditionalInfo | string? (4000) | Optional additional information |
-| SignificantContribution | string? | Asociado-only: applicant's most significant contribution to Nowhere or another Burn |
-| RoleUnderstanding | string? | Asociado-only: applicant's understanding of the asociado role and why they want it |
+| SignificantContribution | string? | Asociado-only: applicant's most significant contribution to Nowhere or another Burn. No configured max length. |
+| RoleUnderstanding | string? | Asociado-only: applicant's understanding of the asociado role and why they want it. No configured max length. |
 | Language | string? (10) | UI language at submission (ISO 639-1 code) |
 | SubmittedAt | Instant | When submitted |
 | UpdatedAt | Instant | Last update |
@@ -113,6 +113,19 @@ Colaborador and Asociado memberships have 2-year synchronized terms expiring Dec
 - Renewal: new Application entity (same tier), goes through normal Board voting.
 - Reminder: `TermRenewalReminderJob` sends reminders 90 days before expiry.
 
+## Routing
+
+Three controllers serve this section directly. `BoardController` composes Governance data into the broader Board dashboard but does not own Governance workflows.
+
+| Controller | Routes | Notes |
+|------------|--------|-------|
+| `GovernanceController` | `GET /Governance` — overview + tier counts + statutes | `GET /Governance/Roles` — role assignment list (BoardOrAdmin) |
+| `GovernanceApplicationsController` | `GET /Governance/Applications` — user's own applications | `GET /Governance/Applications/Create`, `POST /Governance/Applications/Create` — submit | `GET /Governance/Applications/Details/{id}`, `POST /Governance/Applications/Withdraw/{id}` | `GET /Governance/Applications/Admin` — admin list (BoardOrAdmin) | `GET /Governance/Applications/Admin/{id}` — admin detail (BoardOrAdmin) |
+| `GovernanceBoardVotingController` | `GET /Governance/BoardVoting` — voting dashboard (BoardOrAdmin) | `GET /Governance/BoardVoting/{id}` — voting detail (BoardOrAdmin) | `POST /Governance/BoardVoting/Vote` — cast vote (BoardOnly) | `POST /Governance/BoardVoting/Finalize` — approve/reject (BoardOrAdmin) |
+| `BoardController` | `GET /Board` — Board dashboard (BoardOrAdmin) | `GET /Board/AuditLog` — audit log viewer (BoardOrAdmin) — **not governance-owned; see Orphans note** |
+
+`OnboardingReviewController` also owns the Consent Coordinator review queue (`GET /OnboardingReview`, `POST /OnboardingReview/{id}/Clear`, etc.) — those routes belong to the Onboarding section, not Governance.
+
 ## Actors & Roles
 
 | Actor | Capabilities |
@@ -151,16 +164,17 @@ Colaborador and Asociado memberships have 2-year synchronized terms expiring Dec
 - A renewal reminder email + in-app notification is dispatched 90 days before term expiry (`TermRenewalReminderJob`, `NotificationSource.TermRenewalReminder`).
 - On term expiry without renewal: the next `SystemTeamSyncJob` removes the human from the Colaboradors / Asociados system team (driven by `HasActiveApprovedTierAsync`). The profile's `MembershipTier` field is **not** automatically reset — it remains set until a new approval changes it.
 - After every write, `ApplicationDecisionService` invalidates `INavBadgeCacheInvalidator` and `INotificationMeterCacheInvalidator`; on approve/reject it also invalidates each affected voter's `IVotingBadgeCacheInvalidator` entry; on Board-vote upsert it invalidates the voter's `IVotingBadgeCacheInvalidator` entry.
-- When an account merge accepts, `IApplicationDecisionService.ReassignApplicationsToUserAsync` re-FKs `Application.UserId` (the applicant) from source to target. `BoardVote.BoardMemberUserId` is not re-FK'd because votes are transient and deleted on finalization. Called only by `IAccountMergeService.AcceptAsync` (Profiles section).
+- When an account merge accepts, `AccountMergeService.AcceptAsync` fans out to all `IUserMerge` implementations; `ApplicationDecisionService.ReassignAsync` re-FKs `Application.UserId` (the applicant) from source to target. `BoardVote.BoardMemberUserId` is not re-FK'd — votes are transient, deleted on finalization.
+- `UpdateDraftApplicationAsync` silently updates a Submitted application's tier, motivation, and Asociado fields. Allowed only while Status = Submitted; no cache invalidation, no state history append, no notifications.
 
 ## Cross-Section Dependencies
 
-- **Profiles:** `IProfileService` — membership tier lives on the profile. Approval updates the profile.
+- **Profiles:** `IProfileService` — membership tier lives on the profile; approval calls `SetMembershipTierAsync`. `IProfileService.GetTierCountsAsync` is called by `GovernanceController.Index` for sidebar tier counts. Account merge: `ApplicationDecisionService` implements `IUserMerge`; `AccountMergeService` (Profiles section) fans out to all `IUserMerge` implementations, which triggers `ApplicationDecisionService.ReassignAsync` → `IApplicationRepository.ReassignApplicationsToUserAsync` to re-FK `Application.UserId` from source to target. `BoardVote.BoardMemberUserId` is not re-FK'd (votes are transient, deleted on finalization).
 - **Teams:** `ISystemTeamSync` — tier approval or expiry adds/removes the human from Colaboradors/Asociados system teams.
 - **Onboarding:** Tier applications are a separate, optional path — never block Volunteer onboarding.
 - **Legal & Consent:** Consent checks are reviewed alongside (but independently of) tier applications.
 - **Users/Identity:** `IUserService.GetByIdsAsync` — display data for applicant/reviewer/voter, stitched into DTOs.
-- **Profiles:** Called by `IAccountMergeService` (Profiles section) — `IApplicationDecisionService.ReassignApplicationsToUserAsync` re-FKs `Application.UserId` during account merge fold.
+- **Auth:** `IRoleAssignmentService.GetActiveUserIdsInRoleAsync` — used by `ApplicationDecisionService.GetBoardVotingDashboardAsync` to enumerate Board member IDs for vote grid headers.
 
 ## Architecture
 
@@ -168,6 +182,7 @@ Colaborador and Asociado memberships have 2-year synchronized terms expiring Dec
 **Owned tables:** `applications`, `application_state_history`, `board_votes`
 **Status:** (A) Migrated (peterdrier/Humans PR #503, 2026-04-15). Store/decorator layer subsequently removed under issue nobodies-collective/Humans#533.
 
+- **Architecture test:** `tests/Humans.Application.Tests/Architecture/GovernanceArchitectureTests.cs` — pins namespace, no-`DbContext`, no-`IMemoryCache`, `IApplicationRepository` dep, no store types.
 - `ApplicationDecisionService`, `MembershipCalculator`, and `MembershipQuery` all live in `Humans.Application/Services/Governance/` and depend only on Application-layer abstractions. No `HumansDbContext`, no `IMemoryCache`.
 - `MembershipCalculator` owns no tables — it computes status by orchestrating reads through `IProfileService`, `IMembershipQuery` (a thin pass-through over `ITeamService` + `IRoleAssignmentService`, used to break the DI cycle with `ISystemTeamSync`), `IUserService`, `ILegalDocumentSyncService`, and `IConsentService` (resolved lazily via `IServiceProvider` to break a second cycle).
 - `IApplicationRepository` (impl `Humans.Infrastructure/Repositories/Governance/ApplicationRepository.cs`) is the only non-test file that touches `DbContext.Applications` / `BoardVotes` / `ApplicationStateHistories`. Aggregate loads include `Application` + `ApplicationStateHistory` + `BoardVote`.

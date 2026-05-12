@@ -127,6 +127,58 @@ public class TeamResourceServiceDeactivateTests : IDisposable
         rows.Single(r => r.ResourceType == GoogleResourceType.Group).IsActive.Should().BeTrue();
     }
 
+    // ==========================================================================
+    // GetResourceNamesByIdsAsync
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task GetResourceNamesByIdsAsync_EmptyInput_ReturnsEmptyDict()
+    {
+        var result = await _service.GetResourceNamesByIdsAsync(Array.Empty<Guid>());
+        result.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task GetResourceNamesByIdsAsync_MixedKnownAndUnknownIds_ReturnsOnlyKnown()
+    {
+        var teamId = Guid.NewGuid();
+        SeedTeam(teamId, "Alpha");
+
+        var knownId1 = Guid.NewGuid();
+        var knownId2 = Guid.NewGuid();
+        var unknownId = Guid.NewGuid();
+
+        _dbContext.GoogleResources.Add(new GoogleResource
+        {
+            Id = knownId1,
+            TeamId = teamId,
+            Name = "Folder One",
+            GoogleId = "google-1",
+            ResourceType = GoogleResourceType.DriveFolder,
+            IsActive = true,
+            ProvisionedAt = _clock.GetCurrentInstant()
+        });
+        _dbContext.GoogleResources.Add(new GoogleResource
+        {
+            Id = knownId2,
+            TeamId = teamId,
+            Name = "Group Two",
+            GoogleId = "google-2",
+            ResourceType = GoogleResourceType.Group,
+            IsActive = true,
+            ProvisionedAt = _clock.GetCurrentInstant()
+        });
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.GetResourceNamesByIdsAsync(
+            new[] { knownId1, knownId2, unknownId });
+
+        result.Should().HaveCount(2);
+        result[knownId1].Should().Be("Folder One");
+        result[knownId2].Should().Be("Group Two");
+        result.ContainsKey(unknownId).Should().BeFalse();
+    }
+
     [HumansFact]
     public async Task DeactivateResourcesForTeamAsync_NoActiveResources_IsNoOp()
     {

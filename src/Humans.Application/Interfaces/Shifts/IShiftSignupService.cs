@@ -126,6 +126,14 @@ public interface IShiftSignupService : IApplicationService
         Guid userId, string reason, CancellationToken ct = default);
 
     /// <summary>
+    /// Deletes every shift signup owned by the supplied users. Requires the
+    /// current authenticated user to hold the full Admin role.
+    /// </summary>
+    Task<int> DeleteAllForUsersAsync(
+        IReadOnlyCollection<Guid> userIds,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Returns every <see cref="ShiftSignup"/> in the system, with
     /// <c>Shift.Rota.EventSettings</c> included, for use by the
     /// orphan-signup reconciliation screen. Admin-only diagnostic.

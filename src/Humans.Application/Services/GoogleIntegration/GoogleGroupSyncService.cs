@@ -438,7 +438,7 @@ public sealed class GoogleGroupSyncService : IGoogleGroupSync
 
         await _auditLogService.LogAsync(
             AuditAction.AnomalousPermissionDetected,
-            "GoogleGroup",
+            nameof(GoogleResource),
             Guid.Empty,
             error,
             nameof(GoogleGroupSyncService));
@@ -593,7 +593,7 @@ public sealed class GoogleGroupSyncService : IGoogleGroupSync
 
         await _auditLogService.LogAsync(
             AuditAction.GoogleSyncRetryScheduled,
-            "GoogleGroup",
+            nameof(GoogleResource),
             Guid.Empty,
             $"Scheduled retry {retryAttempt}/{MaxScopedRetryAttempts} for {groupKey}: {error}",
             nameof(GoogleGroupSyncService));

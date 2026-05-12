@@ -54,8 +54,9 @@ public class CampAdminController : HumansControllerBase
             var allCamps = await _campService.GetCampsForYearAsync(settings.PublicYear);
             var pendingSeasons = await _campService.GetPendingSeasonsAsync();
 
-            var nameLockDates = settings.OpenSeasons.Count > 0
-                ? await _campService.GetNameLockDatesAsync(settings.OpenSeasons)
+            var openSeasons = settings.OpenSeasons.ToList();
+            var nameLockDates = openSeasons.Count > 0
+                ? await _campService.GetNameLockDatesAsync(openSeasons)
                 : new Dictionary<int, NodaTime.LocalDate?>();
 
             var withdrawnSeasons = allCamps
@@ -78,7 +79,7 @@ public class CampAdminController : HumansControllerBase
 
             // Resolve lead display names via IUserService — CampLead.User nav is forbidden cross-domain.
             var leadUserIds = campsWithLeads
-                .SelectMany(c => c.Leads.Where(l => l.IsActive).Select(l => l.UserId))
+                .SelectMany(c => (c.Leads ?? []).Select(l => l.UserId))
                 .Distinct()
                 .ToList();
             var leadUsers = await _userService.GetByIdsAsync(leadUserIds);
@@ -86,7 +87,6 @@ public class CampAdminController : HumansControllerBase
             var summaries = campsWithLeads.Select(c =>
             {
                 var season = c.Seasons.FirstOrDefault();
-                var eeGrantedCount = season?.Members?.Count(m => m.HasEarlyEntry) ?? 0;
                 return new CampSummaryRowViewModel
                 {
                     Name = season?.Name ?? c.Slug,
@@ -98,9 +98,8 @@ public class CampAdminController : HumansControllerBase
                     SpaceRequirement = season?.SpaceRequirement?.ToString() ?? "—",
                     YearsParticipating = c.TimesAtNowhere,
                     EeSlotCount = season?.EeSlotCount ?? 0,
-                    EeGrantedCount = eeGrantedCount,
-                    Leads = c.Leads
-                        .Where(l => l.IsActive)
+                    EeGrantedCount = season?.EeGrantedCount ?? 0,
+                    Leads = (c.Leads ?? [])
                         .Select(l => new CampLeadViewModel
                         {
                             LeadId = l.Id,
@@ -113,7 +112,7 @@ public class CampAdminController : HumansControllerBase
             var vm = new CampAdminViewModel
             {
                 PublicYear = settings.PublicYear,
-                OpenSeasons = settings.OpenSeasons,
+                OpenSeasons = openSeasons,
                 TotalCamps = allCamps.Count,
                 ActiveCamps = allCamps.Count(b => b.Seasons.Any(s =>
                     s.Year == settings.PublicYear && (s.Status == CampSeasonStatus.Active || s.Status == CampSeasonStatus.Full))),
@@ -126,7 +125,7 @@ public class CampAdminController : HumansControllerBase
                 {
                     Id = s.CampId,
                     SeasonId = s.Id,
-                    Slug = s.Camp?.Slug ?? string.Empty,
+                    Slug = s.CampSlug,
                     Name = s.Name,
                     BlurbShort = s.BlurbShort,
                     Status = s.Status
@@ -370,7 +369,7 @@ public class CampAdminController : HumansControllerBase
 
             // Resolve lead display names + emails via IUserService.
             var leadUserIds = camps
-                .SelectMany(c => c.Leads.Where(l => l.IsActive).Select(l => l.UserId))
+                .SelectMany(c => (c.Leads ?? []).Select(l => l.UserId))
                 .Distinct()
                 .ToList();
             var leadUsers = await _userService.GetByIdsAsync(leadUserIds);
@@ -388,8 +387,7 @@ public class CampAdminController : HumansControllerBase
                 var season = camp.Seasons.FirstOrDefault();
                 if (season is null) continue;
 
-                var leads = string.Join("; ", camp.Leads
-                    .Where(l => l.IsActive)
+                var leads = string.Join("; ", (camp.Leads ?? [])
                     .Select(l =>
                     {
                         var user = leadUsers.TryGetValue(l.UserId, out var u) ? u : null;
@@ -477,7 +475,7 @@ public class CampAdminController : HumansControllerBase
         return View(new CampRoleDefinitionListViewModel { Active = active, Deactivated = deactivated });
     }
 
-    private static CampRoleDefinitionListRowViewModel MapRow(CampRoleDefinition d) =>
+    private static CampRoleDefinitionListRowViewModel MapRow(CampRoleDefinitionInfo d) =>
         new(d.Id, d.Name, d.Description, d.SlotCount, d.MinimumRequired, d.SortOrder, d.IsActive);
 
     [HttpGet("Roles/Create")]

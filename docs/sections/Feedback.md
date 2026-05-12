@@ -3,7 +3,7 @@
   src/Humans.Domain/Entities/FeedbackReport.cs
   src/Humans.Domain/Entities/FeedbackMessage.cs
   src/Humans.Infrastructure/Data/Configurations/Feedback/**
-  src/Humans.Infrastructure/Repositories/FeedbackRepository.cs
+  src/Humans.Infrastructure/Repositories/Feedback/FeedbackRepository.cs
   src/Humans.Web/Controllers/FeedbackController.cs
   src/Humans.Web/Controllers/FeedbackApiController.cs
 -->
@@ -46,10 +46,12 @@ In-app feedback reports (bugs, feature requests, questions) with screenshots and
 | AssignedToTeamId | Guid? | FK → Team, SetNull on delete — **FK only**, `[Obsolete]`-marked nav |
 | CreatedAt | Instant | Submission timestamp |
 | UpdatedAt | Instant | Last modification |
+| Source | FeedbackSource | `UserReport` (default) or `AgentUnresolved` — set when created by the agent's `route_to_feedback` tool |
+| AgentConversationId | Guid? | FK column only — no EF FK constraint to `agent_conversations`; cross-section join is not modeled |
 | ResolvedAt | Instant? | When resolved/won't-fix |
 | ResolvedByUserId | Guid? | FK → User, SetNull on delete — **FK only**, `[Obsolete]`-marked nav |
 
-**Indexes:** `Status`, `CreatedAt`, `UserId`, `AssignedToUserId`, `AssignedToTeamId`.
+**Indexes:** `Status`, `CreatedAt`, `UserId`, `AssignedToUserId`, `AssignedToTeamId`, `Source`, `AgentConversationId`.
 
 ### FeedbackMessage
 
@@ -88,6 +90,13 @@ Cross-domain nav `FeedbackMessage.SenderUser` is `[Obsolete]`-marked — senders
 | Resolved | Fixed or addressed |
 | WontFix | Will not be addressed |
 
+### FeedbackSource
+
+| Value | Description |
+|-------|-------------|
+| UserReport | Submitted directly by a user (default) |
+| AgentUnresolved | Created by the agent's `route_to_feedback` tool when the agent could not resolve the user's issue |
+
 ## Actors & Roles
 
 | Actor | Capabilities |
@@ -117,21 +126,21 @@ Cross-domain nav `FeedbackMessage.SenderUser` is `[Obsolete]`-marked — senders
 
 - When an admin posts a message on a report, the reporter's effective notification email is resolved via `IUserEmailService.GetNotificationTargetEmailsAsync` and a localized response email is queued via `IEmailService.SendFeedbackResponseAsync`. After the message is persisted, an in-app `NotificationSource.FeedbackResponse` notification is also dispatched.
 - When a report is created or any message is posted (admin or reporter), the nav-badge cache is invalidated via `INavBadgeCacheInvalidator`.
-- When an account merge accepts, `IFeedbackService.ReassignToUserAsync` re-FKs `FeedbackReport.UserId` / `AssignedToUserId` / `ResolvedByUserId` and `FeedbackMessage.SenderUserId` from source to target. Called only by `IAccountMergeService.AcceptAsync` (Profiles section).
+- When an account merge accepts, `FeedbackService.ReassignAsync` (`IUserMerge`) re-FKs `FeedbackReport.UserId` / `AssignedToUserId` / `ResolvedByUserId` and `FeedbackMessage.SenderUserId` from source to target. Called only by `IAccountMergeService.AcceptAsync` (Profiles section) inside an ambient `TransactionScope`.
 
 ## Cross-Section Dependencies
 
-- **Users/Identity:** `IUserService.GetByIdsAsync` — reporter / assignee / resolver / message-sender display names.
-- **Profiles:** `IUserEmailService.GetNotificationTargetEmailsAsync` — resolves the effective notification email for a report's reporter when an admin posts a reply (added in PR for issue nobodies-collective/Humans#549).
+- **Users/Identity:** `IUserService.GetByIdsAsync` — fallback display names for users without a Profile row (resolution layered with `IProfileService.GetByUserIdsAsync` below).
+- **Profiles:** `IProfileService.GetByUserIdsAsync` — batched profile lookup to resolve `BurnerName`-first display names for reporter, assignee, resolver, and message senders (see `memory/architecture/burnername-is-the-display-name.md`).
+- **Profiles:** `IUserEmailService.GetNotificationTargetEmailsAsync` — resolves the effective notification email for a report's reporter when an admin posts a reply. Also: `FeedbackService` implements `IUserMerge` and is called by `IAccountMergeService.AcceptAsync` to re-FK feedback rows during account merge fold.
 - **Teams:** `ITeamService.GetTeamNamesByIdsAsync` — assigned-team display names.
 - **Email:** `IEmailService.SendFeedbackResponseAsync` — admin-reply emails (the production binding is `OutboxEmailService`, so the email is queued through the email outbox).
 - **Notifications:** `INotificationService.SendAsync` — `NotificationSource.FeedbackResponse` in-app notification dispatched after an admin reply is persisted.
 - **Audit Log:** `IAuditLogService.LogAsync` — status and assignment changes (`AuditAction.FeedbackStatusChanged`, `AuditAction.FeedbackAssignmentChanged`).
 - **Caching:** `INavBadgeCacheInvalidator` — invalidated whenever the actionable count could have changed.
 - **GDPR:** implements `IUserDataContributor` to export the reporter's feedback reports and message contents under `GdprExportSections.FeedbackReports`.
-- **Admin:** GitHub issue linking connects feedback reports to the external issue tracker.
+- **Agent:** `AgentConversationId` is a plain FK column on `feedback_reports` (no EF FK constraint). Reports with `Source = AgentUnresolved` originate from the agent's `route_to_feedback` tool. Transcript resolution goes through the Agent section's services when needed.
 - **Onboarding:** Feedback submission is available during onboarding, before the human is an active member.
-- **Profiles:** Called by `IAccountMergeService` (Profiles section) — `IFeedbackService.ReassignToUserAsync` re-FKs feedback report and message authorship from source to target during account merge fold.
 
 ## Architecture
 
@@ -139,12 +148,13 @@ Cross-domain nav `FeedbackMessage.SenderUser` is `[Obsolete]`-marked — senders
 **Owned tables:** `feedback_reports`, `feedback_messages`
 **Status:** (A) Migrated (peterdrier/Humans PR for issue nobodies-collective/Humans#549, 2026-04-22).
 
-- `FeedbackService` lives in `Humans.Application.Services.Feedback` and depends only on Application-layer abstractions. It never imports `Microsoft.EntityFrameworkCore`.
+- `FeedbackService` lives in `Humans.Application.Services.Feedback` and depends only on Application-layer abstractions. It never imports `Microsoft.EntityFrameworkCore`. Implements `IFeedbackService`, `IUserDataContributor`, and `IUserMerge`.
 - `IFeedbackRepository` (impl `Humans.Infrastructure/Repositories/Feedback/FeedbackRepository.cs`) owns the SQL surface. Registered as Singleton and uses `IDbContextFactory<HumansDbContext>` to create per-call scoped contexts, so the repository can be a long-lived singleton while EF state stays per-request.
 - **Aggregate-local navs kept:** `FeedbackReport.Messages ↔ FeedbackMessage.FeedbackReport`. Both sides live in Feedback-owned tables, so `.Include(f => f.Messages)` is legal inside the repository.
 - **Decorator decision — no caching decorator.** Feedback reports are per-user and admin-triaged, not a hot bulk-read path (same rationale as Governance / User).
-- **Cross-domain navs `[Obsolete]`-marked:** `FeedbackReport.User`, `.ResolvedByUser`, `.AssignedToUser`, `.AssignedToTeam`, `FeedbackMessage.SenderUser`. The repository does not `.Include()` them; the service stitches display data in memory from `IUserService`, `IUserEmailService`, and `ITeamService` (design-rules §6b). Controllers and views continue to read `report.User.DisplayName` etc. under `#pragma warning disable CS0618` until the shared User-entity nav strip lands.
+- **Cross-domain navs `[Obsolete]`-marked:** `FeedbackReport.User`, `.ResolvedByUser`, `.AssignedToUser`, `.AssignedToTeam`, `FeedbackMessage.SenderUser`. The repository does not `.Include()` them; the service stitches display data in memory from `IUserService`, `IProfileService`, `IUserEmailService`, and `ITeamService` (design-rules §6b). Read methods return `FeedbackReportInfo` / `FeedbackMessageInfo` records with display names pre-resolved (BurnerName-first); controllers and views consume those record fields directly and no longer touch the `[Obsolete]`-marked navs.
 - **Nav-badge cache invalidation** routes through `INavBadgeCacheInvalidator` instead of `IMemoryCache` directly.
+- **Architecture test** — `tests/Humans.Application.Tests/Architecture/FeedbackArchitectureTests.cs` pins: service namespace, no `DbContext` constructor param, no `IMemoryCache` constructor param, takes `IFeedbackRepository` and `INavBadgeCacheInvalidator`, `IFeedbackRepository` interface in correct namespace, `FeedbackRepository` is sealed and implements the interface.
 
 ### Touch-and-clean guidance
 

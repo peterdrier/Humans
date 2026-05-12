@@ -2,7 +2,7 @@
   src/Humans.Application/Services/Email/**
   src/Humans.Domain/Entities/EmailOutboxMessage.cs
   src/Humans.Infrastructure/Data/Configurations/Email/**
-  src/Humans.Infrastructure/Repositories/EmailOutboxRepository.cs
+  src/Humans.Infrastructure/Repositories/Email/EmailOutboxRepository.cs
   src/Humans.Web/Controllers/EmailController.cs
 -->
 <!-- freshness:flag-on-change
@@ -19,7 +19,7 @@ Transactional email outbox: queue, render, deliver, retry, pause/resume. Backs c
 - The **Outbox Pause Flag** is a `SystemSetting` row keyed `IsEmailSendingPaused` that, when `"true"`, causes `ProcessEmailOutboxJob` to skip all delivery attempts on its next tick. Resuming flips it back to `"false"`.
 - **Email Body Composition** is Infrastructure-free at the consumer boundary — `IEmailBodyComposer` is an Application-layer abstraction so business code can wrap a rendered HTML body without pulling MailKit. The current implementation (`BrandedEmailBodyComposer`) lives in Infrastructure.
 - **Delivery** is performed by `ProcessEmailOutboxJob` (Infrastructure) via `IEmailTransport` (`SmtpEmailTransport` in prod, `StubEmailTransport` in dev/test). `IImmediateOutboxProcessor` (`HangfireImmediateOutboxProcessor`) is the trigger for time-sensitive templates that need to fire the next job run immediately rather than wait for the recurring tick.
-- **Two `IEmailService` implementations exist:** `OutboxEmailService` (Application, default — writes to the outbox) and `SmtpEmailService` (Infrastructure, legacy — sends inline via SMTP). DI binds `IEmailService` to `OutboxEmailService`; `SmtpEmailService` is no longer wired in.
+- **Three `IEmailService` implementations exist:** `OutboxEmailService` (Application, default — writes to the outbox), `SmtpEmailService` (Infrastructure, legacy — sends inline via SMTP, no longer wired in DI), and `StubEmailService` (Infrastructure, no-op logger — also unwired; present as a local dev artifact). DI binds `IEmailService` to `OutboxEmailService`.
 
 ## Data Model
 
@@ -37,8 +37,8 @@ Transactional email outbox: queue, render, deliver, retry, pause/resume. Backs c
 | PlainTextBody | string? | Optional plain-text alternative |
 | TemplateName | string | Template identifier used to render this message |
 | UserId | Guid? | FK → User (optional) — **FK only**, no nav |
-| CampaignGrantId | Guid? | FK → CampaignGrant (optional) — **FK only**, no nav |
-| ShiftSignupId | Guid? | FK → ShiftSignup (optional) — **FK only**, no nav |
+| CampaignGrantId | Guid? | FK → CampaignGrant (Campaigns) — has nav `CampaignGrant` (aggregate-local for status mirroring) |
+| ShiftSignupId | Guid? | FK → ShiftSignup (Shifts) — has nav `ShiftSignup` (aggregate-local for dedup query) |
 | ReplyTo | string? | Reply-To header value |
 | ExtraHeaders | string? | JSON-encoded additional headers (e.g., `List-Unsubscribe`) |
 | Status | EmailOutboxStatus | Queued / Sent / Failed |
@@ -72,6 +72,19 @@ Stored as **string** (`HasConversion<string>()`, `HasMaxLength(20)`). The `Faile
 | `IsEmailSendingPaused` | When `"true"`, `ProcessEmailOutboxJob` skips processing. Read / written through `IEmailOutboxService.IsEmailPausedAsync` / `SetEmailPausedAsync` (which delegate to `IEmailOutboxRepository.GetSendingPausedAsync` / `SetSendingPausedAsync`). The job itself also reads it directly through the repository, since the job is registered in Infrastructure. |
 
 Per design-rules §8, each `system_settings` key is owned by the consuming section's repository. Email owns this key; do not touch it from any other section.
+
+## Routing
+
+| Route | Auth | Controller action |
+|-------|------|-------------------|
+| `GET /Email/EmailOutbox` | `AdminOnly` | `EmailController.EmailOutbox` — outbox dashboard |
+| `POST /Email/EmailOutbox/Pause` | `AdminOnly` | `EmailController.PauseEmailSending` |
+| `POST /Email/EmailOutbox/Resume` | `AdminOnly` | `EmailController.ResumeEmailSending` |
+| `POST /Email/EmailOutbox/Retry/{id}` | `AdminOnly` | `EmailController.RetryEmailOutboxMessage` |
+| `POST /Email/EmailOutbox/Discard/{id}` | `AdminOnly` | `EmailController.DiscardEmailOutboxMessage` |
+| `GET /Email/EmailPreview` | `AdminOnly` | `EmailController.EmailPreview` — rendered template gallery |
+| `GET /Profile/Me/Outbox` | authenticated | `ProfileController` — own outbox history |
+| `GET /Profile/{id}/Admin/Outbox` | `HumanAdminBoardOrAdmin` | `ProfileController` — another user's outbox history |
 
 ## Actors & Roles
 
@@ -115,7 +128,7 @@ Per design-rules §8, each `system_settings` key is owned by the consuming secti
 
 ## Cross-Section Dependencies
 
-- **Profiles:** `IUserEmailService.GetNotificationTargetEmailsAsync` — resolves the effective notification email for a user id (used by typed send methods).
+- **Profiles:** `IUserEmailService.GetUserIdByVerifiedEmailAsync` — resolves `UserId` from a recipient address so `OutboxEmailService` can link outbox rows to users. `ICommunicationPreferenceService` — checked by `OutboxEmailService` for per-category opt-outs and to generate `List-Unsubscribe` headers.
 - **Campaigns:** `ICampaignService` queues campaign wave messages via this section; per-grant latest-status is mirrored to `CampaignGrant.LatestEmailStatus` / `LatestEmailAt`.
 - **Shifts:** `IShiftSignupService` sends approve/refuse/voluntell emails through this section.
 - **Feedback:** `IFeedbackService` sends admin-reply emails through this section.
@@ -131,12 +144,14 @@ Per design-rules §8, each `system_settings` key is owned by the consuming secti
 - `EmailOutboxService` and `OutboxEmailService` live in `Humans.Application.Services.Email/` and depend only on Application-layer abstractions.
 - `IEmailOutboxRepository` (impl `src/Humans.Infrastructure/Repositories/Email/EmailOutboxRepository.cs`) is the only file that touches `DbContext.EmailOutboxMessages`. It also owns the single `IsEmailSendingPaused` row in `system_settings`. Registered Singleton via `IDbContextFactory<HumansDbContext>` so it can be injected into Application services and the recurring job alike.
 - **Decorator decision — no caching decorator.** Outbox is a sequential queue drain, not a hot-path read shape.
-- **Cross-domain nav stripped:** `EmailOutboxMessage.User`. User display data (when needed for admin views) resolves via `IUserService`. The FK column + `ON DELETE SET NULL` cascade is preserved through a shadow relationship in `EmailOutboxMessageConfiguration`.
-- **Two connectors keep Infrastructure concerns out of Application:**
-  - `IEmailBodyComposer` (Application interface) — wraps a rendered HTML body into the branded shell and produces the plain-text alternative. Implementation `BrandedEmailBodyComposer` lives in Infrastructure.
-  - `IImmediateOutboxProcessor` (Application interface) — triggers an out-of-band processor run for time-sensitive templates. Implementation `HangfireImmediateOutboxProcessor` lives in Infrastructure.
-- **Transport:** `IEmailTransport` is bound to `SmtpEmailTransport` when `Email:SmtpHost` is configured (required in Production), otherwise `StubEmailTransport` (dev/test). The job uses the transport directly; Application code never sees it.
-- **Legacy:** `SmtpEmailService` (Infrastructure `IEmailService`) is the pre-outbox inline-send implementation. It is no longer registered in DI but remains in the codebase.
+- **Cross-domain nav stripped:** `EmailOutboxMessage.User` (shadow relationship in `EmailOutboxMessageConfiguration` preserves the FK + `ON DELETE SET NULL`; user display data resolves via `IUserService`). `CampaignGrant` and `ShiftSignup` navs are kept as aggregate-local (status mirroring and dedup query respectively).
+- **Four Application-layer connector abstractions keep Infrastructure concerns out of Application** (all in `Humans.Application.Interfaces.Email`):
+  - `IEmailBodyComposer` — wraps rendered HTML into the branded shell and produces the plain-text alternative. Implementation `BrandedEmailBodyComposer` lives in Infrastructure.
+  - `IImmediateOutboxProcessor` — triggers an out-of-band processor run for time-sensitive templates. Implementation `HangfireImmediateOutboxProcessor` lives in Infrastructure.
+  - `IEmailRenderer` — renders email templates to `EmailContent` (subject + HTML body). Implementation `EmailRenderer` lives in Infrastructure.
+  - `IEmailTransport` — delivers a single message over SMTP. Bound to `SmtpEmailTransport` when `Email:SmtpHost` is configured (required in Production), otherwise `StubEmailTransport` (dev/test). Used only by `ProcessEmailOutboxJob`; Application code never sees it.
+- **Legacy:** `SmtpEmailService` and `StubEmailService` (both Infrastructure `IEmailService`) are pre-outbox send implementations. Neither is registered in DI; both remain in the codebase.
+- **Architecture test:** `tests/Humans.Application.Tests/Architecture/EmailArchitectureTests.cs` pins namespace, no-DbContext, and connector-abstraction shape for `EmailOutboxService`, `OutboxEmailService`, `IEmailOutboxRepository`, `IEmailBodyComposer`, and `IImmediateOutboxProcessor`.
 
 ### Touch-and-clean guidance
 

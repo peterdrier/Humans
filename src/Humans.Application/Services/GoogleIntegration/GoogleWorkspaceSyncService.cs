@@ -163,8 +163,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         return resource;
     }
 
-    /// <inheritdoc />
-    public async Task<GoogleResource> ProvisionTeamGroupAsync(
+    private async Task<GoogleResource> ProvisionTeamGroupAsync(
         Guid teamId,
         string groupEmail,
         string groupName,
@@ -338,14 +337,38 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         }
     }
 
-    // ==========================================================================
-    // Per-team helpers
-    // ==========================================================================
+    /// <summary>
+    /// Best-effort derivation of a Google Group's primary email address
+    /// from its resource URL (<c>https://groups.google.com/a/{domain}/g/{prefix}</c>).
+    /// Returns <c>null</c> when the URL is missing or cannot be parsed —
+    /// callers fall back to the resource name in that case (issue
+    /// peterdrier/Humans#639 graceful-fallback acceptance criterion).
+    /// </summary>
+    private string? TryDeriveGroupEmail(GoogleResource resource)
+    {
+        if (resource.ResourceType != GoogleResourceType.Group)
+        {
+            return null;
+        }
+        if (string.IsNullOrWhiteSpace(resource.Url))
+        {
+            return null;
+        }
 
-    public Task<GoogleResource?> GetResourceStatusAsync(
-        Guid resourceId,
-        CancellationToken cancellationToken = default)
-        => _resourceRepository.GetByIdAsync(resourceId, cancellationToken);
+        const string marker = "/g/";
+        var idx = resource.Url.IndexOf(marker, StringComparison.Ordinal);
+        if (idx < 0)
+        {
+            return null;
+        }
+        var prefix = resource.Url[(idx + marker.Length)..].TrimEnd('/');
+        if (string.IsNullOrWhiteSpace(prefix) || string.IsNullOrWhiteSpace(_options.Domain))
+        {
+            return null;
+        }
+        return $"{prefix}@{_options.Domain}";
+    }
+
 
     /// <inheritdoc />
     public async Task AddUserToTeamResourcesAsync(
@@ -490,62 +513,6 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
             "Per-user removal deferred to reconciliation for user {UserId} team {TeamId}",
             userId, teamId);
         return Task.CompletedTask;
-    }
-
-    /// <inheritdoc />
-    public async Task RestoreUserToAllTeamsAsync(Guid userId, CancellationToken cancellationToken = default)
-    {
-        _logger.LogInformation("Restoring Google resource access for user {UserId}", userId);
-
-        var user = await _userService.GetByIdAsync(userId, cancellationToken);
-        if (user is null)
-        {
-            _logger.LogWarning("User {UserId} not found for access restoration", userId);
-            return;
-        }
-
-        // Merge-fold redirect (issue peterdrier/Humans#646): if the caller
-        // passed a folded source id, follow the MergedToUserId chain to the
-        // terminal target — A→B→C possible if B was later merged into C.
-        var hops = 0;
-        while (user is { MergedToUserId: { } targetUserId } && hops < 16)
-        {
-            _logger.LogInformation(
-                "Following merge-fold redirect for RestoreUserToAllTeams: source {SourceUserId} → target {TargetUserId}",
-                userId, targetUserId);
-            userId = targetUserId;
-            user = await _userService.GetByIdAsync(userId, cancellationToken);
-            hops++;
-        }
-
-        if (user is null)
-        {
-            _logger.LogWarning(
-                "RestoreUserToAllTeams: terminal merge target {UserId} not found after following redirect chain",
-                userId);
-            return;
-        }
-
-        if (hops >= 16 && user.MergedToUserId is not null)
-        {
-            _logger.LogWarning(
-                "Merge-fold chain exceeded 16 hops for user {UserId} on RestoreUserToAllTeams; provisioning against intermediate node",
-                userId);
-        }
-
-        var memberships = await _teamService.GetUserTeamsAsync(userId, cancellationToken);
-        foreach (var membership in memberships.Where(tm => tm.LeftAt is null))
-        {
-            try
-            {
-                await AddUserToTeamResourcesAsync(membership.TeamId, userId, cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error restoring access for user {UserId} to team {TeamId}",
-                    userId, membership.TeamId);
-            }
-        }
     }
 
     // ==========================================================================
@@ -1301,65 +1268,6 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
     // ==========================================================================
     // Email mismatches / domain groups
     // ==========================================================================
-
-    /// <inheritdoc />
-    public async Task<EmailBackfillResult> GetEmailMismatchesAsync(CancellationToken cancellationToken = default)
-    {
-        var list = await _directory.ListDomainUsersAsync(cancellationToken);
-        if (list.Users is null)
-        {
-            _logger.LogError(
-                "Failed to check email mismatches via Admin SDK — HTTP {Code}: {Message}",
-                list.Error?.StatusCode, list.Error?.RawMessage);
-            return new EmailBackfillResult
-            {
-                ErrorMessage = list.Error?.RawMessage
-            };
-        }
-
-        // Dictionary keyed by normalized email (gmail/googlemail aware).
-        var googleUsersByNormalizedEmail = new Dictionary<string, string>(NormalizingEmailComparer.Instance);
-        foreach (var u in list.Users)
-        {
-            if (!string.IsNullOrEmpty(u.PrimaryEmail))
-                googleUsersByNormalizedEmail[u.PrimaryEmail] = u.PrimaryEmail;
-        }
-
-        // Load every user row and check.
-        var dbUsers = await _userService.GetAllUsersAsync(cancellationToken);
-        var mismatches = new List<EmailMismatch>();
-        var totalChecked = 0;
-
-        foreach (var dbUser in dbUsers)
-        {
-            if (dbUser.Email is null) continue;
-            totalChecked++;
-
-            if (!googleUsersByNormalizedEmail.TryGetValue(dbUser.Email, out var matchedGoogleEmail))
-                continue;
-
-            if (!string.Equals(dbUser.Email, matchedGoogleEmail, StringComparison.Ordinal))
-            {
-                mismatches.Add(new EmailMismatch
-                {
-                    UserId = dbUser.Id,
-                    DisplayName = dbUser.DisplayName,
-                    StoredEmail = dbUser.Email,
-                    GoogleEmail = matchedGoogleEmail
-                });
-            }
-        }
-
-        _logger.LogInformation(
-            "Email mismatch check complete: {Total} DB users checked, {Count} mismatches found",
-            totalChecked, mismatches.Count);
-
-        return new EmailBackfillResult
-        {
-            Mismatches = mismatches,
-            TotalUsersChecked = totalChecked
-        };
-    }
 
     /// <inheritdoc />
     public async Task<AllGroupsResult> GetAllDomainGroupsAsync(CancellationToken cancellationToken = default)

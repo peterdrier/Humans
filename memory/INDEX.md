@@ -25,7 +25,9 @@ Atomic rules. Fetch the body when the description's trigger matches your task. S
 - [`no-drops-until-prod-verified`](architecture/no-drops-until-prod-verified.md) — HARD RULE. Hard storage (DB columns/tables/indexes, files) drops in a separate PR after replacement is verified in prod
 - [`no-hand-edited-migrations`](architecture/no-hand-edited-migrations.md) — HARD RULE. EF migrations AND `HumansDbContextModelSnapshot.cs` 100% auto-generated. Backfills in admin buttons. Pre-commit hook enforces files; snapshot is on you.
 - [`no-linq-at-db-layer`](architecture/no-linq-at-db-layer.md) — services call thick repo methods returning materialized lists, not `db.Set<T>().Where/Select` chains
+- [`analyzer-exceptions-via-attributes`](architecture/analyzer-exceptions-via-attributes.md) — HARD RULE. Analyzer rule grandfathers live as `[Grandfathered("HUM####", ...)]` attributes on the violating class. No baselines, no editorconfig per-file overrides, no analyzer-internal allowlists, no SuppressMessage as a maintained list.
 - [`no-startup-guards`](architecture/no-startup-guards.md) — HARD RULE. App must always boot. Fix at runtime / admin button / idempotent migration — never refuse to start.
+- [`one-ifilestorage`](architecture/one-ifilestorage.md) — HARD RULE. One `IFileStorage`, key-namespaced under `uploads/`, rooted at `wwwroot/`. No per-domain storage interface; no parallel filesystem root.
 - [`person-search`](architecture/person-search.md) — HARD RULE. Person search uses `IProfileService.SearchProfilesAsync` with the `PersonSearchFields` bit-flag. UI is `_HumanSearchInput` (inline) or `_HumanSearchResults` (page-style). Admin-bit fields require admin auth at controller. Emergency-contact never searchable. Shift volunteer search is exempt.
 - [`provenance-fks-not-user-scoped`](architecture/provenance-fks-not-user-scoped.md) — per-user FK columns recording WHO did something (AddedByUserId etc) don't make a section user-scoped under §8a; the deletion test settles it
 - [`refunds-manual-via-dashboard`](architecture/refunds-manual-via-dashboard.md) — HARD RULE. Humans never calls Stripe refund/payout APIs. Money-out is dashboard-manual; Humans only does bookkeeping (negative `StorePayment` rows).
@@ -33,6 +35,10 @@ Atomic rules. Fetch the body when the description's trigger matches your task. S
 - [`shared-drives-only`](architecture/shared-drives-only.md) — Drive resources on Shared Drives only; API calls need `SupportsAllDrives` + `permissionDetails`
 - [`user-profile-foundational`](architecture/user-profile-foundational.md) — UserService/ProfileService are bottom of the stack; no outbound calls to higher-level sections
 - [Widget Pending → Confirmed promotion](architecture/widget-pending-promotion.md) — how mid-onboarding signups stay Pending until consents land
+
+- [`users-profiles-one-section`](architecture/users-profiles-one-section.md) — HARD RULE. Users, Profiles, and UserEmail are one ownership section: Humans. Do not move code between Users/Profile just to satisfy section-boundary cleanup.
+
+- [`email-mutation-paths`](architecture/email-mutation-paths.md) — HARD RULE. `UserEmail.Email` is written only by the OAuth callback via `(Provider, ProviderKey)` match. `User.Email` is a vestigial Identity field — computed from the verified `IsPrimary` row, never written by application code.
 
 ## code/
 
@@ -44,6 +50,7 @@ Atomic rules. Fetch the body when the description's trigger matches your task. S
 - [`csv-and-pagination-helpers`](code/csv-and-pagination-helpers.md) — use `AppendCsvRow`/`ToCsvField` and `ClampPageSize()` instead of inline equivalents
 - [`culture-and-language`](code/culture-and-language.md) — use `CultureCatalog`/`CultureCodeExtensions`; no per-view language dictionaries
 - [`datetime-display-formatting`](code/datetime-display-formatting.md) — use `ToDisplayDate`/`ToDisplayDateTime`/`ToAuditTimestamp`; no inline format strings
+- [`iban-mask-in-logs`](code/iban-mask-in-logs.md) — IBAN output to logs / audit / errors must go through IbanFormatter.Mask
 - [`icons-fa6-only`](code/icons-fa6-only.md) — `fa-solid fa-*`; never `bi bi-*` (Bootstrap Icons not loaded → invisible)
 - [`json-serialization`](code/json-serialization.md) — System.Text.Json: private setters need `[JsonInclude]`; new classes need `[JsonConstructor]`; polymorphic types need `[JsonPolymorphic]` + `[JsonDerivedType]`
 - [`localization-admin-exempt`](code/localization-admin-exempt.md) — admin pages don't need localization; no new `@Localizer[...]` keys for `/Admin/*`
@@ -77,8 +84,7 @@ Atomic rules. Fetch the body when the description's trigger matches your task. S
 - [`drive-by-fixes-ok`](process/drive-by-fixes-ok.md) — small unrelated fixes can land in the same PR ONLY after Peter explicitly approves; surface and ask, never bundle silently
 - [`ef-migration-review-gate`](process/ef-migration-review-gate.md) — MANDATORY. Run `.claude/agents/ef-migration-reviewer.md` before commit/PR
 - [`feature-spec-on-new-feature`](process/feature-spec-on-new-feature.md) — when implementing a non-trivial new feature, create `docs/features/<feature>.md` in the same PR (covers create-new; post-fix-doc-check covers update-existing)
-- [`issue-comments-mandatory`](process/issue-comments-mandatory.md) — HARD RULE (hook). Always fetch issues/PRs with comments; Peter's comments often flip OP intent
-- [`issue-no-non-peter-without-approval`](process/issue-no-non-peter-without-approval.md) — HARD RULE (hook). If `.author.login != peterdrier`, STOP and get Peter's input first
+- [`issue-fetch-protocol`](process/issue-fetch-protocol.md) — HARD RULE (hook). Before implementing any GH issue/PR, fetch with comments AND author. If `.author.login != peterdrier`, STOP — never branch or code from a non-Peter issue without per-issue approval.
 - [`issue-refs-qualified`](process/issue-refs-qualified.md) — `peterdrier#N` (fork) or `nobodies-collective#N` (upstream); pass `--repo` to every `gh` call
 - [`maintenance-log-update`](process/maintenance-log-update.md) — after any recurring maintenance, update `docs/architecture/maintenance-log.md` with current + next-due dates
 - [`no-anon-perf-guards`](process/no-anon-perf-guards.md) — don't flag cheap `[AllowAnonymous]` DB reads as perf issues; auth guard is dead defensive code at this scale
@@ -89,18 +95,12 @@ Atomic rules. Fetch the body when the description's trigger matches your task. S
 - [`model-tiering`](process/model-tiering.md) — Opus orchestrates judgment; Sonnet subagents do mechanical refactors via `Agent` with `model: "sonnet"`; Haiku for surgical one-shots. Dispatch right after design dialogue ends.
 - [`no-manual-db-writes`](process/no-manual-db-writes.md) — HARD RULE. Never modify a DB row by hand (any env): no INSERT/UPDATE/DELETE via psql/admin UI, no `__EFMigrationsHistory` patching, no fix-up migrations to paper over regen. Drop+recreate the env DB instead.
 - [`post-fix-doc-check`](process/post-fix-doc-check.md) — before final commit, scan `docs/features/` and `docs/sections/` for invariants the change touches; update inline
-- [`pr-codex-thread-replies`](process/pr-codex-thread-replies.md) — reply per Codex inline thread (`POST /pulls/{n}/comments/{id}/replies`), not as top-level PR comment
-- [`pr-done-means-codex-clean`](process/pr-done-means-codex-clean.md) — a PR isn't "done" until Codex returns no findings; pushed+green is mid-state
-- [`pr-no-ping-reviewers`](process/pr-no-ping-reviewers.md) — don't `@codex review` after pushes; quota is limited, Claude reviews on push automatically
-- [`pr-resolve-declined-when-authorized`](process/pr-resolve-declined-when-authorized.md) — in /pr-fix, "decline because Peter authorized" → resolve the thread; leave-open is for technically-wrong findings only
-- [`pr-review-both-repos`](process/pr-review-both-repos.md) — pull comments from BOTH `peterdrier/Humans` AND `nobodies-collective/Humans`; use `/pulls/{n}/comments` for inline
+- [`pr-review-feedback-handling`](process/pr-review-feedback-handling.md) — When handling PR review feedback (Codex, Claude, human inline reviewers): fetch comments from BOTH repos via the inline-comments API, reply in each finding's own thread, resolve threads when Peter-authorized declines, never ping `@codex review` to re-trigger.
 - [`privilege-changes-need-explicit-approval`](process/privilege-changes-need-explicit-approval.md) — HARD RULE. Any change granting users new/elevated capability (Drive role bumps, auth-scope additions, role grants, admin flags, default permission tiers, CORS/allowlist expansions) needs Peter's explicit per-change approval before implementation, regardless of issue tier or sprint plan
 - [`rules-maintenance`](process/rules-maintenance.md) — when a new project rule surfaces, capture as `memory/<bucket>/<name>.md` + INDEX entry in the same commit. Not external memory.
 - [`simplify-scope-to-section-size`](process/simplify-scope-to-section-size.md) — scale `/simplify` fix counts to section LOC, not to a smaller prior PR's count
 - [`todos-and-issue-tracking`](process/todos-and-issue-tracking.md) — after resolving commits: update `todos.md` Completed + close GitHub issues with summary + SHA
-- [`triage-fetch-full-history`](process/triage-fetch-full-history.md) — `/triage` must `GET /api/feedback/{id}/messages` for every report; list-endpoint counts can be stale
-- [`triage-show-verbatim`](process/triage-show-verbatim.md) — `/triage` always shows reporter's verbatim Description text alongside the analysis
-- [`user-feedback-spec-changes-need-review`](process/user-feedback-spec-changes-need-review.md) — when an issue originated from end-user feedback (triage→issue chain) and proposes a behavioral / policy / capability / spec change beyond a mechanical fix, route to Peter for review before sprint/batch dispatch. Mechanical fixes (typos, broken links, error-message wording) flow normally.
+- [`triage-protocol`](process/triage-protocol.md) — When triaging feedback: fetch full message history for every report, show reporter's verbatim Description alongside analysis, and stop the autonomous pipeline on any feedback-originated request that proposes a behavioral/policy/capability/spec change beyond a mechanical fix.
 - [`widget-gallery-up-to-date`](process/widget-gallery-up-to-date.md) — adding/removing a TagHelper, ViewComponent, or user-facing shared partial under `src/Humans.Web/` → also update `Views/WidgetGallery/Index.cshtml` (and the controller if real sample data is needed). Skipped section is the explicit allowlist for non-rendered widgets.
 - [`worktree-removal-git-only`](process/worktree-removal-git-only.md) — HARD RULE. Worktree cleanup is `git worktree remove` only. Failure → report and stop. Narrow exception: if git emptied contents but left an empty parent dir, `rmdir` (non-recursive) is allowed. Otherwise no PowerShell `Remove-Item -Recurse`, no rm -rf, no process kills, no retries.
 

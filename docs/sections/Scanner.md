@@ -2,48 +2,57 @@
 
 ## Concepts
 
-- **Scanner** is a section for in-browser tools that read data from the device camera (or similar inputs in the future).
-- **Phase 1** (issue nobodies-collective/Humans#525) ships a single tool: `/Scanner/Barcode`, which decodes QR codes and CODE128 barcodes using the browser's `BarcodeDetector` API, falling back to `@zxing/browser` via CDN.
-- **Not a check-in tool.** Scanning a ticket here does not mark anyone as arrived. Decoded values are displayed only and not sent to the server.
-- **No server-side state.** The section has no owned tables, no DTOs, no services. Decoding happens entirely in the browser; results live in the page and are discarded on navigation.
+- **Scanner** is a section for in-browser tools that read data from the device camera.
+- The only current tool is `/Scanner/Barcode` (issue nobodies-collective/Humans#525, 2026-04-26): decodes QR codes and CODE128 barcodes via the browser's `BarcodeDetector` API, falling back to `@zxing/browser` via CDN.
+- **Not a check-in tool.** Decoded values are displayed in-page only; nothing is sent to the server.
+- **No server-side state.** No owned tables, no DTOs, no services. All decode logic runs in the browser.
+
+## Routing
+
+| Route | Controller action | Notes |
+|-------|------------------|-------|
+| `GET /Scanner` | `ScannerController.Index` | Section landing page |
+| `GET /Scanner/Barcode` | `ScannerController.Barcode` | Barcode decode tool |
 
 ## Actors & Roles
 
 | Actor | Capabilities |
 |-------|-------------|
-| TicketAdmin, Board, Admin | View the scanner section index and use the barcode tool |
-| Everyone else | No access — all scanner routes require `TicketAdminBoardOrAdmin` |
+| TicketAdmin, Board, Admin | Access the scanner index and use the barcode tool |
+| Everyone else | No access — all routes require `TicketAdminBoardOrAdmin` |
 
 ## Invariants
 
-- All scanner routes require the `TicketAdminBoardOrAdmin` policy (`TicketAdmin`, `Board`, or `Admin`).
+- All scanner routes require the `TicketAdminBoardOrAdmin` policy (`TicketAdmin`, `Board`, or `Admin`). Enforced by `[Authorize(Policy = PolicyNames.TicketAdminBoardOrAdmin)]` on `ScannerController`.
 - No scanner endpoint writes server-side state. No database tables are owned by this section.
-- The barcode tool is explicitly labelled as a test tool on screen. It is never used to mark tickets as checked-in or to authenticate entry.
 - Decoded barcode values do not leave the browser.
-- The stream is released (`MediaStreamTrack.stop()` on every track) when the user taps Stop or leaves the page (`pagehide`, `beforeunload`).
+- The camera stream is released (`MediaStreamTrack.stop()` on every track) when the user taps Stop or the page unloads.
 
 ## Negative Access Rules
 
-- The barcode tool is **not** a check-in gateway. Do not wire it up to attendance records, `EventParticipation`, ticket check-in state, or anything that would mark a human as having entered the event.
-- No data from a decoded barcode is sent to the server in phase 1. If a future scanner tool needs a server round-trip, it must be a new tool with its own route and feature spec, not an extension of `/Scanner/Barcode`.
+- The barcode tool **cannot** be used as a check-in gateway. Do **not** wire it up to attendance records, `EventParticipation`, ticket check-in state, or anything that would mark a human as having entered an event.
+- No data from a decoded barcode is **sent** to the server. Any future scanner tool that requires a server round-trip must be a new tool with its own route and feature spec — not an extension of `/Scanner/Barcode`.
 
 ## Triggers
 
-- When the user clicks **Scan** on `/Scanner/Barcode`, the browser prompts for camera permission and starts the rear-facing preview.
-- When a barcode is decoded, the tool appends a `{format, value, timestamp}` entry to the on-page list (most recent first). Duplicate hits within 1.5 s are suppressed.
-- When the user clicks **Stop** (or leaves the page), the camera stream is released.
+None — this section is a pure client-side tool with no server-side side effects.
+
+(Client-side only: camera start/stop and the decoded-value list are managed in `wwwroot/js/scanner/barcode.js`; they produce no audit writes, notifications, or cross-section calls.)
 
 ## Cross-Section Dependencies
 
-- **Tickets**: the barcode tool is gated behind the ticket-admin policy because its initial use case is reading TicketTailor ticket stubs. No runtime coupling — Scanner does not call any Tickets service or share any state with Tickets.
-- **Admin**: none beyond the shared `TicketAdminBoardOrAdmin` policy.
+- **Tickets**: the barcode tool is gated behind the ticket-admin policy because its primary use case is reading TicketTailor ticket stubs. No runtime coupling — Scanner does not call any Tickets service or share state with Tickets.
+- **Issues**: feedback/issues filed from `/Scanner/*` route to `IssueSectionRouting.Scanner`, visible to TicketAdmin and Board handlers. Scanner does not call `IIssuesService` directly.
 
-## Architecture — Current vs Target
+## Architecture
 
-**Owning service:** none (no business logic at this scale — phase 1 is presentational).
+**Owning services:** none (phase 1 is presentational — no business logic).
 **Owned tables:** none.
-**Status:** (A) Migrated — pure presentational section, no repository needed (issue nobodies-collective/Humans#525, 2026-04-26)
+**Status:** (A) Migrated — pure presentational section, no repository needed (issue nobodies-collective/Humans#525, 2026-04-26).
 
-Controller lives at `src/Humans.Web/Controllers/ScannerController.cs`. Views under `src/Humans.Web/Views/Scanner/`. Client logic at `src/Humans.Web/wwwroot/js/scanner/barcode.js`.
-
-If future scanner tools grow to need server-side verification (for example, calling a ticket vendor API to validate a decoded reference), that logic goes into a new `IScannerVerificationService` in `Humans.Application` and is consumed by the controller — the `ScannerController` remains a thin web-layer wrapper, and the client logic stays in `wwwroot/js/scanner/`.
+- No `Humans.Application.Services.Scanner/` namespace exists — correct for a section with no business logic.
+- No `ScannerSectionExtensions.cs` exists — correct while the section has no DI registrations.
+- **Decorator decision:** no caching decorator. No server-side data to cache.
+- **Cross-domain navs:** none.
+- **Cross-section calls:** none.
+- **Architecture test:** `EndpointAuthorizationTests.ScannerController_Remains_ClientOnly_GetSurface` pins the no-server-state surface; the `HUM0008` controller analyzer and `HUM0009` analyzer cover direct DbContext injection.
