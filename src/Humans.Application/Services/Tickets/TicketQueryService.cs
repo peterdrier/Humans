@@ -922,4 +922,7 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
             _cache.Remove(CacheKeys.UserTicketHoldings(receiver));
         }
     }
+
+    public Task<IReadOnlyList<OrderDriftRow>> GetOrderDriftAsync(CancellationToken ct = default) =>
+        _ticketRepository.GetOrderDriftAsync(ct);
 }
