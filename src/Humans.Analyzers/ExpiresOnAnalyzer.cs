@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Immutable;
 using System.Globalization;
+using System.Threading;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Operations;
@@ -37,7 +38,21 @@ public sealed class ExpiresOnAnalyzer : DiagnosticAnalyzer
     /// Test hook. When non-null, replaces <c>DateTime.UtcNow.Date</c> for
     /// computing diagnostic severity. Production code never sets this.
     /// </summary>
-    public static Func<DateTime>? TodayOverride { get; set; }
+    /// <remarks>
+    /// Backed by <see cref="AsyncLocal{T}"/> so concurrent test collections
+    /// cannot bleed overrides into each other. AsyncLocal (rather than
+    /// ThreadStatic) is required because Roslyn schedules analyzer callbacks
+    /// on its own threadpool via <c>EnableConcurrentExecution</c> — the
+    /// override must flow through async/await and Task scheduling to reach
+    /// <c>OnCompilationStart</c>. Production code always sees <c>null</c>.
+    /// </remarks>
+    private static readonly AsyncLocal<Func<DateTime>?> _todayOverride = new();
+
+    public static Func<DateTime>? TodayOverride
+    {
+        get => _todayOverride.Value;
+        set => _todayOverride.Value = value;
+    }
 
     private static readonly LocalizableString UsageTitle =
         "Reference to symbol with expiration deadline";
@@ -178,8 +193,10 @@ public sealed class ExpiresOnAnalyzer : DiagnosticAnalyzer
             if (attr is null)
                 continue;
 
+            // Malformed attribute at this level is a no-op — keep walking so
+            // a valid attribute on a containing type still fires.
             if (!TryReadAttribute(attr, out var date, out var _, out var reason))
-                return;
+                continue;
 
             DiagnosticSeverity severity;
             string message;

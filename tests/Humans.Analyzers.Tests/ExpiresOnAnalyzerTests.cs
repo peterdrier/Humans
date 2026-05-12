@@ -207,6 +207,40 @@ public class ExpiresOnAnalyzerTests
     }
 
     [HumansFact]
+    public async Task Malformed_member_attribute_falls_through_to_valid_class_attribute()
+    {
+        // A malformed [ExpiresOn] on a member must not suppress a valid one
+        // on its containing type — the loop should `continue`, not `return`.
+        var source = AttributeStub + """
+
+            namespace Sample
+            {
+                using Humans.Domain.Architecture;
+
+                [ExpiresOn("2026-05-26")]
+                public class LegacyService
+                {
+                    [ExpiresOn("not-a-date")]
+                    public void DoThing() { }
+                }
+
+                public class Caller
+                {
+                    public void Use(LegacyService s) => s.DoThing();
+                }
+            }
+            """;
+
+        var diagnostics = await RunAtAsync(new DateTime(2026, 5, 12), source);
+
+        var usage = diagnostics.Where(IsUsage).ToArray();
+        usage.Should().NotBeEmpty(
+            "the class-level [ExpiresOn] is valid; the malformed member-level " +
+            "attribute must not block its discovery");
+        usage.Should().AllSatisfy(d => d.Severity.Should().Be(DiagnosticSeverity.Warning));
+    }
+
+    [HumansFact]
     public async Task Malformed_date_emits_no_diagnostic()
     {
         var source = AttributeStub + """
