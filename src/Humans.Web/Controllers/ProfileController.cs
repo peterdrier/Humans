@@ -314,6 +314,12 @@ public class ProfileController : HumansControllerBase
             ? await _profileService.GetProfileLanguagesAsync(profile.Id, ct)
             : (IReadOnlyList<ProfileLanguage>)[];
 
+        // Shift tag preferences — surfaced on Edit Profile so users can pick what
+        // kinds of volunteer work they want without bouncing to /Shifts. Without
+        // this surface the profile completion bar sticks at 95%.
+        var allShiftTags = await _shiftMgmt.GetTagsAsync();
+        var preferredShiftTags = await _shiftMgmt.GetVolunteerTagPreferencesAsync(user.Id);
+
         var hasCustomPicture = profile?.HasCustomProfilePicture == true;
 
         // Initial setup = no profile or not yet approved (onboarding)
@@ -392,7 +398,9 @@ public class ProfileController : HumansControllerBase
                 Id = pl.Id,
                 LanguageCode = pl.LanguageCode,
                 Proficiency = pl.Proficiency
-            }).ToList()
+            }).ToList(),
+            AllShiftTags = allShiftTags,
+            EditableShiftTagIds = preferredShiftTags.Select(t => t.Id).ToList()
         };
 
         ViewData["GoogleMapsApiKey"] = _configuration.GetRequiredSetting(_configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
@@ -403,6 +411,10 @@ public class ProfileController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit(ProfileViewModel model)
     {
+        // Shift-tag catalog isn't posted back — repopulate up front so every
+        // validation-failure `View(model)` path in this action still renders the picker.
+        model.AllShiftTags = await _shiftMgmt.GetTagsAsync();
+
         if (!ModelState.IsValid)
         {
             ViewData["GoogleMapsApiKey"] = _configuration.GetRequiredSetting(_configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
@@ -672,6 +684,8 @@ public class ProfileController : HumansControllerBase
             .ToList();
 
         await _profileService.SaveProfileLanguagesAsync(profileId, newLanguages);
+
+        await _shiftMgmt.SetVolunteerTagPreferencesAsync(user.Id, model.EditableShiftTagIds);
 
         SetSuccess(_localizer["Profile_Updated"].Value);
         return RedirectToAction(nameof(Me));

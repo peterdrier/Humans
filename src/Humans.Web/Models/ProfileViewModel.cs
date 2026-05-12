@@ -335,6 +335,17 @@ public class ProfileViewModel
     /// Languages for display (profile card).
     /// </summary>
     public IReadOnlyList<ProfileLanguageDisplayViewModel> Languages { get; set; } = [];
+
+    /// <summary>
+    /// All available shift tags (for the picker). Owner only.
+    /// </summary>
+    public IReadOnlyList<ShiftTag> AllShiftTags { get; set; } = [];
+
+    /// <summary>
+    /// IDs of shift tags the user has marked as preferred. Owner only.
+    /// Posted from the Edit form so the same submit saves preferences alongside the profile.
+    /// </summary>
+    public List<Guid> EditableShiftTagIds { get; set; } = [];
 }
 
 /// <summary>
