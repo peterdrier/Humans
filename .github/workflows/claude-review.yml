@@ -196,36 +196,39 @@ jobs:
             marks the original thread outdated, but the underlying issue
             is the same. Do not re-flag.
 
-            For each suppressed thread, extract a **finding identity** —
-            do NOT match only on file + line, because pushes move lines
-            and the same rule violation can appear in a sibling file
-            after a refactor. Match a new finding against the deny-list
-            using ALL of:
+            For each suppressed thread, extract a **finding identity**
+            and match a new finding against the deny-list using ALL of:
 
             1. **Rule reference** — the atom path (e.g.
                `memory/code/...`), doc anchor, or rule citation quoted in
-               the suppressed thread's first comment. If the new finding
-               would cite the same rule, it's the same finding regardless
-               of file/line.
+               the suppressed thread's first comment. The new finding
+               cites the same rule.
             2. **Finding category** — what's wrong in plain terms
                (e.g. "cross-service DB write", "missing authorization
-               handler", "EF type leaking into Application layer"). If
-               the suppressed thread and the new finding describe the
-               same category, treat as the same finding.
-            3. File + line proximity (fallback signal only — do not
-               require it).
+               handler", "EF type leaking into Application layer"). The
+               new finding describes the same category.
+            3. **Site identity** — at least ONE of:
+               - same file path, OR
+               - same symbol / method / type / endpoint name quoted in
+                 the bodies (handles refactors that move the same
+                 violation to a sibling file), OR
+               - the suppressed thread's offending code snippet
+                 substantially overlaps the new finding's code snippet.
 
-            If any of (1) or (2) matches a suppressed thread, SKIP the
-            finding. Only post genuinely new findings — same-rule and
-            same-category re-flags are forbidden even when on a
-            different file or line than the original suppressed thread.
+            Suppress the new finding ONLY if (1) AND (2) AND (3) all
+            match. Same rule + same category on a DIFFERENT site is a
+            legitimately new finding — post it. Two distinct violations
+            of the same rule on the same PR are both valid, even if one
+            was declined.
 
             ## How to post the review (STRICT)
 
             Do ALL of your analysis before posting anything. Do every
-            review pass — atom rules, code-review-rules, design-rules,
-            section invariants, feature spec — entirely in your head /
-            scratch reasoning, NOT as posted comments.
+            review pass — atom rules, code-review-rules, design-rules —
+            entirely in your head / scratch reasoning, NOT as posted
+            comments. (Section invariants and feature specs are out of
+            scope per the reading-list block above; do not include them
+            in the analysis pass.)
 
             Findings post in TWO channels:
 
