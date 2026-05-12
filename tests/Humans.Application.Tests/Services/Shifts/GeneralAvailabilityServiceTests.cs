@@ -9,7 +9,7 @@ using NodaTime.Testing;
 using Xunit;
 using GeneralAvailabilityService = Humans.Application.Services.Shifts.GeneralAvailabilityService;
 
-namespace Humans.Application.Tests.Services;
+namespace Humans.Application.Tests.Services.Shifts;
 
 public class GeneralAvailabilityServiceTests : IDisposable
 {

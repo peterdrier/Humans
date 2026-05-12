@@ -17,7 +17,7 @@ using NodaTime.Testing;
 using NSubstitute;
 using Xunit;
 
-namespace Humans.Application.Tests.Services;
+namespace Humans.Application.Tests.Services.Shifts;
 
 public class ShiftSignupsBucketingTests
 {
