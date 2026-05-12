@@ -79,13 +79,6 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
     public Task<IReadOnlyList<User>> GetAllUsersAsync(CancellationToken ct = default) =>
         _repo.GetAllAsync(ct);
 
-    public async Task<IReadOnlyDictionary<Guid, string>> GetDisplayNamesByIdsAsync(
-        IReadOnlyCollection<Guid> ids, CancellationToken ct = default)
-    {
-        var users = await _repo.GetByIdsAsync(ids, ct);
-        return users.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.DisplayName);
-    }
-
     public Task<IReadOnlyList<(string Language, int Count)>>
         GetLanguageDistributionForUserIdsAsync(
             IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>

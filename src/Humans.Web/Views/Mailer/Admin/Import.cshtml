@@ -134,16 +134,13 @@
                                     <td>@row.MlStatus</td>
                                     @if (cat.Outcome == SubscriberOutcome.AmbiguousMultipleVerified)
                                     {
-                                        @* AmbiguousMultipleVerified: show all matched user ids from the decision.
-                                           The current classifier doesn't produce this outcome so rows will be
-                                           empty; this column is here for when it does. *@
                                         var ambiguous = Model.Plan.Decisions
                                             .FirstOrDefault(d => d.Email == row.EmailFull)
                                             ?.AmbiguousUserIds ?? [];
                                         <td>
                                             @foreach (var uid in ambiguous)
                                             {
-                                                <a href="/Admin/Users/@uid" class="me-1 font-monospace" style="font-size:0.8rem;">@uid</a>
+                                                <span class="me-2"><vc:human user-id="@uid" link="Admin" /></span>
                                             }
                                         </td>
                                     }
@@ -154,7 +151,7 @@
                                         <td>
                                             @if (row.MatchedUserId is Guid uid)
                                             {
-                                                <a href="/Admin/Users/@uid">@(row.MatchedDisplayName ?? uid.ToString())</a>
+                                                <vc:human user-id="@uid" link="Admin" />
                                             }
                                             else
                                             {

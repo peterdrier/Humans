@@ -109,7 +109,7 @@ public sealed class MailerAdminController : HumansControllerBase
     public async Task<IActionResult> Import(CancellationToken ct)
     {
         var plan = await _import.BuildPlanAsync(ct);
-        var rows = await ProjectRowsAsync(plan, ct);
+        var rows = ProjectRows(plan);
 
         // Snapshot counts in TempData for the >10% delta check on Commit (Task 27).
         TempData["PlanCountsSnapshot"] = JsonSerializer.Serialize(plan.Counts);
@@ -118,27 +118,14 @@ public sealed class MailerAdminController : HumansControllerBase
             new MailerImportPreviewViewModel(plan, rows));
     }
 
-    private async Task<IReadOnlyList<SubscriberDecisionRow>> ProjectRowsAsync(
-        ImportPlan plan, CancellationToken ct)
-    {
-        var matchedUserIds = plan.Decisions
-            .Where(d => d.TargetUserId is not null)
-            .Select(d => d.TargetUserId!.Value)
-            .Distinct()
-            .ToList();
-        var users = matchedUserIds.Count == 0
-            ? new Dictionary<Guid, string>()
-            : await _users.GetDisplayNamesByIdsAsync(matchedUserIds, ct);
-
-        return plan.Decisions.Select(d => new SubscriberDecisionRow(
+    private static IReadOnlyList<SubscriberDecisionRow> ProjectRows(ImportPlan plan) =>
+        plan.Decisions.Select(d => new SubscriberDecisionRow(
             EmailRedacted: Redact(d.Email),
             EmailFull: d.Email,
             MlStatus: d.Status,
             MlLastActionAt: null,
-            MatchedDisplayName: d.TargetUserId is Guid uid && users.TryGetValue(uid, out var n) ? n : null,
             MatchedUserId: d.TargetUserId,
             Outcome: d.Outcome)).ToList();
-    }
 
     private static string Redact(string email)
     {

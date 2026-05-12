@@ -12,6 +12,5 @@ public sealed record SubscriberDecisionRow(
     string EmailFull,           // shown on row-expand
     string MlStatus,
     Instant? MlLastActionAt,
-    string? MatchedDisplayName,
     Guid? MatchedUserId,
     SubscriberOutcome Outcome);
