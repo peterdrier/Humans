@@ -101,10 +101,9 @@ Per-user per-event build-period coordination state. Drives the Volunteer Trackin
 
 **Write paths:**
 
-- `VolunteerTrackingController` (Admin / VolunteerCoordinator, gated by the `VolunteerTrackingWrite` policy) writes `BarrioSetupStartDate`, `BarrioSetupSetByUserId`, `BarrioSetupSetAt`, and individual `BlockedDayOffsets` entries via `IVolunteerTrackingService.SetCampSetupAsync` / `ClearCampSetupAsync` / `SetBlockAsync`.
-- `ShiftsController.SaveBlockedDays` (current user only, UserId from `ClaimsPrincipal`) writes the volunteer's own `BlockedDayOffsets` via `IVolunteerTrackingService.SaveOwnBlockedDaysAsync` — used by the "Days you can't volunteer" panel on `/Shifts/Mine`.
+- `VolunteerTrackingController` (Admin / VolunteerCoordinator, gated by the `VolunteerTrackingWrite` policy) writes `BarrioSetupStartDate`, `BarrioSetupSetByUserId`, `BarrioSetupSetAt`, and individual `BlockedDayOffsets` entries via `IVolunteerTrackingService.SetCampSetupAsync` / `ClearCampSetupAsync` / `SetDayOffAsync` / `ClearDayOffAsync`.
 
-All mutations route through `IVolunteerTrackingRepository` and emit `AuditAction.VolunteerCampSetupSet` / `VolunteerCampSetupCleared` / `VolunteerDayBlocked` / `VolunteerDayUnblocked` / `VolunteerOwnBlockedDaysSaved` audit entries with `EntityType = nameof(VolunteerBuildStatus)`.
+All mutations route through `IVolunteerTrackingRepository` and emit `AuditAction.VolunteerCampSetupSet` / `VolunteerCampSetupCleared` / `VolunteerDayOffMarked` / `VolunteerDayOffCleared` audit entries with `EntityType = nameof(VolunteerBuildStatus)`.
 
 ### VolunteerEventProfile
 
@@ -160,7 +159,7 @@ Four controllers serve this section, each with distinct URL scope and authorizat
 | `ShiftsController` | `/Shifts` | `[Authorize]` (per-action for admin/settings) |
 | `ShiftAdminController` | `/Teams/{slug}/Shifts` | `[Authorize]` + `CanManageDepartment` / `CanApproveDepartment` |
 | `ShiftDashboardController` | `/Shifts/Dashboard` | `[Authorize(Policy = PolicyNames.ShiftDepartmentManager)]` |
-| `VolunteerTrackingController` | `/Shifts/Dashboard/VolunteerTracking` | `[Authorize(Policy = PolicyNames.VolunteerTrackingWrite)]` (Admin / VolunteerCoordinator) |
+| `VolunteerTrackingController` | `/Shifts/Dashboard/VolunteerTracking` | `[Authorize(Policy = PolicyNames.ShiftDashboardAccess)]` (per-action `VolunteerTrackingWrite` for mutating POSTs — Admin / VolunteerCoordinator) |
 
 Selected routes:
 

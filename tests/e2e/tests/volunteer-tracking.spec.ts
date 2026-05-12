@@ -41,7 +41,7 @@ test.describe('Volunteer Tracking (feature 47)', () => {
     await page.goto('/Shifts');
     await page.getByRole('link', { name: /shift dashboard/i }).click();
     await page.getByRole('link', { name: /volunteer tracking/i }).click();
-    await expect(page).toHaveURL(/\/ShiftDashboard\/VolunteerTracking/);
+    await expect(page).toHaveURL(/\/Shifts\/Dashboard\/VolunteerTracking/);
     await expect(page.getByRole('heading', { name: /volunteer tracking/i })).toBeVisible();
 
     // 2. Locate seeded volunteer with a known gap.
