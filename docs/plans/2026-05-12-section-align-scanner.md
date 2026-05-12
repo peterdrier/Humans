@@ -121,7 +121,7 @@ These are not core boundary violations, but they are Scanner-adjacent drift:
 | Authorization inventory | `docs/authorization-inventory.md` lacks ScannerController | The generated authorization doc is stale for this section |
 | Controller audit | `docs/controller-architecture-audit.md` lacks ScannerController routes | The generated controller audit is stale for this section |
 
-Decision needed before Phase 2: route `/Scanner` issues as their own `Scanner` section with `TicketAdmin` and `Board` visibility, or map `/Scanner` to `Tickets` because the current tool is ticket-stub-oriented. The section docs argue for its own `Scanner` section.
+Decision resolved 2026-05-12: `/Scanner` issues route as their own `Scanner` section with `TicketAdmin` and `Board` visibility.
 
 ---
 
@@ -263,11 +263,7 @@ Skip Stryker unless Scanner gains non-trivial server-side Application code.
 
 None.
 
-Decision needed before Phase 2: how should `/Scanner` issues route?
-
-- Option A: Add `Scanner` to `IssueSectionRouting`, map `/Scanner` in `IssueSectionInference`, and show it as "Scanner" in `AreaLabelMap`. Recommended if Scanner is a first-class section.
-- Option B: Map `/Scanner` to `Tickets`. Lower surface, but contradicts the current feature spec that says Scanner is cross-cutting and top-level.
-- Option C: Leave it Admin-only via `Section = null`. This preserves current behavior but makes Scanner operational issues less visible to TicketAdmin/Board.
+Resolved 2026-05-12: Option A. `Scanner` is a first-class issue section. `/Scanner` maps to `IssueSectionRouting.Scanner`; TicketAdmin and Board handlers see that queue; Admin remains implicit.
 
 ---
 
@@ -291,19 +287,18 @@ Optional doc-only cleanup if doing Phase 1 anyway:
 
 ### Phase 2 - Architecture and focused tests
 
-1. Pin `ScannerController` to `PolicyNames.TicketAdminBoardOrAdmin` in `EndpointAuthorizationTests` or `ScannerControllerTests`.
-2. Add a small guardrail that Scanner remains client-only while documented that way:
+1. Pin `ScannerController` to `PolicyNames.TicketAdminBoardOrAdmin` in `EndpointAuthorizationTests` or `ScannerControllerTests`. **Done 2026-05-12.**
+2. Add a small guardrail that Scanner remains client-only while documented that way. **Done 2026-05-12:**
    - no constructor dependencies on `ScannerController`
    - only GET actions on `ScannerController`
-3. Add one Playwright browser test if practical:
+3. Add one Playwright browser test if practical. **Done 2026-05-12:**
    - login as TicketAdmin
    - visit `/Scanner/Barcode`
    - mock `navigator.mediaDevices.getUserMedia` and `window.BarcodeDetector`
    - click Scan, verify a decoded value appears
    - click Stop, verify the mocked media track was stopped
    - assert no app POST/request is made by the scan action
-4. Resolve the issue-routing decision:
-   - recommended: add `Scanner` to `IssueSectionRouting`, `IssueSectionInference`, `AreaLabelMap`, and the related tests.
+4. Resolve the issue-routing decision. **Done 2026-05-12:** added `Scanner` to `IssueSectionRouting`, `IssueSectionInference`, `AreaLabelMap`, and related tests.
 
 ### Phase 3 - Simplify / prune
 
@@ -311,7 +306,7 @@ Likely no Phase 3 code work. If the Playwright test is added, keep it to one beh
 
 ### Phase 4 - Docs
 
-1. Refresh `docs/authorization-inventory.md` so `ScannerController` appears with `TicketAdminBoardOrAdmin`.
-2. Refresh `docs/controller-architecture-audit.md` so `/Scanner` and `/Scanner/Barcode` appear.
-3. If issue routing changes, update any issue-routing docs/tests that enumerate known areas.
-4. Re-check `docs/sections/Scanner.md` and `docs/features/scanner/scanner-barcode.md` after tests land.
+1. Refresh `docs/authorization-inventory.md` so `ScannerController` appears with `TicketAdminBoardOrAdmin`. **Done 2026-05-12.**
+2. Refresh `docs/controller-architecture-audit.md` so `/Scanner` and `/Scanner/Barcode` appear. **Done 2026-05-12.**
+3. If issue routing changes, update any issue-routing docs/tests that enumerate known areas. **Done 2026-05-12.**
+4. Re-check `docs/sections/Scanner.md` and `docs/features/scanner/scanner-barcode.md` after tests land. **Done 2026-05-12.**

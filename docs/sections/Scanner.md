@@ -42,6 +42,7 @@ None — this section is a pure client-side tool with no server-side side effect
 ## Cross-Section Dependencies
 
 - **Tickets**: the barcode tool is gated behind the ticket-admin policy because its primary use case is reading TicketTailor ticket stubs. No runtime coupling — Scanner does not call any Tickets service or share state with Tickets.
+- **Issues**: feedback/issues filed from `/Scanner/*` route to `IssueSectionRouting.Scanner`, visible to TicketAdmin and Board handlers. Scanner does not call `IIssuesService` directly.
 
 ## Architecture
 
@@ -50,7 +51,8 @@ None — this section is a pure client-side tool with no server-side side effect
 **Status:** (A) Migrated — pure presentational section, no repository needed (issue nobodies-collective/Humans#525, 2026-04-26).
 
 - No `Humans.Application.Services.Scanner/` namespace exists — correct for a section with no business logic.
+- No `ScannerSectionExtensions.cs` exists — correct while the section has no DI registrations.
 - **Decorator decision:** no caching decorator. No server-side data to cache.
 - **Cross-domain navs:** none.
 - **Cross-section calls:** none.
-- **Architecture test:** none. The general `HUM0008` controller analyzer and `NoServiceInjectsDbContext` ratchet test cover this controller; no section-specific test is warranted at this size.
+- **Architecture test:** `EndpointAuthorizationTests.ScannerController_Remains_ClientOnly_GetSurface` pins the no-server-state surface; the general `HUM0008` controller analyzer and `NoServiceInjectsDbContext` ratchet test cover direct DbContext injection.

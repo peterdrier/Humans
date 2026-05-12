@@ -1,11 +1,11 @@
 # Controller Architecture Audit
 
-Living document. Last updated: 2026-04-25 (freshness sweep).
+Living document. Last updated: 2026-05-12 (Scanner refresh).
 
 ## Part 1: Action Name Audit
 
 ### Summary
-- Controllers audited: 45 (excludes 3 abstract base classes: `HumansControllerBase`, `HumansTeamControllerBase`, `HumansCampControllerBase`)
+- Controllers audited: 46 (excludes 3 abstract base classes: `HumansControllerBase`, `HumansTeamControllerBase`, `HumansCampControllerBase`)
 - Renames suggested: 6
 - Already OK: rest
 
@@ -486,6 +486,13 @@ Living document. Last updated: 2026-04-25 (freshness sweep).
 | AddRole | /Profile/{id}/Admin/Roles/Add | GET | Add role form | OK |
 | AddRole | /Profile/{id}/Admin/Roles/Add | POST | Submit role assignment | OK |
 | EndRole | /Profile/{id}/Admin/Roles/{roleId}/End | POST | End a role assignment | OK |
+
+## ScannerController
+
+| Method | Route | Verb | Purpose | Suggestion |
+|--------|-------|------|---------|------------|
+| Index | /Scanner | GET | Scanner section landing page | OK |
+| Barcode | /Scanner/Barcode | GET | Browser-only barcode decode tool | OK |
 
 ## ShiftAdminController
 
