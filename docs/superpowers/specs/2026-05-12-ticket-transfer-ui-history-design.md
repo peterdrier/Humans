@@ -107,6 +107,20 @@ Below the decide form, two new sections:
 
 The timeline view component (new) renders the deserialised step list as a vertical list, with status/timestamp/reference-id/error per step.
 
+**TicketTailor deep-link on the Ticket card.** The two lenses above are *our* view (what we asked TT to do and what TT replied). The vendor's own audit lives in the TicketTailor dashboard — not exposed via API, so we can't mirror it. We can deep-link to it. `TicketOrder.VendorDashboardUrl` is already captured at order sync; render it as a button on the Ticket card:
+
+```cshtml
+@if (!string.IsNullOrEmpty(Model.OrderDashboardUrl))
+{
+    <a href="@Model.OrderDashboardUrl" target="_blank" rel="noopener"
+       class="btn btn-sm btn-outline-secondary">
+        View order in TicketTailor <i class="fa-solid fa-arrow-up-right-from-square"></i>
+    </a>
+}
+```
+
+The Detail DTO grows one new field (`OrderDashboardUrl`) populated from `attendee.TicketOrder.VendorDashboardUrl` when building `TicketTransferDetailDto`.
+
 ## 4. Send page — render swap, search path unchanged
 
 `/Tickets/Transfers/Send` (`Views/TicketTransfer/Send.cshtml`):
@@ -308,6 +322,7 @@ Documented here so the bundle ships with an explicit "yes we thought about this"
 - `src/Humans.Web/ViewComponents/TicketTransferTimelineViewComponent.cs` + view
 - `src/Humans.Application/Services/Tickets/TicketAttendeeOwnership.cs` (static helper)
 - `src/Humans.Application/DTOs/TicketTransferVendorStep.cs` (record + enum)
+- `src/Humans.Application/DTOs/TicketTransferDtos.cs` — extend `TicketTransferDetailDto` with `OrderDashboardUrl` (modified, not new)
 - `src/Humans.Infrastructure/Migrations/<date>_AddTicketTransferVendorStepsJson.cs`
 - `tests/Humans.Application.Tests/Services/Tickets/TicketAttendeeOwnershipTests.cs`
 - `tests/Humans.Application.Tests/Services/Tickets/TicketTransferService_RetryIssueTests.cs`
