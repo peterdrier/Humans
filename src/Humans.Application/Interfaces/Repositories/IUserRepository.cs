@@ -182,6 +182,15 @@ public interface IUserRepository : IRepository
     Task<IReadOnlyList<Guid>> GetUsersWithLoginsButNoEmailsAsync(CancellationToken ct = default);
 
     /// <summary>
+    /// Permanently deletes users after the caller has cleared cross-section
+    /// references. Also removes user_emails and AspNetUserLogins rows for
+    /// those users. Returns the number of user rows deleted.
+    /// </summary>
+    Task<int> DeleteUsersAsync(
+        IReadOnlyCollection<Guid> userIds,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Deletes every <c>AspNetUserLogins</c> row for the given user. Returns the
     /// number of rows deleted. Used by EmailProblems ghost-login cleanup.
     /// </summary>
@@ -266,6 +275,13 @@ public interface IUserRepository : IRepository
     /// <see cref="GoogleEmailStatus.Rejected"/>. Used by the admin digest.
     /// </summary>
     Task<int> GetRejectedGoogleEmailCountAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the count of users whose <c>ContactSource</c> equals
+    /// <paramref name="source"/>. Used by the admin dashboard to show
+    /// per-source import totals.
+    /// </summary>
+    Task<int> GetCountByContactSourceAsync(ContactSource source, CancellationToken ct = default);
 
     /// <summary>
     /// Returns the ids of every user whose <c>DeletionScheduledFor</c> is at

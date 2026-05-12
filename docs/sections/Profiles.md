@@ -197,6 +197,7 @@ Per-user, per-category email opt-in/opt-out preferences. One row per user per ca
 | InboxEnabled | bool | Default true; when false, informational in-app notifications for this category are suppressed (actionable notifications always show) |
 | UpdatedAt | Instant | Last change |
 | UpdateSource | string (100) | "Profile" (signed-in profile UI), "Guest" (signed-in Guest dashboard, profileless), "MagicLink" (anonymous unsubscribe-token endpoints), "OneClick" (RFC 8058 List-Unsubscribe), "Default" (lazy seed), "DataMigration" |
+| SubscribedAt | Instant? | Stamped by `CommunicationPreferenceService` on the first opt-in transition or first sync-driven write; never overwritten while non-null |
 
 **Unique constraint:** `(UserId, Category)`. **Indexes:** `UserId`.
 

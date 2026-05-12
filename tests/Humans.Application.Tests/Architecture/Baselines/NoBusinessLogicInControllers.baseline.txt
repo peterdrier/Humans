@@ -11,7 +11,7 @@ src/Humans.Web/Controllers/AccountController.cs:ExternalLoginCallback/2
 src/Humans.Web/Controllers/AdminController.cs:PurgeHuman/1
 src/Humans.Web/Controllers/AdminLegalDocumentsController.cs:CreateLegalDocument/1
 src/Humans.Web/Controllers/AgentController.cs:Ask/2
-src/Humans.Web/Controllers/ApplicationController.cs:Create/1
+src/Humans.Web/Controllers/GovernanceApplicationsController.cs:Create/1
 src/Humans.Web/Controllers/BudgetController.cs:CategoryDetail/1
 src/Humans.Web/Controllers/BudgetController.cs:CreateLineItem/7
 src/Humans.Web/Controllers/BudgetController.cs:Index/0
@@ -41,7 +41,6 @@ src/Humans.Web/Controllers/ConsentController.cs:Submit/1
 src/Humans.Web/Controllers/DevLoginController.cs:SignIn/2
 src/Humans.Web/Controllers/DevSeedController.cs:SeedBudget/1
 src/Humans.Web/Controllers/DevSeedController.cs:SeedCampRoles/1
-src/Humans.Web/Controllers/DevSeedController.cs:SeedDashboard/2
 src/Humans.Web/Controllers/EmailController.cs:EmailPreview/2
 src/Humans.Web/Controllers/ExpensesController.cs:Approve/2
 src/Humans.Web/Controllers/ExpensesController.cs:AttachFile/3
@@ -87,7 +86,6 @@ src/Humans.Web/Controllers/OnboardingReviewController.cs:Reject/2
 src/Humans.Web/Controllers/ProfileController.cs:AddEmail/1
 src/Humans.Web/Controllers/ProfileController.cs:AddRole/2
 src/Humans.Web/Controllers/ProfileController.cs:AdminAddEmail/3
-src/Humans.Web/Controllers/ProfileController.cs:AdminAddVerifiedEmail/3
 src/Humans.Web/Controllers/ProfileController.cs:AdminClearGoogle/3
 src/Humans.Web/Controllers/ProfileController.cs:AdminClearPrimary/3
 src/Humans.Web/Controllers/ProfileController.cs:AdminDeleteEmail/3

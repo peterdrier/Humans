@@ -54,6 +54,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         _service = new ShiftManagementService(
             repo,
             Substitute.For<IAuditLogService>(),
+            Substitute.For<IAdminAuthorizationService>(),
             serviceProvider,
             new MemoryCache(new MemoryCacheOptions()),
             _clock,
@@ -945,7 +946,7 @@ public class ShiftDashboardMetricsTests : IDisposable
 
     // ================================================================
     // Thin fakes for cross-domain service interfaces. Each method covers
-    // only the narrow surface used by ShiftManagementService's dashboard
+    // only the service surface used by ShiftManagementService's dashboard
     // compute paths. All reads go through the same in-memory DbContext
     // so the test seed helpers (_dbContext.*.Add) drive results end-to-end.
     // ================================================================
@@ -998,6 +999,8 @@ public class ShiftDashboardMetricsTests : IDisposable
         public Task<UserTicketExportData> GetUserTicketExportDataAsync(Guid userId, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<Instant?> GetPostEventHoldDateAsync(CancellationToken ct = default) => throw new NotSupportedException();
         public void InvalidateAfterTransfer(Guid senderUserId, Guid? receiverUserId) => throw new NotSupportedException();
+        public Task<UserTicketHoldings> GetUserTicketHoldingsAsync(Guid userId, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<IReadOnlyList<OrderDriftRow>> GetOrderDriftAsync(CancellationToken ct = default) => throw new NotSupportedException();
     }
 
     private sealed class FakeUserService : IUserService
@@ -1053,12 +1056,14 @@ public class ShiftDashboardMetricsTests : IDisposable
         public Task<ExpiredDeletionAnonymizationResult?> ApplyExpiredDeletionAnonymizationAsync(Guid userId, CancellationToken ct = default) => throw new NotSupportedException();
         public Task SetLastConsentReminderSentAsync(Guid userId, Instant sentAt, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<int> GetRejectedGoogleEmailCountAsync(CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<int> GetCountByContactSourceAsync(ContactSource source, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<IReadOnlyList<Guid>> GetAccountsDueForAnonymizationAsync(Instant now, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<bool> AnonymizeForMergeAsync(Guid sourceUserId, Guid targetUserId, Instant now, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<int> ReassignLoginsToUserAsync(Guid sourceUserId, Guid targetUserId, Instant updatedAt, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<int> ReassignEventParticipationToUserAsync(Guid sourceUserId, Guid targetUserId, Instant updatedAt, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<IReadOnlySet<Guid>> GetMergedSourceIdsAsync(Guid targetUserId, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<IReadOnlyList<Guid>> GetUsersWithLoginsButNoEmailsAsync(CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<int> DeleteUsersAsync(IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<int> DeleteAllExternalLoginsForUserAsync(Guid userId, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<IReadOnlyDictionary<Guid, IReadOnlyList<(string Provider, string ProviderKey)>>> GetExternalLoginsByUserIdsAsync(IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) => throw new NotSupportedException();
     }
@@ -1147,7 +1152,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         public Task<IReadOnlyList<Guid>> GetUserCoordinatedTeamIdsAsync(Guid userId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<IReadOnlyList<Guid>> GetCoordinatorUserIdsAsync(Guid teamId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<TeamMember> AddSeededMemberAsync(Guid teamId, Guid userId, TeamMemberRole role, Instant joinedAt, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-        public Task<int> HardDeleteSeededTeamsAsync(string nameSuffix, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<bool> PermanentlyDeleteTeamAsync(Guid teamId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public void RemoveMemberFromAllTeamsCache(Guid userId) => throw new NotSupportedException();
         public void InvalidateActiveTeamsCache() => throw new NotSupportedException();
         public Task<IReadOnlyList<Humans.Application.Models.TeamMembership>> GetActiveTeamMembershipsForUserAsync(Guid userId, CancellationToken cancellationToken = default) => throw new NotSupportedException();

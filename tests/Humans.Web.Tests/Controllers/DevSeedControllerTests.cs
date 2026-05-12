@@ -54,7 +54,7 @@ public class DevSeedControllerTests
         var ctrl = BuildSut();
 
         // Act
-        var result = await ctrl.SeedDashboard(reset: false, CancellationToken.None);
+        var result = await ctrl.SeedDashboard(CancellationToken.None);
 
         // Assert
         result.Should().BeOfType<NotFoundResult>();
@@ -73,7 +73,7 @@ public class DevSeedControllerTests
         var ctrl = BuildSut();
 
         // Act
-        var result = await ctrl.SeedDashboard(reset: false, CancellationToken.None);
+        var result = await ctrl.SeedDashboard(CancellationToken.None);
 
         // Assert
         result.Should().BeOfType<NotFoundResult>();

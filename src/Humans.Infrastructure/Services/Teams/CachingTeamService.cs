@@ -461,7 +461,10 @@ public sealed class CachingTeamService : ITeamService, IUserMerge
 
             var membership = team.Members.FirstOrDefault(m => m.UserId == userId);
             if (membership is not null)
-                rows.Add(new Humans.Application.Models.TeamMembership(team.Name, membership.Role));
+                rows.Add(new Humans.Application.Models.TeamMembership(team.Name, membership.Role)
+                {
+                    IsHidden = team.IsHidden,
+                });
         }
 
         return rows;
@@ -522,12 +525,12 @@ public sealed class CachingTeamService : ITeamService, IUserMerge
         return result;
     }
 
-    public async Task<int> HardDeleteSeededTeamsAsync(
-        string nameSuffix,
+    public async Task<bool> PermanentlyDeleteTeamAsync(
+        Guid teamId,
         CancellationToken cancellationToken = default)
     {
-        var result = await WithInner(inner => inner.HardDeleteSeededTeamsAsync(nameSuffix, cancellationToken));
-        if (result > 0)
+        var result = await WithInner(inner => inner.PermanentlyDeleteTeamAsync(teamId, cancellationToken));
+        if (result)
             InvalidateTeamsCache();
         return result;
     }

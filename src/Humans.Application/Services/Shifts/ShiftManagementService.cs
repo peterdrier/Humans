@@ -54,6 +54,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
 
     private readonly IShiftManagementRepository _repo;
     private readonly IAuditLogService _auditLogService;
+    private readonly IAdminAuthorizationService _adminAuthorization;
     private readonly IServiceProvider _serviceProvider;
     private readonly IMemoryCache _cache;
     private readonly IClock _clock;
@@ -76,6 +77,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
     public ShiftManagementService(
         IShiftManagementRepository repo,
         IAuditLogService auditLogService,
+        IAdminAuthorizationService adminAuthorization,
         IServiceProvider serviceProvider,
         IMemoryCache cache,
         IClock clock,
@@ -83,6 +85,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
     {
         _repo = repo;
         _auditLogService = auditLogService;
+        _adminAuthorization = adminAuthorization;
         _serviceProvider = serviceProvider;
         _cache = cache;
         _clock = clock;
@@ -176,37 +179,17 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         entity.UpdatedAt = _clock.GetCurrentInstant();
         await _repo.UpdateEventSettingsAsync(entity);
 
-        // EventSettings changes (offsets, gate-opening date, timezone) affect every
-        // dashboard aggregate — evict all cached period/trend-window combinations.
-        var periods = new ShiftPeriod?[] { null }.Concat(Enum.GetValues<ShiftPeriod>().Cast<ShiftPeriod?>());
-        foreach (var p in periods)
-        {
-            _cache.Remove(OverviewCacheKey(entity.Id, p));
-            _cache.Remove(CoordinatorActivityCacheKey(entity.Id, p));
-            foreach (var w in Enum.GetValues<TrendWindow>())
-                _cache.Remove(TrendsCacheKey(entity.Id, w, p));
-        }
+        EvictDashboardCaches(entity.Id);
     }
 
-    public int GetAvailableEeSlots(EventSettings settings, int dayOffset)
+    public async Task<int> DeleteEventAsync(
+        Guid eventSettingsId,
+        CancellationToken cancellationToken = default)
     {
-        var totalCapacity = settings.GetEarlyEntryCapacityForDay(dayOffset);
-        if (totalCapacity == 0) return 0;
-
-        var barriosAllocation = 0;
-        if (settings.BarriosEarlyEntryAllocation is not null)
-        {
-            var applicableKey = int.MinValue;
-            foreach (var key in settings.BarriosEarlyEntryAllocation.Keys)
-            {
-                if (key <= dayOffset && key > applicableKey)
-                    applicableKey = key;
-            }
-            if (applicableKey != int.MinValue)
-                barriosAllocation = settings.BarriosEarlyEntryAllocation[applicableKey];
-        }
-
-        return Math.Max(0, totalCapacity - barriosAllocation);
+        await _adminAuthorization.RequireCurrentUserIsAdminAsync(cancellationToken);
+        var deleted = await _repo.DeleteEventCascadeAsync(eventSettingsId, cancellationToken);
+        EvictDashboardCaches(eventSettingsId);
+        return deleted;
     }
 
     // ============================================================
@@ -932,6 +915,18 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         $"dashboard-coordinator-activity:{eventId}:{period?.ToString() ?? "all"}";
     internal static string TrendsCacheKey(Guid eventId, TrendWindow window, ShiftPeriod? period) =>
         $"dashboard-trends:{eventId}:{window}:{period?.ToString() ?? "all"}";
+
+    private void EvictDashboardCaches(Guid eventSettingsId)
+    {
+        var periods = new ShiftPeriod?[] { null }.Concat(Enum.GetValues<ShiftPeriod>().Cast<ShiftPeriod?>());
+        foreach (var period in periods)
+        {
+            _cache.Remove(OverviewCacheKey(eventSettingsId, period));
+            _cache.Remove(CoordinatorActivityCacheKey(eventSettingsId, period));
+            foreach (var window in Enum.GetValues<TrendWindow>())
+                _cache.Remove(TrendsCacheKey(eventSettingsId, window, period));
+        }
+    }
 
     public async Task<DashboardOverview> GetDashboardOverviewAsync(Guid eventSettingsId, ShiftPeriod? period = null, BuildSubPeriod? subPeriod = null)
     {

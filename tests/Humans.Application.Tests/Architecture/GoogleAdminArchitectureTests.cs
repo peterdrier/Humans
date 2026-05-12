@@ -80,17 +80,4 @@ public class GoogleAdminArchitectureTests
             because: "service implementations are sealed to prevent ad-hoc extension; any new behavior belongs on the interface");
     }
 
-    [HumansFact]
-    public void GoogleAdminService_DoesNotReferenceGoogleSdkTypes()
-    {
-        // Paranoid guard: the service's assembly must not pull Google.Apis.*
-        // references indirectly. Google SDK calls live behind IGoogleWorkspaceUserService
-        // (which itself delegates to IWorkspaceUserDirectoryClient in Infrastructure).
-        var assembly = typeof(GoogleAdminService).Assembly;
-        var referenced = assembly.GetReferencedAssemblies();
-        referenced
-            .Should().NotContain(
-                a => (a.Name ?? string.Empty).StartsWith("Google.Apis", StringComparison.Ordinal),
-                because: "Humans.Application must stay free of Google SDK references");
-    }
 }

@@ -72,20 +72,6 @@ public class GoogleWorkspaceUserArchitectureTests
     // ── Application assembly cleanliness ─────────────────────────────────────
 
     [HumansFact]
-    public void HumansApplicationAssembly_HasNoGoogleApisReferences()
-    {
-        // The Application project must never transitively pull Google.Apis.*.
-        // Scanning referenced assemblies is the compile-time guarantee for this.
-        var applicationAssembly = typeof(IGoogleWorkspaceUserService).Assembly;
-        var referencedNames = applicationAssembly.GetReferencedAssemblies();
-
-        referencedNames
-            .Should().NotContain(
-                a => (a.Name ?? string.Empty).StartsWith("Google.Apis", StringComparison.Ordinal),
-                because: "Humans.Application must stay free of Google SDK references; Google API calls live behind IWorkspaceUserDirectoryClient in Humans.Infrastructure");
-    }
-
-    [HumansFact]
     public void GoogleWorkspaceUserService_DoesNotReferenceGoogleSdkTypes()
     {
         // Paranoid double-check: the service's module should have no Google.Apis.*

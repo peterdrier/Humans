@@ -107,4 +107,11 @@ public interface ICommunicationPreferenceService : IApplicationService
     /// suitable for direct use in anchor tags.
     /// </summary>
     string GenerateBrowserUnsubscribeUrl(Guid userId, MessageCategory category);
+
+    /// <summary>
+    /// Returns the count of preferences matching the given category and opt-out state.
+    /// Used for dashboard metrics.
+    /// </summary>
+    Task<int> GetCountByCategoryAndStateAsync(
+        MessageCategory category, bool optedOut, CancellationToken cancellationToken = default);
 }

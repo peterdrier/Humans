@@ -142,6 +142,13 @@ public interface ITeamResourceService : IApplicationService
     Task<string> GetServiceAccountEmailAsync(CancellationToken ct = default);
 
     /// <summary>
+    /// Returns the display name for each resource id. Missing ids are absent from the dictionary.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, string>> GetResourceNamesByIdsAsync(
+        IReadOnlyCollection<Guid> resourceIds,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Gets a single Google resource by ID, including its team.
     /// </summary>
     Task<GoogleResource?> GetResourceByIdAsync(Guid resourceId, CancellationToken ct = default);

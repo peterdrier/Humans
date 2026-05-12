@@ -118,6 +118,7 @@ public sealed class CommunicationPreferenceService : ICommunicationPreferenceSer
                 OptedOut = optedOut,
                 UpdatedAt = now,
                 UpdateSource = source,
+                SubscribedAt = optedOut ? null : now,
             };
             await _repository.AddAsync(pref, cancellationToken);
         }
@@ -125,6 +126,9 @@ public sealed class CommunicationPreferenceService : ICommunicationPreferenceSer
         {
             if (pref.OptedOut == optedOut)
                 return; // idempotent
+
+            if (!optedOut && pref.SubscribedAt is null)
+                pref.SubscribedAt = now;
 
             pref.OptedOut = optedOut;
             pref.UpdatedAt = now;
@@ -170,6 +174,7 @@ public sealed class CommunicationPreferenceService : ICommunicationPreferenceSer
                 InboxEnabled = inboxEnabled,
                 UpdatedAt = now,
                 UpdateSource = source,
+                SubscribedAt = optedOut ? null : now,
             };
             await _repository.AddAsync(pref, cancellationToken);
         }
@@ -177,6 +182,9 @@ public sealed class CommunicationPreferenceService : ICommunicationPreferenceSer
         {
             if (pref.OptedOut == optedOut && pref.InboxEnabled == inboxEnabled)
                 return; // idempotent
+
+            if (!optedOut && pref.SubscribedAt is null)
+                pref.SubscribedAt = now;
 
             pref.OptedOut = optedOut;
             pref.InboxEnabled = inboxEnabled;
@@ -225,6 +233,10 @@ public sealed class CommunicationPreferenceService : ICommunicationPreferenceSer
 
     public string GenerateBrowserUnsubscribeUrl(Guid userId, MessageCategory category) =>
         _tokenProvider.GenerateBrowserUnsubscribeUrl(userId, category);
+
+    public Task<int> GetCountByCategoryAndStateAsync(
+        MessageCategory category, bool optedOut, CancellationToken cancellationToken = default) =>
+        _repository.GetCountByCategoryAndStateAsync(category, optedOut, cancellationToken);
 
     public Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
         CancellationToken cancellationToken)

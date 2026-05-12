@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
+using Humans.Application.Architecture;
 using Humans.Application.Interfaces;
 using Humans.Application.Models;
 using Humans.Domain.Constants;
@@ -8,6 +9,11 @@ using Humans.Infrastructure.Data;
 
 namespace Humans.Infrastructure.Services;
 
+[Grandfathered(
+    ruleId: "HUM0009",
+    justification: "Reads role-defining tables directly via DbContext; should route through team/role services or a dedicated repository.",
+    since: "2026-05-12",
+    issueRef: "nobodies-collective/Humans#701")]
 public sealed class GuideRoleResolver : IGuideRoleResolver
 {
     private static readonly IReadOnlyList<string> KnownRoles =

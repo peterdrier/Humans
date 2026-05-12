@@ -61,6 +61,7 @@ public class ShiftSignupServiceCoverageGapTests : IDisposable
         var shiftMgmt = new ShiftManagementService(
             shiftRepo,
             auditLog,
+            Substitute.For<IAdminAuthorizationService>(),
             serviceProvider,
             new MemoryCache(new MemoryCacheOptions()),
             _clock,
@@ -78,6 +79,7 @@ public class ShiftSignupServiceCoverageGapTests : IDisposable
             membership,
             auditLog,
             _notificationService,
+            Substitute.For<IAdminAuthorizationService>(),
             serviceProvider,
             _clock,
             NullLogger<ShiftSignupService>.Instance);

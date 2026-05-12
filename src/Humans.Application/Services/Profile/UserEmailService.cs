@@ -540,9 +540,23 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         return await _repository.FindVerifiedWithUserAsync(normalizedEmail, alternateEmail, cancellationToken);
     }
 
+    public async Task<IReadOnlyList<Guid>> GetDistinctVerifiedUserIdsAsync(
+        string email, CancellationToken cancellationToken = default)
+    {
+        var normalizedEmail = EmailNormalization.NormalizeForComparison(email);
+        var alternateEmail = GetAlternateComparableEmail(normalizedEmail);
+        return await _repository.GetDistinctVerifiedUserIdsAsync(normalizedEmail, alternateEmail, cancellationToken);
+    }
+
     public Task<Guid?> GetUserIdByVerifiedEmailAsync(
         string email, CancellationToken cancellationToken = default) =>
         _repository.GetUserIdByVerifiedEmailAsync(email, cancellationToken);
+
+    public Task<IReadOnlyList<Guid>> GetUserIdsByEmailPrefixAndSuffixAsync(
+        string prefix,
+        string suffix,
+        CancellationToken cancellationToken = default) =>
+        _repository.GetUserIdsByEmailPrefixAndSuffixAsync(prefix, suffix, cancellationToken);
 
     public async Task<Guid?> GetUserIdByExactEmailAsync(string email, CancellationToken ct = default)
     {
@@ -844,6 +858,18 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         var match = await _repository.FindByNormalizedEmailAsync(
             normalizedEmail, alternateEmail, cancellationToken);
         return match?.UserId;
+    }
+
+    /// <inheritdoc />
+    public async Task<(Guid UserId, Guid EmailId)?> FindAnyEmailRowByAddressAsync(
+        string email, CancellationToken cancellationToken = default)
+    {
+        var normalizedEmail = EmailNormalization.NormalizeForComparison(email);
+        var alternateEmail = GetAlternateComparableEmail(normalizedEmail);
+        var match = await _repository.FindByNormalizedEmailAsync(
+            normalizedEmail, alternateEmail, cancellationToken);
+        if (match is null) return null;
+        return (match.UserId, match.Id);
     }
 
     /// <inheritdoc />

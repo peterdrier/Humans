@@ -16,13 +16,6 @@ namespace Humans.Application.Interfaces.Repositories;
 /// new row.
 /// </para>
 /// <para>
-/// The repository also exposes narrow cross-table lookups (<see cref="GetUserDisplayNamesAsync"/>,
-/// <see cref="GetTeamNamesAsync"/>) used by the audit log UI to resolve
-/// display data for actor/subject ids. These are read-only and flow back
-/// through the service so controllers never query other domains' tables
-/// directly.
-/// </para>
-/// <para>
 /// Uses <see cref="Microsoft.EntityFrameworkCore.IDbContextFactory{TContext}"/>
 /// so the repository can be registered as Singleton while
 /// <c>HumansDbContext</c> remains Scoped.
@@ -52,8 +45,7 @@ public interface IAuditLogRepository : IRepository
 
     /// <summary>
     /// Returns Google sync audit entries where the user is the related
-    /// entity, newest first, capped at 200. Includes the Google resource
-    /// navigation for display.
+    /// entity, newest first, capped at 200.
     /// </summary>
     Task<IReadOnlyList<AuditLogEntry>> GetGoogleSyncByUserAsync(Guid userId, CancellationToken ct = default);
 
@@ -127,22 +119,6 @@ public interface IAuditLogRepository : IRepository
     /// </summary>
     Task<IReadOnlyList<AuditLogEntry>> GetAllForUserIdsContributorAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
-
-    // ==========================================================================
-    // Cross-table display lookups (read-only)
-    // ==========================================================================
-
-    /// <summary>
-    /// Batch-load user display names for a set of user IDs.
-    /// </summary>
-    Task<Dictionary<Guid, string>> GetUserDisplayNamesAsync(
-        IReadOnlyList<Guid> userIds, CancellationToken ct = default);
-
-    /// <summary>
-    /// Batch-load team names and slugs for a set of team IDs.
-    /// </summary>
-    Task<Dictionary<Guid, (string Name, string Slug)>> GetTeamNamesAsync(
-        IReadOnlyList<Guid> teamIds, CancellationToken ct = default);
 
     /// <summary>
     /// Returns the distinct entity ids of audit rows whose

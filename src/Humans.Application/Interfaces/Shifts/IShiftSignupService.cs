@@ -9,7 +9,7 @@ namespace Humans.Application.Interfaces.Shifts;
 /// <summary>
 /// Manages the shift signup state machine with invariant enforcement.
 /// </summary>
-[SurfaceBudget(23)]
+[SurfaceBudget(24)]
 public interface IShiftSignupService : IApplicationService
 {
     /// <summary>
@@ -126,6 +126,14 @@ public interface IShiftSignupService : IApplicationService
     /// </summary>
     Task<IReadOnlyList<(Guid SignupId, Guid ShiftId)>> CancelActiveSignupsForUserAsync(
         Guid userId, string reason, CancellationToken ct = default);
+
+    /// <summary>
+    /// Deletes every shift signup owned by the supplied users. Requires the
+    /// current authenticated user to hold the full Admin role.
+    /// </summary>
+    Task<int> DeleteAllForUsersAsync(
+        IReadOnlyCollection<Guid> userIds,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Returns every <see cref="ShiftSignup"/> in the system, with

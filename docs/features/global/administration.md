@@ -146,7 +146,7 @@ Approval and consent completion both trigger `SyncVolunteersMembershipForUserAsy
 | Route | Action | Description |
 |-------|--------|-------------|
 | `/Board` | Index | Dashboard with stats and recent audit log |
-| `/Board/AuditLog` | AuditLog | Global audit log (paginated, filterable) |
+| `/AuditLog` | AuditLog | Global audit log (paginated, filterable) — *(moved to AuditLogController — see PR #499)* |
 
 ### ProfileController (`/Profile/`) — Human management actions
 
@@ -181,9 +181,9 @@ Google sync, settings, account provisioning, and audit routes have been extracte
 | `/Google/Sync/Preview/{resourceType}` | TeamsAdmin, Board, Admin | GET: AJAX preview drift |
 | `/Google/Sync/Execute/{resourceId}` | Admin | POST: Sync one resource |
 | `/Google/Sync/ExecuteAll/{resourceType}` | Admin | POST: Sync all of a type |
-| `/Google/AuditLog/CheckDriveActivity` | Board, Admin | POST: Manual Drive Activity check |
-| `/Google/Sync/Resource/{id}/Audit` | Board, Admin | GET: Per-resource sync audit log |
-| `/Google/Human/{id}/SyncAudit` | HumanAdmin, Admin | GET: Per-user sync audit log |
+| `/AuditLog/CheckDriveActivity` | Board, Admin | POST: Manual Drive Activity check |
+| `/AuditLog/Resource/{id}` | Board, Admin | GET: Per-resource sync audit log |
+| `/AuditLog/Human/{id}` | HumanAdmin, Board, Admin | GET: Per-user sync audit log |
 | `/Google/Human/{id}/ProvisionEmail` | Admin | POST: Provision @nobodies.team email |
 | `/Google/Accounts` | Admin | GET: All @nobodies.team accounts |
 | `/Google/Accounts/Provision` | Admin | POST: Provision account |
@@ -445,7 +445,7 @@ _logger.LogInformation(
 | Action | Link | Badge |
 |--------|------|-------|
 | Manage Humans | `/Profile/Admin` | - |
-| Audit Log | `/Board/AuditLog` | - |
+| Audit Log | `/AuditLog` | - |
 | Sync Status | `/Google/Sync` | - |
 
 ### Admin Dashboard (`/Admin`)

@@ -20,53 +20,37 @@
     <div class="card-body">
         <h2 class="h5 mb-2">Ticket</h2>
         <div>@row.OriginalAttendeeName — @row.TicketTypeName</div>
-        <div class="mt-2">
+        <div class="mt-2 d-flex align-items-center gap-2">
             <span class="badge @statusClass">@statusLabel</span>
+            @if (!string.IsNullOrEmpty(Model.OrderDashboardUrl))
+            {
+                <a href="@Model.OrderDashboardUrl" target="_blank" rel="noopener"
+                   class="btn btn-sm btn-outline-secondary">
+                    View order in TicketTailor
+                    <i class="fa-solid fa-arrow-up-right-from-square ms-1"></i>
+                </a>
+            }
         </div>
         @if (row.OriginalAttendeeStatus == TicketAttendeeStatus.CheckedIn)
         {
             <div class="alert alert-warning mt-2 mb-0">
-                This ticket has already been checked in. Approving will void it at the vendor and reissue to the Receiver — confirm with the Sender before proceeding.
+                This ticket has already been checked in. Approving will void it at the vendor
+                and reissue to the Receiver — confirm with the Sender before proceeding.
             </div>
         }
     </div>
 </div>
 
 <div class="row g-3 mb-3">
-    @{
-        var cards = new[]
-        {
-            (Title: "Sender", Card: Model.SenderCard),
-            (Title: "Receiver", Card: Model.ReceiverCard),
-        };
-    }
-    @foreach (var c in cards)
-    {
-        <div class="col-md-6">
-            <div class="card h-100">
-                <div class="card-body">
-                    <div class="text-muted small text-uppercase mb-2">@c.Title</div>
-                    <div class="d-flex align-items-center">
-                        @if (c.Card.HasCustomProfilePicture && c.Card.ProfilePictureUrl is not null)
-                        {
-                            <img src="@c.Card.ProfilePictureUrl" alt="" class="rounded-circle me-3" style="width:64px;height:64px" />
-                        }
-                        else
-                        {
-                            <div class="me-3 text-muted" style="width:64px;height:64px;display:flex;align-items:center;justify-content:center;background:#eee;border-radius:50%">
-                                <strong>@(c.Card.DisplayName.FirstOrDefault())</strong>
-                            </div>
-                        }
-                        <div>
-                            <div><strong>@c.Card.DisplayName</strong></div>
-                            @if (c.Card.BurnerName is not null) { <div class="text-muted small">@c.Card.BurnerName</div> }
-                            @if (c.Card.PreferredEmail is not null) { <div class="text-muted small">@c.Card.PreferredEmail</div> }
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    }
+    <div class="col-md-6">
+        <h3 class="h6 text-uppercase text-muted">Sender</h3>
+        <vc:human user-id="@row.SenderUserId" layout="Card" link="Admin" />
+        <vc:ticket-holdings user-id="@row.SenderUserId" show-empty="true" />
+    </div>
+    <div class="col-md-6">
+        <h3 class="h6 text-uppercase text-muted">Recipient</h3>
+        <vc:human user-id="@row.ReceiverUserId" layout="Card" link="Admin" />
+    </div>
 </div>
 
 <dl class="row">
@@ -74,14 +58,42 @@
     <dt class="col-sm-3">Requested</dt><dd class="col-sm-9">@row.RequestedAt.ToDisplayDateTime()</dd>
 </dl>
 
-<form asp-action="Decide" method="post" class="mt-3">
-    @Html.AntiForgeryToken()
-    <input type="hidden" name="id" value="@row.Id" />
-    <div class="mb-3">
-        <label for="adminNotes">Admin notes (optional)</label>
-        <textarea id="adminNotes" name="adminNotes" rows="2" class="form-control" maxlength="1000"></textarea>
-    </div>
-    <button type="submit" name="approve" value="true" class="btn btn-success">Approve</button>
-    <button type="submit" name="approve" value="false" class="btn btn-danger">Reject</button>
-    <a class="btn btn-outline-secondary" asp-action="Index">Back</a>
-</form>
+@if (row.Status == TicketTransferStatus.Pending)
+{
+    <form asp-action="Decide" method="post" class="mt-3">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="id" value="@row.Id" />
+        <div class="mb-3">
+            <label for="adminNotes">Admin notes (optional)</label>
+            <textarea id="adminNotes" name="adminNotes" rows="2" class="form-control" maxlength="1000"></textarea>
+        </div>
+        <button type="submit" name="approve" value="true" class="btn btn-success">Approve</button>
+        <button type="submit" name="approve" value="false" class="btn btn-danger">Reject</button>
+        <a class="btn btn-outline-secondary" asp-action="Index">Back</a>
+    </form>
+}
+else
+{
+    <a class="btn btn-outline-secondary mt-2" asp-action="Index">Back</a>
+}
+
+@if (row.Status == TicketTransferStatus.Approved
+     && row.VendorResult == TicketTransferVendorResult.VoidSucceededIssueFailed)
+{
+    <form asp-action="RetryIssue" asp-route-id="@row.Id" method="post" class="mt-3">
+        @Html.AntiForgeryToken()
+        <div class="alert alert-warning mb-2">
+            Void succeeded but reissue failed. The hold is still reserved at the vendor.
+            Retry will issue against the existing hold.
+        </div>
+        <div class="mb-2">
+            <label for="retryNotes">Notes (optional)</label>
+            <textarea id="retryNotes" name="adminNotes" rows="2" class="form-control" maxlength="1000"></textarea>
+        </div>
+        <button type="submit" class="btn btn-warning">Retry issue</button>
+    </form>
+}
+
+<vc:ticket-transfer-timeline request="@Model.Row" vendor-steps-json="@Model.VendorStepsJson" />
+
+<vc:audit-log entity-type="TicketTransferRequest" entity-id="@row.Id" title="Request audit history" limit="20" />

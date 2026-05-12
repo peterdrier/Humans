@@ -15,6 +15,18 @@
     <SatelliteResourceLanguages>en;es</SatelliteResourceLanguages>
 
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!--
+      Analyzer rule IDs whose Warning severity must NOT be promoted to Error:
+        - HUM0009: grandfathered repository/DbContext violators carrying
+          [Grandfathered("HUM0009", ...)] — warnings stay warnings until the
+          last [Grandfathered] is deleted.
+        - HUM0010 / HUM0011: [ExpiresOn] deadline analyzer. The whole point
+          is staged escalation — warning before the date / during the grace
+          window, then error. Past-deadline diagnostics are emitted with
+          effectiveSeverity: Error directly (bypasses this list); pre-deadline
+          warnings must stay warnings so the deadline mechanism works.
+    -->
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);HUM0009;HUM0010;HUM0011</WarningsNotAsErrors>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <AnalysisLevel>latest</AnalysisLevel>

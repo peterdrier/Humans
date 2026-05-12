@@ -1084,7 +1084,7 @@
     &lt;li&gt;&lt;strong&gt;Candidato:&lt;/strong&gt; {0}&lt;/li&gt;
     &lt;li&gt;&lt;strong&gt;ID domanda:&lt;/strong&gt; {1}&lt;/li&gt;
 &lt;/ul&gt;
-&lt;p&gt;&lt;a href="{2}/Board/Applications"&gt;Esaminare la domanda&lt;/a&gt;&lt;/p&gt;</value><comment>{0} = applicant name, {1} = application ID, {2} = base URL</comment></data>
+&lt;p&gt;&lt;a href="{2}/Governance/Applications/Admin/{1}"&gt;Esaminare la domanda&lt;/a&gt;&lt;/p&gt;</value><comment>{0} = applicant name, {1} = application ID, {2} = base URL</comment></data>
 
   <data name="Email_ApplicationApproved_Body" xml:space="preserve"><value>&lt;h2&gt;La tua domanda &#xE8; stata approvata!&lt;/h2&gt;
 &lt;p&gt;Ciao {0},&lt;/p&gt;
@@ -1190,7 +1190,7 @@
 &lt;p&gt;Ciao {0},&lt;/p&gt;
 &lt;p&gt;Il tuo mandato di &lt;strong&gt;{1}&lt;/strong&gt; scade il &lt;strong&gt;{2}&lt;/strong&gt;.&lt;/p&gt;
 &lt;p&gt;Se desideri continuare come {1}, invia una domanda di rinnovo prima della scadenza del tuo mandato.&lt;/p&gt;
-&lt;p&gt;&lt;a href="{3}/Application/Create"&gt;Invia domanda di rinnovo&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href="{3}/Governance/Applications/Create"&gt;Invia domanda di rinnovo&lt;/a&gt;&lt;/p&gt;
 &lt;p&gt;Senza rinnovo, rimarrai un human attivo ma non avrai pi&#xF9; l'accesso di livello {1}.&lt;/p&gt;
 &lt;p&gt;Grazie per il tuo impegno!&lt;br/&gt;Il team di Humans&lt;/p&gt;</value><comment>{0} = user name, {1} = tier name, {2} = expiry date, {3} = base URL</comment></data>
 

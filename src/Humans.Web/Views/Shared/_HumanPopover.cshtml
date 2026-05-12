@@ -2,6 +2,12 @@
 @using Humans.Web.Authorization
 @using Microsoft.AspNetCore.Authorization
 @inject IAuthorizationService AuthService
+@{
+    var canSeeHiddenTeams =
+        (await AuthService.AuthorizeAsync(User, PolicyNames.TeamsAdminBoardOrAdmin)).Succeeded;
+    IReadOnlyList<string> visibleHiddenTeams =
+        canSeeHiddenTeams ? Model.HiddenTeams : [];
+}
 
 <div class="d-flex align-items-center" style="min-width: 200px;">
     <vc:human user-id="@Model.UserId" layout="Avatar" size="72" css-class="me-2" link="None" />
@@ -42,12 +48,23 @@
         }
     </div>
 </div>
-@if (Model.Teams.Count > 0 || Model.Languages.Count > 0)
+@if (Model.Teams.Count > 0 || visibleHiddenTeams.Count > 0 || Model.Languages.Count > 0)
 {
     <div class="mt-2 pt-2 border-top">
         @foreach (var team in Model.Teams)
         {
             <span class="badge bg-light text-dark border me-1 mb-1" style="font-size: 0.7rem;">@team</span>
+        }
+        @if (visibleHiddenTeams.Count > 0 && Model.Teams.Count > 0)
+        {
+            <hr class="my-2" />
+        }
+        @foreach (var team in visibleHiddenTeams)
+        {
+            <span class="badge bg-light text-dark border border-warning me-1 mb-1" style="font-size: 0.7rem;"
+                  title="Hidden team — admin-only visibility">
+                <i class="fa-solid fa-eye-slash me-1 opacity-75"></i>@team
+            </span>
         }
         @foreach (var lang in Model.Languages)
         {

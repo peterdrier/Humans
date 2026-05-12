@@ -1084,7 +1084,7 @@
     &lt;li&gt;&lt;strong&gt;Antragsteller:&lt;/strong&gt; {0}&lt;/li&gt;
     &lt;li&gt;&lt;strong&gt;Antrags-ID:&lt;/strong&gt; {1}&lt;/li&gt;
 &lt;/ul&gt;
-&lt;p&gt;&lt;a href="{2}/Board/Applications"&gt;Antrag pr&#xFC;fen&lt;/a&gt;&lt;/p&gt;</value><comment>{0} = applicant name, {1} = application ID, {2} = base URL</comment></data>
+&lt;p&gt;&lt;a href="{2}/Governance/Applications/Admin/{1}"&gt;Antrag pr&#xFC;fen&lt;/a&gt;&lt;/p&gt;</value><comment>{0} = applicant name, {1} = application ID, {2} = base URL</comment></data>
 
   <data name="Email_ApplicationApproved_Body" xml:space="preserve"><value>&lt;h2&gt;Dein Antrag wurde genehmigt!&lt;/h2&gt;
 &lt;p&gt;Hallo {0},&lt;/p&gt;
@@ -1190,7 +1190,7 @@
 &lt;p&gt;Hallo {0},&lt;/p&gt;
 &lt;p&gt;Deine &lt;strong&gt;{1}&lt;/strong&gt;-Amtszeit l&#xE4;uft am &lt;strong&gt;{2}&lt;/strong&gt; ab.&lt;/p&gt;
 &lt;p&gt;Wenn du als {1} weitermachen m&#xF6;chtest, reiche bitte vor Ablauf einen Verl&#xE4;ngerungsantrag ein.&lt;/p&gt;
-&lt;p&gt;&lt;a href="{3}/Application/Create"&gt;Verl&#xE4;ngerungsantrag einreichen&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href="{3}/Governance/Applications/Create"&gt;Verl&#xE4;ngerungsantrag einreichen&lt;/a&gt;&lt;/p&gt;
 &lt;p&gt;Ohne Verl&#xE4;ngerung bleibst du ein aktiver Human, hast aber keinen {1}-Zugang mehr.&lt;/p&gt;
 &lt;p&gt;Vielen Dank f&#xFC;r dein Engagement!&lt;br/&gt;Das Humans-Team&lt;/p&gt;</value><comment>{0} = user name, {1} = tier name, {2} = expiry date, {3} = base URL</comment></data>
 

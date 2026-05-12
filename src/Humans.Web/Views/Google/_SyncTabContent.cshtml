@@ -125,7 +125,7 @@ else
                     @if (Model.CanViewAudit)
                     {
                         <a class="btn btn-sm btn-outline-secondary"
-                           href="@Url.Action("GoogleSyncResourceAudit", "Google", new { id = diff.ResourceId })">Audit</a>
+                           href="@Url.Action(nameof(Humans.Web.Controllers.AuditLogController.Resource), "AuditLog", new { id = diff.ResourceId })">Audit</a>
                     }
                     @if (Model.CanExecuteActions && !diff.IsInSync && !hasError)
                     {

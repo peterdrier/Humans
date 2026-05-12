@@ -247,50 +247,6 @@ public sealed class AuditLogService : IAuditLogService, IUserDataContributor
         return await _repo.GetFilteredEntriesAsync(entityType, entityId, userIds, actions, limit, ct);
     }
 
-    /// <inheritdoc />
-    public async Task<AuditLogPageResult> GetAuditLogPageAsync(
-        string? actionFilter, int page, int pageSize, CancellationToken ct = default)
-    {
-        var (items, totalCount, anomalyCount) = await GetFilteredAsync(actionFilter, page, pageSize, ct);
-
-        // Collect all user and team IDs that might appear as actors, subjects, or targets.
-        var userIds = new HashSet<Guid>();
-        var teamIds = new HashSet<Guid>();
-
-        foreach (var e in items)
-        {
-            if (e.ActorUserId.HasValue)
-                userIds.Add(e.ActorUserId.Value);
-
-            // Subject user ID: User/Profile/WorkspaceAccount entity types, or related User.
-            if (e.EntityType is "User" or "Profile" or "WorkspaceAccount")
-                userIds.Add(e.EntityId);
-            else if (string.Equals(e.RelatedEntityType, "User", StringComparison.Ordinal) && e.RelatedEntityId.HasValue)
-                userIds.Add(e.RelatedEntityId.Value);
-
-            // Target team ID.
-            if (string.Equals(e.EntityType, "Team", StringComparison.Ordinal))
-                teamIds.Add(e.EntityId);
-            else if (string.Equals(e.RelatedEntityType, "Team", StringComparison.Ordinal) && e.RelatedEntityId.HasValue)
-                teamIds.Add(e.RelatedEntityId.Value);
-        }
-
-        var userDisplayNames = await GetUserDisplayNamesAsync(userIds.ToList(), ct);
-        var teamNameLookup = await GetTeamNamesAsync(teamIds.ToList(), ct);
-
-        return new AuditLogPageResult(items, totalCount, anomalyCount, userDisplayNames, teamNameLookup);
-    }
-
-    /// <inheritdoc />
-    public Task<Dictionary<Guid, string>> GetUserDisplayNamesAsync(
-        IReadOnlyList<Guid> userIds, CancellationToken ct = default) =>
-        _repo.GetUserDisplayNamesAsync(userIds, ct);
-
-    /// <inheritdoc />
-    public Task<Dictionary<Guid, (string Name, string Slug)>> GetTeamNamesAsync(
-        IReadOnlyList<Guid> teamIds, CancellationToken ct = default) =>
-        _repo.GetTeamNamesAsync(teamIds, ct);
-
     // ==========================================================================
     // IUserDataContributor (GDPR export)
     // ==========================================================================

@@ -1,0 +1,174 @@
+@using Humans.Application.Interfaces.Mailer.Dtos
+@using Humans.Web.Models.Mailer
+@model MailerImportPreviewViewModel
+@{
+    ViewData["Title"] = "Import Preview";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="mb-0">Import Preview</h1>
+    <a href="/Mailer/Admin" class="btn btn-outline-secondary">
+        <i class="fa-solid fa-arrow-left me-1"></i>Back to Dashboard
+    </a>
+</div>
+
+@* ── Counts summary ───────────────────────────────────────────────────────── *@
+<div class="card mb-4">
+    <div class="card-header"><strong>Plan Summary</strong></div>
+    <div class="card-body p-0">
+        <table class="table table-sm mb-0">
+            <thead>
+                <tr>
+                    <th>Category</th>
+                    <th class="text-end">Count</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Create new contact</td>
+                    <td class="text-end">@Model.Plan.Counts.WillCreateContact.ToString("N0")</td>
+                </tr>
+                <tr>
+                    <td>Attach verified (opt-in flip)</td>
+                    <td class="text-end">@Model.Plan.Counts.WillAttachWithFlip.ToString("N0")</td>
+                </tr>
+                <tr>
+                    <td>Attach verified (confirm only)</td>
+                    <td class="text-end">@Model.Plan.Counts.WillAttachConfirmOnly.ToString("N0")</td>
+                </tr>
+                <tr>
+                    <td>Attach verified (keep Humans state)</td>
+                    <td class="text-end">@Model.Plan.Counts.WillKeepHumansState.ToString("N0")</td>
+                </tr>
+                <tr>
+                    <td>Delete unverified then create</td>
+                    <td class="text-end">@Model.Plan.Counts.WillDeleteUnverifiedAndCreate.ToString("N0")</td>
+                </tr>
+                <tr class="text-muted">
+                    <td>Skipped — ambiguous multiple verified</td>
+                    <td class="text-end">@Model.Plan.Counts.SkippedAmbiguous.ToString("N0")</td>
+                </tr>
+                <tr class="text-muted">
+                    <td>Skipped — unconfirmed</td>
+                    <td class="text-end">@Model.Plan.Counts.SkippedUnconfirmed.ToString("N0")</td>
+                </tr>
+                <tr class="table-light fw-semibold">
+                    <td>Total pulled from MailerLite</td>
+                    <td class="text-end">@Model.Plan.TotalPulled.ToString("N0")</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@* ── Per-category collapsible detail tables ───────────────────────────────── *@
+@{
+    var categories = new[]
+    {
+        (Outcome: SubscriberOutcome.CreateContact,                Label: "Create New Contact",                      ShowFull: false),
+        (Outcome: SubscriberOutcome.AttachVerified,               Label: "Attach Verified (Opt-in Flip)",           ShowFull: false),
+        (Outcome: SubscriberOutcome.AttachVerifiedConfirmOnly,    Label: "Attach Verified (Confirm Only)",          ShowFull: false),
+        (Outcome: SubscriberOutcome.AttachVerifiedConflictKept,   Label: "Attach Verified (Keep Humans State)",     ShowFull: false),
+        (Outcome: SubscriberOutcome.DeleteUnverifiedThenCreate,   Label: "Delete Unverified Then Create",           ShowFull: true),
+        (Outcome: SubscriberOutcome.AmbiguousMultipleVerified,    Label: "Skipped — Ambiguous Multiple Verified",   ShowFull: false),
+        (Outcome: SubscriberOutcome.UnconfirmedSkipped,           Label: "Skipped — Unconfirmed",                   ShowFull: false),
+    };
+}
+
+@foreach (var cat in categories)
+{
+    var catRows = Model.Rows.Where(r => r.Outcome == cat.Outcome).ToList();
+    if (catRows.Count == 0) continue;
+
+    var collapseId = $"collapse-{cat.Outcome}";
+    <div class="card mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <button class="btn btn-link p-0 text-start text-decoration-none fw-semibold"
+                    type="button"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#@collapseId"
+                    aria-expanded="false">
+                @cat.Label
+                <span class="badge bg-secondary ms-2">@catRows.Count.ToString("N0")</span>
+            </button>
+        </div>
+        <div class="collapse" id="@collapseId">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Email</th>
+                                <th>ML Status</th>
+                                @if (cat.Outcome == SubscriberOutcome.AmbiguousMultipleVerified)
+                                {
+                                    <th>Ambiguous User Ids</th>
+                                }
+                                else if (cat.Outcome != SubscriberOutcome.CreateContact
+                                      && cat.Outcome != SubscriberOutcome.UnconfirmedSkipped)
+                                {
+                                    <th>Matched User</th>
+                                }
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var row in catRows)
+                            {
+                                <tr>
+                                    <td class="font-monospace">
+                                        @if (cat.ShowFull)
+                                        {
+                                            @row.EmailFull
+                                        }
+                                        else
+                                        {
+                                            @row.EmailRedacted
+                                        }
+                                    </td>
+                                    <td>@row.MlStatus</td>
+                                    @if (cat.Outcome == SubscriberOutcome.AmbiguousMultipleVerified)
+                                    {
+                                        var ambiguous = Model.Plan.Decisions
+                                            .FirstOrDefault(d => d.Email == row.EmailFull)
+                                            ?.AmbiguousUserIds ?? [];
+                                        <td>
+                                            @foreach (var uid in ambiguous)
+                                            {
+                                                <span class="me-2"><vc:human user-id="@uid" link="Admin" /></span>
+                                            }
+                                        </td>
+                                    }
+                                    else if (cat.Outcome != SubscriberOutcome.CreateContact
+                                          && cat.Outcome != SubscriberOutcome.UnconfirmedSkipped)
+                                    {
+                                        <td>
+                                            @if (row.MatchedUserId is Guid uid)
+                                            {
+                                                <vc:human user-id="@uid" link="Admin" />
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">—</span>
+                                            }
+                                        </td>
+                                    }
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@* ── Commit form ─────────────────────────────────────────────────────────── *@
+<div class="mt-4">
+    <form method="post" action="/Mailer/Admin/Import/Commit">
+        @Html.AntiForgeryToken()
+        <button type="submit" class="btn btn-danger">
+            <i class="fa-solid fa-bolt me-1"></i>Commit Import
+        </button>
+        <span class="ms-3 text-muted small">This will apply all decisions above to Humans.</span>
+    </form>
+</div>

@@ -158,6 +158,12 @@ public interface ITeamRepository : IRepository
     Task<int> DeactivateTeamAsync(Guid teamId, Instant now, CancellationToken ct = default);
 
     /// <summary>
+    /// Permanently deletes a team and its Teams-owned child rows. Returns
+    /// false when the team does not exist.
+    /// </summary>
+    Task<bool> PermanentlyDeleteTeamAsync(Guid teamId, CancellationToken ct = default);
+
+    /// <summary>
     /// In a single transaction: set <c>GoogleGroupPrefix</c> on the team and
     /// commit. Returns the previous value and whether the row was found.
     /// </summary>
@@ -549,13 +555,6 @@ public interface ITeamRepository : IRepository
     /// </summary>
     Task<int> EnqueueResyncEventsForUserAsync(
         Guid userId, Instant now, CancellationToken ct = default);
-
-    /// <summary>
-    /// Hard-deletes every team whose <c>Name.EndsWith</c> marker matches,
-    /// plus its members and join requests. Returns the count of teams
-    /// removed. Used only by test seeding.
-    /// </summary>
-    Task<int> HardDeleteBySuffixAsync(string nameSuffix, CancellationToken ct = default);
 
     /// <summary>
     /// Is the user's Google email status flagged as <see cref="GoogleEmailStatus.Rejected"/>?

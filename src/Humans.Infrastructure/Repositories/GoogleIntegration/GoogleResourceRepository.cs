@@ -73,6 +73,23 @@ public sealed class GoogleResourceRepository : IGoogleResourceRepository
         return result;
     }
 
+    public async Task<IReadOnlyDictionary<Guid, string>> GetNamesByIdsAsync(
+        IReadOnlyCollection<Guid> resourceIds,
+        CancellationToken ct = default)
+    {
+        if (resourceIds.Count == 0)
+        {
+            return new Dictionary<Guid, string>();
+        }
+
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.GoogleResources
+            .AsNoTracking()
+            .Where(r => resourceIds.Contains(r.Id))
+            .Select(r => new { r.Id, r.Name })
+            .ToDictionaryAsync(x => x.Id, x => x.Name, ct);
+    }
+
     public async Task<IReadOnlyDictionary<Guid, int>> GetActiveResourceCountsByTeamAsync(CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);

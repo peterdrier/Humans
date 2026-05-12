@@ -1217,31 +1217,47 @@ public sealed class TeamRepository : ITeamRepository
         return memberships.Count;
     }
 
-    public async Task<int> HardDeleteBySuffixAsync(string nameSuffix, CancellationToken ct = default)
+    public async Task<bool> PermanentlyDeleteTeamAsync(Guid teamId, CancellationToken ct = default)
     {
         await using var db = await _factory.CreateDbContextAsync(ct);
 
-        var targetTeams = await db.Teams
-            .Where(t => t.Name.EndsWith(nameSuffix))
+        var team = await db.Teams
+            .FirstOrDefaultAsync(t => t.Id == teamId, ct);
+
+        if (team is null)
+            return false;
+
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
+
+        var memberIds = await db.TeamMembers
+            .Where(tm => tm.TeamId == teamId)
+            .Select(tm => tm.Id)
             .ToListAsync(ct);
 
-        if (targetTeams.Count == 0)
-            return 0;
-
-        var teamIds = targetTeams.Select(t => t.Id).ToList();
+        if (memberIds.Count > 0)
+        {
+            await db.Set<TeamRoleAssignment>()
+                .Where(a => memberIds.Contains(a.TeamMemberId))
+                .ExecuteDeleteAsync(ct);
+        }
 
         await db.TeamMembers
-            .Where(tm => teamIds.Contains(tm.TeamId))
+            .Where(tm => tm.TeamId == teamId)
             .ExecuteDeleteAsync(ct);
 
         await db.TeamJoinRequests
-            .Where(r => teamIds.Contains(r.TeamId))
+            .Where(r => r.TeamId == teamId)
             .ExecuteDeleteAsync(ct);
 
-        db.Teams.RemoveRange(targetTeams);
-        await db.SaveChangesAsync(ct);
+        await db.Set<TeamRoleDefinition>()
+            .Where(d => d.TeamId == teamId)
+            .ExecuteDeleteAsync(ct);
 
-        return targetTeams.Count;
+        db.Teams.Remove(team);
+        await db.SaveChangesAsync(ct);
+        await tx.CommitAsync(ct);
+
+        return true;
     }
 
     public async Task AddOutboxEventAsync(GoogleSyncOutboxEvent outboxEvent, CancellationToken ct = default)

@@ -105,6 +105,32 @@
             </div>
         }
 
+    </div>
+
+    <div class="col-md-4">
+        @* Add active member (issue nobodies-collective#489) *@
+        @if (Model.RolesPanel is not null && Model.RolesPanel.CanManage)
+        {
+            <div class="card mb-4">
+                <div class="card-header">
+                    <i class="fa-solid fa-user-plus me-1"></i> Add active member
+                </div>
+                <div class="card-body">
+                    <form asp-action="AddMember" asp-route-slug="@Model.Slug" method="post" class="input-group">
+                        @Html.AntiForgeryToken()
+                        <partial name="_HumanSearchInput" view-data='@(new ViewDataDictionary(ViewData) {
+                            { "FieldName", "userId" },
+                            { "Scope", "name" }
+                        })' />
+                        <button type="submit" class="btn btn-outline-success" title="Add active member">
+                            <i class="fa-solid fa-user-plus"></i>
+                        </button>
+                    </form>
+                    <div class="form-text">Search by name. The human is added to the camp's open season as Active.</div>
+                </div>
+            </div>
+        }
+
         @* Per-season membership (pending requests + active members) *@
         <div class="card mb-4">
             <div class="card-header">
@@ -203,31 +229,6 @@
                 </div>
             </div>
         </div>
-    </div>
-
-    <div class="col-md-4">
-        @* Add active member (issue nobodies-collective#489) *@
-        @if (Model.RolesPanel is not null && Model.RolesPanel.CanManage)
-        {
-            <div class="card mb-4">
-                <div class="card-header">
-                    <i class="fa-solid fa-user-plus me-1"></i> Add active member
-                </div>
-                <div class="card-body">
-                    <form asp-action="AddMember" asp-route-slug="@Model.Slug" method="post" class="input-group">
-                        @Html.AntiForgeryToken()
-                        <partial name="_HumanSearchInput" view-data='@(new ViewDataDictionary(ViewData) {
-                            { "FieldName", "userId" },
-                            { "Scope", "name" }
-                        })' />
-                        <button type="submit" class="btn btn-outline-success" title="Add active member">
-                            <i class="fa-solid fa-user-plus"></i>
-                        </button>
-                    </form>
-                    <div class="form-text">Search by name. The human is added to the camp's open season as Active.</div>
-                </div>
-            </div>
-        }
 
         @* Lead Management *@
         <div class="card mb-4">

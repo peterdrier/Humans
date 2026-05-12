@@ -57,19 +57,6 @@ file sealed class StubAuditLog : IAuditLogService
         CancellationToken ct = default) =>
         Task.FromResult<IReadOnlyList<AuditLogEntry>>(Array.Empty<AuditLogEntry>());
 
-    public Task<AuditLogPageResult> GetAuditLogPageAsync(
-        string? actionFilter, int page, int pageSize, CancellationToken ct = default) =>
-        Task.FromResult(new AuditLogPageResult(
-            Array.Empty<AuditLogEntry>(), 0, 0,
-            new Dictionary<Guid, string>(),
-            new Dictionary<Guid, (string Name, string Slug)>()));
-
-    public Task<Dictionary<Guid, string>> GetUserDisplayNamesAsync(IReadOnlyList<Guid> userIds, CancellationToken ct = default) =>
-        Task.FromResult(new Dictionary<Guid, string>());
-
-    public Task<Dictionary<Guid, (string Name, string Slug)>> GetTeamNamesAsync(IReadOnlyList<Guid> teamIds, CancellationToken ct = default) =>
-        Task.FromResult(new Dictionary<Guid, (string Name, string Slug)>());
-
     public Task<IReadOnlyList<Guid>> GetEntityIdsForActionInWindowAsync(
         Instant windowStart, Instant windowEnd, AuditAction action, CancellationToken ct = default) =>
         Task.FromResult((IReadOnlyList<Guid>)Array.Empty<Guid>());
@@ -213,6 +200,8 @@ public class AccountProvisioningServiceTests
             throw new NotSupportedException();
         public Task<int> GetRejectedGoogleEmailCountAsync(CancellationToken ct = default) =>
             throw new NotSupportedException();
+        public Task<int> GetCountByContactSourceAsync(ContactSource source, CancellationToken ct = default) =>
+            throw new NotSupportedException();
         public Task<IReadOnlyList<Guid>> GetAccountsDueForAnonymizationAsync(Instant now, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<ExpiredDeletionAnonymizationResult?> ApplyExpiredDeletionAnonymizationAsync(Guid userId, CancellationToken ct = default) =>
@@ -221,6 +210,8 @@ public class AccountProvisioningServiceTests
             Guid targetUserId, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<IReadOnlyList<Guid>> GetUsersWithLoginsButNoEmailsAsync(CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<int> DeleteUsersAsync(IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<int> DeleteAllExternalLoginsForUserAsync(Guid userId, CancellationToken ct = default) =>
             throw new NotSupportedException();

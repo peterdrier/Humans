@@ -66,6 +66,14 @@ public class TicketTransferRequest
     /// <summary>Free-text from the deciding admin (rejection reason or approval note).</summary>
     public string? AdminNotes { get; set; }
 
+    /// <summary>
+    /// JSON-serialised list of <c>TicketTransferVendorStep</c> capturing each
+    /// sub-step of the vendor writeback (void, issue, local upsert, retry,
+    /// manual reconcile). Empty list <c>"[]"</c> for transfers created before
+    /// this feature shipped; null is never expected.
+    /// </summary>
+    public string VendorStepsJson { get; set; } = "[]";
+
     public Instant RequestedAt { get; init; }
     public Instant? DecidedAt { get; set; }
 }

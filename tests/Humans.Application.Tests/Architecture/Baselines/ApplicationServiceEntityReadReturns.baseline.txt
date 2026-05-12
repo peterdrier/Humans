@@ -1,6 +1,5 @@
 # Baseline for application service read methods that still expose EF/domain entities.
 # New read methods on IApplicationService must return read models/snapshots instead of entities.
-Humans.Application.Interfaces.AuditLog.IAuditLogService.GetAuditLogPageAsync:Humans.Domain.Entities.AuditLogEntry
 Humans.Application.Interfaces.AuditLog.IAuditLogService.GetByResourceAsync:Humans.Domain.Entities.AuditLogEntry
 Humans.Application.Interfaces.AuditLog.IAuditLogService.GetByUserAsync:Humans.Domain.Entities.AuditLogEntry
 Humans.Application.Interfaces.AuditLog.IAuditLogService.GetFilteredAsync:Humans.Domain.Entities.AuditLogEntry
@@ -37,7 +36,6 @@ Humans.Application.Interfaces.Dashboard.IDashboardService.GetMemberDashboardAsyn
 Humans.Application.Interfaces.Dashboard.IDashboardService.GetMemberDashboardAsync:Humans.Domain.Entities.Shift
 Humans.Application.Interfaces.Dashboard.IDashboardService.GetMemberDashboardAsync:Humans.Domain.Entities.ShiftSignup
 Humans.Application.Interfaces.GoogleIntegration.IGoogleSyncService.GetRecentOutboxEventsAsync:Humans.Domain.Entities.GoogleSyncOutboxEvent
-Humans.Application.Interfaces.GoogleIntegration.IGoogleSyncService.GetResourceStatusAsync:Humans.Domain.Entities.GoogleResource
 Humans.Application.Interfaces.Governance.IApplicationDecisionService.GetApprovedInWindowAsync:Humans.Domain.Entities.Application
 Humans.Application.Interfaces.Governance.IApplicationDecisionService.GetExpiringApplicationsNeedingReminderAsync:Humans.Domain.Entities.Application
 Humans.Application.Interfaces.Governance.IApplicationDecisionService.GetSubmittedApplicationForUserAsync:Humans.Domain.Entities.Application

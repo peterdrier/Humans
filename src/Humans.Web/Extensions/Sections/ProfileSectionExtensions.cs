@@ -15,8 +15,6 @@ using ProfilesEmailProblemsService = Humans.Application.Services.Profile.EmailPr
 using UsersAccountProvisioningService = Humans.Application.Services.Users.AccountProvisioningService;
 using UsersUserEmailProviderBackfillService = Humans.Application.Services.Users.UserEmailProviderBackfillService;
 using UsersUnsubscribeService = Humans.Application.Services.Users.UnsubscribeService;
-using GoogleEmailProvisioningService = Humans.Application.Services.GoogleIntegration.EmailProvisioningService;
-using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Repositories.Profiles;
 
@@ -52,12 +50,6 @@ internal static class ProfileSectionExtensions
         services.AddScoped<ProfilesUserEmailService>();
         services.AddScoped<IUserEmailService>(sp => sp.GetRequiredService<ProfilesUserEmailService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<ProfilesUserEmailService>());
-        // Google Integration §15 migration (issue #554) — email provisioning.
-        // Service lives in Humans.Application, goes through IUserService /
-        // IProfileService / IUserEmailService rather than injecting HumansDbContext.
-        // The Google Workspace Users API bridge is IGoogleWorkspaceUserService
-        // (already an Application-layer interface with Infrastructure impl).
-        services.AddScoped<IEmailProvisioningService, GoogleEmailProvisioningService>();
 
         services.AddScoped<ProfilesAccountMergeService>();
         services.AddScoped<IAccountMergeService>(sp => sp.GetRequiredService<ProfilesAccountMergeService>());

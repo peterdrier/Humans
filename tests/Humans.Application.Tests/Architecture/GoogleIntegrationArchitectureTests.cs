@@ -7,7 +7,9 @@ using Humans.Application.Interfaces.Users;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 using EmailProvisioningService = Humans.Application.Services.GoogleIntegration.EmailProvisioningService;
+using GoogleRemovalNotificationService = Humans.Application.Services.GoogleIntegration.GoogleRemovalNotificationService;
 using GoogleWorkspaceSyncService = Humans.Application.Services.GoogleIntegration.GoogleWorkspaceSyncService;
+using SyncSettingsService = Humans.Application.Services.GoogleIntegration.SyncSettingsService;
 
 namespace Humans.Application.Tests.Architecture;
 
@@ -89,21 +91,6 @@ public class GoogleIntegrationArchitectureTests
     }
 
     [HumansFact]
-    public void EmailProvisioningService_HasNoGoogleApisImports()
-    {
-        // The Google Workspace Users API bridge lives behind IGoogleWorkspaceUserService.
-        // The Application-layer service must never reference Google SDK types
-        // directly — those belong to the Infrastructure implementation only.
-        var assembly = typeof(EmailProvisioningService).Assembly;
-        var referencedAssemblies = assembly.GetReferencedAssemblies();
-
-        referencedAssemblies
-            .Should().NotContain(
-                a => (a.Name ?? string.Empty).StartsWith("Google.Apis", StringComparison.Ordinal),
-                because: "Application-layer services must not import Google SDK types; the Google API bridge is IGoogleWorkspaceUserService (design-rules §13)");
-    }
-
-    [HumansFact]
     public void EmailProvisioningService_IsSealed()
     {
         typeof(EmailProvisioningService).IsSealed.Should().BeTrue(
@@ -169,21 +156,89 @@ public class GoogleIntegrationArchitectureTests
     }
 
     [HumansFact]
-    public void GoogleWorkspaceSyncService_HasNoGoogleApisAssemblyReference()
-    {
-        var assembly = typeof(GoogleWorkspaceSyncService).Assembly;
-        var referencedAssemblies = assembly.GetReferencedAssemblies();
-
-        referencedAssemblies
-            .Should().NotContain(
-                a => (a.Name ?? string.Empty).StartsWith("Google.Apis", StringComparison.Ordinal),
-                because: "Humans.Application must stay free of Google SDK references — SDK calls route through bridge interfaces (design-rules §13)");
-    }
-
-    [HumansFact]
     public void GoogleWorkspaceSyncService_IsSealed()
     {
         typeof(GoogleWorkspaceSyncService).IsSealed.Should().BeTrue(
             because: "§15-migrated services are sealed to prevent ad-hoc extension");
+    }
+
+    // ── GoogleRemovalNotificationService (issue #639) ────────────────────────
+
+    [HumansFact]
+    public void GoogleRemovalNotificationService_LivesInHumansApplicationServicesGoogleIntegrationNamespace()
+    {
+        typeof(GoogleRemovalNotificationService).Namespace
+            .Should().Be("Humans.Application.Services.GoogleIntegration",
+                because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
+    }
+
+    [HumansFact]
+    public void GoogleRemovalNotificationService_IsSealed()
+    {
+        typeof(GoogleRemovalNotificationService).IsSealed.Should().BeTrue(
+            because: "§15-migrated services are sealed to prevent ad-hoc extension");
+    }
+
+    [HumansFact]
+    public void GoogleRemovalNotificationService_HasNoDbContextConstructorParameter()
+    {
+        var ctor = typeof(GoogleRemovalNotificationService).GetConstructors().Single();
+        ctor.GetParameters()
+            .Should().NotContain(
+                p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
+                because: "services in Humans.Application must never take DbContext — cross-section reads go through service interfaces (design-rules §2b, §9)");
+    }
+
+    [HumansFact]
+    public void GoogleRemovalNotificationService_HasNoDbContextFactoryConstructorParameter()
+    {
+        var ctor = typeof(GoogleRemovalNotificationService).GetConstructors().Single();
+        var factoryParam = ctor.GetParameters()
+            .FirstOrDefault(p =>
+                p.ParameterType.IsGenericType &&
+                p.ParameterType.GetGenericTypeDefinition() == typeof(IDbContextFactory<>));
+
+        factoryParam.Should().BeNull(
+            because: "IDbContextFactory belongs behind a repository or another service boundary, not in an Application-layer service");
+    }
+
+    // ── SyncSettingsService (§15 Phase 0, issue #554) ────────────────────────
+
+    [HumansFact]
+    public void SyncSettingsService_LivesInHumansApplicationServicesGoogleIntegrationNamespace()
+    {
+        typeof(SyncSettingsService).Namespace
+            .Should().Be("Humans.Application.Services.GoogleIntegration",
+                because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
+    }
+
+    [HumansFact]
+    public void SyncSettingsService_IsSealed()
+    {
+        typeof(SyncSettingsService).IsSealed.Should().BeTrue(
+            because: "§15-migrated services are sealed to prevent ad-hoc extension");
+    }
+
+    [HumansFact]
+    public void SyncSettingsService_HasNoDbContextConstructorParameter()
+    {
+        var ctor = typeof(SyncSettingsService).GetConstructors().Single();
+        ctor.GetParameters()
+            .Should().NotContain(
+                p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
+                because: "services in Humans.Application must never take DbContext — writes go through ISyncSettingsRepository (design-rules §2b, §9)");
+    }
+
+    [HumansFact]
+    public void SyncSettingsService_HasNoDbContextFactoryConstructorParameter()
+    {
+        var ctor = typeof(SyncSettingsService).GetConstructors().Single();
+        var factoryParam = ctor.GetParameters()
+            .FirstOrDefault(p =>
+                p.ParameterType.IsGenericType &&
+                p.ParameterType.GetGenericTypeDefinition() == typeof(IDbContextFactory<>));
+
+        factoryParam.Should().BeNull(
+            because: "IDbContextFactory belongs behind a repository or another service boundary, not in an Application-layer service");
     }
 }

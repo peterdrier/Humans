@@ -217,7 +217,7 @@ src/Humans.Web/Authorization/Requirements/UserEmailAuthorizationHandler.cs:User#
 src/Humans.Web/Controllers/AdminDuplicateAccountsController.cs:Team#1
 src/Humans.Web/Controllers/AdminMergeController.cs:ResolvedByUser#1
 src/Humans.Web/Controllers/AdminMergeController.cs:Team#1
-src/Humans.Web/Controllers/ApplicationController.cs:User#1
+src/Humans.Web/Controllers/GovernanceApplicationsController.cs:User#1
 src/Humans.Web/Controllers/CalendarController.cs:OwningTeam#1
 src/Humans.Web/Controllers/CampAdminController.cs:User#1
 src/Humans.Web/Controllers/ConsentController.cs:Team#1

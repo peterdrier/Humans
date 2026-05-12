@@ -1111,7 +1111,7 @@
     &lt;li&gt;&lt;strong&gt;Applicant:&lt;/strong&gt; {0}&lt;/li&gt;
     &lt;li&gt;&lt;strong&gt;Application ID:&lt;/strong&gt; {1}&lt;/li&gt;
 &lt;/ul&gt;
-&lt;p&gt;&lt;a href="{2}/Board/Applications"&gt;Review Application&lt;/a&gt;&lt;/p&gt;</value><comment>{0} = applicant name, {1} = application ID, {2} = base URL</comment></data>
+&lt;p&gt;&lt;a href="{2}/Governance/Applications/Admin/{1}"&gt;Review Application&lt;/a&gt;&lt;/p&gt;</value><comment>{0} = applicant name, {1} = application ID, {2} = base URL</comment></data>
 
   <data name="Email_ApplicationApproved_Body" xml:space="preserve"><value>&lt;h2&gt;Your Application Has Been Approved!&lt;/h2&gt;
 &lt;p&gt;Dear {0},&lt;/p&gt;
@@ -1227,7 +1227,7 @@
 &lt;p&gt;Dear {0},&lt;/p&gt;
 &lt;p&gt;Your &lt;strong&gt;{1}&lt;/strong&gt; term is expiring on &lt;strong&gt;{2}&lt;/strong&gt;.&lt;/p&gt;
 &lt;p&gt;If you would like to continue as a {1}, please submit a renewal application before your term ends.&lt;/p&gt;
-&lt;p&gt;&lt;a href="{3}/Application/Create"&gt;Submit Renewal Application&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href="{3}/Governance/Applications/Create"&gt;Submit Renewal Application&lt;/a&gt;&lt;/p&gt;
 &lt;p&gt;If you do not renew, you will remain an active human but will no longer have {1}-level access.&lt;/p&gt;
 &lt;p&gt;Thank you for your continued involvement!&lt;br/&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = tier name, {2} = expiry date, {3} = base URL</comment></data>
 

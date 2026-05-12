@@ -5,6 +5,7 @@ using Humans.Application.Configuration;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Admin;
 using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.Dashboard;
 using Humans.Application.Interfaces.Feedback;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Profiles;
@@ -64,6 +65,7 @@ public class AdminController : HumansControllerBase
         [FromServices] IShiftManagementService shifts,
         [FromServices] IFeedbackService feedback,
         [FromServices] IAuditViewerService auditViewer,
+        [FromServices] IAdminDashboardService adminDashboardService,
         CancellationToken ct)
     {
         var firstName = User.Identity?.Name?.Split(' ').FirstOrDefault() ?? "";
@@ -75,6 +77,17 @@ public class AdminController : HumansControllerBase
             .ToArray();
         var staffing = Array.Empty<DepartmentCoverage>();
 
+        var dashboardData = await adminDashboardService.GetAdminDashboardAsync(ct);
+        var appStats = new DashboardApplicationStats(
+            Total: dashboardData.TotalApplications,
+            Approved: dashboardData.ApprovedApplications,
+            Rejected: dashboardData.RejectedApplications,
+            Colaborador: dashboardData.ColaboradorApplied,
+            Asociado: dashboardData.AsociadoApplied);
+        var languages = dashboardData.LanguageDistribution
+            .Select(l => new DashboardLanguageCount(l.Language, l.Count))
+            .ToArray();
+
         var vm = new AdminDashboardViewModel(
             GreetingFirstName: firstName,
             ActiveHumans: activeHumans,
@@ -83,7 +96,9 @@ public class AdminController : HumansControllerBase
             ShiftTotalOf: total > 0 ? total : null,
             OpenFeedback: openFeedback,
             StaffingByDepartment: staffing,
-            RecentActivity: recent);
+            RecentActivity: recent,
+            AppStats: appStats,
+            LanguageDistribution: languages);
         return View(vm);
     }
 
