@@ -317,7 +317,11 @@ public class ProfileController : HumansControllerBase
         // Shift tag preferences — surfaced on Edit Profile so users can pick what
         // kinds of volunteer work they want without bouncing to /Shifts. Without
         // this surface the profile completion bar sticks at 95%.
-        var allShiftTags = await _shiftMgmt.GetTagsAsync();
+        // Sort at presentation layer (memory/architecture/display-sort-in-controllers.md);
+        // GetTagsAsync returns DB-insertion order.
+        var allShiftTags = (await _shiftMgmt.GetTagsAsync())
+            .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
         var preferredShiftTags = await _shiftMgmt.GetVolunteerTagPreferencesAsync(user.Id);
 
         var hasCustomPicture = profile?.HasCustomProfilePicture == true;
@@ -413,7 +417,9 @@ public class ProfileController : HumansControllerBase
     {
         // Shift-tag catalog isn't posted back — repopulate up front so every
         // validation-failure `View(model)` path in this action still renders the picker.
-        model.AllShiftTags = await _shiftMgmt.GetTagsAsync();
+        model.AllShiftTags = (await _shiftMgmt.GetTagsAsync())
+            .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
 
         if (!ModelState.IsValid)
         {
