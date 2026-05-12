@@ -89,7 +89,7 @@
                             <strong>@Localizer["Dashboard_TermExpired"]</strong>
                             <br /><small class="text-muted">@Localizer["Dashboard_MembershipTier"]: @Model.MembershipTier</small>
                         </div>
-                        <a asp-controller="Application" asp-action="Create" class="btn btn-sm btn-primary ms-3">@Localizer["Dashboard_RenewNow"]</a>
+                        <a asp-controller="GovernanceApplications" asp-action="Create" class="btn btn-sm btn-primary ms-3">@Localizer["Dashboard_RenewNow"]</a>
                     </div>
                 </div>
             }
@@ -105,7 +105,7 @@
                             @Html.Raw(string.Format(Localizer["Dashboard_TermExpiresSoon"].Value, Model.TermExpiresAt?.ToDisplayDate()))
                             <br /><small class="text-muted">@Localizer["Dashboard_MembershipTier"]: @Model.MembershipTier</small>
                         </div>
-                        <a asp-controller="Application" asp-action="Create" class="btn btn-sm btn-warning ms-3">@Localizer["Dashboard_RenewNow"]</a>
+                        <a asp-controller="GovernanceApplications" asp-action="Create" class="btn btn-sm btn-warning ms-3">@Localizer["Dashboard_RenewNow"]</a>
                     </div>
                 </div>
             }
@@ -473,7 +473,7 @@ else if (Model.IsShiftBrowsingOpen && Model.IsVolunteerMember)
             @if (Model.IsVolunteerMember)
             {
                 <div class="col-md-4">
-                    <a asp-controller="Application" asp-action="Index" class="card border-0 shadow-sm text-decoration-none h-100 guest-explore-card">
+                    <a asp-controller="GovernanceApplications" asp-action="Index" class="card border-0 shadow-sm text-decoration-none h-100 guest-explore-card">
                         <div class="card-body d-flex align-items-center py-3">
                             <div class="rounded-circle d-inline-flex align-items-center justify-content-center me-3"
                                  style="width: 40px; height: 40px; background: var(--h-parchment); color: var(--h-aged-ink); flex-shrink: 0;">
