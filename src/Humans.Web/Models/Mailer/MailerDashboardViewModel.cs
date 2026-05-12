@@ -4,14 +4,15 @@ using NodaTime;
 namespace Humans.Web.Models.Mailer;
 
 public sealed record MailerDashboardViewModel(
-    MailerLiteAccountSummary MlSummary,
-    IReadOnlyList<MailerLiteGroup> Groups,
+    MailerLiteAccountSummary? MlSummary,
+    IReadOnlyList<MailerLiteGroup>? Groups,
     int HumansMailerLiteContacts,
     int HumansMarketingOptedIn,
     int HumansMarketingOptedOut,
     Instant? LastReconciliationAt,
     string? LastReconciliationSummary,
-    DriftReport Drift);
+    DriftReport? Drift,
+    string? MlError);
 
 public sealed record DriftReport(
     int HumansOptedOutMlActive,           // legal-trouble row

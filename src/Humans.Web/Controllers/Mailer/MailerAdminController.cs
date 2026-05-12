@@ -1,3 +1,4 @@
+using System.Net;
 using System.Text.Json;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Mailer;
@@ -11,6 +12,7 @@ using Humans.Web.Models.Mailer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 
 namespace Humans.Web.Controllers.Mailer;
 
@@ -23,6 +25,7 @@ public sealed class MailerAdminController : HumansControllerBase
     private readonly IUserService _users;
     private readonly ICommunicationPreferenceService _prefs;
     private readonly IAuditLogService _audit;
+    private readonly ILogger<MailerAdminController> _logger;
 
     public MailerAdminController(
         IMailerLiteService ml,
@@ -30,6 +33,7 @@ public sealed class MailerAdminController : HumansControllerBase
         IUserService users,
         ICommunicationPreferenceService prefs,
         IAuditLogService audit,
+        ILogger<MailerAdminController> logger,
         UserManager<User> userManager)
         : base(userManager)
     {
@@ -38,13 +42,29 @@ public sealed class MailerAdminController : HumansControllerBase
         _users = users;
         _prefs = prefs;
         _audit = audit;
+        _logger = logger;
     }
 
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken ct)
     {
-        var summary = await _ml.GetAccountSummaryAsync(ct);
-        var groups = await _ml.ListGroupsAsync(ct);
+        MailerLiteAccountSummary? summary = null;
+        IReadOnlyList<MailerLiteGroup>? groups = null;
+        DriftReport? drift = null;
+        string? mlError = null;
+
+        try
+        {
+            summary = await _ml.GetAccountSummaryAsync(ct);
+            groups = await _ml.ListGroupsAsync(ct);
+            drift = await ComputeDriftAsync(ct);
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogWarning("MailerLite API call failed: {StatusCode} {Message}", ex.StatusCode, ex.Message);
+            mlError = FormatMailerLiteError(ex);
+        }
+
         var mlContacts = await _users.GetCountByContactSourceAsync(ContactSource.MailerLite, ct);
         var optedIn = await _prefs.GetCountByCategoryAndStateAsync(MessageCategory.Marketing, optedOut: false, ct);
         var optedOut = await _prefs.GetCountByCategoryAndStateAsync(MessageCategory.Marketing, optedOut: true, ct);
@@ -55,13 +75,20 @@ public sealed class MailerAdminController : HumansControllerBase
             ct: ct);
         var last = recent.FirstOrDefault();
 
-        var drift = await ComputeDriftAsync(ct);
-
         var vm = new MailerDashboardViewModel(
             summary, groups, mlContacts, optedIn, optedOut,
-            last?.OccurredAt, last?.Description, drift);
+            last?.OccurredAt, last?.Description, drift, mlError);
         return View("~/Views/Mailer/Admin/Index.cshtml", vm);
     }
+
+    private static string FormatMailerLiteError(HttpRequestException ex) => ex.StatusCode switch
+    {
+        HttpStatusCode.Unauthorized => "MailerLite rejected the API key (401). Check MAILERLITE_API_KEY on /Admin/Configuration.",
+        HttpStatusCode.Forbidden => "MailerLite API key lacks required permissions (403).",
+        HttpStatusCode.TooManyRequests => "MailerLite rate limit hit (429). Try again shortly.",
+        null => $"MailerLite call failed before getting a response: {ex.Message}",
+        _ => $"MailerLite API returned {(int)ex.StatusCode} {ex.StatusCode}.",
+    };
 
     [HttpPost("Import/Commit")]
     [ValidateAntiForgeryToken]
