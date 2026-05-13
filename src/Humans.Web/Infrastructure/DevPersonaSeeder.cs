@@ -175,7 +175,7 @@ public sealed class DevPersonaSeeder
         // single writer to the profile state fields).
         var consentCheckResult = await _profileService.RecordConsentCheckAsync(
             id, reviewerId: id, ConsentCheckStatus.Cleared,
-            notes: "Dev persona â€” auto-seeded");
+            notes: "Dev persona — auto-seeded");
         if (!consentCheckResult.Success)
             _logger.LogWarning(
                 "DEV: consent-check approval failed for persona {UserId}: {ErrorKey}",
