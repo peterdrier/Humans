@@ -923,14 +923,6 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
         }
     }
 
-    public async Task<IReadOnlyList<OrderDriftRow>> GetOrderDriftAsync(CancellationToken ct = default)
-    {
-        // Sort in-memory: the projected record's computed sort key
-        // (IssuedCount - ValidCount) can't be translated to SQL, and per the
-        // ticketing convention sorting is the service's job, not the repo's.
-        var rows = await _ticketRepository.GetOrderDriftAsync(ct);
-        return rows
-            .OrderByDescending(r => r.IssuedCount - r.ValidCount)
-            .ToList();
-    }
+    public Task<IReadOnlyList<OrderDriftRow>> GetOrderDriftAsync(CancellationToken ct = default) =>
+        _ticketRepository.GetOrderDriftAsync(ct);
 }

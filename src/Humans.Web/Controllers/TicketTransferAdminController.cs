@@ -53,7 +53,9 @@ public sealed class TicketTransferAdminController : HumansControllerBase
             _ => pending,
         };
 
-        var drift = await _ticketQueryService.GetOrderDriftAsync(ct);
+        var drift = (await _ticketQueryService.GetOrderDriftAsync(ct))
+            .OrderByDescending(r => r.IssuedCount - r.ValidCount)
+            .ToList();
 
         return View(new TicketTransferIndexViewModel(
             ActiveTab: tab,
