@@ -181,6 +181,10 @@ public sealed class AttendeeContactImportService : IAttendeeContactImportService
             await _ticketRepository.UpsertAttendeesAsync(toUpsert, ct);
         }
 
+        // Evict before the participation loop — if SetParticipationFromTicketSyncAsync throws,
+        // the attendee mutation above must still invalidate ticket caches.
+        _ticketQuery.InvalidateAfterContactImport();
+
         var active = await _shifts.GetActiveAsync();
         if (active is not null && newlyMatchedUserIds.Count > 0)
         {
@@ -190,8 +194,6 @@ public sealed class AttendeeContactImportService : IAttendeeContactImportService
                     userId, active.Year, ParticipationStatus.Ticketed, ct);
             }
         }
-
-        _ticketQuery.InvalidateAfterContactImport();
 
         var elapsed = _clock.GetCurrentInstant() - start;
         var result = new AttendeeImportResult(
