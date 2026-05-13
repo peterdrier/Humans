@@ -1008,6 +1008,9 @@ public class ShiftDashboardMetricsTests : IDisposable
         private readonly HumansDbContext _db;
         public FakeUserService(HumansDbContext db) => _db = db;
 
+        public ValueTask<Humans.Application.UserInfo?> GetUserInfoAsync(Guid userId, CancellationToken ct = default)
+            => throw new NotSupportedException();
+
         public async Task<User?> GetByIdAsync(Guid userId, CancellationToken ct = default)
             => await _db.Users.FirstOrDefaultAsync(u => u.Id == userId, ct);
 
