@@ -954,7 +954,7 @@ public sealed class TicketRepository : ITicketRepository
         // EF can't translate a Where over a Select-projected DTO's properties
         // (it tries to re-evaluate the constructor inside SQL and fails). Push
         // the IssuedCount > ValidCount predicate upstream as a subquery on the
-        // attendee collection. Sort is the service's job — see TicketQueryService.
+        // attendee collection. Sort is the controller's job — see TicketTransferAdminController.
         return await ctx.TicketOrders
             .AsNoTracking()
             .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid)
