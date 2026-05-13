@@ -1,3 +1,4 @@
+using Humans.Domain.Attributes;
 using NodaTime;
 
 namespace Humans.Domain.Entities;
@@ -7,6 +8,7 @@ public class StoreProduct
     public Guid Id { get; set; }
     public int Year { get; set; }
     public string Name { get; set; } = string.Empty;
+    [MarkdownContent]
     public string Description { get; set; } = string.Empty;
     public decimal UnitPriceEur { get; set; }
     public decimal VatRatePercent { get; set; }

@@ -5,6 +5,27 @@
     ViewData["Title"] = "Application Logs";
     var lifetimeCounts = ViewBag.LifetimeCounts as IReadOnlyDictionary<Serilog.Events.LogEventLevel, long>
         ?? new Dictionary<Serilog.Events.LogEventLevel, long>();
+
+    var startedAt = ViewBag.SinkStartedAt is DateTimeOffset sa ? sa : DateTimeOffset.UtcNow;
+    var totalEvents = ViewBag.TotalEvents is long te ? te : 0L;
+    var uptime = DateTimeOffset.UtcNow - startedAt;
+    if (uptime < TimeSpan.Zero) { uptime = TimeSpan.Zero; }
+
+    static string HumanizeUptime(TimeSpan t)
+    {
+        // Skip zero-leading units, show two largest non-zero units down to seconds.
+        // Examples: "2d 4h 13m", "47m", "12s".
+        var parts = new List<string>(3);
+        if (t.Days > 0) parts.Add($"{t.Days}d");
+        if (t.Hours > 0) parts.Add($"{t.Hours}h");
+        if (t.Minutes > 0) parts.Add($"{t.Minutes}m");
+        if (parts.Count == 0) parts.Add($"{t.Seconds}s");
+        return string.Join(' ', parts);
+    }
+
+    var uptimeText = HumanizeUptime(uptime);
+    var hours = Math.Max(uptime.TotalHours, 1.0 / 3600);
+    var eventsPerHour = (long)Math.Round(totalEvents / hours);
 }
 
 <div class="container-fluid px-4">
@@ -17,7 +38,11 @@
 
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h1>Application Logs</h1>
-        <span class="text-muted">Showing @Model.Count of last 1000 (in-memory buffer)</span>
+        <div class="text-muted text-end">
+            <div><small>Uptime: @uptimeText</small></div>
+            <div>Showing @Model.Count of last 1000 (in-memory buffer)</div>
+            <div><small>@eventsPerHour.ToString("#,##0") events/hour</small></div>
+        </div>
     </div>
 
     <div class="d-flex gap-3 mb-3 flex-wrap">

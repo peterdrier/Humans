@@ -1,3 +1,4 @@
+@using Humans.Web.Extensions
 @using Humans.Web.Models.Mailer
 @model MailerDashboardViewModel
 @{
@@ -6,12 +7,31 @@
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h1 class="mb-0">Mailer Dashboard</h1>
-    @if (Model.MlError is null)
-    {
-        <a href="/Mailer/Admin/Import" class="btn btn-primary">
-            <i class="fa-solid fa-file-import me-1"></i>Run Import &rarr;
-        </a>
-    }
+    <div class="d-flex align-items-center gap-2">
+        <span class="text-muted small">
+            @if (Model.CacheFetchedAt is { } fetched)
+            {
+                <i class="fa-regular fa-clock me-1"></i>
+                <text>Cached @fetched.ToDisplayCompactDateTime()</text>
+            }
+            else
+            {
+                <text>Cache empty</text>
+            }
+        </span>
+        <form method="post" action="/Mailer/Admin/Refresh" class="m-0">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-outline-secondary">
+                <i class="fa-solid fa-arrows-rotate me-1"></i>Refresh
+            </button>
+        </form>
+        @if (Model.MlError is null)
+        {
+            <a href="/Mailer/Admin/Import" class="btn btn-primary">
+                <i class="fa-solid fa-file-import me-1"></i>Run Import &rarr;
+            </a>
+        }
+    </div>
 </div>
 
 <vc:temp-data-alerts />

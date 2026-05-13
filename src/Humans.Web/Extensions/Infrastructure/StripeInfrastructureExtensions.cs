@@ -11,7 +11,6 @@ internal static class StripeInfrastructureExtensions
         // Stripe integration. One key per Stripe account / purpose; production keys must be Restricted API
         // Keys (rk_*) scoped to the minimum permissions used. Refunds/payouts/chargebacks remain dashboard-manual.
         //   - STRIPE_TICKETS_KEY: Tickets-account key (PI/balance reads for fee enrichment).
-        //     STRIPE_API_KEY is honored as a deprecated fallback and will be removed in a follow-up PR.
         //   - STRIPE_STORE_KEY: Store-account key (checkout_session:write only).
         //   - STRIPE_STORE_WEBHOOK_SECRET: Store webhook signing secret. Set manually in QA/prod;
         //     overwritten at boot in ephemeral envs that auto-register (see below).
@@ -21,17 +20,7 @@ internal static class StripeInfrastructureExtensions
         //     same narrow scope production has. NEVER set in QA or production.
         services.Configure<StripeSettings>(opts =>
         {
-            var ticketsKey = Environment.GetEnvironmentVariable("STRIPE_TICKETS_KEY") ?? string.Empty;
-            if (string.IsNullOrEmpty(ticketsKey))
-            {
-                var deprecated = Environment.GetEnvironmentVariable("STRIPE_API_KEY") ?? string.Empty;
-                if (!string.IsNullOrEmpty(deprecated))
-                {
-                    ticketsKey = deprecated;
-                    opts.TicketsKeyFromDeprecatedFallback = true;
-                }
-            }
-            opts.TicketsKey = ticketsKey;
+            opts.TicketsKey = Environment.GetEnvironmentVariable("STRIPE_TICKETS_KEY") ?? string.Empty;
             opts.StoreKey = Environment.GetEnvironmentVariable("STRIPE_STORE_KEY") ?? string.Empty;
             opts.StoreWebhookSecret = Environment.GetEnvironmentVariable("STRIPE_STORE_WEBHOOK_SECRET") ?? string.Empty;
             opts.WebhookRegistrarKey = Environment.GetEnvironmentVariable("STRIPE_STORE_WEBHOOK_REGISTRAR_KEY") ?? string.Empty;

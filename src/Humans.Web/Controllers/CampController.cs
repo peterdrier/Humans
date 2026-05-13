@@ -486,7 +486,8 @@ public class CampController : HumansCampControllerBase
                 RequestedAt = m.RequestedAt,
                 ConfirmedAt = m.ConfirmedAt,
                 IsLead = m.IsLead,
-                HasEarlyEntry = m.HasEarlyEntry
+                HasEarlyEntry = m.HasEarlyEntry,
+                Status = m.Status
             })
             .ToList();
         viewModel.ActiveMembers = members.Active
@@ -498,7 +499,8 @@ public class CampController : HumansCampControllerBase
                 RequestedAt = m.RequestedAt,
                 ConfirmedAt = m.ConfirmedAt,
                 IsLead = m.IsLead,
-                HasEarlyEntry = m.HasEarlyEntry
+                HasEarlyEntry = m.HasEarlyEntry,
+                Status = m.Status
             })
             .ToList();
         viewModel.EeSlotCount = members.EeSlotCount;

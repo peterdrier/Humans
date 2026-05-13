@@ -249,4 +249,129 @@ public sealed class TicketRepositoryTests : IDisposable
         rows[0].MatchedUserId.Should().Be(matchedUserId);
         rows[0].Status.Should().Be(TicketAttendeeStatus.Valid);
     }
+
+    // ── GetUnmatchedActiveAttendeesAsync ─────────────────────────────────────
+
+    [HumansFact]
+    public async Task GetUnmatchedActiveAttendeesAsync_ReturnsOnlyValidAndCheckedIn_WithEmail_AndNullMatch()
+    {
+        var orderId = Guid.NewGuid();
+        var eventId = "evt_123";
+
+        _dbContext.TicketOrders.Add(new TicketOrder
+        {
+            Id = orderId,
+            VendorOrderId = "ord_1",
+            VendorEventId = eventId,
+            BuyerEmail = "buyer@x.com",
+            BuyerName = "Buyer",
+            TotalAmount = 0,
+            Currency = "EUR",
+            PaymentStatus = TicketPaymentStatus.Paid,
+            PurchasedAt = _clock.GetCurrentInstant(),
+            SyncedAt = _clock.GetCurrentInstant(),
+        });
+
+        var includedId = Guid.NewGuid();
+        await _dbContext.TicketAttendees.AddRangeAsync(
+            new TicketAttendee
+            {
+                Id = includedId,
+                TicketOrderId = orderId,
+                VendorEventId = eventId,
+                VendorTicketId = "tkt_valid_unmatched",
+                AttendeeEmail = "a@x.com",
+                Status = TicketAttendeeStatus.Valid,
+                MatchedUserId = null,
+                SyncedAt = _clock.GetCurrentInstant(),
+            },
+            new TicketAttendee
+            {
+                Id = Guid.NewGuid(),
+                TicketOrderId = orderId,
+                VendorEventId = eventId,
+                VendorTicketId = "tkt_voided",
+                AttendeeEmail = "b@x.com",
+                Status = TicketAttendeeStatus.Void,
+                MatchedUserId = null,
+                SyncedAt = _clock.GetCurrentInstant(),
+            },
+            new TicketAttendee
+            {
+                Id = Guid.NewGuid(),
+                TicketOrderId = orderId,
+                VendorEventId = eventId,
+                VendorTicketId = "tkt_matched",
+                AttendeeEmail = "c@x.com",
+                Status = TicketAttendeeStatus.Valid,
+                MatchedUserId = Guid.NewGuid(),
+                SyncedAt = _clock.GetCurrentInstant(),
+            },
+            new TicketAttendee
+            {
+                Id = Guid.NewGuid(),
+                TicketOrderId = orderId,
+                VendorEventId = eventId,
+                VendorTicketId = "tkt_no_email",
+                AttendeeEmail = null,
+                Status = TicketAttendeeStatus.Valid,
+                MatchedUserId = null,
+                SyncedAt = _clock.GetCurrentInstant(),
+            },
+            new TicketAttendee
+            {
+                Id = Guid.NewGuid(),
+                TicketOrderId = orderId,
+                VendorEventId = "other_event",
+                VendorTicketId = "tkt_other_event",
+                AttendeeEmail = "d@x.com",
+                Status = TicketAttendeeStatus.Valid,
+                MatchedUserId = null,
+                SyncedAt = _clock.GetCurrentInstant(),
+            });
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _repo.GetUnmatchedActiveAttendeesAsync(eventId);
+
+        result.Should().HaveCount(1);
+        result.Single().Id.Should().Be(includedId);
+    }
+
+    [HumansFact]
+    public async Task GetUnmatchedActiveAttendeesAsync_IncludesCheckedInAttendees()
+    {
+        var orderId = Guid.NewGuid();
+        var eventId = "evt_ci";
+        _dbContext.TicketOrders.Add(new TicketOrder
+        {
+            Id = orderId,
+            VendorOrderId = "ord_ci",
+            VendorEventId = eventId,
+            BuyerEmail = "buyer@x.com",
+            BuyerName = "Buyer",
+            TotalAmount = 0,
+            Currency = "EUR",
+            PaymentStatus = TicketPaymentStatus.Paid,
+            PurchasedAt = _clock.GetCurrentInstant(),
+            SyncedAt = _clock.GetCurrentInstant(),
+        });
+
+        var includedId = Guid.NewGuid();
+        _dbContext.TicketAttendees.Add(new TicketAttendee
+        {
+            Id = includedId,
+            TicketOrderId = orderId,
+            VendorEventId = eventId,
+            VendorTicketId = "tkt_ci",
+            AttendeeEmail = "ci@x.com",
+            Status = TicketAttendeeStatus.CheckedIn,
+            MatchedUserId = null,
+            SyncedAt = _clock.GetCurrentInstant(),
+        });
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _repo.GetUnmatchedActiveAttendeesAsync(eventId);
+
+        result.Should().ContainSingle(a => a.Id == includedId);
+    }
 }

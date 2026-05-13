@@ -172,6 +172,7 @@ public sealed class TicketRepository : ITicketRepository
         return await ctx.TicketAttendees
             .AsNoTracking()
             .Include(a => a.TicketOrder)
+                .ThenInclude(o => o.Attendees)
             .FirstOrDefaultAsync(a => a.Id == attendeeId, ct);
     }
 
@@ -263,6 +264,22 @@ public sealed class TicketRepository : ITicketRepository
         }
 
         await ctx.SaveChangesAsync(ct);
+    }
+
+    private static readonly TicketAttendeeStatus[] ActiveAttendeeStatuses =
+        [TicketAttendeeStatus.Valid, TicketAttendeeStatus.CheckedIn];
+
+    public async Task<IReadOnlyList<TicketAttendee>> GetUnmatchedActiveAttendeesAsync(
+        string vendorEventId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.TicketAttendees
+            .Where(a =>
+                a.VendorEventId == vendorEventId &&
+                a.MatchedUserId == null &&
+                !string.IsNullOrEmpty(a.AttendeeEmail) &&
+                ActiveAttendeeStatuses.Contains(a.Status))
+            .ToListAsync(ct);
     }
 
     public async Task UpsertAttendeeAsync(TicketAttendee attendee, CancellationToken ct = default)

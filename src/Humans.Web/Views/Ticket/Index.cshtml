@@ -361,6 +361,10 @@
                     <i class="fa-solid fa-arrows-rotate"></i> Full Re-sync <i class="fa-solid fa-lock auth-lock-icon"></i>
                 </button>
             </form>
+            <a asp-controller="TicketsContactsAdmin" asp-action="Index"
+               class="btn btn-sm btn-outline-primary ms-2" authorize-policy="TicketAdminOrAdmin">
+                <i class="fa-solid fa-user-plus"></i> Import Attendee Contacts <i class="fa-solid fa-lock auth-lock-icon"></i>
+            </a>
         </div>
     </div>
 </div>

@@ -80,6 +80,7 @@ public static class AdminNavTree
             new("Configuration",   "Admin", "Configuration", null, null, "fa-solid fa-gear",                PolicyNames.AdminOnly),
             new("Maintenance",     "Admin", "Maintenance",   null, null, "fa-solid fa-screwdriver-wrench",  PolicyNames.AdminOnly),
             new("Orphan signups",  "Shifts", "OrphanSignups", null, null, "fa-solid fa-user-secret",        PolicyNames.AdminOnly),
+            new("Picture migration", "ProfilePictureMigrationAdmin", "Index", null, null, "fa-solid fa-image", PolicyNames.AdminOnly),
             new("Hangfire",        null, null, null, "/hangfire",      "fa-solid fa-clock-rotate-left", PolicyNames.AdminOnly),
             new("Health",          null, null, null, "/health/ready",  "fa-solid fa-heart-pulse",       PolicyNames.AdminOnly),
         }),

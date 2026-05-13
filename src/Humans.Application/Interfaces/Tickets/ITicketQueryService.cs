@@ -11,7 +11,7 @@ namespace Humans.Application.Interfaces.Tickets;
 /// counts matched tickets, and computes aggregate dashboard statistics.
 /// All matching logic (MatchedUserId, email fallback, case-insensitive) lives here.
 /// </summary>
-[SurfaceBudget(27)]
+[SurfaceBudget(28)]
 public interface ITicketQueryService : IApplicationService
 {
     /// <summary>
@@ -197,6 +197,15 @@ public interface ITicketQueryService : IApplicationService
     /// when the Receiver did not gain a local row (vendor reissue half-failed).
     /// </summary>
     void InvalidateAfterTransfer(Guid senderUserId, Guid? receiverUserId);
+
+    /// <summary>
+    /// Invalidates ticket-related caches after the attendee contact import
+    /// has applied new matches. Drops <c>UserIdsWithTickets</c>,
+    /// <c>ValidAttendeeEmails</c>, the per-event <c>TicketEventSummary</c>,
+    /// and <c>TicketDashboardStats</c>. Per-user <c>UserTicketCount:{userId}</c>
+    /// entries expire naturally via 5-minute TTL — same policy as the sync.
+    /// </summary>
+    void InvalidateAfterContactImport();
 
     /// <summary>
     /// Snapshot of a user's ticket holdings: count of orders where they're the

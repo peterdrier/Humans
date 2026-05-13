@@ -77,8 +77,33 @@ public sealed class MailerAdminController : HumansControllerBase
 
         var vm = new MailerDashboardViewModel(
             summary, groups, mlContacts, optedIn, optedOut,
-            last?.OccurredAt, last?.Description, drift, mlError);
+            last?.OccurredAt, last?.Description, drift, mlError,
+            _ml.LastFetchedAt);
         return View("~/Views/Mailer/Admin/Index.cshtml", vm);
+    }
+
+    [HttpPost("Refresh")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Refresh(CancellationToken ct)
+    {
+        try
+        {
+            await _ml.RefreshAsync(ct);
+            TempData["Banner"] = "MailerLite cache refreshed.";
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogWarning("MailerLite refresh failed: {StatusCode} {Message}", ex.StatusCode, ex.Message);
+            TempData["Banner"] = "Refresh failed: " + FormatMailerLiteError(ex);
+        }
+        catch (TaskCanceledException) when (!ct.IsCancellationRequested)
+        {
+            // MailerLiteClient surfaces HttpClient timeouts as TaskCanceledException
+            // when the caller did not cancel. Treat it as a transient refresh failure.
+            _logger.LogWarning("MailerLite refresh timed out");
+            TempData["Banner"] = "Refresh failed: MailerLite request timed out. Try again shortly.";
+        }
+        return RedirectToAction(nameof(Index));
     }
 
     private static string FormatMailerLiteError(HttpRequestException ex) => ex.StatusCode switch
@@ -92,7 +117,7 @@ public sealed class MailerAdminController : HumansControllerBase
 
     [HttpPost("Import/Commit")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Commit(CancellationToken ct)
+    public async Task<IActionResult> Commit([FromForm] int? maxPerOutcome, CancellationToken ct)
     {
         var fresh = await _import.BuildPlanAsync(ct);
 
@@ -106,7 +131,7 @@ public sealed class MailerAdminController : HumansControllerBase
             }
         }
 
-        var result = await _import.ApplyAsync(fresh, ct);
+        var result = await _import.ApplyAsync(fresh, maxPerOutcome, ct);
         TempData["Banner"] = result.FormatSummary();
         return RedirectToAction(nameof(Index));
     }
@@ -118,13 +143,14 @@ public sealed class MailerAdminController : HumansControllerBase
             if (prev == 0) return now > 0;
             return Math.Abs(now - prev) / (double)prev > 0.10;
         }
-        return D(a.WillCreateContact, b.WillCreateContact)
-            || D(a.WillAttachWithFlip, b.WillAttachWithFlip)
-            || D(a.WillAttachConfirmOnly, b.WillAttachConfirmOnly)
-            || D(a.WillKeepHumansState, b.WillKeepHumansState)
-            || D(a.WillDeleteUnverifiedAndCreate, b.WillDeleteUnverifiedAndCreate)
-            || D(a.SkippedAmbiguous, b.SkippedAmbiguous)
-            || D(a.SkippedUnconfirmed, b.SkippedUnconfirmed);
+        return D(a.CreateNewHuman, b.CreateNewHuman)
+            || D(a.ReplaceUnverifiedEmail, b.ReplaceUnverifiedEmail)
+            || D(a.VerifiedPrefsAlreadyMatch, b.VerifiedPrefsAlreadyMatch)
+            || D(a.VerifiedFlipToOptIn, b.VerifiedFlipToOptIn)
+            || D(a.VerifiedFlipToOptOut, b.VerifiedFlipToOptOut)
+            || D(a.VerifiedKeepHumansPref, b.VerifiedKeepHumansPref)
+            || D(a.AmbiguousMultipleVerified, b.AmbiguousMultipleVerified)
+            || D(a.UnconfirmedSkipped, b.UnconfirmedSkipped);
     }
 
     [HttpGet("Import")]
@@ -153,8 +179,11 @@ public sealed class MailerAdminController : HumansControllerBase
         var plan = await _import.BuildPlanAsync(ct);
 
         int humansOutMlIn = 0;
-        foreach (var d in plan.Decisions.Where(d => d.Outcome == SubscriberOutcome.AttachVerified
-                                                || d.Outcome == SubscriberOutcome.AttachVerifiedConflictKept))
+        foreach (var d in plan.Decisions.Where(d => d.Outcome
+            is SubscriberOutcome.VerifiedPrefsAlreadyMatch
+            or SubscriberOutcome.VerifiedFlipToOptIn
+            or SubscriberOutcome.VerifiedFlipToOptOut
+            or SubscriberOutcome.VerifiedKeepHumansPref))
         {
             if (d.TargetUserId is not Guid uid) continue;
             if (!string.Equals(d.Status, "active", StringComparison.OrdinalIgnoreCase)) continue;

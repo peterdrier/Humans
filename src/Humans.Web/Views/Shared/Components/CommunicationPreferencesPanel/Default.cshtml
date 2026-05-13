@@ -10,7 +10,6 @@
                 <tr>
                     <th style="min-width: 250px;">@Localizer["CommPrefs_Category"]</th>
                     <th class="text-center" style="width: 100px;">@Localizer["CommPrefs_Email"]</th>
-                    <th class="text-center" style="width: 100px;">@Localizer["CommPrefs_Alert"]</th>
                     @if (isReadOnly)
                     {
                         <th style="min-width: 140px;">@Localizer["CommPrefs_UpdateSource"]</th>
@@ -53,35 +52,6 @@
                                        data-category="@item.Category"
                                        data-channel="email"
                                        @(item.EmailEnabled ? "checked" : null) />
-                            }
-                            else
-                            {
-                                <input type="checkbox"
-                                       class="form-check-input"
-                                       checked
-                                       disabled />
-                                <span class="text-muted small">Always on</span>
-                            }
-                        </td>
-                        <td class="text-center">
-                            @if (isReadOnly)
-                            {
-                                if (item.AlertEnabled)
-                                {
-                                    <input type="checkbox" class="form-check-input" checked disabled />
-                                }
-                                else
-                                {
-                                    <input type="checkbox" class="form-check-input" disabled />
-                                }
-                            }
-                            else if (item.AlertEditable)
-                            {
-                                <input type="checkbox"
-                                       class="form-check-input pref-toggle"
-                                       data-category="@item.Category"
-                                       data-channel="alert"
-                                       @(item.AlertEnabled ? "checked" : null) />
                             }
                             else
                             {

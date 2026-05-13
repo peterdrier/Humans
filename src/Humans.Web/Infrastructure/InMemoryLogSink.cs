@@ -18,7 +18,14 @@ public sealed class InMemoryLogSink : ILogEventSink
     public InMemoryLogSink(int capacity = 1000)
     {
         _capacity = capacity;
+        StartedAt = DateTimeOffset.UtcNow;
     }
+
+    /// <summary>UTC timestamp captured when the sink (and process) started.</summary>
+    public DateTimeOffset StartedAt { get; }
+
+    /// <summary>Total events emitted since startup, summed across all log levels.</summary>
+    public long TotalEvents => _lifetimeCounts.Values.Sum();
 
     public void Emit(LogEvent logEvent)
     {

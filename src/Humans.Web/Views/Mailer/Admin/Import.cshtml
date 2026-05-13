@@ -25,32 +25,36 @@
             </thead>
             <tbody>
                 <tr>
-                    <td>Create new contact</td>
-                    <td class="text-end">@Model.Plan.Counts.WillCreateContact.ToString("N0")</td>
+                    <td>Create new human</td>
+                    <td class="text-end">@Model.Plan.Counts.CreateNewHuman.ToString("N0")</td>
                 </tr>
                 <tr>
-                    <td>Attach verified (opt-in flip)</td>
-                    <td class="text-end">@Model.Plan.Counts.WillAttachWithFlip.ToString("N0")</td>
+                    <td>Human exists with unverified email — replace</td>
+                    <td class="text-end">@Model.Plan.Counts.ReplaceUnverifiedEmail.ToString("N0")</td>
                 </tr>
                 <tr>
-                    <td>Attach verified (confirm only)</td>
-                    <td class="text-end">@Model.Plan.Counts.WillAttachConfirmOnly.ToString("N0")</td>
+                    <td>Human exists — Marketing prefs already match (no-op)</td>
+                    <td class="text-end">@Model.Plan.Counts.VerifiedPrefsAlreadyMatch.ToString("N0")</td>
                 </tr>
                 <tr>
-                    <td>Attach verified (keep Humans state)</td>
-                    <td class="text-end">@Model.Plan.Counts.WillKeepHumansState.ToString("N0")</td>
+                    <td>Human exists — flip Marketing to opt-in (ML wins)</td>
+                    <td class="text-end">@Model.Plan.Counts.VerifiedFlipToOptIn.ToString("N0")</td>
                 </tr>
                 <tr>
-                    <td>Delete unverified then create</td>
-                    <td class="text-end">@Model.Plan.Counts.WillDeleteUnverifiedAndCreate.ToString("N0")</td>
+                    <td>Human exists — flip Marketing to opt-out (ML wins)</td>
+                    <td class="text-end">@Model.Plan.Counts.VerifiedFlipToOptOut.ToString("N0")</td>
+                </tr>
+                <tr>
+                    <td>Human exists — keep Humans' pref (user touched recently)</td>
+                    <td class="text-end">@Model.Plan.Counts.VerifiedKeepHumansPref.ToString("N0")</td>
                 </tr>
                 <tr class="text-muted">
-                    <td>Skipped — ambiguous multiple verified</td>
-                    <td class="text-end">@Model.Plan.Counts.SkippedAmbiguous.ToString("N0")</td>
+                    <td>Skipped — same email on multiple humans</td>
+                    <td class="text-end">@Model.Plan.Counts.AmbiguousMultipleVerified.ToString("N0")</td>
                 </tr>
                 <tr class="text-muted">
-                    <td>Skipped — unconfirmed</td>
-                    <td class="text-end">@Model.Plan.Counts.SkippedUnconfirmed.ToString("N0")</td>
+                    <td>Skipped — unconfirmed in ML</td>
+                    <td class="text-end">@Model.Plan.Counts.UnconfirmedSkipped.ToString("N0")</td>
                 </tr>
                 <tr class="table-light fw-semibold">
                     <td>Total pulled from MailerLite</td>
@@ -65,13 +69,14 @@
 @{
     var categories = new[]
     {
-        (Outcome: SubscriberOutcome.CreateContact,                Label: "Create New Contact"),
-        (Outcome: SubscriberOutcome.AttachVerified,               Label: "Attach Verified (Opt-in Flip)"),
-        (Outcome: SubscriberOutcome.AttachVerifiedConfirmOnly,    Label: "Attach Verified (Confirm Only)"),
-        (Outcome: SubscriberOutcome.AttachVerifiedConflictKept,   Label: "Attach Verified (Keep Humans State)"),
-        (Outcome: SubscriberOutcome.DeleteUnverifiedThenCreate,   Label: "Delete Unverified Then Create"),
-        (Outcome: SubscriberOutcome.AmbiguousMultipleVerified,    Label: "Skipped — Ambiguous Multiple Verified"),
-        (Outcome: SubscriberOutcome.UnconfirmedSkipped,           Label: "Skipped — Unconfirmed"),
+        (Outcome: SubscriberOutcome.CreateNewHuman,            Label: "Create New Human"),
+        (Outcome: SubscriberOutcome.ReplaceUnverifiedEmail,    Label: "Human Exists With Unverified Email — Replace"),
+        (Outcome: SubscriberOutcome.VerifiedPrefsAlreadyMatch, Label: "Human Exists — Prefs Already Match (No-op)"),
+        (Outcome: SubscriberOutcome.VerifiedFlipToOptIn,       Label: "Human Exists — Flip Marketing to Opt-In"),
+        (Outcome: SubscriberOutcome.VerifiedFlipToOptOut,      Label: "Human Exists — Flip Marketing to Opt-Out"),
+        (Outcome: SubscriberOutcome.VerifiedKeepHumansPref,    Label: "Human Exists — Keep Humans' Pref"),
+        (Outcome: SubscriberOutcome.AmbiguousMultipleVerified, Label: "Skipped — Same Email on Multiple Humans"),
+        (Outcome: SubscriberOutcome.UnconfirmedSkipped,        Label: "Skipped — Unconfirmed in ML"),
     };
 }
 
@@ -104,10 +109,10 @@
                                 {
                                     <th>Ambiguous User Ids</th>
                                 }
-                                else if (cat.Outcome != SubscriberOutcome.CreateContact
+                                else if (cat.Outcome != SubscriberOutcome.CreateNewHuman
                                       && cat.Outcome != SubscriberOutcome.UnconfirmedSkipped)
                                 {
-                                    <th>Matched User</th>
+                                    <th>Matched Human</th>
                                 }
                             </tr>
                         </thead>
@@ -129,7 +134,7 @@
                                             }
                                         </td>
                                     }
-                                    else if (cat.Outcome != SubscriberOutcome.CreateContact
+                                    else if (cat.Outcome != SubscriberOutcome.CreateNewHuman
                                           && cat.Outcome != SubscriberOutcome.UnconfirmedSkipped)
                                     {
                                         <td>
@@ -157,6 +162,27 @@
 <div class="mt-4">
     <form method="post" action="/Mailer/Admin/Import/Commit" id="commitForm">
         @Html.AntiForgeryToken()
+
+        <div class="card mb-3">
+            <div class="card-body">
+                <label for="maxPerOutcome" class="form-label fw-semibold">
+                    Process at most N per category
+                </label>
+                <div class="d-flex align-items-center">
+                    <input type="number"
+                           class="form-control"
+                           style="max-width: 8rem;"
+                           id="maxPerOutcome"
+                           name="maxPerOutcome"
+                           min="1"
+                           value="1" />
+                    <small class="text-muted ms-3">
+                        Defaults to <strong>1 per category</strong> for safety. Clear the field to commit the entire plan.
+                    </small>
+                </div>
+            </div>
+        </div>
+
         <button type="submit" class="btn btn-danger" id="commitButton">
             <span class="commit-idle">
                 <i class="fa-solid fa-bolt me-1"></i>Commit Import
@@ -166,7 +192,7 @@
                 Applying — re-pulling MailerLite and writing decisions. This can take several minutes; don't close this tab.
             </span>
         </button>
-        <span class="ms-3 text-muted small commit-idle">This will apply all decisions above to Humans.</span>
+        <span class="ms-3 text-muted small commit-idle">This will apply the selected decisions above to Humans.</span>
     </form>
 </div>
 

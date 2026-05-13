@@ -514,6 +514,7 @@
   <data name="Consent_AlreadyConsented" xml:space="preserve"><value>Vous avez d&#xE9;j&#xE0; consenti &#xE0; ce document.</value></data>
   <data name="Consent_ThankYou" xml:space="preserve"><value>Merci d'avoir consenti &#xE0; {0}.</value><comment>{0} = document name</comment></data>
   <data name="Consent_SubmitError" xml:space="preserve"><value>Une erreur s&#x2019;est produite lors de l&#x2019;enregistrement de votre consentement. Veuillez r&#xE9;essayer.</value></data>
+  <data name="Consent_StubProfile_AddName" xml:space="preserve"><value>Ajoutez votre nom l&#xE9;gal avant de signer les consentements.</value></data>
 
   <!-- ======================== -->
   <!-- Teams                    -->

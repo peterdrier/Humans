@@ -245,6 +245,39 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         return (data, contentType);
     }
 
+    public async Task<ProfilePictureMigrationSnapshot> GetProfilePictureMigrationSnapshotAsync(
+        CancellationToken ct = default)
+    {
+        var rows = await _profileRepository.GetCustomPictureRowsAsync(ct);
+        if (rows.Count == 0)
+        {
+            return new ProfilePictureMigrationSnapshot(0, 0, Array.Empty<ProfilePictureMigrationRow>());
+        }
+
+        var users = await _userService.GetByIdsAsync(rows.Select(r => r.UserId).ToList(), ct);
+
+        var onFs = 0;
+        var dbOnly = new List<ProfilePictureMigrationRow>();
+        foreach (var (profileId, userId, burnerName, contentType, updatedAt) in rows)
+        {
+            var key = ProfilePictureKey(profileId, contentType);
+            var bytes = await _fileStorage.TryReadAsync(key, ct);
+            if (bytes is not null)
+            {
+                onFs++;
+            }
+            else
+            {
+                var displayName = !string.IsNullOrWhiteSpace(burnerName)
+                    ? burnerName
+                    : (users.TryGetValue(userId, out var u) ? u.DisplayName : string.Empty);
+                dbOnly.Add(new ProfilePictureMigrationRow(profileId, userId, displayName, contentType, updatedAt));
+            }
+        }
+
+        return new ProfilePictureMigrationSnapshot(rows.Count, onFs, dbOnly);
+    }
+
     public async Task<Guid> SaveProfileAsync(
         Guid userId, string displayName, ProfileSaveRequest request, string language,
         CancellationToken ct = default)

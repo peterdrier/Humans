@@ -34,6 +34,9 @@ internal static class TicketsSectionExtensions
         services.AddSingleton<ITicketTransferRepository, TicketTransferRepository>();
         services.AddScoped<ITicketTransferService, TicketTransferService>();
 
+        // AttendeeContactImportService — orchestrates user provisioning from unmatched ticket attendees.
+        services.AddScoped<IAttendeeContactImportService, AttendeeContactImportService>();
+
         services.AddScoped<TicketSyncJob>();
         services.AddScoped<TicketingBudgetSyncJob>();
 

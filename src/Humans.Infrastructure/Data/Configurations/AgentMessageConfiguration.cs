@@ -1,5 +1,6 @@
 using Humans.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Humans.Infrastructure.Data.Configurations;
@@ -22,7 +23,11 @@ public class AgentMessageConfiguration : IEntityTypeConfiguration<AgentMessage>
             .HasColumnType("jsonb")
             .HasConversion(
                 v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
-                v => System.Text.Json.JsonSerializer.Deserialize<string[]>(v, (System.Text.Json.JsonSerializerOptions?)null) ?? Array.Empty<string>());
+                v => System.Text.Json.JsonSerializer.Deserialize<string[]>(v, (System.Text.Json.JsonSerializerOptions?)null) ?? Array.Empty<string>(),
+                new ValueComparer<string[]>(
+                    (a, b) => ReferenceEquals(a, b) || (a != null && b != null && a.SequenceEqual(b, StringComparer.Ordinal)),
+                    v => v.Aggregate(0, (h, e) => HashCode.Combine(h, e == null ? 0 : StringComparer.Ordinal.GetHashCode(e))),
+                    v => v.ToArray()));
 
         // Same-section FK only: agent_messages → agent_conversations.
         builder.HasOne(m => m.Conversation)

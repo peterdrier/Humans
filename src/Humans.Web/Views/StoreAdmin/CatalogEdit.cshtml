@@ -34,7 +34,7 @@
                 </div>
                 <div class="col-12">
                     <label asp-for="Description" class="form-label">Description</label>
-                    <textarea asp-for="Description" class="form-control" rows="2"></textarea>
+                    <textarea asp-for="Description" class="form-control" rows="6"></textarea>
                     <span asp-validation-for="Description" class="text-danger small"></span>
                 </div>
                 <div class="col-md-3">
@@ -74,6 +74,8 @@
         </form>
     </div>
 </div>
+
+<partial name="_MarkdownHelp" />
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />

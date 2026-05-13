@@ -152,18 +152,23 @@
                             <li class="list-group-item d-flex justify-content-between align-items-center gap-2">
                                 <vc:human user-id="@pending.UserId" />
                                 <div class="d-flex gap-2">
-                                    <form asp-action="ApproveMembership" asp-route-slug="@Model.Slug" asp-route-campMemberId="@pending.CampMemberId" method="post" class="d-inline">
-                                        @Html.AntiForgeryToken()
-                                        <button type="submit" class="btn btn-sm btn-outline-success" title="Approve">
-                                            <i class="fa-solid fa-check"></i>
-                                        </button>
-                                    </form>
-                                    <form asp-action="RejectMembership" asp-route-slug="@Model.Slug" asp-route-campMemberId="@pending.CampMemberId" method="post" class="d-inline">
-                                        @Html.AntiForgeryToken()
-                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Reject" data-confirm="Reject this request?">
-                                            <i class="fa-solid fa-xmark"></i>
-                                        </button>
-                                    </form>
+                                    @* Defense-in-depth: only render approve/reject when status is actually Pending.
+                                       Service-side guard in CampService.ApproveCampMemberAsync remains. *@
+                                    @if (pending.Status == Humans.Domain.Enums.CampMemberStatus.Pending)
+                                    {
+                                        <form asp-action="ApproveMembership" asp-route-slug="@Model.Slug" asp-route-campMemberId="@pending.CampMemberId" method="post" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-sm btn-outline-success" title="Approve">
+                                                <i class="fa-solid fa-check"></i>
+                                            </button>
+                                        </form>
+                                        <form asp-action="RejectMembership" asp-route-slug="@Model.Slug" asp-route-campMemberId="@pending.CampMemberId" method="post" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Reject" data-confirm="Reject this request?">
+                                                <i class="fa-solid fa-xmark"></i>
+                                            </button>
+                                        </form>
+                                    }
                                 </div>
                             </li>
                         }

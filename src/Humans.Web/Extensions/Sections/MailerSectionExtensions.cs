@@ -1,6 +1,8 @@
+using System.Net.Http.Headers;
 using Humans.Application.Interfaces.Mailer;
 using Humans.Application.Services.Mailer;
 using Humans.Infrastructure.Services.Mailer;
+using Microsoft.Extensions.Options;
 
 namespace Humans.Web.Extensions.Sections;
 
@@ -22,10 +24,20 @@ internal static class MailerSectionExtensions
                     opts.ApiKey = flat;
             });
 
-        // Typed HttpClient — MailerLiteClient satisfies IMailerLiteService.
-        // No Polly retry: Microsoft.Extensions.Http.Polly is not in this project;
-        // MailerLiteClient handles rate-limit warnings internally (Task 21).
-        services.AddHttpClient<IMailerLiteService, MailerLiteClient>();
+        // Named HttpClient for MailerLite — resolved per-call by the Singleton
+        // MailerLiteClient through IHttpClientFactory. Keeping the client
+        // Singleton lets it cache subscribers/groups across requests.
+        services.AddHttpClient(MailerLiteClient.HttpClientName, (sp, http) =>
+        {
+            var opts = sp.GetRequiredService<IOptions<MailerLiteOptions>>().Value;
+            http.BaseAddress = new Uri(opts.BaseUrl);
+            http.DefaultRequestHeaders.Authorization =
+                new AuthenticationHeaderValue("Bearer", opts.ApiKey);
+            http.DefaultRequestHeaders.Add("X-Version", opts.ApiVersion);
+            http.DefaultRequestHeaders.Accept.Add(
+                new MediaTypeWithQualityHeaderValue("application/json"));
+        });
+        services.AddSingleton<IMailerLiteService, MailerLiteClient>();
 
         // Import orchestrator — stateless plan+apply, injected by the Admin controller.
         services.AddScoped<IMailerImportService, MailerImportService>();

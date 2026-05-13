@@ -360,6 +360,10 @@ public sealed class TicketTransferService : ITicketTransferService
 
         var attendee = await _ticketRepo.GetAttendeeByIdAsync(request.OriginalTicketAttendeeId, ct);
 
+        var order = attendee?.TicketOrder;
+        var siblingIds = order?.Attendees.Select(a => a.VendorTicketId).ToList()
+            ?? new List<string>();
+
         // Cards fall back to a minimal stub if a profile somehow can't be built
         // (e.g. user soft-deleted between request and admin review). The row's
         // snapshot fields still carry the names we need.
@@ -367,8 +371,14 @@ public sealed class TicketTransferService : ITicketTransferService
             Row: row,
             SenderCard: senderCard ?? StubCard(request.SenderUserId, row.SenderDisplayName),
             ReceiverCard: receiverCard ?? StubCard(request.ReceiverUserId, row.ReceiverLegalName),
-            OrderDashboardUrl: attendee?.TicketOrder?.VendorDashboardUrl,
-            VendorStepsJson: request.VendorStepsJson);
+            OrderDashboardUrl: order?.VendorDashboardUrl,
+            VendorStepsJson: request.VendorStepsJson,
+            OriginalAttendeeVendorTicketId: attendee?.VendorTicketId ?? string.Empty,
+            OriginalAttendeeEmail: attendee?.AttendeeEmail,
+            OrderVendorId: order?.VendorOrderId ?? string.Empty,
+            OrderPurchasedAt: order?.PurchasedAt ?? Instant.MinValue,
+            OrderBuyerEmail: order?.BuyerEmail ?? string.Empty,
+            SiblingVendorTicketIds: siblingIds);
     }
 
     private static ReceiverLookupResultDto StubCard(Guid userId, string displayName) =>

@@ -514,6 +514,7 @@
   <data name="Consent_AlreadyConsented" xml:space="preserve"><value>Sie haben diesem Dokument bereits zugestimmt.</value></data>
   <data name="Consent_ThankYou" xml:space="preserve"><value>Vielen Dank für Ihre Einwilligung zu {0}.</value><comment>{0} = document name</comment></data>
   <data name="Consent_SubmitError" xml:space="preserve"><value>Beim Speichern Ihrer Einwilligung ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut.</value></data>
+  <data name="Consent_StubProfile_AddName" xml:space="preserve"><value>Bitte tragen Sie Ihren amtlichen Namen ein, bevor Sie Einwilligungen unterzeichnen.</value></data>
 
   <!-- ======================== -->
   <!-- Teams                    -->

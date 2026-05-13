@@ -13,7 +13,9 @@ using ContactFieldService = Humans.Application.Services.Profile.ContactFieldServ
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Repositories.Profiles;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Humans.Application.Tests.Services;
 
@@ -43,7 +45,8 @@ public class ContactFieldServiceTests : IDisposable
 
         _service = new ContactFieldService(
             repository, _profileRepository, _teamService, _roleAssignmentService,
-            _clock);
+            Substitute.For<IUserInfoInvalidator>(),
+            _clock, NullLogger<ContactFieldService>.Instance);
     }
 
     public void Dispose()

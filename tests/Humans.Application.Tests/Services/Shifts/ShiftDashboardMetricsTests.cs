@@ -999,6 +999,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         public Task<UserTicketExportData> GetUserTicketExportDataAsync(Guid userId, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<Instant?> GetPostEventHoldDateAsync(CancellationToken ct = default) => throw new NotSupportedException();
         public void InvalidateAfterTransfer(Guid senderUserId, Guid? receiverUserId) => throw new NotSupportedException();
+        public void InvalidateAfterContactImport() => throw new NotSupportedException();
         public Task<UserTicketHoldings> GetUserTicketHoldingsAsync(Guid userId, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<IReadOnlyList<OrderDriftRow>> GetOrderDriftAsync(CancellationToken ct = default) => throw new NotSupportedException();
     }
@@ -1007,6 +1008,9 @@ public class ShiftDashboardMetricsTests : IDisposable
     {
         private readonly HumansDbContext _db;
         public FakeUserService(HumansDbContext db) => _db = db;
+
+        public ValueTask<Humans.Application.UserInfo?> GetUserInfoAsync(Guid userId, CancellationToken ct = default)
+            => throw new NotSupportedException();
 
         public async Task<User?> GetByIdAsync(Guid userId, CancellationToken ct = default)
             => await _db.Users.FirstOrDefaultAsync(u => u.Id == userId, ct);
@@ -1066,6 +1070,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         public Task<int> DeleteUsersAsync(IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<int> DeleteAllExternalLoginsForUserAsync(Guid userId, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<IReadOnlyDictionary<Guid, IReadOnlyList<(string Provider, string ProviderKey)>>> GetExternalLoginsByUserIdsAsync(IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task ReassignAsync(Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct) => throw new NotSupportedException();
     }
 
     private sealed class FakeTeamService : ITeamService

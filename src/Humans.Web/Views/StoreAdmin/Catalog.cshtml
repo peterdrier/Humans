@@ -44,7 +44,7 @@ else
                                 <strong>@p.Name</strong>
                                 @if (!string.IsNullOrWhiteSpace(p.Description))
                                 {
-                                    <div class="small text-muted">@p.Description</div>
+                                    <div class="small text-muted">@Html.SanitizedMarkdown(p.Description)</div>
                                 }
                             </td>
                             <td class="text-end">@p.UnitPriceEur.ToString("0.00") €</td>
