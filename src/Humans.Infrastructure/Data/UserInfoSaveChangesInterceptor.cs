@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -52,6 +53,14 @@ public sealed class UserInfoSaveChangesInterceptor : SaveChangesInterceptor
     private readonly IServiceProvider _services;
     private readonly ILogger<UserInfoSaveChangesInterceptor> _logger;
 
+    // Per-context snapshot collected in SavingChangesAsync (before commit, while
+    // Deleted entries are still in the ChangeTracker) and consumed in
+    // SavedChangesAsync (after commit, when Deleted→Detached). ConditionalWeakTable
+    // uses reference equality on DbContext so concurrent factory-created contexts
+    // never collide; entries are GC'd with their context, so the table can't leak
+    // even if SavedChangesAsync never fires.
+    private readonly ConditionalWeakTable<DbContext, HashSet<Guid>> _pending = new();
+
     public UserInfoSaveChangesInterceptor(
         IServiceProvider services,
         ILogger<UserInfoSaveChangesInterceptor> logger)
@@ -68,12 +77,29 @@ public sealed class UserInfoSaveChangesInterceptor : SaveChangesInterceptor
     // "invalidation completes before the save call returns" structurally
     // enforced.
 
+    public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
+        DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+    {
+        if (eventData.Context is { } context)
+        {
+            var affected = CollectAffectedUserIds(context);
+            if (affected.Count > 0)
+            {
+                // AddOrUpdate: a context being reused for multiple SaveChanges in
+                // sequence overwrites the prior snapshot — the prior snapshot will
+                // have been consumed in its own SavedChangesAsync already.
+                _pending.AddOrUpdate(context, affected);
+            }
+        }
+        return base.SavingChangesAsync(eventData, result, cancellationToken);
+    }
+
     public override async ValueTask<int> SavedChangesAsync(
         SaveChangesCompletedEventData eventData, int result, CancellationToken cancellationToken = default)
     {
-        var affected = CollectAffectedUserIds(eventData.Context);
-        if (affected.Count > 0)
+        if (eventData.Context is { } context && _pending.TryGetValue(context, out var affected))
         {
+            _pending.Remove(context);
             var invalidator = _services.GetService<IUserInfoInvalidator>();
             if (invalidator is not null)
             {
@@ -84,6 +110,19 @@ public sealed class UserInfoSaveChangesInterceptor : SaveChangesInterceptor
             }
         }
         return await base.SavedChangesAsync(eventData, result, cancellationToken);
+    }
+
+    public override void SaveChangesFailed(DbContextErrorEventData eventData)
+    {
+        if (eventData.Context is { } context) _pending.Remove(context);
+        base.SaveChangesFailed(eventData);
+    }
+
+    public override Task SaveChangesFailedAsync(
+        DbContextErrorEventData eventData, CancellationToken cancellationToken = default)
+    {
+        if (eventData.Context is { } context) _pending.Remove(context);
+        return base.SaveChangesFailedAsync(eventData, cancellationToken);
     }
 
     private async Task SafeInvalidate(IUserInfoInvalidator invalidator, Guid userId, CancellationToken ct)
@@ -100,17 +139,21 @@ public sealed class UserInfoSaveChangesInterceptor : SaveChangesInterceptor
         }
     }
 
-    private static HashSet<Guid> CollectAffectedUserIds(DbContext? context)
+    private static HashSet<Guid> CollectAffectedUserIds(DbContext context)
     {
         var affected = new HashSet<Guid>();
-        if (context is null) return affected;
 
-        // SaveChanges has run; tracked entries are now Unchanged but still in
-        // the ChangeTracker. Scan every entry; pick out the User-section types
-        // that bypass IUserService. Profile-section types are handled by
-        // CachingProfileService.RefreshEntryAsync — see the class remarks.
+        // Run BEFORE SaveChanges (from SavingChangesAsync) — Deleted entries are
+        // still in the ChangeTracker at this point. After SaveChanges they go
+        // Deleted→Detached and disappear, which is why we snapshot here.
+        // Scope: User-section tables that bypass IUserService (Identity machinery,
+        // OAuth pipeline, direct-repo calls). Profile-section types are handled
+        // by CachingProfileService.RefreshEntryAsync — see the class remarks.
         foreach (var entry in context.ChangeTracker.Entries())
         {
+            if (entry.State == EntityState.Unchanged || entry.State == EntityState.Detached)
+                continue;
+
             switch (entry.Entity)
             {
                 case User u:

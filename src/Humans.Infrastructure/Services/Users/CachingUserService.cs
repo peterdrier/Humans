@@ -202,27 +202,9 @@ public sealed class CachingUserService : IUserService, IUserMerge, IUserInfoInva
         [CallerMemberName] string memberName = "",
         [CallerFilePath] string filePath = "")
     {
-        var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
-        if (!string.Equals(env, "Production", StringComparison.OrdinalIgnoreCase))
-        {
-            try
-            {
-                var callerMember = string.IsNullOrEmpty(memberName) ? "(unknown)" : memberName;
-                var callerFile = string.IsNullOrEmpty(filePath)
-                    ? "(unknown)"
-                    : System.IO.Path.GetFileName(filePath);
-
-                _logger.LogDebug(
-                    "UserInfo invalidate userId={UserId} caller={CallerMember} file={CallerFile}",
-                    userId, callerMember, callerFile);
-            }
-            catch (Exception ex) when (ex is not OperationCanceledException)
-            {
-                _logger.LogWarning(
-                    "CachingUserService invalidate caller-log failed for {UserId}: {ExType}",
-                    userId, ex.GetType().Name);
-            }
-        }
+        _logger.LogDebug(
+            "UserInfo invalidate userId={UserId} caller={CallerMember} file={CallerFile}",
+            userId, memberName, System.IO.Path.GetFileName(filePath));
 
         return RefreshEntryAsync(userId, ct);
     }

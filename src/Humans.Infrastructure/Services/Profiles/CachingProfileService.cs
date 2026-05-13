@@ -471,37 +471,15 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
         [System.Runtime.CompilerServices.CallerMemberName] string memberName = "",
         [System.Runtime.CompilerServices.CallerFilePath] string filePath = "")
     {
-        // Issue #635 (§15i): dev-mode caller log via [CallerMemberName] /
-        // [CallerFilePath] params. The compiler fills these in at the
-        // callsite, so test mocks and direct callers don't have to pass
-        // anything. Cheap StringComparison against ASPNETCORE_ENVIRONMENT
-        // keeps the call free of an IHostEnvironment dependency on this
-        // Singleton. The log is the canonical way to verify every
-        // Profile-affecting write hits the invalidator during exploratory
-        // testing on the preview environment. Only fires off-Production so
-        // no perf cost in production.
-        var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
-        if (!string.Equals(env, "Production", StringComparison.OrdinalIgnoreCase))
-        {
-            try
-            {
-                var callerMember = string.IsNullOrEmpty(memberName) ? "(unknown)" : memberName;
-                var callerFile = string.IsNullOrEmpty(filePath)
-                    ? "(unknown)"
-                    : System.IO.Path.GetFileName(filePath);
-
-                _logger.LogDebug(
-                    "FullProfile invalidate userId={UserId} caller={CallerMember} file={CallerFile}",
-                    userId, callerMember, callerFile);
-            }
-            catch (Exception ex) when (ex is not OperationCanceledException)
-            {
-                // Logging is best-effort; never block the invalidation on it.
-                _logger.LogWarning(
-                    "CachingProfileService invalidate caller-log failed for {UserId}: {ExType}",
-                    userId, ex.GetType().Name);
-            }
-        }
+        // Issue #635 (§15i): caller log via [CallerMemberName] / [CallerFilePath]
+        // params — compiler fills these at the callsite so direct callers and
+        // test mocks don't have to. LogDebug is gated by the logger config
+        // (Debug enabled in dev, off in prod); the log is the canonical way to
+        // verify every Profile-affecting write hits the invalidator during
+        // exploratory testing on the preview environment.
+        _logger.LogDebug(
+            "FullProfile invalidate userId={UserId} caller={CallerMember} file={CallerFile}",
+            userId, memberName, System.IO.Path.GetFileName(filePath));
 
         return RefreshEntryAsync(userId, ct);
     }
