@@ -231,7 +231,6 @@ public sealed class DevPersonaSeeder
     private async Task EnsureSeededRoleAsync(Guid userId, string roleName, Guid assignerId)
     {
         var result = await _roleAssignmentService.AssignRoleAsync(
-        var result = await _roleAssignmentService.AssignRoleAsync(
             userId, roleName, assignerId, "Dev persona — auto-seeded");
 
         if (!result.Success && !string.Equals(result.ErrorKey, "RoleAlreadyActive", StringComparison.Ordinal))
@@ -383,6 +382,7 @@ public sealed class DevPersonaSeeder
                 _logger.LogInformation(
                     "DEV: barrio camp season {SeasonId} approve skipped — already moved past Pending",
                     currentYearSeason.Id);
+            }
         }
 
         if (await EnsureCampLeadAsync(camp, leadUserId))
