@@ -289,6 +289,18 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
         return await inner.GetProfilePictureAsync(profileId, ct);
     }
 
+    public async Task<ProfilePictureMigrationSnapshot> GetProfilePictureMigrationSnapshotAsync(
+        CancellationToken ct = default)
+    {
+        // Diagnostic snapshot for the DB→FS migration verification page
+        // (issue nobodies-collective/Humans#702). Not cached — admin operator
+        // tool, runs on demand, and the freshest possible read is what's
+        // useful immediately after a Run.
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
+        return await inner.GetProfilePictureMigrationSnapshotAsync(ct);
+    }
+
     public async Task<(int ColaboradorCount, int AsociadoCount)> GetTierCountsAsync(CancellationToken ct = default)
     {
         await using var scope = _scopeFactory.CreateAsyncScope();

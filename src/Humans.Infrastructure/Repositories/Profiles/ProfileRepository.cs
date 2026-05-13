@@ -118,6 +118,21 @@ public sealed class ProfileRepository : IProfileRepository
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<(Guid ProfileId, Guid UserId, string ContentType, Instant UpdatedAt)>>
+        GetCustomPictureRowsAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var rows = await ctx.Profiles
+            .AsNoTracking()
+            .Where(p => p.ProfilePictureContentType != null)
+            .Select(p => new { p.Id, p.UserId, p.ProfilePictureContentType, p.UpdatedAt })
+            .ToListAsync(ct);
+
+        return rows
+            .Select(r => (r.Id, r.UserId, r.ProfilePictureContentType!, r.UpdatedAt))
+            .ToList();
+    }
+
     public async Task<(int ColaboradorCount, int AsociadoCount)> GetTierCountsAsync(
         CancellationToken ct = default)
     {

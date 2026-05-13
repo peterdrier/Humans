@@ -1,0 +1,109 @@
+@using Humans.Web.Extensions
+@model Humans.Web.Controllers.ProfilePictureMigrationViewModel
+@{
+    ViewData["Title"] = "Profile Picture DB→FS Migration";
+    Layout = "_AdminLayout";
+    var snapshot = Model.Snapshot;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Profile Picture DB→FS Migration</h1>
+    <small class="text-muted">Issue #702</small>
+</div>
+
+<p class="text-muted">
+    Phase 1 (#527, shipped) added a filesystem-backed profile picture store with
+    DB fallback + migrate-on-read + dual-write. Phase 2 (#528) will drop
+    <code>Profile.ProfilePictureData</code>. This page confirms every DB-stored
+    picture is on disk before Phase 2 ships.
+</p>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h6 class="card-subtitle text-muted mb-2">Total with custom picture</h6>
+                <p class="h2 mb-0">@snapshot.TotalCount</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h6 class="card-subtitle text-muted mb-2">On filesystem</h6>
+                <p class="h2 mb-0 text-success">@snapshot.OnFilesystemCount</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h6 class="card-subtitle text-muted mb-2">DB-only (at risk)</h6>
+                <p class="h2 mb-0 @(snapshot.DbOnlyCount == 0 ? "text-success" : "text-warning")">
+                    @snapshot.DbOnlyCount
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        @if (snapshot.DbOnlyCount == 0)
+        {
+            <p class="mb-0">
+                Every DB-stored profile picture is on the filesystem — Phase 2
+                (#528, dropping the DB column) is safe to ship.
+            </p>
+        }
+        else
+        {
+            <p>
+                <strong>@snapshot.DbOnlyCount</strong>
+                @(snapshot.DbOnlyCount == 1 ? "profile has" : "profiles have")
+                a picture in the DB that is not yet on disk. Running migration
+                drives the existing migrate-on-read path
+                (<code>GetProfilePictureAsync</code>) for each row, which
+                writes the bytes through <code>IFileStorage</code>. Idempotent
+                — re-runnable if anything fails partway.
+            </p>
+            <form method="post" asp-action="Run">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-primary">
+                    <i class="fa-solid fa-wand-magic-sparkles me-1"></i>
+                    Migrate @snapshot.DbOnlyCount profile picture@(snapshot.DbOnlyCount == 1 ? "" : "s") to filesystem
+                </button>
+            </form>
+        }
+    </div>
+</div>
+
+@if (snapshot.DbOnlyCount > 0)
+{
+    <div class="card mb-4">
+        <div class="card-header">DB-only profile pictures</div>
+        <div class="table-responsive">
+            <table class="table table-striped mb-0">
+                <thead>
+                    <tr>
+                        <th>Profile id</th>
+                        <th>Owning user</th>
+                        <th>Content type</th>
+                        <th>Updated</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in snapshot.DbOnlyRows)
+                    {
+                        <tr>
+                            <td><code>@row.ProfileId</code></td>
+                            <td>@row.DisplayName</td>
+                            <td>@row.ContentType</td>
+                            <td>@row.UpdatedAt.ToDisplayDateTime()</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}

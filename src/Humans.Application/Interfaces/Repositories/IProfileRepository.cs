@@ -80,6 +80,15 @@ public interface IProfileRepository : IRepository
         GetCustomPictureInfoByUserIdsAsync(IEnumerable<Guid> userIds, CancellationToken ct = default);
 
     /// <summary>
+    /// Issue nobodies-collective/Humans#702: returns every profile whose
+    /// <c>ProfilePictureContentType</c> is non-null — the population the
+    /// DB→FS migration verification page operates on. Projects only the
+    /// scalar columns needed (no bytea load). Read-only (AsNoTracking).
+    /// </summary>
+    Task<IReadOnlyList<(Guid ProfileId, Guid UserId, string ContentType, Instant UpdatedAt)>>
+        GetCustomPictureRowsAsync(CancellationToken ct = default);
+
+    /// <summary>
     /// Returns the count of non-suspended Colaborador and Asociado members.
     /// </summary>
     Task<(int ColaboradorCount, int AsociadoCount)> GetTierCountsAsync(CancellationToken ct = default);
