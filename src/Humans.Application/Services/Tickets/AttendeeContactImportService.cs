@@ -110,8 +110,25 @@ public sealed class AttendeeContactImportService : IAttendeeContactImportService
                 AmbiguousUserIds: null);
         }
 
-        // Remaining classifications filled in by Task 10.
-        throw new NotSupportedException("Unverified/no-match branches filled in by Task 10");
+        var existingRow = await _userEmails.FindAnyEmailRowByAddressAsync(a.AttendeeEmail, ct);
+        if (existingRow is var (uid, emailId) && existingRow is not null)
+        {
+            return new AttendeeImportDecision(
+                a.Id, a.AttendeeEmail, name, a.VendorTicketId,
+                AttendeeImportOutcome.DeleteUnverifiedThenCreate,
+                TargetUserId: null,
+                UnverifiedEmailIdToDelete: emailId,
+                UnverifiedRowUserId: uid,
+                AmbiguousUserIds: null);
+        }
+
+        return new AttendeeImportDecision(
+            a.Id, a.AttendeeEmail, name, a.VendorTicketId,
+            AttendeeImportOutcome.CreateNewUser,
+            TargetUserId: null,
+            UnverifiedEmailIdToDelete: null,
+            UnverifiedRowUserId: null,
+            AmbiguousUserIds: null);
     }
 
     private async Task<Guid> ResolveTombstoneAsync(Guid userId, CancellationToken ct)

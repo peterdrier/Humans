@@ -87,6 +87,53 @@ public class AttendeeContactImportServicePlanTests
     }
 
     [HumansFact]
+    public async Task Plan_UnverifiedMatchOnly_ClassifiedAsDeleteUnverifiedThenCreate()
+    {
+        var harness = new PlanHarness();
+        var squatterUserId = Guid.NewGuid();
+        var unverifiedRowId = Guid.NewGuid();
+        harness.AddUnmatched(new TicketAttendee
+        {
+            Id = Guid.NewGuid(), VendorTicketId = "tkt_v",
+            AttendeeEmail = "victim@x.com", AttendeeName = "Victim",
+            Status = TicketAttendeeStatus.Valid,
+        });
+        harness.UserEmails.GetDistinctVerifiedUserIdsAsync("victim@x.com", Arg.Any<CancellationToken>())
+            .Returns(Array.Empty<Guid>());
+        harness.UserEmails.FindAnyEmailRowByAddressAsync("victim@x.com", Arg.Any<CancellationToken>())
+            .Returns((squatterUserId, unverifiedRowId));
+
+        var plan = await harness.Service.BuildPlanAsync();
+
+        var decision = plan.Decisions.Single();
+        decision.Outcome.Should().Be(AttendeeImportOutcome.DeleteUnverifiedThenCreate);
+        decision.UnverifiedRowUserId.Should().Be(squatterUserId);
+        decision.UnverifiedEmailIdToDelete.Should().Be(unverifiedRowId);
+    }
+
+    [HumansFact]
+    public async Task Plan_NoUserEmailMatch_ClassifiedAsCreateNewUser()
+    {
+        var harness = new PlanHarness();
+        harness.AddUnmatched(new TicketAttendee
+        {
+            Id = Guid.NewGuid(), VendorTicketId = "tkt_v",
+            AttendeeEmail = "fresh@x.com", AttendeeName = "Fresh Face",
+            Status = TicketAttendeeStatus.Valid,
+        });
+        harness.UserEmails.GetDistinctVerifiedUserIdsAsync("fresh@x.com", Arg.Any<CancellationToken>())
+            .Returns(Array.Empty<Guid>());
+        harness.UserEmails.FindAnyEmailRowByAddressAsync("fresh@x.com", Arg.Any<CancellationToken>())
+            .Returns(((Guid, Guid)?)null);
+
+        var plan = await harness.Service.BuildPlanAsync();
+
+        var decision = plan.Decisions.Single();
+        decision.Outcome.Should().Be(AttendeeImportOutcome.CreateNewUser);
+        decision.AttendeeName.Should().Be("Fresh Face");
+    }
+
+    [HumansFact]
     public async Task Plan_MultipleVerifiedMatches_ClassifiedAsAmbiguous()
     {
         var harness = new PlanHarness();
