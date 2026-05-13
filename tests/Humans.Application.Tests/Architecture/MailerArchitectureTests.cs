@@ -67,4 +67,48 @@ public class MailerArchitectureTests
         typeof(IMailerLiteService).Assembly.GetName().Name
             .Should().Be("Humans.Application");
     }
+
+    [HumansFact]
+    public void AllAudiences_UseHumansPrefix()
+    {
+        var audienceType = typeof(IMailerAudience);
+        var impls = typeof(MailerImportService).Assembly
+            .GetTypes()
+            .Where(t => audienceType.IsAssignableFrom(t) && t is { IsInterface: false, IsAbstract: false })
+            .ToList();
+
+        impls.Should().NotBeEmpty("at least one IMailerAudience implementation is expected.");
+
+        foreach (var impl in impls)
+        {
+            var instance = (IMailerAudience)Activator.CreateInstance(impl, NonPublicConstructorBypass(impl))!;
+            instance.MailerLiteGroupName.Should().StartWith("Humans - ",
+                $"every IMailerAudience must target a Humans-prefixed group; {impl.Name} does not.");
+        }
+    }
+
+    [HumansFact]
+    public void AllAudiences_HaveUniqueGroupNamesAndKeys()
+    {
+        var audienceType = typeof(IMailerAudience);
+        var impls = typeof(MailerImportService).Assembly
+            .GetTypes()
+            .Where(t => audienceType.IsAssignableFrom(t) && t is { IsInterface: false, IsAbstract: false })
+            .Select(t => (IMailerAudience)Activator.CreateInstance(t, NonPublicConstructorBypass(t))!)
+            .ToList();
+
+        impls.Select(a => a.Key).Distinct(StringComparer.Ordinal).Count().Should().Be(impls.Count,
+            "audience keys collide");
+        impls.Select(a => a.MailerLiteGroupName).Distinct(StringComparer.Ordinal).Count().Should().Be(impls.Count,
+            "audience group names collide");
+    }
+
+    // Reflection helper — passes null/default args to allow constructing audiences
+    // that take service dependencies. The arch test only inspects metadata properties.
+    private static object?[] NonPublicConstructorBypass(Type t)
+    {
+        var ctor = t.GetConstructors().OrderByDescending(c => c.GetParameters().Length).First();
+        return ctor.GetParameters().Select(p =>
+            p.ParameterType.IsValueType ? Activator.CreateInstance(p.ParameterType) : null).ToArray();
+    }
 }
