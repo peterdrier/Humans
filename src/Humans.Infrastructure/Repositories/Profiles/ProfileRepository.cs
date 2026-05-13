@@ -148,19 +148,26 @@ public sealed class ProfileRepository : IProfileRepository
 
     public async Task<IReadOnlyList<Profile>> GetReviewableAsync(CancellationToken ct = default)
     {
+        // Issue #711: gate on ProfileState.Active so Stub profiles (e.g. those
+        // provisioned by the MailerLite importer with null legal names) do not
+        // clutter the Consent Coordinator's review queue. Single upstream rule
+        // via Profile.HasRequiredIdentityFields() / ProfileState.Active.
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.Profiles
             .AsNoTracking()
-            .Where(p => !p.IsApproved && p.RejectedAt == null)
+            .Where(p => !p.IsApproved && p.RejectedAt == null && p.State == ProfileState.Active)
             .OrderBy(p => p.CreatedAt)
             .ToListAsync(ct);
     }
 
     public async Task<int> GetReviewableCountAsync(CancellationToken ct = default)
     {
+        // Issue #711: matches GetReviewableAsync — Stub profiles are excluded
+        // from the badge count so the Consent Coordinator's review queue and
+        // its nav badge stay in lockstep.
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.Profiles
-            .CountAsync(p => !p.IsApproved && p.RejectedAt == null, ct);
+            .CountAsync(p => !p.IsApproved && p.RejectedAt == null && p.State == ProfileState.Active, ct);
     }
 
     public async Task<IReadOnlyList<Guid>> GetApprovedUserIdsAsync(CancellationToken ct = default)

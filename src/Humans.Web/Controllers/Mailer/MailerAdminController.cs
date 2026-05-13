@@ -96,7 +96,7 @@ public sealed class MailerAdminController : HumansControllerBase
             _logger.LogWarning("MailerLite refresh failed: {StatusCode} {Message}", ex.StatusCode, ex.Message);
             TempData["Banner"] = "Refresh failed: " + FormatMailerLiteError(ex);
         }
-        catch (TaskCanceledException ex) when (!ct.IsCancellationRequested)
+        catch (TaskCanceledException) when (!ct.IsCancellationRequested)
         {
             // MailerLiteClient surfaces HttpClient timeouts as TaskCanceledException
             // when the caller did not cancel. Treat it as a transient refresh failure.

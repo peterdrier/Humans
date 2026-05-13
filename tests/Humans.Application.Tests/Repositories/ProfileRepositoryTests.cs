@@ -5,6 +5,7 @@ using NodaTime.Testing;
 using Humans.Application;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
+using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Xunit;
 using Humans.Infrastructure.Repositories.Profiles;
@@ -181,5 +182,78 @@ public sealed class ProfileRepositoryTests : IDisposable
         persisted.Date.Should().Be(new LocalDate(2024, 6, 15));
         persisted.EventName.Should().Be("Renamed Event");
         persisted.UpdatedAt.Should().Be(afterAdvance);
+    }
+
+    // Issue #711: Stub profiles (e.g. those provisioned by the MailerLite
+    // importer with null legal names) must not appear in the Consent
+    // Coordinator's review queue or be counted in the nav badge.
+
+    [HumansFact]
+    public async Task GetReviewableAsync_ExcludesStubProfiles()
+    {
+        var now = _clock.GetCurrentInstant();
+
+        var activeProfile = NewProfile("Burner1", "First", "Last", ProfileState.Active);
+        var stubProfile = NewProfile("", "", "", ProfileState.Stub);
+
+        await _dbContext.Profiles.AddRangeAsync(activeProfile, stubProfile);
+        await _dbContext.SaveChangesAsync();
+
+        var reviewable = await _repo.GetReviewableAsync();
+
+        reviewable.Should().ContainSingle()
+            .Which.Id.Should().Be(activeProfile.Id);
+    }
+
+    [HumansFact]
+    public async Task GetReviewableCountAsync_ExcludesStubProfiles()
+    {
+        var activeOne = NewProfile("B1", "F1", "L1", ProfileState.Active);
+        var activeTwo = NewProfile("B2", "F2", "L2", ProfileState.Active);
+        var stubOne = NewProfile("", "", "", ProfileState.Stub);
+        var stubTwo = NewProfile("", "", "", ProfileState.Stub);
+
+        await _dbContext.Profiles.AddRangeAsync(activeOne, activeTwo, stubOne, stubTwo);
+        await _dbContext.SaveChangesAsync();
+
+        var count = await _repo.GetReviewableCountAsync();
+
+        count.Should().Be(2);
+    }
+
+    [HumansFact]
+    public async Task GetReviewableAsync_ExcludesAlreadyApprovedAndRejected()
+    {
+        var now = _clock.GetCurrentInstant();
+
+        var reviewable = NewProfile("B", "F", "L", ProfileState.Active);
+        var approved = NewProfile("B", "F", "L", ProfileState.Active);
+        approved.IsApproved = true;
+        var rejected = NewProfile("B", "F", "L", ProfileState.Active);
+        rejected.RejectedAt = now;
+
+        await _dbContext.Profiles.AddRangeAsync(reviewable, approved, rejected);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _repo.GetReviewableAsync();
+
+        result.Should().ContainSingle()
+            .Which.Id.Should().Be(reviewable.Id);
+    }
+
+    private Profile NewProfile(string burnerName, string firstName, string lastName, ProfileState state)
+    {
+        var now = _clock.GetCurrentInstant();
+        return new Profile
+        {
+            Id = Guid.NewGuid(),
+            UserId = Guid.NewGuid(),
+            BurnerName = burnerName,
+            FirstName = firstName,
+            LastName = lastName,
+            State = state,
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
     }
 }

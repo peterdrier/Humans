@@ -181,6 +181,15 @@ public sealed class ConsentService : IConsentService, IUserDataContributor
         Guid userId, Guid documentVersionId, bool explicitConsent,
         string ipAddress, string userAgent, CancellationToken ct = default)
     {
+        // Issue #711: defense-in-depth Stub gate. The ConsentController also
+        // redirects Stub-state users to /Profile/Edit before calling here, but
+        // any future caller that bypasses the controller must still be refused
+        // so a ConsentRecord is never written for a Profile with null legal
+        // name. Mirrors the upstream ProfileRepository.GetReviewableAsync rule.
+        var profile = await _profileService.GetProfileAsync(userId, ct);
+        if (profile is not null && !profile.HasRequiredIdentityFields())
+            return new ConsentSubmitResult(false, ErrorKey: "StubProfile");
+
         var version = await _legalDocumentSyncService.GetVersionByIdAsync(documentVersionId, ct);
 
         if (version is null)

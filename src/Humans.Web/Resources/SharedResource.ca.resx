@@ -518,6 +518,7 @@
   <data name="Consent_AlreadyConsented" xml:space="preserve"><value>Ja has atorgat el teu consentiment a aquest document.</value></data>
   <data name="Consent_ThankYou" xml:space="preserve"><value>Gràcies per atorgar el teu consentiment a {0}.</value><comment>{0} = document name</comment></data>
   <data name="Consent_SubmitError" xml:space="preserve"><value>Alguna cosa ha anat malament en registrar el teu consentiment. Si us plau, torna-ho a provar.</value></data>
+  <data name="Consent_StubProfile_AddName" xml:space="preserve"><value>Afegeix el teu nom legal abans de signar consentiments.</value></data>
 
   <!-- ======================== -->
   <!-- Teams                    -->

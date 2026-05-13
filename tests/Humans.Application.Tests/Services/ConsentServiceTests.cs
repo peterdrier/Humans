@@ -258,6 +258,66 @@ public class ConsentServiceTests : IDisposable
         result.DocumentName.Should().Be("Privacy Policy");
     }
 
+    // Issue #711: defense-in-depth Stub gate — even if a future caller bypasses
+    // the controller's redirect, ConsentService must refuse Stub-state writes
+    // so no ConsentRecord is ever persisted for a Profile with null legal name.
+
+    [HumansFact]
+    public async Task SubmitConsentAsync_StubProfile_ReturnsStubProfileErrorAndWritesNoRecord()
+    {
+        var userId = Guid.NewGuid();
+        var versionId = Guid.NewGuid();
+        SeedDocumentVersion(versionId, "Privacy Policy", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "text" });
+
+        // Stub profile = required identity fields blank.
+        var stubProfile = new Profile
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            BurnerName = "",
+            FirstName = "",
+            LastName = "",
+            State = ProfileState.Stub,
+            CreatedAt = _clock.GetCurrentInstant(),
+            UpdatedAt = _clock.GetCurrentInstant()
+        };
+        _profileService.GetProfileAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(stubProfile);
+
+        var result = await _service.SubmitConsentAsync(userId, versionId, true, "127.0.0.1", "Agent");
+
+        result.Success.Should().BeFalse();
+        result.ErrorKey.Should().Be("StubProfile");
+        (await _dbContext.ConsentRecords.CountAsync()).Should().Be(0);
+    }
+
+    [HumansFact]
+    public async Task SubmitConsentAsync_ActiveProfile_AllowsWrite()
+    {
+        var userId = Guid.NewGuid();
+        var versionId = Guid.NewGuid();
+        SeedDocumentVersion(versionId, "Privacy Policy", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "text" });
+
+        var activeProfile = new Profile
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            BurnerName = "Burner",
+            FirstName = "First",
+            LastName = "Last",
+            State = ProfileState.Active,
+            CreatedAt = _clock.GetCurrentInstant(),
+            UpdatedAt = _clock.GetCurrentInstant()
+        };
+        _profileService.GetProfileAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(activeProfile);
+
+        var result = await _service.SubmitConsentAsync(userId, versionId, true, "127.0.0.1", "Agent");
+
+        result.Success.Should().BeTrue();
+        (await _dbContext.ConsentRecords.CountAsync()).Should().Be(1);
+    }
+
     // --- GetConsentDashboardAsync ---
 
     [HumansFact]
