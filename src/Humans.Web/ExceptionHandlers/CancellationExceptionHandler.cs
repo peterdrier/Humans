@@ -5,9 +5,10 @@ namespace Humans.Web.ExceptionHandlers;
 /// <summary>
 /// Swallows <see cref="OperationCanceledException"/> when the cancellation originated
 /// from the client aborting the request (<see cref="HttpContext.RequestAborted"/>).
-/// Logs at Information since this is expected behaviour, sets status 499
-/// ("Client Closed Request", an nginx convention) when the response hasn't
-/// already started, and returns <c>true</c> to short-circuit further handlers.
+/// Logs at Warning (without the exception) per <c>memory/code/always-log-problems.md</c>
+/// — expected events still need to be visible in the prod log viewer. Sets status 499
+/// ("Client Closed Request", an nginx convention) when the response hasn't already
+/// started, and returns <c>true</c> to short-circuit further handlers.
 ///
 /// Registered BEFORE <see cref="GlobalLoggingExceptionHandler"/> so cancellations
 /// never get logged as errors.
@@ -41,7 +42,8 @@ public sealed class CancellationExceptionHandler : IExceptionHandler
         // pipeline had a chance to flag RequestAborted.
         var isClientAbort =
             httpContext.RequestAborted.IsCancellationRequested
-            || oce.CancellationToken == httpContext.RequestAborted;
+            || (oce.CancellationToken.IsCancellationRequested
+                && oce.CancellationToken == httpContext.RequestAborted);
 
         if (!isClientAbort)
         {
@@ -49,7 +51,7 @@ public sealed class CancellationExceptionHandler : IExceptionHandler
             return ValueTask.FromResult(false);
         }
 
-        _logger.LogInformation(
+        _logger.LogWarning(
             "Request cancelled by client on {Method} {Path}",
             httpContext.Request.Method,
             httpContext.Request.Path);
