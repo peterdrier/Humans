@@ -95,7 +95,6 @@ public sealed record ProfileInfo(
     string? ContributionInterests,
     string? BoardNotes,
     string? Iban,
-    bool IsSuspended,
     ProfileState? State,
     bool IsApproved,
     MembershipTier MembershipTier,
@@ -293,10 +292,6 @@ public sealed record UserInfo(
                 .Select(v => new VolunteerHistoryInfo(v.Id, v.Date, v.EventName, v.Description))
                 .ToList();
 
-#pragma warning disable HUM_PROFILE_ISSUSPENDED
-            var isSuspended = profile.IsSuspended;
-#pragma warning restore HUM_PROFILE_ISSUSPENDED
-
             profileInfo = new ProfileInfo(
                 Id: profile.Id,
                 BurnerName: profile.BurnerName,
@@ -322,7 +317,6 @@ public sealed record UserInfo(
                 ContributionInterests: profile.ContributionInterests,
                 BoardNotes: profile.BoardNotes,
                 Iban: profile.Iban,
-                IsSuspended: isSuspended,
                 State: profile.State,
                 IsApproved: profile.IsApproved,
                 MembershipTier: profile.MembershipTier,
