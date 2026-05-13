@@ -1,3 +1,4 @@
+@using Humans.Web.Extensions
 @model IReadOnlyList<Humans.Web.Models.Mailer.AudienceCardRow>
 
 <section class="card mb-4">
@@ -22,7 +23,7 @@
                                 @row.CurrentlyInGroup currently in group
                                 @if (row.LastSyncAt is not null)
                                 {
-                                    <text> · last sync @row.LastSyncAt.Value.ToDateTimeUtc().ToString("yyyy-MM-dd HH:mm 'UTC'")</text>
+                                    <text> · last sync @row.LastSyncAt.Value.ToAuditTimestamp()</text>
                                 }
                             </div>
                         </div>

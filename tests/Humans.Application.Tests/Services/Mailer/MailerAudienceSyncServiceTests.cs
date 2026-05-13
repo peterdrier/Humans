@@ -31,7 +31,7 @@ public class MailerAudienceSyncServiceTests
                 Arg.Any<CancellationToken>())
             .Returns(new BulkImportResult(1, 0, 0, 0));
 
-        var result = await NewService(audience).SyncAsync(audience, CancellationToken.None);
+        var result = await NewService(audience).SyncAsync(audience, ct: CancellationToken.None);
 
         result.Created.Should().Be(1);
         result.Assigned.Should().Be(0);
@@ -49,7 +49,7 @@ public class MailerAudienceSyncServiceTests
         SetupGroups(Group("g1", "Humans - A"));
         SetupSubscribers(Subscriber("s1", "a@example.com", "unsubscribed"));
 
-        var result = await NewService(audience).SyncAsync(audience, CancellationToken.None);
+        var result = await NewService(audience).SyncAsync(audience, ct: CancellationToken.None);
 
         result.ExcludedUnsubscribed.Should().Be(1);
         result.Created.Should().Be(0);
@@ -69,7 +69,7 @@ public class MailerAudienceSyncServiceTests
         SetupGroups(Group("g1", "Humans - A"));
         SetupSubscribers(Subscriber("s1", "a@example.com", "active"));
 
-        var result = await NewService(audience).SyncAsync(audience, CancellationToken.None);
+        var result = await NewService(audience).SyncAsync(audience, ct: CancellationToken.None);
 
         result.Assigned.Should().Be(1);
         await _ml.Received(1).AssignSubscriberToGroupAsync("s1", "g1", Arg.Any<CancellationToken>());
@@ -83,7 +83,7 @@ public class MailerAudienceSyncServiceTests
         SetupGroups(Group("g1", "Humans - A"));
         SetupSubscribers(Subscriber("s1", "a@example.com", "active", inGroups: new[] { "g1" }));
 
-        var result = await NewService(audience).SyncAsync(audience, CancellationToken.None);
+        var result = await NewService(audience).SyncAsync(audience, ct: CancellationToken.None);
 
         result.Unassigned.Should().Be(1);
         await _ml.Received(1).UnassignSubscriberFromGroupAsync("s1", "g1", Arg.Any<CancellationToken>());
@@ -103,7 +103,7 @@ public class MailerAudienceSyncServiceTests
                 "g1", Arg.Any<IReadOnlyList<string>>(), Arg.Any<CancellationToken>())
             .Returns(new BulkImportResult(1, 0, 0, 0));
 
-        await NewService(audience).SyncAsync(audience, CancellationToken.None);
+        await NewService(audience).SyncAsync(audience, ct: CancellationToken.None);
 
         await _ml.Received(1).CreateGroupAsync("Humans - A", Arg.Any<CancellationToken>());
     }
@@ -117,7 +117,7 @@ public class MailerAudienceSyncServiceTests
         SetupGroups(Group("g1", "Humans - A"));
         SetupSubscribers(Subscriber("s1", "a@example.com", "active", inGroups: new[] { "g1" }));
 
-        var result = await NewService(audience).SyncAsync(audience, CancellationToken.None);
+        var result = await NewService(audience).SyncAsync(audience, ct: CancellationToken.None);
 
         result.AlreadyAssigned.Should().Be(1);
         result.Created.Should().Be(0);
@@ -145,7 +145,7 @@ public class MailerAudienceSyncServiceTests
         _ml.AssignSubscriberToGroupAsync("s1", "g1", Arg.Any<CancellationToken>())
             .Returns<Task>(_ => throw new HttpRequestException("simulated 500"));
 
-        var result = await NewService(audience).SyncAsync(audience, CancellationToken.None);
+        var result = await NewService(audience).SyncAsync(audience, ct: CancellationToken.None);
 
         result.Errors.Should().Be(1);
         result.Assigned.Should().Be(1); // s2 still succeeded
@@ -156,7 +156,7 @@ public class MailerAudienceSyncServiceTests
     {
         var audience = NewAudience("a-aud", "Newsletter", Array.Empty<Guid>());
 
-        var act = async () => await NewService(audience).SyncAsync(audience, CancellationToken.None);
+        var act = async () => await NewService(audience).SyncAsync(audience, ct: CancellationToken.None);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*Humans - *");
@@ -171,7 +171,7 @@ public class MailerAudienceSyncServiceTests
         SetupGroups(Group("g1", "Humans - A"));
         SetupSubscribers(Subscriber("s1", "a@example.com", "active"));
 
-        await NewService(audience).SyncAsync(audience, CancellationToken.None);
+        await NewService(audience).SyncAsync(audience, ct: CancellationToken.None);
 
         await _audit.Received(1).LogAsync(
             AuditAction.MailerLiteAudienceSyncCompleted,
@@ -205,15 +205,15 @@ public class MailerAudienceSyncServiceTests
     private void SetupEmails(params (Guid UserId, string Email)[] mapping)
     {
         var dict = mapping.ToDictionary(x => x.UserId, x => x.Email);
-        _emails.GetPrimaryEmailsByUserIdsAsync(
-                Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
+        _emails.GetNotificationTargetEmailsAsync(
+                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns((IReadOnlyDictionary<Guid, string>)dict);
     }
 
     private void SetupEmailsEmpty()
     {
-        _emails.GetPrimaryEmailsByUserIdsAsync(
-                Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
+        _emails.GetNotificationTargetEmailsAsync(
+                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns((IReadOnlyDictionary<Guid, string>)new Dictionary<Guid, string>());
     }
 

@@ -81,7 +81,20 @@ public sealed class MailerAdminController : HumansControllerBase
             ct: ct);
         var last = recent.FirstOrDefault();
 
-        var audienceRows = await BuildAudienceRowsAsync(ct);
+        IReadOnlyList<AudienceCardRow> audienceRows;
+        try
+        {
+            var stats = await _audienceSync.ComputeAllStatsAsync(ct);
+            audienceRows = stats.Select(s => new AudienceCardRow(
+                s.Key, s.DisplayName, s.MailerLiteGroupName,
+                s.Candidates, s.ExcludedUnsubscribed, s.CurrentlyInGroup,
+                s.LastSyncAt, s.LastSyncSummary)).ToList();
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogWarning(ex, "Audience stats failed");
+            audienceRows = Array.Empty<AudienceCardRow>();
+        }
 
         var vm = new MailerDashboardViewModel(
             summary, groups, mlContacts, optedIn, optedOut,
@@ -89,40 +102,6 @@ public sealed class MailerAdminController : HumansControllerBase
             _ml.LastFetchedAt,
             audienceRows);
         return View("~/Views/Mailer/Admin/Index.cshtml", vm);
-    }
-
-    private async Task<IReadOnlyList<AudienceCardRow>> BuildAudienceRowsAsync(CancellationToken ct)
-    {
-        if (_audiences.Count == 0) return Array.Empty<AudienceCardRow>();
-
-        var rows = new List<AudienceCardRow>();
-        var lastSyncEntries = await _audit.GetFilteredEntriesAsync(
-            actions: new[] { AuditAction.MailerLiteAudienceSyncCompleted },
-            limit: 50,
-            ct: ct);
-
-        foreach (var audience in _audiences)
-        {
-            AudienceStats stats;
-            try
-            {
-                stats = await _audienceSync.ComputeStatsAsync(audience, ct);
-            }
-            catch (HttpRequestException ex)
-            {
-                _logger.LogWarning(ex, "Audience stats failed for {Audience}", audience.Key);
-                continue;
-            }
-            var lastForThisAudience = lastSyncEntries.FirstOrDefault(e =>
-                e.Description is not null
-                && e.Description.Contains($"\"audience_key\":\"{audience.Key}\"", StringComparison.Ordinal));
-            rows.Add(new AudienceCardRow(
-                audience.Key, audience.DisplayName, audience.MailerLiteGroupName,
-                stats.Candidates, stats.ExcludedUnsubscribed, stats.CurrentlyInGroup,
-                lastForThisAudience?.OccurredAt,
-                lastForThisAudience?.Description));
-        }
-        return rows;
     }
 
     [HttpPost("Audiences/{key}/Sync")]
@@ -134,7 +113,8 @@ public sealed class MailerAdminController : HumansControllerBase
 
         try
         {
-            var result = await _audienceSync.SyncAsync(audience, ct);
+            var actor = await GetCurrentUserAsync();
+            var result = await _audienceSync.SyncAsync(audience, actor?.Id, ct);
             TempData["Banner"] = $"{audience.DisplayName}: {result.FormatSummary()}";
         }
         catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException)

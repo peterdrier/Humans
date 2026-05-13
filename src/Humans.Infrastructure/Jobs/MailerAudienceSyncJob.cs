@@ -23,7 +23,7 @@ public sealed class MailerAudienceSyncJob
     public async Task ExecuteAsync(CancellationToken ct = default)
     {
         _logger.LogInformation("MailerAudienceSyncJob starting");
-        var results = await _sync.SyncAllAsync(ct);
+        var results = await _sync.SyncAllAsync(actorUserId: null, ct);
         _logger.LogInformation(
             "MailerAudienceSyncJob completed: {Count} audiences processed",
             results.Count);

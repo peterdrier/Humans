@@ -46,7 +46,7 @@ public class MailerAdminControllerAudienceSyncTests
         audience.DisplayName.Returns("Ticket holders without a shift");
         audience.MailerLiteGroupName.Returns("Humans - Ticket no Shifts");
 
-        _audienceSync.SyncAsync(audience, Arg.Any<CancellationToken>())
+        _audienceSync.SyncAsync(audience, Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
             .Returns(new AudienceSyncResult(
                 "ticket-no-shifts", "g1", "Humans - Ticket no Shifts",
                 Candidates: 10, ExcludedUnsubscribed: 1,
@@ -79,7 +79,7 @@ public class MailerAdminControllerAudienceSyncTests
         audience.Key.Returns("bad-audience");
         audience.DisplayName.Returns("Bad");
         audience.MailerLiteGroupName.Returns("Bad");
-        _audienceSync.SyncAsync(audience, Arg.Any<CancellationToken>())
+        _audienceSync.SyncAsync(audience, Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
             .Returns<Task<AudienceSyncResult>>(_ => throw new InvalidOperationException("prefix violation"));
 
         var ctrl = BuildSut(new[] { audience });

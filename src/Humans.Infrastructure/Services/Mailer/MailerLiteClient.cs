@@ -116,6 +116,13 @@ public sealed class MailerLiteClient : IMailerLiteService
         return env.Data;
     }
 
+    // NOTE: Assign/Unassign/BulkImport intentionally do NOT call InvalidateSubscribersCache().
+    // They are called in tight loops by MailerAudienceSyncService, which holds its own
+    // per-sync subscriber snapshot — invalidating mid-loop would force a full ML re-fetch
+    // before every single write (N+M extra full-list calls for N assigns + M unassigns,
+    // burning the rate limit). The cache will refresh on the next admin "Refresh" click
+    // or via the singleton expiry path; the staleness window is bounded and harmless.
+
     public async Task AssignSubscriberToGroupAsync(
         string subscriberId, string groupId, CancellationToken ct = default)
     {
@@ -126,7 +133,6 @@ public sealed class MailerLiteClient : IMailerLiteService
             $"/api/subscribers/{Uri.EscapeDataString(subscriberId)}/groups/{Uri.EscapeDataString(groupId)}",
             content: null, ct);
         resp.EnsureSuccessStatusCode();
-        InvalidateSubscribersCache();
     }
 
     public async Task UnassignSubscriberFromGroupAsync(
@@ -139,7 +145,6 @@ public sealed class MailerLiteClient : IMailerLiteService
             $"/api/subscribers/{Uri.EscapeDataString(subscriberId)}/groups/{Uri.EscapeDataString(groupId)}",
             content: null, ct);
         resp.EnsureSuccessStatusCode();
-        InvalidateSubscribersCache();
     }
 
     public async Task<BulkImportResult> BulkImportSubscribersToGroupAsync(
@@ -179,7 +184,6 @@ public sealed class MailerLiteClient : IMailerLiteService
             duplicates += parsed?.Duplicates ?? 0;
         }
 
-        InvalidateSubscribersCache();
         return new BulkImportResult(created, updated, duplicates, errors);
     }
 
@@ -194,17 +198,6 @@ public sealed class MailerLiteClient : IMailerLiteService
                 $"MailerLite group '{group.Name}' (id={groupId}) is not managed by Humans. " +
                 $"Writes are restricted to groups whose name starts with '{HumansGroupPrefix}'.");
         return group;
-    }
-
-    private void InvalidateSubscribersCache()
-    {
-        _gate.Wait();
-        try
-        {
-            _subscribers = null;
-            _summary = null;
-        }
-        finally { _gate.Release(); }
     }
 
     private void InvalidateGroupsCache()
