@@ -231,7 +231,8 @@ public sealed class DevPersonaSeeder
     private async Task EnsureSeededRoleAsync(Guid userId, string roleName, Guid assignerId)
     {
         var result = await _roleAssignmentService.AssignRoleAsync(
-            userId, roleName, assignerId, "Dev persona â€” auto-seeded");
+        var result = await _roleAssignmentService.AssignRoleAsync(
+            userId, roleName, assignerId, "Dev persona — auto-seeded");
 
         if (!result.Success && !string.Equals(result.ErrorKey, "RoleAlreadyActive", StringComparison.Ordinal))
         {
