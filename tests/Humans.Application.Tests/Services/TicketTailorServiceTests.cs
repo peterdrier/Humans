@@ -142,9 +142,117 @@ public class TicketTailorServiceTests
 
         tickets.Should().HaveCount(1);
         tickets[0].AttendeeName.Should().Be("Jane Doe");
+        tickets[0].AttendeeEmail.Should().Be("jane@example.com");
         tickets[0].Price.Should().Be(150m);
         tickets[0].TicketTypeName.Should().Be("Full Week");
         tickets[0].VendorOrderId.Should().Be("ord_001");
+    }
+
+    [HumansFact]
+    public async Task GetIssuedTicketsAsync_PrefersCustomQuestionEmailOverTopLevelEmail()
+    {
+        // Real-world TT shape (order or_75997215, ticket it_124025964): the
+        // top-level `email` is the buyer's account email replicated onto each
+        // ticket; the actual attendee email lives in custom_questions where
+        // question == "Email".
+        var handler = new MockHttpHandler();
+        handler.EnqueueResponse(HttpStatusCode.OK, new
+        {
+            data = new[]
+            {
+                new
+                {
+                    id = "it_124025964",
+                    first_name = "Daniel",
+                    last_name = "Paiva De Miranda",
+                    full_name = "Daniel Paiva De Miranda",
+                    email = "yulia.kisd@gmail.com",
+                    custom_questions = new[]
+                    {
+                        new { question = "Email", answer = "dpmirandadp@gmail.com" }
+                    },
+                    description = "Main tickets - Wave 2 Tickets",
+                    listed_price = 29500,
+                    status = "valid",
+                    order_id = "or_75997215"
+                }
+            },
+            links = new { next = (string?)null }
+        });
+
+        var service = CreateService(handler);
+        var tickets = await service.GetIssuedTicketsAsync(null, "ev_test");
+
+        tickets[0].AttendeeEmail.Should().Be("dpmirandadp@gmail.com");
+    }
+
+    [HumansFact]
+    public async Task GetIssuedTicketsAsync_FallsBackToTopLevelEmailWhenCustomAnswerBlank()
+    {
+        var handler = new MockHttpHandler();
+        handler.EnqueueResponse(HttpStatusCode.OK, new
+        {
+            data = new[]
+            {
+                new
+                {
+                    id = "it_002",
+                    first_name = "Jane",
+                    last_name = "Doe",
+                    full_name = "Jane Doe",
+                    email = "jane@example.com",
+                    custom_questions = new[]
+                    {
+                        new { question = "Email", answer = "   " }
+                    },
+                    description = "Full Week",
+                    listed_price = 15000,
+                    status = "valid",
+                    order_id = "ord_001"
+                }
+            },
+            links = new { next = (string?)null }
+        });
+
+        var service = CreateService(handler);
+        var tickets = await service.GetIssuedTicketsAsync(null, "ev_test");
+
+        tickets[0].AttendeeEmail.Should().Be("jane@example.com");
+    }
+
+    [HumansFact]
+    public async Task GetIssuedTicketsAsync_IgnoresNonEmailCustomQuestions()
+    {
+        var handler = new MockHttpHandler();
+        handler.EnqueueResponse(HttpStatusCode.OK, new
+        {
+            data = new[]
+            {
+                new
+                {
+                    id = "it_003",
+                    first_name = "Jane",
+                    last_name = "Doe",
+                    full_name = "Jane Doe",
+                    email = "jane@example.com",
+                    custom_questions = new[]
+                    {
+                        new { question = "Dietary restrictions", answer = "vegan" },
+                        new { question = "T-shirt size", answer = "M" }
+                    },
+                    description = "Full Week",
+                    listed_price = 15000,
+                    status = "valid",
+                    order_id = "ord_001"
+                }
+            },
+            links = new { next = (string?)null }
+        });
+
+        var service = CreateService(handler);
+        var tickets = await service.GetIssuedTicketsAsync(null, "ev_test");
+
+        tickets[0].AttendeeEmail.Should().Be("jane@example.com");
     }
 
     [HumansFact]
