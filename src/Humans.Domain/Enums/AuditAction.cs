@@ -165,4 +165,5 @@ public enum AuditAction
     UserEmailDisplacedByOAuthRename,
     MailerLiteReconciliationCompleted,
     GoogleSyncRetryScheduled,
+    TicketContactsImported,
 }
