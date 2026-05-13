@@ -213,9 +213,7 @@ public sealed class WidgetGalleryController : HumansControllerBase
             RemainingSlots = u.RemainingSlots,
             UrgencyScore = u.UrgencyScore,
             Signups = u.Signups
-                .Select(s => new ShiftSignupInfo(
-                    s.UserId, s.DisplayName, s.Status,
-                    s.HasProfilePicture ? $"/Profile/Picture?id={s.UserId}" : null))
+                .Select(s => new ShiftSignupInfo(s.UserId, s.DisplayName, s.Status))
                 .ToList(),
         };
     }

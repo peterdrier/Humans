@@ -638,8 +638,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
                             return (
                                 ss.UserId,
                                 DisplayName: user?.DisplayName ?? string.Empty,
-                                ss.Status,
-                                HasProfilePicture: user?.ProfilePictureUrl is not null);
+                                ss.Status);
                         })
                         .OrderBy(ss => ss.Status == SignupStatus.Confirmed ? 0 : 1)
                         .ThenBy(ss => ss.DisplayName, StringComparer.OrdinalIgnoreCase)
