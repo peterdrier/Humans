@@ -48,22 +48,13 @@ public sealed class UserInfoSaveChangesInterceptor : SaveChangesInterceptor
         _logger = logger;
     }
 
-    public override int SavedChanges(SaveChangesCompletedEventData eventData, int result)
-    {
-        var affected = CollectAffectedUserIds(eventData.Context);
-        if (affected.Count > 0)
-        {
-            var invalidator = _services.GetService<IUserInfoInvalidator>();
-            if (invalidator is not null)
-            {
-                foreach (var userId in affected)
-                {
-                    _ = SafeInvalidate(invalidator, userId, CancellationToken.None);
-                }
-            }
-        }
-        return base.SavedChanges(eventData, result);
-    }
+    // No sync SavedChanges override: every write in this codebase flows
+    // through SaveChangesAsync, and a sync override would have to fire the
+    // invalidator as a discarded task — opening a race window where a read
+    // between the sync save returning and the invalidation completing sees
+    // a stale dict entry. Keeping the async path as the only path makes
+    // "invalidation completes before the save call returns" structurally
+    // enforced.
 
     public override async ValueTask<int> SavedChangesAsync(
         SaveChangesCompletedEventData eventData, int result, CancellationToken cancellationToken = default)

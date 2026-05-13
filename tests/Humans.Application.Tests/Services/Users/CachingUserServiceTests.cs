@@ -217,9 +217,9 @@ public class CachingUserServiceTests
         _userRepo.GetExternalLoginsByUserIdsAsync(
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, IReadOnlyList<(string Provider, string ProviderKey)>>());
-        _userRepo.GetEventParticipationsByUserIdAsync(
-                Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<EventParticipation>());
+        _userRepo.GetEventParticipationsByUserIdsAsync(
+                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, IReadOnlyList<EventParticipation>>());
         _profileRepo.GetAllAsync(Arg.Any<CancellationToken>())
             .Returns(Array.Empty<Profile>());
         _contactFieldRepo.GetAllAsync(Arg.Any<CancellationToken>())
@@ -227,6 +227,11 @@ public class CachingUserServiceTests
 
         var sut = CreateSut();
         await sut.WarmAllAsync();
+
+        await _userRepo.Received(1).GetEventParticipationsByUserIdsAsync(
+            Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>());
+        await _userRepo.DidNotReceive().GetEventParticipationsByUserIdAsync(
+            Arg.Any<Guid>(), Arg.Any<CancellationToken>());
 
         var hitA = await sut.GetUserInfoAsync(userA.Id);
         var hitB = await sut.GetUserInfoAsync(userB.Id);
