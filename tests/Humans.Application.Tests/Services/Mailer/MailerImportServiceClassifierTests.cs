@@ -111,6 +111,22 @@ public class MailerImportServiceClassifierTests
     }
 
     [HumansFact]
+    public async Task Classifies_VerifiedMatch_NoExistingPref_MlOptedOut_AsNoOp()
+    {
+        // No Marketing pref row + ML unsubscribed: Marketing defaults to
+        // opted-out for users without a row, so this is already effectively
+        // in sync — should be a no-op, not a phantom flip.
+        var harness = new ClassifierHarness();
+        var userId = Guid.NewGuid();
+        harness.MlReturns(Unsubscribed("verified@x.com"));
+        harness.VerifiedMatches["verified@x.com"] = userId;
+
+        var plan = await harness.Service.BuildPlanAsync();
+
+        plan.Decisions.Single().Outcome.Should().Be(SubscriberOutcome.VerifiedPrefsAlreadyMatch);
+    }
+
+    [HumansFact]
     public async Task Classifies_VerifiedMatch_UserActionNewerThanMl_AsKeepHumansPref()
     {
         // Humans opted-in via Profile (user action) AND Humans.UpdatedAt > ML.UnsubscribedAt

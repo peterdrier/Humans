@@ -121,6 +121,13 @@ public sealed class MailerImportService : IMailerImportService
         if (existingMarketing is not null && existingMarketing.OptedOut == mlOptedOut)
             return SubscriberOutcome.VerifiedPrefsAlreadyMatch;
 
+        // No pref row + ML opt-out: Marketing defaults to opted-out for users
+        // with no row (see CommunicationPreferenceService.DefaultOptedOut), so
+        // state is already effectively in sync. Treat as no-op to avoid
+        // writing a redundant opt-out row and inflating the flip count.
+        if (existingMarketing is null && mlOptedOut)
+            return SubscriberOutcome.VerifiedPrefsAlreadyMatch;
+
         return mlOptedOut
             ? SubscriberOutcome.VerifiedFlipToOptOut
             : SubscriberOutcome.VerifiedFlipToOptIn;
@@ -259,6 +266,18 @@ public sealed class MailerImportService : IMailerImportService
         int throttled = 0;
         foreach (var d in decisions)
         {
+            // UnconfirmedSkipped and AmbiguousMultipleVerified are unconditional
+            // no-ops in ApplyAsync — they never write. Bypass the throttle so
+            // they don't consume a slot or inflate DecisionsThrottled (which
+            // would double-count against plan.Counts.UnconfirmedSkipped /
+            // AmbiguousMultipleVerified in the summary).
+            if (d.Outcome is SubscriberOutcome.UnconfirmedSkipped
+                          or SubscriberOutcome.AmbiguousMultipleVerified)
+            {
+                toProcess.Add(d);
+                continue;
+            }
+
             counts.TryGetValue(d.Outcome, out var taken);
             if (taken < limit)
             {

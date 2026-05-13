@@ -75,6 +75,41 @@ public class MailerImportServiceThrottleTests
     }
 
     [HumansFact]
+    public async Task ApplyAsync_SkipBuckets_DoNotConsumeThrottleSlot_OrInflateThrottled()
+    {
+        // Ambiguous + Unconfirmed are unconditional no-ops in ApplyAsync.
+        // They must pass through the throttle without consuming a slot or
+        // counting as throttled — otherwise they would double-count against
+        // plan.Counts.AmbiguousMultipleVerified / UnconfirmedSkipped.
+        var harness = new ThrottleHarness();
+        harness.SetMlSubscribers(
+            ThrottleHarness.Active("new1@x.com"),
+            ThrottleHarness.Active("new2@x.com"),
+            ThrottleHarness.Active("ambiguous1@x.com"),
+            ThrottleHarness.Active("ambiguous2@x.com"),
+            ThrottleHarness.Unconfirmed("unconfirmed1@x.com"),
+            ThrottleHarness.Unconfirmed("unconfirmed2@x.com"));
+
+        var plan = new ImportPlan(
+            new[]
+            {
+                new SubscriberDecision("new1@x.com",        "active",       SubscriberOutcome.CreateNewHuman,            null, null, null),
+                new SubscriberDecision("new2@x.com",        "active",       SubscriberOutcome.CreateNewHuman,            null, null, null),
+                new SubscriberDecision("ambiguous1@x.com",  "active",       SubscriberOutcome.AmbiguousMultipleVerified, null, null, null),
+                new SubscriberDecision("ambiguous2@x.com",  "active",       SubscriberOutcome.AmbiguousMultipleVerified, null, null, null),
+                new SubscriberDecision("unconfirmed1@x.com","unconfirmed",  SubscriberOutcome.UnconfirmedSkipped,        null, null, null),
+                new SubscriberDecision("unconfirmed2@x.com","unconfirmed",  SubscriberOutcome.UnconfirmedSkipped,        null, null, null),
+            }.ToList().AsReadOnly(),
+            TotalPulled: 6);
+
+        var result = await harness.Service.ApplyAsync(plan, maxPerOutcome: 1);
+
+        result.HumansCreated.Should().Be(1);
+        // Only the second CreateNewHuman is throttled — the skip buckets pass through.
+        result.DecisionsThrottled.Should().Be(1);
+    }
+
+    [HumansFact]
     public async Task ApplyAsync_NullLimit_ProcessesAll()
     {
         var harness = new ThrottleHarness();
@@ -139,6 +174,10 @@ internal sealed class ThrottleHarness
             Instant.FromUtc(2026, 1, 1, 0, 0),
             Instant.FromUtc(2026, 3, 1, 0, 0),
             Instant.FromUtc(2026, 1, 1, 0, 0), null, null);
+
+    public static MailerLiteSubscriber Unconfirmed(string email) =>
+        new("ml-id", email, "unconfirmed", "form",
+            null, null, null, null, null);
 
     public void SetMlSubscribers(params MailerLiteSubscriber[] subscribers)
     {
