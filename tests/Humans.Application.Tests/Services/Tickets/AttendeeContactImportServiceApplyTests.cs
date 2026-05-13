@@ -14,6 +14,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 
 namespace Humans.Application.Tests.Services.Tickets;
 
@@ -153,6 +154,109 @@ public class AttendeeContactImportServiceApplyTests
             _ = harness.Provisioning.FindOrCreateUserByEmailAsync(
                 "victim@x.com", "Victim", ContactSource.TicketTailor, Arg.Any<CancellationToken>());
         });
+    }
+
+    [HumansFact]
+    public async Task Apply_OnlyProcessesSelectedAttendees()
+    {
+        var harness = new ApplyHarness();
+        var pickedId = Guid.NewGuid();
+        var skippedId = Guid.NewGuid();
+        var picked = new TicketAttendee
+        {
+            Id = pickedId, VendorTicketId = "tkt_p", VendorEventId = "evt_active",
+            AttendeeEmail = "p@x.com", Status = TicketAttendeeStatus.Valid,
+        };
+        var unselected = new TicketAttendee
+        {
+            Id = skippedId, VendorTicketId = "tkt_s", VendorEventId = "evt_active",
+            AttendeeEmail = "s@x.com", Status = TicketAttendeeStatus.Valid,
+        };
+        harness.WithUnmatched(picked);
+        harness.WithUnmatched(unselected);
+        harness.WithActiveYear(2026);
+        harness.Provisioning.FindOrCreateUserByEmailAsync(
+                Arg.Any<string>(), Arg.Any<string?>(), ContactSource.TicketTailor, Arg.Any<CancellationToken>())
+            .Returns(_ => new AccountProvisioningResult(new User { Id = Guid.NewGuid() }, true));
+
+        var plan = new AttendeeImportPlan(
+            new[]
+            {
+                new AttendeeImportDecision(pickedId, "p@x.com", "P", "tkt_p",
+                    AttendeeImportOutcome.CreateNewUser, null, null, null, null),
+                new AttendeeImportDecision(skippedId, "s@x.com", "S", "tkt_s",
+                    AttendeeImportOutcome.CreateNewUser, null, null, null, null),
+            }, 2);
+
+        var result = await harness.Service.ApplyAsync(plan, new HashSet<Guid> { pickedId });
+
+        result.TotalAttempted.Should().Be(1);
+        result.UsersCreated.Should().Be(1);
+        picked.MatchedUserId.Should().NotBeNull();
+        unselected.MatchedUserId.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task Apply_AttendeeVanishedBetweenPlanAndApply_IsCountedAndSkipped()
+    {
+        var harness = new ApplyHarness();
+        var goneId = Guid.NewGuid();
+        // No call to harness.WithUnmatched — the re-query returns empty.
+        harness.WithActiveYear(2026);
+
+        var plan = new AttendeeImportPlan(
+            new[]
+            {
+                new AttendeeImportDecision(goneId, "g@x.com", "G", "tkt_g",
+                    AttendeeImportOutcome.CreateNewUser, null, null, null, null),
+            }, 1);
+
+        var result = await harness.Service.ApplyAsync(plan, new HashSet<Guid> { goneId });
+
+        result.VanishedBetweenPlanAndApply.Should().Be(1);
+        result.UsersCreated.Should().Be(0);
+
+        await harness.Provisioning.DidNotReceive().FindOrCreateUserByEmailAsync(
+            Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<ContactSource>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Apply_PerAttendeeFailure_DoesNotAbortBatch()
+    {
+        var harness = new ApplyHarness();
+        var failId = Guid.NewGuid();
+        var okId = Guid.NewGuid();
+        harness.WithUnmatched(new TicketAttendee
+        {
+            Id = failId, VendorTicketId = "tkt_f", VendorEventId = "evt_active",
+            AttendeeEmail = "f@x.com", Status = TicketAttendeeStatus.Valid,
+        });
+        harness.WithUnmatched(new TicketAttendee
+        {
+            Id = okId, VendorTicketId = "tkt_o", VendorEventId = "evt_active",
+            AttendeeEmail = "o@x.com", Status = TicketAttendeeStatus.Valid,
+        });
+        harness.WithActiveYear(2026);
+        harness.Provisioning.FindOrCreateUserByEmailAsync(
+                "f@x.com", Arg.Any<string?>(), ContactSource.TicketTailor, Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("boom"));
+        harness.Provisioning.FindOrCreateUserByEmailAsync(
+                "o@x.com", Arg.Any<string?>(), ContactSource.TicketTailor, Arg.Any<CancellationToken>())
+            .Returns(new AccountProvisioningResult(new User { Id = Guid.NewGuid() }, true));
+
+        var plan = new AttendeeImportPlan(
+            new[]
+            {
+                new AttendeeImportDecision(failId, "f@x.com", "F", "tkt_f",
+                    AttendeeImportOutcome.CreateNewUser, null, null, null, null),
+                new AttendeeImportDecision(okId, "o@x.com", "O", "tkt_o",
+                    AttendeeImportOutcome.CreateNewUser, null, null, null, null),
+            }, 2);
+
+        var result = await harness.Service.ApplyAsync(plan, new HashSet<Guid> { failId, okId });
+
+        result.Errors.Should().Be(1);
+        result.UsersCreated.Should().Be(1);
     }
 }
 
