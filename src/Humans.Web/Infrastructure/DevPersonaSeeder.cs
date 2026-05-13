@@ -379,7 +379,9 @@ public sealed class DevPersonaSeeder
             catch (InvalidOperationException ex) when (ex.Message.Contains("Cannot approve a season", StringComparison.Ordinal))
             {
                 // Idempotent: another seed/admin path likely moved it first.
-            }
+                _logger.LogInformation(
+                    "DEV: barrio camp season {SeasonId} approve skipped â€" already moved past Pending",
+                    currentYearSeason.Id);
         }
 
         if (await EnsureCampLeadAsync(camp, leadUserId))
