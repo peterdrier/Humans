@@ -1797,7 +1797,8 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             .Select(m => new CampMemberRow(
                 m.Id, m.UserId, DisplayName(m.UserId, userMap), m.RequestedAt, m.ConfirmedAt,
                 IsLead: leadUserIds.Contains(m.UserId),
-                HasEarlyEntry: false))
+                HasEarlyEntry: false,
+                Status: m.Status))
             .ToList();
 
         var activeMemberUserIds = members
@@ -1810,7 +1811,8 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             .Select(m => new CampMemberRow(
                 m.Id, m.UserId, DisplayName(m.UserId, userMap), m.RequestedAt, m.ConfirmedAt,
                 IsLead: leadUserIds.Contains(m.UserId),
-                HasEarlyEntry: m.HasEarlyEntry));
+                HasEarlyEntry: m.HasEarlyEntry,
+                Status: m.Status));
 
         var activeFromLeads = activeLeads
             .Where(l => !activeMemberUserIds.Contains(l.UserId))
@@ -1821,7 +1823,8 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
                 RequestedAt: l.JoinedAt,
                 ConfirmedAt: l.JoinedAt,
                 IsLead: true,
-                HasEarlyEntry: false));
+                HasEarlyEntry: false,
+                Status: CampMemberStatus.Active));
 
         var active = activeFromMembers
             .Concat(activeFromLeads)
