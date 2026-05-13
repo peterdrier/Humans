@@ -124,7 +124,7 @@ public sealed class AttendeeContactImportService : IAttendeeContactImportService
 
                     case AttendeeImportOutcome.AmbiguousMultipleVerified:
                         ambiguous++;
-                        _logger.LogError(
+                        _logger.LogWarning(
                             "Attendee {AttendeeId} email {Email} verified by multiple users {UserIds}",
                             d.AttendeeId, d.Email, d.AmbiguousUserIds);
                         break;
