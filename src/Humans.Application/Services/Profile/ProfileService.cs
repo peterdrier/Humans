@@ -258,7 +258,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
 
         var onFs = 0;
         var dbOnly = new List<ProfilePictureMigrationRow>();
-        foreach (var (profileId, userId, contentType, updatedAt) in rows)
+        foreach (var (profileId, userId, burnerName, contentType, updatedAt) in rows)
         {
             var key = ProfilePictureKey(profileId, contentType);
             var bytes = await _fileStorage.TryReadAsync(key, ct);
@@ -268,7 +268,9 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
             }
             else
             {
-                var displayName = users.TryGetValue(userId, out var u) ? u.DisplayName : string.Empty;
+                var displayName = !string.IsNullOrWhiteSpace(burnerName)
+                    ? burnerName
+                    : (users.TryGetValue(userId, out var u) ? u.DisplayName : string.Empty);
                 dbOnly.Add(new ProfilePictureMigrationRow(profileId, userId, displayName, contentType, updatedAt));
             }
         }

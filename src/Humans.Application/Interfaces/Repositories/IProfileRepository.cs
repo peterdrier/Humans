@@ -85,7 +85,7 @@ public interface IProfileRepository : IRepository
     /// DB→FS migration verification page operates on. Projects only the
     /// scalar columns needed (no bytea load). Read-only (AsNoTracking).
     /// </summary>
-    Task<IReadOnlyList<(Guid ProfileId, Guid UserId, string ContentType, Instant UpdatedAt)>>
+    Task<IReadOnlyList<(Guid ProfileId, Guid UserId, string BurnerName, string ContentType, Instant UpdatedAt)>>
         GetCustomPictureRowsAsync(CancellationToken ct = default);
 
     /// <summary>
