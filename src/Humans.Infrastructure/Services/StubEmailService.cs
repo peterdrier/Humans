@@ -250,6 +250,38 @@ public class StubEmailService : IEmailService
         return Task.CompletedTask;
     }
 
+    public Task SendEventSubmittedAsync(
+        string userEmail, string userName, string eventTitle, string viewUrl,
+        string? culture = null, CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("[STUB] Would send event submitted email to {Email} ({UserName}) for '{Title}'", userEmail, userName, eventTitle);
+        return Task.CompletedTask;
+    }
+
+    public Task SendEventApprovedAsync(
+        string userEmail, string userName, string eventTitle,
+        string? culture = null, CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("[STUB] Would send event approved email to {Email} ({UserName}) for '{Title}'", userEmail, userName, eventTitle);
+        return Task.CompletedTask;
+    }
+
+    public Task SendEventRejectedAsync(
+        string userEmail, string userName, string eventTitle, string reason, string editUrl,
+        string? culture = null, CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("[STUB] Would send event rejected email to {Email} ({UserName}) for '{Title}'. Reason: {Reason}", userEmail, userName, eventTitle, reason);
+        return Task.CompletedTask;
+    }
+
+    public Task SendEventResubmitRequestedAsync(
+        string userEmail, string userName, string eventTitle, string reason, string editUrl,
+        string? culture = null, CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("[STUB] Would send event resubmit requested email to {Email} ({UserName}) for '{Title}'. Reason: {Reason}", userEmail, userName, eventTitle, reason);
+        return Task.CompletedTask;
+    }
+
     public Task SendGoogleGroupRemovalLossOfAccessAsync(
         string removedEmail,
         string userName,

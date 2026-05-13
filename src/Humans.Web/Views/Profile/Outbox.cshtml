@@ -66,7 +66,7 @@
                                 <tr class="collapse" id="@collapseId">
                                     <td colspan="3" class="p-0">
                                         <div class="p-3 bg-light border-top">
-                                            <iframe srcdoc="@msg.HtmlBody" sandbox="" style="width:100%;border:none;min-height:300px;" onload="this.style.height=this.contentDocument.body.scrollHeight+'px';"></iframe>
+                                            <iframe class="outbox-message-frame" srcdoc="@msg.HtmlBody" sandbox="" style="width:100%;border:none;min-height:300px;"></iframe>
                                         </div>
                                     </td>
                                 </tr>
@@ -78,3 +78,13 @@
         }
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        document.querySelectorAll('.outbox-message-frame').forEach(function (frame) {
+            frame.addEventListener('load', function () {
+                frame.style.height = frame.contentDocument.body.scrollHeight + 'px';
+            });
+        });
+    </script>
+}

@@ -298,4 +298,62 @@ public class EmailRenderer : IEmailRenderer
 
         return new EmailContent(renderedSubject, renderedBody);
     }
+
+    public EmailContent RenderEventSubmitted(string userName, string eventTitle, string viewUrl, string? culture = null)
+    {
+        using (WithCulture(culture))
+        {
+            var subject = "Your event submission has been received";
+            var body = $"""
+                <p>Hi {HtmlEncode(userName)},</p>
+                <p>Your event <strong>{HtmlEncode(eventTitle)}</strong> has been received and is now in the moderation queue.
+                You will be notified once it has been reviewed.</p>
+                <p><a href="{HtmlEncode(viewUrl)}">View your submissions</a></p>
+                """;
+            return new EmailContent(subject, body);
+        }
+    }
+
+    public EmailContent RenderEventApproved(string userName, string eventTitle, string? culture = null)
+    {
+        using (WithCulture(culture))
+        {
+            var subject = "Your event has been approved";
+            var body = $"""
+                <p>Hi {HtmlEncode(userName)},</p>
+                <p>Your event <strong>{HtmlEncode(eventTitle)}</strong> has been approved and will appear in the event guide.</p>
+                """;
+            return new EmailContent(subject, body);
+        }
+    }
+
+    public EmailContent RenderEventRejected(string userName, string eventTitle, string reason, string editUrl, string? culture = null)
+    {
+        using (WithCulture(culture))
+        {
+            var subject = "Your event submission was not approved";
+            var body = $"""
+                <p>Hi {HtmlEncode(userName)},</p>
+                <p>Your event <strong>{HtmlEncode(eventTitle)}</strong> was not approved for the event guide.</p>
+                <p><strong>Reason:</strong> {HtmlEncode(reason)}</p>
+                <p>You can edit and resubmit your event here: <a href="{HtmlEncode(editUrl)}">Edit event</a></p>
+                """;
+            return new EmailContent(subject, body);
+        }
+    }
+
+    public EmailContent RenderEventResubmitRequested(string userName, string eventTitle, string reason, string editUrl, string? culture = null)
+    {
+        using (WithCulture(culture))
+        {
+            var subject = "Changes requested for your event submission";
+            var body = $"""
+                <p>Hi {HtmlEncode(userName)},</p>
+                <p>The moderation team has requested changes to your event <strong>{HtmlEncode(eventTitle)}</strong> before it can be approved.</p>
+                <p><strong>Feedback:</strong> {HtmlEncode(reason)}</p>
+                <p>Please update and resubmit here: <a href="{HtmlEncode(editUrl)}">Edit event</a></p>
+                """;
+            return new EmailContent(subject, body);
+        }
+    }
 }

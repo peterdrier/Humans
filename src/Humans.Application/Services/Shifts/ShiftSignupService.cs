@@ -1,3 +1,4 @@
+using System.Globalization;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
@@ -1117,7 +1118,7 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
     /// Mirrors the Web-layer ToDisplayShiftDate() extension.
     /// </summary>
     private static string FormatShiftDate(LocalDate date) =>
-        date.DayOfWeek.ToString()[..3] + " " + date.ToString("MMM d", null);
+        date.DayOfWeek.ToString()[..3] + " " + date.ToString("MMM d", CultureInfo.InvariantCulture);
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {

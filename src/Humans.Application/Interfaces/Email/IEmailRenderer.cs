@@ -126,6 +126,26 @@ public interface IEmailRenderer
     EmailContent RenderCampaignCode(string subject, string markdownBody, string code, string recipientName);
 
     /// <summary>
+    /// Event submission received notification.
+    /// </summary>
+    EmailContent RenderEventSubmitted(string userName, string eventTitle, string viewUrl, string? culture = null);
+
+    /// <summary>
+    /// Event approved notification.
+    /// </summary>
+    EmailContent RenderEventApproved(string userName, string eventTitle, string? culture = null);
+
+    /// <summary>
+    /// Event rejected notification.
+    /// </summary>
+    EmailContent RenderEventRejected(string userName, string eventTitle, string reason, string editUrl, string? culture = null);
+
+    /// <summary>
+    /// Event resubmit-requested notification.
+    /// </summary>
+    EmailContent RenderEventResubmitRequested(string userName, string eventTitle, string reason, string editUrl, string? culture = null);
+
+    /// <summary>
     /// Variant 1 group sub-template — Google Group removal, loss of access
     /// (issue peterdrier/Humans#639).
     /// </summary>

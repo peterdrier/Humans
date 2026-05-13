@@ -25,9 +25,9 @@ public static class AuthorizationPolicyExtensions
         services.AddScoped<IAuthorizationHandler, BudgetAuthorizationHandler>();
         services.AddScoped<IAuthorizationHandler, CampAuthorizationHandler>();
         services.AddScoped<IAuthorizationHandler, ContainerAuthorizationHandler>();
+        services.AddScoped<IAuthorizationHandler, IsAnyTeamManagerOrCoordinatorHandler>();
         services.AddScoped<IAuthorizationHandler, StoreOrderAuthorizationHandler>();
         services.AddScoped<IAuthorizationHandler, TeamAuthorizationHandler>();
-        services.AddScoped<IAuthorizationHandler, IsAnyTeamManagerOrCoordinatorHandler>();
         services.AddSingleton<IAuthorizationHandler, IssuesAuthorizationHandler>();
 
         // Expense report resource-based handlers (scoped — depend on scoped services)
@@ -44,7 +44,7 @@ public static class AuthorizationPolicyExtensions
             options.AddPolicy(PolicyNames.AdminOnly, policy =>
                 policy.RequireRole(RoleNames.Admin));
 
-            // AnyAdminRole gates the admin-shell entry point (/Admin). The 11 roles
+            // AnyAdminRole gates the admin-shell entry point (/Admin). The 12 roles
             // mirror the composite OR-chain in _Layout.cshtml that decides whether
             // to show the "Admin" top-nav link. Sidebar items inside /Admin are
             // filtered per-item, so each role only sees what they can act on.
@@ -56,6 +56,7 @@ public static class AuthorizationPolicyExtensions
                     RoleNames.TeamsAdmin,
                     RoleNames.CampAdmin,
                     RoleNames.TicketAdmin,
+                    RoleNames.GuideModerator,
                     RoleNames.FeedbackAdmin,
                     RoleNames.FinanceAdmin,
                     RoleNames.StoreAdmin,
@@ -93,6 +94,9 @@ public static class AuthorizationPolicyExtensions
             options.AddPolicy(PolicyNames.FinanceAdminOrAdmin, policy =>
                 policy.RequireRole(RoleNames.FinanceAdmin, RoleNames.Admin));
 
+            options.AddPolicy(PolicyNames.GuideModeratorOrAdmin, policy =>
+                policy.RequireRole(RoleNames.GuideModerator, RoleNames.Admin));
+
             options.AddPolicy(PolicyNames.StoreCatalogAdmin, policy =>
                 policy.RequireRole(RoleNames.StoreAdmin, RoleNames.FinanceAdmin, RoleNames.Admin));
 
@@ -103,9 +107,9 @@ public static class AuthorizationPolicyExtensions
             options.AddPolicy(PolicyNames.ConsentCoordinatorBoardOrAdmin, policy =>
                 policy.RequireRole(RoleNames.ConsentCoordinator, RoleNames.Board, RoleNames.Admin));
 
-            // ShiftDashboardAccess stays narrow — gates the privileged sub-panels on the
-            // dashboard (coordinator activity, pending shifts, voluntell action). Only the
-            // role-based admins / volunteer coordinators see those.
+            // ShiftDashboardAccess and ShiftDepartmentManager are intentionally identical today
+            // (both map to ShiftRoleChecks.CanManageDepartment). Kept separate so they can
+            // diverge when per-department manager roles are introduced.
             options.AddPolicy(PolicyNames.ShiftDashboardAccess, policy =>
                 policy.RequireRole(RoleNames.Admin, RoleNames.NoInfoAdmin, RoleNames.VolunteerCoordinator));
 

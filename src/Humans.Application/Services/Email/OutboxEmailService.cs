@@ -464,4 +464,57 @@ public sealed class OutboxEmailService : IEmailService
             _logger.LogInformation("Triggered immediate outbox processing for {TemplateName}", templateName);
         }
     }
+
+    public async Task SendEventSubmittedAsync(
+        string userEmail,
+        string userName,
+        string eventTitle,
+        string viewUrl,
+        string? culture = null,
+        CancellationToken cancellationToken = default)
+    {
+        var content = _renderer.RenderEventSubmitted(userName, eventTitle, viewUrl, culture);
+        await EnqueueAsync(userEmail, userName, content, "event_submitted", cancellationToken,
+            triggerImmediate: true);
+    }
+
+    public async Task SendEventApprovedAsync(
+        string userEmail,
+        string userName,
+        string eventTitle,
+        string? culture = null,
+        CancellationToken cancellationToken = default)
+    {
+        var content = _renderer.RenderEventApproved(userName, eventTitle, culture);
+        await EnqueueAsync(userEmail, userName, content, "event_approved", cancellationToken,
+            triggerImmediate: true);
+    }
+
+    public async Task SendEventRejectedAsync(
+        string userEmail,
+        string userName,
+        string eventTitle,
+        string reason,
+        string editUrl,
+        string? culture = null,
+        CancellationToken cancellationToken = default)
+    {
+        var content = _renderer.RenderEventRejected(userName, eventTitle, reason, editUrl, culture);
+        await EnqueueAsync(userEmail, userName, content, "event_rejected", cancellationToken,
+            triggerImmediate: true);
+    }
+
+    public async Task SendEventResubmitRequestedAsync(
+        string userEmail,
+        string userName,
+        string eventTitle,
+        string reason,
+        string editUrl,
+        string? culture = null,
+        CancellationToken cancellationToken = default)
+    {
+        var content = _renderer.RenderEventResubmitRequested(userName, eventTitle, reason, editUrl, culture);
+        await EnqueueAsync(userEmail, userName, content, "event_resubmit_requested", cancellationToken,
+            triggerImmediate: true);
+    }
 }

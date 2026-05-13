@@ -473,7 +473,8 @@ builder.Services.AddLocalization();
 
 // CORS — allow the public nobodies.team website to fetch /api/barrios.
 // Localhost / 127.0.0.1 (any port) are allowed so devs working on the
-// public site locally can hit the deployed barrios API.
+// public site locally can hit the deployed barrios API. GuideApi remains
+// open so the PWA can fetch /api/events.
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("BarriosPublic", policy =>
@@ -486,6 +487,12 @@ builder.Services.AddCors(options =>
                 origin.StartsWith("http://127.0.0.1:", StringComparison.Ordinal) ||
                 string.Equals(origin, "https://nobodies.team", StringComparison.Ordinal) ||
                 string.Equals(origin, "https://www.nobodies.team", StringComparison.Ordinal))
+            .WithMethods("GET")
+            .WithHeaders("Content-Type", "Accept");
+    });
+    options.AddPolicy("GuideApi", policy =>
+    {
+        policy.AllowAnyOrigin()
             .WithMethods("GET")
             .WithHeaders("Content-Type", "Accept");
     });
@@ -513,6 +520,9 @@ if (builder.Environment.IsProduction())
 }
 builder.Services.AddRazorPages();
 builder.Services.AddSignalR();
+builder.Services.AddScoped<Humans.Web.Filters.EventGuideFeatureFilter>();
+builder.Services.AddScoped<Humans.Application.Interfaces.Repositories.IEventGuideRepository, Humans.Infrastructure.Repositories.EventGuide.EventGuideRepository>();
+builder.Services.AddScoped<Humans.Application.Interfaces.EventGuide.IEventGuideService, Humans.Application.Services.EventGuide.EventGuideService>();
 
 // In Developement, compile Razor pages each time they are loaded
 if (builder.Environment.IsDevelopment())

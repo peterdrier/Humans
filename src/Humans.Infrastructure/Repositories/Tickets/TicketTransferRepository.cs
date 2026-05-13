@@ -1,3 +1,4 @@
+using System.Transactions;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -71,16 +72,31 @@ public sealed class TicketTransferRepository : ITicketTransferRepository
     public async Task ReassignUserAsync(Guid sourceUserId, Guid targetUserId, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
+        if (Transaction.Current is not null)
+        {
+            await ReassignUserCoreAsync(ctx, sourceUserId, targetUserId, ct);
+            return;
+        }
+
         // ExecuteUpdateAsync auto-commits — without an explicit transaction, a failure
         // between the Sender and Receiver updates would leave a half-merged state where
         // one column is re-pointed and the other still references the deleted source user.
         await using var tx = await ctx.Database.BeginTransactionAsync(ct);
+        await ReassignUserCoreAsync(ctx, sourceUserId, targetUserId, ct);
+        await tx.CommitAsync(ct);
+    }
+
+    private static async Task ReassignUserCoreAsync(
+        HumansDbContext ctx,
+        Guid sourceUserId,
+        Guid targetUserId,
+        CancellationToken ct)
+    {
         await ctx.TicketTransferRequests
             .Where(r => r.SenderUserId == sourceUserId)
             .ExecuteUpdateAsync(s => s.SetProperty(r => r.SenderUserId, targetUserId), ct);
         await ctx.TicketTransferRequests
             .Where(r => r.ReceiverUserId == sourceUserId)
             .ExecuteUpdateAsync(s => s.SetProperty(r => r.ReceiverUserId, targetUserId), ct);
-        await tx.CommitAsync(ct);
     }
 }

@@ -290,6 +290,47 @@ public class SmtpEmailService : IEmailService
         _metrics.RecordEmailSent("campaign_code");
     }
 
+    /// <inheritdoc />
+    public async Task SendEventSubmittedAsync(
+        string userEmail, string userName, string eventTitle, string viewUrl,
+        string? culture = null, CancellationToken cancellationToken = default)
+    {
+        var content = _renderer.RenderEventSubmitted(userName, eventTitle, viewUrl, culture);
+        await SendEmailAsync(userEmail, content.Subject, content.HtmlBody, cancellationToken);
+        _metrics.RecordEmailSent("event_submitted");
+    }
+
+    /// <inheritdoc />
+    public async Task SendEventApprovedAsync(
+        string userEmail, string userName, string eventTitle,
+        string? culture = null, CancellationToken cancellationToken = default)
+    {
+        var content = _renderer.RenderEventApproved(userName, eventTitle, culture);
+        await SendEmailAsync(userEmail, content.Subject, content.HtmlBody, cancellationToken);
+        _metrics.RecordEmailSent("event_approved");
+    }
+
+    /// <inheritdoc />
+    public async Task SendEventRejectedAsync(
+        string userEmail, string userName, string eventTitle, string reason, string editUrl,
+        string? culture = null, CancellationToken cancellationToken = default)
+    {
+        var content = _renderer.RenderEventRejected(userName, eventTitle, reason, editUrl, culture);
+        await SendEmailAsync(userEmail, content.Subject, content.HtmlBody, cancellationToken);
+        _metrics.RecordEmailSent("event_rejected");
+    }
+
+    /// <inheritdoc />
+    public async Task SendEventResubmitRequestedAsync(
+        string userEmail, string userName, string eventTitle, string reason, string editUrl,
+        string? culture = null, CancellationToken cancellationToken = default)
+    {
+        var content = _renderer.RenderEventResubmitRequested(userName, eventTitle, reason, editUrl, culture);
+        await SendEmailAsync(userEmail, content.Subject, content.HtmlBody, cancellationToken);
+        _metrics.RecordEmailSent("event_resubmit_requested");
+    }
+
+    /// <inheritdoc />
     public async Task SendIssueCommentAsync(
         string to,
         string displayName,

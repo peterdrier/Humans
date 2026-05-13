@@ -1,0 +1,32 @@
+@{
+    ViewData["Title"] = "Event Guide Export";
+}
+
+<h2 class="mb-3">Event Guide Export</h2>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-body text-center">
+                <i class="fa-solid fa-file-pdf fa-3x text-danger mb-3"></i>
+                <h5>Print Guide</h5>
+                <p class="text-muted">Print-ready guide sorted by day and time. Respects max print slots by priority rank. Use your browser's Print function to save as PDF.</p>
+                <a asp-action="PrintGuide" class="btn btn-outline-danger" target="_blank">
+                    <i class="fa-solid fa-print me-1"></i>Open Print Guide
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-body text-center">
+                <i class="fa-solid fa-file-csv fa-3x text-success mb-3"></i>
+                <h5>CSV Export</h5>
+                <p class="text-muted">All approved events in CSV format. One row per occurrence for recurring events. UTF-8 with BOM for Excel compatibility.</p>
+                <a asp-action="DownloadCsv" class="btn btn-outline-success">
+                    <i class="fa-solid fa-download me-1"></i>Download CSV
+                </a>
+            </div>
+        </div>
+    </div>
+</div>

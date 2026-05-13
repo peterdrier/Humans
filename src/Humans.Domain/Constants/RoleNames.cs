@@ -52,6 +52,11 @@ public static class RoleNames
     public const string NoInfoAdmin = "NoInfoAdmin";
 
     /// <summary>
+    /// Guide Moderator — can approve, reject, and request edits on event guide submissions.
+    /// </summary>
+    public const string GuideModerator = "GuideModerator";
+
+    /// <summary>
     /// Feedback Administrator — can view all feedback reports, respond to reporters,
     /// manage feedback status, and link GitHub issues.
     /// </summary>
@@ -90,6 +95,7 @@ public static class RoleNames
         NoInfoAdmin,
         FeedbackAdmin,
         FinanceAdmin,
+        GuideModerator,
         StoreAdmin,
         ConsentCoordinator,
         VolunteerCoordinator

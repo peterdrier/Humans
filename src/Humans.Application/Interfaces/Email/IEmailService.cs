@@ -288,6 +288,17 @@ public interface IEmailService : IApplicationService
     Task SendCampaignCodeAsync(CampaignCodeEmailRequest request, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Sends an event submission received notification.
+    /// </summary>
+    Task SendEventSubmittedAsync(
+        string userEmail,
+        string userName,
+        string eventTitle,
+        string viewUrl,
+        string? culture = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Sends a notification that a Google Group membership has been removed
     /// (Variant 1 — full loss of access, group sub-template). System category;
     /// no unsubscribe footer (issue peterdrier/Humans#639).
@@ -301,6 +312,16 @@ public interface IEmailService : IApplicationService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Sends an event approved notification.
+    /// </summary>
+    Task SendEventApprovedAsync(
+        string userEmail,
+        string userName,
+        string eventTitle,
+        string? culture = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Sends a notification that a Google Drive permission has been removed
     /// (Variant 1 — full loss of access, Drive sub-template). System category;
     /// no unsubscribe footer (issue peterdrier/Humans#639).
@@ -309,6 +330,30 @@ public interface IEmailService : IApplicationService
         string removedEmail,
         string userName,
         string folderName,
+        string? culture = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sends an event rejected notification.
+    /// </summary>
+    Task SendEventRejectedAsync(
+        string userEmail,
+        string userName,
+        string eventTitle,
+        string reason,
+        string editUrl,
+        string? culture = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sends a resubmit-requested notification for an event.
+    /// </summary>
+    Task SendEventResubmitRequestedAsync(
+        string userEmail,
+        string userName,
+        string eventTitle,
+        string reason,
+        string editUrl,
         string? culture = null,
         CancellationToken cancellationToken = default);
 

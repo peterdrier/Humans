@@ -218,6 +218,253 @@ public class AuthorizationPolicyTests : IDisposable
         result.Succeeded.Should().BeFalse();
     }
 
+    // --- AnyAdminRole (admin-shell entry point) ---
+
+    [HumansTheory]
+    [InlineData(RoleNames.Admin, true)]
+    [InlineData(RoleNames.Board, true)]
+    [InlineData(RoleNames.HumanAdmin, true)]
+    [InlineData(RoleNames.TeamsAdmin, true)]
+    [InlineData(RoleNames.CampAdmin, true)]
+    [InlineData(RoleNames.TicketAdmin, true)]
+    [InlineData(RoleNames.GuideModerator, true)]
+    [InlineData(RoleNames.FeedbackAdmin, true)]
+    [InlineData(RoleNames.FinanceAdmin, true)]
+    [InlineData(RoleNames.NoInfoAdmin, true)]
+    [InlineData(RoleNames.VolunteerCoordinator, true)]
+    [InlineData(RoleNames.ConsentCoordinator, true)]
+    public async Task AnyAdminRole_AllowsAllAdminShapedRoles(string role, bool expected)
+    {
+        var result = await AuthorizeAsync(PolicyNames.AnyAdminRole, role);
+        result.Succeeded.Should().Be(expected);
+    }
+
+    [HumansFact]
+    public async Task AnyAdminRole_DeniesUnauthenticated()
+    {
+        var result = await AuthorizeAnonymousAsync(PolicyNames.AnyAdminRole);
+        result.Succeeded.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task AnyAdminRole_DeniesAuthenticatedNonAdmin()
+    {
+        // Authenticated user with no admin-shaped role (e.g. a regular member)
+        // must not reach the admin shell.
+        var result = await AuthorizeAsync(PolicyNames.AnyAdminRole, "SomeNonAdminRole");
+        result.Succeeded.Should().BeFalse();
+    }
+
+    // --- BoardOnly ---
+
+    [HumansTheory]
+    [InlineData(RoleNames.Board, true)]
+    [InlineData(RoleNames.Admin, false)]
+    [InlineData(RoleNames.HumanAdmin, false)]
+    public async Task BoardOnly_ChecksCorrectRoles(string role, bool expected)
+    {
+        var result = await AuthorizeAsync(PolicyNames.BoardOnly, role);
+        result.Succeeded.Should().Be(expected);
+    }
+
+    [HumansFact]
+    public async Task BoardOnly_DeniesUnauthenticated()
+    {
+        var result = await AuthorizeAnonymousAsync(PolicyNames.BoardOnly);
+        result.Succeeded.Should().BeFalse();
+    }
+
+    // --- BoardOrAdmin ---
+
+    [HumansTheory]
+    [InlineData(RoleNames.Board, true)]
+    [InlineData(RoleNames.Admin, true)]
+    [InlineData(RoleNames.TeamsAdmin, false)]
+    [InlineData(RoleNames.HumanAdmin, false)]
+    [InlineData(RoleNames.VolunteerCoordinator, false)]
+    public async Task BoardOrAdmin_ChecksCorrectRoles(string role, bool expected)
+    {
+        var result = await AuthorizeAsync(PolicyNames.BoardOrAdmin, role);
+        result.Succeeded.Should().Be(expected);
+    }
+
+    // --- HumanAdminBoardOrAdmin ---
+
+    [HumansTheory]
+    [InlineData(RoleNames.HumanAdmin, true)]
+    [InlineData(RoleNames.Board, true)]
+    [InlineData(RoleNames.Admin, true)]
+    [InlineData(RoleNames.TeamsAdmin, false)]
+    [InlineData(RoleNames.FinanceAdmin, false)]
+    public async Task HumanAdminBoardOrAdmin_ChecksCorrectRoles(string role, bool expected)
+    {
+        var result = await AuthorizeAsync(PolicyNames.HumanAdminBoardOrAdmin, role);
+        result.Succeeded.Should().Be(expected);
+    }
+
+    // --- HumanAdminOrAdmin ---
+
+    [HumansTheory]
+    [InlineData(RoleNames.HumanAdmin, true)]
+    [InlineData(RoleNames.Admin, true)]
+    [InlineData(RoleNames.Board, false)]
+    [InlineData(RoleNames.TeamsAdmin, false)]
+    public async Task HumanAdminOrAdmin_ChecksCorrectRoles(string role, bool expected)
+    {
+        var result = await AuthorizeAsync(PolicyNames.HumanAdminOrAdmin, role);
+        result.Succeeded.Should().Be(expected);
+    }
+
+    // --- TeamsAdminBoardOrAdmin ---
+
+    [HumansTheory]
+    [InlineData(RoleNames.TeamsAdmin, true)]
+    [InlineData(RoleNames.Board, true)]
+    [InlineData(RoleNames.Admin, true)]
+    [InlineData(RoleNames.HumanAdmin, false)]
+    [InlineData(RoleNames.CampAdmin, false)]
+    public async Task TeamsAdminBoardOrAdmin_ChecksCorrectRoles(string role, bool expected)
+    {
+        var result = await AuthorizeAsync(PolicyNames.TeamsAdminBoardOrAdmin, role);
+        result.Succeeded.Should().Be(expected);
+    }
+
+    // --- CampAdminOrAdmin ---
+
+    [HumansTheory]
+    [InlineData(RoleNames.CampAdmin, true)]
+    [InlineData(RoleNames.Admin, true)]
+    [InlineData(RoleNames.Board, false)]
+    [InlineData(RoleNames.TeamsAdmin, false)]
+    public async Task CampAdminOrAdmin_ChecksCorrectRoles(string role, bool expected)
+    {
+        var result = await AuthorizeAsync(PolicyNames.CampAdminOrAdmin, role);
+        result.Succeeded.Should().Be(expected);
+    }
+
+    // --- TicketAdminBoardOrAdmin ---
+
+    [HumansTheory]
+    [InlineData(RoleNames.TicketAdmin, true)]
+    [InlineData(RoleNames.Admin, true)]
+    [InlineData(RoleNames.Board, true)]
+    [InlineData(RoleNames.TeamsAdmin, false)]
+    [InlineData(RoleNames.HumanAdmin, false)]
+    public async Task TicketAdminBoardOrAdmin_ChecksCorrectRoles(string role, bool expected)
+    {
+        var result = await AuthorizeAsync(PolicyNames.TicketAdminBoardOrAdmin, role);
+        result.Succeeded.Should().Be(expected);
+    }
+
+    // --- TicketAdminOrAdmin ---
+
+    [HumansTheory]
+    [InlineData(RoleNames.TicketAdmin, true)]
+    [InlineData(RoleNames.Admin, true)]
+    [InlineData(RoleNames.Board, false)]
+    [InlineData(RoleNames.TeamsAdmin, false)]
+    public async Task TicketAdminOrAdmin_ChecksCorrectRoles(string role, bool expected)
+    {
+        var result = await AuthorizeAsync(PolicyNames.TicketAdminOrAdmin, role);
+        result.Succeeded.Should().Be(expected);
+    }
+
+    // --- FeedbackAdminOrAdmin ---
+
+    [HumansTheory]
+    [InlineData(RoleNames.FeedbackAdmin, true)]
+    [InlineData(RoleNames.Admin, true)]
+    [InlineData(RoleNames.Board, false)]
+    [InlineData(RoleNames.TeamsAdmin, false)]
+    public async Task FeedbackAdminOrAdmin_ChecksCorrectRoles(string role, bool expected)
+    {
+        var result = await AuthorizeAsync(PolicyNames.FeedbackAdminOrAdmin, role);
+        result.Succeeded.Should().Be(expected);
+    }
+
+    // --- FinanceAdminOrAdmin ---
+
+    [HumansTheory]
+    [InlineData(RoleNames.FinanceAdmin, true)]
+    [InlineData(RoleNames.Admin, true)]
+    [InlineData(RoleNames.Board, false)]
+    [InlineData(RoleNames.TeamsAdmin, false)]
+    public async Task FinanceAdminOrAdmin_ChecksCorrectRoles(string role, bool expected)
+    {
+        var result = await AuthorizeAsync(PolicyNames.FinanceAdminOrAdmin, role);
+        result.Succeeded.Should().Be(expected);
+    }
+
+    // --- GuideModeratorOrAdmin ---
+
+    [HumansTheory]
+    [InlineData(RoleNames.GuideModerator, true)]
+    [InlineData(RoleNames.Admin, true)]
+    [InlineData(RoleNames.Board, false)]
+    [InlineData(RoleNames.TeamsAdmin, false)]
+    public async Task GuideModeratorOrAdmin_ChecksCorrectRoles(string role, bool expected)
+    {
+        var result = await AuthorizeAsync(PolicyNames.GuideModeratorOrAdmin, role);
+        result.Succeeded.Should().Be(expected);
+    }
+
+    // --- ReviewQueueAccess ---
+
+    [HumansTheory]
+    [InlineData(RoleNames.ConsentCoordinator, true)]
+    [InlineData(RoleNames.VolunteerCoordinator, true)]
+    [InlineData(RoleNames.Board, true)]
+    [InlineData(RoleNames.Admin, true)]
+    [InlineData(RoleNames.TeamsAdmin, false)]
+    [InlineData(RoleNames.HumanAdmin, false)]
+    public async Task ReviewQueueAccess_ChecksCorrectRoles(string role, bool expected)
+    {
+        var result = await AuthorizeAsync(PolicyNames.ReviewQueueAccess, role);
+        result.Succeeded.Should().Be(expected);
+    }
+
+    // --- ConsentCoordinatorBoardOrAdmin ---
+
+    [HumansTheory]
+    [InlineData(RoleNames.ConsentCoordinator, true)]
+    [InlineData(RoleNames.Board, true)]
+    [InlineData(RoleNames.Admin, true)]
+    [InlineData(RoleNames.VolunteerCoordinator, false)]
+    [InlineData(RoleNames.TeamsAdmin, false)]
+    public async Task ConsentCoordinatorBoardOrAdmin_ChecksCorrectRoles(string role, bool expected)
+    {
+        var result = await AuthorizeAsync(PolicyNames.ConsentCoordinatorBoardOrAdmin, role);
+        result.Succeeded.Should().Be(expected);
+    }
+
+    // --- ShiftDashboardAccess ---
+
+    [HumansTheory]
+    [InlineData(RoleNames.Admin, true)]
+    [InlineData(RoleNames.NoInfoAdmin, true)]
+    [InlineData(RoleNames.VolunteerCoordinator, true)]
+    [InlineData(RoleNames.Board, false)]
+    [InlineData(RoleNames.TeamsAdmin, false)]
+    public async Task ShiftDashboardAccess_ChecksCorrectRoles(string role, bool expected)
+    {
+        var result = await AuthorizeAsync(PolicyNames.ShiftDashboardAccess, role);
+        result.Succeeded.Should().Be(expected);
+    }
+
+    // --- ShiftDepartmentManager ---
+
+    [HumansTheory]
+    [InlineData(RoleNames.Admin, true)]
+    [InlineData(RoleNames.NoInfoAdmin, true)]
+    [InlineData(RoleNames.VolunteerCoordinator, true)]
+    [InlineData(RoleNames.Board, false)]
+    [InlineData(RoleNames.TeamsAdmin, false)]
+    public async Task ShiftDepartmentManager_ChecksCorrectRoles(string role, bool expected)
+    {
+        var result = await AuthorizeAsync(PolicyNames.ShiftDepartmentManager, role);
+        result.Succeeded.Should().Be(expected);
+    }
+
     [HumansFact]
     public async Task ShiftDepartmentManager_AllowsUserWithCoordinatedTeams()
     {

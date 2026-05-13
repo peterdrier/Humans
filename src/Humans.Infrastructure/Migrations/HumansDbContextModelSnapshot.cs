@@ -1847,6 +1847,115 @@ namespace Humans.Infrastructure.Migrations
                     b.ToTable("email_outbox_messages", (string)null);
                 });
 
+            modelBuilder.Entity("Humans.Domain.Entities.EventCategory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsSensitive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IsActive");
+
+                    b.HasIndex("Slug")
+                        .IsUnique();
+
+                    b.ToTable("event_categories", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0026-000000000001"),
+                            DisplayOrder = 1,
+                            IsActive = true,
+                            IsSensitive = false,
+                            Name = "Workshop",
+                            Slug = "workshop"
+                        },
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0026-000000000002"),
+                            DisplayOrder = 2,
+                            IsActive = true,
+                            IsSensitive = false,
+                            Name = "Party",
+                            Slug = "party"
+                        },
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0026-000000000003"),
+                            DisplayOrder = 3,
+                            IsActive = true,
+                            IsSensitive = false,
+                            Name = "Food and drink",
+                            Slug = "food-and-drink"
+                        },
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0026-000000000004"),
+                            DisplayOrder = 4,
+                            IsActive = true,
+                            IsSensitive = false,
+                            Name = "Chillout",
+                            Slug = "chillout"
+                        },
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0026-000000000005"),
+                            DisplayOrder = 5,
+                            IsActive = true,
+                            IsSensitive = true,
+                            Name = "Spiritual / Healing",
+                            Slug = "spiritual-healing"
+                        },
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0026-000000000007"),
+                            DisplayOrder = 6,
+                            IsActive = true,
+                            IsSensitive = true,
+                            Name = "Adults",
+                            Slug = "adults"
+                        },
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0026-000000000008"),
+                            DisplayOrder = 7,
+                            IsActive = true,
+                            IsSensitive = false,
+                            Name = "Kids",
+                            Slug = "kids"
+                        },
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0026-000000000006"),
+                            DisplayOrder = 8,
+                            IsActive = true,
+                            IsSensitive = false,
+                            Name = "Other",
+                            Slug = "other"
+                        });
+                });
+
             modelBuilder.Entity("Humans.Domain.Entities.EventParticipation", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2409,6 +2518,151 @@ namespace Humans.Infrastructure.Migrations
                     b.ToTable("google_sync_outbox", (string)null);
                 });
 
+            modelBuilder.Entity("Humans.Domain.Entities.GuideEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AdminNotes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<Guid?>("CampId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CategoryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<int>("DurationMinutes")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("GuideSharedVenueId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsRecurring")
+                        .HasColumnType("boolean");
+
+                    b.Property<Instant>("LastUpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LocationNote")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<int>("PriorityRank")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("RecurrenceDays")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Instant>("StartAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<Instant>("SubmittedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("SubmitterUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CampId");
+
+                    b.HasIndex("CategoryId");
+
+                    b.HasIndex("GuideSharedVenueId");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("SubmitterUserId");
+
+                    b.ToTable("guide_events", (string)null);
+                });
+
+            modelBuilder.Entity("Humans.Domain.Entities.GuideSettings", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Instant>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("EventSettingsId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Instant>("GuidePublishAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("MaxPrintSlots")
+                        .HasColumnType("integer");
+
+                    b.Property<Instant>("SubmissionCloseAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Instant>("SubmissionOpenAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Instant>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EventSettingsId")
+                        .IsUnique();
+
+                    b.ToTable("guide_settings", (string)null);
+                });
+
+            modelBuilder.Entity("Humans.Domain.Entities.GuideSharedVenue", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("LocationDescription")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IsActive");
+
+                    b.ToTable("guide_shared_venues", (string)null);
+                });
+
             modelBuilder.Entity("Humans.Domain.Entities.HoldedExpenseOutboxEvent", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2623,6 +2877,39 @@ namespace Humans.Infrastructure.Migrations
                     b.HasIndex("TeamId", "IsActive");
 
                     b.ToTable("legal_documents", (string)null);
+                });
+
+            modelBuilder.Entity("Humans.Domain.Entities.ModerationAction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<Guid>("ActorUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Instant>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("GuideEventId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActorUserId");
+
+                    b.HasIndex("GuideEventId");
+
+                    b.ToTable("moderation_actions", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.Notification", b =>
@@ -4465,6 +4752,56 @@ namespace Humans.Infrastructure.Migrations
                     b.ToTable("user_emails", (string)null);
                 });
 
+            modelBuilder.Entity("Humans.Domain.Entities.UserEventFavourite", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Instant>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("GuideEventId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GuideEventId");
+
+                    b.HasIndex("UserId", "GuideEventId")
+                        .IsUnique();
+
+                    b.ToTable("user_event_favourites", (string)null);
+                });
+
+            modelBuilder.Entity("Humans.Domain.Entities.UserGuidePreference", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ExcludedCategorySlugs")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<Instant>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("user_guide_preferences", (string)null);
+                });
+
             modelBuilder.Entity("Humans.Domain.Entities.VolunteerBuildStatus", b =>
                 {
                     b.Property<Guid>("Id")
@@ -5363,6 +5700,50 @@ namespace Humans.Infrastructure.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Humans.Domain.Entities.GuideEvent", b =>
+                {
+                    b.HasOne("Humans.Domain.Entities.Camp", "Camp")
+                        .WithMany()
+                        .HasForeignKey("CampId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Humans.Domain.Entities.EventCategory", "Category")
+                        .WithMany("GuideEvents")
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Humans.Domain.Entities.GuideSharedVenue", "GuideSharedVenue")
+                        .WithMany("GuideEvents")
+                        .HasForeignKey("GuideSharedVenueId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Humans.Domain.Entities.User", "SubmitterUser")
+                        .WithMany()
+                        .HasForeignKey("SubmitterUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Camp");
+
+                    b.Navigation("Category");
+
+                    b.Navigation("GuideSharedVenue");
+
+                    b.Navigation("SubmitterUser");
+                });
+
+            modelBuilder.Entity("Humans.Domain.Entities.GuideSettings", b =>
+                {
+                    b.HasOne("Humans.Domain.Entities.EventSettings", "EventSettings")
+                        .WithOne()
+                        .HasForeignKey("Humans.Domain.Entities.GuideSettings", "EventSettingsId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("EventSettings");
+                });
+
             modelBuilder.Entity("Humans.Domain.Entities.Issue", b =>
                 {
                     b.HasOne("Humans.Domain.Entities.User", "Assignee")
@@ -5415,6 +5796,23 @@ namespace Humans.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Team");
+                });
+
+            modelBuilder.Entity("Humans.Domain.Entities.ModerationAction", b =>
+                {
+                    b.HasOne("Humans.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("ActorUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Humans.Domain.Entities.GuideEvent", "GuideEvent")
+                        .WithMany("ModerationActions")
+                        .HasForeignKey("GuideEventId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("GuideEvent");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.Notification", b =>
@@ -5766,6 +6164,32 @@ namespace Humans.Infrastructure.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Humans.Domain.Entities.UserEventFavourite", b =>
+                {
+                    b.HasOne("Humans.Domain.Entities.GuideEvent", "GuideEvent")
+                        .WithMany("UserEventFavourites")
+                        .HasForeignKey("GuideEventId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Humans.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("GuideEvent");
+                });
+
+            modelBuilder.Entity("Humans.Domain.Entities.UserGuidePreference", b =>
+                {
+                    b.HasOne("Humans.Domain.Entities.User", null)
+                        .WithOne()
+                        .HasForeignKey("Humans.Domain.Entities.UserGuidePreference", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Humans.Domain.Entities.VolunteerBuildStatus", b =>
                 {
                     b.HasOne("Humans.Domain.Entities.EventSettings", null)
@@ -5957,6 +6381,11 @@ namespace Humans.Infrastructure.Migrations
                     b.Navigation("ConsentRecords");
                 });
 
+            modelBuilder.Entity("Humans.Domain.Entities.EventCategory", b =>
+                {
+                    b.Navigation("GuideEvents");
+                });
+
             modelBuilder.Entity("Humans.Domain.Entities.EventSettings", b =>
                 {
                     b.Navigation("Rotas");
@@ -5970,6 +6399,18 @@ namespace Humans.Infrastructure.Migrations
             modelBuilder.Entity("Humans.Domain.Entities.FeedbackReport", b =>
                 {
                     b.Navigation("Messages");
+                });
+
+            modelBuilder.Entity("Humans.Domain.Entities.GuideEvent", b =>
+                {
+                    b.Navigation("ModerationActions");
+
+                    b.Navigation("UserEventFavourites");
+                });
+
+            modelBuilder.Entity("Humans.Domain.Entities.GuideSharedVenue", b =>
+                {
+                    b.Navigation("GuideEvents");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.Issue", b =>

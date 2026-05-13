@@ -1,0 +1,198 @@
+@model Humans.Web.Models.GuideDashboardViewModel
+@{
+    ViewData["Title"] = "Event Guide Dashboard";
+}
+
+<h2 class="mb-4">Event Guide Dashboard</h2>
+
+<div class="row mb-4">
+    <div class="col-md-2">
+        <div class="card text-center">
+            <div class="card-body py-2">
+                <div class="fs-4 fw-bold">@Model.TotalCount</div>
+                <small class="text-muted">Total</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card text-center">
+            <div class="card-body py-2">
+                <div class="fs-4 fw-bold text-warning">@Model.PendingCount</div>
+                <small class="text-muted">Pending</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card text-center">
+            <div class="card-body py-2">
+                <div class="fs-4 fw-bold text-success">@Model.ApprovedCount</div>
+                <small class="text-muted">Approved</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card text-center">
+            <div class="card-body py-2">
+                <div class="fs-4 fw-bold text-danger">@Model.RejectedCount</div>
+                <small class="text-muted">Rejected</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card text-center">
+            <div class="card-body py-2">
+                <div class="fs-4 fw-bold text-info">@Model.ResubmitRequestedCount</div>
+                <small class="text-muted">Resubmit</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card text-center">
+            <div class="card-body py-2">
+                <div class="fs-4 fw-bold text-secondary">@Model.WithdrawnCount</div>
+                <small class="text-muted">Withdrawn</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <i class="fa-solid fa-gavel me-1"></i>Moderation Queue
+            </div>
+            <div class="card-body text-center">
+                <a asp-controller="Moderation" asp-action="Index" class="btn btn-warning btn-lg">
+                    Moderate Events
+                    @if (Model.PendingCount > 0)
+                    {
+                        <span class="badge bg-dark ms-1">@Model.PendingCount</span>
+                    }
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <i class="fa-solid fa-file-export me-1"></i>Exports
+            </div>
+            <div class="card-body d-flex gap-2 justify-content-center">
+                <a asp-controller="EventGuideExport" asp-action="PrintGuide" class="btn btn-outline-danger" target="_blank">
+                    <i class="fa-solid fa-print me-1"></i>Print Guide
+                </a>
+                <a asp-controller="EventGuideExport" asp-action="DownloadCsv" class="btn btn-outline-success">
+                    <i class="fa-solid fa-download me-1"></i>Download CSV
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="fa-solid fa-calendar-days me-1"></i>Coverage by Day
+            </div>
+            @if (Model.CoverageByDay.Count > 0)
+            {
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0">
+                        <thead>
+                            <tr>
+                                <th>Day</th>
+                                <th class="text-end">Approved</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var row in Model.CoverageByDay)
+                            {
+                                <tr>
+                                    <td>@row.DayLabel</td>
+                                    <td class="text-end">@row.ApprovedCount</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="card-body text-muted">No event settings configured.</div>
+            }
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="fa-solid fa-tags me-1"></i>Coverage by Category
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm mb-0">
+                    <thead>
+                        <tr>
+                            <th>Category</th>
+                            <th class="text-end">Sub</th>
+                            <th class="text-end">App</th>
+                            <th class="text-end">Pen</th>
+                            <th class="text-end">Rej</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in Model.CoverageByCategory)
+                        {
+                            <tr>
+                                <td>@row.CategoryName</td>
+                                <td class="text-end">@row.SubmittedCount</td>
+                                <td class="text-end">@row.ApprovedCount</td>
+                                <td class="text-end">@row.PendingCount</td>
+                                <td class="text-end">@row.RejectedCount</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="fa-solid fa-campground me-1"></i>Top Submitting Camps
+            </div>
+            @if (Model.TopCamps.Count > 0)
+            {
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0">
+                        <thead>
+                            <tr>
+                                <th>Camp</th>
+                                <th class="text-end">Sub</th>
+                                <th class="text-end">App</th>
+                                <th class="text-end">Pen</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var row in Model.TopCamps)
+                            {
+                                <tr>
+                                    <td>@row.CampName</td>
+                                    <td class="text-end">@row.SubmittedCount</td>
+                                    <td class="text-end">@row.ApprovedCount</td>
+                                    <td class="text-end">@row.PendingCount</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="card-body text-muted">No camp events submitted yet.</div>
+            }
+        </div>
+    </div>
+</div>
