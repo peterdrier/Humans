@@ -17,7 +17,7 @@ public class UnsubscribeController : Controller
         _logger = logger;
     }
 
-    [HttpGet("/Unsubscribe/{token}")]
+    [HttpGet("/Unsubscribe/{token:minlength(40)}")]
     public async Task<IActionResult> Index(string token)
     {
         var result = await _unsubscribeService.ValidateTokenAsync(token);
@@ -42,7 +42,7 @@ public class UnsubscribeController : Controller
         return View();
     }
 
-    [HttpPost("/Unsubscribe/{token}")]
+    [HttpPost("/Unsubscribe/{token:minlength(40)}")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Confirm(string token)
     {
