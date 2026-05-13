@@ -25,8 +25,8 @@ public class MailerLiteClientWriteGuardTests
     public async Task AssignSubscriberToGroupAsync_RejectsWritesToNonHumansGroups()
     {
         var handler = new ScriptedHandler();
-        // First /api/groups call returns a single non-Humans group; the guard reads it
-        // and rejects before any write hits the wire.
+        // Cache pre-populate: empty subscriber page, then groups page with one non-Humans group.
+        handler.EnqueueJson(HttpStatusCode.OK, """{"data":[],"meta":{"next_cursor":null}}""");
         handler.EnqueueJson(HttpStatusCode.OK,
             """{"data":[{"id":"99","name":"Newsletter","created_at":"2026-01-01 00:00:00","active_count":0,"unsubscribed_count":0,"unconfirmed_count":0,"bounced_count":0,"junk_count":0}],"meta":{"current_page":1,"last_page":1}}""");
         var client = NewClient(handler);
@@ -41,6 +41,7 @@ public class MailerLiteClientWriteGuardTests
     public async Task UnassignSubscriberFromGroupAsync_RejectsWritesToNonHumansGroups()
     {
         var handler = new ScriptedHandler();
+        handler.EnqueueJson(HttpStatusCode.OK, """{"data":[],"meta":{"next_cursor":null}}""");
         handler.EnqueueJson(HttpStatusCode.OK,
             """{"data":[{"id":"99","name":"Newsletter","created_at":"2026-01-01 00:00:00","active_count":0,"unsubscribed_count":0,"unconfirmed_count":0,"bounced_count":0,"junk_count":0}],"meta":{"current_page":1,"last_page":1}}""");
         var client = NewClient(handler);
@@ -54,6 +55,7 @@ public class MailerLiteClientWriteGuardTests
     public async Task BulkImportSubscribersToGroupAsync_RejectsWritesToNonHumansGroups()
     {
         var handler = new ScriptedHandler();
+        handler.EnqueueJson(HttpStatusCode.OK, """{"data":[],"meta":{"next_cursor":null}}""");
         handler.EnqueueJson(HttpStatusCode.OK,
             """{"data":[{"id":"99","name":"Newsletter","created_at":"2026-01-01 00:00:00","active_count":0,"unsubscribed_count":0,"unconfirmed_count":0,"bounced_count":0,"junk_count":0}],"meta":{"current_page":1,"last_page":1}}""");
         var client = NewClient(handler);

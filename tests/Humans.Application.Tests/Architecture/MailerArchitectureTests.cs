@@ -9,7 +9,7 @@ public class MailerArchitectureTests
     [HumansFact]
     public void IMailerLiteService_OnlyAllowsAudienceWrites()
     {
-        var allowedWrites = new HashSet<string>
+        var allowedWrites = new HashSet<string>(StringComparer.Ordinal)
         {
             nameof(IMailerLiteService.CreateGroupAsync),
             nameof(IMailerLiteService.AssignSubscriberToGroupAsync),

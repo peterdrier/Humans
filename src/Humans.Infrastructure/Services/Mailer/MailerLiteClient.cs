@@ -7,6 +7,7 @@ using System.Text.Json.Serialization;
 using Humans.Application.Interfaces.Mailer;
 using Humans.Application.Interfaces.Mailer.Dtos;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using NodaTime;
 
 namespace Humans.Infrastructure.Services.Mailer;
@@ -17,14 +18,22 @@ namespace Humans.Infrastructure.Services.Mailer;
 /// First read after startup (or after <see cref="RefreshAsync"/>) populates
 /// the cache from MailerLite; every subsequent read is served from RAM.
 /// Admins force a re-pull via POST /Mailer/Admin/Refresh.
+///
+/// Writes (CreateGroup, Assign/Unassign, BulkImport) are runtime-guarded:
+/// every write either inspects the requested group name (CreateGroup) or
+/// looks up the target group by id (Assign/Unassign/BulkImport) and throws
+/// <see cref="InvalidOperationException"/> if the name doesn't start with
+/// "Humans - ". Pinned by <c>MailerLiteClientWriteGuardTests</c>.
 /// </summary>
 public sealed class MailerLiteClient : IMailerLiteService
 {
     public const string HttpClientName = "mailerlite";
+    private const string HumansGroupPrefix = "Humans - ";
 
     private static readonly JsonSerializerOptions Json = BuildJson();
     private readonly IHttpClientFactory _httpFactory;
     private readonly IClock _clock;
+    private readonly MailerLiteOptions _options;
     private readonly ILogger<MailerLiteClient> _logger;
     private readonly SemaphoreSlim _gate = new(1, 1);
 
@@ -33,10 +42,15 @@ public sealed class MailerLiteClient : IMailerLiteService
     private IReadOnlyList<MailerLiteGroup>? _groups;
     private Instant? _lastFetchedAt;
 
-    public MailerLiteClient(IHttpClientFactory httpFactory, IClock clock, ILogger<MailerLiteClient> logger)
+    public MailerLiteClient(
+        IHttpClientFactory httpFactory,
+        IClock clock,
+        IOptions<MailerLiteOptions> options,
+        ILogger<MailerLiteClient> logger)
     {
         _httpFactory = httpFactory;
         _clock = clock;
+        _options = options.Value;
         _logger = logger;
     }
 
@@ -66,7 +80,7 @@ public sealed class MailerLiteClient : IMailerLiteService
         // Single-email lookup is a passthrough — callers asking for a specific
         // address want live state, not a snapshot from the dashboard cache.
         using var resp = await SendAsync(HttpMethod.Get,
-            $"/api/subscribers/{Uri.EscapeDataString(email)}", ct);
+            $"/api/subscribers/{Uri.EscapeDataString(email)}", content: null, ct);
         if (resp.StatusCode == HttpStatusCode.NotFound) return null;
         resp.EnsureSuccessStatusCode();
         var body = await resp.Content.ReadFromJsonAsync<SubscriberSingleEnvelope>(Json, ct);
@@ -84,6 +98,120 @@ public sealed class MailerLiteClient : IMailerLiteService
         {
             _gate.Release();
         }
+    }
+
+    public async Task<MailerLiteGroup> CreateGroupAsync(string name, CancellationToken ct = default)
+    {
+        if (!name.StartsWith(HumansGroupPrefix, StringComparison.Ordinal))
+            throw new InvalidOperationException(
+                $"Group name '{name}' must start with '{HumansGroupPrefix}'.");
+
+        using var body = JsonContent.Create(new { name }, options: Json);
+        using var resp = await SendAsync(HttpMethod.Post, "/api/groups", body, ct);
+        resp.EnsureSuccessStatusCode();
+        var env = await resp.Content.ReadFromJsonAsync<GroupSingleEnvelope>(Json, ct)
+            ?? throw new InvalidOperationException("MailerLite returned empty body on CreateGroup.");
+
+        InvalidateGroupsCache();
+        return env.Data;
+    }
+
+    public async Task AssignSubscriberToGroupAsync(
+        string subscriberId, string groupId, CancellationToken ct = default)
+    {
+        await RequireHumansGroupAsync(groupId, ct);
+
+        using var resp = await SendAsync(
+            HttpMethod.Post,
+            $"/api/subscribers/{Uri.EscapeDataString(subscriberId)}/groups/{Uri.EscapeDataString(groupId)}",
+            content: null, ct);
+        resp.EnsureSuccessStatusCode();
+        InvalidateSubscribersCache();
+    }
+
+    public async Task UnassignSubscriberFromGroupAsync(
+        string subscriberId, string groupId, CancellationToken ct = default)
+    {
+        await RequireHumansGroupAsync(groupId, ct);
+
+        using var resp = await SendAsync(
+            HttpMethod.Delete,
+            $"/api/subscribers/{Uri.EscapeDataString(subscriberId)}/groups/{Uri.EscapeDataString(groupId)}",
+            content: null, ct);
+        resp.EnsureSuccessStatusCode();
+        InvalidateSubscribersCache();
+    }
+
+    public async Task<BulkImportResult> BulkImportSubscribersToGroupAsync(
+        string groupId, IReadOnlyList<string> emails, CancellationToken ct = default)
+    {
+        await RequireHumansGroupAsync(groupId, ct);
+        if (emails.Count == 0)
+            return new BulkImportResult(0, 0, 0, 0);
+
+        int created = 0, updated = 0, duplicates = 0, errors = 0;
+        var chunkSize = Math.Max(1, _options.BulkImportChunkSize);
+
+        foreach (var chunk in emails.Chunk(chunkSize))
+        {
+            var payload = new
+            {
+                subscribers = chunk.Select(e => new { email = e }).ToArray(),
+                resubscribe = false,
+                autoresponders = false,
+            };
+            using var body = JsonContent.Create(payload, options: Json);
+            using var resp = await SendAsync(
+                HttpMethod.Post,
+                $"/api/groups/{Uri.EscapeDataString(groupId)}/subscribers/import",
+                body, ct);
+            if (!resp.IsSuccessStatusCode)
+            {
+                errors += chunk.Length;
+                _logger.LogWarning(
+                    "BulkImport chunk failed for group {GroupId}: {StatusCode}",
+                    groupId, (int)resp.StatusCode);
+                continue;
+            }
+            var parsed = await resp.Content.ReadFromJsonAsync<BulkImportEnvelope>(Json, ct);
+            created += parsed?.Imported ?? 0;
+            updated += parsed?.Updated ?? 0;
+            duplicates += parsed?.Duplicates ?? 0;
+        }
+
+        InvalidateSubscribersCache();
+        return new BulkImportResult(created, updated, duplicates, errors);
+    }
+
+    private async Task<MailerLiteGroup> RequireHumansGroupAsync(string groupId, CancellationToken ct)
+    {
+        var groups = await ListGroupsAsync(ct);
+        var group = groups.FirstOrDefault(g => string.Equals(g.Id, groupId, StringComparison.Ordinal))
+            ?? throw new InvalidOperationException(
+                $"MailerLite group '{groupId}' not found.");
+        if (!group.Name.StartsWith(HumansGroupPrefix, StringComparison.Ordinal))
+            throw new InvalidOperationException(
+                $"MailerLite group '{group.Name}' (id={groupId}) is not managed by Humans. " +
+                $"Writes are restricted to groups whose name starts with '{HumansGroupPrefix}'.");
+        return group;
+    }
+
+    private void InvalidateSubscribersCache()
+    {
+        _gate.Wait();
+        try
+        {
+            _subscribers = null;
+            _summary = null;
+        }
+        finally { _gate.Release(); }
+    }
+
+    private void InvalidateGroupsCache()
+    {
+        _gate.Wait();
+        try { _groups = null; }
+        finally { _gate.Release(); }
     }
 
     private async Task EnsurePopulatedAsync(CancellationToken ct)
@@ -137,7 +265,7 @@ public sealed class MailerLiteClient : IMailerLiteService
         {
             var url = "/api/subscribers?limit=100";
             if (cursor is not null) url += $"&cursor={Uri.EscapeDataString(cursor)}";
-            using var resp = await SendAsync(HttpMethod.Get, url, ct);
+            using var resp = await SendAsync(HttpMethod.Get, url, content: null, ct);
             resp.EnsureSuccessStatusCode();
             var body = await resp.Content.ReadFromJsonAsync<SubscriberListEnvelope>(Json, ct);
             if (body is null) yield break;
@@ -153,7 +281,7 @@ public sealed class MailerLiteClient : IMailerLiteService
         int page = 1;
         while (true)
         {
-            using var resp = await SendAsync(HttpMethod.Get, $"/api/groups?page={page}&limit=100", ct);
+            using var resp = await SendAsync(HttpMethod.Get, $"/api/groups?page={page}&limit=100", content: null, ct);
             resp.EnsureSuccessStatusCode();
             var body = await resp.Content.ReadFromJsonAsync<GroupListEnvelope>(Json, ct);
             if (body is null || body.Data.Count == 0) break;
@@ -164,18 +292,17 @@ public sealed class MailerLiteClient : IMailerLiteService
         return results;
     }
 
-    // Internal seam for tests — exposes the private guard.
+    // Internal seam for tests — calls SendAsync without the GET-only guard
+    // (the guard was removed when outbound writes landed).
     internal Task<HttpResponseMessage> SendForTestsAsync(HttpMethod method, string url, CancellationToken ct)
-        => SendAsync(method, url, ct);
+        => SendAsync(method, url, content: null, ct);
 
-    private async Task<HttpResponseMessage> SendAsync(HttpMethod method, string url, CancellationToken ct)
+    private async Task<HttpResponseMessage> SendAsync(
+        HttpMethod method, string url, HttpContent? content, CancellationToken ct)
     {
-        if (method != HttpMethod.Get)
-            throw new InvalidOperationException(
-                $"MailerLite client is read-only. Attempted {method} {url}. " +
-                "Outbound writes belong to a separate slice with its own review.");
         var http = _httpFactory.CreateClient(HttpClientName);
         using var req = new HttpRequestMessage(method, url);
+        if (content is not null) req.Content = content;
         HttpResponseMessage resp;
         try
         {
@@ -236,4 +363,12 @@ public sealed class MailerLiteClient : IMailerLiteService
     private sealed record GroupMeta(
         [property: JsonPropertyName("current_page")] int CurrentPage,
         [property: JsonPropertyName("last_page")] int LastPage);
+
+    private sealed record GroupSingleEnvelope(
+        [property: JsonPropertyName("data")] MailerLiteGroup Data);
+
+    private sealed record BulkImportEnvelope(
+        [property: JsonPropertyName("imported")] int Imported,
+        [property: JsonPropertyName("updated")] int Updated,
+        [property: JsonPropertyName("duplicates")] int Duplicates);
 }
