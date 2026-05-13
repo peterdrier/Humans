@@ -7,15 +7,31 @@ namespace Humans.Application.Tests.Architecture;
 public class MailerArchitectureTests
 {
     [HumansFact]
-    public void IMailerLiteService_HasNoWriteMethods()
+    public void IMailerLiteService_OnlyAllowsAudienceWrites()
     {
-        string[] forbidden = ["Create", "Update", "Delete", "Upsert", "Add", "Remove", "Set", "Post", "Put", "Patch"];
-        var methods = typeof(IMailerLiteService).GetMethods();
-        methods.Should().NotBeEmpty();
-        foreach (var m in methods)
-            foreach (var prefix in forbidden)
-                m.Name.Should().NotStartWith(prefix,
-                    $"IMailerLiteService is read-only by design; '{m.Name}' looks like a write method.");
+        var allowedWrites = new HashSet<string>
+        {
+            nameof(IMailerLiteService.CreateGroupAsync),
+            nameof(IMailerLiteService.AssignSubscriberToGroupAsync),
+            nameof(IMailerLiteService.UnassignSubscriberFromGroupAsync),
+            nameof(IMailerLiteService.BulkImportSubscribersToGroupAsync),
+        };
+
+        var writePrefixes = new[]
+        {
+            "Create", "Update", "Delete", "Upsert", "Add", "Remove",
+            "Set", "Post", "Put", "Patch", "Assign", "Unassign", "Bulk",
+        };
+
+        var unexpectedWrites = typeof(IMailerLiteService).GetMethods()
+            .Where(m => writePrefixes.Any(p => m.Name.StartsWith(p, StringComparison.Ordinal)))
+            .Where(m => !allowedWrites.Contains(m.Name))
+            .Select(m => m.Name)
+            .ToList();
+
+        unexpectedWrites.Should().BeEmpty(
+            "IMailerLiteService writes are restricted to the four audience-management methods. " +
+            "New writes need their own architecture review.");
     }
 
     [HumansFact]
