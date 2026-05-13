@@ -8,8 +8,7 @@ public sealed record MailerImportPreviewViewModel(
     IReadOnlyList<SubscriberDecisionRow> Rows);
 
 public sealed record SubscriberDecisionRow(
-    string EmailRedacted,
-    string EmailFull,           // shown on row-expand
+    string Email,
     string MlStatus,
     Instant? MlLastActionAt,
     Guid? MatchedUserId,

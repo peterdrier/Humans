@@ -142,21 +142,11 @@ public sealed class MailerAdminController : HumansControllerBase
 
     private static IReadOnlyList<SubscriberDecisionRow> ProjectRows(ImportPlan plan) =>
         plan.Decisions.Select(d => new SubscriberDecisionRow(
-            EmailRedacted: Redact(d.Email),
-            EmailFull: d.Email,
+            Email: d.Email,
             MlStatus: d.Status,
             MlLastActionAt: null,
             MatchedUserId: d.TargetUserId,
             Outcome: d.Outcome)).ToList();
-
-    private static string Redact(string email)
-    {
-        var at = email.IndexOf('@');
-        if (at < 0 || at < 2) return email;
-        var local = email[..at];
-        var domain = email[(at + 1)..];
-        return $"{local[..2]}***@{domain[..Math.Min(3, domain.Length)]}***";
-    }
 
     private async Task<DriftReport> ComputeDriftAsync(CancellationToken ct)
     {

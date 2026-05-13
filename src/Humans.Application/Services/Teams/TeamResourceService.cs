@@ -7,6 +7,7 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 
@@ -26,18 +27,24 @@ public sealed partial class TeamResourceService : ITeamResourceService
     private readonly ITeamResourceGoogleClient _googleClient;
     private readonly IGoogleDrivePermissionsClient _drivePermissions;
     private readonly ITeamService _teamService;
-    private readonly IRoleAssignmentService _roleAssignmentService;
+    private readonly IServiceProvider _serviceProvider;
     private readonly IAuditLogService _auditLogService;
     private readonly TeamResourceManagementOptions _resourceOptions;
     private readonly IClock _clock;
     private readonly ILogger<TeamResourceService> _logger;
+
+    // Lazy resolution: eagerly injecting IRoleAssignmentService creates a
+    // ctor cycle TeamResourceService → IRoleAssignmentService → ISystemTeamSync
+    // → IGoogleGroupSync → ITeamResourceService. Only one method uses it.
+    private IRoleAssignmentService RoleAssignmentService
+        => _serviceProvider.GetRequiredService<IRoleAssignmentService>();
 
     public TeamResourceService(
         IGoogleResourceRepository repository,
         ITeamResourceGoogleClient googleClient,
         IGoogleDrivePermissionsClient drivePermissions,
         ITeamService teamService,
-        IRoleAssignmentService roleAssignmentService,
+        IServiceProvider serviceProvider,
         IAuditLogService auditLogService,
         TeamResourceManagementOptions resourceOptions,
         IClock clock,
@@ -47,7 +54,7 @@ public sealed partial class TeamResourceService : ITeamResourceService
         _googleClient = googleClient;
         _drivePermissions = drivePermissions;
         _teamService = teamService;
-        _roleAssignmentService = roleAssignmentService;
+        _serviceProvider = serviceProvider;
         _auditLogService = auditLogService;
         _resourceOptions = resourceOptions;
         _clock = clock;
@@ -515,12 +522,12 @@ public sealed partial class TeamResourceService : ITeamResourceService
 
     public async Task<bool> CanManageTeamResourcesAsync(Guid teamId, Guid userId, CancellationToken ct = default)
     {
-        if (await _roleAssignmentService.IsUserBoardMemberAsync(userId, ct))
+        if (await RoleAssignmentService.IsUserBoardMemberAsync(userId, ct))
         {
             return true;
         }
 
-        if (await _roleAssignmentService.IsUserTeamsAdminAsync(userId, ct))
+        if (await RoleAssignmentService.IsUserTeamsAdminAsync(userId, ct))
         {
             return true;
         }

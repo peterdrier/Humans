@@ -50,7 +50,7 @@ public class TeamResourceServiceDeactivateTests : IDisposable
             googleClient: Substitute.For<ITeamResourceGoogleClient>(),
             drivePermissions: Substitute.For<IGoogleDrivePermissionsClient>(),
             teamService: Substitute.For<ITeamService>(),
-            roleAssignmentService: Substitute.For<IRoleAssignmentService>(),
+            serviceProvider: Substitute.For<IServiceProvider>(),
             auditLogService: _auditLogService,
             resourceOptions: new TeamResourceManagementOptions(),
             clock: _clock,

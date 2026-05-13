@@ -37,19 +37,22 @@ public sealed class MailerLiteClient : IMailerLiteService
 
     public async Task<MailerLiteAccountSummary> GetAccountSummaryAsync(CancellationToken ct = default)
     {
-        async Task<int> CountAsync(string status)
+        // MailerLite v2 has no endpoint for subscriber-status totals. /api/subscribers
+        // uses cursor pagination and the response 'meta' carries only path / per_page /
+        // next_cursor / prev_cursor — no total. We do a single full sweep of subscribers
+        // and bucket by status client-side.
+        int active = 0, unsub = 0, unc = 0, bnc = 0, jnk = 0;
+        await foreach (var s in ListSubscribersAsync(ct))
         {
-            using var resp = await SendAsync(HttpMethod.Get,
-                $"/api/subscribers?filter[status]={status}&limit=1", ct);
-            resp.EnsureSuccessStatusCode();
-            using var doc = JsonDocument.Parse(await resp.Content.ReadAsStringAsync(ct));
-            return doc.RootElement.GetProperty("meta").GetProperty("total").GetInt32();
+            switch (s.Status)
+            {
+                case "active": active++; break;
+                case "unsubscribed": unsub++; break;
+                case "unconfirmed": unc++; break;
+                case "bounced": bnc++; break;
+                case "junk": jnk++; break;
+            }
         }
-        var active = await CountAsync("active");
-        var unsub = await CountAsync("unsubscribed");
-        var unc = await CountAsync("unconfirmed");
-        var bnc = await CountAsync("bounced");
-        var jnk = await CountAsync("junk");
         return new MailerLiteAccountSummary(active, unsub, unc, bnc, jnk);
     }
 
@@ -142,6 +145,8 @@ public sealed class MailerLiteClient : IMailerLiteService
             PropertyNameCaseInsensitive = true,
         };
         o.Converters.Add(new MailerLiteDateConverter());
+        o.Converters.Add(new MailerLiteRequiredDateConverter());
+        o.Converters.Add(new MailerLiteSubscriberConverter());
         return o;
     }
 
