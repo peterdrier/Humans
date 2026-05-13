@@ -93,7 +93,7 @@ public sealed class AttendeeContactImportService : IAttendeeContactImportService
             if (!freshById.TryGetValue(d.AttendeeId, out var attendee))
             {
                 vanished++;
-                _logger.LogInformation(
+                _logger.LogWarning(
                     "Attendee {AttendeeId} ({Email}) vanished between plan and apply",
                     d.AttendeeId, d.Email);
                 continue;
@@ -105,7 +105,7 @@ public sealed class AttendeeContactImportService : IAttendeeContactImportService
             if (!string.Equals(attendee.AttendeeEmail, d.Email, StringComparison.OrdinalIgnoreCase))
             {
                 vanished++;
-                _logger.LogInformation(
+                _logger.LogWarning(
                     "Attendee {AttendeeId} email drifted between plan ({PlanEmail}) and apply ({FreshEmail}); treating as vanished",
                     d.AttendeeId, d.Email, attendee.AttendeeEmail);
                 continue;
