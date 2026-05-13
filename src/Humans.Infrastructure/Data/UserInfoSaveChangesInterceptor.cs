@@ -9,20 +9,32 @@ using Humans.Domain.Entities;
 namespace Humans.Infrastructure.Data;
 
 /// <summary>
-/// Issue #703. EF Core <see cref="SaveChangesInterceptor"/> that catches every
-/// write to a table contributing to <see cref="Humans.Application.UserInfo"/>
-/// and signals the affected userIds to the
-/// <see cref="IUserInfoInvalidator"/>. Closes the gap left by Identity-machinery
-/// write paths (<c>UserManager.UpdateAsync</c>, sign-in <c>LastLoginAt</c>
-/// bumps, OAuth <c>UserEmail</c> creation) which bypass <c>IUserService</c>.
+/// Issue #703. EF Core <see cref="SaveChangesInterceptor"/> that catches
+/// Identity-machinery and EF-direct writes to UserInfo-contributing tables
+/// and signals the affected userIds to the <see cref="IUserInfoInvalidator"/>.
 /// </summary>
 /// <remarks>
 /// <para>
-/// The 8 contributing tables: <c>users</c>, <c>user_emails</c>,
-/// <c>event_participations</c>, AspNet <c>user_logins</c>, <c>profiles</c>,
-/// <c>contact_fields</c>, <c>profile_languages</c>,
-/// <c>volunteer_history_entries</c>. Affected userIds are resolved per-entity
-/// in <see cref="CollectAffectedUserIds"/>.
+/// Scope is intentionally narrow: only User-section tables that get written
+/// outside of <c>IUserService</c> (and therefore bypass the
+/// <c>CachingUserService</c> decorator) need to be caught here. That is:
+/// </para>
+/// <list type="bullet">
+///   <item><c>users</c> — UserManager.UpdateAsync (LastLoginAt bump, password reset, lockout).</item>
+///   <item><c>user_emails</c> — OAuth callback creating verified-email rows.</item>
+///   <item><c>event_participations</c> — defensive coverage for any direct-repo write.</item>
+///   <item>AspNet <c>user_logins</c> — OAuth callback creating login rows.</item>
+/// </list>
+/// <para>
+/// Profile-section tables (<c>profiles</c>, <c>contact_fields</c>,
+/// <c>profile_languages</c>, <c>volunteer_history_entries</c>) are
+/// intentionally NOT handled here. Every write to those flows through
+/// <c>CachingProfileService</c>, whose <c>RefreshEntryAsync</c> already
+/// invalidates UserInfo via <c>IUserInfoInvalidator</c>. Handling them here
+/// too would require resolving the owning userId from a child entity's
+/// ProfileId, which (a) the decorator already knows for free, and (b) means
+/// the interceptor has to crack the EF ChangeTracker / fall back to a SELECT.
+/// Single source of truth lives in the decorator.
 /// </para>
 /// <para>
 /// Invalidation fires AFTER <c>SavedChangesAsync</c> so the cache rebuilds
@@ -93,11 +105,10 @@ public sealed class UserInfoSaveChangesInterceptor : SaveChangesInterceptor
         var affected = new HashSet<Guid>();
         if (context is null) return affected;
 
-        // Read tracker state AFTER SaveChanges — entities are now Unchanged.
-        // ChangeTracker still references them; SaveChanges does not clear it.
-        // We inspect every entry that was previously modified/added/deleted via
-        // the StateAfterSaveChanges signal: easier to just inspect every
-        // tracked entry of an interesting type.
+        // SaveChanges has run; tracked entries are now Unchanged but still in
+        // the ChangeTracker. Scan every entry; pick out the User-section types
+        // that bypass IUserService. Profile-section types are handled by
+        // CachingProfileService.RefreshEntryAsync — see the class remarks.
         foreach (var entry in context.ChangeTracker.Entries())
         {
             switch (entry.Entity)
@@ -111,62 +122,11 @@ public sealed class UserInfoSaveChangesInterceptor : SaveChangesInterceptor
                 case EventParticipation ep:
                     affected.Add(ep.UserId);
                     break;
-                case Profile p:
-                    affected.Add(p.UserId);
-                    break;
-                case ContactField cf:
-                    {
-                        // ContactField is keyed on ProfileId; userId isn't on
-                        // the entity. Resolution order: (1) loaded Profile nav,
-                        // (2) Profile entity tracked in the same context,
-                        // (3) single small SELECT against Profile by Id.
-                        // (3) is the rare-case fallback for write paths like
-                        // ContactFieldRepository.BatchSaveAsync that attach
-                        // detached entities into a fresh DbContext without
-                        // loading the Profile navigation.
-                        var uid = cf.Profile?.UserId ?? ResolveProfileOwner(context, cf.ProfileId);
-                        if (uid is { } id) affected.Add(id);
-                        break;
-                    }
-                case ProfileLanguage pl:
-                    {
-                        var uid = pl.Profile?.UserId ?? ResolveProfileOwner(context, pl.ProfileId);
-                        if (uid is { } id) affected.Add(id);
-                        break;
-                    }
-                case VolunteerHistoryEntry vh:
-                    {
-                        var uid = vh.Profile?.UserId ?? ResolveProfileOwner(context, vh.ProfileId);
-                        if (uid is { } id) affected.Add(id);
-                        break;
-                    }
                 case IdentityUserLogin<Guid> uil:
                     affected.Add(uil.UserId);
                     break;
             }
         }
         return affected;
-    }
-
-    /// <summary>
-    /// Resolves the owning userId for a profileId when the Profile nav is not
-    /// loaded on the changed entity. Checks the ChangeTracker first (no DB hit
-    /// if another touched entry already carries the Profile), then falls back
-    /// to a single AsNoTracking SELECT. Sync is acceptable here: the Profile
-    /// table is small, this only fires on write paths that bypass nav loading,
-    /// and the row is hot from the just-committed write.
-    /// </summary>
-    private static Guid? ResolveProfileOwner(DbContext context, Guid profileId)
-    {
-        var tracked = context.ChangeTracker.Entries<Profile>()
-            .FirstOrDefault(e => e.Entity.Id == profileId)?.Entity;
-        if (tracked is not null)
-            return tracked.UserId;
-
-        return context.Set<Profile>()
-            .AsNoTracking()
-            .Where(p => p.Id == profileId)
-            .Select(p => (Guid?)p.UserId)
-            .FirstOrDefault();
     }
 }

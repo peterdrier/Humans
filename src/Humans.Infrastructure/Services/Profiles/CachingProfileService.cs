@@ -78,6 +78,15 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<CachingProfileService> _logger;
 
+    // Issue #703: every Profile write also flushes the UserInfo cache. Resolved
+    // lazily via IServiceProvider rather than ctor-injected because the
+    // invalidator (CachingUserService) is registered in the Users section and
+    // we don't want a section-extension ordering dependency at DI build time —
+    // and "extra flush > missed flush" was the explicit call. Resolve-once on
+    // first use; this is a Singleton so the result is stable for the process.
+    private readonly IServiceProvider _services;
+    private IUserInfoInvalidator? _userInfoInvalidator;
+
     private readonly ConcurrentDictionary<Guid, FullProfile> _byUserId = new();
 
     public CachingProfileService(
@@ -85,13 +94,32 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
         IUserEmailRepository userEmailRepository,
         IContactFieldRepository contactFieldRepository,
         IServiceScopeFactory scopeFactory,
+        IServiceProvider services,
         ILogger<CachingProfileService> logger)
     {
         _profileRepository = profileRepository;
         _userEmailRepository = userEmailRepository;
         _contactFieldRepository = contactFieldRepository;
         _scopeFactory = scopeFactory;
+        _services = services;
         _logger = logger;
+    }
+
+    private async Task InvalidateUserInfoAsync(Guid userId, CancellationToken ct)
+    {
+        try
+        {
+            var invalidator = _userInfoInvalidator
+                ??= _services.GetService<IUserInfoInvalidator>();
+            if (invalidator is not null)
+                await invalidator.InvalidateAsync(userId, ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(
+                "CachingProfileService: UserInfo invalidation failed for {UserId}: {ExType}",
+                userId, ex.GetType().Name);
+        }
     }
 
     // ==========================================================================
@@ -137,6 +165,15 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
     /// </summary>
     private async Task RefreshEntryAsync(Guid userId, CancellationToken ct)
     {
+        // Issue #703: every FullProfile refresh also invalidates UserInfo.
+        // Profile and its child tables (ContactField, ProfileLanguage,
+        // VolunteerHistoryEntry) feed into UserInfo too, so a mutation that
+        // refreshes FullProfile must drop the UserInfo entry to avoid serving
+        // stale joined data from the read-model cache. Done first so that
+        // an exception in the FullProfile path below doesn't leak a stale
+        // UserInfo entry.
+        await InvalidateUserInfoAsync(userId, ct);
+
         // If any repository call throws, the dict retains the pre-mutation entry;
         // the next cache miss will re-load from the inner service. This is tolerable
         // at single-server ~500-user scale — the surface area for a divergence
@@ -415,6 +452,12 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
 
         _byUserId.TryRemove(mergedFromUserId, out _);
         _byUserId.TryRemove(mergedToUserId, out _);
+
+        // Issue #703: also flush UserInfo for both ends. CachingUserService's
+        // own ReassignAsync covers the user-section invalidation; this is the
+        // profile-section side of the merge.
+        await InvalidateUserInfoAsync(mergedFromUserId, ct);
+        await InvalidateUserInfoAsync(mergedToUserId, ct);
     }
 
     // ==========================================================================
