@@ -266,13 +266,14 @@ public sealed class MailerImportService : IMailerImportService
         int throttled = 0;
         foreach (var d in decisions)
         {
-            // UnconfirmedSkipped and AmbiguousMultipleVerified are unconditional
-            // no-ops in ApplyAsync — they never write. Bypass the throttle so
-            // they don't consume a slot or inflate DecisionsThrottled (which
-            // would double-count against plan.Counts.UnconfirmedSkipped /
-            // AmbiguousMultipleVerified in the summary).
+            // UnconfirmedSkipped, AmbiguousMultipleVerified, and VerifiedPrefsAlreadyMatch
+            // never write — the first two are unconditional skips, and ApplyMarketingDeltaAsync
+            // returns DeltaResult.NoChange for the third. Bypass the throttle so they don't
+            // consume a slot or inflate DecisionsThrottled (which would double-count against
+            // plan.Counts in the summary).
             if (d.Outcome is SubscriberOutcome.UnconfirmedSkipped
-                          or SubscriberOutcome.AmbiguousMultipleVerified)
+                          or SubscriberOutcome.AmbiguousMultipleVerified
+                          or SubscriberOutcome.VerifiedPrefsAlreadyMatch)
             {
                 toProcess.Add(d);
                 continue;
