@@ -139,7 +139,7 @@ public class TicketTailorService : ITicketVendorService
                     VendorTicketId: ticket.Id,
                     VendorOrderId: ticket.OrderId,
                     AttendeeName: ticket.FullName ?? $"{ticket.FirstName} {ticket.LastName}".Trim(),
-                    AttendeeEmail: ticket.Email,
+                    AttendeeEmail: ResolveAttendeeEmail(ticket),
                     TicketTypeName: ticket.Description ?? "Unknown",
                     Price: (ticket.ListedPrice ?? 0) / 100m,
                     Status: ticket.Status ?? "valid"));
@@ -351,7 +351,29 @@ public class TicketTailorService : ITicketVendorService
         [property: JsonPropertyName("description")] string? Description,
         [property: JsonPropertyName("listed_price")] int? ListedPrice,
         [property: JsonPropertyName("status")] string? Status,
-        [property: JsonPropertyName("order_id")] string? OrderId);
+        [property: JsonPropertyName("order_id")] string? OrderId,
+        [property: JsonPropertyName("custom_questions")] List<TtCustomQuestion>? CustomQuestions);
+
+    internal sealed record TtCustomQuestion(
+        [property: JsonPropertyName("question")] string? Question,
+        [property: JsonPropertyName("answer")] string? Answer);
+
+    // TT's issued_ticket.email is the buyer/account email replicated onto every
+    // ticket in the order — useless for matching the actual attendee. The real
+    // attendee email is collected via a custom checkout question whose text is
+    // exactly "Email" (see order or_76148796). Match the question string
+    // verbatim; fall back to the top-level field when absent.
+    internal static string? ResolveAttendeeEmail(TtIssuedTicket ticket)
+    {
+        var customEmail = ticket.CustomQuestions?
+            .FirstOrDefault(q =>
+                string.Equals(q.Question, "Email", StringComparison.Ordinal) &&
+                !string.IsNullOrWhiteSpace(q.Answer))
+            ?.Answer
+            ?.Trim();
+
+        return !string.IsNullOrEmpty(customEmail) ? customEmail : ticket.Email;
+    }
 
     internal sealed record TtEvent(
         [property: JsonPropertyName("name")] string? Name,
@@ -455,7 +477,7 @@ public class TicketTailorService : ITicketVendorService
             VendorTicketId: body.Id,
             VendorOrderId: body.OrderId,
             AttendeeName: body.FullName ?? $"{body.FirstName} {body.LastName}".Trim(),
-            AttendeeEmail: body.Email,
+            AttendeeEmail: ResolveAttendeeEmail(body),
             TicketTypeName: body.Description ?? "Unknown",
             Price: (body.ListedPrice ?? 0) / 100m,
             Status: body.Status ?? "valid");

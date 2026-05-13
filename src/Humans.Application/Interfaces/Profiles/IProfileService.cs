@@ -16,6 +16,7 @@ namespace Humans.Application.Interfaces.Profiles;
 /// <remarks>
 /// Surface-budget recent history (newest first):
 /// <list type="bullet">
+///   <item>2026-05-13 — 31→32: issue nobodies-collective/Humans#702. Added GetProfilePictureMigrationSnapshotAsync — backs the DB→FS migration verification page (/Profile/Admin/PictureMigration) used to confirm every DB-stored profile picture is on disk before Phase 2 drops the DB column. Profile section owns the FS-key helper, so the snapshot must be assembled inside the service.</item>
 ///   <item>2026-05-12 — 30→31: Expenses Phase 6 (PR #491). Added SetIbanAsync — IBAN set/clear on Profile via the expense-report IBAN modal. Profile section owns the write; no expiable substitute (must go through the caching decorator and the audit log, which both require the IProfileService surface). Carried over from the retired InterfaceMethodBudgetTests at the rebase onto origin/main.</item>
 ///   <item>2026-05-11 — InterfaceMethodBudgetTests retired; budget migrated to [SurfaceBudget(30)] (issue nobodies-collective/Humans#700).</item>
 ///   <item>36→30 — issue nobodies-collective/Humans#685: removed RequestDeletionAsync, CancelDeletionAsync, GetEventHoldDateAsync (deletion orchestration moved to IAccountDeletionService), and GetProfileIndexDataAsync, GetProfileEditDataAsync, GetAdminHumanDetailAsync (Profile-section bundling moved to ProfileController composition).</item>
@@ -25,7 +26,7 @@ namespace Humans.Application.Interfaces.Profiles;
 ///   <item>41→40 — account-merge fold final consolidation: removed ReassignSubAggregatesToUserAsync from IProfileService (moved to IUserMerge.ReassignAsync, dispatched via fan-out).</item>
 /// </list>
 /// </remarks>
-[SurfaceBudget(31)]
+[SurfaceBudget(32)]
 public interface IProfileService : IApplicationService, IUserMerge
 {
     Task<Profile?> GetProfileAsync(Guid userId, CancellationToken ct = default);
@@ -82,6 +83,19 @@ public interface IProfileService : IApplicationService, IUserMerge
     /// keeps controllers free of <see cref="IFileStorage"/>.
     /// </summary>
     Task<(byte[] Data, string ContentType)?> GetProfilePictureAsync(Guid profileId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Issue nobodies-collective/Humans#702: snapshot for the profile-picture
+    /// DB→FS migration verification page. Returns the total count of profiles
+    /// with a custom picture (<c>ProfilePictureContentType IS NOT NULL</c>),
+    /// how many of those have the expected file on disk, and the DB-only rows
+    /// (the at-risk laggards that need to be migrated before Phase 2 drops
+    /// <c>Profile.ProfilePictureData</c>). FS existence is checked with
+    /// <see cref="IFileStorage.TryReadAsync"/> against the same key the read
+    /// path uses; the FS-key helper stays section-internal.
+    /// </summary>
+    Task<ProfilePictureMigrationSnapshot> GetProfilePictureMigrationSnapshotAsync(
+        CancellationToken ct = default);
 
     /// <summary>
     /// Persists a new custom profile picture for the user's profile. No-op (logs a

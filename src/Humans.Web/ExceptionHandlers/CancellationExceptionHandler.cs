@@ -5,9 +5,10 @@ namespace Humans.Web.ExceptionHandlers;
 /// <summary>
 /// Swallows <see cref="OperationCanceledException"/> when the cancellation originated
 /// from the client aborting the request (<see cref="HttpContext.RequestAborted"/>).
-/// Logs at Information since this is expected behaviour, sets status 499
-/// ("Client Closed Request", an nginx convention) when the response hasn't
-/// already started, and returns <c>true</c> to short-circuit further handlers.
+/// Logs at Warning (without the exception) per <c>memory/code/always-log-problems.md</c>
+/// — expected events still need to be visible in the prod log viewer. Sets status 499
+/// ("Client Closed Request", an nginx convention) when the response hasn't already
+/// started, and returns <c>true</c> to short-circuit further handlers.
 ///
 /// Registered BEFORE <see cref="GlobalLoggingExceptionHandler"/> so cancellations
 /// never get logged as errors.
@@ -26,18 +27,31 @@ public sealed class CancellationExceptionHandler : IExceptionHandler
         Exception exception,
         CancellationToken cancellationToken)
     {
-        if (exception is not OperationCanceledException)
+        if (exception is not OperationCanceledException oce)
         {
             return ValueTask.FromResult(false);
         }
 
-        if (!httpContext.RequestAborted.IsCancellationRequested)
+        // Treat as a client abort when either:
+        //  - the request has been aborted (RequestAborted flagged), or
+        //  - the OCE carries the request's cancellation token (Npgsql and other
+        //    DB-level cancellations propagate this even when RequestAborted
+        //    hasn't been observed yet on this thread).
+        // This second branch covers `NpgsqlOperationCanceledException` from
+        // mid-query aborts where the request token tripped Npgsql before the
+        // pipeline had a chance to flag RequestAborted.
+        var isClientAbort =
+            httpContext.RequestAborted.IsCancellationRequested
+            || (oce.CancellationToken.IsCancellationRequested
+                && oce.CancellationToken == httpContext.RequestAborted);
+
+        if (!isClientAbort)
         {
-            // Not a client-abort cancellation — let other handlers deal with it.
+            // Server-initiated cancellation — let other handlers log/handle.
             return ValueTask.FromResult(false);
         }
 
-        _logger.LogInformation(
+        _logger.LogWarning(
             "Request cancelled by client on {Method} {Path}",
             httpContext.Request.Method,
             httpContext.Request.Path);

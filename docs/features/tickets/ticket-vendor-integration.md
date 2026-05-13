@@ -109,7 +109,7 @@ The TicketTailor "after checkout" redirect URL points at this route.
 
 - `TicketVendor:EventId` and `TicketVendor:SyncIntervalMinutes` in appsettings.json
 - `TICKET_VENDOR_API_KEY` environment variable (sensitive, not in appsettings)
-- `STRIPE_API_KEY` environment variable (read-only restricted key for fee tracking)
+- `STRIPE_TICKETS_KEY` environment variable (read-only restricted key for fee tracking)
 
 ## Related Features
 
