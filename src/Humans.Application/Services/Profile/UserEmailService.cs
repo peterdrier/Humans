@@ -580,6 +580,19 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         return user?.Email;
     }
 
+    public async Task<IReadOnlyDictionary<Guid, string>> GetPrimaryEmailsByUserIdsAsync(
+        IEnumerable<Guid> userIds, CancellationToken ct = default)
+    {
+        var ids = userIds.Distinct().ToList();
+        var result = new Dictionary<Guid, string>(ids.Count);
+        foreach (var id in ids)
+        {
+            var email = await GetPrimaryEmailAsync(id, ct);
+            if (!string.IsNullOrEmpty(email)) result[id] = email;
+        }
+        return result;
+    }
+
     public async Task<IReadOnlyList<string>> GetVerifiedEmailsForUserAsync(
         Guid userId, CancellationToken cancellationToken = default)
     {

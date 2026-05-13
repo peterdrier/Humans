@@ -282,6 +282,14 @@ public interface IUserEmailService : IApplicationService
     Task<string?> GetPrimaryEmailAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
+    /// Bulk variant of <see cref="GetPrimaryEmailAsync"/>. Returns a map of user-id
+    /// to primary email for each user that has one. Users without a primary email
+    /// are omitted from the result.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, string>> GetPrimaryEmailsByUserIdsAsync(
+        IEnumerable<Guid> userIds, CancellationToken ct = default);
+
+    /// <summary>
     /// Returns every verified email address belonging to the user. Used by
     /// cross-section callers (Tickets, matching) that need to compare incoming
     /// addresses against a user's verified set without reading

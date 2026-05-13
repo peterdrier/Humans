@@ -38,10 +38,30 @@ public sealed class MailerLiteSubscriberConverter : JsonConverter<MailerLiteSubs
             lastName = ReadString(fields, "last_name");
         }
 
+        var groupIds = new List<string>();
+        if (root.TryGetProperty("groups", out var groupsEl) && groupsEl.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var g in groupsEl.EnumerateArray())
+            {
+                // ML returns either an array of objects with id+name or an array of id strings.
+                if (g.ValueKind == JsonValueKind.String)
+                {
+                    var s = g.GetString();
+                    if (!string.IsNullOrEmpty(s)) groupIds.Add(s);
+                }
+                else if (g.ValueKind == JsonValueKind.Object
+                    && g.TryGetProperty("id", out var idEl)
+                    && idEl.ValueKind == JsonValueKind.String)
+                {
+                    groupIds.Add(idEl.GetString()!);
+                }
+            }
+        }
+
         return new MailerLiteSubscriber(
             id, email, status, source,
             subscribedAt, unsubscribedAt, optedInAt,
-            firstName, lastName);
+            firstName, lastName, groupIds);
     }
 
     public override void Write(Utf8JsonWriter writer, MailerLiteSubscriber value, JsonSerializerOptions options) =>
