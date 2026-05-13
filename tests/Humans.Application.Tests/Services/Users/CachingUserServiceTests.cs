@@ -252,48 +252,67 @@ public class CachingUserServiceTests
 
         var user = new User
         {
-            Id = userId, DisplayName = "Eight", PreferredLanguage = "es",
+            Id = userId,
+            DisplayName = "Eight",
+            PreferredLanguage = "es",
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             GoogleEmailStatus = GoogleEmailStatus.Valid,
             ICalToken = Guid.NewGuid(),
         };
         var userEmail = new UserEmail
         {
-            Id = emailId, UserId = userId, Email = "eight@example.com",
-            IsVerified = true, IsPrimary = true, IsGoogle = true,
-            Provider = "Google", ProviderKey = "subject-xyz",
+            Id = emailId,
+            UserId = userId,
+            Email = "eight@example.com",
+            IsVerified = true,
+            IsPrimary = true,
+            IsGoogle = true,
+            Provider = "Google",
+            ProviderKey = "subject-xyz",
         };
         var participation = new EventParticipation
         {
-            Id = participationId, UserId = userId, Year = 2026,
+            Id = participationId,
+            UserId = userId,
+            Year = 2026,
             Status = ParticipationStatus.Ticketed,
             Source = ParticipationSource.TicketSync,
         };
         var profile = new Profile
         {
-            Id = profileId, UserId = userId,
-            BurnerName = "Octa", FirstName = "Eight", LastName = "Tables",
+            Id = profileId,
+            UserId = userId,
+            BurnerName = "Octa",
+            FirstName = "Eight",
+            LastName = "Tables",
             DateOfBirth = new LocalDate(1990, 7, 4),
-            IsApproved = true, MembershipTier = MembershipTier.Asociado,
+            IsApproved = true,
+            MembershipTier = MembershipTier.Asociado,
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             UpdatedAt = Instant.FromUtc(2026, 1, 2, 0, 0),
         };
         profile.Languages.Add(new ProfileLanguage
         {
-            Id = languageId, ProfileId = profileId,
-            LanguageCode = "es", Proficiency = LanguageProficiency.Native,
+            Id = languageId,
+            ProfileId = profileId,
+            LanguageCode = "es",
+            Proficiency = LanguageProficiency.Native,
         });
         profile.VolunteerHistory.Add(new VolunteerHistoryEntry
         {
-            Id = historyId, ProfileId = profileId,
+            Id = historyId,
+            ProfileId = profileId,
             Date = new LocalDate(2025, 3, 1),
             EventName = "Nowhere 2025",
         });
         var contactField = new ContactField
         {
-            Id = contactFieldId, ProfileId = profileId,
-            FieldType = ContactFieldType.Phone, Value = "+34 555 0001",
-            Visibility = ContactFieldVisibility.AllActiveProfiles, DisplayOrder = 0,
+            Id = contactFieldId,
+            ProfileId = profileId,
+            FieldType = ContactFieldType.Phone,
+            Value = "+34 555 0001",
+            Visibility = ContactFieldVisibility.AllActiveProfiles,
+            DisplayOrder = 0,
         };
         var externalLogins = (IReadOnlyList<(string Provider, string ProviderKey)>)
             new List<(string Provider, string ProviderKey)>

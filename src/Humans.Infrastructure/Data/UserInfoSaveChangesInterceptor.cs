@@ -124,28 +124,58 @@ public sealed class UserInfoSaveChangesInterceptor : SaveChangesInterceptor
                     affected.Add(p.UserId);
                     break;
                 case ContactField cf:
-                    // ContactField is keyed on ProfileId; the userId isn't on
-                    // the entity. The Profile nav, if loaded, exposes UserId —
-                    // otherwise we fall back to looking up profileId in the
-                    // context. The decorator rebuilds the entry against the
-                    // post-commit DB, so missing one ContactField is not a
-                    // correctness issue (next read still hits the DB).
-                    if (cf.Profile is { } profile)
-                        affected.Add(profile.UserId);
-                    break;
+                    {
+                        // ContactField is keyed on ProfileId; userId isn't on
+                        // the entity. Resolution order: (1) loaded Profile nav,
+                        // (2) Profile entity tracked in the same context,
+                        // (3) single small SELECT against Profile by Id.
+                        // (3) is the rare-case fallback for write paths like
+                        // ContactFieldRepository.BatchSaveAsync that attach
+                        // detached entities into a fresh DbContext without
+                        // loading the Profile navigation.
+                        var uid = cf.Profile?.UserId ?? ResolveProfileOwner(context, cf.ProfileId);
+                        if (uid is { } id) affected.Add(id);
+                        break;
+                    }
                 case ProfileLanguage pl:
-                    if (pl.Profile is { } plProfile)
-                        affected.Add(plProfile.UserId);
-                    break;
+                    {
+                        var uid = pl.Profile?.UserId ?? ResolveProfileOwner(context, pl.ProfileId);
+                        if (uid is { } id) affected.Add(id);
+                        break;
+                    }
                 case VolunteerHistoryEntry vh:
-                    if (vh.Profile is { } vhProfile)
-                        affected.Add(vhProfile.UserId);
-                    break;
+                    {
+                        var uid = vh.Profile?.UserId ?? ResolveProfileOwner(context, vh.ProfileId);
+                        if (uid is { } id) affected.Add(id);
+                        break;
+                    }
                 case IdentityUserLogin<Guid> uil:
                     affected.Add(uil.UserId);
                     break;
             }
         }
         return affected;
+    }
+
+    /// <summary>
+    /// Resolves the owning userId for a profileId when the Profile nav is not
+    /// loaded on the changed entity. Checks the ChangeTracker first (no DB hit
+    /// if another touched entry already carries the Profile), then falls back
+    /// to a single AsNoTracking SELECT. Sync is acceptable here: the Profile
+    /// table is small, this only fires on write paths that bypass nav loading,
+    /// and the row is hot from the just-committed write.
+    /// </summary>
+    private static Guid? ResolveProfileOwner(DbContext context, Guid profileId)
+    {
+        var tracked = context.ChangeTracker.Entries<Profile>()
+            .FirstOrDefault(e => e.Entity.Id == profileId)?.Entity;
+        if (tracked is not null)
+            return tracked.UserId;
+
+        return context.Set<Profile>()
+            .AsNoTracking()
+            .Where(p => p.Id == profileId)
+            .Select(p => (Guid?)p.UserId)
+            .FirstOrDefault();
     }
 }

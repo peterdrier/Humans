@@ -161,13 +161,17 @@ public sealed class CachingUserService : IUserService, IUserMerge, IUserInfoInva
             .GroupBy(c => c.ProfileId)
             .ToDictionary(g => g.Key, g => (IReadOnlyList<ContactField>)g.ToList());
 
+        var participationsByUser = await _userRepository
+            .GetEventParticipationsByUserIdsAsync(userIds, ct);
+
         foreach (var user in users)
         {
             var emails = emailsByUser.TryGetValue(user.Id, out var es)
                 ? es : Array.Empty<UserEmail>();
             var logins = loginsByUser.TryGetValue(user.Id, out var ls)
                 ? ls : Array.Empty<(string Provider, string ProviderKey)>();
-            var participations = await _userRepository.GetEventParticipationsByUserIdAsync(user.Id, ct);
+            var participations = participationsByUser.TryGetValue(user.Id, out var ps)
+                ? ps : (IReadOnlyList<EventParticipation>)Array.Empty<EventParticipation>();
 
             profileByUser.TryGetValue(user.Id, out var profile);
             IReadOnlyList<ContactField> contactFields = Array.Empty<ContactField>();
