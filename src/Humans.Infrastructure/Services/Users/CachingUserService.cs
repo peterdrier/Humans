@@ -447,12 +447,8 @@ public sealed class CachingUserService : IUserService, IUserMerge, IUserInfoInva
         Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now,
         CancellationToken ct)
     {
-        await WithInnerAsync(async inner =>
-        {
-            // Inner UserService implements IUserMerge; resolve it as such.
-            var merge = (IUserMerge)inner;
-            await merge.ReassignAsync(mergedFromUserId, mergedToUserId, actorUserId, now, ct);
-        });
+        await WithInnerAsync(inner =>
+            inner.ReassignAsync(mergedFromUserId, mergedToUserId, actorUserId, now, ct));
         await RefreshEntryAsync(mergedFromUserId, ct);
         await RefreshEntryAsync(mergedToUserId, ct);
     }

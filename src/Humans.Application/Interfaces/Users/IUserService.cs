@@ -27,7 +27,7 @@ namespace Humans.Application.Interfaces.Users;
 /// </list>
 /// </remarks>
 [SurfaceBudget(32)]
-public interface IUserService : IApplicationService
+public interface IUserService : IApplicationService, IUserMerge
 {
     /// <summary>
     /// Returns the unified <see cref="UserInfo"/> read-model for the given
