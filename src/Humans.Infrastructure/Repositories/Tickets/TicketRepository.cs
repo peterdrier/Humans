@@ -172,6 +172,7 @@ public sealed class TicketRepository : ITicketRepository
         return await ctx.TicketAttendees
             .AsNoTracking()
             .Include(a => a.TicketOrder)
+                .ThenInclude(o => o.Attendees)
             .FirstOrDefaultAsync(a => a.Id == attendeeId, ct);
     }
 
