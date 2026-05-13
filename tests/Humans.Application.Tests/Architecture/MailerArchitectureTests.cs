@@ -103,6 +103,15 @@ public class MailerArchitectureTests
             "audience group names collide");
     }
 
+    [HumansFact]
+    public void MailerAudienceSyncService_LivesInApplication_NoEF()
+    {
+        var serviceType = typeof(MailerAudienceSyncService);
+        serviceType.Namespace.Should().Be("Humans.Application.Services.Mailer");
+        serviceType.Assembly.GetReferencedAssemblies()
+            .Should().NotContain(a => string.Equals(a.Name, "Microsoft.EntityFrameworkCore", StringComparison.Ordinal));
+    }
+
     // Reflection helper — passes null/default args to allow constructing audiences
     // that take service dependencies. The arch test only inspects metadata properties.
     private static object?[] NonPublicConstructorBypass(Type t)
