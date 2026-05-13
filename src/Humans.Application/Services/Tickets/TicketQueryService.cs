@@ -923,6 +923,11 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
         }
     }
 
+    public void InvalidateAfterContactImport()
+    {
+        _cache.InvalidateTicketCaches();
+    }
+
     public Task<IReadOnlyList<OrderDriftRow>> GetOrderDriftAsync(CancellationToken ct = default) =>
         _ticketRepository.GetOrderDriftAsync(ct);
 }
