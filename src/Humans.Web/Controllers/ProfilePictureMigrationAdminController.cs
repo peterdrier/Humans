@@ -74,6 +74,12 @@ public sealed class ProfilePictureMigrationAdminController : HumansControllerBas
             {
                 migrated++;
             }
+            else
+            {
+                _logger.LogWarning(
+                    "Profile-picture migration: GetProfilePictureAsync returned null for DB-only profile {ProfileId} (userId {UserId}); row skipped",
+                    row.ProfileId, row.UserId);
+            }
         }
 
         _logger.LogInformation(
