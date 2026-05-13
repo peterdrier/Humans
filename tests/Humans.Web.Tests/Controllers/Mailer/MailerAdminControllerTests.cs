@@ -71,10 +71,12 @@ public class MailerAdminControllerTests
         new("a@b.com", "active", outcome, null, null, null);
 
     private static ImportResult StubResult() =>
-        new(TotalPulled: 10, ContactsCreated: 2, PrefsFlipped: 3,
-            PrefsPreservedByConflict: 0, UnverifiedRowsDeletedAndSuperseded: 0,
+        new(TotalPulled: 10, HumansCreated: 2,
+            PrefsFlippedToOptIn: 2, PrefsFlippedToOptOut: 1,
+            PrefsKeptByConflict: 0, UnverifiedEmailsReplaced: 0,
             AmbiguousSkipped: 0, UnconfirmedSkipped: 0,
-            VanishedBetweenPlanAndApply: 0, Errors: 0, Elapsed: Duration.Zero);
+            VanishedBetweenPlanAndApply: 0, DecisionsThrottled: 0,
+            Errors: 0, Elapsed: Duration.Zero);
 
     // -----------------------------------------------------------------------
     // Commit — drift detected (>10%), redirects back to Import with banner.
@@ -83,19 +85,20 @@ public class MailerAdminControllerTests
     [HumansFact]
     public async Task Commit_RedirectsToPreview_WhenCountsDriftedMoreThan10Percent()
     {
-        // Snapshot from the previous GET /Import had 10 contacts-to-create.
+        // Snapshot from the previous GET /Import had 10 create-new-human decisions.
         var snapshot = new ImportPlanCounts(
-            WillCreateContact: 10,
-            WillAttachWithFlip: 0,
-            WillAttachConfirmOnly: 0,
-            WillKeepHumansState: 0,
-            WillDeleteUnverifiedAndCreate: 0,
-            SkippedAmbiguous: 0,
-            SkippedUnconfirmed: 0);
+            CreateNewHuman: 10,
+            ReplaceUnverifiedEmail: 0,
+            VerifiedPrefsAlreadyMatch: 0,
+            VerifiedFlipToOptIn: 0,
+            VerifiedFlipToOptOut: 0,
+            VerifiedKeepHumansPref: 0,
+            AmbiguousMultipleVerified: 0,
+            UnconfirmedSkipped: 0);
 
-        // Fresh plan has 8 CreateContact — a 20% decrease, above the 10% threshold.
+        // Fresh plan has 8 CreateNewHuman — a 20% decrease, above the 10% threshold.
         var freshDecisions = Enumerable
-            .Repeat(Decision(SubscriberOutcome.CreateContact), 8)
+            .Repeat(Decision(SubscriberOutcome.CreateNewHuman), 8)
             .ToList()
             .AsReadOnly();
         var freshPlan = new ImportPlan(freshDecisions, TotalPulled: 8);
@@ -104,14 +107,15 @@ public class MailerAdminControllerTests
 
         var ctrl = BuildSut(snapshot);
 
-        var result = await ctrl.Commit(CancellationToken.None);
+        var result = await ctrl.Commit(maxPerOutcome: null, CancellationToken.None);
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal(nameof(MailerAdminController.Import), redirect.ActionName);
         Assert.Equal(
             "Plan changed since preview — review and re-confirm.",
             ctrl.TempData["Banner"]);
-        await _importService.DidNotReceive().ApplyAsync(Arg.Any<ImportPlan>(), Arg.Any<CancellationToken>());
+        await _importService.DidNotReceive().ApplyAsync(
+            Arg.Any<ImportPlan>(), Arg.Any<int?>(), Arg.Any<CancellationToken>());
     }
 
     // -----------------------------------------------------------------------
@@ -121,12 +125,12 @@ public class MailerAdminControllerTests
     [HumansFact]
     public async Task Drift_CountsHumansOptedOutButMlActive()
     {
-        // Arrange: one AttachVerified decision for user A, ML status "active".
+        // Arrange: one verified-match decision for user A, ML status "active".
         var userId = Guid.NewGuid();
         var decision = new SubscriberDecision(
             Email: "a@example.com",
             Status: "active",
-            Outcome: SubscriberOutcome.AttachVerified,
+            Outcome: SubscriberOutcome.VerifiedFlipToOptIn,
             TargetUserId: userId,
             UnverifiedEmailIdToDelete: null,
             AmbiguousUserIds: null);
@@ -228,32 +232,33 @@ public class MailerAdminControllerTests
     {
         // Snapshot exactly matches the fresh plan counts — zero drift.
         var snapshot = new ImportPlanCounts(
-            WillCreateContact: 10,
-            WillAttachWithFlip: 5,
-            WillAttachConfirmOnly: 2,
-            WillKeepHumansState: 0,
-            WillDeleteUnverifiedAndCreate: 0,
-            SkippedAmbiguous: 0,
-            SkippedUnconfirmed: 0);
+            CreateNewHuman: 10,
+            ReplaceUnverifiedEmail: 0,
+            VerifiedPrefsAlreadyMatch: 2,
+            VerifiedFlipToOptIn: 5,
+            VerifiedFlipToOptOut: 0,
+            VerifiedKeepHumansPref: 0,
+            AmbiguousMultipleVerified: 0,
+            UnconfirmedSkipped: 0);
 
         var freshDecisions = Enumerable
-            .Repeat(Decision(SubscriberOutcome.CreateContact), 10)
-            .Concat(Enumerable.Repeat(Decision(SubscriberOutcome.AttachVerified), 5))
-            .Concat(Enumerable.Repeat(Decision(SubscriberOutcome.AttachVerifiedConfirmOnly), 2))
+            .Repeat(Decision(SubscriberOutcome.CreateNewHuman), 10)
+            .Concat(Enumerable.Repeat(Decision(SubscriberOutcome.VerifiedFlipToOptIn), 5))
+            .Concat(Enumerable.Repeat(Decision(SubscriberOutcome.VerifiedPrefsAlreadyMatch), 2))
             .ToList()
             .AsReadOnly();
         var freshPlan = new ImportPlan(freshDecisions, TotalPulled: 17);
 
         _importService.BuildPlanAsync(Arg.Any<CancellationToken>()).Returns(freshPlan);
-        _importService.ApplyAsync(Arg.Any<ImportPlan>(), Arg.Any<CancellationToken>())
+        _importService.ApplyAsync(Arg.Any<ImportPlan>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
             .Returns(StubResult());
 
         var ctrl = BuildSut(snapshot);
 
-        var result = await ctrl.Commit(CancellationToken.None);
+        var result = await ctrl.Commit(maxPerOutcome: 1, CancellationToken.None);
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal(nameof(MailerAdminController.Index), redirect.ActionName);
-        await _importService.Received(1).ApplyAsync(freshPlan, Arg.Any<CancellationToken>());
+        await _importService.Received(1).ApplyAsync(freshPlan, 1, Arg.Any<CancellationToken>());
     }
 }

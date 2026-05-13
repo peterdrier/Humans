@@ -7,6 +7,7 @@ using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Mailer;
 using Humans.Domain.Entities;
+using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
@@ -20,6 +21,13 @@ public class MailerImportServiceClassifierTests
     private static MailerLiteSubscriber Active(string email) =>
         new("ml-id", email, "active", "api",
             Instant.FromUtc(2026, 1, 1, 0, 0), null, Instant.FromUtc(2026, 1, 1, 0, 0),
+            null, null);
+
+    private static MailerLiteSubscriber Unsubscribed(string email, Instant? unsubscribedAt = null) =>
+        new("ml-id", email, "unsubscribed", "api",
+            Instant.FromUtc(2026, 1, 1, 0, 0),
+            unsubscribedAt ?? Instant.FromUtc(2026, 3, 1, 0, 0),
+            Instant.FromUtc(2026, 1, 1, 0, 0),
             null, null);
 
     private static MailerLiteSubscriber Unconfirmed(string email) =>
@@ -38,8 +46,10 @@ public class MailerImportServiceClassifierTests
     }
 
     [HumansFact]
-    public async Task Classifies_VerifiedMatchAsAttachVerified()
+    public async Task Classifies_VerifiedMatch_NoExistingPref_AsFlipToOptIn()
     {
+        // ML active + no Marketing pref row → falls through to "flip to opt-in"
+        // (which is functionally "first-time set to opt-in" since no row exists).
         var harness = new ClassifierHarness();
         var userId = Guid.NewGuid();
         harness.MlReturns(Active("verified@x.com"));
@@ -48,8 +58,74 @@ public class MailerImportServiceClassifierTests
         var plan = await harness.Service.BuildPlanAsync();
 
         var d = plan.Decisions.Single();
-        d.Outcome.Should().Be(SubscriberOutcome.AttachVerified);
+        d.Outcome.Should().Be(SubscriberOutcome.VerifiedFlipToOptIn);
         d.TargetUserId.Should().Be(userId);
+    }
+
+    [HumansFact]
+    public async Task Classifies_VerifiedMatch_PrefsAlreadyMatch_AsNoOp()
+    {
+        // ML active + Humans pref says opted-IN (OptedOut=false) → no-op.
+        var harness = new ClassifierHarness();
+        var userId = Guid.NewGuid();
+        harness.MlReturns(Active("verified@x.com"));
+        harness.VerifiedMatches["verified@x.com"] = userId;
+        harness.SetMarketingPref(userId, optedOut: false, source: "Profile",
+            updatedAt: Instant.FromUtc(2026, 1, 1, 0, 0));
+
+        var plan = await harness.Service.BuildPlanAsync();
+
+        plan.Decisions.Single().Outcome.Should().Be(SubscriberOutcome.VerifiedPrefsAlreadyMatch);
+    }
+
+    [HumansFact]
+    public async Task Classifies_VerifiedMatch_HumansOptedOutAndMlActive_AsFlipToOptIn()
+    {
+        // Humans opted-out (sync source, no recency conflict) + ML active → flip to opt-in.
+        var harness = new ClassifierHarness();
+        var userId = Guid.NewGuid();
+        harness.MlReturns(Active("verified@x.com"));
+        harness.VerifiedMatches["verified@x.com"] = userId;
+        harness.SetMarketingPref(userId, optedOut: true, source: "MailerLiteSync",
+            updatedAt: Instant.FromUtc(2025, 1, 1, 0, 0));
+
+        var plan = await harness.Service.BuildPlanAsync();
+
+        plan.Decisions.Single().Outcome.Should().Be(SubscriberOutcome.VerifiedFlipToOptIn);
+    }
+
+    [HumansFact]
+    public async Task Classifies_VerifiedMatch_HumansOptedInAndMlUnsubscribed_AsFlipToOptOut()
+    {
+        // Humans opted-in (sync source, no recency conflict) + ML unsubscribed → flip to opt-out.
+        var harness = new ClassifierHarness();
+        var userId = Guid.NewGuid();
+        harness.MlReturns(Unsubscribed("verified@x.com"));
+        harness.VerifiedMatches["verified@x.com"] = userId;
+        harness.SetMarketingPref(userId, optedOut: false, source: "MailerLiteSync",
+            updatedAt: Instant.FromUtc(2025, 1, 1, 0, 0));
+
+        var plan = await harness.Service.BuildPlanAsync();
+
+        plan.Decisions.Single().Outcome.Should().Be(SubscriberOutcome.VerifiedFlipToOptOut);
+    }
+
+    [HumansFact]
+    public async Task Classifies_VerifiedMatch_UserActionNewerThanMl_AsKeepHumansPref()
+    {
+        // Humans opted-in via Profile (user action) AND Humans.UpdatedAt > ML.UnsubscribedAt
+        // → keep Humans state.
+        var harness = new ClassifierHarness();
+        var userId = Guid.NewGuid();
+        harness.MlReturns(Unsubscribed("verified@x.com",
+            unsubscribedAt: Instant.FromUtc(2026, 3, 1, 0, 0)));
+        harness.VerifiedMatches["verified@x.com"] = userId;
+        harness.SetMarketingPref(userId, optedOut: false, source: "Profile",
+            updatedAt: Instant.FromUtc(2026, 5, 1, 0, 0));
+
+        var plan = await harness.Service.BuildPlanAsync();
+
+        plan.Decisions.Single().Outcome.Should().Be(SubscriberOutcome.VerifiedKeepHumansPref);
     }
 
     [HumansFact]
@@ -68,7 +144,7 @@ public class MailerImportServiceClassifierTests
     }
 
     [HumansFact]
-    public async Task Classifies_UnverifiedMatchAsDeleteUnverifiedThenCreate()
+    public async Task Classifies_UnverifiedMatchAsReplaceUnverifiedEmail()
     {
         var harness = new ClassifierHarness();
         var unverifiedEmailId = Guid.NewGuid();
@@ -79,19 +155,19 @@ public class MailerImportServiceClassifierTests
         var plan = await harness.Service.BuildPlanAsync();
 
         var d = plan.Decisions.Single();
-        d.Outcome.Should().Be(SubscriberOutcome.DeleteUnverifiedThenCreate);
+        d.Outcome.Should().Be(SubscriberOutcome.ReplaceUnverifiedEmail);
         d.UnverifiedEmailIdToDelete.Should().Be(unverifiedEmailId);
     }
 
     [HumansFact]
-    public async Task Classifies_NoMatchAsCreateContact()
+    public async Task Classifies_NoMatchAsCreateNewHuman()
     {
         var harness = new ClassifierHarness();
         harness.MlReturns(Active("brand-new@x.com"));
 
         var plan = await harness.Service.BuildPlanAsync();
 
-        plan.Decisions.Single().Outcome.Should().Be(SubscriberOutcome.CreateContact);
+        plan.Decisions.Single().Outcome.Should().Be(SubscriberOutcome.CreateNewHuman);
     }
 
     [HumansFact]
@@ -120,6 +196,7 @@ internal sealed class ClassifierHarness
     private readonly IMailerLiteService _ml = Substitute.For<IMailerLiteService>();
     private readonly IUserEmailService _userEmails = Substitute.For<IUserEmailService>();
     private readonly IUserService _users = Substitute.For<IUserService>();
+    private readonly ICommunicationPreferenceService _prefs = Substitute.For<ICommunicationPreferenceService>();
 
     /// <summary>email → userId for verified email matches (single owner).</summary>
     public Dictionary<string, Guid> VerifiedMatches { get; } = [];
@@ -179,12 +256,17 @@ internal sealed class ClassifierHarness
                 return Task.FromResult<User?>(new User { Id = userId, MergedToUserId = null });
             });
 
+        // Default: no pref row for any user. SetMarketingPref overrides per-user.
+        _prefs
+            .GetPreferenceOrNullAsync(Arg.Any<Guid>(), Arg.Any<MessageCategory>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<CommunicationPreference?>(null));
+
         Service = new MailerImportService(
             _ml,
             _userEmails,
             _users,
             Substitute.For<IAccountProvisioningService>(),
-            Substitute.For<ICommunicationPreferenceService>(),
+            _prefs,
             Substitute.For<IAuditLogService>(),
             new FakeClock(Instant.FromUtc(2026, 1, 1, 0, 0)),
             NullLogger<MailerImportService>.Instance);
@@ -194,5 +276,21 @@ internal sealed class ClassifierHarness
     {
         _ml.ListSubscribersAsync(Arg.Any<CancellationToken>())
             .Returns(subscribers.ToAsyncEnumerable());
+    }
+
+    public void SetMarketingPref(Guid userId, bool optedOut, string source, Instant updatedAt)
+    {
+        var pref = new CommunicationPreference
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Category = MessageCategory.Marketing,
+            OptedOut = optedOut,
+            UpdateSource = source,
+            UpdatedAt = updatedAt,
+        };
+        _prefs
+            .GetPreferenceOrNullAsync(userId, MessageCategory.Marketing, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<CommunicationPreference?>(pref));
     }
 }

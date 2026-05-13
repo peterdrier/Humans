@@ -3,6 +3,7 @@ using Humans.Application.Interfaces.Mailer;
 using Humans.Application.Interfaces.Mailer.Dtos;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
+using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging;
 using NodaTime;
@@ -70,8 +71,10 @@ public sealed class MailerImportService : IMailerImportService
             if (verifiedUserIds.Count == 1)
             {
                 var targetId = await ResolveTombstoneAsync(verifiedUserIds[0], ct);
+                var existing = await _prefs.GetPreferenceOrNullAsync(targetId, MessageCategory.Marketing, ct);
+                var outcome = ClassifyVerifiedMatch(s, existing);
                 decisions.Add(new SubscriberDecision(s.Email, s.Status,
-                    SubscriberOutcome.AttachVerified, targetId, null, null));
+                    outcome, targetId, null, null));
                 continue;
             }
 
@@ -80,16 +83,47 @@ public sealed class MailerImportService : IMailerImportService
             if (row is var (uid, emailId))
             {
                 decisions.Add(new SubscriberDecision(s.Email, s.Status,
-                    SubscriberOutcome.DeleteUnverifiedThenCreate, uid, emailId, null));
+                    SubscriberOutcome.ReplaceUnverifiedEmail, uid, emailId, null));
                 continue;
             }
 
             // 4. No match
             decisions.Add(new SubscriberDecision(s.Email, s.Status,
-                SubscriberOutcome.CreateContact, null, null, null));
+                SubscriberOutcome.CreateNewHuman, null, null, null));
         }
 
         return new ImportPlan(decisions, subs.Count);
+    }
+
+    /// <summary>
+    /// Maps a verified-match subscriber + (possibly null) existing Marketing pref
+    /// to a concrete bucket. The same decision rule is re-evaluated at apply
+    /// time inside <see cref="ApplyMarketingDeltaAsync"/> so state drift between
+    /// plan and apply is honored — the plan bucket is for preview/UI only.
+    /// </summary>
+    private static SubscriberOutcome ClassifyVerifiedMatch(
+        MailerLiteSubscriber ml, CommunicationPreference? existingMarketing)
+    {
+        var mlOptedOut = !string.Equals(ml.Status, "active", StringComparison.OrdinalIgnoreCase);
+        var mlActionAt = ml.UnsubscribedAt ?? ml.SubscribedAt;
+
+        bool isBounceOrJunk = string.Equals(ml.Status, "bounced", StringComparison.OrdinalIgnoreCase)
+                           || string.Equals(ml.Status, "junk", StringComparison.OrdinalIgnoreCase);
+        bool isUserAction = existingMarketing is not null
+            && (existingMarketing.UpdateSource is "Profile" or "Guest" or "MagicLink" or "OneClick");
+        bool humansNewerThanMl = existingMarketing is not null
+            && mlActionAt is not null
+            && existingMarketing.UpdatedAt > mlActionAt;
+
+        if (!isBounceOrJunk && isUserAction && humansNewerThanMl)
+            return SubscriberOutcome.VerifiedKeepHumansPref;
+
+        if (existingMarketing is not null && existingMarketing.OptedOut == mlOptedOut)
+            return SubscriberOutcome.VerifiedPrefsAlreadyMatch;
+
+        return mlOptedOut
+            ? SubscriberOutcome.VerifiedFlipToOptOut
+            : SubscriberOutcome.VerifiedFlipToOptIn;
     }
 
     private async Task<Guid> ResolveTombstoneAsync(Guid userId, CancellationToken ct)
@@ -105,10 +139,12 @@ public sealed class MailerImportService : IMailerImportService
         }
     }
 
-    public async Task<ImportResult> ApplyAsync(ImportPlan plan, CancellationToken ct = default)
+    public async Task<ImportResult> ApplyAsync(
+        ImportPlan plan, int? maxPerOutcome = null, CancellationToken ct = default)
     {
         var start = _clock.GetCurrentInstant();
-        int created = 0, flipped = 0, preserved = 0, deletedAndCreated = 0, vanishedBetweenPlanAndApply = 0, errors = 0;
+        int created = 0, flippedIn = 0, flippedOut = 0, preserved = 0,
+            replacedUnverified = 0, vanishedBetweenPlanAndApply = 0, errors = 0;
         var pulledIds = new HashSet<string>(StringComparer.Ordinal);
 
         // Re-pull ML so plan/apply are stateless.
@@ -119,7 +155,9 @@ public sealed class MailerImportService : IMailerImportService
             pulledIds.Add(s.Id);
         }
 
-        foreach (var d in plan.Decisions)
+        var (toProcess, throttled) = ApplyThrottle(plan.Decisions, maxPerOutcome);
+
+        foreach (var d in toProcess)
         {
             try
             {
@@ -134,35 +172,42 @@ public sealed class MailerImportService : IMailerImportService
                 {
                     case SubscriberOutcome.UnconfirmedSkipped:
                     case SubscriberOutcome.AmbiguousMultipleVerified:
-                    case SubscriberOutcome.AttachVerifiedConfirmOnly:
                         break;
 
-                    case SubscriberOutcome.AttachVerified:
+                    case SubscriberOutcome.VerifiedPrefsAlreadyMatch:
+                    case SubscriberOutcome.VerifiedFlipToOptIn:
+                    case SubscriberOutcome.VerifiedFlipToOptOut:
+                    case SubscriberOutcome.VerifiedKeepHumansPref:
                         {
                             var delta = await ApplyMarketingDeltaAsync(d.TargetUserId!.Value, subscriber, ct);
-                            if (delta == DeltaResult.Flipped) flipped++;
+                            if (delta == DeltaResult.FlippedToOptIn) flippedIn++;
+                            else if (delta == DeltaResult.FlippedToOptOut) flippedOut++;
                             else if (delta == DeltaResult.Preserved) preserved++;
                             break;
                         }
 
-                    case SubscriberOutcome.DeleteUnverifiedThenCreate:
+                    case SubscriberOutcome.ReplaceUnverifiedEmail:
                         {
                             if (d.UnverifiedEmailIdToDelete is Guid emailId && d.TargetUserId is Guid uid)
                                 await _userEmails.DeleteEmailAsync(uid, emailId, ct);
                             var (provUser, provCreated) = await _provisioning.FindOrCreateUserByEmailAsync(
                                 subscriber.Email, displayName: null, ContactSource.MailerLite, ct);
                             if (provCreated) created++;
-                            await ApplyMarketingDeltaAsync(provUser.Id, subscriber, ct);
-                            deletedAndCreated++;
+                            var delta = await ApplyMarketingDeltaAsync(provUser.Id, subscriber, ct);
+                            if (delta == DeltaResult.FlippedToOptIn) flippedIn++;
+                            else if (delta == DeltaResult.FlippedToOptOut) flippedOut++;
+                            replacedUnverified++;
                             break;
                         }
 
-                    case SubscriberOutcome.CreateContact:
+                    case SubscriberOutcome.CreateNewHuman:
                         {
                             var (provUser, provCreated) = await _provisioning.FindOrCreateUserByEmailAsync(
                                 subscriber.Email, displayName: null, ContactSource.MailerLite, ct);
                             if (provCreated) created++;
-                            await ApplyMarketingDeltaAsync(provUser.Id, subscriber, ct);
+                            var delta = await ApplyMarketingDeltaAsync(provUser.Id, subscriber, ct);
+                            if (delta == DeltaResult.FlippedToOptIn) flippedIn++;
+                            else if (delta == DeltaResult.FlippedToOptOut) flippedOut++;
                             break;
                         }
                 }
@@ -177,13 +222,15 @@ public sealed class MailerImportService : IMailerImportService
         var elapsed = _clock.GetCurrentInstant() - start;
         var result = new ImportResult(
             TotalPulled: pulledIds.Count,
-            ContactsCreated: created,
-            PrefsFlipped: flipped,
-            PrefsPreservedByConflict: preserved,
-            UnverifiedRowsDeletedAndSuperseded: deletedAndCreated,
-            AmbiguousSkipped: plan.Counts.SkippedAmbiguous,
-            UnconfirmedSkipped: plan.Counts.SkippedUnconfirmed,
+            HumansCreated: created,
+            PrefsFlippedToOptIn: flippedIn,
+            PrefsFlippedToOptOut: flippedOut,
+            PrefsKeptByConflict: preserved,
+            UnverifiedEmailsReplaced: replacedUnverified,
+            AmbiguousSkipped: plan.Counts.AmbiguousMultipleVerified,
+            UnconfirmedSkipped: plan.Counts.UnconfirmedSkipped,
             VanishedBetweenPlanAndApply: vanishedBetweenPlanAndApply,
+            DecisionsThrottled: throttled,
             Errors: errors,
             Elapsed: elapsed);
 
@@ -196,33 +243,55 @@ public sealed class MailerImportService : IMailerImportService
         return result;
     }
 
-    private enum DeltaResult { NoChange, Flipped, Preserved }
+    /// <summary>
+    /// Splits <paramref name="decisions"/> into the slice to process (first
+    /// <paramref name="maxPerOutcome"/> per outcome bucket, preserving input
+    /// order) and the count held back. Null/non-positive limits process everything.
+    /// </summary>
+    private static (IReadOnlyList<SubscriberDecision> ToProcess, int Throttled) ApplyThrottle(
+        IReadOnlyList<SubscriberDecision> decisions, int? maxPerOutcome)
+    {
+        if (maxPerOutcome is not int limit || limit <= 0)
+            return (decisions, 0);
+
+        var counts = new Dictionary<SubscriberOutcome, int>();
+        var toProcess = new List<SubscriberDecision>(decisions.Count);
+        int throttled = 0;
+        foreach (var d in decisions)
+        {
+            counts.TryGetValue(d.Outcome, out var taken);
+            if (taken < limit)
+            {
+                counts[d.Outcome] = taken + 1;
+                toProcess.Add(d);
+            }
+            else
+            {
+                throttled++;
+            }
+        }
+        return (toProcess, throttled);
+    }
+
+    private enum DeltaResult { NoChange, FlippedToOptIn, FlippedToOptOut, Preserved }
 
     private async Task<DeltaResult> ApplyMarketingDeltaAsync(
         Guid userId, MailerLiteSubscriber ml, CancellationToken ct)
     {
         var mlOptedOut = !string.Equals(ml.Status, "active", StringComparison.OrdinalIgnoreCase);
-        var mlActionAt = ml.UnsubscribedAt ?? ml.SubscribedAt;
+        var marketing = await _prefs.GetPreferenceOrNullAsync(userId, MessageCategory.Marketing, ct);
 
-        var prefs = await _prefs.GetPreferencesAsync(userId, ct);
-        var marketing = prefs.FirstOrDefault(p => p.Category == MessageCategory.Marketing);
-
-        bool isBounceOrJunk = string.Equals(ml.Status, "bounced", StringComparison.OrdinalIgnoreCase)
-                           || string.Equals(ml.Status, "junk", StringComparison.OrdinalIgnoreCase);
-        bool isUserAction = marketing is not null
-            && (marketing.UpdateSource is "Profile" or "Guest" or "MagicLink" or "OneClick");
-        bool humansNewerThanMl = marketing is not null
-            && mlActionAt is not null
-            && marketing.UpdatedAt > mlActionAt;
-
-        if (!isBounceOrJunk && isUserAction && humansNewerThanMl)
-            return DeltaResult.Preserved;
-
-        if (marketing is not null && marketing.OptedOut == mlOptedOut)
-            return DeltaResult.NoChange;
+        var outcome = ClassifyVerifiedMatch(ml, marketing);
+        switch (outcome)
+        {
+            case SubscriberOutcome.VerifiedKeepHumansPref:
+                return DeltaResult.Preserved;
+            case SubscriberOutcome.VerifiedPrefsAlreadyMatch:
+                return DeltaResult.NoChange;
+        }
 
         await _prefs.UpdatePreferenceAsync(userId, MessageCategory.Marketing,
             optedOut: mlOptedOut, source: "MailerLiteSync", ct);
-        return DeltaResult.Flipped;
+        return mlOptedOut ? DeltaResult.FlippedToOptOut : DeltaResult.FlippedToOptIn;
     }
 }

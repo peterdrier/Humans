@@ -23,7 +23,7 @@ public class MailerImportServiceIdempotencyTests
     /// Pass 1 → CreateContact (user doesn't exist yet), ML wins pref flip (OptedOut false→matches active).
     /// Pass 2 → subscriber now maps to a verified user whose pref already matches ML state → NoChange.
     ///
-    /// Expected: second ApplyAsync emits zero per-row audit writes and reports ContactsCreated=0, PrefsFlipped=0.
+    /// Expected: second ApplyAsync emits zero per-row audit writes and reports HumansCreated=0, PrefsFlippedToOptIn=0, PrefsFlippedToOptOut=0.
     /// Both runs each emit one summary audit entry → SummaryCount==2.
     /// </summary>
     [HumansFact]
@@ -44,8 +44,9 @@ public class MailerImportServiceIdempotencyTests
 
         var perRowDelta = harness.Audit.PerRowCount - perRowAfterFirst;
         perRowDelta.Should().Be(0, "second pass over unchanged state must not log per-row events");
-        result2.ContactsCreated.Should().Be(0);
-        result2.PrefsFlipped.Should().Be(0);
+        result2.HumansCreated.Should().Be(0);
+        result2.PrefsFlippedToOptIn.Should().Be(0);
+        result2.PrefsFlippedToOptOut.Should().Be(0);
         harness.Audit.SummaryCount.Should().Be(2);
     }
 }
@@ -140,9 +141,8 @@ internal sealed class IdempotencyHarness
         };
 
         _prefs
-            .GetPreferencesAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<CommunicationPreference>>(
-                new List<CommunicationPreference> { pref }));
+            .GetPreferenceOrNullAsync(Arg.Any<Guid>(), MessageCategory.Marketing, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<CommunicationPreference?>(pref));
     }
 }
 

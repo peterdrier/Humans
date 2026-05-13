@@ -35,6 +35,15 @@ public interface ICommunicationPreferenceService : IApplicationService
         Guid userId, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Returns the existing preference row for a user+category, or null if none.
+    /// Read-only — does NOT lazy-create defaults. Use this when the caller
+    /// needs to know whether a row exists (e.g. the mailer importer's plan
+    /// phase, which must not mutate state during preview).
+    /// </summary>
+    Task<CommunicationPreference?> GetPreferenceOrNullAsync(
+        Guid userId, MessageCategory category, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Returns whether a user has opted out of a specific category.
     /// </summary>
     Task<bool> IsOptedOutAsync(

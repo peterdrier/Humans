@@ -36,7 +36,7 @@ public class MailerImportServiceConflictRuleTests
             updateSource: "Profile",
             updatedAt: Instant.FromUtc(2026, 5, 12, 0, 0));
 
-        var plan = MakePlan("user@x.com", "bounced", SubscriberOutcome.AttachVerified, userId);
+        var plan = MakePlan("user@x.com", "bounced", SubscriberOutcome.VerifiedFlipToOptOut, userId);
         await harness.Service.ApplyAsync(plan);
 
         await harness.Prefs.AssertUpdated(userId, MessageCategory.Marketing, optedOut: true, source: "MailerLiteSync");
@@ -62,7 +62,7 @@ public class MailerImportServiceConflictRuleTests
             updateSource: "Profile",
             updatedAt: Instant.FromUtc(2026, 5, 12, 0, 0)); // Humans is newer
 
-        var plan = MakePlan("user@x.com", "unsubscribed", SubscriberOutcome.AttachVerified, userId);
+        var plan = MakePlan("user@x.com", "unsubscribed", SubscriberOutcome.VerifiedKeepHumansPref, userId);
         await harness.Service.ApplyAsync(plan);
 
         await harness.Prefs.AssertNotUpdated(userId, MessageCategory.Marketing);
@@ -88,7 +88,7 @@ public class MailerImportServiceConflictRuleTests
             updateSource: "MailerLiteSync", // sync-source, not user-action
             updatedAt: Instant.FromUtc(2026, 5, 12, 0, 0));
 
-        var plan = MakePlan("user@x.com", "unsubscribed", SubscriberOutcome.AttachVerified, userId);
+        var plan = MakePlan("user@x.com", "unsubscribed", SubscriberOutcome.VerifiedFlipToOptOut, userId);
         await harness.Service.ApplyAsync(plan);
 
         await harness.Prefs.AssertUpdated(userId, MessageCategory.Marketing, optedOut: true, source: "MailerLiteSync");
@@ -155,7 +155,7 @@ internal sealed class ApplyHarness
             .Returns(Task.FromResult<UserEmailWithUser?>(new UserEmailWithUser(userId, email, null, null)));
     }
 
-    /// <summary>Wires GetPreferencesAsync to return a single Marketing pref with the given shape.</summary>
+    /// <summary>Wires GetPreferenceOrNullAsync to return a Marketing pref with the given shape.</summary>
     public void SetHumansPref(Guid userId, MessageCategory category, bool optedOut,
         string updateSource, Instant updatedAt)
     {
@@ -169,11 +169,9 @@ internal sealed class ApplyHarness
             UpdatedAt = updatedAt,
         };
 
-        _prefs.GetPreferencesAsync(
-                Arg.Is<Guid>(id => id == userId),
-                Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<CommunicationPreference>>(
-                new List<CommunicationPreference> { pref }));
+        _prefs.GetPreferenceOrNullAsync(
+                Arg.Is<Guid>(id => id == userId), category, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<CommunicationPreference?>(pref));
 
         _prefs.UpdatePreferenceAsync(
                 Arg.Any<Guid>(), Arg.Any<MessageCategory>(), Arg.Any<bool>(),

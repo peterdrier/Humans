@@ -5,20 +5,22 @@ public sealed record ImportPlan(
     int TotalPulled)
 {
     public ImportPlanCounts Counts { get; } = new(
-        Decisions.Count(d => d.Outcome == SubscriberOutcome.CreateContact),
-        Decisions.Count(d => d.Outcome == SubscriberOutcome.AttachVerified),
-        Decisions.Count(d => d.Outcome == SubscriberOutcome.AttachVerifiedConfirmOnly),
-        Decisions.Count(d => d.Outcome == SubscriberOutcome.AttachVerifiedConflictKept),
-        Decisions.Count(d => d.Outcome == SubscriberOutcome.DeleteUnverifiedThenCreate),
-        Decisions.Count(d => d.Outcome == SubscriberOutcome.AmbiguousMultipleVerified),
-        Decisions.Count(d => d.Outcome == SubscriberOutcome.UnconfirmedSkipped));
+        CreateNewHuman:            Decisions.Count(d => d.Outcome == SubscriberOutcome.CreateNewHuman),
+        ReplaceUnverifiedEmail:    Decisions.Count(d => d.Outcome == SubscriberOutcome.ReplaceUnverifiedEmail),
+        VerifiedPrefsAlreadyMatch: Decisions.Count(d => d.Outcome == SubscriberOutcome.VerifiedPrefsAlreadyMatch),
+        VerifiedFlipToOptIn:       Decisions.Count(d => d.Outcome == SubscriberOutcome.VerifiedFlipToOptIn),
+        VerifiedFlipToOptOut:      Decisions.Count(d => d.Outcome == SubscriberOutcome.VerifiedFlipToOptOut),
+        VerifiedKeepHumansPref:    Decisions.Count(d => d.Outcome == SubscriberOutcome.VerifiedKeepHumansPref),
+        AmbiguousMultipleVerified: Decisions.Count(d => d.Outcome == SubscriberOutcome.AmbiguousMultipleVerified),
+        UnconfirmedSkipped:        Decisions.Count(d => d.Outcome == SubscriberOutcome.UnconfirmedSkipped));
 }
 
 public sealed record ImportPlanCounts(
-    int WillCreateContact,
-    int WillAttachWithFlip,
-    int WillAttachConfirmOnly,
-    int WillKeepHumansState,
-    int WillDeleteUnverifiedAndCreate,
-    int SkippedAmbiguous,
-    int SkippedUnconfirmed);
+    int CreateNewHuman,
+    int ReplaceUnverifiedEmail,
+    int VerifiedPrefsAlreadyMatch,
+    int VerifiedFlipToOptIn,
+    int VerifiedFlipToOptOut,
+    int VerifiedKeepHumansPref,
+    int AmbiguousMultipleVerified,
+    int UnconfirmedSkipped);

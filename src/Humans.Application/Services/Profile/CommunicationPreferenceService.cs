@@ -85,6 +85,10 @@ public sealed class CommunicationPreferenceService : ICommunicationPreferenceSer
             .AsReadOnly();
     }
 
+    public Task<CommunicationPreference?> GetPreferenceOrNullAsync(
+        Guid userId, MessageCategory category, CancellationToken cancellationToken = default) =>
+        _repository.GetByUserAndCategoryAsync(userId, category, cancellationToken);
+
     public async Task<bool> IsOptedOutAsync(
         Guid userId, MessageCategory category, CancellationToken cancellationToken = default)
     {
