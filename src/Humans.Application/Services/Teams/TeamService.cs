@@ -2066,10 +2066,19 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
 
         try
         {
-            var user = await UserService.GetByIdAsync(userId, cancellationToken);
-            if (user is null) return;
+            var users = await UserService.GetByIdsWithEmailsAsync(new[] { userId }, cancellationToken);
+            if (!users.TryGetValue(userId, out var user))
+                return;
 
-            var email = user.Email!;
+            var email = user.Email;
+            if (string.IsNullOrEmpty(email))
+            {
+                _logger.LogWarning(
+                    "Skipping added-to-team email for user {UserId}: no notification-target email",
+                    userId);
+                return;
+            }
+
             var resources = await TeamResourceService.GetTeamResourcesAsync(team.Id, cancellationToken);
 
             await EmailService.SendAddedToTeamAsync(
