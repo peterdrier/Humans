@@ -258,10 +258,6 @@ public class ConsentServiceTests : IDisposable
         result.DocumentName.Should().Be("Privacy Policy");
     }
 
-    // Issue #711: defense-in-depth Stub gate — even if a future caller bypasses
-    // the controller's redirect, ConsentService must refuse Stub-state writes
-    // so no ConsentRecord is ever persisted for a Profile with null legal name.
-
     [HumansFact]
     public async Task SubmitConsentAsync_StubProfile_ReturnsStubProfileErrorAndWritesNoRecord()
     {

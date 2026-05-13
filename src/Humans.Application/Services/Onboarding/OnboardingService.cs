@@ -154,10 +154,6 @@ public sealed class OnboardingService : IOnboardingService
 
         var selected = userIds.ToHashSet();
         var data = await GetReviewQueueAsync(ct);
-        // Issue #711: the FullName check is no longer needed — the upstream
-        // ProfileRepository.GetReviewableAsync filter excludes Stub profiles
-        // entirely, so anything reaching this list already has the required
-        // identity fields populated.
         var eligibleUserIds = data.Pending
             .Concat(data.Flagged)
             .Where(p => selected.Contains(p.UserId))

@@ -20,10 +20,9 @@ using Xunit;
 namespace Humans.Web.Tests.Controllers;
 
 /// <summary>
-/// Issue #711: ConsentController must gate <c>Review</c> (GET) and
-/// <c>Submit</c> (POST) on <c>ProfileState.Active</c>. A Stub-state profile
-/// (null legal name) is redirected to <c>/Profile/Edit</c> rather than being
-/// allowed to render the signing form or persist a <c>ConsentRecord</c>.
+/// Gates: <c>Review</c> (GET) and <c>Submit</c> (POST) redirect Stub-state
+/// profiles (null legal name) to <c>/Profile/Edit</c> rather than rendering
+/// the signing form or persisting a <c>ConsentRecord</c>.
 /// </summary>
 public class ConsentControllerTests
 {

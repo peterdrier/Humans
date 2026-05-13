@@ -184,10 +184,6 @@ public sealed class ProfileRepositoryTests : IDisposable
         persisted.UpdatedAt.Should().Be(afterAdvance);
     }
 
-    // Issue #711: Stub profiles (e.g. those provisioned by the MailerLite
-    // importer with null legal names) must not appear in the Consent
-    // Coordinator's review queue or be counted in the nav badge.
-
     [HumansFact]
     public async Task GetReviewableAsync_ExcludesStubProfiles()
     {
@@ -219,6 +215,27 @@ public sealed class ProfileRepositoryTests : IDisposable
         var count = await _repo.GetReviewableCountAsync();
 
         count.Should().Be(2);
+    }
+
+    [HumansFact]
+    public async Task GetReviewableAsync_IncludesNullStateRowsWithCompleteIdentity()
+    {
+        // Legacy rows whose State has not yet been backfilled by
+        // CachingProfileService are Active-equivalent when identity fields are
+        // complete; they must remain in the queue, while null-state rows with
+        // missing names (legacy Stub-equivalent) must be excluded.
+        var nullStateComplete = NewProfile("Burner", "First", "Last", ProfileState.Active);
+        nullStateComplete.State = null;
+        var nullStateIncomplete = NewProfile("", "", "", ProfileState.Stub);
+        nullStateIncomplete.State = null;
+
+        await _dbContext.Profiles.AddRangeAsync(nullStateComplete, nullStateIncomplete);
+        await _dbContext.SaveChangesAsync();
+
+        var reviewable = await _repo.GetReviewableAsync();
+
+        reviewable.Should().ContainSingle()
+            .Which.Id.Should().Be(nullStateComplete.Id);
     }
 
     [HumansFact]

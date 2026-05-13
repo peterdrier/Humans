@@ -91,9 +91,9 @@ public class ConsentController : HumansControllerBase
         if (user is null)
             return NotFound();
 
-        // Issue #711: a Stub profile (null legal name) cannot legally attest
-        // to a consent document. Bounce to /Profile/Edit so the user can add
-        // the required identity fields before signing.
+        // A Stub profile (null legal name) cannot legally attest to a consent
+        // document. Bounce to /Profile/Edit so the user can add the required
+        // identity fields before signing.
         if (await IsStubProfileAsync(user.Id))
             return RedirectToProfileEditForStub();
 
@@ -112,8 +112,6 @@ public class ConsentController : HumansControllerBase
         if (user is null)
             return NotFound();
 
-        // Issue #711: same Stub gate as the Review GET. Refuse the write
-        // before calling the service.
         if (await IsStubProfileAsync(user.Id))
             return RedirectToProfileEditForStub();
 
