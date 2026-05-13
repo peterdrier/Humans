@@ -1656,6 +1656,8 @@
   <data name="CommPrefs_OneClick_Hint" xml:space="preserve"><value>One-click unsubscribe, or fine-tune the matrix below.</value></data>
   <data name="CommPrefs_OneClick_Button" xml:space="preserve"><value>Unsubscribe from {0}</value></data>
   <data name="CommPrefs_OneClick_Done" xml:space="preserve"><value>Unsubscribed. You can re-enable any category below.</value></data>
+  <data name="CommPrefs_UpdateSource" xml:space="preserve"><value>Source</value></data>
+  <data name="CommPrefs_UpdatedAt" xml:space="preserve"><value>Updated</value></data>
 
   <data name="Emails_Header_Email" xml:space="preserve"><value>Email</value></data>
   <data name="Emails_Header_Status" xml:space="preserve"><value>Status</value></data>

@@ -1,6 +1,7 @@
-@model Humans.Web.Models.CommunicationPreferencesViewModel
+@model Guid
 @{
     ViewData["Title"] = Localizer["CommPrefs_Title"].Value;
+    var userId = Model;
 }
 
 <div class="row">
@@ -17,74 +18,7 @@
 
         <vc:temp-data-alerts />
 
-        <div class="card mb-4">
-            <div class="table-responsive">
-                <table class="table table-hover mb-0 align-middle">
-                    <thead>
-                        <tr>
-                            <th style="min-width: 250px;">@Localizer["CommPrefs_Category"]</th>
-                            <th class="text-center" style="width: 100px;">@Localizer["CommPrefs_Email"]</th>
-                            <th class="text-center" style="width: 100px;">@Localizer["CommPrefs_Alert"]</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @for (var i = 0; i < Model.Categories.Count; i++)
-                        {
-                            var item = Model.Categories[i];
-
-                            <tr class="@(!item.EmailEditable ? "table-light" : "")">
-                                <td>
-                                    <div class="fw-semibold">@item.DisplayName</div>
-                                    <div class="form-text mb-0">@item.Description</div>
-                                    @if (item.Note is not null)
-                                    {
-                                        <div class="form-text text-warning-emphasis mb-0">
-                                            <i class="fa-solid fa-lock fa-xs me-1"></i>@item.Note
-                                        </div>
-                                    }
-                                </td>
-                                <td class="text-center">
-                                    @if (item.EmailEditable)
-                                    {
-                                        <input type="checkbox"
-                                               class="form-check-input pref-toggle"
-                                               data-category="@item.Category"
-                                               data-channel="email"
-                                               @(item.EmailEnabled ? "checked" : null) />
-                                    }
-                                    else
-                                    {
-                                        <input type="checkbox"
-                                               class="form-check-input"
-                                               checked
-                                               disabled />
-                                        <span class="text-muted small">Always on</span>
-                                    }
-                                </td>
-                                <td class="text-center">
-                                    @if (item.AlertEditable)
-                                    {
-                                        <input type="checkbox"
-                                               class="form-check-input pref-toggle"
-                                               data-category="@item.Category"
-                                               data-channel="alert"
-                                               @(item.AlertEnabled ? "checked" : null) />
-                                    }
-                                    else
-                                    {
-                                        <input type="checkbox"
-                                               class="form-check-input"
-                                               checked
-                                               disabled />
-                                        <span class="text-muted small">Always on</span>
-                                    }
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
-        </div>
+        <vc:communication-preferences-panel user-id="@userId" read-only="false" />
 
         <a asp-action="Index" class="btn btn-outline-secondary">@Localizer["CommPrefs_BackToProfile"]</a>
     </div>
@@ -134,6 +68,3 @@
     });
 </script>
 }
-
-@* Anti-forgery token for AJAX posts *@
-<form id="__AjaxAntiForgeryForm" asp-antiforgery="true" style="display:none;"></form>

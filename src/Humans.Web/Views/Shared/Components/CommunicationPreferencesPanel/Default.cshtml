@@ -1,0 +1,129 @@
+@model Humans.Web.Models.CommunicationPreferencesViewModel
+@{
+    var isReadOnly = Model.ReadOnly;
+}
+
+<div class="card mb-4">
+    <div class="table-responsive">
+        <table class="table table-hover mb-0 align-middle">
+            <thead>
+                <tr>
+                    <th style="min-width: 250px;">@Localizer["CommPrefs_Category"]</th>
+                    <th class="text-center" style="width: 100px;">@Localizer["CommPrefs_Email"]</th>
+                    <th class="text-center" style="width: 100px;">@Localizer["CommPrefs_Alert"]</th>
+                    @if (isReadOnly)
+                    {
+                        <th style="min-width: 140px;">@Localizer["CommPrefs_UpdateSource"]</th>
+                        <th style="min-width: 160px;">@Localizer["CommPrefs_UpdatedAt"]</th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                @for (var i = 0; i < Model.Categories.Count; i++)
+                {
+                    var item = Model.Categories[i];
+
+                    <tr class="@(!item.EmailEditable ? "table-light" : "")">
+                        <td>
+                            <div class="fw-semibold">@item.DisplayName</div>
+                            <div class="form-text mb-0">@item.Description</div>
+                            @if (item.Note is not null)
+                            {
+                                <div class="form-text text-warning-emphasis mb-0">
+                                    <i class="fa-solid fa-lock fa-xs me-1"></i>@item.Note
+                                </div>
+                            }
+                        </td>
+                        <td class="text-center">
+                            @if (isReadOnly)
+                            {
+                                if (item.EmailEnabled)
+                                {
+                                    <input type="checkbox" class="form-check-input" checked disabled />
+                                }
+                                else
+                                {
+                                    <input type="checkbox" class="form-check-input" disabled />
+                                }
+                            }
+                            else if (item.EmailEditable)
+                            {
+                                <input type="checkbox"
+                                       class="form-check-input pref-toggle"
+                                       data-category="@item.Category"
+                                       data-channel="email"
+                                       @(item.EmailEnabled ? "checked" : null) />
+                            }
+                            else
+                            {
+                                <input type="checkbox"
+                                       class="form-check-input"
+                                       checked
+                                       disabled />
+                                <span class="text-muted small">Always on</span>
+                            }
+                        </td>
+                        <td class="text-center">
+                            @if (isReadOnly)
+                            {
+                                if (item.AlertEnabled)
+                                {
+                                    <input type="checkbox" class="form-check-input" checked disabled />
+                                }
+                                else
+                                {
+                                    <input type="checkbox" class="form-check-input" disabled />
+                                }
+                            }
+                            else if (item.AlertEditable)
+                            {
+                                <input type="checkbox"
+                                       class="form-check-input pref-toggle"
+                                       data-category="@item.Category"
+                                       data-channel="alert"
+                                       @(item.AlertEnabled ? "checked" : null) />
+                            }
+                            else
+                            {
+                                <input type="checkbox"
+                                       class="form-check-input"
+                                       checked
+                                       disabled />
+                                <span class="text-muted small">Always on</span>
+                            }
+                        </td>
+                        @if (isReadOnly)
+                        {
+                            <td>
+                                @if (!string.IsNullOrEmpty(item.UpdateSource))
+                                {
+                                    <code class="small">@item.UpdateSource</code>
+                                }
+                                else
+                                {
+                                    <span class="text-muted small">—</span>
+                                }
+                            </td>
+                            <td>
+                                @if (item.UpdatedAt is { } updatedAt)
+                                {
+                                    <span class="small">@updatedAt.ToDisplayDateTime()</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted small">—</span>
+                                }
+                            </td>
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@if (!isReadOnly)
+{
+    @* Anti-forgery token for AJAX posts. Read by the toggle script on the host view. *@
+    <form id="__AjaxAntiForgeryForm" asp-antiforgery="true" style="display:none;"></form>
+}

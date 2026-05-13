@@ -331,6 +331,34 @@
                 <div class="wg-card">
                     <div class="wg-card-header">
                         <div>
+                            <span class="wg-card-name">&lt;vc:communication-preferences-panel&gt;</span>
+                            <span class="wg-card-kind kind-vc">ViewComponent</span>
+                        </div>
+                        <span class="wg-card-path">src/Humans.Web/ViewComponents/CommunicationPreferencesPanelViewComponent.cs</span>
+                    </div>
+                    <div class="wg-card-note">
+                        Per-user communication-preferences matrix. Write mode (default) renders toggle checkboxes that POST to <code>/Profile/Me/CommunicationPreferences/Update</code>. Read-only mode hides the form and surfaces <code>UpdateSource</code> + <code>UpdatedAt</code> per category — used on <code>/Profile/{id}/Admin</code>.
+                    </div>
+                    @ParamsBlock(
+                        ("user-id", "<code>Guid</code> — required"),
+                        ("read-only", "<code>bool</code> — default <code>false</code>; <code>true</code> hides forms and adds attribution columns")
+                    )
+                    <div class="wg-variants">
+                        <div class="wg-variant-label">read-only="false"<span class="wg-variant-sub">default — toggleable</span></div>
+                        <div class="wg-variant-render" style="display:block;">
+                            <vc:communication-preferences-panel user-id="@Model.CurrentUserId" />
+                        </div>
+
+                        <div class="wg-variant-label">read-only="true"<span class="wg-variant-sub">admin view</span></div>
+                        <div class="wg-variant-render" style="display:block;">
+                            <vc:communication-preferences-panel user-id="@Model.CurrentUserId" read-only="true" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
                             <span class="wg-card-name">_HumanPopover.cshtml</span>
                             <span class="wg-card-kind kind-pa">Partial</span>
                         </div>

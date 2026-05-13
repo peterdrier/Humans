@@ -215,6 +215,9 @@
 
         <vc:shift-signups user-id="@Model.UserId" view-mode="@ShiftSignupsViewMode.Admin" display-name="@Model.DisplayName" />
 
+        <h5 class="mt-4 mb-2">@Localizer["CommPrefs_Title"]</h5>
+        <vc:communication-preferences-panel user-id="@Model.UserId" read-only="true" />
+
         <vc:audit-log user-id="@Model.UserId" limit="50" title="@Localizer["AdminHuman_AuditHistory"].Value" />
 
         @if (campaignGrants != null && campaignGrants.Any())
