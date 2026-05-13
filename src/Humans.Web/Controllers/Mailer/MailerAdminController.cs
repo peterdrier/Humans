@@ -22,6 +22,8 @@ public sealed class MailerAdminController : HumansControllerBase
 {
     private readonly IMailerLiteService _ml;
     private readonly IMailerImportService _import;
+    private readonly IMailerAudienceSyncService _audienceSync;
+    private readonly IReadOnlyList<IMailerAudience> _audiences;
     private readonly IUserService _users;
     private readonly ICommunicationPreferenceService _prefs;
     private readonly IAuditLogService _audit;
@@ -30,6 +32,8 @@ public sealed class MailerAdminController : HumansControllerBase
     public MailerAdminController(
         IMailerLiteService ml,
         IMailerImportService import,
+        IMailerAudienceSyncService audienceSync,
+        IEnumerable<IMailerAudience> audiences,
         IUserService users,
         ICommunicationPreferenceService prefs,
         IAuditLogService audit,
@@ -39,6 +43,8 @@ public sealed class MailerAdminController : HumansControllerBase
     {
         _ml = ml;
         _import = import;
+        _audienceSync = audienceSync;
+        _audiences = audiences.ToList();
         _users = users;
         _prefs = prefs;
         _audit = audit;
@@ -75,11 +81,68 @@ public sealed class MailerAdminController : HumansControllerBase
             ct: ct);
         var last = recent.FirstOrDefault();
 
+        var audienceRows = await BuildAudienceRowsAsync(ct);
+
         var vm = new MailerDashboardViewModel(
             summary, groups, mlContacts, optedIn, optedOut,
             last?.OccurredAt, last?.Description, drift, mlError,
-            _ml.LastFetchedAt);
+            _ml.LastFetchedAt,
+            audienceRows);
         return View("~/Views/Mailer/Admin/Index.cshtml", vm);
+    }
+
+    private async Task<IReadOnlyList<AudienceCardRow>> BuildAudienceRowsAsync(CancellationToken ct)
+    {
+        if (_audiences.Count == 0) return Array.Empty<AudienceCardRow>();
+
+        var rows = new List<AudienceCardRow>();
+        var lastSyncEntries = await _audit.GetFilteredEntriesAsync(
+            actions: new[] { AuditAction.MailerLiteAudienceSyncCompleted },
+            limit: 50,
+            ct: ct);
+
+        foreach (var audience in _audiences)
+        {
+            AudienceStats stats;
+            try
+            {
+                stats = await _audienceSync.ComputeStatsAsync(audience, ct);
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogWarning(ex, "Audience stats failed for {Audience}", audience.Key);
+                continue;
+            }
+            var lastForThisAudience = lastSyncEntries.FirstOrDefault(e =>
+                e.Description is not null
+                && e.Description.Contains($"\"audience_key\":\"{audience.Key}\"", StringComparison.Ordinal));
+            rows.Add(new AudienceCardRow(
+                audience.Key, audience.DisplayName, audience.MailerLiteGroupName,
+                stats.Candidates, stats.ExcludedUnsubscribed, stats.CurrentlyInGroup,
+                lastForThisAudience?.OccurredAt,
+                lastForThisAudience?.Description));
+        }
+        return rows;
+    }
+
+    [HttpPost("Audiences/{key}/Sync")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SyncAudience(string key, CancellationToken ct)
+    {
+        var audience = _audiences.FirstOrDefault(a => string.Equals(a.Key, key, StringComparison.Ordinal));
+        if (audience is null) return NotFound();
+
+        try
+        {
+            var result = await _audienceSync.SyncAsync(audience, ct);
+            TempData["Banner"] = $"{audience.DisplayName}: {result.FormatSummary()}";
+        }
+        catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException)
+        {
+            _logger.LogError(ex, "Audience sync failed for {Audience}", key);
+            TempData["Banner"] = $"{audience.DisplayName}: sync failed — {ex.Message}";
+        }
+        return RedirectToAction(nameof(Index));
     }
 
     [HttpPost("Refresh")]

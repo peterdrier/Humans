@@ -15,6 +15,8 @@ public static class RecurringJobExtensions
         var registry = app.Services.GetRequiredService<ConfigurationRegistry>();
         var ticketSyncInterval = app.Configuration.GetSettingValue(
             registry, "TicketVendor:SyncIntervalMinutes", "Ticket Vendor", defaultValue: 15);
+        var mailerAudienceCron = app.Configuration.GetValue<string>("MailerLite:AudienceSyncCron")
+            ?? "0 6 * * *";
 
         var jobs = new (string Id, Action Register)[]
         {
@@ -91,6 +93,10 @@ public static class RecurringJobExtensions
             // Purge old agent conversations — daily at 03:15 UTC.
             ("agent-conversation-retention", () => RecurringJob.AddOrUpdate<AgentConversationRetentionJob>(
                 "agent-conversation-retention", job => job.ExecuteAsync(CancellationToken.None), "15 3 * * *")),
+
+            // Sync code-defined Mailer audiences into MailerLite groups — daily.
+            ("mailer-audience-sync", () => RecurringJob.AddOrUpdate<MailerAudienceSyncJob>(
+                "mailer-audience-sync", job => job.ExecuteAsync(CancellationToken.None), mailerAudienceCron)),
         };
 
         foreach (var (id, register) in jobs)
