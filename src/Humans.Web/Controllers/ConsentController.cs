@@ -165,7 +165,7 @@ public class ConsentController : HumansControllerBase
     private IActionResult RedirectToProfileEditForStub()
     {
         SetInfo(_localizer["Consent_StubProfile_AddName"].Value);
-        return RedirectToAction("Edit", "Profile");
+        return RedirectToAction(nameof(ProfileController.Edit), "Profile");
     }
 
     private async Task<ConsentDetailViewModel?> BuildConsentReviewViewModelAsync(Guid documentVersionId, Guid userId)

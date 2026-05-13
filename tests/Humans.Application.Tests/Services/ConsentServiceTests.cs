@@ -83,6 +83,22 @@ public class ConsentServiceTests : IDisposable
         _userService.GetMergedSourceIdsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns((IReadOnlySet<Guid>)new HashSet<Guid>());
 
+        // Default: requesting any profile returns an Active profile with all
+        // required identity fields populated. Tests that need a Stub-state
+        // (or missing) profile override this for the specific userId.
+        _profileService.GetProfileAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo => new Profile
+            {
+                Id = Guid.NewGuid(),
+                UserId = callInfo.ArgAt<Guid>(0),
+                BurnerName = "Burner",
+                FirstName = "First",
+                LastName = "Last",
+                State = ProfileState.Active,
+                CreatedAt = _clock.GetCurrentInstant(),
+                UpdatedAt = _clock.GetCurrentInstant()
+            });
+
         _service = new ConsentService(
             consentRepository,
             _onboardingService,
