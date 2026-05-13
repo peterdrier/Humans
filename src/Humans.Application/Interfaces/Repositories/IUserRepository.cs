@@ -331,6 +331,17 @@ public interface IUserRepository : IRepository
     Task<IReadOnlyList<EventParticipation>> GetEventParticipationsByUserIdAsync(
         Guid userId, CancellationToken ct = default);
 
+    /// <summary>
+    /// Bulk-loads all <c>event_participations</c> rows for the given userIds,
+    /// grouped by <c>UserId</c>. Users with no participations are absent from
+    /// the dictionary. Read-only (AsNoTracking). Used by
+    /// <c>CachingUserService.WarmAllAsync</c> to avoid N+1 per-user fetches
+    /// when populating the UserInfo cache for every user at startup.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, IReadOnlyList<EventParticipation>>>
+        GetEventParticipationsByUserIdsAsync(
+            IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
+
     // ==========================================================================
     // Writes — EventParticipation
     // ==========================================================================

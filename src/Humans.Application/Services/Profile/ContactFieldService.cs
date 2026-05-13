@@ -1,4 +1,5 @@
 using NodaTime;
+using Microsoft.Extensions.Logging;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
@@ -19,7 +20,9 @@ public sealed class ContactFieldService : IContactFieldService, IUserMerge
     private readonly IProfileRepository _profileRepository;
     private readonly ITeamService _teamService;
     private readonly IRoleAssignmentService _roleAssignmentService;
+    private readonly IUserInfoInvalidator _userInfoInvalidator;
     private readonly IClock _clock;
+    private readonly ILogger<ContactFieldService> _logger;
 
     // Request-scoped cache for viewer permissions to avoid N+1 queries during listing
     private bool? _cachedIsBoardMember;
@@ -31,13 +34,17 @@ public sealed class ContactFieldService : IContactFieldService, IUserMerge
         IProfileRepository profileRepository,
         ITeamService teamService,
         IRoleAssignmentService roleAssignmentService,
-        IClock clock)
+        IUserInfoInvalidator userInfoInvalidator,
+        IClock clock,
+        ILogger<ContactFieldService> logger)
     {
         _repository = repository;
         _profileRepository = profileRepository;
         _teamService = teamService;
         _roleAssignmentService = roleAssignmentService;
+        _userInfoInvalidator = userInfoInvalidator;
         _clock = clock;
+        _logger = logger;
     }
 
     public async Task<IReadOnlyList<ContactFieldDto>> GetVisibleContactFieldsAsync(
@@ -135,6 +142,27 @@ public sealed class ContactFieldService : IContactFieldService, IUserMerge
         }
 
         await _repository.BatchSaveAsync(toAdd, toUpdate, toDelete, cancellationToken);
+
+        // Issue #703: contact_fields contributes to UserInfo, and writes here
+        // bypass both UserInfoSaveChangesInterceptor (which intentionally skips
+        // Profile-section tables) and CachingProfileService (this service writes
+        // the repo directly). Invalidate the affected UserInfo entry so the next
+        // read reloads from the 8 contributing tables. Failure is logged but not
+        // propagated — the write has committed; the next cache miss self-heals.
+        var ownerUserId = await _profileRepository.GetOwnerUserIdAsync(profileId, cancellationToken);
+        if (ownerUserId is not null)
+        {
+            try
+            {
+                await _userInfoInvalidator.InvalidateAsync(ownerUserId.Value, cancellationToken);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogWarning(
+                    "ContactFieldService: UserInfo invalidation failed for {UserId}: {ExType}",
+                    ownerUserId.Value, ex.GetType().Name);
+            }
+        }
     }
 
     public async Task<ContactFieldVisibility> GetViewerAccessLevelAsync(

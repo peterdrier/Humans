@@ -26,9 +26,20 @@ namespace Humans.Application.Interfaces.Users;
 ///   <item>-1 GetContactUsersAsync removed (/Contacts surface deleted in PR 2 of email-identity-decoupling — only ContactService called it).</item>
 /// </list>
 /// </remarks>
-[SurfaceBudget(31)]
-public interface IUserService : IApplicationService
+[SurfaceBudget(32)]
+public interface IUserService : IApplicationService, IUserMerge
 {
+    /// <summary>
+    /// Returns the unified <see cref="UserInfo"/> read-model for the given
+    /// user, stitched from <c>users</c>, <c>user_emails</c>,
+    /// <c>event_participations</c>, <c>user_logins</c>, <c>profiles</c>,
+    /// <c>contact_fields</c>, <c>profile_languages</c>, and
+    /// <c>volunteer_history_entries</c>. Issue #703: the caching decorator
+    /// serves dict hits synchronously; the inner service rebuilds from
+    /// repositories on miss.
+    /// </summary>
+    ValueTask<UserInfo?> GetUserInfoAsync(Guid userId, CancellationToken ct = default);
+
     /// <summary>
     /// Fetches a single user by id. Returns null if the user does not exist.
     /// Used by section services that need a slice of user data (email,
