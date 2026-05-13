@@ -157,6 +157,8 @@ public class AdminController : HumansControllerBase
         var sink = Infrastructure.InMemoryLogSink.Instance;
         var events = sink.GetEvents(count);
         ViewBag.LifetimeCounts = sink.GetLifetimeCounts();
+        ViewBag.SinkStartedAt = sink.StartedAt;
+        ViewBag.TotalEvents = sink.TotalEvents;
         return View(events);
     }
 
