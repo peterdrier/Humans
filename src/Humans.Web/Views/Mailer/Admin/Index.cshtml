@@ -1,3 +1,4 @@
+@using Humans.Web.Extensions
 @using Humans.Web.Models.Mailer
 @model MailerDashboardViewModel
 @{
@@ -11,7 +12,7 @@
             @if (Model.CacheFetchedAt is { } fetched)
             {
                 <i class="fa-regular fa-clock me-1"></i>
-                <text>Cached @fetched.LocalDateTime.ToString("yyyy-MM-dd HH:mm")</text>
+                <text>Cached @fetched.ToDisplayCompactDateTime()</text>
             }
             else
             {

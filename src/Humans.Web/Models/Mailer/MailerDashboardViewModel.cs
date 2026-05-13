@@ -13,7 +13,7 @@ public sealed record MailerDashboardViewModel(
     string? LastReconciliationSummary,
     DriftReport? Drift,
     string? MlError,
-    DateTimeOffset? CacheFetchedAt);
+    Instant? CacheFetchedAt);
 
 public sealed record DriftReport(
     int HumansOptedOutMlActive,           // legal-trouble row

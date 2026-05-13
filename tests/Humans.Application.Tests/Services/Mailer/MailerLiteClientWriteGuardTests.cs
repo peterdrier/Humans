@@ -10,7 +10,7 @@ public class MailerLiteClientWriteGuardTests
     public async Task SendAsync_ThrowsOnNonGetRequest()
     {
         var factory = new StubHttpClientFactory(new RecordingHandler());
-        var client = new MailerLiteClient(factory,
+        var client = new MailerLiteClient(factory, NodaTime.SystemClock.Instance,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<MailerLiteClient>.Instance);
 
         var act = async () => await client.SendForTestsAsync(HttpMethod.Post, "/api/subscribers", CancellationToken.None);

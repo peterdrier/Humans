@@ -261,6 +261,25 @@ public class MailerAdminControllerTests
         Assert.Contains("429", banner!, StringComparison.Ordinal);
     }
 
+    [HumansFact]
+    public async Task Refresh_OnTimeout_SetsErrorBannerAndRedirects()
+    {
+        // MailerLiteClient surfaces HttpClient timeouts as TaskCanceledException
+        // when the caller's CancellationToken was not the one that fired.
+        _mlService.RefreshAsync(Arg.Any<CancellationToken>())
+            .ThrowsAsync(new TaskCanceledException("timed out"));
+
+        var ctrl = BuildSut();
+
+        var result = await ctrl.Refresh(CancellationToken.None);
+
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal(nameof(MailerAdminController.Index), redirect.ActionName);
+        var banner = ctrl.TempData["Banner"] as string;
+        Assert.NotNull(banner);
+        Assert.Contains("timed out", banner!, StringComparison.Ordinal);
+    }
+
     // -----------------------------------------------------------------------
     // Commit — counts within tolerance, calls ApplyAsync and redirects to Index.
     // -----------------------------------------------------------------------

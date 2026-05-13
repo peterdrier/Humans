@@ -7,6 +7,7 @@ using System.Text.Json.Serialization;
 using Humans.Application.Interfaces.Mailer;
 using Humans.Application.Interfaces.Mailer.Dtos;
 using Microsoft.Extensions.Logging;
+using NodaTime;
 
 namespace Humans.Infrastructure.Services.Mailer;
 
@@ -23,21 +24,23 @@ public sealed class MailerLiteClient : IMailerLiteService
 
     private static readonly JsonSerializerOptions Json = BuildJson();
     private readonly IHttpClientFactory _httpFactory;
+    private readonly IClock _clock;
     private readonly ILogger<MailerLiteClient> _logger;
     private readonly SemaphoreSlim _gate = new(1, 1);
 
     private IReadOnlyList<MailerLiteSubscriber>? _subscribers;
     private MailerLiteAccountSummary? _summary;
     private IReadOnlyList<MailerLiteGroup>? _groups;
-    private DateTimeOffset? _lastFetchedAt;
+    private Instant? _lastFetchedAt;
 
-    public MailerLiteClient(IHttpClientFactory httpFactory, ILogger<MailerLiteClient> logger)
+    public MailerLiteClient(IHttpClientFactory httpFactory, IClock clock, ILogger<MailerLiteClient> logger)
     {
         _httpFactory = httpFactory;
+        _clock = clock;
         _logger = logger;
     }
 
-    public DateTimeOffset? LastFetchedAt => _lastFetchedAt;
+    public Instant? LastFetchedAt => _lastFetchedAt;
 
     public async Task<MailerLiteAccountSummary> GetAccountSummaryAsync(CancellationToken ct = default)
     {
@@ -123,7 +126,7 @@ public sealed class MailerLiteClient : IMailerLiteService
         _subscribers = subscribers;
         _summary = new MailerLiteAccountSummary(active, unsub, unc, bnc, jnk);
         _groups = groups;
-        _lastFetchedAt = DateTimeOffset.UtcNow;
+        _lastFetchedAt = _clock.GetCurrentInstant();
     }
 
     private async IAsyncEnumerable<MailerLiteSubscriber> FetchSubscribersAsync(

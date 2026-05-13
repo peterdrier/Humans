@@ -1,4 +1,5 @@
 using Humans.Application.Interfaces.Mailer.Dtos;
+using NodaTime;
 
 namespace Humans.Application.Interfaces.Mailer;
 
@@ -26,7 +27,7 @@ public interface IMailerLiteService : IApplicationService
     Task<MailerLiteSubscriber?> GetSubscriberAsync(
         string email, CancellationToken ct = default);
 
-    DateTimeOffset? LastFetchedAt { get; }
+    Instant? LastFetchedAt { get; }
 
     Task RefreshAsync(CancellationToken ct = default);
 }
