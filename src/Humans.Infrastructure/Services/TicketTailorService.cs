@@ -360,15 +360,14 @@ public class TicketTailorService : ITicketVendorService
 
     // TT's issued_ticket.email is the buyer/account email replicated onto every
     // ticket in the order — useless for matching the actual attendee. The real
-    // attendee email is collected via a custom checkout question titled "Email"
-    // (see issue: order or_76148796). Prefer the custom-question answer when
-    // present, fall back to the top-level field.
+    // attendee email is collected via a custom checkout question whose text is
+    // exactly "Email" (see order or_76148796). Match the question string
+    // verbatim; fall back to the top-level field when absent.
     internal static string? ResolveAttendeeEmail(TtIssuedTicket ticket)
     {
         var customEmail = ticket.CustomQuestions?
             .FirstOrDefault(q =>
-                q.Question is not null &&
-                q.Question.Contains("email", StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(q.Question, "Email", StringComparison.Ordinal) &&
                 !string.IsNullOrWhiteSpace(q.Answer))
             ?.Answer
             ?.Trim();

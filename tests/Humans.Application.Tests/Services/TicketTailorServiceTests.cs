@@ -256,6 +256,44 @@ public class TicketTailorServiceTests
     }
 
     [HumansFact]
+    public async Task GetIssuedTicketsAsync_RequiresExactEmailQuestionString()
+    {
+        // Match is case-sensitive and exact: "email" / "Email Address" / "Your Email"
+        // must not match. Only a question whose text is exactly "Email" qualifies.
+        var handler = new MockHttpHandler();
+        handler.EnqueueResponse(HttpStatusCode.OK, new
+        {
+            data = new[]
+            {
+                new
+                {
+                    id = "it_004",
+                    first_name = "Jane",
+                    last_name = "Doe",
+                    full_name = "Jane Doe",
+                    email = "jane@example.com",
+                    custom_questions = new[]
+                    {
+                        new { question = "email", answer = "lower@example.com" },
+                        new { question = "Email Address", answer = "labelled@example.com" },
+                        new { question = "Your Email", answer = "phrased@example.com" }
+                    },
+                    description = "Full Week",
+                    listed_price = 15000,
+                    status = "valid",
+                    order_id = "ord_001"
+                }
+            },
+            links = new { next = (string?)null }
+        });
+
+        var service = CreateService(handler);
+        var tickets = await service.GetIssuedTicketsAsync(null, "ev_test");
+
+        tickets[0].AttendeeEmail.Should().Be("jane@example.com");
+    }
+
+    [HumansFact]
     public async Task GetEventSummaryAsync_ParsesEventResponse()
     {
         var handler = new MockHttpHandler();
