@@ -1252,6 +1252,10 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
         return signups.Where(s => !withConsents.Contains(s.UserId)).ToList();
     }
 
+    public Task<IReadOnlySet<Guid>> GetActiveCommittedUserIdsForEventAsync(
+        Guid eventSettingsId, CancellationToken ct = default) =>
+        _repo.GetActiveCommittedUserIdsForEventAsync(eventSettingsId, ct);
+
     public async Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
         CancellationToken ct)
     {

@@ -9,7 +9,7 @@ namespace Humans.Application.Interfaces.Shifts;
 /// <summary>
 /// Manages the shift signup state machine with invariant enforcement.
 /// </summary>
-[SurfaceBudget(24)]
+[SurfaceBudget(25)]
 public interface IShiftSignupService : IApplicationService
 {
     /// <summary>
@@ -163,6 +163,14 @@ public interface IShiftSignupService : IApplicationService
     /// </summary>
     Task<IReadOnlyList<ShiftSignup>> FilterToIncompleteOnboardingAsync(
         IReadOnlyList<ShiftSignup> signups, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns user-ids with at least one ShiftSignup for the given event whose
+    /// Status is Pending or Confirmed. Used by audience computations to identify
+    /// "users who have a shift". Refused/Bailed/Cancelled/NoShow signups do not count.
+    /// </summary>
+    Task<IReadOnlySet<Guid>> GetActiveCommittedUserIdsForEventAsync(
+        Guid eventSettingsId, CancellationToken ct = default);
 }
 
 /// <summary>

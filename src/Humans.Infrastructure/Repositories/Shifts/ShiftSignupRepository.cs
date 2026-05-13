@@ -314,4 +314,17 @@ public sealed class ShiftSignupRepository : IShiftSignupRepository
             .OrderBy(s => s.CreatedAt)
             .ToListAsync(ct);
     }
+
+    public async Task<IReadOnlySet<Guid>> GetActiveCommittedUserIdsForEventAsync(
+        Guid eventSettingsId, CancellationToken ct = default)
+    {
+        var userIds = await _dbContext.ShiftSignups
+            .AsNoTracking()
+            .Where(s => s.Shift.Rota.EventSettingsId == eventSettingsId
+                     && (s.Status == SignupStatus.Pending || s.Status == SignupStatus.Confirmed))
+            .Select(s => s.UserId)
+            .Distinct()
+            .ToListAsync(ct);
+        return userIds.ToHashSet();
+    }
 }

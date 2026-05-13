@@ -261,4 +261,11 @@ public interface IShiftSignupRepository : IRepository
     /// reconciliation screen. Read-only.
     /// </summary>
     Task<IReadOnlyList<ShiftSignup>> GetAllForOrphanScanAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns user-ids with at least one Pending or Confirmed signup for the
+    /// given event. Read-only. Used by Mailer audience computations.
+    /// </summary>
+    Task<IReadOnlySet<Guid>> GetActiveCommittedUserIdsForEventAsync(
+        Guid eventSettingsId, CancellationToken ct = default);
 }
