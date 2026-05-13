@@ -170,6 +170,21 @@ public interface ITicketRepository : IRepository
     /// </summary>
     Task UpsertAttendeesAsync(IReadOnlyList<TicketAttendee> attendees, CancellationToken ct = default);
 
+    /// <summary>
+    /// Returns every <see cref="TicketAttendee"/> for the given vendor event
+    /// that is currently unmatched (<c>MatchedUserId is null</c>) and whose
+    /// <see cref="Humans.Domain.Enums.TicketAttendeeStatus"/> is
+    /// <c>Valid</c> or <c>CheckedIn</c>, AND whose
+    /// <see cref="TicketAttendee.AttendeeEmail"/> is non-empty.
+    ///
+    /// Used by the attendee contact import to identify candidates for user
+    /// provisioning. Returns the full entity so the caller can mutate
+    /// <c>MatchedUserId</c> and pass the list back to
+    /// <see cref="UpsertAttendeesAsync"/>.
+    /// </summary>
+    Task<IReadOnlyList<TicketAttendee>> GetUnmatchedActiveAttendeesAsync(
+        string vendorEventId, CancellationToken ct = default);
+
     /// <summary>Insert or update a single TicketAttendee row. Used when the Tickets section creates an attendee outside the sync loop (e.g. on approved transfer reissue).</summary>
     Task UpsertAttendeeAsync(TicketAttendee attendee, CancellationToken ct = default);
 

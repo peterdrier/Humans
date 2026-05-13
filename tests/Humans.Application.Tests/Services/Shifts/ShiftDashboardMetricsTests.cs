@@ -999,6 +999,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         public Task<UserTicketExportData> GetUserTicketExportDataAsync(Guid userId, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<Instant?> GetPostEventHoldDateAsync(CancellationToken ct = default) => throw new NotSupportedException();
         public void InvalidateAfterTransfer(Guid senderUserId, Guid? receiverUserId) => throw new NotSupportedException();
+        public void InvalidateAfterContactImport() => throw new NotSupportedException();
         public Task<UserTicketHoldings> GetUserTicketHoldingsAsync(Guid userId, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<IReadOnlyList<OrderDriftRow>> GetOrderDriftAsync(CancellationToken ct = default) => throw new NotSupportedException();
     }
