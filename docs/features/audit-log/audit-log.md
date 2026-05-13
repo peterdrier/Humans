@@ -1,9 +1,7 @@
 <!-- freshness:triggers
   src/Humans.Application/Services/AuditLog/**
-  src/Humans.Web/Controllers/BoardController.cs
-  src/Humans.Web/Controllers/GoogleController.cs
-  src/Humans.Web/Views/Board/AuditLog.cshtml
-  src/Humans.Web/Views/Shared/AuditLog.cshtml
+  src/Humans.Web/Controllers/AuditLogController.cs
+  src/Humans.Web/Views/AuditLog/Index.cshtml
   src/Humans.Domain/Entities/AuditLogEntry.cs
   src/Humans.Infrastructure/Data/Configurations/AuditLog/**
 -->
@@ -126,7 +124,7 @@ The section splits into a write side and a read+render side:
 
 Each call is self-persisting via `IAuditLogRepository.AddAsync`, which opens a fresh `DbContext` via `IDbContextFactory<HumansDbContext>` and saves immediately (design-rules §7a). Callers do not need to flush audit, and audit does not roll back if a later business step fails. `LogGoogleSyncAsync` is the third overload for permission-change events with the Google-specific nullable fields.
 
-**`IAuditViewerService` (read+render)** owns the read path. It returns resolved `AuditEvent` records — actor/subject/target-team display names are batch-resolved inside the section (no per-call-site dance with `GetUserDisplayNamesAsync` / `GetTeamNamesAsync`). Overloads cover the global `/Board/AuditLog` page, per-entity history (Profile/Team/Calendar/etc.), per-user history (MemberDetail), and the agent's `get_audit_history` tool. Verb tables (`GetActionVerb`, `GetActionSelfVerb`, `ShouldRenderDescriptionTail`) live in the stateless `AuditEventTextualizer` helper, which backs both `AuditEvent.RenderPlainText` (agent tool output, with viewer-GUID → "You" substitution) and `RenderStructured` (the view-component HTML composition path).
+**`IAuditViewerService` (read+render)** owns the read path. It returns resolved `AuditEvent` records — actor/subject/target-team display names are batch-resolved inside the section (no per-call-site dance with `GetUserDisplayNamesAsync` / `GetTeamNamesAsync`). Overloads cover the global `/AuditLog` page, per-entity history (Profile/Team/Calendar/etc.), per-user history (MemberDetail), and the agent's `get_audit_history` tool. Verb tables (`GetActionVerb`, `GetActionSelfVerb`, `ShouldRenderDescriptionTail`) live in the stateless `AuditEventTextualizer` helper, which backs both `AuditEvent.RenderPlainText` (agent tool output, with viewer-GUID → "You" substitution) and `RenderStructured` (the view-component HTML composition path).
 
 `IAuditLogService` no longer exposes display-name lookups to controllers — `GetUserDisplayNamesAsync` / `GetTeamNamesAsync` are reached only through `IAuditViewerService`.
 
@@ -188,7 +186,7 @@ The service method sets `EntityType = "GoogleResource"` and `EntityId = resource
 
 ## User Interface
 
-### Global Audit Log Page (`/Board/AuditLog`)
+### Global Audit Log Page (`/AuditLog`)
 
 Accessible to Board and Admin. Displays all audit log entries with filtering by action type. Features:
 - Filter buttons: All, Anomalous Permissions, Access Granted/Revoked, Suspensions, Roles
@@ -196,15 +194,15 @@ Accessible to Board and Admin. Displays all audit log entries with filtering by 
 - Alert banner showing total anomaly count
 - Paginated (50 per page)
 
-### Drive Activity Check (`/Google/AuditLog/CheckDriveActivity`)
+### Drive Activity Check (`/AuditLog/CheckDriveActivity`)
 
-POST action on `GoogleController`. Manual trigger for the Drive Activity monitor. Redirects to `/Board/AuditLog?filter=AnomalousPermissionDetected` after completion.
+POST action on `AuditLogController`. Manual trigger for the Drive Activity monitor. Redirects to `/AuditLog?filter=AnomalousPermissionDetected` after completion.
 
-### Per-Resource Google Sync Audit (`/Google/Sync/Resource/{id}/Audit`)
+### Per-Resource Google Sync Audit (`/AuditLog/Resource/{id}`)
 
 Displays all audit entries for a specific Google resource, queried by `ResourceId`. Shows structured Google sync details: user email, role, sync source, success/failure status, and error messages. Accessible to Board and Admin. Accessed via "Audit" button on each row of the Google Sync page.
 
-### Per-User Google Sync Audit (`/Google/Human/{id}/SyncAudit`)
+### Per-User Google Sync Audit (`/AuditLog/Human/{id}`)
 
 Displays all Google sync audit entries affecting a specific user, queried by `RelatedEntityId = userId` where `ResourceId IS NOT NULL`. Includes the Google resource name via navigation property. Accessible to HumanAdmin and Admin. Accessed via the Member Detail page sidebar.
 
@@ -222,7 +220,7 @@ Agent dispatcher tool that returns the calling user's audit history as plain tex
 
 ## Authorization
 
-The global audit log (`/Board/AuditLog`) is visible only to Board and Admin roles — it lives on `BoardController` (`[Authorize(Roles = "Board,Admin")]`). The Finance audit log (`/Finance/AuditLog`) is restricted to FinanceAdmin and Admin. Per-resource and per-user Google sync audit views are on `GoogleController`.
+The global audit log (`/AuditLog`) and per-resource/per-user views are visible only to Board and Admin (or HumanAdmin for the per-user view) — they live on `AuditLogController` with the appropriate policies. The Finance audit log (`/Finance/AuditLog`) is restricted to FinanceAdmin and Admin.
 
 ## Related Features
 

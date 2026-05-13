@@ -372,7 +372,7 @@ public record UrgentShift(
     int ConfirmedCount,
     int RemainingSlots,
     string DepartmentName,
-    IReadOnlyList<(Guid UserId, string DisplayName, SignupStatus Status, bool HasProfilePicture)> Signups);
+    IReadOnlyList<(Guid UserId, string DisplayName, SignupStatus Status)> Signups);
 
 /// <summary>
 /// Per-day staffing data for set-up/event/strike visualization.

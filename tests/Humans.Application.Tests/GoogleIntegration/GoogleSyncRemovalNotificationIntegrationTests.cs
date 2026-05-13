@@ -1,17 +1,13 @@
-using AwesomeAssertions;
-using Humans.Application.Configuration;
-using Humans.Application.DTOs;
 using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Configuration;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Profiles;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.GoogleIntegration;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;
@@ -23,32 +19,31 @@ namespace Humans.Application.Tests.GoogleIntegration;
 
 /// <summary>
 /// End-to-end test of the sync removal-notification flow (issue
-/// peterdrier/Humans#639). Wires <see cref="GoogleWorkspaceSyncService"/>'s
-/// gateway methods to a real <see cref="GoogleRemovalNotificationService"/>
-/// and asserts the resulting <see cref="IEmailService"/> calls. The
-/// integration boundary is <c>RemoveUserFromGroupAsync</c> (the spec's
-/// "successful Google API delete" trigger). Drive-side coverage uses the
-/// notification service unit tests; the sync service treats Drive removal
-/// identically — same gateway, same notification call.
+/// peterdrier/Humans#639). Wires <see cref="GoogleGroupSyncService"/> to a
+/// real <see cref="GoogleRemovalNotificationService"/> and asserts the
+/// resulting <see cref="IEmailService"/> calls. The integration boundary is
+/// now a confirmed Google Group membership delete inside the group
+/// orchestrator.
 /// </summary>
 public sealed class GoogleSyncRemovalNotificationIntegrationTests
 {
     private readonly IGoogleGroupMembershipClient _groupMembership = Substitute.For<IGoogleGroupMembershipClient>();
     private readonly IGoogleGroupProvisioningClient _groupProvisioning = Substitute.For<IGoogleGroupProvisioningClient>();
-    private readonly IGoogleDrivePermissionsClient _drivePermissions = Substitute.For<IGoogleDrivePermissionsClient>();
-    private readonly IGoogleDirectoryClient _directory = Substitute.For<IGoogleDirectoryClient>();
     private readonly ITeamResourceGoogleClient _teamResourceClient = Substitute.For<ITeamResourceGoogleClient>();
-    private readonly IGoogleResourceRepository _resourceRepository = Substitute.For<IGoogleResourceRepository>();
-    private readonly IGoogleSyncOutboxRepository _googleSyncOutboxRepository = Substitute.For<IGoogleSyncOutboxRepository>();
+    private readonly ITeamResourceService _teamResourceService = Substitute.For<ITeamResourceService>();
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
-    private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
+    private readonly IProfileService _profileService = Substitute.For<IProfileService>();
     private readonly ISyncSettingsService _syncSettingsService = Substitute.For<ISyncSettingsService>();
+    private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
+    private readonly RecordingGoogleGroupSyncScheduler _syncScheduler = new();
+    private readonly FakeClock _clock = new(Instant.FromUtc(2026, 5, 4, 12, 0));
 
-    private readonly GoogleWorkspaceSyncService _syncService;
+    private readonly GoogleGroupSyncService _syncService;
 
+    private static readonly Guid TestTeamId = Guid.NewGuid();
     private static readonly Guid TestGroupResourceId = Guid.NewGuid();
     private const string TestGoogleId = "01abc";
     private const string TestGroupName = "QA Team";
@@ -57,50 +52,40 @@ public sealed class GoogleSyncRemovalNotificationIntegrationTests
 
     public GoogleSyncRemovalNotificationIntegrationTests()
     {
-        // AddAndRemove mode = removal gateway is enabled.
         _syncSettingsService
             .GetModeAsync(SyncServiceType.GoogleGroups, Arg.Any<CancellationToken>())
             .Returns(SyncMode.AddAndRemove);
+        _teamResourceClient.GetServiceAccountEmailAsync(Arg.Any<CancellationToken>())
+            .Returns("service-account@nobodies.team");
 
-        // Real GoogleRemovalNotificationService — the integration boundary
-        // we are exercising. Its IUserEmailService / IUserService / IEmailService
-        // dependencies are fakes.
         var notifications = new GoogleRemovalNotificationService(
             _userEmailService,
             _userService,
             _emailService,
             NullLogger<GoogleRemovalNotificationService>.Instance);
 
-        var options = Options.Create(new GoogleWorkspaceOptions { Domain = "nobodies.team" });
-        var clock = new FakeClock(Instant.FromUtc(2026, 5, 4, 12, 0));
-        var serviceProvider = new ServiceCollection().BuildServiceProvider();
-
-        _syncService = new GoogleWorkspaceSyncService(
+        _syncService = new GoogleGroupSyncService(
+            [new StaticSource(TestGroupEmail)],
             _groupMembership,
             _groupProvisioning,
-            _drivePermissions,
-            _directory,
             _teamResourceClient,
-            _resourceRepository,
-            _googleSyncOutboxRepository,
+            _teamResourceService,
             _teamService,
             _userService,
             _userEmailService,
-            _auditLogService,
+            _profileService,
             _syncSettingsService,
+            _auditLogService,
             notifications,
-            options,
-            clock,
-            serviceProvider,
-            NullLogger<GoogleWorkspaceSyncService>.Instance);
+            _syncScheduler,
+            Options.Create(new GoogleWorkspaceOptions()),
+            _clock,
+            NullLogger<GoogleGroupSyncService>.Instance);
     }
 
     [HumansFact]
-    public async Task RemoveUserFromGroup_StaleSecondaryEmail_EnqueuesOneVariant2_ZeroVariant1()
+    public async Task ReconcileOneAsync_StaleSecondaryEmail_EnqueuesOneVariant2_ZeroVariant1()
     {
-        // ── Arrange: a Google Group with a stale secondary email "old@nobodies.team"
-        // belonging to a user whose primary IsGoogle row is "new@nobodies.team".
-        // Reconciliation removes the secondary; the user retains primary access.
         const string removedEmail = "old@nobodies.team";
         const string primaryEmail = "new@nobodies.team";
 
@@ -140,10 +125,8 @@ public sealed class GoogleSyncRemovalNotificationIntegrationTests
             Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, User> { [userId] = user });
 
-        // ── Act
-        await _syncService.RemoveUserFromGroupAsync(TestGroupResourceId, removedEmail);
+        await _syncService.ReconcileOneAsync(TestGroupEmail, SyncAction.Execute);
 
-        // ── Assert: exactly one Variant 2 enqueue, zero Variant 1.
         await _emailService.Received(1).SendGoogleAccessRemovalSecondaryCleanupAsync(
             removedEmail,
             "Alice",
@@ -159,19 +142,20 @@ public sealed class GoogleSyncRemovalNotificationIntegrationTests
     }
 
     [HumansFact]
-    public async Task RemoveUserFromGroup_FailedGoogleDelete_DoesNotNotify()
+    public async Task ReconcileOneAsync_FailedGoogleDelete_DoesNotNotify()
     {
-        // Spec: notify only on confirmed removal — a failed API call must not enqueue.
         const string removedEmail = "alice@nobodies.team";
         StageGroupResource();
+        _groupProvisioning.LookupGroupIdAsync(TestGroupEmail, Arg.Any<CancellationToken>())
+            .Returns(new GroupLookupIdResult(TestGoogleId, null));
         _groupMembership.ListMembershipsAsync(TestGoogleId, Arg.Any<CancellationToken>())
             .Returns(new GroupMembershipListResult(
-                Memberships: new[] { new GroupMembership(removedEmail, "groups/01abc/memberships/m1") },
+                [new GroupMembership(removedEmail, "groups/01abc/memberships/m1")],
                 Error: null));
         _groupMembership.DeleteMembershipAsync("groups/01abc/memberships/m1", Arg.Any<CancellationToken>())
             .Returns(new GoogleClientError(StatusCode: 500, RawMessage: "boom"));
 
-        await _syncService.RemoveUserFromGroupAsync(TestGroupResourceId, removedEmail);
+        await _syncService.ReconcileOneAsync(TestGroupEmail, SyncAction.Execute);
 
         await _emailService.DidNotReceive().SendGoogleGroupRemovalLossOfAccessAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
@@ -183,25 +167,82 @@ public sealed class GoogleSyncRemovalNotificationIntegrationTests
 
     private void StageGroupResource()
     {
-        _resourceRepository.GetByIdAsync(TestGroupResourceId, Arg.Any<CancellationToken>())
-            .Returns(new GoogleResource
+        _teamResourceService.GetActiveResourceCountsByTeamAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, int> { [TestTeamId] = 1 });
+        _teamResourceService.GetResourcesByTeamIdsAsync(
+                Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(TestTeamId)),
+                Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, IReadOnlyList<GoogleResource>>
             {
-                Id = TestGroupResourceId,
-                ResourceType = GoogleResourceType.Group,
-                GoogleId = TestGoogleId,
+                [TestTeamId] =
+                [
+                    new GoogleResource
+                    {
+                        Id = TestGroupResourceId,
+                        TeamId = TestTeamId,
+                        ResourceType = GoogleResourceType.Group,
+                        GoogleId = TestGoogleId,
+                        Name = TestGroupName,
+                        Url = TestGroupUrl,
+                        IsActive = true
+                    }
+                ]
+            });
+        _teamService.GetTeamByIdAsync(TestTeamId, Arg.Any<CancellationToken>())
+            .Returns(new Team
+            {
+                Id = TestTeamId,
                 Name = TestGroupName,
-                Url = TestGroupUrl,
-                IsActive = true
+                Slug = "qa-team",
+                GoogleGroupPrefix = "qa-team",
+                CreatedAt = _clock.GetCurrentInstant(),
+                UpdatedAt = _clock.GetCurrentInstant()
             });
     }
 
     private void StageGoogleApiSuccess(string memberEmail)
     {
+        _groupProvisioning.LookupGroupIdAsync(TestGroupEmail, Arg.Any<CancellationToken>())
+            .Returns(new GroupLookupIdResult(TestGoogleId, null));
         _groupMembership.ListMembershipsAsync(TestGoogleId, Arg.Any<CancellationToken>())
             .Returns(new GroupMembershipListResult(
-                Memberships: new[] { new GroupMembership(memberEmail, "groups/01abc/memberships/m1") },
+                [new GroupMembership(memberEmail, "groups/01abc/memberships/m1")],
                 Error: null));
         _groupMembership.DeleteMembershipAsync("groups/01abc/memberships/m1", Arg.Any<CancellationToken>())
             .Returns((GoogleClientError?)null);
+    }
+
+    private sealed class StaticSource : IGoogleGroupMembershipSource
+    {
+        private readonly string _groupKey;
+
+        public StaticSource(string groupKey)
+        {
+            _groupKey = groupKey;
+        }
+
+        public Task<Dictionary<string, Guid[]>> GetExpectedAsync(
+            string? groupKey = null,
+            CancellationToken ct = default)
+        {
+            if (groupKey is not null && !string.Equals(groupKey, _groupKey, StringComparison.OrdinalIgnoreCase))
+                return Task.FromResult(new Dictionary<string, Guid[]>(StringComparer.OrdinalIgnoreCase));
+
+            return Task.FromResult(new Dictionary<string, Guid[]>(StringComparer.OrdinalIgnoreCase)
+            {
+                [_groupKey] = []
+            });
+        }
+    }
+
+    private sealed class RecordingGoogleGroupSyncScheduler : IGoogleGroupSyncScheduler
+    {
+        public void Enqueue(string groupKey)
+        {
+        }
+
+        public void Schedule(string groupKey, TimeSpan delay, int retryAttempt)
+        {
+        }
     }
 }

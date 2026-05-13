@@ -130,6 +130,7 @@ public record TeamCoordinatorRef(Guid TeamId, Guid UserId);
 /// <remarks>
 /// Surface-budget recent history (newest first):
 /// <list type="bullet">
+///   <item>71→70 — PR #478 (issue #615): removed GetActiveChildMembersByParentIdsAsync; the child-team rollup is now inside GetExpectedAsync via GetActiveMembersForTeamsAsync.</item>
 ///   <item>2026-05-11 — InterfaceMethodBudgetTests retired; budget migrated to [SurfaceBudget(71)] (issue nobodies-collective/Humans#700).</item>
 ///   <item>73→71 — tech-debt query consolidation: removed GetTeamMembersAsync and GetActiveMemberUserIdsAsync; callers project members/user IDs from GetTeamAsync/GetTeamsAsync read models.</item>
 ///   <item>71→73 — team-cache decorator groundwork: added canonical GetTeamAsync/GetTeamsAsync read-model methods. Follow-up passes should consolidate member/name/option getters down onto those methods.</item>
@@ -138,7 +139,7 @@ public record TeamCoordinatorRef(Guid TeamId, Guid UserId);
 ///   <item>71→70 — account-merge fold redesign: removed ReassignToUserAsync from ITeamService (moved to IUserMerge.ReassignAsync, implemented by TeamService and dispatched by AccountMergeService via IEnumerable&lt;IUserMerge&gt; fan-out).</item>
 /// </list>
 /// </remarks>
-[SurfaceBudget(71)]
+[SurfaceBudget(70)]
 public interface ITeamService : IApplicationService
 {
     /// <summary>
@@ -707,18 +708,6 @@ public interface ITeamService : IApplicationService
     /// </summary>
     Task<IReadOnlyList<TeamMember>> GetActiveMembersForTeamsAsync(
         IReadOnlyCollection<Guid> teamIds,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Returns every active (<see cref="TeamMember.LeftAt"/> is null) team member
-    /// whose team has a parent team id in <paramref name="parentTeamIds"/>.
-    /// The child team is hydrated on <see cref="TeamMember.Team"/>; the
-    /// <see cref="TeamMember.User"/> nav is stitched in-memory. Used by the
-    /// subteam rollup path in Google Workspace reconciliation — department
-    /// resources must grant access to every member of every child team.
-    /// </summary>
-    Task<IReadOnlyList<TeamMember>> GetActiveChildMembersByParentIdsAsync(
-        IReadOnlyCollection<Guid> parentTeamIds,
         CancellationToken cancellationToken = default);
 
     // ==========================================================================

@@ -16,6 +16,64 @@
 
 <partial name="_DashboardStaffing" model="Model" />
 
+<div class="row mb-4">
+    @if (Model.AppStats.HasAny)
+    {
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header">Tier applications</div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-7">Total</dt>
+                        <dd class="col-5 text-end mb-2">@Model.AppStats.Total</dd>
+                        <dt class="col-7">Approved</dt>
+                        <dd class="col-5 text-end mb-2">@Model.AppStats.Approved</dd>
+                        <dt class="col-7">Rejected</dt>
+                        <dd class="col-5 text-end mb-2">@Model.AppStats.Rejected</dd>
+                        <dt class="col-7">Pending</dt>
+                        <dd class="col-5 text-end mb-2">@Model.AppStats.Pending</dd>
+                    </dl>
+                    <hr class="my-2" />
+                    <dl class="row mb-0">
+                        <dt class="col-7">Colaborador</dt>
+                        <dd class="col-5 text-end mb-2">@Model.AppStats.Colaborador</dd>
+                        <dt class="col-7">Asociado</dt>
+                        <dd class="col-5 text-end mb-2">@Model.AppStats.Asociado</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (Model.LanguageDistribution.Count > 0)
+    {
+        var totalActive = Model.LanguageDistribution.Sum(l => l.Count);
+        var barColors = new[] { "bg-primary", "bg-success", "bg-info", "bg-warning", "bg-secondary" };
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header">Preferred language</div>
+                <div class="card-body">
+                    @for (var i = 0; i < Model.LanguageDistribution.Count; i++)
+                    {
+                        var lang = Model.LanguageDistribution[i];
+                        var percentage = totalActive > 0 ? (int)(100.0 * lang.Count / totalActive) : 0;
+                        var label = lang.Language.ToDisplayLanguageName();
+                        var color = barColors[i % barColors.Length];
+                        <div class="d-flex align-items-center mb-2">
+                            <span class="me-2" style="min-width: 70px;">@label</span>
+                            <div class="flex-grow-1">
+                                <div class="progress" style="height: 20px;">
+                                    <div class="progress-bar @color" style="width: @percentage%;">@lang.Count</div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
 <div class="split-panels">
     <div class="card">
         <div class="card-head">

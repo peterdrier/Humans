@@ -170,7 +170,7 @@ public class EmailRenderer : IEmailRenderer
             items.Add($"<li>{Lf("Email_BoardDigest_StillOnboarding", counts.StillOnboarding)} <a href=\"{_settings.BaseUrl}/OnboardingReview\">&rarr;</a></li>");
 
         if (counts.BoardVotingTotal > 0)
-            items.Add($"<li>{Lf("Email_BoardDigest_BoardVoting", counts.BoardVotingTotal, counts.BoardVotingYours)} <a href=\"{_settings.BaseUrl}/OnboardingReview/BoardVoting\">&rarr;</a></li>");
+            items.Add($"<li>{Lf("Email_BoardDigest_BoardVoting", counts.BoardVotingTotal, counts.BoardVotingYours)} <a href=\"{_settings.BaseUrl}/Governance/BoardVoting\">&rarr;</a></li>");
 
         if (counts.TeamJoinRequests > 0)
             items.Add($"<li>{Lf("Email_BoardDigest_TeamJoinRequests", counts.TeamJoinRequests)} <a href=\"{_settings.BaseUrl}/Teams/Summary\">&rarr;</a></li>");
@@ -208,7 +208,7 @@ public class EmailRenderer : IEmailRenderer
             items.Add($"<li><strong>{counts.StillOnboarding}</strong> still completing onboarding <a href=\"{_settings.BaseUrl}/OnboardingReview\">&rarr;</a></li>");
 
         if (counts.BoardVotingTotal > 0)
-            items.Add($"<li><strong>{counts.BoardVotingTotal}</strong> tier applications awaiting vote <a href=\"{_settings.BaseUrl}/OnboardingReview/BoardVoting\">&rarr;</a></li>");
+            items.Add($"<li><strong>{counts.BoardVotingTotal}</strong> tier applications awaiting vote <a href=\"{_settings.BaseUrl}/Governance/BoardVoting\">&rarr;</a></li>");
 
         if (counts.FailedSyncOutboxEvents > 0)
             items.Add($"<li><strong>{counts.FailedSyncOutboxEvents}</strong> failed Google sync outbox events (transient, retrying) <a href=\"{_settings.BaseUrl}/Google/Sync\">&rarr;</a></li>");

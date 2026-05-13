@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Humans.Application.DTOs;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.AuditLog;
@@ -10,6 +11,7 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging;
 using NodaTime;
+using NodaTime.Serialization.SystemTextJson;
 
 namespace Humans.Application.Services.Tickets;
 
@@ -57,6 +59,25 @@ public sealed class TicketTransferService : ITicketTransferService
 
     private const int MaxBurnerNameMatches = 10;
 
+    private static readonly JsonSerializerOptions VendorStepsJsonOptions =
+        new JsonSerializerOptions(JsonSerializerDefaults.Web)
+            .ConfigureForNodaTime(NodaTime.DateTimeZoneProviders.Tzdb);
+
+    private static void AppendStep(TicketTransferRequest request, TicketTransferVendorStep step)
+    {
+        var list = JsonSerializer.Deserialize<List<TicketTransferVendorStep>>(
+            request.VendorStepsJson, VendorStepsJsonOptions) ?? new();
+        list.Add(step);
+        request.VendorStepsJson = JsonSerializer.Serialize(list, VendorStepsJsonOptions);
+    }
+
+    // Deliberately diverges from /api/profiles/search (the canonical
+    // _HumanSearchInput backend). That endpoint matches name+burner only;
+    // ticket-transfer senders typically have the recipient's email, not their
+    // burner name, so we keep an exact-email match path here. If/when email-
+    // exact lands in the canonical search API, this method can be retired in
+    // favour of <vc:_HumanSearchInput scope="…" /> on the Send view.
+    // See: memory/architecture/person-search.md.
     public async Task<IReadOnlyList<ReceiverLookupResultDto>> LookupReceiversAsync(
         string query, Guid senderUserId, CancellationToken ct = default)
     {
@@ -121,7 +142,7 @@ public sealed class TicketTransferService : ITicketTransferService
                     AttendeeName: a.AttendeeName,
                     TicketTypeName: a.TicketTypeName,
                     CanSendTransfer: a.Status == TicketAttendeeStatus.Valid
-                        && a.TicketOrder.MatchedUserId == userId
+                        && TicketAttendeeOwnership.IsCurrentOwner(a, userId)
                         && !pending,
                     HasPendingOutgoingTransfer: pending,
                     PendingTransferRequestId: pending ? transferId : null);
@@ -138,9 +159,11 @@ public sealed class TicketTransferService : ITicketTransferService
         var attendee = await _ticketRepo.GetAttendeeByIdAsync(dto.OriginalAttendeeId, ct)
             ?? throw new InvalidOperationException("Attendee not found.");
 
-        // Sender must own the parent order's MatchedUserId
-        if (attendee.TicketOrder.MatchedUserId != senderUserId)
-            throw new InvalidOperationException("You can only transfer tickets from your own orders.");
+        // Sender must be the current holder of this attendee. Cascade rule
+        // (TicketAttendeeOwnership): attendee.MatchedUserId wins; falls back
+        // to the parent order's MatchedUserId if the attendee is unmatched.
+        if (!TicketAttendeeOwnership.IsCurrentOwner(attendee, senderUserId))
+            throw new InvalidOperationException("You can only transfer tickets you currently hold.");
 
         if (attendee.Status != TicketAttendeeStatus.Valid)
             throw new InvalidOperationException("Only Valid tickets can be transferred.");
@@ -335,13 +358,17 @@ public sealed class TicketTransferService : ITicketTransferService
         var senderCard = await BuildReceiverCardAsync(request.SenderUserId, ct);
         var receiverCard = await BuildReceiverCardAsync(request.ReceiverUserId, ct);
 
+        var attendee = await _ticketRepo.GetAttendeeByIdAsync(request.OriginalTicketAttendeeId, ct);
+
         // Cards fall back to a minimal stub if a profile somehow can't be built
         // (e.g. user soft-deleted between request and admin review). The row's
         // snapshot fields still carry the names we need.
         return new TicketTransferDetailDto(
             Row: row,
             SenderCard: senderCard ?? StubCard(request.SenderUserId, row.SenderDisplayName),
-            ReceiverCard: receiverCard ?? StubCard(request.ReceiverUserId, row.ReceiverLegalName));
+            ReceiverCard: receiverCard ?? StubCard(request.ReceiverUserId, row.ReceiverLegalName),
+            OrderDashboardUrl: attendee?.TicketOrder?.VendorDashboardUrl,
+            VendorStepsJson: request.VendorStepsJson);
     }
 
     private static ReceiverLookupResultDto StubCard(Guid userId, string displayName) =>
@@ -350,6 +377,132 @@ public sealed class TicketTransferService : ITicketTransferService
 
     public Task<int> CountPendingAsync(CancellationToken ct = default) =>
         _transferRepo.CountPendingAsync(ct);
+
+    public async Task<TicketTransferRowDto> RetryIssueAsync(
+        Guid transferRequestId, Guid adminUserId, string? adminNotes, CancellationToken ct = default)
+    {
+        var request = await _transferRepo.GetByIdAsync(transferRequestId, ct)
+            ?? throw new InvalidOperationException("Transfer not found.");
+        if (request.Status != TicketTransferStatus.Approved
+            || request.VendorResult != TicketTransferVendorResult.VoidSucceededIssueFailed)
+        {
+            throw new InvalidOperationException(
+                "Retry is only allowed when the transfer is Approved with VendorResult=VoidSucceededIssueFailed.");
+        }
+
+        var steps = JsonSerializer.Deserialize<List<TicketTransferVendorStep>>(
+            request.VendorStepsJson, VendorStepsJsonOptions) ?? new();
+        var lastVoid = steps.LastOrDefault(s =>
+            s.Kind == TicketTransferVendorStepKind.Void && s.Success && s.VendorReferenceId is not null);
+        if (lastVoid is null)
+            throw new InvalidOperationException("No recorded hold id to retry against.");
+
+        var attendee = await _ticketRepo.GetAttendeeByIdAsync(request.OriginalTicketAttendeeId, ct)
+            ?? throw new InvalidOperationException("Original attendee missing.");
+
+        var now = _clock.GetCurrentInstant();
+        VendorTicketDto issued;
+        try
+        {
+            issued = await _vendor.IssueTicketAsync(new IssueTicketRequest(
+                EventId: null,
+                TicketTypeId: null,
+                HoldId: lastVoid.VendorReferenceId,
+                FullName: request.ReceiverLegalName,
+                Email: request.ReceiverEmail,
+                SendEmail: true,
+                ExternalReference: request.Id.ToString("N")), ct);
+        }
+        catch (TicketVendorWriteException ex)
+        {
+            AppendStep(request, new TicketTransferVendorStep(
+                Kind: TicketTransferVendorStepKind.RetryIssue,
+                Success: false,
+                OccurredAt: now,
+                VendorReferenceId: null,
+                RequestSummary: $"retry-issue hold={lastVoid.VendorReferenceId} name={request.ReceiverLegalName}",
+                ResponseSummary: null,
+                ErrorMessage: $"({ex.Kind}) {ex.Message}"));
+            await _transferRepo.UpdateAsync(request, ct);
+            await _auditLog.LogAsync(
+                AuditAction.TicketTransferApproved,
+                nameof(TicketTransferRequest),
+                request.Id,
+                $"Retry-issue failed: {ex.Message}",
+                adminUserId,
+                request.SenderUserId,
+                nameof(User));
+            return await BuildRowDtoAsync(request, ct);
+        }
+
+        // Vendor issued the new ticket. From here local work must not throw
+        // unrecorded — if it does, the next retry would consume the same hold
+        // again. Wrap in try/catch and audit any local failure.
+        try
+        {
+            await _ticketRepo.UpsertAttendeeAsync(new TicketAttendee
+            {
+                Id = Guid.NewGuid(),
+                VendorTicketId = issued.VendorTicketId,
+                TicketOrderId = attendee.TicketOrderId,
+                AttendeeName = request.ReceiverLegalName,
+                AttendeeEmail = request.ReceiverEmail,
+                TicketTypeName = attendee.TicketTypeName,
+                Price = attendee.Price,
+                Status = TicketAttendeeStatus.Valid,
+                VendorEventId = attendee.VendorEventId,
+                SyncedAt = now,
+                MatchedUserId = request.ReceiverUserId,
+            }, ct);
+
+            request.VendorResult = TicketTransferVendorResult.Succeeded;
+            request.NewVendorTicketId = issued.VendorTicketId;
+            request.VendorMessage = $"hold {lastVoid.VendorReferenceId} (retry)";
+            if (!string.IsNullOrWhiteSpace(adminNotes))
+                request.AdminNotes = string.IsNullOrEmpty(request.AdminNotes)
+                    ? adminNotes
+                    : request.AdminNotes + "\nretry: " + adminNotes;
+
+            AppendStep(request, new TicketTransferVendorStep(
+                Kind: TicketTransferVendorStepKind.RetryIssue,
+                Success: true,
+                OccurredAt: now,
+                VendorReferenceId: issued.VendorTicketId,
+                RequestSummary: $"retry-issue hold={lastVoid.VendorReferenceId} name={request.ReceiverLegalName}",
+                ResponseSummary: $"issue ok ticket={issued.VendorTicketId}",
+                ErrorMessage: null));
+
+            await _transferRepo.UpdateAsync(request, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogCritical(ex,
+                "PARTIAL STATE: retry-issue succeeded at vendor (ticket {NewVendorTicketId}, hold {HoldId}) but local writeback failed for transfer {TransferId}. Manual reconciliation required.",
+                issued.VendorTicketId, lastVoid.VendorReferenceId, request.Id);
+            await _auditLog.LogAsync(
+                AuditAction.TicketTransferApproved,
+                nameof(TicketTransferRequest),
+                request.Id,
+                $"PARTIAL STATE: retry-issue produced vendor ticket {issued.VendorTicketId} but local update failed: {ex.Message}",
+                adminUserId,
+                request.SenderUserId,
+                nameof(User));
+            throw;
+        }
+
+        _ticketQueryService.InvalidateAfterTransfer(request.SenderUserId, request.ReceiverUserId);
+
+        await _auditLog.LogAsync(
+            AuditAction.TicketTransferApproved,
+            nameof(TicketTransferRequest),
+            request.Id,
+            $"Retry-issue success: ticket {issued.VendorTicketId}",
+            adminUserId,
+            request.SenderUserId,
+            nameof(User));
+
+        return await BuildRowDtoAsync(request, ct);
+    }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
 
@@ -365,9 +518,25 @@ public sealed class TicketTransferService : ITicketTransferService
         {
             voidResult = await _vendor.VoidIssuedTicketAsync(
                 attendee.VendorTicketId, voidToHold: true, ct);
+            AppendStep(request, new TicketTransferVendorStep(
+                Kind: TicketTransferVendorStepKind.Void,
+                Success: true,
+                OccurredAt: _clock.GetCurrentInstant(),
+                VendorReferenceId: voidResult.HoldId,
+                RequestSummary: $"void {attendee.VendorTicketId}",
+                ResponseSummary: $"hold {voidResult.HoldId}",
+                ErrorMessage: null));
         }
         catch (TicketVendorWriteException ex)
         {
+            AppendStep(request, new TicketTransferVendorStep(
+                Kind: TicketTransferVendorStepKind.Void,
+                Success: false,
+                OccurredAt: _clock.GetCurrentInstant(),
+                VendorReferenceId: null,
+                RequestSummary: $"void {attendee.VendorTicketId}",
+                ResponseSummary: null,
+                ErrorMessage: ex.Message));
             request.VendorResult = TicketTransferVendorResult.Failed;
             request.VendorMessage = $"Void failed ({ex.Kind}): {ex.Message}";
             _logger.LogWarning(
@@ -388,9 +557,25 @@ public sealed class TicketTransferService : ITicketTransferService
                 Email: request.ReceiverEmail,
                 SendEmail: true,
                 ExternalReference: request.Id.ToString("N")), ct);
+            AppendStep(request, new TicketTransferVendorStep(
+                Kind: TicketTransferVendorStepKind.Issue,
+                Success: true,
+                OccurredAt: _clock.GetCurrentInstant(),
+                VendorReferenceId: issued.VendorTicketId,
+                RequestSummary: $"issue for {request.ReceiverEmail} hold {voidResult.HoldId}",
+                ResponseSummary: $"ticket {issued.VendorTicketId}",
+                ErrorMessage: null));
         }
         catch (TicketVendorWriteException ex)
         {
+            AppendStep(request, new TicketTransferVendorStep(
+                Kind: TicketTransferVendorStepKind.Issue,
+                Success: false,
+                OccurredAt: _clock.GetCurrentInstant(),
+                VendorReferenceId: null,
+                RequestSummary: $"issue for {request.ReceiverEmail} hold {voidResult.HoldId}",
+                ResponseSummary: null,
+                ErrorMessage: ex.Message));
             request.VendorResult = TicketTransferVendorResult.VoidSucceededIssueFailed;
             request.VendorMessage = $"Issue failed ({ex.Kind}): {ex.Message} (hold {voidResult.HoldId})";
             _logger.LogError(ex,
@@ -431,6 +616,14 @@ public sealed class TicketTransferService : ITicketTransferService
             },
             attendee,
         }, ct);
+        AppendStep(request, new TicketTransferVendorStep(
+            Kind: TicketTransferVendorStepKind.LocalWriteback,
+            Success: true,
+            OccurredAt: _clock.GetCurrentInstant(),
+            VendorReferenceId: null,
+            RequestSummary: $"upsert void {attendee.VendorTicketId} + new {issued.VendorTicketId}",
+            ResponseSummary: null,
+            ErrorMessage: null));
 
         request.VendorResult = TicketTransferVendorResult.Succeeded;
         request.NewVendorTicketId = issued.VendorTicketId;

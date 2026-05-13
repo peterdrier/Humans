@@ -14,6 +14,7 @@ public static class CacheKeys
     public static string CampSeasonsByYear(int year) => $"camps_year_{year}";
 
     public static string UserTicketCount(Guid userId) => $"UserTicketCount:{userId:N}";
+    public static string UserTicketHoldings(Guid userId) => $"UserTicketHoldings:{userId:N}";
     public const string TicketDashboardStats = "TicketDashboardStats";
     public const string UserIdsWithTickets = "UserIdsWithTickets";
     public const string ValidAttendeeEmails = "ValidAttendeeEmails";
@@ -68,6 +69,7 @@ public static class CacheKeys
             ["TicketEventSummary"] = new("15 min", CacheKeyType.PerEntity),
             ["camps_year"] = new("5 min", CacheKeyType.PerEntity),
             ["UserTicketCount"] = new("5 min", CacheKeyType.PerUser),
+            ["UserTicketHoldings"] = new("5 min", CacheKeyType.PerUser),
             ["TicketDashboardStats"] = new("5 min", CacheKeyType.Static),
             ["UserIdsWithTickets"] = new("5 min", CacheKeyType.Static),
             ["ValidAttendeeEmails"] = new("5 min", CacheKeyType.Static),

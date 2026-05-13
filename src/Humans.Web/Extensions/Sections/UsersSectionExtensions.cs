@@ -1,14 +1,14 @@
 using Humans.Application.Interfaces.Dashboard;
 using Humans.Application.Interfaces.Gdpr;
-using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Users.AccountLifecycle;
+using Humans.Infrastructure.Data;
+using Humans.Infrastructure.HostedServices;
 using Humans.Infrastructure.Repositories.Users;
+using Humans.Infrastructure.Services.Users;
 using DashboardAdminDashboardService = Humans.Application.Services.Dashboard.AdminDashboardService;
 using DashboardDashboardService = Humans.Application.Services.Dashboard.DashboardService;
-using GovernanceMembershipCalculator = Humans.Application.Services.Governance.MembershipCalculator;
-using GovernanceMembershipQuery = Humans.Application.Services.Governance.MembershipQuery;
 using UsersUserService = Humans.Application.Services.Users.UserService;
 
 namespace Humans.Web.Extensions.Sections;
@@ -18,15 +18,49 @@ internal static class UsersSectionExtensions
     internal static IServiceCollection AddUsersSection(this IServiceCollection services)
     {
         // User section — §15 repository pattern (issue #511).
-        // No decorator / cache: User is ~500 rows with no stitched projection or
-        // hot bulk-read path; see docs/superpowers/specs/2026-04-21-issue-511-user-migration.md
-        // for the Option A rationale. IUserRepository is Singleton
-        // (IDbContextFactory-based) so the service can inject it directly.
+        // Issue #703: added CachingUserService decorator + UserInfo cached
+        // read-model spanning the User and Profile sections. The base
+        // UserService is now registered keyed under "user-inner"; unkeyed
+        // IUserService resolves to the Singleton decorator. UserService still
+        // owns Application-side write paths and invalidates IFullProfileInvalidator
+        // for FullProfile-visible field changes — the SaveChanges interceptor
+        // (UserInfoSaveChangesInterceptor) handles UserInfo-cache invalidation
+        // for every persisted mutation including Identity-machinery writes.
         services.AddSingleton<IUserRepository, UserRepository>();
-        services.AddScoped<UsersUserService>();
-        services.AddScoped<IUserService>(sp => sp.GetRequiredService<UsersUserService>());
+
+        // Inner UserService — Scoped + keyed. CachingUserService resolves via
+        // IServiceScopeFactory per-call.
+        services.AddKeyedScoped<IUserService, UsersUserService>(CachingUserService.InnerServiceKey);
+        services.AddScoped<UsersUserService>(sp =>
+            (UsersUserService)sp.GetRequiredKeyedService<IUserService>(CachingUserService.InnerServiceKey));
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<UsersUserService>());
-        services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<UsersUserService>());
+
+        // CachingUserService — Singleton so the _byUserId dict persists across
+        // requests. Resolves IUserRepository / IUserEmailRepository /
+        // IProfileRepository / IContactFieldRepository directly (all Singleton
+        // IDbContextFactory-based); resolves the Scoped inner IUserService via
+        // IServiceScopeFactory per-call.
+        services.AddSingleton<CachingUserService>();
+        services.AddSingleton<IUserService>(sp => sp.GetRequiredService<CachingUserService>());
+
+        // IUserInfoInvalidator and IUserMerge must resolve to the SAME Singleton
+        // CachingUserService instance that backs IUserService — same critical
+        // aliasing rule as IFullProfileInvalidator → CachingProfileService.
+        services.AddSingleton<IUserInfoInvalidator>(sp =>
+            sp.GetRequiredService<CachingUserService>());
+        services.AddSingleton<IUserMerge>(sp =>
+            sp.GetRequiredService<CachingUserService>());
+
+        // SaveChanges interceptor — catches Identity-machinery writes
+        // (UserManager.UpdateAsync, sign-in LastLoginAt, OAuth UserEmail
+        // creation) and every other persisted mutation to the 8 contributing
+        // tables. Registered as Singleton so the same instance is added to
+        // both AddDbContext and AddDbContextFactory option pipelines.
+        services.AddSingleton<UserInfoSaveChangesInterceptor>();
+
+        // Eagerly warm the UserInfo dict at startup. Failures are logged and
+        // swallowed; lazy population still works.
+        services.AddHostedService<UserInfoWarmupHostedService>();
 
         // Account deletion orchestrator (issue nobodies-collective/Humans#582). Single entry point for
         // user-requested / admin-initiated / expiry-triggered deletion paths.
@@ -36,12 +70,6 @@ internal static class UsersSectionExtensions
         // no outbound edges to higher-level sections.
         services.AddScoped<IAccountDeletionService, AccountDeletionService>();
 
-        // Query adapter breaks the circular DI graph between IMembershipCalculator
-        // and ITeamService / IRoleAssignmentService (both of which inject
-        // ISystemTeamSync, whose implementation injects IMembershipCalculator back).
-        // Only MembershipCalculator depends on the query adapter.
-        services.AddScoped<IMembershipQuery, GovernanceMembershipQuery>();
-        services.AddScoped<IMembershipCalculator, GovernanceMembershipCalculator>();
         services.AddScoped<IDashboardService, DashboardDashboardService>();
         // Admin dashboard aggregator — owns no tables; aggregates user
         // partition, application stats, and language distribution from

@@ -1,6 +1,5 @@
 # Baseline for application service read methods that still expose EF/domain entities.
 # New read methods on IApplicationService must return read models/snapshots instead of entities.
-Humans.Application.Interfaces.AuditLog.IAuditLogService.GetAuditLogPageAsync:Humans.Domain.Entities.AuditLogEntry
 Humans.Application.Interfaces.AuditLog.IAuditLogService.GetByResourceAsync:Humans.Domain.Entities.AuditLogEntry
 Humans.Application.Interfaces.AuditLog.IAuditLogService.GetByUserAsync:Humans.Domain.Entities.AuditLogEntry
 Humans.Application.Interfaces.AuditLog.IAuditLogService.GetFilteredAsync:Humans.Domain.Entities.AuditLogEntry
@@ -61,7 +60,9 @@ Humans.Application.Interfaces.Onboarding.IOnboardingService.GetReviewDetailAsync
 Humans.Application.Interfaces.Onboarding.IOnboardingService.GetReviewQueueAsync:Humans.Domain.Entities.Profile
 Humans.Application.Interfaces.Profiles.IAccountMergeService.GetByIdAsync:Humans.Domain.Entities.AccountMergeRequest
 Humans.Application.Interfaces.Profiles.IAccountMergeService.GetPendingRequestsAsync:Humans.Domain.Entities.AccountMergeRequest
+Humans.Application.Interfaces.Profiles.ICommunicationPreferenceService.GetPreferenceOrNullAsync:Humans.Domain.Entities.CommunicationPreference
 Humans.Application.Interfaces.Profiles.ICommunicationPreferenceService.GetPreferencesAsync:Humans.Domain.Entities.CommunicationPreference
+Humans.Application.Interfaces.Profiles.ICommunicationPreferenceService.GetPreferencesReadOnlyAsync:Humans.Domain.Entities.CommunicationPreference
 Humans.Application.Interfaces.Profiles.IProfileService.GetByUserIdsAsync:Humans.Domain.Entities.Profile
 Humans.Application.Interfaces.Profiles.IProfileService.GetProfileAsync:Humans.Domain.Entities.Profile
 Humans.Application.Interfaces.Profiles.IProfileService.GetProfileLanguagesAsync:Humans.Domain.Entities.ProfileLanguage
@@ -97,7 +98,6 @@ Humans.Application.Interfaces.Teams.ITeamResourceService.GetActiveDriveFoldersAs
 Humans.Application.Interfaces.Teams.ITeamResourceService.GetResourceByIdAsync:Humans.Domain.Entities.GoogleResource
 Humans.Application.Interfaces.Teams.ITeamResourceService.GetResourcesByTeamIdsAsync:Humans.Domain.Entities.GoogleResource
 Humans.Application.Interfaces.Teams.ITeamResourceService.GetTeamResourcesAsync:Humans.Domain.Entities.GoogleResource
-Humans.Application.Interfaces.Teams.ITeamService.GetActiveChildMembersByParentIdsAsync:Humans.Domain.Entities.TeamMember
 Humans.Application.Interfaces.Teams.ITeamService.GetActiveMembersForTeamsAsync:Humans.Domain.Entities.TeamMember
 Humans.Application.Interfaces.Teams.ITeamService.GetActiveMembershipsForRoleReconciliationAsync:Humans.Domain.Entities.TeamMember
 Humans.Application.Interfaces.Teams.ITeamService.GetAllRoleDefinitionsAsync:Humans.Domain.Entities.TeamRoleDefinition

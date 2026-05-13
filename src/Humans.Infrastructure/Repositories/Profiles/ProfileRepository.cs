@@ -64,6 +64,7 @@ public sealed class ProfileRepository : IProfileRepository
         return await ctx.Profiles
             .AsNoTracking()
             .Include(p => p.VolunteerHistory)
+            .Include(p => p.Languages)
             .ToListAsync(ct);
     }
 
@@ -116,6 +117,21 @@ public sealed class ProfileRepository : IProfileRepository
             .AsAsyncEnumerable()
             .Select(p => (p.Id, p.UserId, p.UpdatedAt.ToUnixTimeTicks()))
             .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<(Guid ProfileId, Guid UserId, string BurnerName, string ContentType, Instant UpdatedAt)>>
+        GetCustomPictureRowsAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var rows = await ctx.Profiles
+            .AsNoTracking()
+            .Where(p => p.ProfilePictureContentType != null)
+            .Select(p => new { p.Id, p.UserId, p.BurnerName, p.ProfilePictureContentType, p.UpdatedAt })
+            .ToListAsync(ct);
+
+        return rows
+            .Select(r => (r.Id, r.UserId, r.BurnerName, r.ProfilePictureContentType!, r.UpdatedAt))
+            .ToList();
     }
 
     public async Task<(int ColaboradorCount, int AsociadoCount)> GetTierCountsAsync(

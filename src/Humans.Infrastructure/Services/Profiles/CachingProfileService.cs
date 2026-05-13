@@ -78,6 +78,15 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<CachingProfileService> _logger;
 
+    // Issue #703: every Profile write also flushes the UserInfo cache. Resolved
+    // lazily via IServiceProvider rather than ctor-injected because the
+    // invalidator (CachingUserService) is registered in the Users section and
+    // we don't want a section-extension ordering dependency at DI build time —
+    // and "extra flush > missed flush" was the explicit call. Resolve-once on
+    // first use; this is a Singleton so the result is stable for the process.
+    private readonly IServiceProvider _services;
+    private IUserInfoInvalidator? _userInfoInvalidator;
+
     private readonly ConcurrentDictionary<Guid, FullProfile> _byUserId = new();
 
     public CachingProfileService(
@@ -85,13 +94,32 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
         IUserEmailRepository userEmailRepository,
         IContactFieldRepository contactFieldRepository,
         IServiceScopeFactory scopeFactory,
+        IServiceProvider services,
         ILogger<CachingProfileService> logger)
     {
         _profileRepository = profileRepository;
         _userEmailRepository = userEmailRepository;
         _contactFieldRepository = contactFieldRepository;
         _scopeFactory = scopeFactory;
+        _services = services;
         _logger = logger;
+    }
+
+    private async Task InvalidateUserInfoAsync(Guid userId, CancellationToken ct)
+    {
+        try
+        {
+            var invalidator = _userInfoInvalidator
+                ??= _services.GetService<IUserInfoInvalidator>();
+            if (invalidator is not null)
+                await invalidator.InvalidateAsync(userId, ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(
+                "CachingProfileService: UserInfo invalidation failed for {UserId}: {ExType}",
+                userId, ex.GetType().Name);
+        }
     }
 
     // ==========================================================================
@@ -137,6 +165,15 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
     /// </summary>
     private async Task RefreshEntryAsync(Guid userId, CancellationToken ct)
     {
+        // Issue #703: every FullProfile refresh also invalidates UserInfo.
+        // Profile and its child tables (ContactField, ProfileLanguage,
+        // VolunteerHistoryEntry) feed into UserInfo too, so a mutation that
+        // refreshes FullProfile must drop the UserInfo entry to avoid serving
+        // stale joined data from the read-model cache. Done first so that
+        // an exception in the FullProfile path below doesn't leak a stale
+        // UserInfo entry.
+        await InvalidateUserInfoAsync(userId, ct);
+
         // If any repository call throws, the dict retains the pre-mutation entry;
         // the next cache miss will re-load from the inner service. This is tolerable
         // at single-server ~500-user scale — the surface area for a divergence
@@ -289,6 +326,18 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
         return await inner.GetProfilePictureAsync(profileId, ct);
     }
 
+    public async Task<ProfilePictureMigrationSnapshot> GetProfilePictureMigrationSnapshotAsync(
+        CancellationToken ct = default)
+    {
+        // Diagnostic snapshot for the DB→FS migration verification page
+        // (issue nobodies-collective/Humans#702). Not cached — admin operator
+        // tool, runs on demand, and the freshest possible read is what's
+        // useful immediately after a Run.
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
+        return await inner.GetProfilePictureMigrationSnapshotAsync(ct);
+    }
+
     public async Task<(int ColaboradorCount, int AsociadoCount)> GetTierCountsAsync(CancellationToken ct = default)
     {
         await using var scope = _scopeFactory.CreateAsyncScope();
@@ -415,6 +464,12 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
 
         _byUserId.TryRemove(mergedFromUserId, out _);
         _byUserId.TryRemove(mergedToUserId, out _);
+
+        // Issue #703: also flush UserInfo for both ends. CachingUserService's
+        // own ReassignAsync covers the user-section invalidation; this is the
+        // profile-section side of the merge.
+        await InvalidateUserInfoAsync(mergedFromUserId, ct);
+        await InvalidateUserInfoAsync(mergedToUserId, ct);
     }
 
     // ==========================================================================
@@ -428,37 +483,15 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
         [System.Runtime.CompilerServices.CallerMemberName] string memberName = "",
         [System.Runtime.CompilerServices.CallerFilePath] string filePath = "")
     {
-        // Issue #635 (§15i): dev-mode caller log via [CallerMemberName] /
-        // [CallerFilePath] params. The compiler fills these in at the
-        // callsite, so test mocks and direct callers don't have to pass
-        // anything. Cheap StringComparison against ASPNETCORE_ENVIRONMENT
-        // keeps the call free of an IHostEnvironment dependency on this
-        // Singleton. The log is the canonical way to verify every
-        // Profile-affecting write hits the invalidator during exploratory
-        // testing on the preview environment. Only fires off-Production so
-        // no perf cost in production.
-        var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
-        if (!string.Equals(env, "Production", StringComparison.OrdinalIgnoreCase))
-        {
-            try
-            {
-                var callerMember = string.IsNullOrEmpty(memberName) ? "(unknown)" : memberName;
-                var callerFile = string.IsNullOrEmpty(filePath)
-                    ? "(unknown)"
-                    : System.IO.Path.GetFileName(filePath);
-
-                _logger.LogDebug(
-                    "FullProfile invalidate userId={UserId} caller={CallerMember} file={CallerFile}",
-                    userId, callerMember, callerFile);
-            }
-            catch (Exception ex) when (ex is not OperationCanceledException)
-            {
-                // Logging is best-effort; never block the invalidation on it.
-                _logger.LogWarning(
-                    "CachingProfileService invalidate caller-log failed for {UserId}: {ExType}",
-                    userId, ex.GetType().Name);
-            }
-        }
+        // Issue #635 (§15i): caller log via [CallerMemberName] / [CallerFilePath]
+        // params — compiler fills these at the callsite so direct callers and
+        // test mocks don't have to. LogDebug is gated by the logger config
+        // (Debug enabled in dev, off in prod); the log is the canonical way to
+        // verify every Profile-affecting write hits the invalidator during
+        // exploratory testing on the preview environment.
+        _logger.LogDebug(
+            "FullProfile invalidate userId={UserId} caller={CallerMember} file={CallerFile}",
+            userId, memberName, System.IO.Path.GetFileName(filePath));
 
         return RefreshEntryAsync(userId, ct);
     }

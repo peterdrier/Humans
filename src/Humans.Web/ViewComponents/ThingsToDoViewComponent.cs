@@ -45,10 +45,10 @@ public class ThingsToDoViewComponent : ViewComponent
             var profile = await _profileService.GetProfileAsync(userId);
             var membershipSnapshot = await _membershipCalculator.GetMembershipSnapshotAsync(userId);
 
-            // Profile is "done" only at 100% — the bar is the nudge, not just
-            // FirstName presence (which trips after the Names step and would
-            // strike the item through with a half-empty profile).
-            var profileComplete = profileCompletionPercent >= 100;
+            // Hidden/derived required fields can cap real-user completion in the
+            // 90–95% range. Treat 80% as "complete enough" so the nudge stops
+            // shouting at people who can't push it higher.
+            var profileComplete = profileCompletionPercent >= 80;
             var consentsComplete = membershipSnapshot.PendingConsentCount == 0
                                    && membershipSnapshot.RequiredConsentCount > 0;
 

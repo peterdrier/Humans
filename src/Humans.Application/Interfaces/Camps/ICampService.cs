@@ -377,7 +377,8 @@ public record CampMemberRow(
     Instant RequestedAt,
     Instant? ConfirmedAt,
     bool IsLead,
-    bool HasEarlyEntry);
+    bool HasEarlyEntry,
+    CampMemberStatus Status);
 
 public record CampMembershipSummary(
     Guid CampMemberId,

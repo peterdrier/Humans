@@ -331,6 +331,34 @@
                 <div class="wg-card">
                     <div class="wg-card-header">
                         <div>
+                            <span class="wg-card-name">&lt;vc:communication-preferences-panel&gt;</span>
+                            <span class="wg-card-kind kind-vc">ViewComponent</span>
+                        </div>
+                        <span class="wg-card-path">src/Humans.Web/ViewComponents/CommunicationPreferencesPanelViewComponent.cs</span>
+                    </div>
+                    <div class="wg-card-note">
+                        Per-user communication-preferences matrix. Write mode (default) renders toggle checkboxes that POST to <code>/Profile/Me/CommunicationPreferences/Update</code>. Read-only mode hides the form and surfaces <code>UpdateSource</code> + <code>UpdatedAt</code> per category — used on <code>/Profile/{id}/Admin</code>.
+                    </div>
+                    @ParamsBlock(
+                        ("user-id", "<code>Guid</code> — required"),
+                        ("read-only", "<code>bool</code> — default <code>false</code>; <code>true</code> hides forms and adds attribution columns")
+                    )
+                    <div class="wg-variants">
+                        <div class="wg-variant-label">read-only="false"<span class="wg-variant-sub">default — toggleable</span></div>
+                        <div class="wg-variant-render" style="display:block;">
+                            <vc:communication-preferences-panel user-id="@Model.CurrentUserId" />
+                        </div>
+
+                        <div class="wg-variant-label">read-only="true"<span class="wg-variant-sub">admin view</span></div>
+                        <div class="wg-variant-render" style="display:block;">
+                            <vc:communication-preferences-panel user-id="@Model.CurrentUserId" read-only="true" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
                             <span class="wg-card-name">_HumanPopover.cshtml</span>
                             <span class="wg-card-kind kind-pa">Partial</span>
                         </div>
@@ -989,7 +1017,7 @@
                     <li><strong>Audit/list partials</strong> — <code>_AuditLogContent</code>, <code>_AuditLogScripts</code>, <code>_RolesListContent</code>, <code>_ApplicationHistory</code>, <code>_ApplicationsListContent</code>, <code>_ApplicationResponseSections</code>: pieces of larger pages, exercised via the <code>vc:audit-log</code> entry above and the Applications/Roles admin pages.</li>
                     <li><strong>Script-only partials</strong> — <code>_RequestVerificationTokenScript</code>, <code>_EscapeHtmlScript</code>, <code>_GitHubFolderPathScript</code>, <code>_VolunteerSearchScript</code>, <code>_ValidationScriptsPartial</code>: emit JS only.</li>
                     <li><strong>Infrastructure tag helper</strong> — <code>NonceTagHelper</code>: applies CSP nonces to <code>&lt;script&gt;</code>/<code>&lt;style&gt;</code>; nothing visible to render.</li>
-                    <li><strong>Volunteer-tracking heatmaps</strong> — <code>_VolunteerHeatmap</code>, <code>_VolunteerUnbookedHeatmap</code>: context-bound — requires full <code>VolunteerTrackingPageViewModel</code>, cannot render in isolation. See <a href="/ShiftDashboard/VolunteerTracking">/ShiftDashboard/VolunteerTracking</a>.</li>
+                    <li><strong>Volunteer-tracking heatmaps</strong> — <code>_VolunteerHeatmap</code>, <code>_VolunteerUnbookedHeatmap</code>: context-bound — requires full <code>VolunteerTrackingPageViewModel</code>, cannot render in isolation. See <a href="/Shifts/Dashboard/VolunteerTracking">/Shifts/Dashboard/VolunteerTracking</a>.</li>
                 </ul>
             </section>
 

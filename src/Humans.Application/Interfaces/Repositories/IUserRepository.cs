@@ -277,6 +277,13 @@ public interface IUserRepository : IRepository
     Task<int> GetRejectedGoogleEmailCountAsync(CancellationToken ct = default);
 
     /// <summary>
+    /// Returns the count of users whose <c>ContactSource</c> equals
+    /// <paramref name="source"/>. Used by the admin dashboard to show
+    /// per-source import totals.
+    /// </summary>
+    Task<int> GetCountByContactSourceAsync(ContactSource source, CancellationToken ct = default);
+
+    /// <summary>
     /// Returns the ids of every user whose <c>DeletionScheduledFor</c> is at
     /// or before <paramref name="now"/> and whose <c>DeletionEligibleAfter</c>
     /// is either null or at or before <paramref name="now"/>. Used by the
@@ -323,6 +330,17 @@ public interface IUserRepository : IRepository
     /// </summary>
     Task<IReadOnlyList<EventParticipation>> GetEventParticipationsByUserIdAsync(
         Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Bulk-loads all <c>event_participations</c> rows for the given userIds,
+    /// grouped by <c>UserId</c>. Users with no participations are absent from
+    /// the dictionary. Read-only (AsNoTracking). Used by
+    /// <c>CachingUserService.WarmAllAsync</c> to avoid N+1 per-user fetches
+    /// when populating the UserInfo cache for every user at startup.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, IReadOnlyList<EventParticipation>>>
+        GetEventParticipationsByUserIdsAsync(
+            IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
 
     // ==========================================================================
     // Writes — EventParticipation

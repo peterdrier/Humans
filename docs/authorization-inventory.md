@@ -51,9 +51,9 @@ The `Source` column reflects the constant referenced in the attribute as it appe
 | `GoogleController.SyncPreview` | Action | `TeamsAdmin, Board, Admin` | `PolicyNames.TeamsAdminBoardOrAdmin` |
 | `GoogleController.SyncExecute` | Action | `Admin` | `PolicyNames.AdminOnly` |
 | `GoogleController.SyncExecuteAll` | Action | `Admin` | `PolicyNames.AdminOnly` |
-| `GoogleController.CheckDriveActivity` | Action | `Board, Admin` | `PolicyNames.BoardOrAdmin` |
-| `GoogleController.GoogleSyncResourceAudit` | Action | `Board, Admin` | `PolicyNames.BoardOrAdmin` |
-| `GoogleController.HumanGoogleSyncAudit` | Action | `HumanAdmin, Board, Admin` | `PolicyNames.HumanAdminBoardOrAdmin` |
+| `AuditLogController.CheckDriveActivity` | Action | `Board, Admin` | `PolicyNames.BoardOrAdmin` |
+| `AuditLogController.Resource` | Action | `Board, Admin` | `PolicyNames.BoardOrAdmin` |
+| `AuditLogController.Human` | Action | `HumanAdmin, Board, Admin` | `PolicyNames.HumanAdminBoardOrAdmin` |
 | `GoogleController.ProvisionEmail` | Action | `HumanAdmin, Admin` | `PolicyNames.HumanAdminOrAdmin` |
 | `GoogleController.Accounts` | Action | `Admin` | `PolicyNames.AdminOnly` |
 | `GoogleController.ProvisionAccount` | Action | `Admin` | `PolicyNames.AdminOnly` |
@@ -125,10 +125,6 @@ The `Source` column reflects the constant referenced in the attribute as it appe
 | `OnboardingReviewController.Clear` | Action | `ConsentCoordinator, Board, Admin` | `PolicyNames.ConsentCoordinatorBoardOrAdmin` |
 | `OnboardingReviewController.Flag` | Action | `ConsentCoordinator, Board, Admin` | `PolicyNames.ConsentCoordinatorBoardOrAdmin` |
 | `OnboardingReviewController.Reject` | Action | `ConsentCoordinator, Board, Admin` | `PolicyNames.ConsentCoordinatorBoardOrAdmin` |
-| `OnboardingReviewController.BoardVoting` | Action | `Board, Admin` | `PolicyNames.BoardOrAdmin` |
-| `OnboardingReviewController.BoardVotingDetail` | Action | `Board, Admin` | `PolicyNames.BoardOrAdmin` |
-| `OnboardingReviewController.Vote` | Action | `Board` | `PolicyNames.BoardOnly` |
-| `OnboardingReviewController.Finalize` | Action | `Board, Admin` | `PolicyNames.BoardOrAdmin` |
 
 ### Governance / Application Section
 
@@ -136,9 +132,12 @@ The `Source` column reflects the constant referenced in the attribute as it appe
 |---|---|---|---|
 | `GovernanceController` | Class | `[Authorize]` (authenticated) | — |
 | `GovernanceController.Roles` | Action | `Board, Admin` | `PolicyNames.BoardOrAdmin` |
-| `ApplicationController` | Class | `[Authorize]` (authenticated) | — |
-| `ApplicationController.Applications` | Action | `Board, Admin` | `PolicyNames.BoardOrAdmin` |
-| `ApplicationController.ApplicationDetail` | Action | `Board, Admin` | `PolicyNames.BoardOrAdmin` |
+| `GovernanceApplicationsController` | Class | `[Authorize]` (authenticated) | — |
+| `GovernanceApplicationsController.Admin` | Action | `Board, Admin` | `PolicyNames.BoardOrAdmin` |
+| `GovernanceApplicationsController.AdminDetail` | Action | `Board, Admin` | `PolicyNames.BoardOrAdmin` |
+| `GovernanceBoardVotingController` | Class | `Board, Admin` | `PolicyNames.BoardOrAdmin` |
+| `GovernanceBoardVotingController.Vote` | Action | `Board` | `PolicyNames.BoardOnly` |
+| `GovernanceBoardVotingController.Finalize` | Action | `Board, Admin` | `PolicyNames.BoardOrAdmin` |
 
 ### Profile / Contacts Section
 
@@ -342,8 +341,8 @@ Views express authorization four ways today:
 
 | View | Line | Check | Controls |
 |---|---|---|---|
-| `OnboardingReview/BoardVotingDetail.cshtml` | 115 | `authorize-policy="BoardOnly"` | Vote casting card |
-| `OnboardingReview/BoardVotingDetail.cshtml` | 153 | `Model.CanFinalize` | Finalize decision card |
+| `Governance/BoardVoting/Detail.cshtml` | 115 | `authorize-policy="BoardOnly"` | Vote casting card |
+| `Governance/BoardVoting/Detail.cshtml` | 153 | `Model.CanFinalize` | Finalize decision card |
 | `OnboardingReview/Detail.cshtml` | 30 | `Model.HasPendingApplication` | Application tier badge |
 
 ### Team Views

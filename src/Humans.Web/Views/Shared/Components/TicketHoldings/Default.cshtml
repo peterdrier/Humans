@@ -1,0 +1,23 @@
+@model Humans.Web.ViewComponents.TicketHoldingsViewModel
+
+<div class="card mb-3">
+    <div class="card-header py-2">
+        <h3 class="h6 mb-0">Tickets</h3>
+    </div>
+    <div class="card-body py-2 small">
+        <div class="d-flex align-items-center mb-1">
+            <i class="fa-solid fa-receipt me-2 text-muted"></i>
+            <span>@Model.OrderCount @(Model.OrderCount == 1 ? "order" : "orders")</span>
+        </div>
+        <div class="d-flex align-items-start">
+            <i class="fa-solid fa-ticket me-2 mt-1 text-muted"></i>
+            <div>
+                <div>@Model.AttendeeNames.Count @(Model.AttendeeNames.Count == 1 ? "ticket" : "tickets")</div>
+                @if (Model.AttendeeNames.Count > 0)
+                {
+                    <div class="text-muted">@string.Join(", ", Model.AttendeeNames)</div>
+                }
+            </div>
+        </div>
+    </div>
+</div>

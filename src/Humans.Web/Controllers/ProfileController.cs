@@ -1695,7 +1695,9 @@ public class ProfileController : HumansControllerBase
             if (user is null)
                 return NotFound();
 
-            return View(await BuildCommunicationPreferencesViewModelAsync(user.Id));
+            // Panel rendering moved to CommunicationPreferencesPanelViewComponent (issue #706).
+            // The view invokes the VC with the current user's id; no model needed.
+            return View(model: user.Id);
         }
         catch (Exception ex)
         {
@@ -2017,10 +2019,11 @@ public class ProfileController : HumansControllerBase
                 return PartialView("_HumanPopover", fallbackVm);
             }
 
-            var teams = (await _teamService.GetActiveTeamMembershipsForUserAsync(id, ct))
+            var memberships = (await _teamService.GetActiveTeamMembershipsForUserAsync(id, ct))
                 .OrderBy(m => m.TeamName, StringComparer.OrdinalIgnoreCase)
-                .Select(m => m.TeamName)
                 .ToList();
+            var publicTeams = memberships.Where(m => !m.IsHidden).Select(m => m.TeamName).ToList();
+            var hiddenTeams = memberships.Where(m => m.IsHidden).Select(m => m.TeamName).ToList();
             var profileLanguages = await _profileService.GetProfileLanguagesAsync(profile.Id, ct);
 
             var effectivePictureUrl = profile.HasCustomProfilePicture
@@ -2041,7 +2044,8 @@ public class ProfileController : HumansControllerBase
                 City = profile.City,
                 CountryCode = profile.CountryCode,
                 IsSuspended = profile.IsSuspended,
-                Teams = teams.ToList(),
+                Teams = publicTeams,
+                HiddenTeams = hiddenTeams,
                 Languages = profileLanguages.Select(pl => new ProfileLanguageDisplayViewModel
                 {
                     LanguageCode = pl.LanguageCode,
@@ -2722,40 +2726,6 @@ public class ProfileController : HumansControllerBase
                 ? user.IdentityEmailColumn
                 : null,
         };
-    }
-
-    private async Task<CommunicationPreferencesViewModel> BuildCommunicationPreferencesViewModelAsync(Guid userId)
-    {
-        var prefs = await _commPrefService.GetPreferencesAsync(userId);
-        var prefsByCategory = prefs.ToDictionary(p => p.Category);
-
-        // Check if user is a matched ticket attendee (locks ticketing preference)
-        var hasTicketOrder = await _ticketQueryService.HasTicketAttendeeMatchAsync(userId);
-
-        var categories = new List<CategoryPreferenceItem>();
-
-        foreach (var category in MessageCategoryExtensions.ActiveCategories)
-        {
-            var pref = prefsByCategory.GetValueOrDefault(category);
-            var isAlwaysOn = category.IsAlwaysOn();
-            var isTicketingLocked = category == MessageCategory.Ticketing && hasTicketOrder;
-
-            categories.Add(new CategoryPreferenceItem
-            {
-                Category = category,
-                DisplayName = category == MessageCategory.Ticketing
-                    ? $"Ticketing — {_clock.GetCurrentInstant().InUtc().Year}"
-                    : category.ToDisplayName(),
-                Description = category.ToDescription(),
-                EmailEnabled = pref is null || !pref.OptedOut,
-                AlertEnabled = pref?.InboxEnabled ?? true,
-                EmailEditable = !isAlwaysOn && !isTicketingLocked,
-                AlertEditable = !isAlwaysOn && !isTicketingLocked,
-                Note = isTicketingLocked ? "Locked — you have a ticket for this year" : null,
-            });
-        }
-
-        return new CommunicationPreferencesViewModel { Categories = categories };
     }
 
 }

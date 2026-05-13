@@ -17,7 +17,7 @@ public class MembershipRequiredFilter : IAsyncActionFilter
     {
         "Home",        // Public landing + dashboard (shows onboarding status)
         "Account",     // Login/logout/OAuth
-        "Application", // Submit membership application
+        "GovernanceApplications", // Submit membership application
         "Consent",     // Sign required legal documents
         "Profile",     // Set up profile during onboarding
         "Admin",       // Has its own Roles = "Admin" gate

@@ -38,11 +38,11 @@ public sealed class GoogleWorkspaceSyncServiceTests
 {
     // ── Shared collaborator fakes ──────────────────────────────────────────────
 
-    private readonly IGoogleGroupMembershipClient _groupMembership =
-        Substitute.For<IGoogleGroupMembershipClient>();
-
     private readonly IGoogleGroupProvisioningClient _groupProvisioning =
         Substitute.For<IGoogleGroupProvisioningClient>();
+
+    private readonly IGoogleGroupSync _googleGroupSync =
+        Substitute.For<IGoogleGroupSync>();
 
     private readonly IGoogleDrivePermissionsClient _drivePermissions =
         Substitute.For<IGoogleDrivePermissionsClient>();
@@ -103,7 +103,6 @@ public sealed class GoogleWorkspaceSyncServiceTests
         var serviceProvider = new ServiceCollection().BuildServiceProvider();
 
         _syncService = new GoogleWorkspaceSyncService(
-            _groupMembership,
             _groupProvisioning,
             _drivePermissions,
             _directory,
@@ -113,6 +112,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
             _teamService,
             _userService,
             _userEmailService,
+            _googleGroupSync,
             _auditLogService,
             _syncSettingsService,
             _removalNotifications,
@@ -126,58 +126,11 @@ public sealed class GoogleWorkspaceSyncServiceTests
     // Invariant 1 — Gateway-mode gating
     // ==========================================================================
 
-    [HumansFact]
-    public async Task AddUserToGroupAsync_WhenSyncModeIsNone_DoesNotCallGoogle()
-    {
-        _syncSettingsService
-            .GetModeAsync(SyncServiceType.GoogleGroups, Arg.Any<CancellationToken>())
-            .Returns(SyncMode.None);
-
-        StageGroupResource();
-
-        await _syncService.AddUserToGroupAsync(TestGroupResourceId, TestUserEmail);
-
-        await _groupMembership.DidNotReceive()
-            .CreateMembershipAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task AddUserToGroupAsync_WhenSyncModeIsAddAndRemove_CallsGoogle()
-    {
-        // Proves the same assertion is meaningful — active mode DOES call Google.
-        _syncSettingsService
-            .GetModeAsync(SyncServiceType.GoogleGroups, Arg.Any<CancellationToken>())
-            .Returns(SyncMode.AddAndRemove);
-
-        StageGroupResource();
-
-        _groupMembership
-            .CreateMembershipAsync(TestGoogleGroupId, TestUserEmail, Arg.Any<CancellationToken>())
-            .Returns(new GroupMembershipMutationResult(GroupMembershipMutationOutcome.Added, null));
-
-        await _syncService.AddUserToGroupAsync(TestGroupResourceId, TestUserEmail);
-
-        await _groupMembership.Received(1)
-            .CreateMembershipAsync(TestGoogleGroupId, TestUserEmail, Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task RemoveUserFromGroupAsync_WhenSyncModeIsNone_DoesNotCallGoogle()
-    {
-        // RemoveUserFromGroup skips when mode != AddAndRemove (None and AddOnly both skip).
-        _syncSettingsService
-            .GetModeAsync(SyncServiceType.GoogleGroups, Arg.Any<CancellationToken>())
-            .Returns(SyncMode.None);
-
-        StageGroupResource();
-
-        await _syncService.RemoveUserFromGroupAsync(TestGroupResourceId, TestUserEmail);
-
-        await _groupMembership.DidNotReceive()
-            .ListMembershipsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
-        await _groupMembership.DidNotReceive()
-            .DeleteMembershipAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
-    }
+    // Group-membership gateway tests removed by PR #478 (issue #615): per-user
+    // AddUserToGroupAsync / RemoveUserFromGroupAsync gateways were retired in
+    // favor of IGoogleGroupSync full-group reconciliation. Sync-mode gating and
+    // 403→GoogleEmailStatus.Rejected behavior are now pinned by
+    // GoogleGroupSyncServiceTests.
 
     [HumansFact]
     public async Task AddUserToDriveAsync_WhenSyncModeIsNone_DoesNotCallGoogle()
@@ -257,9 +210,6 @@ public sealed class GoogleWorkspaceSyncServiceTests
         _teamService
             .GetActiveMembersForTeamsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(Array.Empty<TeamMember>());
-        _teamService
-            .GetActiveChildMembersByParentIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<TeamMember>());
 
         _userEmailService
             .GetEntitiesByUserIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
@@ -292,60 +242,10 @@ public sealed class GoogleWorkspaceSyncServiceTests
             .DeletePermissionAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
-    // ==========================================================================
-    // Invariant 2 — Permanent vs transient error classification
-    // ==========================================================================
-
-    [HumansFact]
-    public async Task AddUserToGroupAsync_When403Response_SetsGoogleEmailStatusRejected()
-    {
-        // HTTP 403 (non-caller-permission) means the email has no Google account.
-        // The service must set GoogleEmailStatus.Rejected so retries stop.
-        _syncSettingsService
-            .GetModeAsync(SyncServiceType.GoogleGroups, Arg.Any<CancellationToken>())
-            .Returns(SyncMode.AddAndRemove);
-
-        StageGroupResource();
-
-        _groupMembership
-            .CreateMembershipAsync(TestGoogleGroupId, TestUserEmail, Arg.Any<CancellationToken>())
-            .Returns(new GroupMembershipMutationResult(
-                GroupMembershipMutationOutcome.Failed,
-                new GoogleClientError(StatusCode: 403, RawMessage: "No Google account for this address")));
-
-        var user = MakeUser(TestUserId, TestUserEmail);
-        _userService
-            .GetByEmailOrAlternateAsync(TestUserEmail, Arg.Any<CancellationToken>())
-            .Returns(user);
-
-        await _syncService.AddUserToGroupAsync(TestGroupResourceId, TestUserEmail);
-
-        await _userService.Received(1)
-            .TrySetGoogleEmailStatusFromSyncAsync(TestUserId, GoogleEmailStatus.Rejected, Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task AddUserToGroupAsync_WhenTransient500Response_DoesNotSetGoogleEmailStatusRejected()
-    {
-        // Transient errors (5xx, network failures) must NOT mark the email as Rejected —
-        // these are infrastructure faults, not permanent user-level rejections.
-        _syncSettingsService
-            .GetModeAsync(SyncServiceType.GoogleGroups, Arg.Any<CancellationToken>())
-            .Returns(SyncMode.AddAndRemove);
-
-        StageGroupResource();
-
-        _groupMembership
-            .CreateMembershipAsync(TestGoogleGroupId, TestUserEmail, Arg.Any<CancellationToken>())
-            .Returns(new GroupMembershipMutationResult(
-                GroupMembershipMutationOutcome.Failed,
-                new GoogleClientError(StatusCode: 500, RawMessage: "Internal server error")));
-
-        await _syncService.AddUserToGroupAsync(TestGroupResourceId, TestUserEmail);
-
-        await _userService.DidNotReceive()
-            .TrySetGoogleEmailStatusFromSyncAsync(Arg.Any<Guid>(), GoogleEmailStatus.Rejected, Arg.Any<CancellationToken>());
-    }
+    // Invariant 2 (permanent vs transient error classification) for Group
+    // membership writes is now pinned by GoogleGroupSyncServiceTests; the
+    // per-user AddUserToGroupAsync / RemoveUserFromGroupAsync gateways were
+    // retired by PR #478 (issue #615).
 
     // ==========================================================================
     // Helpers

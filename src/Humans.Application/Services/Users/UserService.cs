@@ -44,10 +44,14 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
     private readonly ILogger<UserService> _logger;
 
     private readonly IUserEmailRepository _userEmailRepo;
+    private readonly IProfileRepository _profileRepo;
+    private readonly IContactFieldRepository _contactFieldRepo;
 
     public UserService(
         IUserRepository repo,
         IUserEmailRepository userEmailRepo,
+        IProfileRepository profileRepo,
+        IContactFieldRepository contactFieldRepo,
         IFullProfileInvalidator fullProfileInvalidator,
         IAdminAuthorizationService adminAuthorization,
         IClock clock,
@@ -55,6 +59,8 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
     {
         _repo = repo;
         _userEmailRepo = userEmailRepo;
+        _profileRepo = profileRepo;
+        _contactFieldRepo = contactFieldRepo;
         _fullProfileInvalidator = fullProfileInvalidator;
         _adminAuthorization = adminAuthorization;
         _clock = clock;
@@ -64,6 +70,34 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
     // ==========================================================================
     // User reads
     // ==========================================================================
+
+    public async ValueTask<UserInfo?> GetUserInfoAsync(Guid userId, CancellationToken ct = default)
+    {
+        var user = await _repo.GetByIdAsync(userId, ct);
+        if (user is null) return null;
+
+        var userEmails = await _userEmailRepo.GetByUserIdReadOnlyAsync(userId, ct);
+        var participations = await _repo.GetEventParticipationsByUserIdAsync(userId, ct);
+        var externalLoginsMap = await _repo.GetExternalLoginsByUserIdsAsync(new[] { userId }, ct);
+        var externalLogins = externalLoginsMap.TryGetValue(userId, out var logins)
+            ? logins
+            : Array.Empty<(string Provider, string ProviderKey)>();
+
+        var profile = await _profileRepo.GetByUserIdReadOnlyAsync(userId, ct);
+        IReadOnlyList<ContactField> contactFields = Array.Empty<ContactField>();
+        IReadOnlyList<ProfileLanguage> languages = Array.Empty<ProfileLanguage>();
+        IReadOnlyList<VolunteerHistoryEntry> volunteerHistory = Array.Empty<VolunteerHistoryEntry>();
+        if (profile is not null)
+        {
+            contactFields = await _contactFieldRepo.GetByProfileIdReadOnlyAsync(profile.Id, ct);
+            languages = profile.Languages.ToList();
+            volunteerHistory = profile.VolunteerHistory.ToList();
+        }
+
+        return UserInfo.Create(
+            user, userEmails, participations, externalLogins,
+            profile, contactFields, languages, volunteerHistory);
+    }
 
     public Task<User?> GetByIdAsync(Guid userId, CancellationToken ct = default) =>
         _repo.GetByIdAsync(userId, ct);
@@ -134,6 +168,9 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
 
     public Task<int> GetRejectedGoogleEmailCountAsync(CancellationToken ct = default) =>
         _repo.GetRejectedGoogleEmailCountAsync(ct);
+
+    public Task<int> GetCountByContactSourceAsync(ContactSource source, CancellationToken ct = default) =>
+        _repo.GetCountByContactSourceAsync(source, ct);
 
     public Task<IReadOnlyList<Guid>> GetAccountsDueForAnonymizationAsync(
         Instant now, CancellationToken ct = default) =>

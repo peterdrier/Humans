@@ -6,8 +6,10 @@ using Humans.Infrastructure.Services;
 using Humans.Infrastructure.Services.GoogleWorkspace;
 using GoogleWorkspaceUserService = Humans.Application.Services.GoogleIntegration.GoogleWorkspaceUserService;
 using GoogleWorkspaceSyncService = Humans.Application.Services.GoogleIntegration.GoogleWorkspaceSyncService;
+using GoogleGroupSyncService = Humans.Application.Services.GoogleIntegration.GoogleGroupSyncService;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Teams;
+using Humans.Infrastructure.GoogleIntegration;
 
 namespace Humans.Web.Extensions.Infrastructure;
 
@@ -89,6 +91,10 @@ internal static class GoogleWorkspaceInfrastructureExtensions
             services.AddSingleton<IGoogleDrivePermissionsClient, StubGoogleDrivePermissionsClient>();
             services.AddSingleton<IGoogleDirectoryClient, StubGoogleDirectoryClient>();
         }
+
+        services.AddScoped<IGoogleGroupSyncScheduler, HangfireGoogleGroupSyncScheduler>();
+        services.AddScoped<IGoogleGroupSync, GoogleGroupSyncService>();
+
 
         services.AddScoped<GoogleResourceReconciliationJob>();
         services.AddScoped<DriveActivityMonitorJob>();

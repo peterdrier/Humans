@@ -1084,7 +1084,7 @@
     &lt;li&gt;&lt;strong&gt;Candidat :&lt;/strong&gt; {0}&lt;/li&gt;
     &lt;li&gt;&lt;strong&gt;ID de demande :&lt;/strong&gt; {1}&lt;/li&gt;
 &lt;/ul&gt;
-&lt;p&gt;&lt;a href="{2}/Board/Applications"&gt;Examiner la demande&lt;/a&gt;&lt;/p&gt;</value><comment>{0} = applicant name, {1} = application ID, {2} = base URL</comment></data>
+&lt;p&gt;&lt;a href="{2}/Governance/Applications/Admin/{1}"&gt;Examiner la demande&lt;/a&gt;&lt;/p&gt;</value><comment>{0} = applicant name, {1} = application ID, {2} = base URL</comment></data>
 
   <data name="Email_ApplicationApproved_Body" xml:space="preserve"><value>&lt;h2&gt;Votre demande a &#xE9;t&#xE9; approuv&#xE9;e !&lt;/h2&gt;
 &lt;p&gt;Bonjour {0},&lt;/p&gt;
@@ -1190,7 +1190,7 @@
 &lt;p&gt;Bonjour {0},&lt;/p&gt;
 &lt;p&gt;Votre mandat de &lt;strong&gt;{1}&lt;/strong&gt; expire le &lt;strong&gt;{2}&lt;/strong&gt;.&lt;/p&gt;
 &lt;p&gt;Si vous souhaitez continuer en tant que {1}, veuillez soumettre une demande de renouvellement avant la fin de votre mandat.&lt;/p&gt;
-&lt;p&gt;&lt;a href="{3}/Application/Create"&gt;Soumettre une demande de renouvellement&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href="{3}/Governance/Applications/Create"&gt;Soumettre une demande de renouvellement&lt;/a&gt;&lt;/p&gt;
 &lt;p&gt;Sans renouvellement, vous resterez un human actif mais n'aurez plus l'acc&#xE8;s de niveau {1}.&lt;/p&gt;
 &lt;p&gt;Merci pour votre engagement !&lt;br/&gt;L'&#xE9;quipe Humans&lt;/p&gt;</value><comment>{0} = user name, {1} = tier name, {2} = expiry date, {3} = base URL</comment></data>
 

@@ -11,7 +11,7 @@ src/Humans.Web/Controllers/AccountController.cs:ExternalLoginCallback/2
 src/Humans.Web/Controllers/AdminController.cs:PurgeHuman/1
 src/Humans.Web/Controllers/AdminLegalDocumentsController.cs:CreateLegalDocument/1
 src/Humans.Web/Controllers/AgentController.cs:Ask/2
-src/Humans.Web/Controllers/ApplicationController.cs:Create/1
+src/Humans.Web/Controllers/GovernanceApplicationsController.cs:Create/1
 src/Humans.Web/Controllers/BudgetController.cs:CategoryDetail/1
 src/Humans.Web/Controllers/BudgetController.cs:CreateLineItem/7
 src/Humans.Web/Controllers/BudgetController.cs:Index/0

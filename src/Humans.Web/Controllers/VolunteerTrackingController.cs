@@ -24,7 +24,7 @@ namespace Humans.Web.Controllers;
 /// <c>memory/architecture/display-sort-in-controllers.md</c>) — the service
 /// returns unsorted cohorts.
 /// </summary>
-[Route("ShiftDashboard/[controller]")]
+[Route("Shifts/Dashboard/VolunteerTracking")]
 [Authorize(Policy = PolicyNames.ShiftDashboardAccess)]
 public sealed class VolunteerTrackingController : HumansControllerBase
 {

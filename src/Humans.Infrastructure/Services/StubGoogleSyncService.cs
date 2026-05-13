@@ -53,18 +53,6 @@ public class StubGoogleSyncService : IGoogleSyncService
         return Task.CompletedTask;
     }
 
-    public Task AddUserToGroupAsync(Guid groupResourceId, string userEmail, CancellationToken cancellationToken = default)
-    {
-        _logger.LogInformation("[STUB] Would add {UserEmail} to group {GroupResourceId}", userEmail, groupResourceId);
-        return Task.CompletedTask;
-    }
-
-    public Task RemoveUserFromGroupAsync(Guid groupResourceId, string userEmail, CancellationToken cancellationToken = default)
-    {
-        _logger.LogInformation("[STUB] Would remove {UserEmail} from group {GroupResourceId}", userEmail, groupResourceId);
-        return Task.CompletedTask;
-    }
-
     public Task<GroupLinkResult> EnsureTeamGroupAsync(Guid teamId, bool confirmReactivation = false, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("[STUB] Would ensure Google Group exists for team {TeamId}", teamId);

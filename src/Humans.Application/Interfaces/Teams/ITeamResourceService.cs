@@ -2,6 +2,7 @@ using Humans.Application.Interfaces;
 using Humans.Application.DTOs;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using NodaTime;
 
 namespace Humans.Application.Interfaces.Teams;
 
@@ -63,6 +64,17 @@ public interface ITeamResourceService : IApplicationService
     /// regardless of resource type. Used by admin aggregates (e.g. email rename impact).
     /// </summary>
     Task<IReadOnlyDictionary<Guid, int>> GetActiveResourceCountsByTeamAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Marks a Google resource reconciliation as successful and clears any
+    /// previously recorded sync error.
+    /// </summary>
+    Task MarkResourceSyncedAsync(Guid resourceId, Instant now, CancellationToken ct = default);
+
+    /// <summary>
+    /// Records the last Google reconciliation error for a linked team resource.
+    /// </summary>
+    Task RecordResourceErrorAsync(Guid resourceId, string errorMessage, CancellationToken ct = default);
 
     /// <summary>
     /// Gets the active Google resources visible to a user, joined with their team metadata.
@@ -144,17 +156,6 @@ public interface ITeamResourceService : IApplicationService
     /// <summary>
     /// Returns the display name for each resource id. Missing ids are absent from the dictionary.
     /// </summary>
-    /// <remarks>
-    /// Producer-side API added by section-align GoogleIntegration (PR #500) so the
-    /// AuditLog section's future align run can drop <c>AuditLogEntry.Resource</c>
-    /// nav + the two <c>.Include(e =&gt; e.Resource)</c> calls in
-    /// <c>AuditLogRepository.cs</c> (§6 cross-domain Include violation) and switch
-    /// to a service-side label lookup. Has no Web-layer caller in this PR by
-    /// design — the producer ships the API, the consumer migrates in their own
-    /// section pass per the boundary-fix protocol. Until then,
-    /// <c>memory/architecture/interface-method-additions-are-debt.md</c> is
-    /// satisfied by this remark; remove it when AuditLog wires the call.
-    /// </remarks>
     Task<IReadOnlyDictionary<Guid, string>> GetResourceNamesByIdsAsync(
         IReadOnlyCollection<Guid> resourceIds,
         CancellationToken ct = default);

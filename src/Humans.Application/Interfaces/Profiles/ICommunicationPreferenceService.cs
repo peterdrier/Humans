@@ -35,6 +35,26 @@ public interface ICommunicationPreferenceService : IApplicationService
         Guid userId, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Returns the existing preference row for a user+category, or null if none.
+    /// Read-only — does NOT lazy-create defaults. Use this when the caller
+    /// needs to know whether a row exists (e.g. the mailer importer's plan
+    /// phase, which must not mutate state during preview).
+    /// </summary>
+    Task<CommunicationPreference?> GetPreferenceOrNullAsync(
+        Guid userId, MessageCategory category, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns the user's existing preference rows. Read-only — does NOT
+    /// lazy-create defaults for missing categories. Display callers (profile
+    /// preference panel, admin profile view, guest unsubscribe page) use this
+    /// so merely viewing a profile does not write rows attributed to
+    /// <c>UpdateSource = "Default"</c>. Callers that need a value for a
+    /// missing category should fall back to the category's natural default.
+    /// </summary>
+    Task<IReadOnlyList<CommunicationPreference>> GetPreferencesReadOnlyAsync(
+        Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Returns whether a user has opted out of a specific category.
     /// </summary>
     Task<bool> IsOptedOutAsync(
@@ -107,4 +127,11 @@ public interface ICommunicationPreferenceService : IApplicationService
     /// suitable for direct use in anchor tags.
     /// </summary>
     string GenerateBrowserUnsubscribeUrl(Guid userId, MessageCategory category);
+
+    /// <summary>
+    /// Returns the count of preferences matching the given category and opt-out state.
+    /// Used for dashboard metrics.
+    /// </summary>
+    Task<int> GetCountByCategoryAndStateAsync(
+        MessageCategory category, bool optedOut, CancellationToken cancellationToken = default);
 }

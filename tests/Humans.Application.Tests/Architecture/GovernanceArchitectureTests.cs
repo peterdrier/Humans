@@ -2,6 +2,8 @@ using AwesomeAssertions;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Services.Governance;
+using Humans.Infrastructure.Data;
+using Humans.Infrastructure.Repositories.Governance;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 
@@ -89,5 +91,19 @@ public class GovernanceArchitectureTests
         typeof(IApplicationRepository).Namespace
             .Should().Be("Humans.Application.Interfaces.Repositories",
                 because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
+    }
+
+    [HumansFact]
+    public void ApplicationRepository_IsSealedAndFactoryBased()
+    {
+        typeof(ApplicationRepository).IsSealed.Should().BeTrue();
+
+        var ctor = typeof(ApplicationRepository).GetConstructors().Single();
+        ctor.GetParameters().Should().ContainSingle(
+            p => p.ParameterType == typeof(IDbContextFactory<HumansDbContext>),
+            because: "Governance repositories use IDbContextFactory so they can be registered as Singleton");
+        ctor.GetParameters().Should().NotContain(
+            p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
+            because: "repositories should not capture scoped DbContext instances");
     }
 }

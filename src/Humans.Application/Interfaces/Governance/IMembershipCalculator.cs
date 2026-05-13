@@ -1,4 +1,5 @@
 using Humans.Application.DTOs;
+using Humans.Application.Architecture;
 using Humans.Application.Interfaces;
 using Humans.Domain.Enums;
 
@@ -7,6 +8,7 @@ namespace Humans.Application.Interfaces.Governance;
 /// <summary>
 /// Service for computing membership status.
 /// </summary>
+[SurfaceBudget(12)]
 public interface IMembershipCalculator : IApplicationService
 {
     /// <summary>

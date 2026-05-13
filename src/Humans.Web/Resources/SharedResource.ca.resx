@@ -1089,7 +1089,7 @@
     &lt;li&gt;&lt;strong&gt;Sol·licitant:&lt;/strong&gt; {0}&lt;/li&gt;
     &lt;li&gt;&lt;strong&gt;ID de sol·licitud:&lt;/strong&gt; {1}&lt;/li&gt;
 &lt;/ul&gt;
-&lt;p&gt;&lt;a href="{2}/Board/Applications"&gt;Revisa la sol·licitud&lt;/a&gt;&lt;/p&gt;</value><comment>{0} = applicant name, {1} = application ID, {2} = base URL</comment></data>
+&lt;p&gt;&lt;a href="{2}/Governance/Applications/Admin/{1}"&gt;Revisa la sol·licitud&lt;/a&gt;&lt;/p&gt;</value><comment>{0} = applicant name, {1} = application ID, {2} = base URL</comment></data>
 
   <data name="Email_ApplicationApproved_Body" xml:space="preserve"><value>&lt;h2&gt;La teva sol·licitud ha estat aprovada!&lt;/h2&gt;
 &lt;p&gt;Hola {0},&lt;/p&gt;
@@ -1195,7 +1195,7 @@
 &lt;p&gt;Hola {0},&lt;/p&gt;
 &lt;p&gt;El teu mandat de &lt;strong&gt;{1}&lt;/strong&gt; expira el &lt;strong&gt;{2}&lt;/strong&gt;.&lt;/p&gt;
 &lt;p&gt;Si vols continuar com a {1}, envia una sol·licitud de renovació abans que finalitzi el teu mandat.&lt;/p&gt;
-&lt;p&gt;&lt;a href="{3}/Application/Create"&gt;Envia una sol·licitud de renovació&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href="{3}/Governance/Applications/Create"&gt;Envia una sol·licitud de renovació&lt;/a&gt;&lt;/p&gt;
 &lt;p&gt;Si no renoves, continuaràs sent un human actiu però ja no tindràs accés de nivell {1}.&lt;/p&gt;
 &lt;p&gt;Gràcies per la teva participació!&lt;br/&gt;L’equip de Humans&lt;/p&gt;</value><comment>{0} = user name, {1} = tier name, {2} = expiry date, {3} = base URL</comment></data>
 

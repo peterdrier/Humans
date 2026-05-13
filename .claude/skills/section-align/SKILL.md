@@ -216,6 +216,56 @@ Grep for ViewComponent invocations to verify reuse:
 git grep -nE '<vc:<section-kebab>|Component\.InvokeAsync\("<Section>"' src/Humans.Web/Views/
 ```
 
+**A2.5a Redundancy check against system-level shared components.** The biggest source of UI maintenance debt in this codebase is sections rolling their own renderer for things that already have a canonical shared component — especially anything that shows a user (avatar + name, profile cards, baseball-card popovers, role badges, email badges, search inputs). When a section invents its own version, every cross-cutting change (avatar shape, name format, link target, missing-user fallback, accessibility) has to be hunted down and applied N times.
+
+First, build/refresh the catalog of system-level shared components the section might collide with. These live in `src/Humans.Web/ViewComponents/*.cs` and `src/Humans.Web/Views/Shared/_*.cshtml` and are owned by the platform, not any one section:
+
+```bash
+ls src/Humans.Web/ViewComponents/
+ls src/Humans.Web/Views/Shared/Components/
+find src/Humans.Web/Views/Shared -maxdepth 2 -name '_*.cshtml'
+```
+
+The user-display family — always check first, since it is where redundancy bites hardest:
+
+| Concern | Canonical shared component |
+|---------|---------------------------|
+| User name + avatar inline (anywhere a user appears in a list, table cell, audit row) | `<vc:human>` / `HumanViewComponent` (`_HumanPopover` partial for the hover card) |
+| Full profile / baseball card | `<vc:profile-card>` / `ProfileCardViewComponent` / `_ProfileCard` |
+| Role pill / authorization indicator | `_RoleBadge.cshtml` / `_AuthorizationPill.cshtml` |
+| Nobodies email badge | `<vc:nobodies-email-badge>` |
+| User search box + results | `_HumanSearchInput.cshtml` / `_HumanSearchResults.cshtml` |
+| User dropdown / signed-in menu | `_LoginPartial.cshtml` / `_AdminTopbarUserMenu.cshtml` |
+
+(Refresh this table from the actual `ViewComponents/` and `Views/Shared/` listing each run — components get added.)
+
+Then scan **the whole section's view + component surface** (not just shared-folder candidates from A2.5 — inline rendering inside the section's own page views is the more common form of this drift):
+
+```bash
+# Inline user displays — avatar + name combos, name links to /Humans/<id>, etc.
+git grep -nE '(avatar|profile-pic|@user\.DisplayName|@Model\.DisplayName.*<img|asp-action="Detail".*Humans|/Humans/Detail/)' src/Humans.Web/Views/<Section>/ src/Humans.Web/ViewComponents/<Section>*.cs
+
+# Hand-rolled role/auth pills
+git grep -nE '(badge|pill).*role|role.*badge|class="[^"]*role[^"]*"' src/Humans.Web/Views/<Section>/
+
+# Hand-rolled user lookups / searches
+git grep -nE 'autocomplete.*user|user.*autocomplete|search.*human|human.*search' src/Humans.Web/Views/<Section>/
+```
+
+For each hit, decide:
+
+| Finding | Disposition |
+|---------|------------|
+| Section renders user (avatar/name/link) inline with its own markup | **Phase 3 fix**: replace with `<vc:human user-id="..." />` or `@await Html.PartialAsync("_HumanPopover", ...)`. |
+| Section has its own role/auth badge markup | **Phase 3 fix**: replace with `_RoleBadge` / `_AuthorizationPill`. |
+| Section has its own user-search input + results panel | **Phase 3 fix**: replace with `_HumanSearchInput` / `_HumanSearchResults`. |
+| Shared component is *almost* right but missing one parameter the section needs (e.g. compact mode, hide-link) | **Phase 2 fix on the shared component** (add the parameter), then Phase 3 callsite swap. Note: this means the shared component owner — typically the platform/admin shell — is the producer; flag as a follow-up if the parameter add is non-trivial. |
+| Section's renderer is genuinely different in domain meaning (not a near-duplicate, just happens to also show a user) | Keep; record the distinction in the plan so future runs don't re-flag it. |
+
+**Inverse check (don't only look for duplicates of user-display).** Anything that *should* be reusable across sections and currently isn't — section-local components rendering generic concerns (date formatters, money formatters, status pills, action menus, attachment lists) — is a Phase 3 candidate to **promote** into `Views/Shared/` or `ViewComponents/`. The signal: another section's view contains near-identical markup. Surface as a candidate; the actual promotion is judgment-call (don't preemptively over-share).
+
+Output for each section pass: a `Redundancy candidates` subsection in the plan listing each duplicate find with disposition (Phase 3 swap / Phase 2 shared-component extension / keep + justify).
+
 **A2.6 Interface budget + segregation + consolidation.** Count methods on each public interface. For each interface ≥10 methods, ensure `InterfaceMethodBudgetTests.Budgets` entry exists with current count. Beyond the budget number, flag:
 
 - **Status-split methods that should be a single `GetAll()` + caller-side filter.** The canonical anti-pattern: `GetActiveUsers()`, `GetSuspendedUsers()`, `GetDeletedUsers()` instead of `GetUsers()` with callers writing `.Where(u => u.IsActive)`. At ~500-user scale most data fits in RAM; in-memory filtering is cheaper and clearer than predicate-pushed splits. Consolidate to `GetAll`/`GetByX` and let callers project. Architecture: the service holds the data; callers filter.
@@ -377,6 +427,7 @@ Stryker is **a signal, not an authority**. Treat results as a triage queue. The 
 3. DI lifetimes: <findings>
 4. Repository pattern: <findings>
 5. ViewComponent presence + reuse: <findings>
+5a. Redundancy vs system-level shared components: <duplicates with disposition; user-display family checked first>
 6. Interface budget + segregation: <conflicts and trims>
 7. Architecture test coverage: <missing tests>
 
@@ -424,9 +475,54 @@ Sonnet subagents. Build must stay green after each step.
   ```
   Always inside the worktree. Don't leak background processes across phases or sessions.
 
+### Inbound-link sweep — MANDATORY after every rename/move
+
+`/reforge` finds C# symbol references but **misses string-typed references** (Razor tag helpers, allow-lists, route strings, doc links). Renames that ship without sweeping these break user-facing navigation silently — the build is green, the code is broken. This has bitten us twice (e.g. PR 505: `ApplicationController` → `GovernanceApplicationsController` left 6 `asp-controller="Application"` view links and a stale `MembershipRequiredFilter.ExemptControllers` entry).
+
+**After every rename or move of a controller / service / view / route / role / config key, run the full sweep below before committing.** Both OLD and NEW name; OLD must return zero matches.
+
+```bash
+OLD=Application       # e.g. controller name minus 'Controller' suffix
+NEW=GovernanceApplications
+
+# 1. Razor tag-helper attributes (controllers, views)
+git grep -nE "asp-controller=\"${OLD}\"" src/
+git grep -nE "asp-(action|route|page)=\"[^\"]*${OLD}[^\"]*\"" src/
+
+# 2. Url.Action / Url.RouteUrl / Url.Page / redirects (controller name as string arg)
+git grep -nE "Url\.(Action|RouteUrl|Page)\([^)]*\"${OLD}\"" src/
+git grep -nE "RedirectToAction\([^)]*\"${OLD}\"" src/
+git grep -nE "RedirectToRoute\([^)]*\"${OLD}\"" src/
+
+# 3. Allow-lists / filter sets keyed by controller name string
+git grep -nE "\"${OLD}\"" src/Humans.Web/Authorization/ src/Humans.Web/Middleware/ src/Humans.Web/Filters/
+
+# 4. ViewComponent invocations (tag-helper + Html.InvokeAsync forms)
+git grep -nE "<vc:${OLD,,}|Component\.InvokeAsync\(\"${OLD}\"" src/
+
+# 5. Test fixtures referencing route paths or controller names
+git grep -nE "\"/${OLD}/" tests/
+git grep -nE "\"${OLD}\"" tests/Humans.Web.Tests/ tests/Humans.Integration.Tests/
+
+# 6. Config keys, localization resources, navigation menus, sitemaps
+#    Whole-word match — bare ${OLD} would false-positive when NEW contains OLD as a substring
+#    (e.g. OLD=Application, NEW=GovernanceApplications).
+git grep -nE "\b${OLD}\b" src/Humans.Web/appsettings*.json src/Humans.Web/Resources/ src/Humans.Web/ViewComponents/*Nav*.cs
+
+# 7. Docs that name the symbol
+git grep -nE "\b${OLD}(Controller|Service|Repository)?\b" docs/ memory/
+```
+
+For service / interface renames, swap to grep `I${OLD}Service` / `${OLD}Service` and check DI registrations, decorators, and ctor params.
+For entity / DbSet renames, additionally check `[Table(...)]` attributes, EF configuration files, and `OnModelCreating` — but per `architecture_no_drops_until_prod_verified`, prefer keeping the DB table name and renaming only the C# symbol.
+
+**Verification gate:** before staging the rename commit, the OLD-name grep across all 7 buckets must return zero matches (or each remaining match has an explicit "intentional — historical reference" rationale captured in the commit message). String references don't fail CI; they fail in production navigation. "I'll catch the rest when CI fails" is not an acceptable plan.
+
+If the sweep finds non-trivial inbound work (>10 fixes, or fixes that touch other sections' views), surface as a stop-condition decision: bundle into this PR vs. flag the consumer section as a follow-up /section-align target. Bundling is usually correct for view-link fixes (mechanical, reviewers expect renames to be complete); a follow-up is correct only when the consumer needs a deeper structural change.
+
 **Create what's missing** (not only rename):
 1. **Invariant doc** — `git mv docs/sections/<Old>.md docs/sections/<New>.md` if renamed.
-2. **Controller** — if `<Section>Controller.cs` doesn't exist and routes live on foreign controllers, create it. Migrate route handlers off `BoardController` / `GoogleController` / etc. Update `RedirectToAction` targets and tag-helper links across views/tests.
+2. **Controller** — if `<Section>Controller.cs` doesn't exist and routes live on foreign controllers, create it. Migrate route handlers off `BoardController` / `GoogleController` / etc. **Run the inbound-link sweep (above) before committing** — controller renames must update `asp-controller=`, `Url.Action`, `RedirectToAction`, allow-lists in auth filters/middleware, and test fixtures. `/reforge` does not catch these.
 3. **Views folder** — if `Views/<Section>/` doesn't exist and page views live in `Views/Shared/<Section>.cshtml`, create it and move the page views. Keep genuine cross-section partials in Shared.
 4. **ViewModels file** — extract section types out of `Models/AdminViewModels.cs` or other grab-bag files into `Models/<Section>ViewModels.cs`.
 5. **Controller-base helpers** — move section-specific helpers off `HumansControllerBase` into `<Section>Controller` (or section-local helpers).
@@ -501,6 +597,7 @@ Common targets:
 - View-component caches (`feedback_viewcomponent_no_cache`).
 - **Interface trimming** — methods on the section's main service that exist only for one in-section consumer; move private or to the consumer.
 - **Read-shape consolidation** — if Service and ViewerService both expose the same read names with different return shapes, move all UI reads to ViewerService and trim Service.
+- **Swap reinvented UI for shared components (A2.5a)** — replace section-local user/profile/role/search markup with the canonical `<vc:human>` / `<vc:profile-card>` / `_RoleBadge` / `_HumanSearchInput` etc. State the swap in the commit message ("Replace inline user-row markup in `Views/<Section>/Index.cshtml` with `<vc:human>` — collapses N call sites onto the shared component"). If a shared component needs a small parameter add to fit the section's case, do the parameter add as a Phase 2 producer-side fix and the call-site swap here.
 - **Test pruning** — delete redundant/over-tested cases flagged in A3.3, brittleness flagged in A3.5, and high-confidence test-debt candidates from the Stryker utility report (A3.6). Prefer deletion over refactoring: if a test isn't asserting something a reviewer would catch in code review, it's pulling its weight only if its absence would let a real regression slip. State the deletion rationale in the commit message ("redundant with X test; mock-graph assertion not behavior; Stryker survived no mutant"). Respect the test-attribute gate (`docs/testing/mutation-testing.md`): the net delta should trend down across Phase 3 commits.
 
 Push at end of phase. Bot-review sub-loop until clean.
@@ -535,6 +632,7 @@ Push. Final bot-review loop until merge-ready. Report: PR/branch URL, commits pe
 - Phase 0 plan file: commit AND push without asking — it's a checkpoint artifact the user reads in the browser to decide whether to greenlight Phase 1. After pushing, give the user the GitHub URL for the plan file (`https://github.com/peterdrier/Humans/blob/<branch>/docs/plans/<file>.md`) so they can review it inline.
 - Subsequent phase pushes: push without asking (standing approval). Push at each phase boundary so bot review fires.
 - Never push to `main`; never `--no-verify`.
+- **Renames/moves require the inbound-link sweep (see Phase 1) before commit.** Green build ≠ correct rename. Skipping the sweep has broken navigation in shipped PRs.
 - Each sub-loop: push → wait for Codex + Claude → thread-reply each finding (fix or reject with reasoning) → commit + push → repeat until clean.
 
 ---

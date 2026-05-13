@@ -1,39 +1,102 @@
-@model IReadOnlyList<Humans.Application.DTOs.TicketTransferRowDto>
+@model Humans.Web.Models.TicketTransferIndexViewModel
 @{
     ViewData["Title"] = "Ticket transfer requests";
+    string TabUrl(string t) => Url.Action(nameof(Humans.Web.Controllers.TicketTransferAdminController.Index), new { tab = t })!;
+    string ActiveCls(string t) => Model.ActiveTab == t ? "active" : "";
 }
 
-<h1>Ticket transfer requests <span class="badge bg-secondary">@Model.Count pending</span></h1>
+<h1>Ticket transfer requests</h1>
 
 <vc:temp-data-alerts />
 
-@if (Model.Count == 0)
+@if (Model.Drift.Count > 0)
 {
-    <p class="text-muted">No pending transfers.</p>
+    <div class="alert alert-warning d-flex justify-content-between align-items-start">
+        <div>
+            <strong>&#9888; Order drift detected.</strong>
+            @Model.Drift.Count paid order(s) have fewer valid tickets than originally issued.
+            <details class="mt-2">
+                <summary>Show orders</summary>
+                <ul class="mb-0 mt-1">
+                    @foreach (var d in Model.Drift)
+                    {
+                        <li>
+                            @d.BuyerName — @d.VendorOrderId
+                            <span class="text-muted">(@d.ValidCount of @d.IssuedCount valid)</span>
+                            @if (!string.IsNullOrEmpty(d.VendorDashboardUrl))
+                            {
+                                <a href="@d.VendorDashboardUrl" target="_blank" rel="noopener">View in TT</a>
+                            }
+                        </li>
+                    }
+                </ul>
+            </details>
+        </div>
+    </div>
+}
+
+<ul class="nav nav-tabs mb-3">
+    <li class="nav-item">
+        <a class="nav-link @ActiveCls("pending")" href="@TabUrl("pending")">
+            Pending <span class="badge bg-secondary">@Model.PendingCount</span>
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @ActiveCls("needs-attention")" href="@TabUrl("needs-attention")">
+            Needs attention
+            @if (Model.NeedsAttentionCount > 0)
+            {
+                <span class="badge bg-warning text-dark">@Model.NeedsAttentionCount</span>
+            }
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @ActiveCls("all")" href="@TabUrl("all")">All</a>
+    </li>
+</ul>
+
+@if (Model.Rows.Count == 0)
+{
+    <p class="text-muted">No transfers in this view.</p>
 }
 else
 {
-    <table class="table">
+    <table class="table align-middle">
         <thead>
             <tr>
                 <th>Requested</th>
-                <th>From</th>
-                <th>To</th>
+                <th>Requester</th>
                 <th>Ticket</th>
+                <th>Recipient</th>
                 <th>Reason</th>
+                <th>Status</th>
                 <th></th>
             </tr>
         </thead>
         <tbody>
-            @foreach (var r in Model)
+            @foreach (var r in Model.Rows)
             {
                 <tr>
                     <td>@r.RequestedAt.ToDisplayDateTime()</td>
-                    <td>@r.SenderDisplayName</td>
-                    <td>@r.ReceiverLegalName<br/><small class="text-muted">@r.ReceiverEmail</small></td>
-                    <td>@r.OriginalAttendeeName<br/><small class="text-muted">@r.TicketTypeName</small></td>
+                    <td><vc:human user-id="@r.SenderUserId" layout="AvatarName" link="Admin" /></td>
+                    <td>
+                        @r.OriginalAttendeeName
+                        <br/><small class="text-muted">@r.TicketTypeName</small>
+                    </td>
+                    <td><vc:human user-id="@r.ReceiverUserId" layout="AvatarName" link="Admin" /></td>
                     <td>@r.SenderReason</td>
-                    <td><a class="btn btn-sm btn-primary" asp-action="Detail" asp-route-id="@r.Id">Review</a></td>
+                    <td>
+                        <span class="badge bg-secondary">@r.Status</span>
+                        @if (r.Status == Humans.Domain.Enums.TicketTransferStatus.Approved
+                             && (r.VendorResult == Humans.Domain.Enums.TicketTransferVendorResult.Failed
+                              || r.VendorResult == Humans.Domain.Enums.TicketTransferVendorResult.VoidSucceededIssueFailed))
+                        {
+                            <span class="badge bg-warning text-dark ms-1">@r.VendorResult</span>
+                        }
+                    </td>
+                    <td>
+                        <a class="btn btn-sm btn-primary" asp-action="Detail" asp-route-id="@r.Id">Review</a>
+                    </td>
                 </tr>
             }
         </tbody>

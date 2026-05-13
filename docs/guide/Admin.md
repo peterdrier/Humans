@@ -41,7 +41,7 @@ Admin is layered. **Board** and **HumanAdmin** can do human management — the l
 - `/Profile/Admin` — humans list; `?filter=pending` scopes to pending approvals.
 - `/Profile/{id}/Admin` — per-human detail, with suspend, unsuspend, approve, reject, add role, end role.
 - `/Profile/{id}/Admin/Outbox` — per-human email outbox.
-- `/Board/AuditLog` — global audit log, filterable and paginated.
+- `/AuditLog` — global audit log, filterable and paginated.
 - `/Notifications` — your notification inbox.
 - `/Google/SyncSettings` — per-service sync mode (Admin only).
 - `/Admin/Configuration`, `/Admin/Logs`, `/Admin/DbStats`, `/Admin/CacheStats`, `/Admin/DbVersion` — technical diagnostics.
@@ -77,7 +77,7 @@ Every human-admin action writes an audit entry with your user as the actor.
 
 ### Read the audit log
 
-`/Board/AuditLog` shows every audit entry — role changes, suspensions, team join decisions, Google sync events, tier application decisions, anomalous Drive permission changes, workspace-account lifecycle, and more. Filter buttons scope to Anomalous Permissions, Access Granted/Revoked, Suspensions, and Roles. The log is **append-only** — database triggers prevent update and delete — and deleted humans show as "Deleted User" rather than disappearing from the trail. Per-human and per-resource audit views are also linked from the human and resource detail pages.
+`/AuditLog` shows every audit entry — role changes, suspensions, team join decisions, Google sync events, tier application decisions, anomalous Drive permission changes, workspace-account lifecycle, and more. Filter buttons scope to Anomalous Permissions, Access Granted/Revoked, Suspensions, and Roles. The log is **append-only** — database triggers prevent update and delete — and deleted humans show as "Deleted User" rather than disappearing from the trail. Per-human and per-resource audit views are also linked from the human and resource detail pages.
 
 ### Triage the notification inbox
 

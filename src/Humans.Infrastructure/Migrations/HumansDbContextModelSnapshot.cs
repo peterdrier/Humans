@@ -1506,6 +1506,10 @@ namespace Humans.Infrastructure.Migrations
                     b.Property<bool>("OptedOut")
                         .HasColumnType("boolean");
 
+                    b.Property<Instant?>("SubscribedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("SubscribedAt");
+
                     b.Property<string>("UpdateSource")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -4094,6 +4098,12 @@ namespace Humans.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)");
+
+                    b.Property<string>("VendorStepsJson")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text")
+                        .HasDefaultValue("[]");
 
                     b.HasKey("Id");
 
