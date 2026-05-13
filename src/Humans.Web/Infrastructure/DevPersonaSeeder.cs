@@ -381,7 +381,7 @@ public sealed class DevPersonaSeeder
             {
                 // Idempotent: another seed/admin path likely moved it first.
                 _logger.LogInformation(
-                    "DEV: barrio camp season {SeasonId} approve skipped â€" already moved past Pending",
+                    "DEV: barrio camp season {SeasonId} approve skipped — already moved past Pending",
                     currentYearSeason.Id);
         }
 
