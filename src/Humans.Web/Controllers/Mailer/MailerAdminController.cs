@@ -77,8 +77,26 @@ public sealed class MailerAdminController : HumansControllerBase
 
         var vm = new MailerDashboardViewModel(
             summary, groups, mlContacts, optedIn, optedOut,
-            last?.OccurredAt, last?.Description, drift, mlError);
+            last?.OccurredAt, last?.Description, drift, mlError,
+            _ml.LastFetchedAt);
         return View("~/Views/Mailer/Admin/Index.cshtml", vm);
+    }
+
+    [HttpPost("Refresh")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Refresh(CancellationToken ct)
+    {
+        try
+        {
+            await _ml.RefreshAsync(ct);
+            TempData["Banner"] = "MailerLite cache refreshed.";
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogWarning("MailerLite refresh failed: {StatusCode} {Message}", ex.StatusCode, ex.Message);
+            TempData["Banner"] = "Refresh failed: " + FormatMailerLiteError(ex);
+        }
+        return RedirectToAction(nameof(Index));
     }
 
     private static string FormatMailerLiteError(HttpRequestException ex) => ex.StatusCode switch
