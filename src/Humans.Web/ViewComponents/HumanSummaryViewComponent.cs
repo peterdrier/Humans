@@ -79,7 +79,9 @@ public sealed class HumanSummaryViewComponent : ViewComponent
         var vm = new ProfileSummaryViewModel
         {
             UserId = userId,
-            DisplayName = user.DisplayName,
+            DisplayName = !string.IsNullOrWhiteSpace(profile.BurnerName)
+                ? profile.BurnerName
+                : user.DisplayName,
             Email = user.Email,
             ProfilePictureUrl = effectivePictureUrl,
             PreferredLanguage = user.PreferredLanguage,
