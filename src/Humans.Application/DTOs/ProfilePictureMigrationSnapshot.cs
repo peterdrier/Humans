@@ -17,8 +17,9 @@ namespace Humans.Application.DTOs;
 /// <c>ProfilePictureService.ProfilePictureKey</c> path.
 /// </param>
 /// <param name="DbOnlyRows">
-/// Rows present in the DB but missing on the filesystem. Ordered by
-/// <c>UpdatedAt</c> descending (newest laggards first). Empty list when
+/// Rows present in the DB but missing on the filesystem. Empty list when
+/// every DB row has been migrated.
+/// </param>
 /// every DB row has been migrated.
 /// </param>
 public sealed record ProfilePictureMigrationSnapshot(
