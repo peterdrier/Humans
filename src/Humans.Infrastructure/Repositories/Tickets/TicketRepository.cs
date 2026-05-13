@@ -172,8 +172,18 @@ public sealed class TicketRepository : ITicketRepository
         return await ctx.TicketAttendees
             .AsNoTracking()
             .Include(a => a.TicketOrder)
-                .ThenInclude(o => o.Attendees)
             .FirstOrDefaultAsync(a => a.Id == attendeeId, ct);
+    }
+
+    public async Task<IReadOnlyList<string>> GetVendorTicketIdsForOrderAsync(
+        Guid orderId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.TicketAttendees
+            .AsNoTracking()
+            .Where(a => a.TicketOrderId == orderId)
+            .Select(a => a.VendorTicketId)
+            .ToListAsync(ct);
     }
 
     public async Task<IReadOnlyList<MatchedAttendeeRow>> GetMatchedAttendeesForEventAsync(

@@ -135,7 +135,23 @@ public interface ITicketRepository : IRepository
     /// Used by the transfer-request flow so it can validate ownership without
     /// loading the full attendee set.
     /// </summary>
+    /// <remarks>
+    /// Does NOT include sibling <see cref="TicketOrder.Attendees"/> — that path
+    /// (TicketAttendee → TicketOrder → Attendees) is a cycle and EF Core
+    /// rejects it under <c>AsNoTracking</c>. Callers that need sibling vendor
+    /// ticket ids should call <see cref="GetVendorTicketIdsForOrderAsync"/>.
+    /// </remarks>
     Task<TicketAttendee?> GetAttendeeByIdAsync(Guid attendeeId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the <c>VendorTicketId</c>s of every attendee on a given order,
+    /// in stable order by vendor ticket id. Used by the transfer admin detail
+    /// page to render sibling tickets without loading the full
+    /// <see cref="TicketAttendee"/> graph (which would form a cycle through
+    /// <see cref="TicketOrder.Attendees"/>).
+    /// </summary>
+    Task<IReadOnlyList<string>> GetVendorTicketIdsForOrderAsync(
+        Guid orderId, CancellationToken ct = default);
 
     /// <summary>
     /// Get all TicketAttendees the user is attached to: either as the buyer

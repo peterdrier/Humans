@@ -361,8 +361,10 @@ public sealed class TicketTransferService : ITicketTransferService
         var attendee = await _ticketRepo.GetAttendeeByIdAsync(request.OriginalTicketAttendeeId, ct);
 
         var order = attendee?.TicketOrder;
-        var siblingIds = order?.Attendees.Select(a => a.VendorTicketId).ToList()
-            ?? new List<string>();
+        var siblingIds = order is not null
+            ? (await _ticketRepo.GetVendorTicketIdsForOrderAsync(order.Id, ct))
+                .OrderBy(s => s, StringComparer.Ordinal).ToList()
+            : (IReadOnlyList<string>)Array.Empty<string>();
 
         // Cards fall back to a minimal stub if a profile somehow can't be built
         // (e.g. user soft-deleted between request and admin review). The row's

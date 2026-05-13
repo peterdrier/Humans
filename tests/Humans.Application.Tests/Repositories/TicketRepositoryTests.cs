@@ -374,4 +374,124 @@ public sealed class TicketRepositoryTests : IDisposable
 
         result.Should().ContainSingle(a => a.Id == includedId);
     }
+
+    // ── GetAttendeeByIdAsync + GetVendorTicketIdsForOrderAsync ───────────────
+
+    // Regression: peterdrier/Humans#537 included TicketOrder->Attendees under
+    // AsNoTracking, which forms a cycle and EF rejects at query translation.
+    // The fix splits sibling lookup into its own query.
+    [HumansFact]
+    public async Task GetAttendeeByIdAsync_WithSiblingAttendees_DoesNotThrow()
+    {
+        var orderId = Guid.NewGuid();
+        _dbContext.TicketOrders.Add(new TicketOrder
+        {
+            Id = orderId,
+            VendorOrderId = "ord_siblings",
+            VendorEventId = "ev_x",
+            BuyerEmail = "b@x.com",
+            BuyerName = "B",
+            Currency = "EUR",
+            PaymentStatus = TicketPaymentStatus.Paid,
+            PurchasedAt = _clock.GetCurrentInstant(),
+            SyncedAt = _clock.GetCurrentInstant(),
+        });
+
+        var targetId = Guid.NewGuid();
+        await _dbContext.TicketAttendees.AddRangeAsync(
+            new TicketAttendee
+            {
+                Id = targetId,
+                TicketOrderId = orderId,
+                VendorEventId = "ev_x",
+                VendorTicketId = "tkt_1",
+                AttendeeName = "First",
+                Status = TicketAttendeeStatus.Valid,
+                SyncedAt = _clock.GetCurrentInstant(),
+            },
+            new TicketAttendee
+            {
+                Id = Guid.NewGuid(),
+                TicketOrderId = orderId,
+                VendorEventId = "ev_x",
+                VendorTicketId = "tkt_2",
+                AttendeeName = "Second",
+                Status = TicketAttendeeStatus.Valid,
+                SyncedAt = _clock.GetCurrentInstant(),
+            });
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _repo.GetAttendeeByIdAsync(targetId);
+
+        result.Should().NotBeNull();
+        result!.VendorTicketId.Should().Be("tkt_1");
+        result.TicketOrder.Should().NotBeNull();
+        result.TicketOrder.VendorOrderId.Should().Be("ord_siblings");
+    }
+
+    [HumansFact]
+    public async Task GetVendorTicketIdsForOrderAsync_ReturnsAllAttendeesForOrder()
+    {
+        var orderId = Guid.NewGuid();
+        var otherOrderId = Guid.NewGuid();
+        await _dbContext.TicketOrders.AddRangeAsync(
+            new TicketOrder
+            {
+                Id = orderId,
+                VendorOrderId = "ord_target",
+                VendorEventId = "ev_x",
+                BuyerEmail = "b@x.com",
+                BuyerName = "B",
+                Currency = "EUR",
+                PaymentStatus = TicketPaymentStatus.Paid,
+                PurchasedAt = _clock.GetCurrentInstant(),
+                SyncedAt = _clock.GetCurrentInstant(),
+            },
+            new TicketOrder
+            {
+                Id = otherOrderId,
+                VendorOrderId = "ord_other",
+                VendorEventId = "ev_x",
+                BuyerEmail = "c@x.com",
+                BuyerName = "C",
+                Currency = "EUR",
+                PaymentStatus = TicketPaymentStatus.Paid,
+                PurchasedAt = _clock.GetCurrentInstant(),
+                SyncedAt = _clock.GetCurrentInstant(),
+            });
+
+        await _dbContext.TicketAttendees.AddRangeAsync(
+            new TicketAttendee
+            {
+                Id = Guid.NewGuid(),
+                TicketOrderId = orderId,
+                VendorEventId = "ev_x",
+                VendorTicketId = "tkt_b",
+                Status = TicketAttendeeStatus.Valid,
+                SyncedAt = _clock.GetCurrentInstant(),
+            },
+            new TicketAttendee
+            {
+                Id = Guid.NewGuid(),
+                TicketOrderId = orderId,
+                VendorEventId = "ev_x",
+                VendorTicketId = "tkt_a",
+                Status = TicketAttendeeStatus.Valid,
+                SyncedAt = _clock.GetCurrentInstant(),
+            },
+            new TicketAttendee
+            {
+                Id = Guid.NewGuid(),
+                TicketOrderId = otherOrderId,
+                VendorEventId = "ev_x",
+                VendorTicketId = "tkt_other_order",
+                Status = TicketAttendeeStatus.Valid,
+                SyncedAt = _clock.GetCurrentInstant(),
+            });
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _repo.GetVendorTicketIdsForOrderAsync(orderId);
+
+        result.Should().BeEquivalentTo(new[] { "tkt_a", "tkt_b" });
+    }
 }
