@@ -265,6 +265,9 @@ public sealed class TicketRepository : ITicketRepository
         await ctx.SaveChangesAsync(ct);
     }
 
+    private static readonly TicketAttendeeStatus[] ActiveAttendeeStatuses =
+        [TicketAttendeeStatus.Valid, TicketAttendeeStatus.CheckedIn];
+
     public async Task<IReadOnlyList<TicketAttendee>> GetUnmatchedActiveAttendeesAsync(
         string vendorEventId, CancellationToken ct = default)
     {
@@ -274,8 +277,7 @@ public sealed class TicketRepository : ITicketRepository
                 a.VendorEventId == vendorEventId &&
                 a.MatchedUserId == null &&
                 !string.IsNullOrEmpty(a.AttendeeEmail) &&
-                (a.Status == TicketAttendeeStatus.Valid ||
-                 a.Status == TicketAttendeeStatus.CheckedIn))
+                ActiveAttendeeStatuses.Contains(a.Status))
             .ToListAsync(ct);
     }
 
