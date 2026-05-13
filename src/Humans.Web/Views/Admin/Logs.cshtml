@@ -17,8 +17,8 @@
         // Examples: "2d 4h 13m", "47m", "12s".
         var parts = new List<string>(3);
         if (t.Days > 0) parts.Add($"{t.Days}d");
-        if (t.Hours > 0 || parts.Count > 0) parts.Add($"{t.Hours}h");
-        if (t.Minutes > 0 || parts.Count > 0) parts.Add($"{t.Minutes}m");
+        if (t.Hours > 0) parts.Add($"{t.Hours}h");
+        if (t.Minutes > 0) parts.Add($"{t.Minutes}m");
         if (parts.Count == 0) parts.Add($"{t.Seconds}s");
         return string.Join(' ', parts);
     }
