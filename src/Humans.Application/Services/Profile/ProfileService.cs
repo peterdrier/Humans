@@ -273,11 +273,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
             }
         }
 
-        var ordered = dbOnly
-            .OrderByDescending(r => r.UpdatedAt)
-            .ToList();
-
-        return new ProfilePictureMigrationSnapshot(rows.Count, onFs, ordered);
+        return new ProfilePictureMigrationSnapshot(rows.Count, onFs, dbOnly);
     }
 
     public async Task<Guid> SaveProfileAsync(

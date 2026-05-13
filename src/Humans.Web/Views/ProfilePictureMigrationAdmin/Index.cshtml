@@ -93,7 +93,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var row in snapshot.DbOnlyRows)
+                    @foreach (var row in snapshot.DbOnlyRows.OrderByDescending(r => r.UpdatedAt))
                     {
                         <tr>
                             <td><code>@row.ProfileId</code></td>
