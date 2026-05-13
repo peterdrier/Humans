@@ -209,6 +209,12 @@ public sealed class DevPersonaSeeder
             await _systemTeamSync.SyncMembershipForUserAsync(id, SystemTeamType.BarrioLeads);
         }
 
+        // Board membership has no per-user sync arm in SystemTeamSyncJob, so apply directly.
+        if (roleName is not null && string.Equals(roleName, RoleNames.Board, StringComparison.Ordinal))
+        {
+            await _teamService.ApplySystemTeamMembershipDeltaAsync(SystemTeamIds.Board, [id], [], now);
+        }
+
         foreach (var role in roles)
         {
             await EnsureSeededRoleAsync(id, role, id);
@@ -385,16 +391,19 @@ public sealed class DevPersonaSeeder
             }
         }
 
-        if (await EnsureCampLeadAsync(camp, leadUserId))
+        var leadAdded = await EnsureCampLeadAsync(camp, leadUserId);
+        if (leadAdded)
         {
             _logger.LogInformation(
                 "DEV: ensured barrio lead for {CampId} user {UserId}",
                 camp.Id, leadUserId);
         }
 
-        if (created && IsBarrioLeadSlug(personaSlug))
+        // Sync BarrioLeads membership whenever the camp was just created OR the lead
+        // was just added — for pre-existing camps the user could have become a lead
+        // without a downstream sync trigger otherwise.
+        if (created || leadAdded)
         {
-            // Ensure barrio-lead sync runs on fresh camp creation.
             await _systemTeamSync.SyncMembershipForUserAsync(leadUserId, SystemTeamType.BarrioLeads);
         }
     }
@@ -411,6 +420,10 @@ public sealed class DevPersonaSeeder
         }
         catch (InvalidOperationException ex) when (ex.Message.Contains("already an active lead", StringComparison.Ordinal))
         {
+            // Idempotent: lead was added between the pre-check and AddLeadAsync.
+            _logger.LogInformation(
+                "DEV: camp lead {UserId} for {CampId} already active — skipping",
+                leadUserId, camp.Id);
             return false;
         }
     }
@@ -456,7 +469,7 @@ public sealed class DevPersonaSeeder
             // Team membership changes ripple into FullProfile (active-teams shape)
             await _fullProfileInvalidator.InvalidateAsync(coordinatorUserId);
             _logger.LogInformation(
-                "DEV: ensured coordinator teams â€” department {DeptId}, sub-team {SubTeamId}",
+                "DEV: ensured coordinator teams — department {DeptId}, sub-team {SubTeamId}",
                 department.Id, subTeam.Id);
         }
     }
