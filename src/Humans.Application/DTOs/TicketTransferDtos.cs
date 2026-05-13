@@ -65,8 +65,7 @@ public sealed record TicketTransferDetailDto(
     string OrderVendorId,
     Instant OrderPurchasedAt,
     string OrderBuyerEmail,
-    int TicketIndexInOrder,
-    int TicketCountInOrder);
+    IReadOnlyList<string> SiblingVendorTicketIds);
 
 /// <summary>
 /// One row in the homepage "My tickets" attendee list, with eligibility flags

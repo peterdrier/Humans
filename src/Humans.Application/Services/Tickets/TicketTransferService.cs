@@ -361,13 +361,8 @@ public sealed class TicketTransferService : ITicketTransferService
         var attendee = await _ticketRepo.GetAttendeeByIdAsync(request.OriginalTicketAttendeeId, ct);
 
         var order = attendee?.TicketOrder;
-        var siblings = order?.Attendees
-            .OrderBy(a => a.VendorTicketId, StringComparer.Ordinal)
-            .ToList()
-            ?? new List<TicketAttendee>();
-        var indexInOrder = attendee is null
-            ? 0
-            : siblings.FindIndex(a => a.Id == attendee.Id) + 1;
+        var siblingIds = order?.Attendees.Select(a => a.VendorTicketId).ToList()
+            ?? new List<string>();
 
         // Cards fall back to a minimal stub if a profile somehow can't be built
         // (e.g. user soft-deleted between request and admin review). The row's
@@ -383,8 +378,7 @@ public sealed class TicketTransferService : ITicketTransferService
             OrderVendorId: order?.VendorOrderId ?? string.Empty,
             OrderPurchasedAt: order?.PurchasedAt ?? Instant.MinValue,
             OrderBuyerEmail: order?.BuyerEmail ?? string.Empty,
-            TicketIndexInOrder: indexInOrder,
-            TicketCountInOrder: siblings.Count);
+            SiblingVendorTicketIds: siblingIds);
     }
 
     private static ReceiverLookupResultDto StubCard(Guid userId, string displayName) =>

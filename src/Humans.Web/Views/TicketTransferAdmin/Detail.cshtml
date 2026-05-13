@@ -11,8 +11,12 @@
         _ => (row.OriginalAttendeeStatus.ToString(), "bg-secondary"),
     };
     var hasOrder = !string.IsNullOrEmpty(Model.OrderVendorId);
-    var ticketPosition = Model.TicketCountInOrder > 0
-        ? $"ticket #{Model.TicketIndexInOrder} of {Model.TicketCountInOrder}"
+    var orderedSiblingIds = Model.SiblingVendorTicketIds
+        .OrderBy(s => s, StringComparer.Ordinal)
+        .ToList();
+    var ticketIndex = orderedSiblingIds.IndexOf(Model.OriginalAttendeeVendorTicketId) + 1;
+    var ticketPosition = orderedSiblingIds.Count > 0 && ticketIndex > 0
+        ? $"ticket #{ticketIndex} of {orderedSiblingIds.Count}"
         : null;
 }
 
