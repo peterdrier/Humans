@@ -3,7 +3,7 @@ using AwesomeAssertions;
 using Humans.Integration.Tests.Infrastructure;
 using Xunit;
 
-namespace Humans.Integration.Tests.Controllers;
+namespace Humans.Integration.Tests.Calendar;
 
 public class CalendarControllerTests : IntegrationTestBase
 {

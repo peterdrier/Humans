@@ -21,7 +21,7 @@ public class CalendarEvent
     /// names via <see cref="Team"/> lookups through <c>ITeamService</c>
     /// rather than <c>.Include()</c>-ing this nav (design-rules §6).
     /// </summary>
-    [Obsolete("Cross-domain nav — resolve via ITeamService.GetByIdsAsync instead of navigating CalendarEvent.OwningTeam. See design-rules §6c.")]
+    [Obsolete("Cross-domain nav — resolve via ITeamService.GetTeamNamesByIdsAsync instead of navigating CalendarEvent.OwningTeam. See design-rules §6c.")]
     public Team OwningTeam { get; set; } = null!;
     public Instant StartUtc { get; set; }
     public Instant? EndUtc { get; set; }

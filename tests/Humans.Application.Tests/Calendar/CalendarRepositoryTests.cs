@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using Xunit;
 
-namespace Humans.Application.Tests.Repositories;
+namespace Humans.Application.Tests.Calendar;
 
 /// <summary>
 /// Repository tests for <see cref="CalendarRepository"/> — verify the EF-backed

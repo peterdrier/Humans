@@ -6,7 +6,7 @@ using NodaTime;
 using NodaTime.TimeZones;
 using Xunit;
 
-namespace Humans.Application.Tests.Services;
+namespace Humans.Application.Tests.Calendar;
 
 /// <summary>
 /// Unit tests for the write-time validation helpers that support PR #562.

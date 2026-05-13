@@ -123,7 +123,6 @@ The calendar is intentionally open: no resource-based authorization gates edit/d
 ## Triggers
 
 - Every mutation writes an `AuditLogEntry` via `IAuditLogService` (`CalendarEventCreated`, `CalendarEventUpdated`, `CalendarEventDeleted`, `CalendarOccurrenceCancelled`, `CalendarOccurrenceOverridden`). Event-level mutations (create/update/delete) pass `relatedEntityId: ev.OwningTeamId` / `relatedEntityType: nameof(Team)` for team-scoped audit filtering; per-occurrence mutations (cancel/override) do not.
-- Every mutation invalidates the in-service short-TTL `IMemoryCache` entry `calendar:active-events` (§15f request-acceleration cache, not a canonical projection).
 
 ## Cross-Section Dependencies
 
@@ -139,10 +138,10 @@ The calendar is intentionally open: no resource-based authorization gates edit/d
 
 - Service lives in `Humans.Application/Services/Calendar/CalendarService.cs` and never imports `Microsoft.EntityFrameworkCore` (enforced by the project's reference graph, design-rules §2b).
 - `ICalendarRepository` (impl in `Humans.Infrastructure/Repositories/Calendar/CalendarRepository.cs`) is the only code path that touches `calendar_events` / `calendar_event_exceptions` via `DbContext`.
-- **Decorator decision** — no caching decorator. Rationale: low-traffic community calendar; the short-TTL `IMemoryCache` entry `calendar:active-events` stays in-service per §15f as a request-acceleration marker, not a canonical projection.
+- **Decorator decision** — no caching decorator in this section, and service reads remain intentionally uncached.
 - **Cross-domain navs** — `CalendarEvent.OwningTeam` is `[Obsolete]`-marked per §6c; EF references it under `#pragma warning disable CS0618` in `CalendarEventConfiguration` solely to declare the FK + cascade. Display stitching routes through `ITeamService.GetTeamNamesByIdsAsync` (§6b in-memory join). Aggregate-local nav `CalendarEvent.Exceptions` is kept and eagerly loaded by the repository.
 - **Cross-section calls** — public interfaces this section consumes: `ITeamService` (display names, team picker), `IAuditLogService` (mutation audit).
-- **Architecture test** — `tests/Humans.Application.Tests/Architecture/CalendarArchitectureTests.cs` pins the §15 shape.
+- **Architecture test** — `tests/Humans.Application.Tests/Calendar/CalendarArchitectureTests.cs` pins the §15 shape.
 
 ### Touch-and-clean guidance
 

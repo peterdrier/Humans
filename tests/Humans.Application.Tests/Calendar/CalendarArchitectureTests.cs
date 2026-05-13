@@ -1,27 +1,33 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Calendar;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Infrastructure.Repositories.Calendar;
+using Humans.Web.Controllers;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Mvc;
 using Xunit;
 using CalendarService = Humans.Application.Services.Calendar.CalendarService;
 
-namespace Humans.Application.Tests.Architecture;
+namespace Humans.Application.Tests.Calendar;
 
 /// <summary>
 /// Architecture tests enforcing the §15 repository pattern for the Calendar
-/// section — migrated per issue #569. Pins the invariants:
+/// section â€” migrated per issue #569. Pins the invariants:
 /// <c>CalendarService</c> lives in Application, goes through
 /// <see cref="ICalendarRepository"/>, never injects <c>DbContext</c>, and
 /// resolves owning-team display names via <see cref="ITeamService"/> rather
-/// than the <c>CalendarEvent.OwningTeam</c> cross-domain nav. Calendar did
-/// not get a caching decorator — short-TTL <c>IMemoryCache</c> stays
-/// in-service per design-rules §15f.
+/// than the <c>CalendarEvent.OwningTeam</c> cross-domain nav. Calendar intentionally
+/// does not use service-level caching in this section.
 /// </summary>
 public class CalendarArchitectureTests
 {
-    // ── CalendarService ──────────────────────────────────────────────────────
+    // â”€â”€ CalendarService â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     [HumansFact]
     public void CalendarService_LivesInHumansApplicationServicesCalendarNamespace()
@@ -38,13 +44,13 @@ public class CalendarArchitectureTests
         ctor.GetParameters()
             .Should().NotContain(
                 p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
-                because: "services in Humans.Application must never take DbContext — use ICalendarRepository instead (design-rules §3)");
+                because: "services in Humans.Application must never take DbContext â€” use ICalendarRepository instead (design-rules §3)");
     }
 
     [HumansFact]
     public void CalendarService_DoesNotImportMicrosoftEntityFrameworkCore()
     {
-        // The Application project reference graph structurally prevents this —
+        // The Application project reference graph structurally prevents this â€”
         // but pin the intent with a compile-time assertion on the assembly's
         // referenced assemblies so the test fails loudly if someone adds a
         // transitive EF reference to Humans.Application.
@@ -83,10 +89,10 @@ public class CalendarArchitectureTests
                 .StartsWith("Humans.Application.Interfaces.Stores", StringComparison.Ordinal));
 
         storeParam.Should().BeNull(
-            because: "Calendar §15 migration does not use a store — short-TTL IMemoryCache in-service is sufficient (§15f)");
+            because: "Calendar §15 migration does not use a store cache for these reads");
     }
 
-    // ── ICalendarRepository ──────────────────────────────────────────────────
+    // â”€â”€ ICalendarRepository â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     [HumansFact]
     public void ICalendarRepository_LivesInApplicationInterfacesRepositoriesNamespace()
@@ -105,7 +111,7 @@ public class CalendarArchitectureTests
             because: "repository implementations are sealed to prevent ad-hoc extension; any new behavior belongs on the interface");
     }
 
-    // ── CalendarEvent ────────────────────────────────────────────────────────
+    // â”€â”€ CalendarEvent â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     [HumansFact]
     public void CalendarEvent_OwningTeamNavIsObsolete()
@@ -127,6 +133,60 @@ public class CalendarArchitectureTests
         typeof(Humans.Domain.Entities.CalendarEvent)
             .GetProperty("OwningTeamId")
             .Should().NotBeNull(
-                because: "FK stays — only the navigation property is [Obsolete]");
+                because: "FK stays â€” only the navigation property is [Obsolete]");
+    }
+
+    [HumansFact]
+    public void CalendarController_RouteAttributeIsSectionRoot()
+    {
+        var route = typeof(CalendarController).GetCustomAttribute<RouteAttribute>();
+
+        route.Should().NotBeNull(
+            because: "Calendar pages are section-owned and must live under /Calendar");
+        route!.Template.Should().Be("Calendar");
+    }
+
+    [HumansFact]
+    public void CalendarController_HasNoDbContextOrRepositoryConstructorParameter()
+    {
+        var ctor = typeof(CalendarController).GetConstructors().Single();
+        ctor.GetParameters().Should().NotContain(
+            p => typeof(DbContext).IsAssignableFrom(p.ParameterType)
+                 || typeof(IRepository).IsAssignableFrom(p.ParameterType),
+            because: "Controllers must not inject DbContext or repositories directly (design-rules §2a/§3)");
+    }
+
+    [HumansFact]
+    public void CalendarController_IsProtectedByAuthorizeAttribute()
+    {
+        typeof(CalendarController)
+            .GetCustomAttribute<AuthorizeAttribute>()
+            .Should().NotBeNull(
+                because: "Calendar endpoints are gated behind authenticated-user access");
+    }
+
+    [HumansFact]
+    public void CalendarController_MutatingPostActionsHaveValidateAntiForgeryToken()
+    {
+        var mutatingActionNames = new HashSet<string>(StringComparer.Ordinal)
+        {
+            nameof(CalendarController.Create),
+            nameof(CalendarController.Edit),
+            nameof(CalendarController.Delete),
+            nameof(CalendarController.CancelOccurrence),
+            nameof(CalendarController.EditOccurrence),
+        };
+
+        var mutatingPostActions = typeof(CalendarController).GetMethods()
+            .Where(m => mutatingActionNames.Contains(m.Name))
+            .Where(m => m.GetCustomAttribute<HttpPostAttribute>() is not null)
+            .ToList();
+
+        mutatingPostActions.Should().NotBeEmpty(
+            because: "mutating handlers should be POST methods");
+        mutatingPostActions.Should().AllSatisfy(method =>
+            method.GetCustomAttribute<ValidateAntiForgeryTokenAttribute>()
+                .Should().NotBeNull(
+                    because: $"POST action {method.Name} must opt into CSRF protection"));
     }
 }

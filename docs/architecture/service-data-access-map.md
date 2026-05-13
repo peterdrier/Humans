@@ -561,9 +561,7 @@ Repository: `ICalendarRepository`.
 | CalendarEvents | R/W |
 | CalendarEventExceptions | R/W |
 
-| Cache Key | TTL | Type |
-|-----------|-----|------|
-| `calendar:active-events` | short-TTL marker | Static (per `design-rules §15f` request-acceleration carve-out) |
+No dedicated section cache for `CalendarService` reads.
 
 Cross-section calls via `ITeamService` (in-memory team-name join per
 §6b), `IAuditLogService`. No cross-section table reads.
@@ -1124,7 +1122,6 @@ Sourced from `src/Humans.Application/CacheKeys.cs` and
 | `CampContactRateLimit:{userId}:{campId}` | 10 min | Rate Limit | CampContactService | CampContactService |
 | `magic_link_used:{tokenPrefix}` | 15 min | Rate Limit | MagicLinkService | MagicLinkService |
 | `magic_link_signup:{normalizedEmail}` | 60 sec | Rate Limit | MagicLinkService | MagicLinkService |
-| `calendar:active-events` | short-TTL | Static (request-acceleration) | CalendarService | CalendarService |
 | (`_byUserId` in CachingProfileService) | per-process | Per-User | CachingProfileService warmup + lazy load | `IFullProfileInvalidator` (Profile section + cross-section call sites) |
 
 ### Cache Issues / Notes

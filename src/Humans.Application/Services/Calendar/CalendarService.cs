@@ -8,7 +8,6 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Ical.Net.DataTypes;
 using Ical.Net.Evaluation;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using IcalEvent = Ical.Net.CalendarComponents.CalendarEvent;
@@ -31,18 +30,13 @@ namespace Humans.Application.Services.Calendar;
 ///   <item><see cref="IAuditLogService"/> — create / update / delete /
 ///     occurrence-cancel / occurrence-override mutations are audited.</item>
 /// </list>
-/// Caching: the short-TTL <see cref="IMemoryCache"/> entry
-/// <c>calendar:active-events</c> is a request-acceleration marker rather
-/// than a canonical domain projection, so §15 transparent-cache rules do
-/// not apply (design-rules §15f). It stays in-service per the §569 scope.
+/// This section intentionally keeps read-path logic uncached to avoid hidden
+/// staleness and complexity in this low-volume workflow.
 /// </remarks>
 public sealed class CalendarService : ICalendarService
 {
-    private const string CacheKeyActiveEvents = "calendar:active-events";
-
     private readonly ICalendarRepository _repo;
     private readonly ITeamService _teamService;
-    private readonly IMemoryCache _cache;
     private readonly IClock _clock;
     private readonly IAuditLogService _audit;
     private readonly ILogger<CalendarService> _logger;
@@ -50,14 +44,12 @@ public sealed class CalendarService : ICalendarService
     public CalendarService(
         ICalendarRepository repo,
         ITeamService teamService,
-        IMemoryCache cache,
         IClock clock,
         IAuditLogService audit,
         ILogger<CalendarService> logger)
     {
         _repo = repo;
         _teamService = teamService;
-        _cache = cache;
         _clock = clock;
         _audit = audit;
         _logger = logger;
@@ -283,12 +275,8 @@ public sealed class CalendarService : ICalendarService
             $"Created calendar event '{ev.Title}'",
             createdByUserId,
             relatedEntityId: ev.OwningTeamId, relatedEntityType: nameof(Team));
-
-        InvalidateCache();
         return ev;
     }
-
-    private void InvalidateCache() => _cache.Remove(CacheKeyActiveEvents);
 
     // Parse-check the RRULE at write time so a malformed rule cannot persist and break
     // calendar reads (where occurrence expansion would throw). Ical.Net's RecurrencePattern
@@ -430,8 +418,6 @@ public sealed class CalendarService : ICalendarService
             $"Updated calendar event '{mutated.Title}'",
             updatedByUserId,
             relatedEntityId: mutated.OwningTeamId, relatedEntityType: nameof(Team));
-
-        InvalidateCache();
         return mutated;
     }
 
@@ -446,8 +432,6 @@ public sealed class CalendarService : ICalendarService
             $"Deleted calendar event '{result.Value.Title}'",
             deletedByUserId,
             relatedEntityId: result.Value.OwningTeamId, relatedEntityType: nameof(Team));
-
-        InvalidateCache();
     }
 
     public async Task CancelOccurrenceAsync(Guid eventId, Instant originalOccurrenceStartUtc, Guid userId, CancellationToken ct = default)
@@ -497,8 +481,6 @@ public sealed class CalendarService : ICalendarService
             auditAction, nameof(CalendarEvent), eventId,
             auditDescription,
             userId);
-
-        InvalidateCache();
     }
 
     private static CalendarEventDetail ToDetail(CalendarEvent ev) => new(

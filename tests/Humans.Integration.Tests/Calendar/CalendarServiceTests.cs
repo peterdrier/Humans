@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using AwesomeAssertions;
 using Humans.Application.DTOs.Calendar;
 using Humans.Application.Interfaces.Calendar;
+using Humans.Domain.Enums;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
 using Humans.Integration.Tests.Infrastructure;
@@ -10,7 +11,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using Xunit;
 
-namespace Humans.Integration.Tests.Services;
+namespace Humans.Integration.Tests.Calendar;
 
 public class CalendarServiceTests : IClassFixture<HumansWebApplicationFactory>
 {
@@ -373,6 +374,176 @@ public class CalendarServiceTests : IClassFixture<HumansWebApplicationFactory>
         (await svc.GetEventByIdAsync(ev.Id)).Should().BeNull();
     }
 
+    [HumansFact]
+    public async Task CreateEventAsync_writes_audit_entry_with_team_context()
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
+        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+
+        var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
+        var uid = await SeedUserAsync(scope, $"calsvc-audit-{Guid.NewGuid():N}@test.local");
+
+        var created = await svc.CreateEventAsync(new CreateCalendarEventDto(
+            "Audit create", null, null, null, team.Id,
+            Instant.FromUtc(2026, 9, 1, 10, 0),
+            Instant.FromUtc(2026, 9, 1, 11, 0), false, null, null), uid);
+
+        var entry = await GetSingleAuditEntryAsync(db, AuditAction.CalendarEventCreated, created.Id, uid);
+        entry.RelatedEntityId.Should().Be(team.Id);
+        entry.RelatedEntityType.Should().Be(nameof(Team));
+        entry.Description.Should().Contain($"Created calendar event '{created.Title}'");
+    }
+
+    [HumansFact]
+    public async Task UpdateEventAsync_writes_audit_entry()
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
+        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+
+        var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
+        var uid = await SeedUserAsync(scope, $"calsvc-audit-{Guid.NewGuid():N}@test.local");
+
+        var ev = await svc.CreateEventAsync(new CreateCalendarEventDto(
+            "Original", null, null, null, team.Id,
+            Instant.FromUtc(2026, 10, 1, 10, 0),
+            Instant.FromUtc(2026, 10, 1, 11, 0), false, null, null), uid);
+
+        await svc.UpdateEventAsync(ev.Id, new UpdateCalendarEventDto(
+            "Updated", "updated desc", null, null, team.Id,
+            Instant.FromUtc(2026, 10, 1, 10, 0),
+            Instant.FromUtc(2026, 10, 1, 11, 0), false, null, null), uid);
+
+        var entry = await GetSingleAuditEntryAsync(db, AuditAction.CalendarEventUpdated, ev.Id, uid);
+        entry.RelatedEntityId.Should().Be(team.Id);
+        entry.Description.Should().Contain("Updated calendar event 'Updated'");
+    }
+
+    [HumansFact]
+    public async Task DeleteEventAsync_writes_audit_entry()
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
+        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+
+        var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
+        var uid = await SeedUserAsync(scope, $"calsvc-audit-{Guid.NewGuid():N}@test.local");
+
+        var ev = await svc.CreateEventAsync(new CreateCalendarEventDto(
+            "ToDelete", null, null, null, team.Id,
+            Instant.FromUtc(2026, 11, 1, 10, 0),
+            Instant.FromUtc(2026, 11, 1, 11, 0), false, null, null), uid);
+
+        await svc.DeleteEventAsync(ev.Id, uid);
+
+        var entry = await GetSingleAuditEntryAsync(db, AuditAction.CalendarEventDeleted, ev.Id, uid);
+        entry.Description.Should().Contain("Deleted calendar event 'ToDelete'");
+    }
+
+    [HumansFact]
+    public async Task CancelOccurrenceAsync_writes_audit_entry()
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
+        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+
+        var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
+        var uid = await SeedUserAsync(scope, $"calsvc-audit-{Guid.NewGuid():N}@test.local");
+        var zone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+
+        var first = new LocalDateTime(2026, 12, 5, 19, 0).InZoneLeniently(zone).ToInstant();
+        var ev = await svc.CreateEventAsync(new CreateCalendarEventDto(
+            "Weekly", null, null, null, team.Id,
+            first, first.Plus(Duration.FromHours(1)),
+            false, "FREQ=WEEKLY;COUNT=3", "Europe/Madrid"), uid);
+
+        var cancel = new LocalDateTime(2026, 12, 12, 19, 0).InZoneLeniently(zone).ToInstant();
+        await svc.CancelOccurrenceAsync(ev.Id, cancel, uid);
+
+        var entry = await GetSingleAuditEntryAsync(db, AuditAction.CalendarOccurrenceCancelled, ev.Id, uid);
+        entry.Description.Should().Contain($"Cancelled occurrence {cancel}");
+    }
+
+    [HumansFact]
+    public async Task OverrideOccurrenceAsync_writes_audit_entry()
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
+        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+
+        var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
+        var uid = await SeedUserAsync(scope, $"calsvc-audit-{Guid.NewGuid():N}@test.local");
+        var zone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+
+        var first = new LocalDateTime(2027, 1, 5, 19, 0).InZoneLeniently(zone).ToInstant();
+        var ev = await svc.CreateEventAsync(new CreateCalendarEventDto(
+            "Weekly", null, null, null, team.Id,
+            first, first.Plus(Duration.FromHours(1)),
+            false, "FREQ=WEEKLY;COUNT=3", "Europe/Madrid"), uid);
+
+        var original = new LocalDateTime(2027, 1, 12, 19, 0).InZoneLeniently(zone).ToInstant();
+        await svc.OverrideOccurrenceAsync(ev.Id, original, new OverrideOccurrenceDto(
+            OverrideStartUtc: original.Plus(Duration.FromHours(1)),
+            OverrideEndUtc: original.Plus(Duration.FromHours(2)),
+            OverrideTitle: "Special",
+            OverrideDescription: null,
+            OverrideLocation: null,
+            OverrideLocationUrl: null), uid);
+
+        var entry = await GetSingleAuditEntryAsync(db, AuditAction.CalendarOccurrenceOverridden, ev.Id, uid);
+        entry.Description.Should().Contain($"Overrode occurrence {original}");
+    }
+
+    [HumansFact]
+    public async Task CreateEventAsync_rejects_recurrence_without_timezone()
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
+        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+
+        var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
+        var uid = await SeedUserAsync(scope, $"calsvc-audit-{Guid.NewGuid():N}@test.local");
+
+        var act = async () => await svc.CreateEventAsync(new CreateCalendarEventDto(
+            "Mismatch", null, null, null, team.Id,
+            Instant.FromUtc(2027, 2, 1, 10, 0),
+            Instant.FromUtc(2027, 2, 1, 11, 0),
+            false,
+            RecurrenceRule: "FREQ=WEEKLY;COUNT=3",
+            RecurrenceTimezone: null), uid);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*must be set together*");
+    }
+
+    [HumansFact]
+    public async Task UpdateEventAsync_rejects_timezone_without_recurrence()
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var svc = scope.ServiceProvider.GetRequiredService<ICalendarService>();
+        var db = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
+
+        var team = await SeedTeamAsync(db, $"T-{Guid.NewGuid():N}");
+        var uid = await SeedUserAsync(scope, $"calsvc-audit-{Guid.NewGuid():N}@test.local");
+
+        var ev = await svc.CreateEventAsync(new CreateCalendarEventDto(
+            "Original", null, null, null, team.Id,
+            Instant.FromUtc(2027, 2, 1, 10, 0),
+            Instant.FromUtc(2027, 2, 1, 11, 0), false, null, null), uid);
+
+        var act = async () => await svc.UpdateEventAsync(ev.Id, new UpdateCalendarEventDto(
+            "Updated", null, null, null, team.Id,
+            Instant.FromUtc(2027, 2, 1, 10, 0),
+            Instant.FromUtc(2027, 2, 1, 11, 0),
+            false,
+            RecurrenceRule: null,
+            RecurrenceTimezone: "Europe/Madrid"), uid);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*must be set together*");
+    }
+
     private static async Task<Team> SeedTeamAsync(HumansDbContext db, string name)
     {
         var now = SystemClock.Instance.GetCurrentInstant();
@@ -406,5 +577,23 @@ public class CalendarServiceTests : IClassFixture<HumansWebApplicationFactory>
             throw new InvalidOperationException("Failed to seed user: " +
                 string.Join("; ", result.Errors.Select(e => e.Description)));
         return user.Id;
+    }
+
+    private static async Task<AuditLogEntry> GetSingleAuditEntryAsync(
+        HumansDbContext db,
+        AuditAction action,
+        Guid entityId,
+        Guid actorId)
+    {
+        var entries = await db.AuditLogEntries.AsNoTracking()
+            .Where(a => a.Action == action
+                && a.EntityType == nameof(CalendarEvent)
+                && a.EntityId == entityId
+                && a.ActorUserId == actorId)
+            .ToListAsync();
+
+        entries.Should().ContainSingle(
+            because: $"mutation {action} should emit exactly one matching audit row");
+        return entries.Single();
     }
 }
