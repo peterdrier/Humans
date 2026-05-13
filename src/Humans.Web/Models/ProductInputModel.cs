@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Humans.Domain.Attributes;
 
 namespace Humans.Web.Models;
 
@@ -15,6 +16,7 @@ public sealed class ProductInputModel
     public string Name { get; set; } = string.Empty;
 
     [StringLength(2000)]
+    [MarkdownContent]
     public string Description { get; set; } = string.Empty;
 
     [Range(0.0, 1_000_000.0)]
