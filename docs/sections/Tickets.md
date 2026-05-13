@@ -169,6 +169,7 @@ Sender-initiated transfer request. `OriginalTicketAttendeeId` FK → `ticket_att
 - `TicketSyncService` — vendor sync orchestrator (orders + attendees upsert, Stripe enrichment, VAT compute, code redemption push, EventParticipation derivation); also implements `IUserMerge` so account merges re-FK `TicketOrder.MatchedUserId`, `TicketAttendee.MatchedUserId`, and `TicketTransferRequest.SenderUserId` / `TicketTransferRequest.ReceiverUserId`.
 - `TicketTransferService` — transfer request lifecycle: `CreateRequestAsync`, `CancelAsync`, `ApproveAsync` (void+reissue or Option-C fallback), `RejectAsync`.
 - `TicketingBudgetService` — Tickets→Budget bridge (feeds completed-week paid-sales totals into Budget projections via `IBudgetService`).
+- `AttendeeContactImportService` — manually-triggered admin job that classifies unmatched ticket attendees and provisions Humans users for them via `IAccountProvisioningService` (plan + apply pattern mirroring the Mailer import; squatter protection deletes unverified UserEmail rows before creating fresh verified ones).
 
 **Owned tables:** `ticket_orders`, `ticket_attendees`, `ticket_sync_states`, `ticket_transfer_requests`
 
@@ -187,6 +188,7 @@ Sender-initiated transfer request. `OriginalTicketAttendeeId` FK → `ticket_att
 - `tests/Humans.Application.Tests/Architecture/TicketSyncArchitectureTests.cs` — pins namespace, no DbContext, `ITicketRepository` + `ITicketVendorService` + `IUserService` + `ICampaignService` + `IShiftManagementService` all required; no Store dependency.
 - `tests/Humans.Application.Tests/Architecture/TicketingBudgetArchitectureTests.cs` — pins namespace, no DbContext, no `IMemoryCache`, `ITicketingBudgetRepository` + `IBudgetService` required.
 - `tests/Humans.Application.Tests/Architecture/TicketVendorArchitectureTests.cs` — pins `ITicketVendorService` in Application, no forbidden namespace leakage into signatures, `TicketTailorService` and `StubTicketVendorService` in Infrastructure.
+- `tests/Humans.Application.Tests/Architecture/AttendeeContactImportArchitectureTests.cs` — pins `AttendeeContactImportService` namespace, no DbContext, and required cross-section dependencies (`ITicketRepository`, `IUserEmailService`, `IAccountProvisioningService`, `IUserService`, `IShiftManagementService`, `ITicketQueryService`, `IAuditLogService`).
 
 ### Repositories
 
