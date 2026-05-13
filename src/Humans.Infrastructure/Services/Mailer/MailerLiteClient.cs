@@ -1,5 +1,5 @@
 using System.Globalization;
-using System.Net.Http.Headers;
+using System.Net;
 using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
@@ -7,43 +7,111 @@ using System.Text.Json.Serialization;
 using Humans.Application.Interfaces.Mailer;
 using Humans.Application.Interfaces.Mailer.Dtos;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using NodaTime;
 
 namespace Humans.Infrastructure.Services.Mailer;
 
+/// <summary>
+/// Caching MailerLite client. Registered as a Singleton so the in-memory
+/// subscriber list, account summary, and group list survive across requests.
+/// First read after startup (or after <see cref="RefreshAsync"/>) populates
+/// the cache from MailerLite; every subsequent read is served from RAM.
+/// Admins force a re-pull via POST /Mailer/Admin/Refresh.
+/// </summary>
 public sealed class MailerLiteClient : IMailerLiteService
 {
-    private static readonly JsonSerializerOptions Json = BuildJson();
-    private readonly HttpClient _http;
-    private readonly MailerLiteOptions _opts;
-    private readonly ILogger<MailerLiteClient> _logger;
+    public const string HttpClientName = "mailerlite";
 
-    public MailerLiteClient(
-        HttpClient http,
-        IOptions<MailerLiteOptions> opts,
-        IClock _,
-        ILogger<MailerLiteClient> logger)
+    private static readonly JsonSerializerOptions Json = BuildJson();
+    private readonly IHttpClientFactory _httpFactory;
+    private readonly IClock _clock;
+    private readonly ILogger<MailerLiteClient> _logger;
+    private readonly SemaphoreSlim _gate = new(1, 1);
+
+    private IReadOnlyList<MailerLiteSubscriber>? _subscribers;
+    private MailerLiteAccountSummary? _summary;
+    private IReadOnlyList<MailerLiteGroup>? _groups;
+    private Instant? _lastFetchedAt;
+
+    public MailerLiteClient(IHttpClientFactory httpFactory, IClock clock, ILogger<MailerLiteClient> logger)
     {
-        _http = http;
-        _opts = opts.Value;
+        _httpFactory = httpFactory;
+        _clock = clock;
         _logger = logger;
-        _http.BaseAddress = new Uri(_opts.BaseUrl);
-        _http.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", _opts.ApiKey);
-        _http.DefaultRequestHeaders.Add("X-Version", _opts.ApiVersion);
-        _http.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
     }
+
+    public Instant? LastFetchedAt => _lastFetchedAt;
 
     public async Task<MailerLiteAccountSummary> GetAccountSummaryAsync(CancellationToken ct = default)
     {
-        // MailerLite v2 has no endpoint for subscriber-status totals. /api/subscribers
-        // uses cursor pagination and the response 'meta' carries only path / per_page /
-        // next_cursor / prev_cursor — no total. We do a single full sweep of subscribers
-        // and bucket by status client-side.
-        int active = 0, unsub = 0, unc = 0, bnc = 0, jnk = 0;
-        await foreach (var s in ListSubscribersAsync(ct))
+        await EnsurePopulatedAsync(ct);
+        return _summary!;
+    }
+
+    public async Task<IReadOnlyList<MailerLiteGroup>> ListGroupsAsync(CancellationToken ct = default)
+    {
+        await EnsurePopulatedAsync(ct);
+        return _groups!;
+    }
+
+    public async IAsyncEnumerable<MailerLiteSubscriber> ListSubscribersAsync(
+        [EnumeratorCancellation] CancellationToken ct = default)
+    {
+        await EnsurePopulatedAsync(ct);
+        foreach (var s in _subscribers!) yield return s;
+    }
+
+    public async Task<MailerLiteSubscriber?> GetSubscriberAsync(string email, CancellationToken ct = default)
+    {
+        // Single-email lookup is a passthrough — callers asking for a specific
+        // address want live state, not a snapshot from the dashboard cache.
+        using var resp = await SendAsync(HttpMethod.Get,
+            $"/api/subscribers/{Uri.EscapeDataString(email)}", ct);
+        if (resp.StatusCode == HttpStatusCode.NotFound) return null;
+        resp.EnsureSuccessStatusCode();
+        var body = await resp.Content.ReadFromJsonAsync<SubscriberSingleEnvelope>(Json, ct);
+        return body?.Data;
+    }
+
+    public async Task RefreshAsync(CancellationToken ct = default)
+    {
+        await _gate.WaitAsync(ct);
+        try
         {
+            await PopulateLockedAsync(ct);
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    private async Task EnsurePopulatedAsync(CancellationToken ct)
+    {
+        if (_subscribers is not null && _summary is not null && _groups is not null)
+            return;
+        await _gate.WaitAsync(ct);
+        try
+        {
+            if (_subscribers is not null && _summary is not null && _groups is not null)
+                return;
+            await PopulateLockedAsync(ct);
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    // Pulls everything fresh. If any underlying call throws, the prior cache
+    // (if any) is left intact — callers see the exception and can retry.
+    private async Task PopulateLockedAsync(CancellationToken ct)
+    {
+        var subscribers = new List<MailerLiteSubscriber>();
+        int active = 0, unsub = 0, unc = 0, bnc = 0, jnk = 0;
+        await foreach (var s in FetchSubscribersAsync(ct))
+        {
+            subscribers.Add(s);
             switch (s.Status)
             {
                 case "active": active++; break;
@@ -53,28 +121,16 @@ public sealed class MailerLiteClient : IMailerLiteService
                 case "junk": jnk++; break;
             }
         }
-        return new MailerLiteAccountSummary(active, unsub, unc, bnc, jnk);
+        var groups = await FetchGroupsAsync(ct);
+
+        _subscribers = subscribers;
+        _summary = new MailerLiteAccountSummary(active, unsub, unc, bnc, jnk);
+        _groups = groups;
+        _lastFetchedAt = _clock.GetCurrentInstant();
     }
 
-    public async Task<IReadOnlyList<MailerLiteGroup>> ListGroupsAsync(CancellationToken ct = default)
-    {
-        var results = new List<MailerLiteGroup>();
-        int page = 1;
-        while (true)
-        {
-            using var resp = await SendAsync(HttpMethod.Get, $"/api/groups?page={page}&limit=100", ct);
-            resp.EnsureSuccessStatusCode();
-            var body = await resp.Content.ReadFromJsonAsync<GroupListEnvelope>(Json, ct);
-            if (body is null || body.Data.Count == 0) break;
-            results.AddRange(body.Data);
-            if (body.Meta.CurrentPage >= body.Meta.LastPage) break;
-            page++;
-        }
-        return results;
-    }
-
-    public async IAsyncEnumerable<MailerLiteSubscriber> ListSubscribersAsync(
-        [EnumeratorCancellation] CancellationToken ct = default)
+    private async IAsyncEnumerable<MailerLiteSubscriber> FetchSubscribersAsync(
+        [EnumeratorCancellation] CancellationToken ct)
     {
         string? cursor = null;
         while (true)
@@ -91,14 +147,21 @@ public sealed class MailerLiteClient : IMailerLiteService
         }
     }
 
-    public async Task<MailerLiteSubscriber?> GetSubscriberAsync(string email, CancellationToken ct = default)
+    private async Task<IReadOnlyList<MailerLiteGroup>> FetchGroupsAsync(CancellationToken ct)
     {
-        using var resp = await SendAsync(HttpMethod.Get,
-            $"/api/subscribers/{Uri.EscapeDataString(email)}", ct);
-        if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
-        resp.EnsureSuccessStatusCode();
-        var body = await resp.Content.ReadFromJsonAsync<SubscriberSingleEnvelope>(Json, ct);
-        return body?.Data;
+        var results = new List<MailerLiteGroup>();
+        int page = 1;
+        while (true)
+        {
+            using var resp = await SendAsync(HttpMethod.Get, $"/api/groups?page={page}&limit=100", ct);
+            resp.EnsureSuccessStatusCode();
+            var body = await resp.Content.ReadFromJsonAsync<GroupListEnvelope>(Json, ct);
+            if (body is null || body.Data.Count == 0) break;
+            results.AddRange(body.Data);
+            if (body.Meta.CurrentPage >= body.Meta.LastPage) break;
+            page++;
+        }
+        return results;
     }
 
     // Internal seam for tests — exposes the private guard.
@@ -111,11 +174,12 @@ public sealed class MailerLiteClient : IMailerLiteService
             throw new InvalidOperationException(
                 $"MailerLite client is read-only. Attempted {method} {url}. " +
                 "Outbound writes belong to a separate slice with its own review.");
+        var http = _httpFactory.CreateClient(HttpClientName);
         using var req = new HttpRequestMessage(method, url);
         HttpResponseMessage resp;
         try
         {
-            resp = await _http.SendAsync(req, ct);
+            resp = await http.SendAsync(req, ct);
         }
         catch (HttpRequestException ex)
         {
@@ -154,8 +218,6 @@ public sealed class MailerLiteClient : IMailerLiteService
     // MailerLite stores name/last_name under a nested "fields" object, not at the
     // top level of the subscriber JSON. The spec says the importer preview doesn't
     // surface ML's name in this slice, so null is acceptable here.
-    // TODO (Task 20): if ML names are needed, add a custom JsonConverter<MailerLiteSubscriber>
-    // that reads fields.name → FirstName and fields.last_name → LastName.
 
     private sealed record SubscriberListEnvelope(
         [property: JsonPropertyName("data")] IReadOnlyList<MailerLiteSubscriber> Data,

@@ -224,6 +224,63 @@ public class MailerAdminControllerTests
     }
 
     // -----------------------------------------------------------------------
+    // Refresh — calls IMailerLiteService.RefreshAsync and redirects to Index.
+    // -----------------------------------------------------------------------
+
+    [HumansFact]
+    public async Task Refresh_CallsRefreshAsync_AndRedirectsToIndex()
+    {
+        var ctrl = BuildSut();
+
+        var result = await ctrl.Refresh(CancellationToken.None);
+
+        await _mlService.Received(1).RefreshAsync(Arg.Any<CancellationToken>());
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal(nameof(MailerAdminController.Index), redirect.ActionName);
+        Assert.Equal("MailerLite cache refreshed.", ctrl.TempData["Banner"]);
+    }
+
+    [HumansFact]
+    public async Task Refresh_OnHttpFailure_SetsErrorBannerAndRedirects()
+    {
+        _mlService.RefreshAsync(Arg.Any<CancellationToken>())
+            .ThrowsAsync(new HttpRequestException(
+                "Too Many Requests",
+                inner: null,
+                statusCode: System.Net.HttpStatusCode.TooManyRequests));
+
+        var ctrl = BuildSut();
+
+        var result = await ctrl.Refresh(CancellationToken.None);
+
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal(nameof(MailerAdminController.Index), redirect.ActionName);
+        var banner = ctrl.TempData["Banner"] as string;
+        Assert.NotNull(banner);
+        Assert.Contains("Refresh failed", banner!, StringComparison.Ordinal);
+        Assert.Contains("429", banner!, StringComparison.Ordinal);
+    }
+
+    [HumansFact]
+    public async Task Refresh_OnTimeout_SetsErrorBannerAndRedirects()
+    {
+        // MailerLiteClient surfaces HttpClient timeouts as TaskCanceledException
+        // when the caller's CancellationToken was not the one that fired.
+        _mlService.RefreshAsync(Arg.Any<CancellationToken>())
+            .ThrowsAsync(new TaskCanceledException("timed out"));
+
+        var ctrl = BuildSut();
+
+        var result = await ctrl.Refresh(CancellationToken.None);
+
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal(nameof(MailerAdminController.Index), redirect.ActionName);
+        var banner = ctrl.TempData["Banner"] as string;
+        Assert.NotNull(banner);
+        Assert.Contains("timed out", banner!, StringComparison.Ordinal);
+    }
+
+    // -----------------------------------------------------------------------
     // Commit — counts within tolerance, calls ApplyAsync and redirects to Index.
     // -----------------------------------------------------------------------
 

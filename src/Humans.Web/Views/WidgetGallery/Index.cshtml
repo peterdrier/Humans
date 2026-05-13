@@ -381,6 +381,29 @@
                 <div class="wg-card">
                     <div class="wg-card-header">
                         <div>
+                            <span class="wg-card-name">&lt;vc:human-summary&gt;</span>
+                            <span class="wg-card-kind kind-vc">ViewComponent</span>
+                        </div>
+                        <span class="wg-card-path">src/Humans.Web/ViewComponents/HumanSummaryViewComponent.cs</span>
+                    </div>
+                    <div class="wg-card-note">
+                        Renders the same content as the hover popover (<code>_HumanPopover.cshtml</code>) inline — avatar, name, membership badge, city/country, public + (admin-only) hidden teams, and languages. Use on admin-review screens where the reviewer needs identity context without having to hover (e.g. ticket-transfer detail).
+                    </div>
+                    @ParamsBlock(
+                        ("user-id", "<code>Guid</code> — required")
+                    )
+                    @AuthLine("Hidden-team rows render only for viewers with <code>TeamsAdminBoardOrAdmin</code> policy (gating lives in <code>_HumanPopover.cshtml</code>).")
+                    <div class="wg-variants">
+                        <div class="wg-variant-label">user-id=current<span class="wg-variant-sub">has profile</span></div>
+                        <div class="wg-variant-render" style="display:block;">
+                            <vc:human-summary user-id="@Model.CurrentUserId" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="wg-card">
+                    <div class="wg-card-header">
+                        <div>
                             <span class="wg-card-name">&lt;vc:nobodies-email-badge&gt;</span>
                             <span class="wg-card-kind kind-vc">ViewComponent</span>
                         </div>

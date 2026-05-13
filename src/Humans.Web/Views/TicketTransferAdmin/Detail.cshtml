@@ -10,6 +10,14 @@
         TicketAttendeeStatus.Void => ("Void", "bg-secondary"),
         _ => (row.OriginalAttendeeStatus.ToString(), "bg-secondary"),
     };
+    var hasOrder = !string.IsNullOrEmpty(Model.OrderVendorId);
+    var orderedSiblingIds = Model.SiblingVendorTicketIds
+        .OrderBy(s => s, StringComparer.Ordinal)
+        .ToList();
+    var ticketIndex = orderedSiblingIds.IndexOf(Model.OriginalAttendeeVendorTicketId) + 1;
+    var ticketPosition = orderedSiblingIds.Count > 0 && ticketIndex > 0
+        ? $"ticket #{ticketIndex} of {orderedSiblingIds.Count}"
+        : null;
 }
 
 <h1>Review transfer</h1>
@@ -18,8 +26,35 @@
 
 <div class="card mb-3">
     <div class="card-body">
-        <h2 class="h5 mb-2">Ticket</h2>
-        <div>@row.OriginalAttendeeName — @row.TicketTypeName</div>
+        <h2 class="h5 mb-2">Ticket being transferred</h2>
+        @if (hasOrder)
+        {
+            <div>
+                Order <strong>@Model.OrderVendorId</strong>
+                purchased on <strong>@Model.OrderPurchasedAt.ToDisplayDate()</strong>
+                @if (ticketPosition is not null)
+                {
+                    <text>, @ticketPosition</text>
+                }
+            </div>
+        }
+        <div>Ticket ID <strong>@Model.OriginalAttendeeVendorTicketId</strong> — @row.TicketTypeName</div>
+        <div>Name on ticket: <strong>@row.OriginalAttendeeName</strong></div>
+        <div>
+            Email on ticket:
+            @if (!string.IsNullOrEmpty(Model.OriginalAttendeeEmail))
+            {
+                <strong>@Model.OriginalAttendeeEmail</strong>
+            }
+            else
+            {
+                <span class="text-muted">(none)</span>
+            }
+        </div>
+        @if (hasOrder)
+        {
+            <div>Order buyer email: <strong>@Model.OrderBuyerEmail</strong></div>
+        }
         <div class="mt-2 d-flex align-items-center gap-2">
             <span class="badge @statusClass">@statusLabel</span>
             @if (!string.IsNullOrEmpty(Model.OrderDashboardUrl))
@@ -44,12 +79,15 @@
 <div class="row g-3 mb-3">
     <div class="col-md-6">
         <h3 class="h6 text-uppercase text-muted">Sender</h3>
-        <vc:human user-id="@row.SenderUserId" layout="Card" link="Admin" />
-        <vc:ticket-holdings user-id="@row.SenderUserId" show-empty="true" />
+        <div class="card"><div class="card-body">
+            <vc:human-summary user-id="@row.SenderUserId" />
+        </div></div>
     </div>
     <div class="col-md-6">
         <h3 class="h6 text-uppercase text-muted">Recipient</h3>
-        <vc:human user-id="@row.ReceiverUserId" layout="Card" link="Admin" />
+        <div class="card"><div class="card-body">
+            <vc:human-summary user-id="@row.ReceiverUserId" />
+        </div></div>
     </div>
 </div>
 
@@ -60,6 +98,18 @@
 
 @if (row.Status == TicketTransferStatus.Pending)
 {
+    <div class="card mb-3 border-info">
+        <div class="card-body">
+            <h2 class="h6 mb-2">If you approve, this will happen:</h2>
+            <ol class="mb-0">
+                <li>Void ticket <strong>@Model.OriginalAttendeeVendorTicketId</strong> at TicketTailor with a hold (seat is reserved, not resold).</li>
+                <li>Issue a new ticket to <strong>@row.ReceiverLegalName</strong> / <strong>@row.ReceiverEmail</strong> using the hold from step&nbsp;1.</li>
+                <li>TicketTailor emails @row.ReceiverLegalName the new ticket / barcode directly.</li>
+                <li>Each step (success or failure) is recorded in the audit history below.</li>
+            </ol>
+        </div>
+    </div>
+
     <form asp-action="Decide" method="post" class="mt-3">
         @Html.AntiForgeryToken()
         <input type="hidden" name="id" value="@row.Id" />
