@@ -37,6 +37,76 @@ public class AttendeeContactImportServicePlanTests
         plan.Decisions.Should().ContainSingle()
             .Which.Outcome.Should().Be(AttendeeImportOutcome.SkipNoEmail);
     }
+
+    [HumansFact]
+    public async Task Plan_SingleVerifiedMatch_ClassifiedAsAttachVerified()
+    {
+        var harness = new PlanHarness();
+        var userId = Guid.NewGuid();
+        harness.AddUnmatched(new TicketAttendee
+        {
+            Id = Guid.NewGuid(), VendorTicketId = "tkt_v",
+            AttendeeEmail = "jane@x.com", AttendeeName = "Jane Doe",
+            Status = TicketAttendeeStatus.Valid,
+        });
+        harness.UserEmails.GetDistinctVerifiedUserIdsAsync("jane@x.com", Arg.Any<CancellationToken>())
+            .Returns(new[] { userId });
+        harness.Users.GetByIdAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new User { Id = userId, MergedToUserId = null });
+
+        var plan = await harness.Service.BuildPlanAsync();
+
+        var decision = plan.Decisions.Single();
+        decision.Outcome.Should().Be(AttendeeImportOutcome.AttachVerified);
+        decision.TargetUserId.Should().Be(userId);
+        decision.AttendeeName.Should().Be("Jane Doe");
+    }
+
+    [HumansFact]
+    public async Task Plan_AttachVerified_FollowsMergedTombstone()
+    {
+        var harness = new PlanHarness();
+        var deadId = Guid.NewGuid();
+        var liveId = Guid.NewGuid();
+        harness.AddUnmatched(new TicketAttendee
+        {
+            Id = Guid.NewGuid(), VendorTicketId = "tkt_v",
+            AttendeeEmail = "jane@x.com", AttendeeName = "Jane",
+            Status = TicketAttendeeStatus.Valid,
+        });
+        harness.UserEmails.GetDistinctVerifiedUserIdsAsync("jane@x.com", Arg.Any<CancellationToken>())
+            .Returns(new[] { deadId });
+        harness.Users.GetByIdAsync(deadId, Arg.Any<CancellationToken>())
+            .Returns(new User { Id = deadId, MergedToUserId = liveId });
+        harness.Users.GetByIdAsync(liveId, Arg.Any<CancellationToken>())
+            .Returns(new User { Id = liveId, MergedToUserId = null });
+
+        var plan = await harness.Service.BuildPlanAsync();
+
+        plan.Decisions.Single().TargetUserId.Should().Be(liveId);
+    }
+
+    [HumansFact]
+    public async Task Plan_MultipleVerifiedMatches_ClassifiedAsAmbiguous()
+    {
+        var harness = new PlanHarness();
+        var u1 = Guid.NewGuid();
+        var u2 = Guid.NewGuid();
+        harness.AddUnmatched(new TicketAttendee
+        {
+            Id = Guid.NewGuid(), VendorTicketId = "tkt_v",
+            AttendeeEmail = "shared@x.com",
+            Status = TicketAttendeeStatus.Valid,
+        });
+        harness.UserEmails.GetDistinctVerifiedUserIdsAsync("shared@x.com", Arg.Any<CancellationToken>())
+            .Returns(new[] { u1, u2 });
+
+        var plan = await harness.Service.BuildPlanAsync();
+
+        var decision = plan.Decisions.Single();
+        decision.Outcome.Should().Be(AttendeeImportOutcome.AmbiguousMultipleVerified);
+        decision.AmbiguousUserIds.Should().BeEquivalentTo(new[] { u1, u2 });
+    }
 }
 
 internal sealed class PlanHarness

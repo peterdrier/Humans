@@ -70,23 +70,61 @@ public sealed class AttendeeContactImportService : IAttendeeContactImportService
         CancellationToken ct = default) =>
         throw new NotSupportedException("Filled in by Task 11");
 
-    private Task<AttendeeImportDecision> ClassifyAsync(TicketAttendee a, CancellationToken ct)
+    private async Task<AttendeeImportDecision> ClassifyAsync(TicketAttendee a, CancellationToken ct)
     {
         var name = ResolveDisplayName(a);
 
         if (string.IsNullOrWhiteSpace(a.AttendeeEmail))
         {
-            return Task.FromResult(new AttendeeImportDecision(
+            return new AttendeeImportDecision(
                 a.Id, a.AttendeeEmail, name, a.VendorTicketId,
                 AttendeeImportOutcome.SkipNoEmail,
                 TargetUserId: null,
                 UnverifiedEmailIdToDelete: null,
                 UnverifiedRowUserId: null,
-                AmbiguousUserIds: null));
+                AmbiguousUserIds: null);
         }
 
-        // Remaining classifications filled in by Tasks 9–10.
-        throw new NotSupportedException("Branches filled in by Tasks 9–10");
+        var verifiedUserIds = await _userEmails.GetDistinctVerifiedUserIdsAsync(a.AttendeeEmail, ct);
+
+        if (verifiedUserIds.Count > 1)
+        {
+            return new AttendeeImportDecision(
+                a.Id, a.AttendeeEmail, name, a.VendorTicketId,
+                AttendeeImportOutcome.AmbiguousMultipleVerified,
+                TargetUserId: null,
+                UnverifiedEmailIdToDelete: null,
+                UnverifiedRowUserId: null,
+                AmbiguousUserIds: verifiedUserIds);
+        }
+
+        if (verifiedUserIds.Count == 1)
+        {
+            var liveTarget = await ResolveTombstoneAsync(verifiedUserIds[0], ct);
+            return new AttendeeImportDecision(
+                a.Id, a.AttendeeEmail, name, a.VendorTicketId,
+                AttendeeImportOutcome.AttachVerified,
+                TargetUserId: liveTarget,
+                UnverifiedEmailIdToDelete: null,
+                UnverifiedRowUserId: null,
+                AmbiguousUserIds: null);
+        }
+
+        // Remaining classifications filled in by Task 10.
+        throw new NotSupportedException("Unverified/no-match branches filled in by Task 10");
+    }
+
+    private async Task<Guid> ResolveTombstoneAsync(Guid userId, CancellationToken ct)
+    {
+        var visited = new HashSet<Guid> { userId };
+        var current = userId;
+        while (true)
+        {
+            var user = await _users.GetByIdAsync(current, ct);
+            if (user?.MergedToUserId is not Guid next) return current;
+            if (!visited.Add(next)) return current;
+            current = next;
+        }
     }
 
     private static string? ResolveDisplayName(TicketAttendee a) =>
