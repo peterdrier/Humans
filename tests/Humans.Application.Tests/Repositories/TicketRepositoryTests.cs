@@ -276,37 +276,57 @@ public sealed class TicketRepositoryTests : IDisposable
         await _dbContext.TicketAttendees.AddRangeAsync(
             new TicketAttendee
             {
-                Id = includedId, TicketOrderId = orderId, VendorEventId = eventId,
-                VendorTicketId = "tkt_valid_unmatched", AttendeeEmail = "a@x.com",
-                Status = TicketAttendeeStatus.Valid, MatchedUserId = null,
+                Id = includedId,
+                TicketOrderId = orderId,
+                VendorEventId = eventId,
+                VendorTicketId = "tkt_valid_unmatched",
+                AttendeeEmail = "a@x.com",
+                Status = TicketAttendeeStatus.Valid,
+                MatchedUserId = null,
                 SyncedAt = _clock.GetCurrentInstant(),
             },
             new TicketAttendee
             {
-                Id = Guid.NewGuid(), TicketOrderId = orderId, VendorEventId = eventId,
-                VendorTicketId = "tkt_voided", AttendeeEmail = "b@x.com",
-                Status = TicketAttendeeStatus.Void, MatchedUserId = null,
+                Id = Guid.NewGuid(),
+                TicketOrderId = orderId,
+                VendorEventId = eventId,
+                VendorTicketId = "tkt_voided",
+                AttendeeEmail = "b@x.com",
+                Status = TicketAttendeeStatus.Void,
+                MatchedUserId = null,
                 SyncedAt = _clock.GetCurrentInstant(),
             },
             new TicketAttendee
             {
-                Id = Guid.NewGuid(), TicketOrderId = orderId, VendorEventId = eventId,
-                VendorTicketId = "tkt_matched", AttendeeEmail = "c@x.com",
-                Status = TicketAttendeeStatus.Valid, MatchedUserId = Guid.NewGuid(),
+                Id = Guid.NewGuid(),
+                TicketOrderId = orderId,
+                VendorEventId = eventId,
+                VendorTicketId = "tkt_matched",
+                AttendeeEmail = "c@x.com",
+                Status = TicketAttendeeStatus.Valid,
+                MatchedUserId = Guid.NewGuid(),
                 SyncedAt = _clock.GetCurrentInstant(),
             },
             new TicketAttendee
             {
-                Id = Guid.NewGuid(), TicketOrderId = orderId, VendorEventId = eventId,
-                VendorTicketId = "tkt_no_email", AttendeeEmail = null,
-                Status = TicketAttendeeStatus.Valid, MatchedUserId = null,
+                Id = Guid.NewGuid(),
+                TicketOrderId = orderId,
+                VendorEventId = eventId,
+                VendorTicketId = "tkt_no_email",
+                AttendeeEmail = null,
+                Status = TicketAttendeeStatus.Valid,
+                MatchedUserId = null,
                 SyncedAt = _clock.GetCurrentInstant(),
             },
             new TicketAttendee
             {
-                Id = Guid.NewGuid(), TicketOrderId = orderId, VendorEventId = "other_event",
-                VendorTicketId = "tkt_other_event", AttendeeEmail = "d@x.com",
-                Status = TicketAttendeeStatus.Valid, MatchedUserId = null,
+                Id = Guid.NewGuid(),
+                TicketOrderId = orderId,
+                VendorEventId = "other_event",
+                VendorTicketId = "tkt_other_event",
+                AttendeeEmail = "d@x.com",
+                Status = TicketAttendeeStatus.Valid,
+                MatchedUserId = null,
                 SyncedAt = _clock.GetCurrentInstant(),
             });
         await _dbContext.SaveChangesAsync();
@@ -324,9 +344,14 @@ public sealed class TicketRepositoryTests : IDisposable
         var eventId = "evt_ci";
         _dbContext.TicketOrders.Add(new TicketOrder
         {
-            Id = orderId, VendorOrderId = "ord_ci", VendorEventId = eventId,
-            BuyerEmail = "buyer@x.com", BuyerName = "Buyer", TotalAmount = 0,
-            Currency = "EUR", PaymentStatus = TicketPaymentStatus.Paid,
+            Id = orderId,
+            VendorOrderId = "ord_ci",
+            VendorEventId = eventId,
+            BuyerEmail = "buyer@x.com",
+            BuyerName = "Buyer",
+            TotalAmount = 0,
+            Currency = "EUR",
+            PaymentStatus = TicketPaymentStatus.Paid,
             PurchasedAt = _clock.GetCurrentInstant(),
             SyncedAt = _clock.GetCurrentInstant(),
         });
@@ -334,9 +359,13 @@ public sealed class TicketRepositoryTests : IDisposable
         var includedId = Guid.NewGuid();
         _dbContext.TicketAttendees.Add(new TicketAttendee
         {
-            Id = includedId, TicketOrderId = orderId, VendorEventId = eventId,
-            VendorTicketId = "tkt_ci", AttendeeEmail = "ci@x.com",
-            Status = TicketAttendeeStatus.CheckedIn, MatchedUserId = null,
+            Id = includedId,
+            TicketOrderId = orderId,
+            VendorEventId = eventId,
+            VendorTicketId = "tkt_ci",
+            AttendeeEmail = "ci@x.com",
+            Status = TicketAttendeeStatus.CheckedIn,
+            MatchedUserId = null,
             SyncedAt = _clock.GetCurrentInstant(),
         });
         await _dbContext.SaveChangesAsync();

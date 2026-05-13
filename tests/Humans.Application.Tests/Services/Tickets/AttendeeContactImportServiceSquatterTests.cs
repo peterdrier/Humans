@@ -20,8 +20,11 @@ public class AttendeeContactImportServiceSquatterTests
         var newVictimUserId = Guid.NewGuid();
         var attendee = new TicketAttendee
         {
-            Id = attendeeId, VendorTicketId = "tkt_v", VendorEventId = "evt_active",
-            AttendeeEmail = "victim@x.com", AttendeeName = "Victim",
+            Id = attendeeId,
+            VendorTicketId = "tkt_v",
+            VendorEventId = "evt_active",
+            AttendeeEmail = "victim@x.com",
+            AttendeeName = "Victim",
             Status = TicketAttendeeStatus.Valid,
         };
         harness.WithUnmatched(attendee);
@@ -39,7 +42,7 @@ public class AttendeeContactImportServiceSquatterTests
                     null, squatterRowId, squatterUserId, null),
             }, 1);
 
-        await harness.Service.ApplyAsync(plan, new HashSet<Guid> { attendeeId });
+        await harness.Service.ApplyAsync(plan, new HashSet<Guid> { attendeeId }, Guid.NewGuid());
 
         // 1. Squatter row deleted.
         await harness.UserEmails.Received(1)

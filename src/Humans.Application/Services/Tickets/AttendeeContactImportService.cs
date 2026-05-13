@@ -67,6 +67,7 @@ public sealed class AttendeeContactImportService : IAttendeeContactImportService
     public async Task<AttendeeImportResult> ApplyAsync(
         AttendeeImportPlan plan,
         IReadOnlySet<Guid> selectedAttendeeIds,
+        Guid actorUserId,
         CancellationToken ct = default)
     {
         var start = _clock.GetCurrentInstant();
@@ -98,6 +99,18 @@ public sealed class AttendeeContactImportService : IAttendeeContactImportService
                 continue;
             }
 
+            // If the attendee's email changed between plan and apply, the plan's
+            // decision (TargetUserId / UnverifiedEmailIdToDelete / etc.) was computed
+            // against a stale email and may attach the wrong user. Treat as vanished.
+            if (!string.Equals(attendee.AttendeeEmail, d.Email, StringComparison.OrdinalIgnoreCase))
+            {
+                vanished++;
+                _logger.LogInformation(
+                    "Attendee {AttendeeId} email drifted between plan ({PlanEmail}) and apply ({FreshEmail}); treating as vanished",
+                    d.AttendeeId, d.Email, attendee.AttendeeEmail);
+                continue;
+            }
+
             try
             {
                 switch (d.Outcome)
@@ -117,41 +130,41 @@ public sealed class AttendeeContactImportService : IAttendeeContactImportService
                         break;
 
                     case AttendeeImportOutcome.AttachVerified:
-                    {
-                        attendee.MatchedUserId = d.TargetUserId!.Value;
-                        toUpsert.Add(attendee);
-                        newlyMatchedUserIds.Add(d.TargetUserId.Value);
-                        attached++;
-                        break;
-                    }
+                        {
+                            attendee.MatchedUserId = d.TargetUserId!.Value;
+                            toUpsert.Add(attendee);
+                            newlyMatchedUserIds.Add(d.TargetUserId.Value);
+                            attached++;
+                            break;
+                        }
 
                     case AttendeeImportOutcome.DeleteUnverifiedThenCreate:
-                    {
-                        if (d.UnverifiedRowUserId is Guid uid &&
-                            d.UnverifiedEmailIdToDelete is Guid eid)
                         {
-                            await _userEmails.DeleteEmailAsync(uid, eid, ct);
+                            if (d.UnverifiedRowUserId is Guid uid &&
+                                d.UnverifiedEmailIdToDelete is Guid eid)
+                            {
+                                await _userEmails.DeleteEmailAsync(uid, eid, ct);
+                            }
+                            var (newUser, wasCreated) = await _provisioning.FindOrCreateUserByEmailAsync(
+                                d.Email!, d.AttendeeName, ContactSource.TicketTailor, ct);
+                            attendee.MatchedUserId = newUser.Id;
+                            toUpsert.Add(attendee);
+                            newlyMatchedUserIds.Add(newUser.Id);
+                            if (wasCreated) created++;
+                            replaced++;
+                            break;
                         }
-                        var (newUser, wasCreated) = await _provisioning.FindOrCreateUserByEmailAsync(
-                            d.Email!, d.AttendeeName, ContactSource.TicketTailor, ct);
-                        attendee.MatchedUserId = newUser.Id;
-                        toUpsert.Add(attendee);
-                        newlyMatchedUserIds.Add(newUser.Id);
-                        if (wasCreated) created++;
-                        replaced++;
-                        break;
-                    }
 
                     case AttendeeImportOutcome.CreateNewUser:
-                    {
-                        var (newUser, wasCreated) = await _provisioning.FindOrCreateUserByEmailAsync(
-                            d.Email!, d.AttendeeName, ContactSource.TicketTailor, ct);
-                        attendee.MatchedUserId = newUser.Id;
-                        toUpsert.Add(attendee);
-                        newlyMatchedUserIds.Add(newUser.Id);
-                        if (wasCreated) created++;
-                        break;
-                    }
+                        {
+                            var (newUser, wasCreated) = await _provisioning.FindOrCreateUserByEmailAsync(
+                                d.Email!, d.AttendeeName, ContactSource.TicketTailor, ct);
+                            attendee.MatchedUserId = newUser.Id;
+                            toUpsert.Add(attendee);
+                            newlyMatchedUserIds.Add(newUser.Id);
+                            if (wasCreated) created++;
+                            break;
+                        }
                 }
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
@@ -194,9 +207,9 @@ public sealed class AttendeeContactImportService : IAttendeeContactImportService
 
         await _audit.LogAsync(
             AuditAction.TicketContactsImported,
-            entityType: "Tickets", entityId: Guid.Empty,
+            "Tickets", Guid.Empty,
             description: result.FormatSummary(),
-            jobName: nameof(AttendeeContactImportService));
+            actorUserId: actorUserId);
 
         return result;
     }

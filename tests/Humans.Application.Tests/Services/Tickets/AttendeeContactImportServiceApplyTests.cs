@@ -28,8 +28,11 @@ public class AttendeeContactImportServiceApplyTests
         var targetUserId = Guid.NewGuid();
         var attendee = new TicketAttendee
         {
-            Id = attendeeId, VendorTicketId = "tkt_v", VendorEventId = "evt_active",
-            AttendeeEmail = "jane@x.com", Status = TicketAttendeeStatus.Valid,
+            Id = attendeeId,
+            VendorTicketId = "tkt_v",
+            VendorEventId = "evt_active",
+            AttendeeEmail = "jane@x.com",
+            Status = TicketAttendeeStatus.Valid,
             MatchedUserId = null,
         };
         harness.WithUnmatched(attendee);
@@ -48,7 +51,8 @@ public class AttendeeContactImportServiceApplyTests
             },
             TotalUnmatched: 1);
 
-        var result = await harness.Service.ApplyAsync(plan, new HashSet<Guid> { attendeeId });
+        var actorId = Guid.NewGuid();
+        var result = await harness.Service.ApplyAsync(plan, new HashSet<Guid> { attendeeId }, actorId);
 
         result.AttachedToExistingVerified.Should().Be(1);
         result.UsersCreated.Should().Be(0);
@@ -67,7 +71,7 @@ public class AttendeeContactImportServiceApplyTests
             AuditAction.TicketContactsImported,
             "Tickets", Guid.Empty,
             Arg.Is<string>(s => s.Contains("attached=1")),
-            nameof(AttendeeContactImportService));
+            actorId);
     }
 
     [HumansFact]
@@ -78,8 +82,11 @@ public class AttendeeContactImportServiceApplyTests
         var newUserId = Guid.NewGuid();
         var attendee = new TicketAttendee
         {
-            Id = attendeeId, VendorTicketId = "tkt_v", VendorEventId = "evt_active",
-            AttendeeEmail = "fresh@x.com", Status = TicketAttendeeStatus.Valid,
+            Id = attendeeId,
+            VendorTicketId = "tkt_v",
+            VendorEventId = "evt_active",
+            AttendeeEmail = "fresh@x.com",
+            Status = TicketAttendeeStatus.Valid,
         };
         harness.WithUnmatched(attendee);
         harness.WithActiveYear(2026);
@@ -98,7 +105,7 @@ public class AttendeeContactImportServiceApplyTests
             },
             1);
 
-        var result = await harness.Service.ApplyAsync(plan, new HashSet<Guid> { attendeeId });
+        var result = await harness.Service.ApplyAsync(plan, new HashSet<Guid> { attendeeId }, Guid.NewGuid());
 
         result.UsersCreated.Should().Be(1);
         attendee.MatchedUserId.Should().Be(newUserId);
@@ -120,8 +127,11 @@ public class AttendeeContactImportServiceApplyTests
         var newUserId = Guid.NewGuid();
         var attendee = new TicketAttendee
         {
-            Id = attendeeId, VendorTicketId = "tkt_v", VendorEventId = "evt_active",
-            AttendeeEmail = "victim@x.com", Status = TicketAttendeeStatus.Valid,
+            Id = attendeeId,
+            VendorTicketId = "tkt_v",
+            VendorEventId = "evt_active",
+            AttendeeEmail = "victim@x.com",
+            Status = TicketAttendeeStatus.Valid,
         };
         harness.WithUnmatched(attendee);
         harness.WithActiveYear(2026);
@@ -142,7 +152,7 @@ public class AttendeeContactImportServiceApplyTests
             },
             1);
 
-        var result = await harness.Service.ApplyAsync(plan, new HashSet<Guid> { attendeeId });
+        var result = await harness.Service.ApplyAsync(plan, new HashSet<Guid> { attendeeId }, Guid.NewGuid());
 
         result.UnverifiedRowsDeletedAndUserCreated.Should().Be(1);
         result.UsersCreated.Should().Be(1);
@@ -164,13 +174,19 @@ public class AttendeeContactImportServiceApplyTests
         var skippedId = Guid.NewGuid();
         var picked = new TicketAttendee
         {
-            Id = pickedId, VendorTicketId = "tkt_p", VendorEventId = "evt_active",
-            AttendeeEmail = "p@x.com", Status = TicketAttendeeStatus.Valid,
+            Id = pickedId,
+            VendorTicketId = "tkt_p",
+            VendorEventId = "evt_active",
+            AttendeeEmail = "p@x.com",
+            Status = TicketAttendeeStatus.Valid,
         };
         var unselected = new TicketAttendee
         {
-            Id = skippedId, VendorTicketId = "tkt_s", VendorEventId = "evt_active",
-            AttendeeEmail = "s@x.com", Status = TicketAttendeeStatus.Valid,
+            Id = skippedId,
+            VendorTicketId = "tkt_s",
+            VendorEventId = "evt_active",
+            AttendeeEmail = "s@x.com",
+            Status = TicketAttendeeStatus.Valid,
         };
         harness.WithUnmatched(picked);
         harness.WithUnmatched(unselected);
@@ -188,7 +204,7 @@ public class AttendeeContactImportServiceApplyTests
                     AttendeeImportOutcome.CreateNewUser, null, null, null, null),
             }, 2);
 
-        var result = await harness.Service.ApplyAsync(plan, new HashSet<Guid> { pickedId });
+        var result = await harness.Service.ApplyAsync(plan, new HashSet<Guid> { pickedId }, Guid.NewGuid());
 
         result.TotalAttempted.Should().Be(1);
         result.UsersCreated.Should().Be(1);
@@ -211,7 +227,7 @@ public class AttendeeContactImportServiceApplyTests
                     AttendeeImportOutcome.CreateNewUser, null, null, null, null),
             }, 1);
 
-        var result = await harness.Service.ApplyAsync(plan, new HashSet<Guid> { goneId });
+        var result = await harness.Service.ApplyAsync(plan, new HashSet<Guid> { goneId }, Guid.NewGuid());
 
         result.VanishedBetweenPlanAndApply.Should().Be(1);
         result.UsersCreated.Should().Be(0);
@@ -228,13 +244,19 @@ public class AttendeeContactImportServiceApplyTests
         var okId = Guid.NewGuid();
         harness.WithUnmatched(new TicketAttendee
         {
-            Id = failId, VendorTicketId = "tkt_f", VendorEventId = "evt_active",
-            AttendeeEmail = "f@x.com", Status = TicketAttendeeStatus.Valid,
+            Id = failId,
+            VendorTicketId = "tkt_f",
+            VendorEventId = "evt_active",
+            AttendeeEmail = "f@x.com",
+            Status = TicketAttendeeStatus.Valid,
         });
         harness.WithUnmatched(new TicketAttendee
         {
-            Id = okId, VendorTicketId = "tkt_o", VendorEventId = "evt_active",
-            AttendeeEmail = "o@x.com", Status = TicketAttendeeStatus.Valid,
+            Id = okId,
+            VendorTicketId = "tkt_o",
+            VendorEventId = "evt_active",
+            AttendeeEmail = "o@x.com",
+            Status = TicketAttendeeStatus.Valid,
         });
         harness.WithActiveYear(2026);
         harness.Provisioning.FindOrCreateUserByEmailAsync(
@@ -253,7 +275,7 @@ public class AttendeeContactImportServiceApplyTests
                     AttendeeImportOutcome.CreateNewUser, null, null, null, null),
             }, 2);
 
-        var result = await harness.Service.ApplyAsync(plan, new HashSet<Guid> { failId, okId });
+        var result = await harness.Service.ApplyAsync(plan, new HashSet<Guid> { failId, okId }, Guid.NewGuid());
 
         result.Errors.Should().Be(1);
         result.UsersCreated.Should().Be(1);

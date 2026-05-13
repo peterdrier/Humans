@@ -3,12 +3,16 @@ using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Tickets.Dtos;
 using Humans.Domain.Entities;
 using Humans.Testing;
+using Humans.Web.Constants;
 using Humans.Web.Controllers;
 using Humans.Web.Models.Tickets;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Controllers;
+using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
@@ -24,14 +28,29 @@ public class TicketsContactsAdminControllerTests
             userStore, null, null, null, null, null, null, null, null);
     }
 
-    private static TicketsContactsAdminController NewController(IAttendeeContactImportService import)
+    private static (TicketsContactsAdminController Ctrl, User CurrentUser, UserManager<User> Um)
+        NewController(IAttendeeContactImportService import)
     {
+        var um = NoOpUserManager();
+        var currentUser = new User { Id = Guid.NewGuid() };
+        um.GetUserAsync(Arg.Any<System.Security.Claims.ClaimsPrincipal>()).Returns(currentUser);
+
         var ctrl = new TicketsContactsAdminController(
-            import, NoOpUserManager(),
+            import, um,
             NullLogger<TicketsContactsAdminController>.Instance);
-        var http = new DefaultHttpContext();
+
+        var services = new ServiceCollection();
+        services.AddLogging();
+        var http = new DefaultHttpContext { RequestServices = services.BuildServiceProvider() };
+
+        ctrl.ControllerContext = new ControllerContext
+        {
+            HttpContext = http,
+            ActionDescriptor = new ControllerActionDescriptor { ActionName = "Test" },
+        };
         ctrl.TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>());
-        return ctrl;
+        ctrl.Url = Substitute.For<IUrlHelper>();
+        return (ctrl, currentUser, um);
     }
 
     [HumansFact]
@@ -47,7 +66,7 @@ public class TicketsContactsAdminControllerTests
             }, 1);
         import.BuildPlanAsync(Arg.Any<CancellationToken>()).Returns(plan);
 
-        var controller = NewController(import);
+        var (controller, _, _) = NewController(import);
 
         var result = await controller.Index(default);
 
@@ -59,45 +78,46 @@ public class TicketsContactsAdminControllerTests
     }
 
     [HumansFact]
-    public async Task Apply_PassesSelectedIdsToService_AndRedirectsWithBanner()
+    public async Task Apply_PassesSelectedIdsAndActorToService_AndRedirectsWithInfoMessage()
     {
         var import = Substitute.For<IAttendeeContactImportService>();
         var plan = new AttendeeImportPlan(Array.Empty<AttendeeImportDecision>(), 0);
         import.BuildPlanAsync(Arg.Any<CancellationToken>()).Returns(plan);
         import.ApplyAsync(Arg.Any<AttendeeImportPlan>(),
-                Arg.Any<IReadOnlySet<Guid>>(), Arg.Any<CancellationToken>())
+                Arg.Any<IReadOnlySet<Guid>>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(new AttendeeImportResult(
                 TotalAttempted: 1, UsersCreated: 1, AttachedToExistingVerified: 0,
                 UnverifiedRowsDeletedAndUserCreated: 0, AmbiguousSkipped: 0, NoEmailSkipped: 0,
                 VanishedBetweenPlanAndApply: 0, Errors: 0,
                 Elapsed: Duration.FromSeconds(1)));
 
-        var controller = NewController(import);
+        var (controller, currentUser, _) = NewController(import);
 
         var selectedId = Guid.NewGuid();
         var result = await controller.Apply(new[] { selectedId }, default);
 
         result.Should().BeOfType<RedirectToActionResult>()
             .Which.ActionName.Should().Be(nameof(TicketsContactsAdminController.Index));
-        controller.TempData["Banner"].Should().NotBeNull();
+        controller.TempData[TempDataKeys.InfoMessage].Should().NotBeNull();
 
         await import.Received(1).ApplyAsync(
             plan,
             Arg.Is<IReadOnlySet<Guid>>(s => s.Contains(selectedId) && s.Count == 1),
+            currentUser.Id,
             Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
-    public async Task Apply_EmptySelection_RedirectsWithValidationBanner_NoServiceCall()
+    public async Task Apply_EmptySelection_RedirectsWithErrorMessage_NoServiceCall()
     {
         var import = Substitute.For<IAttendeeContactImportService>();
-        var controller = NewController(import);
+        var (controller, _, _) = NewController(import);
 
         var result = await controller.Apply(Array.Empty<Guid>(), default);
 
         result.Should().BeOfType<RedirectToActionResult>();
-        controller.TempData["Banner"].Should().NotBeNull();
+        controller.TempData[TempDataKeys.ErrorMessage].Should().NotBeNull();
         await import.DidNotReceive().ApplyAsync(
-            Arg.Any<AttendeeImportPlan>(), Arg.Any<IReadOnlySet<Guid>>(), Arg.Any<CancellationToken>());
+            Arg.Any<AttendeeImportPlan>(), Arg.Any<IReadOnlySet<Guid>>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 }

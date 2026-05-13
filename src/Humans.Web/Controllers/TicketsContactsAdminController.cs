@@ -51,13 +51,20 @@ public sealed class TicketsContactsAdminController : HumansControllerBase
     {
         if (selected is null || selected.Length == 0)
         {
-            TempData["Banner"] = "Select at least one attendee before applying.";
+            SetError("Select at least one attendee before applying.");
+            return RedirectToAction(nameof(Index));
+        }
+
+        var actor = await GetCurrentUserAsync();
+        if (actor is null)
+        {
+            SetError("Could not resolve current user.");
             return RedirectToAction(nameof(Index));
         }
 
         var fresh = await _import.BuildPlanAsync(ct);
-        var result = await _import.ApplyAsync(fresh, new HashSet<Guid>(selected), ct);
-        TempData["Banner"] = $"Attendee contact import: {result.FormatSummary()}";
+        var result = await _import.ApplyAsync(fresh, new HashSet<Guid>(selected), actor.Id, ct);
+        SetInfo($"Attendee contact import: {result.FormatSummary()}");
         return RedirectToAction(nameof(Index));
     }
 

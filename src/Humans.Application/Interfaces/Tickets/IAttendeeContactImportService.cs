@@ -20,5 +20,6 @@ public interface IAttendeeContactImportService : IApplicationService
     Task<AttendeeImportResult> ApplyAsync(
         AttendeeImportPlan plan,
         IReadOnlySet<Guid> selectedAttendeeIds,
+        Guid actorUserId,
         CancellationToken ct = default);
 }

@@ -7,11 +7,6 @@
 
 <h1>Import Attendee Contacts</h1>
 
-@if (TempData["Banner"] is string banner)
-{
-    <div class="alert alert-info" role="alert">@banner</div>
-}
-
 <p class="text-muted">
     Found @Model.Plan.TotalUnmatched unmatched attendee@(Model.Plan.TotalUnmatched == 1 ? "" : "s")
     for the active event. Each one below has no <code>MatchedUserId</code> yet.

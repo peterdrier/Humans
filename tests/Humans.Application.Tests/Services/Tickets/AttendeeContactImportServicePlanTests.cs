@@ -45,8 +45,10 @@ public class AttendeeContactImportServicePlanTests
         var userId = Guid.NewGuid();
         harness.AddUnmatched(new TicketAttendee
         {
-            Id = Guid.NewGuid(), VendorTicketId = "tkt_v",
-            AttendeeEmail = "jane@x.com", AttendeeName = "Jane Doe",
+            Id = Guid.NewGuid(),
+            VendorTicketId = "tkt_v",
+            AttendeeEmail = "jane@x.com",
+            AttendeeName = "Jane Doe",
             Status = TicketAttendeeStatus.Valid,
         });
         harness.UserEmails.GetDistinctVerifiedUserIdsAsync("jane@x.com", Arg.Any<CancellationToken>())
@@ -70,8 +72,10 @@ public class AttendeeContactImportServicePlanTests
         var liveId = Guid.NewGuid();
         harness.AddUnmatched(new TicketAttendee
         {
-            Id = Guid.NewGuid(), VendorTicketId = "tkt_v",
-            AttendeeEmail = "jane@x.com", AttendeeName = "Jane",
+            Id = Guid.NewGuid(),
+            VendorTicketId = "tkt_v",
+            AttendeeEmail = "jane@x.com",
+            AttendeeName = "Jane",
             Status = TicketAttendeeStatus.Valid,
         });
         harness.UserEmails.GetDistinctVerifiedUserIdsAsync("jane@x.com", Arg.Any<CancellationToken>())
@@ -94,8 +98,10 @@ public class AttendeeContactImportServicePlanTests
         var unverifiedRowId = Guid.NewGuid();
         harness.AddUnmatched(new TicketAttendee
         {
-            Id = Guid.NewGuid(), VendorTicketId = "tkt_v",
-            AttendeeEmail = "victim@x.com", AttendeeName = "Victim",
+            Id = Guid.NewGuid(),
+            VendorTicketId = "tkt_v",
+            AttendeeEmail = "victim@x.com",
+            AttendeeName = "Victim",
             Status = TicketAttendeeStatus.Valid,
         });
         harness.UserEmails.GetDistinctVerifiedUserIdsAsync("victim@x.com", Arg.Any<CancellationToken>())
@@ -117,8 +123,10 @@ public class AttendeeContactImportServicePlanTests
         var harness = new PlanHarness();
         harness.AddUnmatched(new TicketAttendee
         {
-            Id = Guid.NewGuid(), VendorTicketId = "tkt_v",
-            AttendeeEmail = "fresh@x.com", AttendeeName = "Fresh Face",
+            Id = Guid.NewGuid(),
+            VendorTicketId = "tkt_v",
+            AttendeeEmail = "fresh@x.com",
+            AttendeeName = "Fresh Face",
             Status = TicketAttendeeStatus.Valid,
         });
         harness.UserEmails.GetDistinctVerifiedUserIdsAsync("fresh@x.com", Arg.Any<CancellationToken>())
@@ -141,7 +149,8 @@ public class AttendeeContactImportServicePlanTests
         var u2 = Guid.NewGuid();
         harness.AddUnmatched(new TicketAttendee
         {
-            Id = Guid.NewGuid(), VendorTicketId = "tkt_v",
+            Id = Guid.NewGuid(),
+            VendorTicketId = "tkt_v",
             AttendeeEmail = "shared@x.com",
             Status = TicketAttendeeStatus.Valid,
         });
