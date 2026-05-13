@@ -5,14 +5,14 @@ public sealed record ImportPlan(
     int TotalPulled)
 {
     public ImportPlanCounts Counts { get; } = new(
-        CreateNewHuman:            Decisions.Count(d => d.Outcome == SubscriberOutcome.CreateNewHuman),
-        ReplaceUnverifiedEmail:    Decisions.Count(d => d.Outcome == SubscriberOutcome.ReplaceUnverifiedEmail),
+        CreateNewHuman: Decisions.Count(d => d.Outcome == SubscriberOutcome.CreateNewHuman),
+        ReplaceUnverifiedEmail: Decisions.Count(d => d.Outcome == SubscriberOutcome.ReplaceUnverifiedEmail),
         VerifiedPrefsAlreadyMatch: Decisions.Count(d => d.Outcome == SubscriberOutcome.VerifiedPrefsAlreadyMatch),
-        VerifiedFlipToOptIn:       Decisions.Count(d => d.Outcome == SubscriberOutcome.VerifiedFlipToOptIn),
-        VerifiedFlipToOptOut:      Decisions.Count(d => d.Outcome == SubscriberOutcome.VerifiedFlipToOptOut),
-        VerifiedKeepHumansPref:    Decisions.Count(d => d.Outcome == SubscriberOutcome.VerifiedKeepHumansPref),
+        VerifiedFlipToOptIn: Decisions.Count(d => d.Outcome == SubscriberOutcome.VerifiedFlipToOptIn),
+        VerifiedFlipToOptOut: Decisions.Count(d => d.Outcome == SubscriberOutcome.VerifiedFlipToOptOut),
+        VerifiedKeepHumansPref: Decisions.Count(d => d.Outcome == SubscriberOutcome.VerifiedKeepHumansPref),
         AmbiguousMultipleVerified: Decisions.Count(d => d.Outcome == SubscriberOutcome.AmbiguousMultipleVerified),
-        UnconfirmedSkipped:        Decisions.Count(d => d.Outcome == SubscriberOutcome.UnconfirmedSkipped));
+        UnconfirmedSkipped: Decisions.Count(d => d.Outcome == SubscriberOutcome.UnconfirmedSkipped));
 }
 
 public sealed record ImportPlanCounts(

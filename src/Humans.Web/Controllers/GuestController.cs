@@ -320,7 +320,7 @@ public class GuestController : HumansControllerBase
 
     private async Task<CommunicationPreferencesViewModel> BuildCommunicationPreferencesViewModelAsync(Guid userId)
     {
-        var prefs = await _commPrefService.GetPreferencesAsync(userId);
+        var prefs = await _commPrefService.GetPreferencesReadOnlyAsync(userId);
         var prefsByCategory = prefs.ToDictionary(p => p.Category);
 
         var hasTicketOrder = await _ticketQueryService.HasTicketAttendeeMatchAsync(userId);

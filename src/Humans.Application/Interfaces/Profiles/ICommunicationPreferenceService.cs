@@ -44,6 +44,17 @@ public interface ICommunicationPreferenceService : IApplicationService
         Guid userId, MessageCategory category, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Returns the user's existing preference rows. Read-only — does NOT
+    /// lazy-create defaults for missing categories. Display callers (profile
+    /// preference panel, admin profile view, guest unsubscribe page) use this
+    /// so merely viewing a profile does not write rows attributed to
+    /// <c>UpdateSource = "Default"</c>. Callers that need a value for a
+    /// missing category should fall back to the category's natural default.
+    /// </summary>
+    Task<IReadOnlyList<CommunicationPreference>> GetPreferencesReadOnlyAsync(
+        Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Returns whether a user has opted out of a specific category.
     /// </summary>
     Task<bool> IsOptedOutAsync(
