@@ -2076,16 +2076,17 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
                 _logger.LogWarning(
                     "Skipping added-to-team email for user {UserId}: no notification-target email",
                     userId);
-                return;
             }
+            else
+            {
+                var resources = await TeamResourceService.GetTeamResourcesAsync(team.Id, cancellationToken);
 
-            var resources = await TeamResourceService.GetTeamResourcesAsync(team.Id, cancellationToken);
-
-            await EmailService.SendAddedToTeamAsync(
-                email, user.DisplayName, team.Name, team.Slug,
-                resources.Select(r => (r.Name, r.Url)),
-                user.PreferredLanguage,
-                cancellationToken);
+                await EmailService.SendAddedToTeamAsync(
+                    email, user.DisplayName, team.Name, team.Slug,
+                    resources.Select(r => (r.Name, r.Url)),
+                    user.PreferredLanguage,
+                    cancellationToken);
+            }
         }
         catch (Exception ex)
         {
