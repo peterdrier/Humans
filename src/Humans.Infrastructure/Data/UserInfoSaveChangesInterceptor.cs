@@ -25,6 +25,7 @@ namespace Humans.Infrastructure.Data;
 ///   <item><c>user_emails</c> — OAuth callback creating verified-email rows.</item>
 ///   <item><c>event_participations</c> — defensive coverage for any direct-repo write.</item>
 ///   <item>AspNet <c>user_logins</c> — OAuth callback creating login rows.</item>
+///   <item><c>communication_preferences</c> — opt-in/out toggles written directly via <c>ICommunicationPreferenceRepository</c>; rides on the User cache because the prefs collection is part of <c>UserInfo</c>.</item>
 /// </list>
 /// <para>
 /// Profile-section tables (<c>profiles</c>, <c>contact_fields</c>,
@@ -167,6 +168,9 @@ public sealed class UserInfoSaveChangesInterceptor : SaveChangesInterceptor
                     break;
                 case IdentityUserLogin<Guid> uil:
                     affected.Add(uil.UserId);
+                    break;
+                case CommunicationPreference cp:
+                    affected.Add(cp.UserId);
                     break;
             }
         }
