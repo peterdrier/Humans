@@ -12,9 +12,7 @@ description: Long-term direction. `IUserService` is the one-stop-shop for every 
 - New read callers in render/notification/validation paths → use `IUserService.GetUserInfoAsync` (sync-on-hit) rather than calling `IProfileService.GetFullProfileAsync` or stitching `IUserService.GetByIdAsync` + `IProfileService.GetProfileAsync` + `IUserEmailService.GetUserEmailsAsync`. The fields are all on `UserInfo`.
 - New write paths for any `UserInfo` field → add them to `IUserService` (subject to [`interface-method-additions-are-debt`](interface-method-additions-are-debt.md): audit existing methods first, ask before adding).
 - Existing callers of `IProfileService` / `IUserEmailService` / `ICommunicationPreferenceService` are NOT a refactor target on their own — drain opportunistically when touching that code for other reasons. No big-bang flag day.
-- Genuine exceptions to keep on `GetByIdAsync` (not `GetUserInfoAsync`):
-  - **Inside `UserService` / `CachingUserService` itself or warmup paths** — calling `GetUserInfoAsync` is circular.
-  - **ASP.NET Identity interop** — `UserManager.UpdateAsync(user)`, `SignInManager`, claims transformation, lockout APIs all want the tracked `User` entity.
+- The one genuine exception for external callers: **ASP.NET Identity interop** — `UserManager.UpdateAsync(user)`, `SignInManager`, claims transformation, lockout APIs all want the tracked `User` entity. Use `GetByIdAsync` (or `UserManager.FindByIdAsync`) when the next call is an Identity API. (UserService-internal writes naturally go through `_userRepository` etc.; that's normal section-internal repo usage, not an exception to this rule.)
 - Does NOT contradict [`users-profiles-one-section`](users-profiles-one-section.md) — that rule says don't bounce code between `Services.Users` and `Services.Profile` for boundary cleanup; this rule names which interface surface wins inside that one section.
 
 **Related:**
