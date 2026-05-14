@@ -334,12 +334,7 @@ public sealed class MailerLiteClient : IMailerLiteService
                 _ => TimeSpan.Zero,
             };
             if (delay > TimeSpan.Zero)
-            {
-                _logger.LogWarning(
-                    "MailerLite rate limit remaining: {Remaining}; sleeping {Delay}ms",
-                    remaining, (int)delay.TotalMilliseconds);
                 await Task.Delay(delay, ct);
-            }
         }
         if (!resp.IsSuccessStatusCode)
             _logger.LogWarning("MailerLite returned {StatusCode}: {Method} {Url}",
