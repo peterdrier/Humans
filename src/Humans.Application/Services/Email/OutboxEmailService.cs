@@ -472,17 +472,7 @@ public sealed class OutboxEmailService : IEmailService
     {
         var content = _renderer.RenderEventLifecycle(request);
         await EnqueueAsync(userEmail, request.UserName, content,
-            EventLifecycleTemplateName(request.NewStatus), cancellationToken,
+            request.TemplateName(), cancellationToken,
             triggerImmediate: true);
     }
-
-    private static string EventLifecycleTemplateName(EventStatus status) => status switch
-    {
-        EventStatus.Pending => "event_submitted",
-        EventStatus.Approved => "event_approved",
-        EventStatus.Rejected => "event_rejected",
-        EventStatus.ResubmitRequested => "event_resubmit_requested",
-        _ => throw new ArgumentOutOfRangeException(nameof(status),
-            $"EventLifecycleNotification does not support status {status}")
-    };
 }

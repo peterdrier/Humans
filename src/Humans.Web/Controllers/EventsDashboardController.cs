@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
+using static Humans.Web.Helpers.EventsLookupHelpers;
 
 namespace Humans.Web.Controllers;
 
@@ -95,7 +96,7 @@ public class EventsDashboardController : HumansControllerBase
         }).ToList();
 
         var campEvents = allEvents.Where(e => e.CampId.HasValue).ToList();
-        var campsById = await LoadCampsByIdAsync(gateOpeningDate?.Year);
+        var campsById = await LoadCampsByIdAsync(_camps, gateOpeningDate?.Year);
         model.TopCamps = campEvents
             .GroupBy(e => e.CampId!.Value)
             .Select(g =>
@@ -115,13 +116,6 @@ public class EventsDashboardController : HumansControllerBase
             .ToList();
 
         return View(model);
-    }
-
-    private async Task<Dictionary<Guid, CampInfo>> LoadCampsByIdAsync(int? year)
-    {
-        if (year is null) return [];
-        var camps = await _camps.GetCampsForYearAsync(year.Value);
-        return camps.ToDictionary(c => c.Id);
     }
 
     private static int ComputeDayOffset(Instant instant, LocalDate gateOpeningDate, DateTimeZone? tz)

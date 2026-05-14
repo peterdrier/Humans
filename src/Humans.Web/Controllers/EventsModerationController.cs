@@ -13,6 +13,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
+using static Humans.Web.Helpers.EventsLookupHelpers;
+using static Humans.Web.Helpers.EventsTimeHelpers;
 
 namespace Humans.Web.Controllers;
 
@@ -59,8 +61,8 @@ public class EventsModerationController : HumansControllerBase
         var counts = await _guide.GetEventStatusCountsAsync();
         var events = await _guide.GetEventsByStatusAsync(activeTab);
 
-        var campsById = await LoadCampsByIdAsync(eventSettings?.GateOpeningDate.Year);
-        var submitterInfoById = await LoadSubmittersAsync(events.Select(e => e.SubmitterUserId).Distinct());
+        var campsById = await LoadCampsByIdAsync(_camps, eventSettings?.GateOpeningDate.Year);
+        var submitterInfoById = await LoadSubmittersAsync(_users, events.Select(e => e.SubmitterUserId).Distinct());
 
         var model = new ModerationQueueViewModel
         {
@@ -180,7 +182,7 @@ public class EventsModerationController : HumansControllerBase
                 var eventSettings = guideSettings != null
                     ? await _guide.GetEventSettingsByIdAsync(guideSettings.EventSettingsId)
                     : null;
-                var campsById = await LoadCampsByIdAsync(eventSettings?.GateOpeningDate.Year);
+                var campsById = await LoadCampsByIdAsync(_camps, eventSettings?.GateOpeningDate.Year);
                 campSlug = campsById.GetValueOrDefault(guideEvent.CampId.Value)?.Slug;
             }
 
@@ -256,24 +258,5 @@ public class EventsModerationController : HumansControllerBase
         };
     }
 
-    private async Task<Dictionary<Guid, CampInfo>> LoadCampsByIdAsync(int? year)
-    {
-        if (year is null) return [];
-        var camps = await _camps.GetCampsForYearAsync(year.Value);
-        return camps.ToDictionary(c => c.Id);
-    }
 
-    private async Task<Dictionary<Guid, UserInfo>> LoadSubmittersAsync(IEnumerable<Guid> userIds)
-    {
-        var result = new Dictionary<Guid, UserInfo>();
-        foreach (var id in userIds)
-        {
-            var info = await _users.GetUserInfoAsync(id);
-            if (info != null) result[id] = info;
-        }
-        return result;
-    }
-
-    private static DateTime ToLocalDateTime(Instant instant, DateTimeZone? tz)
-        => tz == null ? instant.ToDateTimeUtc() : instant.InZone(tz).ToDateTimeUnspecified();
 }

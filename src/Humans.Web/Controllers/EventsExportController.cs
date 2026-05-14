@@ -10,6 +10,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
+using static Humans.Web.Helpers.EventsLookupHelpers;
+using static Humans.Web.Helpers.EventsTimeHelpers;
 
 namespace Humans.Web.Controllers;
 
@@ -44,8 +46,8 @@ public class EventsExportController : HumansControllerBase
         var eventSettings = settings != null
             ? await _guide.GetEventSettingsByIdAsync(settings.EventSettingsId)
             : null;
-        var tz = GetTz(eventSettings);
-        var campsById = await LoadCampsByIdAsync(eventSettings?.GateOpeningDate.Year);
+        var tz = GetTimeZone(eventSettings);
+        var campsById = await LoadCampsByIdAsync(_camps, eventSettings?.GateOpeningDate.Year);
 
         var sb = new StringBuilder();
         sb.Append('﻿');
@@ -81,7 +83,7 @@ public class EventsExportController : HumansControllerBase
                     e.IsRecurring ? "Yes" : "No",
                     e.PriorityRank.ToString(CultureInfo.InvariantCulture),
                     e.Status.ToString(),
-                    CsvEscape(ToLocal(e.SubmittedAt, tz).ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture))
+                    CsvEscape(ToLocalDateTime(e.SubmittedAt, tz).ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture))
                 ));
             }
         }
@@ -96,9 +98,9 @@ public class EventsExportController : HumansControllerBase
         var eventSettings = settings != null
             ? await _guide.GetEventSettingsByIdAsync(settings.EventSettingsId)
             : null;
-        var tz = GetTz(eventSettings);
+        var tz = GetTimeZone(eventSettings);
         var maxSlots = settings?.MaxPrintSlots;
-        var campsById = await LoadCampsByIdAsync(eventSettings?.GateOpeningDate.Year);
+        var campsById = await LoadCampsByIdAsync(_camps, eventSettings?.GateOpeningDate.Year);
 
         var allOccurrences = new List<PrintGuideEntry>();
         foreach (var e in events)
@@ -117,7 +119,7 @@ public class EventsExportController : HumansControllerBase
                     CategoryName = e.Category.Name,
                     CampOrVenueName = campName ?? venueName ?? "",
                     LocationNote = e.LocationNote,
-                    StartAt = ToLocal(occ, tz),
+                    StartAt = ToLocalDateTime(occ, tz),
                     DurationMinutes = e.DurationMinutes,
                     PriorityRank = e.PriorityRank
                 });
@@ -156,27 +158,12 @@ public class EventsExportController : HumansControllerBase
 
     // ─── Helpers ──────────────────────────────────────────────────
 
-    private async Task<Dictionary<Guid, CampInfo>> LoadCampsByIdAsync(int? year)
-    {
-        if (year is null) return [];
-        var camps = await _camps.GetCampsForYearAsync(year.Value);
-        return camps.ToDictionary(c => c.Id);
-    }
-
-    private static DateTimeZone? GetTz(EventSettings? eventSettings)
-        => eventSettings != null
-            ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId)
-            : null;
-
-    private static DateTime ToLocal(Instant instant, DateTimeZone? tz)
-        => tz == null ? instant.ToDateTimeUtc() : instant.InZone(tz).ToDateTimeUnspecified();
-
     private static List<(string Date, string Time)> GetOccurrences(Event e, DateTimeZone? tz)
     {
         var results = new List<(string, string)>();
         foreach (var occurrence in e.GetOccurrenceInstants())
         {
-            var local = ToLocal(occurrence, tz);
+            var local = ToLocalDateTime(occurrence, tz);
             results.Add((local.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), local.ToString("HH:mm", CultureInfo.InvariantCulture)));
         }
         return results;

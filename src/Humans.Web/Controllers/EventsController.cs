@@ -12,6 +12,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
+using static Humans.Web.Helpers.EventsLookupHelpers;
+using static Humans.Web.Helpers.EventsTimeHelpers;
 
 namespace Humans.Web.Controllers;
 
@@ -53,10 +55,7 @@ public class EventsController : HumansControllerBase
 
         var guideSettings = await _guide.GetGuideSettingsAsync();
         var eventSettings = await LoadEventSettingsAsync(guideSettings);
-        var now = _clock.GetCurrentInstant();
-        var isSubmissionOpen = guideSettings != null &&
-                               now >= guideSettings.SubmissionOpenAt &&
-                               now <= guideSettings.SubmissionCloseAt;
+        var isSubmissionOpen = IsSubmissionOpen(guideSettings);
 
         DateTimeZone? tz = eventSettings != null
             ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId)
@@ -309,7 +308,7 @@ public class EventsController : HumansControllerBase
 
         var gateOpeningDate = eventSettings?.GateOpeningDate;
         var favourites = await _guide.GetFavouritesWithEventsAsync(user.Id);
-        var campsById = await LoadCampsByIdAsync(gateOpeningDate?.Year);
+        var campsById = await LoadCampsByIdAsync(_camps, gateOpeningDate?.Year);
 
         var scheduleItems = favourites.Select(f =>
         {
@@ -400,9 +399,9 @@ public class EventsController : HumansControllerBase
         var favouriteEventIds = await _guide.GetFavouriteEventIdsAsync(user.Id);
         var events = await _guide.GetApprovedEventsAsync(null, venueId, categoryId, q, excludedSlugs);
 
-        var campsById = await LoadCampsByIdAsync(gateOpeningDate?.Year);
+        var campsById = await LoadCampsByIdAsync(_camps, gateOpeningDate?.Year);
         var individualSubmitterIds = events.Where(e => e.CampId == null).Select(e => e.SubmitterUserId).Distinct();
-        var submitterInfoById = await LoadSubmittersAsync(individualSubmitterIds);
+        var submitterInfoById = await LoadSubmittersAsync(_users, individualSubmitterIds);
 
         var items = new List<BrowseEventItem>();
         foreach (var e in events)
@@ -519,12 +518,8 @@ public class EventsController : HumansControllerBase
 
     // ─── Helpers ──────────────────────────────────────────────────
 
-    private bool IsSubmissionOpen(EventGuideSettings? settings)
-    {
-        if (settings == null) return false;
-        var now = _clock.GetCurrentInstant();
-        return now >= settings.SubmissionOpenAt && now <= settings.SubmissionCloseAt;
-    }
+    private bool IsSubmissionOpen(EventGuideSettings? settings) =>
+        settings?.IsSubmissionOpenAt(_clock.GetCurrentInstant()) ?? false;
 
     private async Task<IndividualEventFormViewModel> BuildFormAsync(EventGuideSettings guideSettings, EventSettings eventSettings)
     {
@@ -570,34 +565,5 @@ public class EventsController : HumansControllerBase
         return await _guide.GetEventSettingsByIdAsync(guideSettings.EventSettingsId);
     }
 
-    private async Task<Dictionary<Guid, CampInfo>> LoadCampsByIdAsync(int? year)
-    {
-        if (year is null) return [];
-        var camps = await _camps.GetCampsForYearAsync(year.Value);
-        return camps.ToDictionary(c => c.Id);
-    }
 
-    private async Task<Dictionary<Guid, UserInfo>> LoadSubmittersAsync(IEnumerable<Guid> userIds)
-    {
-        var result = new Dictionary<Guid, UserInfo>();
-        foreach (var id in userIds)
-        {
-            var info = await _users.GetUserInfoAsync(id);
-            if (info != null) result[id] = info;
-        }
-        return result;
-    }
-
-    private static DateTimeZone? GetTimeZone(EventSettings eventSettings)
-        => DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId);
-
-    private static DateTime ToLocalDateTime(Instant instant, DateTimeZone? tz)
-        => tz == null ? instant.ToDateTimeUtc() : instant.InZone(tz).ToDateTimeUnspecified();
-
-    private static Instant ToInstant(DateTime dateTime, DateTimeZone? tz)
-    {
-        if (tz == null)
-            return Instant.FromDateTimeUtc(DateTime.SpecifyKind(dateTime, DateTimeKind.Utc));
-        return LocalDateTime.FromDateTime(dateTime).InZoneLeniently(tz).ToInstant();
-    }
 }

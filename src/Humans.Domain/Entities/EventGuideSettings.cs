@@ -47,4 +47,10 @@ public class EventGuideSettings
     /// When this record was last updated.
     /// </summary>
     public Instant UpdatedAt { get; set; }
+
+    /// <summary>
+    /// Whether <paramref name="now"/> falls within the submission window.
+    /// </summary>
+    public bool IsSubmissionOpenAt(Instant now) =>
+        now >= SubmissionOpenAt && now <= SubmissionCloseAt;
 }

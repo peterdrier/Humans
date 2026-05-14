@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
+using static Humans.Web.Helpers.EventsTimeHelpers;
 
 namespace Humans.Web.Controllers;
 
@@ -293,12 +294,8 @@ public class BarrioEventsController : HumansCampControllerBase
 
     // ─── Helpers ──────────────────────────────────────────────────
 
-    private bool IsSubmissionOpen(EventGuideSettings? settings)
-    {
-        if (settings == null) return false;
-        var now = _clock.GetCurrentInstant();
-        return now >= settings.SubmissionOpenAt && now <= settings.SubmissionCloseAt;
-    }
+    private bool IsSubmissionOpen(EventGuideSettings? settings) =>
+        settings?.IsSubmissionOpenAt(_clock.GetCurrentInstant()) ?? false;
 
     private async Task<CampEventFormViewModel> BuildFormAsync(string slug, CampLookup camp, EventSettings eventSettings)
     {
@@ -350,18 +347,4 @@ public class BarrioEventsController : HumansCampControllerBase
         return currentSeason?.Name ?? camp.Slug;
     }
 
-    private static DateTimeZone? GetTimeZone(EventSettings? eventSettings)
-        => eventSettings != null
-            ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId)
-            : null;
-
-    private static DateTime ToLocalDateTime(Instant instant, DateTimeZone? tz)
-        => tz == null ? instant.ToDateTimeUtc() : instant.InZone(tz).ToDateTimeUnspecified();
-
-    private static Instant ToInstant(DateTime dateTime, DateTimeZone? tz)
-    {
-        if (tz == null)
-            return Instant.FromDateTimeUtc(DateTime.SpecifyKind(dateTime, DateTimeKind.Utc));
-        return LocalDateTime.FromDateTime(dateTime).InZoneLeniently(tz).ToInstant();
-    }
 }

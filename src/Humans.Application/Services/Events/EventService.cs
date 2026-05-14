@@ -29,9 +29,7 @@ public sealed class EventService : IEventService, IUserDataContributor
     public async Task<bool> IsSubmissionOpenAsync(CancellationToken ct = default)
     {
         var settings = await _repo.GetGuideSettingsAsync(ct);
-        if (settings == null) return false;
-        var now = _clock.GetCurrentInstant();
-        return now >= settings.SubmissionOpenAt && now <= settings.SubmissionCloseAt;
+        return settings?.IsSubmissionOpenAt(_clock.GetCurrentInstant()) ?? false;
     }
 
     public Task<IReadOnlyList<EventSettings>> GetEventSettingsOptionsAsync(CancellationToken ct = default)

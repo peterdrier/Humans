@@ -298,17 +298,8 @@ public class SmtpEmailService : IEmailService
     {
         var content = _renderer.RenderEventLifecycle(request);
         await SendEmailAsync(userEmail, content.Subject, content.HtmlBody, cancellationToken);
-        _metrics.RecordEmailSent(EventLifecycleMetric(request.NewStatus));
+        _metrics.RecordEmailSent(request.TemplateName());
     }
-
-    private static string EventLifecycleMetric(EventStatus status) => status switch
-    {
-        EventStatus.Pending => "event_submitted",
-        EventStatus.Approved => "event_approved",
-        EventStatus.Rejected => "event_rejected",
-        EventStatus.ResubmitRequested => "event_resubmit_requested",
-        _ => "event_unknown"
-    };
 
     /// <inheritdoc />
     public async Task SendIssueCommentAsync(

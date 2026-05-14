@@ -364,4 +364,15 @@ public record EventLifecycleNotification(
     string EventTitle,
     string? Reason = null,
     string? ActionUrl = null,
-    string? Culture = null);
+    string? Culture = null)
+{
+    public string TemplateName() => NewStatus switch
+    {
+        EventStatus.Pending => "event_submitted",
+        EventStatus.Approved => "event_approved",
+        EventStatus.Rejected => "event_rejected",
+        EventStatus.ResubmitRequested => "event_resubmit_requested",
+        _ => throw new InvalidOperationException(
+            $"EventLifecycleNotification does not support status {NewStatus}")
+    };
+}

@@ -44,8 +44,8 @@
 
             <div class="mb-3">
                 <label asp-for="Description" class="form-label"></label>
-                <textarea asp-for="Description" class="form-control" rows="3" maxlength="450" id="descriptionInput"></textarea>
-                <div class="form-text"><span id="descriptionCounter">@(450 - (Model.Description?.Length ?? 0))</span> characters remaining</div>
+                <textarea asp-for="Description" class="form-control" rows="3" maxlength="300" id="descriptionInput"></textarea>
+                <div class="form-text"><span id="descriptionCounter">@(300 - (Model.Description?.Length ?? 0))</span> characters remaining</div>
                 <span asp-validation-for="Description" class="text-danger"></span>
             </div>
 
@@ -166,7 +166,7 @@
             }
             if (descInput && descCounter) {
                 descInput.addEventListener('input', function () {
-                    descCounter.textContent = 450 - descInput.value.length;
+                    descCounter.textContent = 300 - descInput.value.length;
                 });
             }
 

@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
+using static Humans.Web.Helpers.EventsTimeHelpers;
 
 namespace Humans.Web.Controllers;
 
@@ -377,6 +378,4 @@ public class EventsAdminController : HumansControllerBase
         return options.Select(e => new EventSettingsOptionViewModel { Id = e.Id, EventName = e.EventName }).ToList();
     }
 
-    private static DateTime ToLocalDateTime(Instant instant, DateTimeZone? tz)
-        => tz == null ? instant.ToDateTimeUtc() : instant.InZone(tz).ToDateTimeUnspecified();
 }
