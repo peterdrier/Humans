@@ -15,7 +15,7 @@ namespace Humans.Web.Controllers;
 [Authorize]
 [ApiController]
 [Route("api/profiles")]
-public class ProfileApiController : HumansControllerBase
+public class ProfileApiController : ApiControllerBase
 {
     private const int MaxResults = 10;
 
@@ -53,6 +53,14 @@ public class ProfileApiController : HumansControllerBase
             ? PersonSearchFields.Name
             : PersonSearchFields.PublicAll;
 
+        // [Authorize] handles the no-cookie case at the framework layer;
+        // resolve here to cover the deleted-user-but-session-still-valid race
+        // — fail-closed with 401 rather than soft-fail into empty details.
+        var (authError, viewer) = await ResolveCurrentUserOrUnauthorizedAsync();
+        if (authError is not null)
+            return authError;
+        var viewerUserId = viewer.Id;
+
         var results = await _profileService.SearchProfilesAsync(q, fields, MaxResults, ct);
         var userIds = results.Select(r => r.UserId).ToList();
         var pictureUrls = await ProfilePictureUrlHelper.BuildEffectiveUrlsAsync(
@@ -60,9 +68,6 @@ public class ProfileApiController : HumansControllerBase
             Url,
             userIds,
             ct);
-
-        var viewer = await GetCurrentUserAsync();
-        var viewerUserId = viewer?.Id;
 
         var response = new List<HumanLookupSearchResult>(results.Count);
         foreach (var result in results.OrderBy(r => r.BurnerName, StringComparer.OrdinalIgnoreCase))
@@ -95,6 +100,11 @@ public class ProfileApiController : HumansControllerBase
     [HttpGet("by-userid/{userId:guid}")]
     public async Task<IActionResult> GetByUserId(Guid userId, CancellationToken ct = default)
     {
+        var (authError, viewer) = await ResolveCurrentUserOrUnauthorizedAsync();
+        if (authError is not null)
+            return authError;
+        var viewerUserId = viewer.Id;
+
         var fullProfile = await _profileService.GetFullProfileAsync(userId, ct);
         if (fullProfile is null || fullProfile.IsRejected)
             return NotFound();
@@ -104,9 +114,6 @@ public class ProfileApiController : HumansControllerBase
             Url,
             new[] { userId },
             ct);
-
-        var viewer = await GetCurrentUserAsync();
-        var viewerUserId = viewer?.Id;
 
         var detail = await GetSharedDetailAsync(
             userId,
@@ -138,15 +145,12 @@ public class ProfileApiController : HumansControllerBase
     private async Task<string?> GetSharedDetailAsync(
         Guid userId,
         Guid profileId,
-        Guid? viewerUserId,
+        Guid viewerUserId,
         CancellationToken ct)
     {
-        if (viewerUserId is null)
-            return null;
-
         var accessLevel = await _contactFieldService.GetViewerAccessLevelAsync(
             userId,
-            viewerUserId.Value,
+            viewerUserId,
             ct);
         var visibleEmails = await _userEmailService.GetVisibleEmailsAsync(userId, accessLevel, ct);
         var visibleEmail = visibleEmails
@@ -160,7 +164,7 @@ public class ProfileApiController : HumansControllerBase
 
         var visibleContactFields = await _contactFieldService.GetVisibleContactFieldsAsync(
             profileId,
-            viewerUserId.Value,
+            viewerUserId,
             ct);
 
         return visibleContactFields

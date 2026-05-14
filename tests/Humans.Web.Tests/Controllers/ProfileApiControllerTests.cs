@@ -13,7 +13,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
-using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
@@ -98,7 +97,6 @@ public class ProfileApiControllerTests
                 ActionName = "Test",
             },
         };
-        ctrl.TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>());
         ctrl.Url = Substitute.For<IUrlHelper>();
         return ctrl;
     }
@@ -148,27 +146,22 @@ public class ProfileApiControllerTests
     // ==========================================================================
 
     [HumansFact]
-    public async Task Search_returns_null_detail_when_viewer_is_anonymous()
+    public async Task Search_returns_401_when_current_user_resolves_to_null()
     {
-        var userId = Guid.NewGuid();
-        var profileId = Guid.NewGuid();
-        _profileService.SearchProfilesAsync(Arg.Any<string>(),
-                Arg.Any<PersonSearchFields>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(new[] { MakeSearchResult(userId, profileId, "David") });
-
+        // [Authorize] handles no-cookie at the framework layer. This covers the
+        // session-valid-but-user-row-gone race: the action must fail closed
+        // (401) instead of returning rows with empty details.
         var sut = BuildSut(currentUser: null);
 
         var result = await sut.Search(q: "David");
 
-        var rows = result.Should().BeOfType<OkObjectResult>().Subject.Value
-            .Should().BeAssignableTo<IEnumerable<HumanLookupSearchResult>>().Subject.ToList();
-        rows.Should().ContainSingle().Which.Detail.Should().BeNull();
+        result.Should().BeOfType<UnauthorizedResult>();
 
-        // No DB / service calls were made for visibility resolution.
+        await _profileService.DidNotReceive().SearchProfilesAsync(
+            Arg.Any<string>(), Arg.Any<PersonSearchFields>(),
+            Arg.Any<int>(), Arg.Any<CancellationToken>());
         await _contactFieldService.DidNotReceive().GetViewerAccessLevelAsync(
             Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
-        await _userEmailService.DidNotReceive().GetVisibleEmailsAsync(
-            Arg.Any<Guid>(), Arg.Any<ContactFieldVisibility>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
