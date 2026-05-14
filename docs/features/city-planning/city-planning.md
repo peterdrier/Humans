@@ -110,14 +110,26 @@ CityPlanningSettings
 ```
 Container
 ├── Id: Guid
-├── Year: int
-├── CampSeasonId: Guid? (FK → CampSeason — null means org-level container)
+├── CampId: Guid (FK → camps.Id; SystemCampIds.Organization for org-level)
 ├── Name: string
 ├── Description: string?
 ├── ImageStoragePath: string?
 ├── ImageContentType: string?
 ├── ImageFileName: string?
+├── CreatedAt: Instant
+└── UpdatedAt: Instant
+```
+
+### ContainerPlacement
+```
+ContainerPlacement
+├── ContainerId: Guid (composite PK part 1; bare FK → containers.Id)
+├── Year: int (composite PK part 2)
 ├── LocationGeoJson: string? (GeoJSON Feature, Polygon geometry — null when unplaced)
+├── PlacementNotes: string?
+├── PlacementImageStoragePath: string?
+├── PlacementImageContentType: string?
+├── PlacementImageFileName: string?
 ├── CreatedAt: Instant
 └── UpdatedAt: Instant
 ```
@@ -217,8 +229,6 @@ Map admin = `RoleChecks.IsCampAdmin(User)` **or** member of the City Planning te
 | `POST /CityPlanning/BarrioMap/Admin/Containers/Barrios/{campId}/Create` | Create barrio container |
 | `POST /CityPlanning/BarrioMap/Admin/Containers/{id}/Edit` | Edit container |
 | `POST /CityPlanning/BarrioMap/Admin/Containers/{id}/Delete` | Delete container |
-| `POST /CityPlanning/BarrioMap/Admin/OpenContainerPlacement` | Open container placement phase |
-| `POST /CityPlanning/BarrioMap/Admin/CloseContainerPlacement` | Close container placement phase |
 | `GET /CityPlanning/ContainerMap/{year}` | Container placement map |
 | `GET /Camp/{slug}/Containers` | Barrio lead container list |
 | `POST /Camp/{slug}/Containers/Create` | Create container (barrio lead) |
