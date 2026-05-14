@@ -153,6 +153,59 @@ public class CachingShiftViewServiceTests
         await _inner.Received(2).GetRotaAsync(rotaId, Arg.Any<CancellationToken>());
     }
 
+    // ── InvalidateRota cascade to affected users ─────────────────────────────
+
+    [HumansFact]
+    public async Task InvalidateRota_EvictsCachedUserViewsReferencingTheRota()
+    {
+        var rotaId = Guid.NewGuid();
+        var userOnRota = Guid.NewGuid();
+        var unrelatedUser = Guid.NewGuid();
+
+        var shiftOnRota = new Shift { Id = Guid.NewGuid(), RotaId = rotaId };
+        var unrelatedShift = new Shift { Id = Guid.NewGuid(), RotaId = Guid.NewGuid() };
+
+        var rotaView = new ShiftRotaView(
+            rotaId, Rota: null,
+            Shifts: new[] { shiftOnRota },
+            Tags: Array.Empty<ShiftTag>(),
+            Signups: Array.Empty<ShiftSignup>());
+
+        var userOnRotaView = new ShiftUserView(
+            userOnRota, null, null, null,
+            Array.Empty<VolunteerTagPreference>(),
+            new[] { new ShiftSignup { Id = Guid.NewGuid(), UserId = userOnRota, ShiftId = shiftOnRota.Id, Shift = shiftOnRota } });
+
+        var unrelatedUserView = new ShiftUserView(
+            unrelatedUser, null, null, null,
+            Array.Empty<VolunteerTagPreference>(),
+            new[] { new ShiftSignup { Id = Guid.NewGuid(), UserId = unrelatedUser, ShiftId = unrelatedShift.Id, Shift = unrelatedShift } });
+
+        _inner.GetRotaAsync(rotaId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<ShiftRotaView>(rotaView));
+        _inner.GetUserAsync(userOnRota, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<ShiftUserView>(userOnRotaView));
+        _inner.GetUserAsync(unrelatedUser, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<ShiftUserView>(unrelatedUserView));
+
+        var sut = CreateSut();
+        await sut.GetRotaAsync(rotaId);
+        await sut.GetUserAsync(userOnRota);
+        await sut.GetUserAsync(unrelatedUser);
+
+        sut.InvalidateRota(rotaId);
+
+        // Rota cache and the user with a signup on it reload; unrelated user
+        // stays cached.
+        await sut.GetRotaAsync(rotaId);
+        await sut.GetUserAsync(userOnRota);
+        await sut.GetUserAsync(unrelatedUser);
+
+        await _inner.Received(2).GetRotaAsync(rotaId, Arg.Any<CancellationToken>());
+        await _inner.Received(2).GetUserAsync(userOnRota, Arg.Any<CancellationToken>());
+        await _inner.Received(1).GetUserAsync(unrelatedUser, Arg.Any<CancellationToken>());
+    }
+
     // ── InvalidateShift fan-out from the live snapshot ───────────────────────
 
     [HumansFact]

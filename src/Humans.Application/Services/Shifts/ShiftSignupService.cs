@@ -164,6 +164,7 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
 
         await _repo.SaveChangesAsync();
         _viewInvalidator.InvalidateUser(userId);
+        _viewInvalidator.InvalidateShift(shiftId);
 
         var shiftDate = FormatShiftDate(es.GateOpeningDate.PlusDays(shift.DayOffset));
         var statusSuffix = autoConfirm ? "confirmed" : "pending";
@@ -224,6 +225,7 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
 
         await _repo.SaveChangesAsync();
         _viewInvalidator.InvalidateUser(signup.UserId);
+        _viewInvalidator.InvalidateShift(signup.ShiftId);
 
         await _auditLogService.LogAsync(
             AuditAction.ShiftSignupConfirmed, nameof(ShiftSignup), signup.Id,
@@ -246,6 +248,7 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
 
         await _repo.SaveChangesAsync();
         _viewInvalidator.InvalidateUser(signup.UserId);
+        _viewInvalidator.InvalidateShift(signup.ShiftId);
 
         await _auditLogService.LogAsync(
             AuditAction.ShiftSignupRefused, nameof(ShiftSignup), signup.Id,
@@ -287,6 +290,7 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
 
         await _repo.SaveChangesAsync();
         _viewInvalidator.InvalidateUser(signup.UserId);
+        _viewInvalidator.InvalidateShift(signup.ShiftId);
 
         await _auditLogService.LogAsync(
             AuditAction.ShiftSignupBailed, nameof(ShiftSignup), signup.Id,
@@ -344,6 +348,7 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
 
         await _repo.SaveChangesAsync();
         _viewInvalidator.InvalidateUser(userId);
+        _viewInvalidator.InvalidateShift(shiftId);
 
         await _auditLogService.LogAsync(
             AuditAction.ShiftSignupVoluntold, nameof(ShiftSignup), signup.Id,
@@ -470,6 +475,8 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
 
         await _repo.SaveChangesAsync();
         _viewInvalidator.InvalidateUser(userId);
+        // Range affects every shift in the rota; cascade via the rota.
+        _viewInvalidator.InvalidateRota(rotaId);
 
         foreach (var (auditedSignup, dayOffset) in voluntoldForAudit)
         {
@@ -519,6 +526,7 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
 
         await _repo.SaveChangesAsync();
         _viewInvalidator.InvalidateUser(signup.UserId);
+        _viewInvalidator.InvalidateShift(signup.ShiftId);
 
         await _auditLogService.LogAsync(
             AuditAction.ShiftSignupNoShow, nameof(ShiftSignup), signup.Id,
@@ -541,6 +549,7 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
 
         await _repo.SaveChangesAsync();
         _viewInvalidator.InvalidateUser(signup.UserId);
+        _viewInvalidator.InvalidateShift(signup.ShiftId);
 
         await _auditLogService.LogAsync(
             AuditAction.ShiftSignupCancelled, nameof(ShiftSignup), signup.Id,
@@ -741,6 +750,7 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
 
         await _repo.SaveChangesAsync();
         _viewInvalidator.InvalidateUser(userId);
+        _viewInvalidator.InvalidateRota(rotaId);
 
         var statusSuffix = autoConfirm ? "confirmed" : "pending";
         foreach (var (auditedSignup, dayOffset) in rangeSignupsForAudit)
@@ -824,6 +834,7 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
             {
                 await _repo.SaveChangesAsync();
                 _viewInvalidator.InvalidateUser(skippedAtCapacity[0].UserId);
+                _viewInvalidator.InvalidateRota(skippedAtCapacity[0].Shift.RotaId);
 
                 foreach (var skipped in skippedAtCapacity)
                 {
@@ -839,6 +850,7 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
 
         await _repo.SaveChangesAsync();
         _viewInvalidator.InvalidateUser(approved[0].UserId);
+        _viewInvalidator.InvalidateRota(approved[0].Shift.RotaId);
 
         foreach (var approvedSignup in approved)
         {
@@ -878,6 +890,7 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
 
         await _repo.SaveChangesAsync();
         _viewInvalidator.InvalidateUser(signups[0].UserId);
+        _viewInvalidator.InvalidateRota(signups[0].Shift.RotaId);
 
         foreach (var signup in signups)
         {
@@ -921,6 +934,7 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
 
         await _repo.SaveChangesAsync();
         _viewInvalidator.InvalidateUser(firstSignup.UserId);
+        _viewInvalidator.InvalidateRota(firstSignup.Shift.RotaId);
 
         foreach (var signup in signups)
         {
@@ -1177,6 +1191,9 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
     {
         var cancelled = await _repo.CancelActiveSignupsForUserAsync(userId, reason, ct);
         _viewInvalidator.InvalidateUser(userId);
+        // Each touched shift's owning rota cache also goes stale.
+        foreach (var (_, shiftId) in cancelled)
+            _viewInvalidator.InvalidateShift(shiftId);
         return cancelled;
     }
 
@@ -1186,8 +1203,17 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
     {
         await _adminAuthorization.RequireCurrentUserIsAdminAsync(ct);
         var deleted = await _repo.DeleteAllForUsersAsync(userIds, ct);
-        foreach (var userId in userIds)
-            _viewInvalidator.InvalidateUser(userId);
+        // We don't have the affected shift ids back from the repo; cached
+        // ShiftRotaView.Signups lists for any rota the deleted users had
+        // signups on go stale. Cheap at ~500-user scale to drop everything
+        // and let lazy rebuild handle it.
+        if (deleted > 0)
+            _viewInvalidator.InvalidateAll();
+        else
+        {
+            foreach (var userId in userIds)
+                _viewInvalidator.InvalidateUser(userId);
+        }
         return deleted;
     }
 
@@ -1253,6 +1279,8 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
 
         await _repo.SaveChangesAsync(ct);
         _viewInvalidator.InvalidateUser(userId);
+        foreach (var signup in promoted)
+            _viewInvalidator.InvalidateShift(signup.ShiftId);
 
         foreach (var signup in promoted)
         {
@@ -1287,6 +1315,11 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
 
         _viewInvalidator.InvalidateUser(sourceUserId);
         _viewInvalidator.InvalidateUser(targetUserId);
+        // Account-merge fold re-FKs signups across an unknown set of shifts;
+        // cached ShiftRotaView.Signups lists may reference either user. Cheap
+        // at ~500-user scale to drop everything.
+        if (movedCount > 0)
+            _viewInvalidator.InvalidateAll();
 
         if (movedCount > 0)
         {

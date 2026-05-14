@@ -192,6 +192,7 @@ public sealed class ShiftManagementRepository : IShiftManagementRepository
             .Include(r => r.Shifts)
                 .ThenInclude(s => s.ShiftSignups)
             .Include(r => r.Tags)
+            .Include(r => r.EventSettings)
             .FirstOrDefaultAsync(r => r.Id == rotaId, ct);
     }
 

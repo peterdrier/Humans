@@ -26,6 +26,7 @@ public sealed class VolunteerTrackingRepository : IVolunteerTrackingRepository
     public Task<VolunteerBuildStatus?> GetAsync(
         Guid userId, Guid eventSettingsId, CancellationToken ct = default) =>
         _db.VolunteerBuildStatuses
+            .AsNoTracking()
             .FirstOrDefaultAsync(
                 x => x.UserId == userId && x.EventSettingsId == eventSettingsId,
                 ct);

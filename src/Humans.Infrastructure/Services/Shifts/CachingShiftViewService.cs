@@ -124,6 +124,17 @@ public sealed class CachingShiftViewService : IShiftView, IShiftViewInvalidator
     public void InvalidateRota(Guid rotaId)
     {
         _byRotaId.TryRemove(rotaId, out _);
+
+        // ShiftUserView.Signups carries Shift.Rota nav data (Name, TeamId,
+        // Period, …) — a rota metadata change (rename / team-move / period
+        // flip) makes those user entries stale even if the signup rows are
+        // unchanged. Walk the snapshot and evict every user with a signup on
+        // a shift owned by this rota.
+        foreach (var kvp in _byUserId.ToArray())
+        {
+            if (kvp.Value.Signups.Any(s => s.Shift?.RotaId == rotaId))
+                _byUserId.TryRemove(kvp.Key, out _);
+        }
     }
 
     public void InvalidateShift(Guid shiftId)
