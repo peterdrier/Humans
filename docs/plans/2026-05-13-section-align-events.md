@@ -2,9 +2,84 @@
 
 **Run started:** 2026-05-13 | **Mode:** PR | **Worktree:** `.worktrees/section-align-events/`
 **Branch:** `feat/event-guide-code-review` (off `main` @ 89e658e8)
-**Phase:** 0 (inventory only — Phase 1+ pending user greenlight)
+**Phase:** 0 (inventory + decisions locked 2026-05-14)
 
 **Canonical section name proposal:** **`Events`**
+
+---
+
+## Stage 0 — Locked decisions (2026-05-14)
+
+1. **Naming scope:** full rename — C# types, namespace, folders, role, ViewModels, feature flag, CORS policy, DB tables.
+2. **Settings-table collision:** new section uses **`event_guide_settings`** (Shifts' `event_settings` is off-limits per the no-touch-other-sections rule).
+3. **Entity name:** **`Event`** (singular). Matches the Camps / Teams convention (`Camp`, `Team`, `Campaign`). `CalendarEvent` lives in a different section with no overlapping usage, so the name is safe.
+4. **`IEmailService` scope on this PR:** trim the 8 new methods to 2 (1 `Send*` + 1 `Render*` covering all four lifecycle transitions via parameters); defer the full app-wide `IEmailService` → generic `SendAsync(EmailContent)` refactor to [#712](https://github.com/nobodies-collective/Humans/issues/712).
+5. **Hitchhikers:** `ShiftSignupService.cs` (CultureInfo fix) and `TicketTransferRepository.cs` (transaction handling) stay in this PR — minor, low-risk, not worth splitting.
+6. **Supplier API audit:** complete — see next section.
+
+### Naming convention (locked)
+
+Follows `Camps`/`Camp`/`camp_*` and `Teams`/`Team`/`team_*`:
+
+| Layer | Value |
+|-------|-------|
+| Section doc / folder / namespace | `Events` (plural) |
+| Domain entity | `Event` (singular) |
+| DbSet property | `Events` (plural) |
+| Master DB table | `events` (plural) |
+| Child DB table prefix | `event_*` (singular) |
+
+### Revised DB mapping (locked — singular `event_*` prefix, NOT `events_`)
+
+| Current | Proposed | Note |
+|---------|----------|------|
+| `event_categories` | `event_categories` | unchanged — already follows convention |
+| `guide_events` | `events` | master table, plural |
+| `guide_settings` | `event_guide_settings` | dodges Shifts' `event_settings` (off-limits) |
+| `guide_shared_venues` | `event_venues` | child, singular prefix; "shared" is impl detail |
+| `moderation_actions` | `event_moderation_actions` | child, singular prefix |
+| `user_event_favourites` | `event_favourites` | drop `user_` — convention is section prefix only (precedent: `event_participations` doesn't say `user_event_participations`) |
+| `user_guide_preferences` | `event_preferences` | same |
+
+### Entity rename map (locked)
+
+| Current | Proposed |
+|---------|----------|
+| `GuideEvent` | `Event` |
+| `GuideSettings` | `EventGuideSettings` (matches table) |
+| `EventCategory` | `EventCategory` (unchanged) |
+| `GuideSharedVenue` | `EventVenue` |
+| `ModerationAction` | `EventModerationAction` |
+| `UserEventFavourite` | `EventFavourite` |
+| `UserGuidePreference` | `EventPreference` |
+| `IEventGuideService` / `EventGuideService` | `IEventService` / `EventService` |
+| `IEventGuideRepository` / `EventGuideRepository` | `IEventRepository` / `EventRepository` |
+| `GuideEventStatus` | `EventStatus` |
+| `ModerationActionType` | `EventModerationActionType` |
+| `GuideModerator` (role) | `EventsAdmin` |
+| `GuideModeratorOrAdmin` | `EventsAdminOrAdmin` |
+| `EventGuideFeatureFilter` | `EventsFeatureFilter` |
+| `GuideApi` (CORS policy) | `EventsApi` |
+| `Features:EventGuide` (config) | `Features:Events` |
+
+---
+
+## Stage 0 — Supplier API audit results
+
+For each cross-section read we currently do via `.Include` or direct DbSet access, this verifies whether the supplier section exposes a public API we can switch to in Stage 3.
+
+| Outbound access | Supplier | Public API exists? | Gap → action |
+|-----------------|----------|---------------------|---------------|
+| `.Include(SubmitterUser).ThenInclude(UserEmails)` (display name + email) | Users | ✅ **`IUserService.GetUserInfoAsync(Guid userId, CT)`** returns `UserInfo` with `DisplayName`, `PrimaryEmail`, profile, all 8 contributing tables joined. Cached read-model from PR #521. | **No gap.** Stage 3 switches to this call. |
+| `.Include(Camp).ThenInclude(Seasons)` (camp + season context for event listings) | Camps | 🟡 **Probably sufficient** — `ICampService.GetCampsForYearAsync(int year, CT)` returns `CampInfo[]`; `BuildCampDetailDataBySlugAsync` returns season-laden detail. Need to verify the shape matches what the event-listing views actually need before Stage 3. | **Verify in Stage 3.** If gap, follow-up `/section-align` on Camps. |
+| `_db.EventSettings.…` (gate opening date, timezone, event name) + `.Include(g => g.EventSettings)` | Shifts/Calendar | ❌ **No supplier service.** `EventSettings` is currently only read via `IShiftSignupRepository` (Shifts' own repo) and the new `IEventGuideRepository.GetActiveEventSettingsAsync` (cross-section violation). No section-level service exposes EventSettings reads. | **CONFIRMED GAP.** Follow-up `/section-align` on Shifts/Calendar required: add `IEventSettingsService.GetActiveAsync()` / `GetByIdAsync(Guid)`. Open as a GitHub issue. Stage 3 documents the gap and leaves Events' cross-section read in place until the supplier ships. |
+
+### Follow-up `/section-align` issues to open before Stage 1
+
+- **Shifts/Calendar** — expose `IEventSettingsService` so Events can drop its `_db.EventSettings` reads. Concrete need: `GetActiveAsync(CT)`, `GetByIdAsync(Guid id, CT)`. Label `section:shifts`, `refactoring`, `pace:1`.
+- **Camps** (conditional) — if Stage 3 finds `GetCampsForYearAsync` insufficient for the event-listing camp+season projection, open a Camps follow-up. Defer creation until confirmed.
+
+---
 
 Justification: user said it. Already adopted at the URL layer (`/Events/*`, `/api/events/*`, `/Barrios/{slug}/Events/*`). Section doc already named `Events.md`. Everything else in the section needs to follow.
 
