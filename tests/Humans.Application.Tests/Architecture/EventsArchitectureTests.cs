@@ -16,10 +16,10 @@ namespace Humans.Application.Tests.Architecture;
 /// Guide section. The section is not public yet, so URL shape is intentionally
 /// pinned here while the route rename is still fresh.
 /// </summary>
-public class EventGuideArchitectureTests
+public class EventsArchitectureTests
 {
     [HumansFact]
-    public void EventGuideService_LivesInHumansApplicationServicesEventGuideNamespace()
+    public void EventService_LivesInHumansApplicationServicesEventsNamespace()
     {
         typeof(EventService).Namespace
             .Should().Be("Humans.Application.Services.Events",
@@ -27,7 +27,7 @@ public class EventGuideArchitectureTests
     }
 
     [HumansFact]
-    public void EventGuideService_HasNoDbContextConstructorParameter()
+    public void EventService_HasNoDbContextConstructorParameter()
     {
         var ctor = typeof(EventService).GetConstructors().Single();
 
@@ -38,7 +38,7 @@ public class EventGuideArchitectureTests
     }
 
     [HumansFact]
-    public void EventGuideService_TakesRepositoryInterface()
+    public void EventService_TakesRepositoryInterface()
     {
         var ctor = typeof(EventService).GetConstructors().Single();
         var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
@@ -47,14 +47,14 @@ public class EventGuideArchitectureTests
     }
 
     [HumansFact]
-    public void IEventGuideService_LivesInApplicationInterfacesEventGuideNamespace()
+    public void IEventService_LivesInApplicationInterfacesEventsNamespace()
     {
         typeof(IEventService).Namespace
             .Should().Be("Humans.Application.Interfaces.Events");
     }
 
     [HumansFact]
-    public void IEventGuideRepository_LivesInApplicationInterfacesRepositoriesNamespace()
+    public void IEventRepository_LivesInApplicationInterfacesRepositoriesNamespace()
     {
         typeof(IEventRepository).Namespace
             .Should().Be("Humans.Application.Interfaces.Repositories",
@@ -62,7 +62,7 @@ public class EventGuideArchitectureTests
     }
 
     [HumansFact]
-    public void EventGuideRepository_IsSealedAndImplementsRepositoryInterface()
+    public void EventRepository_IsSealedAndImplementsRepositoryInterface()
     {
         typeof(EventRepository).IsSealed.Should().BeTrue(
             because: "repository implementations are sealed; new behavior belongs on the interface");
@@ -72,7 +72,7 @@ public class EventGuideArchitectureTests
     }
 
     [HumansFact]
-    public void EventGuideRoutes_UseEventsAndBarriosSlugs()
+    public void EventsRoutes_UseEventsAndBarriosSlugs()
     {
         RouteFor<EventsController>().Should().Be("Events");
         RouteFor<EventsDashboardController>().Should().Be("Events/Dashboard");
@@ -83,7 +83,7 @@ public class EventGuideArchitectureTests
     }
 
     [HumansFact]
-    public void EventGuideRoutes_DoNotExposeOldEventGuideOrCampsSlugs()
+    public void EventsRoutes_DoNotExposeOldEventGuideOrCampsSlugs()
     {
         var routeTemplates = new[]
         {

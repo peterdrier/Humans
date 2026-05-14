@@ -10,13 +10,13 @@ using Xunit;
 
 namespace Humans.Application.Tests.Repositories;
 
-public sealed class EventGuideRepositoryTests : IDisposable
+public sealed class EventRepositoryTests : IDisposable
 {
     private readonly HumansDbContext _db;
     private readonly EventRepository _repo;
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 5, 5, 12, 0));
 
-    public EventGuideRepositoryTests()
+    public EventRepositoryTests()
     {
         var options = new DbContextOptionsBuilder<HumansDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())

@@ -8,11 +8,11 @@ using Xunit;
 
 namespace Humans.Domain.Tests.Entities;
 
-public class GuideEventTests
+public class EventTests
 {
     private readonly FakeClock _clock;
 
-    public GuideEventTests()
+    public EventTests()
     {
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 18, 12, 0));
     }

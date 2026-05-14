@@ -10,13 +10,13 @@ using Xunit;
 
 namespace Humans.Application.Tests.Services;
 
-public sealed class EventGuideServiceTests
+public sealed class EventServiceTests
 {
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 5, 5, 12, 0));
-    private readonly FakeEventGuideRepository _repo = new();
+    private readonly FakeEventRepository _repo = new();
     private readonly EventService _service;
 
-    public EventGuideServiceTests()
+    public EventServiceTests()
     {
         _service = new EventService(_repo, _clock);
     }
@@ -212,7 +212,7 @@ public sealed class EventGuideServiceTests
         _repo.SaveChangesCount.Should().Be(1);
     }
 
-    private sealed class FakeEventGuideRepository : IEventRepository
+    private sealed class FakeEventRepository : IEventRepository
     {
         public EventGuideSettings? Settings { get; set; }
         public Dictionary<Guid, EventSettings> EventSettings { get; } = [];
