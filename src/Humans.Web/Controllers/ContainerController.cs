@@ -37,7 +37,7 @@ public class ContainerController : HumansControllerBase
         _logger = logger;
     }
 
-    private sealed record CampContext(Camp Camp, bool CanManage, bool IsPrivileged);
+    private sealed record CampContext(CampLookup Camp, bool CanManage, bool IsPrivileged);
 
     private async Task<bool> CanManageAsync(Guid userId, Guid campId, CancellationToken ct)
     {

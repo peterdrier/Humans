@@ -32,7 +32,7 @@ public class ContainerPlacementPhaseTests
         _clock = new FakeClock(Instant.FromUtc(2026, 4, 26, 10, 0, 0));
         _campService = Substitute.For<ICampService>();
         _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns(new CampSettings { Id = Guid.NewGuid(), PublicYear = 2026 });
+            .Returns(new CampSettingsInfo(PublicYear: 2026, OpenSeasons: [], EeStartDate: null));
         var repo = new CityPlanningRepository(new TestDbContextFactory(dbOptions));
         var options = new CityPlanningOptions { CityPlanningTeamSlug = "city-planning" };
         _sut = new CityPlanningService(

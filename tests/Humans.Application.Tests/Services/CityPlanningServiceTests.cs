@@ -336,7 +336,7 @@ public class CityPlanningServiceTests : IDisposable
                 [season2026Id] = new("Test Camp 2026", "test-camp", null, null)
             });
         _campService.GetCampSeasonByIdAsync(season2026Id, Arg.Any<CancellationToken>())
-            .Returns(new CampSeason { Id = season2026Id, CampId = camp2026Id, Year = 2026 });
+            .Returns(new CampSeasonLookup(Id: season2026Id, CampId: camp2026Id, Year: 2026, Name: "Test Camp 2026", SoundZone: null));
 
         var result = await _sut.GetCampPolygonsAsync(2026);
 
@@ -454,7 +454,7 @@ public class CityPlanningServiceTests : IDisposable
                 [campSeasonId] = new("Test Camp", "test-camp", SoundZone.Blue, null)
             });
         _campService.GetCampSeasonByIdAsync(campSeasonId, Arg.Any<CancellationToken>())
-            .Returns(new CampSeason { Id = campSeasonId, CampId = campId, Year = 2026 });
+            .Returns(new CampSeasonLookup(Id: campSeasonId, CampId: campId, Year: 2026, Name: "Test Camp", SoundZone: SoundZone.Blue));
 
         var polygons = await _sut.GetCampPolygonsAsync(2026);
 
@@ -476,7 +476,7 @@ public class CityPlanningServiceTests : IDisposable
                 [campSeasonId] = new("Test Camp", "test-camp", null, null)
             });
         _campService.GetCampSeasonByIdAsync(campSeasonId, Arg.Any<CancellationToken>())
-            .Returns(new CampSeason { Id = campSeasonId, CampId = campId, Year = 2026 });
+            .Returns(new CampSeasonLookup(Id: campSeasonId, CampId: campId, Year: 2026, Name: "Test Camp", SoundZone: null));
 
         var polygons = await _sut.GetCampPolygonsAsync(2026);
 

@@ -324,8 +324,6 @@ public sealed class DevPersonaSeeder
                 MemberCount: 42,
                 SpaceRequirement: SpaceSize.Sqm600,
                 SoundZone: null,
-                ContainerCount: 0,
-                ContainerNotes: null,
                 ElectricalGrid: null);
 
             await _campService.CreateCampAsync(
