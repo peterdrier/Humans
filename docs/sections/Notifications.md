@@ -3,8 +3,9 @@
   src/Humans.Domain/Entities/Notification.cs
   src/Humans.Domain/Entities/NotificationRecipient.cs
   src/Humans.Infrastructure/Data/Configurations/Notifications/**
-  src/Humans.Infrastructure/Repositories/NotificationRepository.cs
-  src/Humans.Web/Controllers/NotificationController.cs
+  src/Humans.Infrastructure/Repositories/Notifications/**
+  src/Humans.Web/Controllers/NotificationsController.cs
+  src/Humans.Web/Views/Notifications/**
 -->
 <!-- freshness:flag-on-change
   Notification fan-out semantics, meter-vs-stored distinction, role-scoped dispatch, and inbox state machine — review when Notifications services/entities/controller change.

@@ -14,7 +14,7 @@ using NSubstitute;
 using Xunit;
 using NotificationMeterProvider = Humans.Application.Services.Notifications.NotificationMeterProvider;
 
-namespace Humans.Application.Tests.Services;
+namespace Humans.Application.Tests.Notifications;
 
 public class NotificationMeterProviderTests : IDisposable
 {

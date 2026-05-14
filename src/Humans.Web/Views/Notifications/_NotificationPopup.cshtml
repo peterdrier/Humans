@@ -65,13 +65,13 @@ else
 }
 
 <div class="notification-popup-footer">
-    <form method="post" asp-controller="Notification" asp-action="MarkAllRead" class="d-inline">
+    <form method="post" asp-controller="Notifications" asp-action="MarkAllRead" class="d-inline">
         @Html.AntiForgeryToken()
         <button type="submit" class="notification-mark-all-read" data-ajax-markallread>
             @Localizer["Notification_MarkAllRead"]
         </button>
     </form>
-    <a href="@Url.Action("Index", "Notification")" class="notification-see-all">
+    <a href="@Url.Action("Index", "Notifications")" class="notification-see-all">
         @Localizer["Notification_SeeAll"]
     </a>
 </div>

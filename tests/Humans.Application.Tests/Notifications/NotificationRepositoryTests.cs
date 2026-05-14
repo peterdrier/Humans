@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using Xunit;
 
-namespace Humans.Application.Tests.Repositories;
+namespace Humans.Application.Tests.Notifications;
 
 public class NotificationRepositoryTests : IDisposable
 {

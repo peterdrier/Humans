@@ -31,7 +31,7 @@ public class MembershipRequiredFilter : IAsyncActionFilter
         "FeedbackApi",      // API key auth, no membership required
         "Guest",            // Profileless account dashboard
         "Legal",            // Public legal documents ([AllowAnonymous])
-        "Notification",     // Notification inbox — accessible to all authenticated users
+        "Notifications",    // Notification inbox — accessible to all authenticated users
         "OnboardingWidget", // Guided onboarding flow (Names → Shifts → Consents) — used by mid-onboarding users
     };
 

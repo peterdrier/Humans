@@ -10,13 +10,13 @@ namespace Humans.Web.Controllers;
 
 [Authorize]
 [Route("Notifications")]
-public class NotificationController : HumansControllerBase
+public class NotificationsController : HumansControllerBase
 {
     private readonly INotificationInboxService _inboxService;
     private readonly INotificationMeterProvider _meterProvider;
     private readonly IStringLocalizer<SharedResource> _localizer;
 
-    public NotificationController(
+    public NotificationsController(
         INotificationInboxService inboxService,
         UserManager<User> userManager,
         INotificationMeterProvider meterProvider,

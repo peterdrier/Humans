@@ -13,7 +13,7 @@ using NSubstitute;
 using Xunit;
 using NotificationInboxService = Humans.Application.Services.Notifications.NotificationInboxService;
 
-namespace Humans.Application.Tests.Services;
+namespace Humans.Application.Tests.Notifications;
 
 public class NotificationInboxServiceTests : IDisposable
 {
