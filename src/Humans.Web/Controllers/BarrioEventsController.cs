@@ -92,7 +92,7 @@ public class BarrioEventsController : HumansCampControllerBase
         }
 
         var model = await BuildFormAsync(slug, camp, guideSettings!);
-        return View("CampEventForm", model);
+        return View("BarrioEventForm", model);
     }
 
     [HttpPost("New")]
@@ -115,7 +115,7 @@ public class BarrioEventsController : HumansCampControllerBase
             model.CampName = ResolveCampName(camp);
             model.CampSlug = slug;
             await PopulateDropdownsAsync(model, guideSettings!);
-            return View("CampEventForm", model);
+            return View("BarrioEventForm", model);
         }
 
         var tz = GetTimeZone(guideSettings!);
@@ -192,7 +192,7 @@ public class BarrioEventsController : HumansCampControllerBase
         model.PriorityRank = guideEvent.PriorityRank;
         model.IsResubmit = guideEvent.Status is EventStatus.Rejected or EventStatus.ResubmitRequested;
 
-        return View("CampEventForm", model);
+        return View("BarrioEventForm", model);
     }
 
     [HttpPost("{eventId:guid}/Edit")]
@@ -225,7 +225,7 @@ public class BarrioEventsController : HumansCampControllerBase
             model.CampName = ResolveCampName(camp);
             model.CampSlug = slug;
             await PopulateDropdownsAsync(model, guideSettings);
-            return View("CampEventForm", model);
+            return View("BarrioEventForm", model);
         }
 
         var tz = GetTimeZone(guideSettings);
