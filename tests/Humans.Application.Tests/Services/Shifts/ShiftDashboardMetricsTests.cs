@@ -1012,6 +1012,9 @@ public class ShiftDashboardMetricsTests : IDisposable
         public ValueTask<Humans.Application.UserInfo?> GetUserInfoAsync(Guid userId, CancellationToken ct = default)
             => throw new NotSupportedException();
 
+        public IReadOnlyCollection<Humans.Application.UserInfo> GetAllUserInfos()
+            => throw new NotSupportedException();
+
         public async Task<User?> GetByIdAsync(Guid userId, CancellationToken ct = default)
             => await _db.Users.FirstOrDefaultAsync(u => u.Id == userId, ct);
 

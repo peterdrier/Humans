@@ -13,6 +13,7 @@ namespace Humans.Application.Interfaces.Users;
 /// <remarks>
 /// Surface-budget recent history (newest first):
 /// <list type="bullet">
+///   <item>32→33 — admin stats + /Users/Admin/Debug + /Tickets Venn: added GetAllUserInfos. Snapshot accessor — the cache is the canonical read-model; all aggregate consumers read from it rather than re-querying the underlying tables.</item>
 ///   <item>32→31 — mailer-inbound-import follow-up: removed GetDisplayNamesByIdsAsync. HumanViewComponent already renders the cached DisplayName from a userId Guid; pre-fetching the dictionary was redundant.</item>
 ///   <item>33→32 — merge with main: issue-695 HUM0009 service-DbContext analyzer PR landed on main with net -1 (removed two [Obsolete] Google-email methods TrySetGoogleEmailAsync + SetGoogleEmailAsync; added DeleteUsersAsync for admin dev-reset).</item>
 ///   <item>32→33 — mailer-inbound-import: added GetDisplayNamesByIdsAsync for import preview — batch DisplayName lookup keyed by user id.</item>
@@ -26,7 +27,7 @@ namespace Humans.Application.Interfaces.Users;
 ///   <item>-1 GetContactUsersAsync removed (/Contacts surface deleted in PR 2 of email-identity-decoupling — only ContactService called it).</item>
 /// </list>
 /// </remarks>
-[SurfaceBudget(32)]
+[SurfaceBudget(33)]
 public interface IUserService : IApplicationService, IUserMerge
 {
     /// <summary>
@@ -39,6 +40,16 @@ public interface IUserService : IApplicationService, IUserMerge
     /// repositories on miss.
     /// </summary>
     ValueTask<UserInfo?> GetUserInfoAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns a snapshot of every cached <see cref="UserInfo"/>. The cache is
+    /// the canonical "everything-about-a-person" source; admin stat tiles,
+    /// debug surfaces, and cross-section aggregates read from this snapshot
+    /// rather than re-querying the contributing tables. Returns a new
+    /// collection per call — the underlying dictionary is mutable and callers
+    /// iterate without locking.
+    /// </summary>
+    IReadOnlyCollection<UserInfo> GetAllUserInfos();
 
     /// <summary>
     /// Fetches a single user by id. Returns null if the user does not exist.

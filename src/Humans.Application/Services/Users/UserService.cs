@@ -106,6 +106,12 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
             communicationPreferences);
     }
 
+    public IReadOnlyCollection<UserInfo> GetAllUserInfos() =>
+        throw new NotSupportedException(
+            "GetAllUserInfos is only meaningful through CachingUserService. " +
+            "If this is being called on the inner UserService it indicates a DI " +
+            "registration mistake — IUserService should resolve to CachingUserService.");
+
     public Task<User?> GetByIdAsync(Guid userId, CancellationToken ct = default) =>
         _repo.GetByIdAsync(userId, ct);
 

@@ -100,6 +100,9 @@ public sealed class CachingUserService : IUserService, IUserMerge, IUserInfoInva
         return result;
     }
 
+    /// <inheritdoc cref="IUserService.GetAllUserInfos" />
+    public IReadOnlyCollection<UserInfo> GetAllUserInfos() => _byUserId.Values.ToArray();
+
     /// <summary>
     /// Rebuilds the cache entry for <paramref name="userId"/> directly from
     /// repositories. If the user no longer exists, the entry is removed.
