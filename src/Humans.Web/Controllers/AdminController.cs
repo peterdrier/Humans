@@ -66,10 +66,14 @@ public class AdminController : HumansControllerBase
         [FromServices] IFeedbackService feedback,
         [FromServices] IAuditViewerService auditViewer,
         [FromServices] IAdminDashboardService adminDashboardService,
+        [FromServices] IUserService userService,
         CancellationToken ct)
     {
         var firstName = User.Identity?.Name?.Split(' ').FirstOrDefault() ?? "";
-        var activeHumans = (await profileService.GetActiveApprovedUserIdsAsync(ct)).Count;
+        var snapshot = userService.GetAllUserInfos();
+        var totalUsers = snapshot.Count;
+        var activeProfileUsers = snapshot.Count(u => u.Profile is not null);
+        var ticketHolders = snapshot.Count(u => u.HasTicket);
         var (filled, total, ratio) = await shifts.GetOverallCoverageAsync(ct);
         var openFeedback = await feedback.GetActionableCountAsync(ct);
         var recent = (await auditViewer.GetRecentAsync(8, ct))
@@ -90,7 +94,9 @@ public class AdminController : HumansControllerBase
 
         var vm = new AdminDashboardViewModel(
             GreetingFirstName: firstName,
-            ActiveHumans: activeHumans,
+            TotalUsers: totalUsers,
+            ActiveProfileUsers: activeProfileUsers,
+            TicketHolders: ticketHolders,
             ShiftCoveragePercent: total > 0 ? (int)Math.Round(ratio * 100) : 0,
             ShiftFilledOf: total > 0 ? filled : null,
             ShiftTotalOf: total > 0 ? total : null,

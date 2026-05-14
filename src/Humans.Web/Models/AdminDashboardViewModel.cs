@@ -5,7 +5,9 @@ namespace Humans.Web.Models;
 
 public sealed record AdminDashboardViewModel(
     string GreetingFirstName,
-    int ActiveHumans,
+    int TotalUsers,
+    int ActiveProfileUsers,
+    int TicketHolders,
     int ShiftCoveragePercent,
     int? ShiftFilledOf,
     int? ShiftTotalOf,
