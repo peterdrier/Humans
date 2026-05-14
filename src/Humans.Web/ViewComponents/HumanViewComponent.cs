@@ -38,7 +38,7 @@ public class HumanViewComponent : ViewComponent
             var info = await _userService.GetUserInfoAsync(userId);
             if (info is not null)
             {
-                displayName = info.DisplayName;
+                displayName = info.BurnerName;
                 if (info.Profile is { HasCustomPicture: true } profile)
                 {
                     var urlHelper = _urlHelperFactory.GetUrlHelper(ViewContext);

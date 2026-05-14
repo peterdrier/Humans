@@ -193,6 +193,25 @@ public sealed record UserInfo(
     IReadOnlyList<CommunicationPreferenceInfo> CommunicationPreferences)
 {
     /// <summary>
+    /// Canonical public-facing name. <see cref="ProfileInfo.BurnerName"/>
+    /// when a profile exists and has a non-blank burner name; otherwise
+    /// <see cref="DisplayName"/> (the legacy Identity column mirror).
+    /// <para>
+    /// External render callers (avatars, lists, popovers, notifications,
+    /// audit-log labels) MUST use this property, not <see cref="DisplayName"/>.
+    /// Reading <see cref="DisplayName"/> directly leaks the legacy column
+    /// onto public surfaces for any user who has chosen a burner name. The
+    /// only legitimate consumers of the raw <see cref="DisplayName"/> field
+    /// are debug screens (e.g. <c>/Users/Admin/Debug</c>) and the
+    /// <see cref="BurnerName"/> fallback itself.
+    /// </para>
+    /// </summary>
+    public string BurnerName =>
+        Profile is not null && !string.IsNullOrWhiteSpace(Profile.BurnerName)
+            ? Profile.BurnerName
+            : DisplayName;
+
+    /// <summary>
     /// Canonical effective email — first verified UserEmail (primary-preferred),
     /// falling back to the underlying Identity column when no UserEmails are
     /// loaded. Mirrors <see cref="User.Email"/>.
