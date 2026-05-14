@@ -12,7 +12,6 @@
         Model.Sort != column ? "" : Model.IsAsc ? " ↑" : " ↓";
 
     string Tri(bool? value) => value is null ? "—" : value.Value ? "Yes" : "No";
-    string Bool(bool value) => value ? "✓" : "✗";
 }
 
 <div class="page-head">
@@ -29,27 +28,27 @@
                 <thead>
                     <tr>
                         <th><a href="@Toggle("userId")">UserId@(ArrowFor("userId"))</a></th>
-                        <th><a href="@Toggle("hasProfile")">HasProfile@(ArrowFor("hasProfile"))</a></th>
-                        <th><a href="@Toggle("hasTicket")">HasTicket@(ArrowFor("hasTicket"))</a></th>
-                        <th><a href="@Toggle("marketing")">Marketing@(ArrowFor("marketing"))</a></th>
+                        <th class="text-center"><a href="@Toggle("hasProfile")">HasProfile@(ArrowFor("hasProfile"))</a></th>
+                        <th class="text-center"><a href="@Toggle("hasTicket")">HasTicket@(ArrowFor("hasTicket"))</a></th>
+                        <th class="text-center"><a href="@Toggle("marketing")">Marketing@(ArrowFor("marketing"))</a></th>
                         <th><a href="@Toggle("displayName")">Display name@(ArrowFor("displayName"))</a></th>
                         <th><a href="@Toggle("burnerName")">Burner name@(ArrowFor("burnerName"))</a></th>
                         <th><a href="@Toggle("legalName")">Legal name@(ArrowFor("legalName"))</a></th>
-                        <th><a href="@Toggle("hasConsent")">HasConsent@(ArrowFor("hasConsent"))</a></th>
+                        <th class="text-center"><a href="@Toggle("hasConsent")">HasConsent@(ArrowFor("hasConsent"))</a></th>
                     </tr>
                 </thead>
                 <tbody>
                 @foreach (var row in Model.Rows)
                 {
                     <tr>
-                        <td><code class="small">@row.UserId</code></td>
-                        <td>@Bool(row.HasProfile)</td>
-                        <td>@Bool(row.HasTicket)</td>
-                        <td>@(row.MarketingOptedOut is null ? "—" : row.MarketingOptedOut.Value ? "No" : "Yes")</td>
+                        <td><a asp-controller="Profile" asp-action="AdminDetail" asp-route-id="@row.UserId"><code class="small">@row.UserId</code></a></td>
+                        <td class="text-center">@Tri(row.HasProfile)</td>
+                        <td class="text-center">@Tri(row.HasTicket)</td>
+                        <td class="text-center">@(row.MarketingOptedOut is null ? "—" : row.MarketingOptedOut.Value ? "No" : "Yes")</td>
                         <td>@row.DisplayName</td>
                         <td>@row.BurnerName</td>
                         <td>@row.LegalName</td>
-                        <td>@Tri(row.HasConsent)</td>
+                        <td class="text-center">@Tri(row.HasConsent)</td>
                     </tr>
                 }
                 </tbody>

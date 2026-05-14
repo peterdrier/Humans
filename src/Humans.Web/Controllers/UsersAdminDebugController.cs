@@ -20,7 +20,7 @@ public sealed class UsersAdminDebugController : Controller
 {
     private const int MinPageSize = 10;
     private const int MaxPageSize = 200;
-    private const int DefaultPageSize = 50;
+    private const int DefaultPageSize = 25;
 
     private readonly IUserService _userService;
 

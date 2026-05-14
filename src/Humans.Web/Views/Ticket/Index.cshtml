@@ -122,7 +122,7 @@
                              data-users-tickets="@sm.TicketsCount"
                              data-profiles-tickets="@sm.AllThree"
                              data-all-three="@sm.AllThree"
-                             style="max-height: 420px; width: 100%;"></div>
+                             style="height: 500px; width: 100%;"></div>
                     </div>
                     <div class="col-md-6">
                         <h6 class="text-center">UpSet plot</h6>
@@ -131,7 +131,7 @@
                              data-profile-only="@sm.UsersAndProfileOnly"
                              data-ticket-only="@sm.UsersAndTicketOnly"
                              data-all-three="@sm.AllThree"
-                             style="max-height: 420px; width: 100%;"></div>
+                             style="height: 500px; width: 100%;"></div>
                     </div>
                 </div>
                 <p class="text-muted small mt-2 mb-0">
@@ -150,7 +150,9 @@
                 <i class="fa-solid fa-chart-bar"></i> Daily Ticket Sales
             </div>
             <div class="card-body">
-                <canvas id="dailySalesChart" height="100"></canvas>
+                <div style="position: relative; height: 500px; width: 100%;">
+                    <canvas id="dailySalesChart"></canvas>
+                </div>
             </div>
         </div>
     }
@@ -378,6 +380,7 @@
                 },
                 options: {
                     responsive: true,
+                    maintainAspectRatio: false,
                     scales: {
                         x: { display: true },
                         y: { beginAtZero: true, title: { display: true, text: 'Tickets' } }
@@ -391,8 +394,8 @@
 @if (Model.SetMembership is not null && Model.SetMembership.TotalUsers > 0)
 {
     <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@@upsetjs/venn.js@1.4.4/build/venn.min.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@@upsetjs/bundle@1.13.1/build/index.umd.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@@upsetjs/venn.js@1.4.2/build/venn.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@@upsetjs/bundle@1.11.0/dist/upsetjs.umd.production.min.js" crossorigin="anonymous"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             // ---- Venn: 3 sets (Users / Profiles / Tickets) ----
