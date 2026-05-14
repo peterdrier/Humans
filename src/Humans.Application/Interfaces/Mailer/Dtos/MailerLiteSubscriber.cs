@@ -15,4 +15,5 @@ public sealed record MailerLiteSubscriber(
     Instant? UnsubscribedAt,  // UTC; null when not unsubscribed
     Instant? OptedInAt,       // UTC; null until double-opt-in confirmed
     string? FirstName,
-    string? LastName);
+    string? LastName,
+    IReadOnlyList<string> GroupIds); // IDs of groups this subscriber currently belongs to

@@ -63,7 +63,7 @@ internal sealed class IdempotencyHarness
     private static readonly MailerLiteSubscriber ActiveSubscriber =
         new("ml-id", Email, "active", "api",
             Instant.FromUtc(2026, 1, 1, 0, 0), null, Instant.FromUtc(2026, 1, 1, 0, 0),
-            null, null);
+            null, null, Array.Empty<string>());
 
     private readonly Guid _userId = Guid.NewGuid();
 

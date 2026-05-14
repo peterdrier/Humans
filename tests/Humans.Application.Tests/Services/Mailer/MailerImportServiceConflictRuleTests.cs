@@ -27,7 +27,7 @@ public class MailerImportServiceConflictRuleTests
 
         var bounced = new MailerLiteSubscriber(
             "ml-id", "user@x.com", "bounced", "api",
-            Instant.FromUtc(2026, 1, 1, 0, 0), null, null, null, null);
+            Instant.FromUtc(2026, 1, 1, 0, 0), null, null, null, null, Array.Empty<string>());
 
         harness.MlReturns(bounced);
         harness.SetVerifiedMatch("user@x.com", userId);
@@ -53,7 +53,7 @@ public class MailerImportServiceConflictRuleTests
             "ml-id", "user@x.com", "unsubscribed", "api",
             Instant.FromUtc(2026, 1, 1, 0, 0),
             Instant.FromUtc(2026, 4, 1, 0, 0), // UnsubscribedAt = 2026-04-01 (older than Humans)
-            null, null, null);
+            null, null, null, Array.Empty<string>());
 
         harness.MlReturns(unsubscribed);
         harness.SetVerifiedMatch("user@x.com", userId);
@@ -79,7 +79,7 @@ public class MailerImportServiceConflictRuleTests
             "ml-id", "user@x.com", "unsubscribed", "api",
             Instant.FromUtc(2026, 1, 1, 0, 0),
             Instant.FromUtc(2026, 4, 1, 0, 0), // UnsubscribedAt = 2026-04-01
-            null, null, null);
+            null, null, null, Array.Empty<string>());
 
         harness.MlReturns(unsubscribed);
         harness.SetVerifiedMatch("user@x.com", userId);

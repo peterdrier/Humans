@@ -21,18 +21,18 @@ public class MailerImportServiceClassifierTests
     private static MailerLiteSubscriber Active(string email) =>
         new("ml-id", email, "active", "api",
             Instant.FromUtc(2026, 1, 1, 0, 0), null, Instant.FromUtc(2026, 1, 1, 0, 0),
-            null, null);
+            null, null, Array.Empty<string>());
 
     private static MailerLiteSubscriber Unsubscribed(string email, Instant? unsubscribedAt = null) =>
         new("ml-id", email, "unsubscribed", "api",
             Instant.FromUtc(2026, 1, 1, 0, 0),
             unsubscribedAt ?? Instant.FromUtc(2026, 3, 1, 0, 0),
             Instant.FromUtc(2026, 1, 1, 0, 0),
-            null, null);
+            null, null, Array.Empty<string>());
 
     private static MailerLiteSubscriber Unconfirmed(string email) =>
         new("ml-id", email, "unconfirmed", "form",
-            null, null, null, null, null);
+            null, null, null, null, null, Array.Empty<string>());
 
     [HumansFact]
     public async Task Classifies_UnconfirmedAsSkipped()

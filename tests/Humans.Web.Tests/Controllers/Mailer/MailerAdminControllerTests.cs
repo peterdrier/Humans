@@ -33,6 +33,7 @@ public class MailerAdminControllerTests
     private readonly UserManager<User> _userManager;
     private readonly IMailerImportService _importService = Substitute.For<IMailerImportService>();
     private readonly IMailerLiteService _mlService = Substitute.For<IMailerLiteService>();
+    private readonly IMailerAudienceSyncService _audienceSync = Substitute.For<IMailerAudienceSyncService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly ICommunicationPreferenceService _prefs = Substitute.For<ICommunicationPreferenceService>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
@@ -47,7 +48,8 @@ public class MailerAdminControllerTests
     private MailerAdminController BuildSut(ImportPlanCounts? snapshotCounts = null)
     {
         var ctrl = new MailerAdminController(
-            _mlService, _importService, _userService, _prefs, _audit,
+            _mlService, _importService, _audienceSync, Array.Empty<IMailerAudience>(),
+            _userService, _prefs, _audit,
             NullLogger<MailerAdminController>.Instance, _userManager);
 
         var http = new DefaultHttpContext

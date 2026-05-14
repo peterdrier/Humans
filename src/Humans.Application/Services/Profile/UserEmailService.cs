@@ -580,6 +580,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         return user?.Email;
     }
 
+
     public async Task<IReadOnlyList<string>> GetVerifiedEmailsForUserAsync(
         Guid userId, CancellationToken cancellationToken = default)
     {

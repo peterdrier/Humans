@@ -22,6 +22,8 @@ public sealed class MailerAdminController : HumansControllerBase
 {
     private readonly IMailerLiteService _ml;
     private readonly IMailerImportService _import;
+    private readonly IMailerAudienceSyncService _audienceSync;
+    private readonly IReadOnlyList<IMailerAudience> _audiences;
     private readonly IUserService _users;
     private readonly ICommunicationPreferenceService _prefs;
     private readonly IAuditLogService _audit;
@@ -30,6 +32,8 @@ public sealed class MailerAdminController : HumansControllerBase
     public MailerAdminController(
         IMailerLiteService ml,
         IMailerImportService import,
+        IMailerAudienceSyncService audienceSync,
+        IEnumerable<IMailerAudience> audiences,
         IUserService users,
         ICommunicationPreferenceService prefs,
         IAuditLogService audit,
@@ -39,6 +43,8 @@ public sealed class MailerAdminController : HumansControllerBase
     {
         _ml = ml;
         _import = import;
+        _audienceSync = audienceSync;
+        _audiences = audiences.ToList();
         _users = users;
         _prefs = prefs;
         _audit = audit;
@@ -75,11 +81,60 @@ public sealed class MailerAdminController : HumansControllerBase
             ct: ct);
         var last = recent.FirstOrDefault();
 
+        IReadOnlyList<AudienceCardRow> audienceRows;
+        try
+        {
+            var stats = await _audienceSync.ComputeAllStatsAsync(ct);
+            audienceRows = stats.Select(s => new AudienceCardRow(
+                s.Key, s.DisplayName, s.MailerLiteGroupName,
+                s.Candidates, s.ExcludedUnsubscribed, s.CurrentlyInGroup,
+                s.LastSyncAt, s.LastSyncSummary)).ToList();
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogWarning(ex, "Audience stats failed");
+            audienceRows = Array.Empty<AudienceCardRow>();
+        }
+        catch (TaskCanceledException) when (!ct.IsCancellationRequested)
+        {
+            _logger.LogWarning("Audience stats timed out");
+            audienceRows = Array.Empty<AudienceCardRow>();
+        }
+
         var vm = new MailerDashboardViewModel(
             summary, groups, mlContacts, optedIn, optedOut,
             last?.OccurredAt, last?.Description, drift, mlError,
-            _ml.LastFetchedAt);
+            _ml.LastFetchedAt,
+            audienceRows);
         return View("~/Views/Mailer/Admin/Index.cshtml", vm);
+    }
+
+    [HttpPost("Audiences/{key}/Sync")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SyncAudience(string key, CancellationToken ct)
+    {
+        var audience = _audiences.FirstOrDefault(a => string.Equals(a.Key, key, StringComparison.Ordinal));
+        if (audience is null) return NotFound();
+
+        try
+        {
+            var actor = await GetCurrentUserAsync();
+            var result = await _audienceSync.SyncAsync(audience, actor?.Id, ct);
+            TempData["Banner"] = $"{audience.DisplayName}: {result.FormatSummary()}";
+        }
+        catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException)
+        {
+            _logger.LogError(ex, "Audience sync failed for {Audience}", key);
+            TempData["Banner"] = $"{audience.DisplayName}: sync failed — {ex.Message}";
+        }
+        catch (TaskCanceledException) when (!ct.IsCancellationRequested)
+        {
+            // MailerLiteClient surfaces HttpClient timeouts as TaskCanceledException
+            // when the caller did not cancel. Treat it as a transient failure.
+            _logger.LogWarning("Audience sync timed out for {Audience}", key);
+            TempData["Banner"] = $"{audience.DisplayName}: sync timed out. Try again shortly.";
+        }
+        return RedirectToAction(nameof(Index));
     }
 
     [HttpPost("Refresh")]

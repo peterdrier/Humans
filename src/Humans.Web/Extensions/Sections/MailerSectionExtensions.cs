@@ -1,6 +1,8 @@
 using System.Net.Http.Headers;
 using Humans.Application.Interfaces.Mailer;
 using Humans.Application.Services.Mailer;
+using Humans.Application.Services.Mailer.Audiences;
+using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Services.Mailer;
 using Microsoft.Extensions.Options;
 
@@ -41,6 +43,13 @@ internal static class MailerSectionExtensions
 
         // Import orchestrator — stateless plan+apply, injected by the Admin controller.
         services.AddScoped<IMailerImportService, MailerImportService>();
+
+        // Audience framework — orchestrator + audience registrations + recurring job.
+        // Audiences are Scoped (not Singleton) because their constructor dependencies
+        // (ITicketQueryService, IShiftSignupService, IShiftManagementService) are Scoped.
+        services.AddScoped<IMailerAudienceSyncService, MailerAudienceSyncService>();
+        services.AddScoped<IMailerAudience, TicketNoShiftsAudience>();
+        services.AddTransient<MailerAudienceSyncJob>();
 
         return services;
     }

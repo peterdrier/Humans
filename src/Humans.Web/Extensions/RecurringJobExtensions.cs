@@ -15,6 +15,11 @@ public static class RecurringJobExtensions
         var registry = app.Services.GetRequiredService<ConfigurationRegistry>();
         var ticketSyncInterval = app.Configuration.GetSettingValue(
             registry, "TicketVendor:SyncIntervalMinutes", "Ticket Vendor", defaultValue: 15);
+        // MailerLite:AudienceSyncCron is opt-in. When empty/unset, the recurring
+        // job is not registered — admins still trigger syncs on demand via the
+        // /Mailer/Admin "Push Now" button. Set to e.g. "0 6 * * *" to enable.
+        var mailerAudienceCron = app.Configuration.GetValue<string>("MailerLite:AudienceSyncCron")
+            ?? string.Empty;
 
         var jobs = new (string Id, Action Register)[]
         {
@@ -91,7 +96,24 @@ public static class RecurringJobExtensions
             // Purge old agent conversations — daily at 03:15 UTC.
             ("agent-conversation-retention", () => RecurringJob.AddOrUpdate<AgentConversationRetentionJob>(
                 "agent-conversation-retention", job => job.ExecuteAsync(CancellationToken.None), "15 3 * * *")),
+
         };
+
+        if (!string.IsNullOrWhiteSpace(mailerAudienceCron))
+        {
+            jobs = jobs.Append(("mailer-audience-sync", () => RecurringJob.AddOrUpdate<MailerAudienceSyncJob>(
+                "mailer-audience-sync", job => job.ExecuteAsync(CancellationToken.None), mailerAudienceCron))).ToArray();
+        }
+        else
+        {
+            // Best-effort cleanup so a previously-registered job doesn't stick around
+            // after operators disable the schedule by clearing the config value.
+            try { RecurringJob.RemoveIfExists("mailer-audience-sync"); }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to remove mailer-audience-sync recurring job entry");
+            }
+        }
 
         foreach (var (id, register) in jobs)
         {
