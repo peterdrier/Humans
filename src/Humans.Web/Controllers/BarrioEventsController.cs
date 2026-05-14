@@ -15,7 +15,7 @@ namespace Humans.Web.Controllers;
 
 [Authorize]
 [Route("Barrios/{slug}/Events")]
-[ServiceFilter(typeof(EventGuideFeatureFilter))]
+[ServiceFilter(typeof(EventsFeatureFilter))]
 public class BarrioEventsController : HumansCampControllerBase
 {
     private readonly IEventService _guide;

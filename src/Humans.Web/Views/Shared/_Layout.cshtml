@@ -103,7 +103,7 @@
                         <li class="nav-item" authorize-policy="IsActiveMember">
                             <a class="nav-link" asp-area="" asp-controller="CityPlanning" asp-action="Index">@Localizer["Nav_City"]</a>
                         </li>
-                        @if (Configuration.GetValue<bool>("Features:EventGuide"))
+                        @if (Configuration.GetValue<bool>("Features:Events"))
                         {
                             <li class="nav-item dropdown" authorize-policy="IsActiveMember">
                                 <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Events</a>

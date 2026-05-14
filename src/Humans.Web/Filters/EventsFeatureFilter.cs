@@ -5,14 +5,14 @@ namespace Humans.Web.Filters;
 
 /// <summary>
 /// Action filter that returns 404 when the Event Guide feature is disabled
-/// via the <c>Features:EventGuide</c> configuration flag.
+/// via the <c>Features:Events</c> configuration flag.
 /// </summary>
-public class EventGuideFeatureFilter : IActionFilter
+public class EventsFeatureFilter : IActionFilter
 {
     private readonly bool _enabled;
 
-    public EventGuideFeatureFilter(IConfiguration configuration)
-        => _enabled = configuration.GetValue<bool>("Features:EventGuide");
+    public EventsFeatureFilter(IConfiguration configuration)
+        => _enabled = configuration.GetValue<bool>("Features:Events");
 
     public void OnActionExecuting(ActionExecutingContext context)
     {

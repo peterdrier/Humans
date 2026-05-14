@@ -14,7 +14,7 @@ namespace Humans.Web.Controllers;
 
 [Authorize]
 [Route("Events")]
-[ServiceFilter(typeof(EventGuideFeatureFilter))]
+[ServiceFilter(typeof(EventsFeatureFilter))]
 public class EventsController : HumansControllerBase
 {
     private readonly IEventService _guide;

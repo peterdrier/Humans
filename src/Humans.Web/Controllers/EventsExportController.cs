@@ -13,7 +13,7 @@ namespace Humans.Web.Controllers;
 
 [Authorize(Roles = RoleGroups.EventsAdminOrAdmin)]
 [Route("Events/Export")]
-[ServiceFilter(typeof(EventGuideFeatureFilter))]
+[ServiceFilter(typeof(EventsFeatureFilter))]
 public class EventsExportController : HumansControllerBase
 {
     private readonly IEventService _guide;

@@ -16,7 +16,7 @@ namespace Humans.Web.Controllers;
 
 [Authorize(Roles = RoleGroups.EventsAdminOrAdmin)]
 [Route("Events/Moderate")]
-[ServiceFilter(typeof(EventGuideFeatureFilter))]
+[ServiceFilter(typeof(EventsFeatureFilter))]
 public class EventsModerationController : HumansControllerBase
 {
     private readonly IEventService _guide;

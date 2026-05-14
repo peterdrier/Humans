@@ -14,7 +14,7 @@ namespace Humans.Web.Controllers;
 
 [Authorize(Roles = RoleGroups.EventsAdminOrAdmin)]
 [Route("Events/Dashboard")]
-[ServiceFilter(typeof(EventGuideFeatureFilter))]
+[ServiceFilter(typeof(EventsFeatureFilter))]
 public class EventsDashboardController : HumansControllerBase
 {
     private readonly IEventService _guide;

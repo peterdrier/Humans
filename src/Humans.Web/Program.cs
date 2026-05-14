@@ -23,6 +23,7 @@ using Humans.Application.Configuration;
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Web.Extensions;
+using Humans.Web.Extensions.Sections;
 using Microsoft.Extensions.Caching.Memory;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Identity;
@@ -490,7 +491,7 @@ builder.Services.AddCors(options =>
             .WithMethods("GET")
             .WithHeaders("Content-Type", "Accept");
     });
-    options.AddPolicy("GuideApi", policy =>
+    options.AddPolicy("EventsApi", policy =>
     {
         policy.AllowAnyOrigin()
             .WithMethods("GET")
@@ -520,9 +521,7 @@ if (builder.Environment.IsProduction())
 }
 builder.Services.AddRazorPages();
 builder.Services.AddSignalR();
-builder.Services.AddScoped<Humans.Web.Filters.EventGuideFeatureFilter>();
-builder.Services.AddScoped<Humans.Application.Interfaces.Repositories.IEventRepository, Humans.Infrastructure.Repositories.Events.EventRepository>();
-builder.Services.AddScoped<Humans.Application.Interfaces.Events.IEventService, Humans.Application.Services.Events.EventService>();
+builder.Services.AddEventsSection();
 
 // In Developement, compile Razor pages each time they are loaded
 if (builder.Environment.IsDevelopment())
