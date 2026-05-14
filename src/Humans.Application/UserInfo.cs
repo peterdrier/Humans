@@ -253,6 +253,28 @@ public sealed record UserInfo(
         .ToList();
 
     /// <summary>
+    /// Marketing-category opt-in tri-state: null when no preference row exists
+    /// (e.g., user imported from an external source who never hit the prefs
+    /// flow), true when opted out, false when opted in.
+    /// </summary>
+    public bool? MarketingOptedOut => CommunicationPreferences
+        .Where(c => c.Category == MessageCategory.Marketing)
+        .Select(c => (bool?)c.OptedOut)
+        .FirstOrDefault();
+
+    /// <summary>
+    /// True when the user has at least one event participation in the
+    /// <see cref="ParticipationStatus.Ticketed"/> or
+    /// <see cref="ParticipationStatus.Attended"/> state — i.e., currently
+    /// holds a ticket or has been checked in. Matches the predicate used by
+    /// the Tickets dashboard so the admin stats and the Venn agree on
+    /// "ticket holder".
+    /// </summary>
+    public bool HasTicket => EventParticipations.Any(p =>
+        p.Status == ParticipationStatus.Ticketed ||
+        p.Status == ParticipationStatus.Attended);
+
+    /// <summary>
     /// Builds a <see cref="UserInfo"/> from the 8 contributing tables. Each
     /// input is the raw read-only entity (or empty list) — all snapshotting,
     /// projection, and ordering happens here so the cached payload is immutable.
