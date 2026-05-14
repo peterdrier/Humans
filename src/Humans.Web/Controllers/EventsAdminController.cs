@@ -98,6 +98,7 @@ public class EventsAdminController : HumansControllerBase
         }
         catch (InvalidOperationException ex)
         {
+            _logger.LogError(ex, "Failed to save guide settings for EventSettingsId {EventSettingsId}", model.EventSettingsId);
             ModelState.AddModelError("", ex.Message);
             model.AvailableEventSettings = await BuildEventSettingsOptionsAsync();
             return View(nameof(Settings), model);

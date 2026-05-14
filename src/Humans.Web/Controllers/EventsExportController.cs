@@ -63,7 +63,7 @@ public class EventsExportController : HumansControllerBase
             if (e.CampId == null)
             {
                 var submitter = await _users.GetUserInfoAsync(e.SubmitterUserId);
-                submitterName = submitter?.Email ?? "";
+                submitterName = submitter?.DisplayName ?? "";
             }
 
             foreach (var (date, time) in GetOccurrences(e, tz))

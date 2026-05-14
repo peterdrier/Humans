@@ -1,6 +1,7 @@
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Events;
+using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Filters;
@@ -20,6 +21,7 @@ namespace Humans.Web.Controllers;
 public class BarrioEventsController : HumansCampControllerBase
 {
     private readonly IEventService _guide;
+    private readonly IUserService _users;
     private readonly IClock _clock;
     private readonly IEmailService _emailService;
     private readonly ILogger<BarrioEventsController> _logger;
@@ -29,12 +31,14 @@ public class BarrioEventsController : HumansCampControllerBase
         ICampService campService,
         IAuthorizationService authorizationService,
         IEventService guide,
+        IUserService users,
         IClock clock,
         IEmailService emailService,
         ILogger<BarrioEventsController> logger)
         : base(userManager, campService, authorizationService)
     {
         _guide = guide;
+        _users = users;
         _clock = clock;
         _emailService = emailService;
         _logger = logger;
@@ -152,11 +156,12 @@ public class BarrioEventsController : HumansCampControllerBase
         var userEmail = user.Email;
         if (userEmail != null)
         {
+            var userInfo = await _users.GetUserInfoAsync(user.Id);
             var viewUrl = Url.Action(nameof(Index), "BarrioEvents", new { slug }, Request.Scheme)!;
             await _emailService.SendEventLifecycleNotificationAsync(
                 new EventLifecycleNotification(
                     NewStatus: EventStatus.Pending,
-                    UserName: user.UserName ?? userEmail,
+                    UserName: userInfo?.DisplayName ?? userEmail,
                     EventTitle: model.Title,
                     ActionUrl: viewUrl),
                 userEmail);

@@ -221,7 +221,7 @@ public class EventsModerationController : HumansControllerBase
         IReadOnlyDictionary<Guid, UserInfo> submitterInfoById)
     {
         var submitter = submitterInfoById.GetValueOrDefault(e.SubmitterUserId);
-        var submitterName = submitter?.Email ?? submitter?.DisplayName ?? "Unknown";
+        var submitterName = submitter?.DisplayName ?? submitter?.Email ?? "Unknown";
 
         var camp = e.CampId.HasValue ? campsById.GetValueOrDefault(e.CampId.Value) : null;
         var seasonName = camp?.Seasons.OrderByDescending(s => s.Year).FirstOrDefault()?.Name;
