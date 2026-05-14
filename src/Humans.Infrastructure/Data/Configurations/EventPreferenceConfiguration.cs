@@ -4,11 +4,11 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Humans.Infrastructure.Data.Configurations;
 
-public class UserGuidePreferenceConfiguration : IEntityTypeConfiguration<EventPreference>
+public class EventPreferenceConfiguration : IEntityTypeConfiguration<EventPreference>
 {
     public void Configure(EntityTypeBuilder<EventPreference> builder)
     {
-        builder.ToTable("user_guide_preferences");
+        builder.ToTable("event_preferences");
         builder.HasKey(p => p.Id);
 
         builder.Property(p => p.ExcludedCategorySlugs).HasMaxLength(1000).IsRequired();

@@ -40,7 +40,7 @@ public sealed class EventGuideRepository : IEventGuideRepository
 
     public async Task<IReadOnlyList<EventCategory>> GetAllCategoriesAsync(CancellationToken ct = default)
         => await _db.EventCategories
-            .Include(c => c.GuideEvents)
+            .Include(c => c.Events)
             .OrderBy(c => c.DisplayOrder)
             .ThenBy(c => c.Name)
             .ToListAsync(ct);
@@ -49,7 +49,7 @@ public sealed class EventGuideRepository : IEventGuideRepository
         => _db.EventCategories.FindAsync([id], ct).AsTask();
 
     public Task<EventCategory?> GetCategoryWithEventsAsync(Guid id, CancellationToken ct = default)
-        => _db.EventCategories.Include(c => c.GuideEvents).FirstOrDefaultAsync(c => c.Id == id, ct);
+        => _db.EventCategories.Include(c => c.Events).FirstOrDefaultAsync(c => c.Id == id, ct);
 
     public Task<bool> CategorySlugExistsAsync(string slug, Guid? excludeId, CancellationToken ct = default)
     {
@@ -70,37 +70,37 @@ public sealed class EventGuideRepository : IEventGuideRepository
     // ── Venues ────────────────────────────────────────────────────────────
 
     public async Task<IReadOnlyList<EventVenue>> GetActiveVenuesAsync(CancellationToken ct = default)
-        => await _db.GuideSharedVenues
+        => await _db.EventVenues
             .Where(v => v.IsActive)
             .OrderBy(v => v.DisplayOrder)
             .ToListAsync(ct);
 
     public async Task<IReadOnlyList<EventVenue>> GetAllVenuesAsync(CancellationToken ct = default)
-        => await _db.GuideSharedVenues
-            .Include(v => v.GuideEvents)
+        => await _db.EventVenues
+            .Include(v => v.Events)
             .OrderBy(v => v.DisplayOrder)
             .ThenBy(v => v.Name)
             .ToListAsync(ct);
 
     public Task<EventVenue?> GetVenueAsync(Guid id, CancellationToken ct = default)
-        => _db.GuideSharedVenues.FindAsync([id], ct).AsTask();
+        => _db.EventVenues.FindAsync([id], ct).AsTask();
 
     public Task<EventVenue?> GetVenueWithEventsAsync(Guid id, CancellationToken ct = default)
-        => _db.GuideSharedVenues.Include(v => v.GuideEvents).FirstOrDefaultAsync(v => v.Id == id, ct);
+        => _db.EventVenues.Include(v => v.Events).FirstOrDefaultAsync(v => v.Id == id, ct);
 
     public async Task<int> GetMaxVenueOrderAsync(CancellationToken ct = default)
-        => await _db.GuideSharedVenues.Select(v => (int?)v.DisplayOrder).MaxAsync(ct) ?? 0;
+        => await _db.EventVenues.Select(v => (int?)v.DisplayOrder).MaxAsync(ct) ?? 0;
 
     public Task<List<EventVenue>> GetAllVenuesOrderedForSwapAsync(CancellationToken ct = default)
-        => _db.GuideSharedVenues.OrderBy(v => v.DisplayOrder).ThenBy(v => v.Name).ToListAsync(ct);
+        => _db.EventVenues.OrderBy(v => v.DisplayOrder).ThenBy(v => v.Name).ToListAsync(ct);
 
-    public void Add(EventVenue venue) => _db.GuideSharedVenues.Add(venue);
-    public void Remove(EventVenue venue) => _db.GuideSharedVenues.Remove(venue);
+    public void Add(EventVenue venue) => _db.EventVenues.Add(venue);
+    public void Remove(EventVenue venue) => _db.EventVenues.Remove(venue);
 
     // ── Events (submitter) ────────────────────────────────────────────────
 
     public async Task<IReadOnlyList<Event>> GetUserSubmissionsAsync(Guid userId, CancellationToken ct = default)
-        => await _db.GuideEvents
+        => await _db.Events
             .Include(e => e.Category)
             .Include(e => e.EventVenue)
             .Where(e => e.CampId == null && e.SubmitterUserId == userId)
@@ -108,21 +108,21 @@ public sealed class EventGuideRepository : IEventGuideRepository
             .ToListAsync(ct);
 
     public Task<Event?> GetUserEventAsync(Guid eventId, Guid userId, CancellationToken ct = default)
-        => _db.GuideEvents.FirstOrDefaultAsync(
+        => _db.Events.FirstOrDefaultAsync(
             e => e.Id == eventId && e.CampId == null && e.SubmitterUserId == userId, ct);
 
     public async Task<IReadOnlyList<Event>> GetCampSubmissionsAsync(Guid campId, CancellationToken ct = default)
-        => await _db.GuideEvents
+        => await _db.Events
             .Include(e => e.Category)
             .Where(e => e.CampId == campId)
             .OrderByDescending(e => e.SubmittedAt)
             .ToListAsync(ct);
 
     public Task<Event?> GetCampEventAsync(Guid eventId, Guid campId, CancellationToken ct = default)
-        => _db.GuideEvents.FirstOrDefaultAsync(
+        => _db.Events.FirstOrDefaultAsync(
             e => e.Id == eventId && e.CampId == campId, ct);
 
-    public void Add(Event guideEvent) => _db.GuideEvents.Add(guideEvent);
+    public void Add(Event guideEvent) => _db.Events.Add(guideEvent);
 
     // ── Events (browse / export / API) ────────────────────────────────────
 
@@ -130,7 +130,7 @@ public sealed class EventGuideRepository : IEventGuideRepository
         Guid? campId, Guid? venueId, Guid? categoryId, string? q,
         IReadOnlyList<string> excludedSlugs, CancellationToken ct = default)
     {
-        var query = _db.GuideEvents
+        var query = _db.Events
             .Include(e => e.Category)
             .Include(e => e.Camp!).ThenInclude(c => c.Seasons)
             .Include(e => e.EventVenue)
@@ -153,7 +153,7 @@ public sealed class EventGuideRepository : IEventGuideRepository
     }
 
     public Task<Event?> GetApprovedEventByIdAsync(Guid id, CancellationToken ct = default)
-        => _db.GuideEvents
+        => _db.Events
             .Include(e => e.Category)
             .Include(e => e.Camp!).ThenInclude(c => c.Seasons)
             .Include(e => e.EventVenue)
@@ -161,7 +161,7 @@ public sealed class EventGuideRepository : IEventGuideRepository
             .FirstOrDefaultAsync(e => e.Id == id && e.Status == EventStatus.Approved, ct);
 
     public async Task<IReadOnlyList<Event>> GetAllEventsForDashboardAsync(CancellationToken ct = default)
-        => await _db.GuideEvents
+        => await _db.Events
             .Include(e => e.Category)
             .Include(e => e.Camp!).ThenInclude(c => c.Seasons)
             .ToListAsync(ct);
@@ -178,7 +178,7 @@ public sealed class EventGuideRepository : IEventGuideRepository
             EventStatus.ResubmitRequested,
         };
 
-        var groups = await _db.GuideEvents
+        var groups = await _db.Events
             .Where(e => moderationStatuses.Contains(e.Status))
             .GroupBy(e => e.Status)
             .Select(g => new { Status = g.Key, Count = g.Count() })
@@ -189,12 +189,12 @@ public sealed class EventGuideRepository : IEventGuideRepository
 
     public async Task<IReadOnlyList<Event>> GetEventsByStatusAsync(EventStatus status, CancellationToken ct = default)
     {
-        var query = _db.GuideEvents
+        var query = _db.Events
             .Include(e => e.Category)
             .Include(e => e.SubmitterUser).ThenInclude(u => u.UserEmails)
             .Include(e => e.Camp!).ThenInclude(c => c.Seasons)
             .Include(e => e.EventVenue)
-            .Include(e => e.ModerationActions)
+            .Include(e => e.EventModerationActions)
             .Where(e => e.Status == status);
 
         query = status == EventStatus.Pending
@@ -205,14 +205,14 @@ public sealed class EventGuideRepository : IEventGuideRepository
     }
 
     public Task<Event?> GetEventForModerationAsync(Guid eventId, CancellationToken ct = default)
-        => _db.GuideEvents
+        => _db.Events
             .Include(e => e.SubmitterUser).ThenInclude(u => u.UserEmails)
             .Include(e => e.Camp)
             .FirstOrDefaultAsync(e => e.Id == eventId, ct);
 
     public async Task<IReadOnlyList<CampEventOverlap>> GetActiveCampEventsAsync(CancellationToken ct = default)
     {
-        var rows = await _db.GuideEvents
+        var rows = await _db.Events
             .Where(e => e.CampId != null &&
                         (e.Status == EventStatus.Pending || e.Status == EventStatus.Approved))
             .Select(e => new { e.Id, e.CampId, e.Title, e.StartAt, e.DurationMinutes, e.Status })
@@ -222,13 +222,13 @@ public sealed class EventGuideRepository : IEventGuideRepository
                    .ToList();
     }
 
-    public void Add(EventModerationAction action) => _db.ModerationActions.Add(action);
+    public void Add(EventModerationAction action) => _db.EventModerationActions.Add(action);
 
     // ── Favourites ────────────────────────────────────────────────────────
 
     public async Task<HashSet<Guid>> GetFavouriteEventIdsAsync(Guid userId, CancellationToken ct = default)
     {
-        var ids = await _db.UserEventFavourites
+        var ids = await _db.EventFavourites
             .Where(f => f.UserId == userId)
             .Select(f => f.GuideEventId)
             .ToListAsync(ct);
@@ -236,7 +236,7 @@ public sealed class EventGuideRepository : IEventGuideRepository
     }
 
     public async Task<IReadOnlyList<EventFavourite>> GetFavouritesWithEventsAsync(Guid userId, CancellationToken ct = default)
-        => await _db.UserEventFavourites
+        => await _db.EventFavourites
             .Include(f => f.Event).ThenInclude(e => e.Category)
             .Include(f => f.Event).ThenInclude(e => e.Camp!).ThenInclude(c => c.Seasons)
             .Include(f => f.Event).ThenInclude(e => e.EventVenue)
@@ -245,20 +245,20 @@ public sealed class EventGuideRepository : IEventGuideRepository
             .ToListAsync(ct);
 
     public Task<EventFavourite?> GetFavouriteAsync(Guid userId, Guid eventId, CancellationToken ct = default)
-        => _db.UserEventFavourites.FirstOrDefaultAsync(f => f.UserId == userId && f.GuideEventId == eventId, ct);
+        => _db.EventFavourites.FirstOrDefaultAsync(f => f.UserId == userId && f.GuideEventId == eventId, ct);
 
     public Task<bool> FavouriteExistsAsync(Guid userId, Guid eventId, CancellationToken ct = default)
-        => _db.UserEventFavourites.AnyAsync(f => f.UserId == userId && f.GuideEventId == eventId, ct);
+        => _db.EventFavourites.AnyAsync(f => f.UserId == userId && f.GuideEventId == eventId, ct);
 
-    public void Add(EventFavourite fav) => _db.UserEventFavourites.Add(fav);
-    public void Remove(EventFavourite fav) => _db.UserEventFavourites.Remove(fav);
+    public void Add(EventFavourite fav) => _db.EventFavourites.Add(fav);
+    public void Remove(EventFavourite fav) => _db.EventFavourites.Remove(fav);
 
     // ── Preferences ───────────────────────────────────────────────────────
 
     public Task<EventPreference?> GetPreferenceAsync(Guid userId, CancellationToken ct = default)
-        => _db.UserGuidePreferences.FirstOrDefaultAsync(p => p.UserId == userId, ct);
+        => _db.EventPreferences.FirstOrDefaultAsync(p => p.UserId == userId, ct);
 
-    public void Add(EventPreference pref) => _db.UserGuidePreferences.Add(pref);
+    public void Add(EventPreference pref) => _db.EventPreferences.Add(pref);
 
     // ── Persistence ───────────────────────────────────────────────────────
 

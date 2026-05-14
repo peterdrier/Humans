@@ -113,7 +113,7 @@ public class GuideAdminController : HumansControllerBase
             IsSensitive = c.IsSensitive,
             IsActive = c.IsActive,
             DisplayOrder = c.DisplayOrder,
-            EventCount = c.GuideEvents.Count
+            EventCount = c.Events.Count
         }).ToList();
 
         return View(new EventCategoryListViewModel { Categories = rows });
@@ -252,7 +252,7 @@ public class GuideAdminController : HumansControllerBase
             LocationDescription = v.LocationDescription,
             IsActive = v.IsActive,
             DisplayOrder = v.DisplayOrder,
-            EventCount = v.GuideEvents.Count
+            EventCount = v.Events.Count
         }).ToList();
 
         return View(new GuideVenueListViewModel { Venues = rows });

@@ -144,7 +144,7 @@ public sealed class EventGuideRepositoryTests : IDisposable
         var later = SeedEvent(category.Id, userId, EventStatus.Approved, _clock.GetCurrentInstant(), startAt: Instant.FromUtc(2026, 7, 2, 10, 0));
         var earlier = SeedEvent(category.Id, userId, EventStatus.Approved, _clock.GetCurrentInstant(), startAt: Instant.FromUtc(2026, 7, 1, 10, 0));
         var pending = SeedEvent(category.Id, userId, EventStatus.Pending, _clock.GetCurrentInstant(), startAt: Instant.FromUtc(2026, 7, 3, 10, 0));
-        await _db.UserEventFavourites.AddRangeAsync(
+        await _db.EventFavourites.AddRangeAsync(
             BuildFavourite(userId, later.Id),
             BuildFavourite(userId, earlier.Id),
             BuildFavourite(userId, pending.Id));
@@ -193,7 +193,7 @@ public sealed class EventGuideRepositoryTests : IDisposable
             Name = name,
             DisplayOrder = displayOrder
         };
-        _db.GuideSharedVenues.Add(venue);
+        _db.EventVenues.Add(venue);
         return venue;
     }
 
@@ -228,7 +228,7 @@ public sealed class EventGuideRepositoryTests : IDisposable
             CampId = campId,
             GuideSharedVenueId = venueId
         };
-        _db.GuideEvents.Add(guideEvent);
+        _db.Events.Add(guideEvent);
         return guideEvent;
     }
 

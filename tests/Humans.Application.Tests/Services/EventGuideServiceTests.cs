@@ -121,7 +121,7 @@ public sealed class EventGuideServiceTests
     public async Task DeleteVenueAsync_ReturnsLinkedCountAndDoesNotRemove_WhenEventsReferenceVenue()
     {
         var venue = new EventVenue { Id = Guid.NewGuid(), Name = "Main Stage" };
-        venue.GuideEvents.Add(new Event { Id = Guid.NewGuid(), Title = "Talk" });
+        venue.Events.Add(new Event { Id = Guid.NewGuid(), Title = "Talk" });
         _repo.Venues.Add(venue);
 
         var result = await _service.DeleteVenueAsync(venue.Id);
@@ -203,7 +203,7 @@ public sealed class EventGuideServiceTests
 
         guideEvent.Status.Should().Be(EventStatus.ResubmitRequested);
         guideEvent.LastUpdatedAt.Should().Be(_clock.GetCurrentInstant());
-        _repo.ModerationActions.Should().ContainSingle(action =>
+        _repo.EventModerationActions.Should().ContainSingle(action =>
             action.GuideEventId == guideEvent.Id
             && action.ActorUserId == actorUserId
             && action.Action == EventModerationActionType.ResubmitRequested
@@ -221,7 +221,7 @@ public sealed class EventGuideServiceTests
         public List<EventVenue> RemovedVenues { get; } = [];
         public List<Event> Events { get; } = [];
         public List<EventFavourite> Favourites { get; } = [];
-        public List<EventModerationAction> ModerationActions { get; } = [];
+        public List<EventModerationAction> EventModerationActions { get; } = [];
         public EventPreference? Preference { get; set; }
         public int SaveChangesCount { get; private set; }
 
@@ -321,7 +321,7 @@ public sealed class EventGuideServiceTests
         public Task<IReadOnlyList<CampEventOverlap>> GetActiveCampEventsAsync(CancellationToken ct = default)
             => Task.FromResult<IReadOnlyList<CampEventOverlap>>([]);
 
-        public void Add(EventModerationAction action) => ModerationActions.Add(action);
+        public void Add(EventModerationAction action) => EventModerationActions.Add(action);
 
         public Task<HashSet<Guid>> GetFavouriteEventIdsAsync(Guid userId, CancellationToken ct = default)
             => Task.FromResult(Favourites.Where(f => f.UserId == userId).Select(f => f.GuideEventId).ToHashSet());

@@ -209,7 +209,7 @@ public class ModerationController : HumansControllerBase
             PriorityRank = e.PriorityRank,
             SubmittedAt = ToLocalDateTime(e.SubmittedAt, tz),
             Status = e.Status,
-            History = e.ModerationActions
+            History = e.EventModerationActions
                 .OrderByDescending(a => a.CreatedAt)
                 .Select(a => new ModerationHistoryItemViewModel
                 {

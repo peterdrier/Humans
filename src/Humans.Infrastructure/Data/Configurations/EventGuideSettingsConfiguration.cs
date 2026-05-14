@@ -4,11 +4,11 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Humans.Infrastructure.Data.Configurations;
 
-public class GuideSettingsConfiguration : IEntityTypeConfiguration<EventGuideSettings>
+public class EventGuideSettingsConfiguration : IEntityTypeConfiguration<EventGuideSettings>
 {
     public void Configure(EntityTypeBuilder<EventGuideSettings> builder)
     {
-        builder.ToTable("guide_settings");
+        builder.ToTable("event_guide_settings");
         builder.HasKey(g => g.Id);
 
         builder.HasIndex(g => g.EventSettingsId).IsUnique();

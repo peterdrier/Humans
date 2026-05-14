@@ -41,5 +41,5 @@ public class EventVenue
     /// <summary>
     /// Navigation property to events at this venue.
     /// </summary>
-    public ICollection<Event> GuideEvents { get; } = new List<Event>();
+    public ICollection<Event> Events { get; } = new List<Event>();
 }

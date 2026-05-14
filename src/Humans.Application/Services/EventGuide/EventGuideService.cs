@@ -107,7 +107,7 @@ public sealed class EventGuideService : IEventGuideService
     {
         var category = await _repo.GetCategoryWithEventsAsync(id, ct);
         if (category == null) return (false, -1);
-        if (category.GuideEvents.Count > 0) return (false, category.GuideEvents.Count);
+        if (category.Events.Count > 0) return (false, category.Events.Count);
 
         _repo.Remove(category);
         await _repo.SaveChangesAsync(ct);
@@ -153,7 +153,7 @@ public sealed class EventGuideService : IEventGuideService
     {
         var venue = await _repo.GetVenueWithEventsAsync(id, ct);
         if (venue == null) return (false, -1);
-        if (venue.GuideEvents.Count > 0) return (false, venue.GuideEvents.Count);
+        if (venue.Events.Count > 0) return (false, venue.Events.Count);
         _repo.Remove(venue);
         await _repo.SaveChangesAsync(ct);
         return (true, 0);

@@ -122,12 +122,12 @@ public class Event
     /// <summary>
     /// Navigation property to moderation actions on this event.
     /// </summary>
-    public ICollection<EventModerationAction> ModerationActions { get; } = new List<EventModerationAction>();
+    public ICollection<EventModerationAction> EventModerationActions { get; } = new List<EventModerationAction>();
 
     /// <summary>
     /// Navigation property to user favourites of this event.
     /// </summary>
-    public ICollection<EventFavourite> UserEventFavourites { get; } = new List<EventFavourite>();
+    public ICollection<EventFavourite> EventFavourites { get; } = new List<EventFavourite>();
 
     // State transition methods
 

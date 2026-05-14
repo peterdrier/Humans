@@ -4,11 +4,11 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Humans.Infrastructure.Data.Configurations;
 
-public class GuideSharedVenueConfiguration : IEntityTypeConfiguration<EventVenue>
+public class EventVenueConfiguration : IEntityTypeConfiguration<EventVenue>
 {
     public void Configure(EntityTypeBuilder<EventVenue> builder)
     {
-        builder.ToTable("guide_shared_venues");
+        builder.ToTable("event_venues");
         builder.HasKey(v => v.Id);
 
         builder.Property(v => v.Name).HasMaxLength(120).IsRequired();

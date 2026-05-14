@@ -4,11 +4,11 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Humans.Infrastructure.Data.Configurations;
 
-public class GuideEventConfiguration : IEntityTypeConfiguration<Event>
+public class EventConfiguration : IEntityTypeConfiguration<Event>
 {
     public void Configure(EntityTypeBuilder<Event> builder)
     {
-        builder.ToTable("guide_events");
+        builder.ToTable("events");
         builder.HasKey(e => e.Id);
 
         builder.Property(e => e.Title).HasMaxLength(80).IsRequired();
@@ -33,7 +33,7 @@ public class GuideEventConfiguration : IEntityTypeConfiguration<Event>
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(e => e.EventVenue)
-            .WithMany(v => v.GuideEvents)
+            .WithMany(v => v.Events)
             .HasForeignKey(e => e.GuideSharedVenueId)
             .OnDelete(DeleteBehavior.Restrict);
 
@@ -43,7 +43,7 @@ public class GuideEventConfiguration : IEntityTypeConfiguration<Event>
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(e => e.Category)
-            .WithMany(c => c.GuideEvents)
+            .WithMany(c => c.Events)
             .HasForeignKey(e => e.CategoryId)
             .OnDelete(DeleteBehavior.Restrict);
     }
