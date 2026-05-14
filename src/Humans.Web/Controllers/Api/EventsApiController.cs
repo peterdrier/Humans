@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Events;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -20,11 +21,13 @@ namespace Humans.Web.Controllers.Api;
 public class EventsApiController : ControllerBase
 {
     private readonly IEventService _guide;
+    private readonly ICampService _camps;
     private readonly UserManager<User> _userManager;
 
-    public EventsApiController(IEventService guide, UserManager<User> userManager)
+    public EventsApiController(IEventService guide, ICampService camps, UserManager<User> userManager)
     {
         _guide = guide;
+        _camps = camps;
         _userManager = userManager;
     }
 
@@ -36,13 +39,15 @@ public class EventsApiController : ControllerBase
         [FromQuery] string? q)
     {
         var guideSettings = await _guide.GetGuideSettingsAsync();
-        DateTimeZone? tz = guideSettings?.EventSettings != null
-            ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(guideSettings.EventSettings.TimeZoneId)
+        var eventSettings = await LoadEventSettingsAsync(guideSettings);
+        DateTimeZone? tz = eventSettings != null
+            ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId)
             : null;
-        var gateOpeningDate = guideSettings?.EventSettings?.GateOpeningDate;
+        var gateOpeningDate = eventSettings?.GateOpeningDate;
 
         var excludedSlugs = await GetExcludedSlugsAsync();
         var events = await _guide.GetApprovedEventsAsync(barrioId, null, null, q, excludedSlugs);
+        var campsById = await LoadCampsByIdAsync(gateOpeningDate?.Year);
 
         var results = new List<GuideEventApiDto>();
         foreach (var e in events)
@@ -50,8 +55,7 @@ public class EventsApiController : ControllerBase
             if (categorySlug != null && !string.Equals(e.Category.Slug, categorySlug, StringComparison.OrdinalIgnoreCase))
                 continue;
 
-            var campSeason = e.Camp?.Seasons.OrderByDescending(s => s.Year).FirstOrDefault();
-            var campName = campSeason?.Name ?? e.Camp?.Slug;
+            var campName = ResolveCampName(e.CampId, campsById);
 
             foreach (var occurrenceStart in e.GetOccurrenceInstants())
             {
@@ -68,16 +72,17 @@ public class EventsApiController : ControllerBase
     public async Task<IActionResult> GetEvent(Guid id)
     {
         var guideSettings = await _guide.GetGuideSettingsAsync();
-        DateTimeZone? tz = guideSettings?.EventSettings != null
-            ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(guideSettings.EventSettings.TimeZoneId)
+        var eventSettings = await LoadEventSettingsAsync(guideSettings);
+        DateTimeZone? tz = eventSettings != null
+            ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId)
             : null;
 
         var e = await _guide.GetApprovedEventByIdAsync(id);
         if (e == null) return NotFound();
 
-        var gateOpeningDate = guideSettings?.EventSettings?.GateOpeningDate;
-        var campSeason = e.Camp?.Seasons.OrderByDescending(s => s.Year).FirstOrDefault();
-        var campName = campSeason?.Name ?? e.Camp?.Slug;
+        var gateOpeningDate = eventSettings?.GateOpeningDate;
+        var campsById = await LoadCampsByIdAsync(gateOpeningDate?.Year);
+        var campName = ResolveCampName(e.CampId, campsById);
 
         return Ok(BuildEventDto(e, e.StartAt, ComputeDayOffset(e.StartAt, gateOpeningDate, tz), campName));
     }
@@ -85,18 +90,22 @@ public class EventsApiController : ControllerBase
     [HttpGet("barrios")]
     public async Task<IActionResult> GetBarrios()
     {
+        var guideSettings = await _guide.GetGuideSettingsAsync();
+        var eventSettings = await LoadEventSettingsAsync(guideSettings);
+        var campsById = await LoadCampsByIdAsync(eventSettings?.GateOpeningDate.Year);
+
         var events = await _guide.GetApprovedEventsAsync(null, null, null, null, []);
         var barrioGroups = events
             .Where(e => e.CampId.HasValue)
             .GroupBy(e => e.CampId!.Value)
             .Select(g =>
             {
-                var first = g.First();
-                var season = first.Camp?.Seasons.OrderByDescending(s => s.Year).FirstOrDefault();
+                var camp = campsById.GetValueOrDefault(g.Key);
+                var seasonName = camp?.Seasons.OrderByDescending(s => s.Year).FirstOrDefault()?.Name;
                 return new GuideCampApiDto(
-                    first.CampId!.Value,
-                    season?.Name ?? first.Camp?.Slug,
-                    first.Camp?.Slug);
+                    g.Key,
+                    seasonName ?? camp?.Slug,
+                    camp?.Slug);
             })
             .ToList();
 
@@ -107,22 +116,24 @@ public class EventsApiController : ControllerBase
     public async Task<IActionResult> GetBarrio(Guid id)
     {
         var guideSettings = await _guide.GetGuideSettingsAsync();
-        DateTimeZone? tz = guideSettings?.EventSettings != null
-            ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(guideSettings.EventSettings.TimeZoneId)
+        var eventSettings = await LoadEventSettingsAsync(guideSettings);
+        DateTimeZone? tz = eventSettings != null
+            ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId)
             : null;
-        var gateOpeningDate = guideSettings?.EventSettings?.GateOpeningDate;
+        var gateOpeningDate = eventSettings?.GateOpeningDate;
 
         var events = await _guide.GetApprovedEventsAsync(id, null, null, null, []);
         if (!events.Any()) return NotFound();
 
-        var first = events.First();
-        var season = first.Camp?.Seasons.OrderByDescending(s => s.Year).FirstOrDefault();
-        var campName = season?.Name ?? first.Camp?.Slug;
+        var campsById = await LoadCampsByIdAsync(gateOpeningDate?.Year);
+        var camp = campsById.GetValueOrDefault(id);
+        var seasonName = camp?.Seasons.OrderByDescending(s => s.Year).FirstOrDefault()?.Name;
+        var campName = seasonName ?? camp?.Slug;
 
         return Ok(new GuideCampDetailApiDto(
             id,
             campName,
-            first.Camp?.Slug,
+            camp?.Slug,
             events.Select(e =>
             {
                 var dayOffset = ComputeDayOffset(e.StartAt, gateOpeningDate, tz);
@@ -193,17 +204,18 @@ public class EventsApiController : ControllerBase
         if (user == null) return Unauthorized();
 
         var guideSettings = await _guide.GetGuideSettingsAsync();
-        DateTimeZone? tz = guideSettings?.EventSettings != null
-            ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(guideSettings.EventSettings.TimeZoneId)
+        var eventSettings = await LoadEventSettingsAsync(guideSettings);
+        DateTimeZone? tz = eventSettings != null
+            ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId)
             : null;
-        var gateOpeningDate = guideSettings?.EventSettings?.GateOpeningDate;
+        var gateOpeningDate = eventSettings?.GateOpeningDate;
 
         var favourites = await _guide.GetFavouritesWithEventsAsync(user.Id);
+        var campsById = await LoadCampsByIdAsync(gateOpeningDate?.Year);
         var results = favourites.Select(f =>
         {
             var e = f.Event;
-            var campSeason = e.Camp?.Seasons.OrderByDescending(s => s.Year).FirstOrDefault();
-            var campName = campSeason?.Name ?? e.Camp?.Slug;
+            var campName = ResolveCampName(e.CampId, campsById);
             return BuildEventDto(e, e.StartAt, ComputeDayOffset(e.StartAt, gateOpeningDate, tz), campName);
         }).ToList();
 
@@ -244,6 +256,27 @@ public class EventsApiController : ControllerBase
         var user = await _userManager.GetUserAsync(User);
         if (user == null) return [];
         return await _guide.GetExcludedCategorySlugsAsync(user.Id);
+    }
+
+    private async Task<EventSettings?> LoadEventSettingsAsync(EventGuideSettings? guideSettings)
+    {
+        if (guideSettings == null) return null;
+        return await _guide.GetEventSettingsByIdAsync(guideSettings.EventSettingsId);
+    }
+
+    private async Task<Dictionary<Guid, CampInfo>> LoadCampsByIdAsync(int? year)
+    {
+        if (year is null) return [];
+        var camps = await _camps.GetCampsForYearAsync(year.Value);
+        return camps.ToDictionary(c => c.Id);
+    }
+
+    private static string? ResolveCampName(Guid? campId, IReadOnlyDictionary<Guid, CampInfo> campsById)
+    {
+        if (campId is null) return null;
+        var camp = campsById.GetValueOrDefault(campId.Value);
+        var seasonName = camp?.Seasons.OrderByDescending(s => s.Year).FirstOrDefault()?.Name;
+        return seasonName ?? camp?.Slug;
     }
 
     private static GuideEventApiDto BuildEventDto(

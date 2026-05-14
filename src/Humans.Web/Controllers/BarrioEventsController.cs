@@ -46,7 +46,8 @@ public class BarrioEventsController : HumansCampControllerBase
         if (error != null) return error;
 
         var guideSettings = await _guide.GetGuideSettingsAsync();
-        var tz = GetTimeZone(guideSettings);
+        var eventSettings = await LoadEventSettingsAsync(guideSettings);
+        var tz = GetTimeZone(eventSettings);
         var events = await _guide.GetCampSubmissionsAsync(camp.Id);
 
         var model = new CampEventsTabViewModel
@@ -57,7 +58,7 @@ public class BarrioEventsController : HumansCampControllerBase
             IsSubmissionOpen = IsSubmissionOpen(guideSettings),
             SubmissionOpenAt = guideSettings != null ? ToLocalDateTime(guideSettings.SubmissionOpenAt, tz) : null,
             SubmissionCloseAt = guideSettings != null ? ToLocalDateTime(guideSettings.SubmissionCloseAt, tz) : null,
-            TimeZoneId = guideSettings?.EventSettings?.TimeZoneId,
+            TimeZoneId = eventSettings?.TimeZoneId,
             SubmittedCount = events.Count,
             ApprovedCount = events.Count(e => e.Status == EventStatus.Approved),
             PendingCount = events.Count(e => e.Status == EventStatus.Pending),
@@ -91,7 +92,9 @@ public class BarrioEventsController : HumansCampControllerBase
             return RedirectToAction(nameof(Index), new { slug });
         }
 
-        var model = await BuildFormAsync(slug, camp, guideSettings!);
+        var eventSettings = await LoadEventSettingsAsync(guideSettings)
+            ?? throw new InvalidOperationException("Event settings not configured.");
+        var model = await BuildFormAsync(slug, camp, eventSettings);
         return View("BarrioEventForm", model);
     }
 
@@ -109,16 +112,19 @@ public class BarrioEventsController : HumansCampControllerBase
             return RedirectToAction(nameof(Index), new { slug });
         }
 
+        var eventSettings = await LoadEventSettingsAsync(guideSettings)
+            ?? throw new InvalidOperationException("Event settings not configured.");
+
         if (!ModelState.IsValid)
         {
             model.CampId = camp.Id;
             model.CampName = ResolveCampName(camp);
             model.CampSlug = slug;
-            await PopulateDropdownsAsync(model, guideSettings!);
+            await PopulateDropdownsAsync(model, eventSettings);
             return View("BarrioEventForm", model);
         }
 
-        var tz = GetTimeZone(guideSettings!);
+        var tz = GetTimeZone(eventSettings);
 
         var guideEvent = new Event
         {
@@ -175,10 +181,12 @@ public class BarrioEventsController : HumansCampControllerBase
             return RedirectToAction(nameof(Index), new { slug });
         }
 
-        var tz = GetTimeZone(guideSettings);
+        var eventSettings = await LoadEventSettingsAsync(guideSettings)
+            ?? throw new InvalidOperationException("Event settings not configured.");
+        var tz = GetTimeZone(eventSettings);
         var localStart = ToLocalDateTime(guideEvent.StartAt, tz);
 
-        var model = await BuildFormAsync(slug, camp, guideSettings);
+        var model = await BuildFormAsync(slug, camp, eventSettings);
         model.Id = guideEvent.Id;
         model.Title = guideEvent.Title;
         model.Description = guideEvent.Description;
@@ -218,17 +226,20 @@ public class BarrioEventsController : HumansCampControllerBase
             return RedirectToAction(nameof(Index), new { slug });
         }
 
+        var eventSettings = await LoadEventSettingsAsync(guideSettings)
+            ?? throw new InvalidOperationException("Event settings not configured.");
+
         if (!ModelState.IsValid)
         {
             model.Id = eventId;
             model.CampId = camp.Id;
             model.CampName = ResolveCampName(camp);
             model.CampSlug = slug;
-            await PopulateDropdownsAsync(model, guideSettings);
+            await PopulateDropdownsAsync(model, eventSettings);
             return View("BarrioEventForm", model);
         }
 
-        var tz = GetTimeZone(guideSettings);
+        var tz = GetTimeZone(eventSettings);
 
         guideEvent.Title = model.Title;
         guideEvent.Description = model.Description;
@@ -283,32 +294,31 @@ public class BarrioEventsController : HumansCampControllerBase
         return now >= settings.SubmissionOpenAt && now <= settings.SubmissionCloseAt;
     }
 
-    private async Task<CampEventFormViewModel> BuildFormAsync(string slug, CampLookup camp, EventGuideSettings guideSettings)
+    private async Task<CampEventFormViewModel> BuildFormAsync(string slug, CampLookup camp, EventSettings eventSettings)
     {
         var model = new CampEventFormViewModel
         {
             CampId = camp.Id,
             CampName = ResolveCampName(camp),
             CampSlug = slug,
-            TimeZoneId = guideSettings.EventSettings.TimeZoneId
+            TimeZoneId = eventSettings.TimeZoneId
         };
-        await PopulateDropdownsAsync(model, guideSettings);
+        await PopulateDropdownsAsync(model, eventSettings);
         return model;
     }
 
-    private async Task PopulateDropdownsAsync(CampEventFormViewModel model, EventGuideSettings guideSettings)
+    private async Task PopulateDropdownsAsync(CampEventFormViewModel model, EventSettings eventSettings)
     {
         var categories = await _guide.GetActiveCategoriesAsync();
         model.Categories = categories.Select(c => new CategoryOptionViewModel { Id = c.Id, Name = c.Name }).ToList();
-        model.TimeZoneId = guideSettings.EventSettings.TimeZoneId;
+        model.TimeZoneId = eventSettings.TimeZoneId;
 
-        var es = guideSettings.EventSettings;
-        var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(es.TimeZoneId);
+        var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId);
 
         model.EventDays = [];
-        for (var offset = 0; offset <= es.EventEndOffset; offset++)
+        for (var offset = 0; offset <= eventSettings.EventEndOffset; offset++)
         {
-            var date = es.GateOpeningDate.PlusDays(offset);
+            var date = eventSettings.GateOpeningDate.PlusDays(offset);
             var dt = tz != null
                 ? date.AtStartOfDayInZone(tz).ToDateTimeUnspecified()
                 : new DateTime(date.Year, date.Month, date.Day, 0, 0, 0);
@@ -322,15 +332,21 @@ public class BarrioEventsController : HumansCampControllerBase
         }
     }
 
+    private async Task<EventSettings?> LoadEventSettingsAsync(EventGuideSettings? guideSettings)
+    {
+        if (guideSettings == null) return null;
+        return await _guide.GetEventSettingsByIdAsync(guideSettings.EventSettingsId);
+    }
+
     private static string ResolveCampName(CampLookup camp)
     {
         var currentSeason = camp.Seasons.OrderByDescending(s => s.Year).FirstOrDefault();
         return currentSeason?.Name ?? camp.Slug;
     }
 
-    private static DateTimeZone? GetTimeZone(EventGuideSettings? guideSettings)
-        => guideSettings?.EventSettings != null
-            ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(guideSettings.EventSettings.TimeZoneId)
+    private static DateTimeZone? GetTimeZone(EventSettings? eventSettings)
+        => eventSettings != null
+            ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId)
             : null;
 
     private static DateTime ToLocalDateTime(Instant instant, DateTimeZone? tz)

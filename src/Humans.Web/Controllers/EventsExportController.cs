@@ -1,6 +1,8 @@
 using System.Globalization;
 using System.Text;
+using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Events;
+using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Web.Filters;
@@ -17,11 +19,19 @@ namespace Humans.Web.Controllers;
 public class EventsExportController : HumansControllerBase
 {
     private readonly IEventService _guide;
+    private readonly ICampService _camps;
+    private readonly IUserService _users;
 
-    public EventsExportController(IEventService guide, UserManager<User> userManager)
+    public EventsExportController(
+        IEventService guide,
+        ICampService camps,
+        IUserService users,
+        UserManager<User> userManager)
         : base(userManager)
     {
         _guide = guide;
+        _camps = camps;
+        _users = users;
     }
 
     [HttpGet("")]
@@ -31,7 +41,11 @@ public class EventsExportController : HumansControllerBase
     public async Task<IActionResult> DownloadCsv()
     {
         var (events, settings) = await _guide.GetApprovedEventsForExportAsync();
-        var tz = GetTz(settings);
+        var eventSettings = settings != null
+            ? await _guide.GetEventSettingsByIdAsync(settings.EventSettingsId)
+            : null;
+        var tz = GetTz(eventSettings);
+        var campsById = await LoadCampsByIdAsync(eventSettings?.GateOpeningDate.Year);
 
         var sb = new StringBuilder();
         sb.Append('﻿');
@@ -39,12 +53,16 @@ public class EventsExportController : HumansControllerBase
 
         foreach (var e in events)
         {
-            var campSeason = e.Camp?.Seasons.OrderByDescending(s => s.Year).FirstOrDefault();
-            var campName = campSeason?.Name ?? e.Camp?.Slug ?? "";
+            var camp = e.CampId.HasValue ? campsById.GetValueOrDefault(e.CampId.Value) : null;
+            var seasonName = camp?.Seasons.OrderByDescending(s => s.Year).FirstOrDefault()?.Name;
+            var campName = seasonName ?? camp?.Slug ?? "";
             var venueName = e.EventVenue?.Name ?? "";
-            var submitterName = e.CampId == null
-                ? (e.SubmitterUser.Email ?? "")
-                : "";
+            var submitterName = "";
+            if (e.CampId == null)
+            {
+                var submitter = await _users.GetUserInfoAsync(e.SubmitterUserId);
+                submitterName = submitter?.Email ?? "";
+            }
 
             foreach (var (date, time) in GetOccurrences(e, tz))
             {
@@ -75,14 +93,19 @@ public class EventsExportController : HumansControllerBase
     public async Task<IActionResult> PrintGuide()
     {
         var (events, settings) = await _guide.GetApprovedEventsForExportAsync();
-        var tz = GetTz(settings);
+        var eventSettings = settings != null
+            ? await _guide.GetEventSettingsByIdAsync(settings.EventSettingsId)
+            : null;
+        var tz = GetTz(eventSettings);
         var maxSlots = settings?.MaxPrintSlots;
+        var campsById = await LoadCampsByIdAsync(eventSettings?.GateOpeningDate.Year);
 
         var allOccurrences = new List<PrintGuideEntry>();
         foreach (var e in events)
         {
-            var campSeason = e.Camp?.Seasons.OrderByDescending(s => s.Year).FirstOrDefault();
-            var campName = campSeason?.Name ?? e.Camp?.Slug;
+            var camp = e.CampId.HasValue ? campsById.GetValueOrDefault(e.CampId.Value) : null;
+            var seasonName = camp?.Seasons.OrderByDescending(s => s.Year).FirstOrDefault()?.Name;
+            var campName = seasonName ?? camp?.Slug;
             var venueName = e.EventVenue?.Name;
 
             foreach (var occ in e.GetOccurrenceInstants())
@@ -123,8 +146,8 @@ public class EventsExportController : HumansControllerBase
 
         var model = new PrintGuideViewModel
         {
-            EventName = settings?.EventSettings.EventName ?? "Event Guide",
-            TimeZoneId = settings?.EventSettings.TimeZoneId,
+            EventName = eventSettings?.EventName ?? "Event Guide",
+            TimeZoneId = eventSettings?.TimeZoneId,
             DayGroups = dayGroups
         };
 
@@ -133,9 +156,16 @@ public class EventsExportController : HumansControllerBase
 
     // ─── Helpers ──────────────────────────────────────────────────
 
-    private static DateTimeZone? GetTz(EventGuideSettings? settings)
-        => settings?.EventSettings != null
-            ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(settings.EventSettings.TimeZoneId)
+    private async Task<Dictionary<Guid, CampInfo>> LoadCampsByIdAsync(int? year)
+    {
+        if (year is null) return [];
+        var camps = await _camps.GetCampsForYearAsync(year.Value);
+        return camps.ToDictionary(c => c.Id);
+    }
+
+    private static DateTimeZone? GetTz(EventSettings? eventSettings)
+        => eventSettings != null
+            ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId)
             : null;
 
     private static DateTime ToLocal(Instant instant, DateTimeZone? tz)

@@ -46,7 +46,10 @@ public class EventsAdminController : HumansControllerBase
             });
         }
 
-        var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(existing.EventSettings.TimeZoneId);
+        var eventSettings = await _guide.GetEventSettingsByIdAsync(existing.EventSettingsId);
+        var tz = eventSettings != null
+            ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId)
+            : null;
         return View(new GuideSettingsViewModel
         {
             Id = existing.Id,
@@ -56,7 +59,7 @@ public class EventsAdminController : HumansControllerBase
             GuidePublishAt = ToLocalDateTime(existing.GuidePublishAt, tz),
             MaxPrintSlots = existing.MaxPrintSlots,
             AvailableEventSettings = eventSettingsOptions,
-            TimeZoneId = existing.EventSettings.TimeZoneId
+            TimeZoneId = eventSettings?.TimeZoneId
         });
     }
 

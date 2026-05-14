@@ -1,5 +1,8 @@
+using Humans.Application;
+using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Events;
+using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Filters;
@@ -18,12 +21,16 @@ namespace Humans.Web.Controllers;
 public class EventsController : HumansControllerBase
 {
     private readonly IEventService _guide;
+    private readonly ICampService _camps;
+    private readonly IUserService _users;
     private readonly IClock _clock;
     private readonly IEmailService _emailService;
     private readonly ILogger<EventsController> _logger;
 
     public EventsController(
         IEventService guide,
+        ICampService camps,
+        IUserService users,
         UserManager<User> userManager,
         IClock clock,
         IEmailService emailService,
@@ -31,6 +38,8 @@ public class EventsController : HumansControllerBase
         : base(userManager)
     {
         _guide = guide;
+        _camps = camps;
+        _users = users;
         _clock = clock;
         _emailService = emailService;
         _logger = logger;
@@ -43,13 +52,14 @@ public class EventsController : HumansControllerBase
         if (user == null) return Challenge();
 
         var guideSettings = await _guide.GetGuideSettingsAsync();
+        var eventSettings = await LoadEventSettingsAsync(guideSettings);
         var now = _clock.GetCurrentInstant();
         var isSubmissionOpen = guideSettings != null &&
                                now >= guideSettings.SubmissionOpenAt &&
                                now <= guideSettings.SubmissionCloseAt;
 
-        DateTimeZone? tz = guideSettings?.EventSettings != null
-            ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(guideSettings.EventSettings.TimeZoneId)
+        DateTimeZone? tz = eventSettings != null
+            ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId)
             : null;
 
         var events = await _guide.GetUserSubmissionsAsync(user.Id);
@@ -59,7 +69,7 @@ public class EventsController : HumansControllerBase
             IsSubmissionOpen = isSubmissionOpen,
             SubmissionOpenAt = guideSettings != null ? ToLocalDateTime(guideSettings.SubmissionOpenAt, tz) : null,
             SubmissionCloseAt = guideSettings != null ? ToLocalDateTime(guideSettings.SubmissionCloseAt, tz) : null,
-            TimeZoneId = guideSettings?.EventSettings?.TimeZoneId,
+            TimeZoneId = eventSettings?.TimeZoneId,
             SubmittedCount = events.Count,
             ApprovedCount = events.Count(e => e.Status == EventStatus.Approved),
             PendingCount = events.Count(e => e.Status == EventStatus.Pending),
@@ -90,7 +100,9 @@ public class EventsController : HumansControllerBase
             return RedirectToAction(nameof(MySubmissions));
         }
 
-        var model = await BuildFormAsync(guideSettings!);
+        var eventSettings = await LoadEventSettingsAsync(guideSettings)
+            ?? throw new InvalidOperationException("Event settings not configured.");
+        var model = await BuildFormAsync(guideSettings!, eventSettings);
         return View("IndividualEventForm", model);
     }
 
@@ -108,13 +120,16 @@ public class EventsController : HumansControllerBase
             return RedirectToAction(nameof(MySubmissions));
         }
 
+        var eventSettings = await LoadEventSettingsAsync(guideSettings)
+            ?? throw new InvalidOperationException("Event settings not configured.");
+
         if (!ModelState.IsValid)
         {
-            await PopulateDropdownsAsync(model, guideSettings!);
+            await PopulateDropdownsAsync(model, eventSettings);
             return View("IndividualEventForm", model);
         }
 
-        var tz = GetTimeZone(guideSettings!);
+        var tz = GetTimeZone(eventSettings);
         var durationMinutes = model.IsAllDay ? 1440 : model.DurationMinutes;
         var startTime = model.IsAllDay ? TimeSpan.Zero : model.StartTime;
 
@@ -173,10 +188,12 @@ public class EventsController : HumansControllerBase
             return RedirectToAction(nameof(MySubmissions));
         }
 
-        var tz = GetTimeZone(guideSettings);
+        var eventSettings = await LoadEventSettingsAsync(guideSettings)
+            ?? throw new InvalidOperationException("Event settings not configured.");
+        var tz = GetTimeZone(eventSettings);
         var localStart = ToLocalDateTime(guideEvent.StartAt, tz);
 
-        var model = await BuildFormAsync(guideSettings);
+        var model = await BuildFormAsync(guideSettings, eventSettings);
         model.Id = guideEvent.Id;
         model.Title = guideEvent.Title;
         model.Description = guideEvent.Description;
@@ -217,14 +234,17 @@ public class EventsController : HumansControllerBase
             return RedirectToAction(nameof(MySubmissions));
         }
 
+        var eventSettings = await LoadEventSettingsAsync(guideSettings)
+            ?? throw new InvalidOperationException("Event settings not configured.");
+
         if (!ModelState.IsValid)
         {
             model.Id = eventId;
-            await PopulateDropdownsAsync(model, guideSettings);
+            await PopulateDropdownsAsync(model, eventSettings);
             return View("IndividualEventForm", model);
         }
 
-        var tz = GetTimeZone(guideSettings);
+        var tz = GetTimeZone(eventSettings);
         var durationMinutes = model.IsAllDay ? 1440 : model.DurationMinutes;
         var startTime = model.IsAllDay ? TimeSpan.Zero : model.StartTime;
 
@@ -276,18 +296,21 @@ public class EventsController : HumansControllerBase
         if (user == null) return Challenge();
 
         var guideSettings = await _guide.GetGuideSettingsAsync();
-        DateTimeZone? tz = guideSettings?.EventSettings != null
-            ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(guideSettings.EventSettings.TimeZoneId)
+        var eventSettings = await LoadEventSettingsAsync(guideSettings);
+        DateTimeZone? tz = eventSettings != null
+            ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId)
             : null;
 
-        var gateOpeningDate = guideSettings?.EventSettings?.GateOpeningDate;
+        var gateOpeningDate = eventSettings?.GateOpeningDate;
         var favourites = await _guide.GetFavouritesWithEventsAsync(user.Id);
+        var campsById = await LoadCampsByIdAsync(gateOpeningDate?.Year);
 
         var scheduleItems = favourites.Select(f =>
         {
             var e = f.Event;
-            var campSeason = e.Camp?.Seasons.OrderByDescending(s => s.Year).FirstOrDefault();
-            var campName = campSeason?.Name ?? e.Camp?.Slug;
+            var camp = e.CampId.HasValue ? campsById.GetValueOrDefault(e.CampId.Value) : null;
+            var seasonName = camp?.Seasons.OrderByDescending(s => s.Year).FirstOrDefault()?.Name;
+            var campName = seasonName ?? camp?.Slug;
             var localStart = ToLocalDateTime(e.StartAt, tz);
 
             var dayOffset = 0;
@@ -337,7 +360,7 @@ public class EventsController : HumansControllerBase
 
         var model = new ScheduleViewModel
         {
-            TimeZoneId = guideSettings?.EventSettings?.TimeZoneId,
+            TimeZoneId = eventSettings?.TimeZoneId,
             DayGroups = scheduleItems
                 .GroupBy(i => i.DayOffset)
                 .OrderBy(g => g.Key)
@@ -359,24 +382,30 @@ public class EventsController : HumansControllerBase
         if (user == null) return Challenge();
 
         var guideSettings = await _guide.GetGuideSettingsAsync();
-        DateTimeZone? tz = guideSettings?.EventSettings != null
-            ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(guideSettings.EventSettings.TimeZoneId)
+        var eventSettings = await LoadEventSettingsAsync(guideSettings);
+        DateTimeZone? tz = eventSettings != null
+            ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId)
             : null;
 
-        var gateOpeningDate = guideSettings?.EventSettings?.GateOpeningDate;
+        var gateOpeningDate = eventSettings?.GateOpeningDate;
         var filterDays = days != null && days.Length > 0 ? days.ToHashSet() : null;
 
         var excludedSlugs = await _guide.GetExcludedCategorySlugsAsync(user.Id);
         var favouriteEventIds = await _guide.GetFavouriteEventIdsAsync(user.Id);
         var events = await _guide.GetApprovedEventsAsync(null, venueId, categoryId, q, excludedSlugs);
 
+        var campsById = await LoadCampsByIdAsync(gateOpeningDate?.Year);
+        var individualSubmitterIds = events.Where(e => e.CampId == null).Select(e => e.SubmitterUserId).Distinct();
+        var submitterInfoById = await LoadSubmittersAsync(individualSubmitterIds);
+
         var items = new List<BrowseEventItem>();
         foreach (var e in events)
         {
-            var campSeason = e.Camp?.Seasons.OrderByDescending(s => s.Year).FirstOrDefault();
-            var campName = campSeason?.Name ?? e.Camp?.Slug;
+            var camp = e.CampId.HasValue ? campsById.GetValueOrDefault(e.CampId.Value) : null;
+            var seasonName = camp?.Seasons.OrderByDescending(s => s.Year).FirstOrDefault()?.Name;
+            var campName = seasonName ?? camp?.Slug;
             var submitterName = e.CampId == null
-                ? e.SubmitterUser?.Email
+                ? submitterInfoById.GetValueOrDefault(e.SubmitterUserId)?.Email
                 : null;
 
             foreach (var startInstant in e.GetOccurrenceInstants())
@@ -417,12 +446,11 @@ public class EventsController : HumansControllerBase
         var venues = await _guide.GetActiveVenuesAsync();
 
         var eventDays = new List<EventDayOptionViewModel>();
-        if (guideSettings?.EventSettings != null)
+        if (eventSettings != null)
         {
-            var es = guideSettings.EventSettings;
-            for (var offset = 0; offset <= es.EventEndOffset; offset++)
+            for (var offset = 0; offset <= eventSettings.EventEndOffset; offset++)
             {
-                var date = es.GateOpeningDate.PlusDays(offset);
+                var date = eventSettings.GateOpeningDate.PlusDays(offset);
                 eventDays.Add(new EventDayOptionViewModel
                 {
                     DayOffset = offset,
@@ -433,7 +461,7 @@ public class EventsController : HumansControllerBase
 
         var model = new BrowseViewModel
         {
-            TimeZoneId = guideSettings?.EventSettings?.TimeZoneId,
+            TimeZoneId = eventSettings?.TimeZoneId,
             FavouritedEventIds = favouriteEventIds,
             Categories = categories.Select(c => new CategoryOptionViewModel { Id = c.Id, Name = c.Name }).ToList(),
             Venues = venues.Select(v => new VenueOptionViewModel { Id = v.Id, Name = v.Name }).ToList(),
@@ -492,32 +520,31 @@ public class EventsController : HumansControllerBase
         return now >= settings.SubmissionOpenAt && now <= settings.SubmissionCloseAt;
     }
 
-    private async Task<IndividualEventFormViewModel> BuildFormAsync(EventGuideSettings guideSettings)
+    private async Task<IndividualEventFormViewModel> BuildFormAsync(EventGuideSettings guideSettings, EventSettings eventSettings)
     {
         var model = new IndividualEventFormViewModel
         {
-            TimeZoneId = guideSettings.EventSettings.TimeZoneId
+            TimeZoneId = eventSettings.TimeZoneId
         };
-        await PopulateDropdownsAsync(model, guideSettings);
+        await PopulateDropdownsAsync(model, eventSettings);
         return model;
     }
 
-    private async Task PopulateDropdownsAsync(IndividualEventFormViewModel model, EventGuideSettings guideSettings)
+    private async Task PopulateDropdownsAsync(IndividualEventFormViewModel model, EventSettings eventSettings)
     {
         var categories = await _guide.GetActiveCategoriesAsync();
         var venues = await _guide.GetActiveVenuesAsync();
 
         model.Categories = categories.Select(c => new CategoryOptionViewModel { Id = c.Id, Name = c.Name }).ToList();
         model.Venues = venues.Select(v => new VenueOptionViewModel { Id = v.Id, Name = v.Name }).ToList();
-        model.TimeZoneId = guideSettings.EventSettings.TimeZoneId;
+        model.TimeZoneId = eventSettings.TimeZoneId;
 
-        var es = guideSettings.EventSettings;
-        var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(es.TimeZoneId);
+        var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId);
 
         model.EventDays = [];
-        for (var offset = 0; offset <= es.EventEndOffset; offset++)
+        for (var offset = 0; offset <= eventSettings.EventEndOffset; offset++)
         {
-            var date = es.GateOpeningDate.PlusDays(offset);
+            var date = eventSettings.GateOpeningDate.PlusDays(offset);
             var dt = tz != null
                 ? date.AtStartOfDayInZone(tz).ToDateTimeUnspecified()
                 : new DateTime(date.Year, date.Month, date.Day, 0, 0, 0);
@@ -531,8 +558,32 @@ public class EventsController : HumansControllerBase
         }
     }
 
-    private static DateTimeZone? GetTimeZone(EventGuideSettings guideSettings)
-        => DateTimeZoneProviders.Tzdb.GetZoneOrNull(guideSettings.EventSettings.TimeZoneId);
+    private async Task<EventSettings?> LoadEventSettingsAsync(EventGuideSettings? guideSettings)
+    {
+        if (guideSettings == null) return null;
+        return await _guide.GetEventSettingsByIdAsync(guideSettings.EventSettingsId);
+    }
+
+    private async Task<Dictionary<Guid, CampInfo>> LoadCampsByIdAsync(int? year)
+    {
+        if (year is null) return [];
+        var camps = await _camps.GetCampsForYearAsync(year.Value);
+        return camps.ToDictionary(c => c.Id);
+    }
+
+    private async Task<Dictionary<Guid, UserInfo>> LoadSubmittersAsync(IEnumerable<Guid> userIds)
+    {
+        var result = new Dictionary<Guid, UserInfo>();
+        foreach (var id in userIds)
+        {
+            var info = await _users.GetUserInfoAsync(id);
+            if (info != null) result[id] = info;
+        }
+        return result;
+    }
+
+    private static DateTimeZone? GetTimeZone(EventSettings eventSettings)
+        => DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId);
 
     private static DateTime ToLocalDateTime(Instant instant, DateTimeZone? tz)
         => tz == null ? instant.ToDateTimeUtc() : instant.InZone(tz).ToDateTimeUnspecified();

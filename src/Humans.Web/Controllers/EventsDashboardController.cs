@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Events;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
@@ -18,19 +19,24 @@ namespace Humans.Web.Controllers;
 public class EventsDashboardController : HumansControllerBase
 {
     private readonly IEventService _guide;
+    private readonly ICampService _camps;
 
-    public EventsDashboardController(IEventService guide, UserManager<User> userManager)
+    public EventsDashboardController(IEventService guide, ICampService camps, UserManager<User> userManager)
         : base(userManager)
     {
         _guide = guide;
+        _camps = camps;
     }
 
     [HttpGet("")]
     public async Task<IActionResult> Index()
     {
         var guideSettings = await _guide.GetGuideSettingsAsync();
-        DateTimeZone? tz = guideSettings?.EventSettings != null
-            ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(guideSettings.EventSettings.TimeZoneId)
+        var eventSettings = guideSettings != null
+            ? await _guide.GetEventSettingsByIdAsync(guideSettings.EventSettingsId)
+            : null;
+        DateTimeZone? tz = eventSettings != null
+            ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId)
             : null;
 
         var allEvents = await _guide.GetAllEventsForDashboardAsync();
@@ -46,8 +52,8 @@ public class EventsDashboardController : HumansControllerBase
         };
 
         var approvedEvents = allEvents.Where(e => e.Status == EventStatus.Approved).ToList();
-        var gateOpeningDate = guideSettings?.EventSettings?.GateOpeningDate;
-        var eventEndOffset = guideSettings?.EventSettings?.EventEndOffset ?? 0;
+        var gateOpeningDate = eventSettings?.GateOpeningDate;
+        var eventEndOffset = eventSettings?.EventEndOffset ?? 0;
 
         if (gateOpeningDate != null)
         {
@@ -89,15 +95,16 @@ public class EventsDashboardController : HumansControllerBase
         }).ToList();
 
         var campEvents = allEvents.Where(e => e.CampId.HasValue).ToList();
+        var campsById = await LoadCampsByIdAsync(gateOpeningDate?.Year);
         model.TopCamps = campEvents
             .GroupBy(e => e.CampId!.Value)
             .Select(g =>
             {
-                var first = g.First();
-                var season = first.Camp?.Seasons.OrderByDescending(s => s.Year).FirstOrDefault();
+                var camp = campsById.GetValueOrDefault(g.Key);
+                var seasonName = camp?.Seasons.OrderByDescending(s => s.Year).FirstOrDefault()?.Name;
                 return new CampSubmissionRow
                 {
-                    CampName = season?.Name ?? first.Camp?.Slug ?? "Unknown",
+                    CampName = seasonName ?? camp?.Slug ?? "Unknown",
                     SubmittedCount = g.Count(),
                     ApprovedCount = g.Count(e => e.Status == EventStatus.Approved),
                     PendingCount = g.Count(e => e.Status == EventStatus.Pending)
@@ -108,6 +115,13 @@ public class EventsDashboardController : HumansControllerBase
             .ToList();
 
         return View(model);
+    }
+
+    private async Task<Dictionary<Guid, CampInfo>> LoadCampsByIdAsync(int? year)
+    {
+        if (year is null) return [];
+        var camps = await _camps.GetCampsForYearAsync(year.Value);
+        return camps.ToDictionary(c => c.Id);
     }
 
     private static int ComputeDayOffset(Instant instant, LocalDate gateOpeningDate, DateTimeZone? tz)

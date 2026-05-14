@@ -1,3 +1,5 @@
+using Humans.Application;
+using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Events;
 using Humans.Application.Interfaces.Users;
@@ -22,6 +24,7 @@ public class EventsModerationController : HumansControllerBase
     private readonly IEventService _guide;
     private readonly IEmailService _emailService;
     private readonly IUserService _users;
+    private readonly ICampService _camps;
     private readonly ILogger<EventsModerationController> _logger;
 
     public EventsModerationController(
@@ -29,12 +32,14 @@ public class EventsModerationController : HumansControllerBase
         UserManager<User> userManager,
         IEmailService emailService,
         IUserService users,
+        ICampService camps,
         ILogger<EventsModerationController> logger)
         : base(userManager)
     {
         _guide = guide;
         _emailService = emailService;
         _users = users;
+        _camps = camps;
         _logger = logger;
     }
 
@@ -44,12 +49,18 @@ public class EventsModerationController : HumansControllerBase
         var activeTab = tab ?? EventStatus.Pending;
 
         var guideSettings = await _guide.GetGuideSettingsAsync();
-        DateTimeZone? tz = guideSettings?.EventSettings != null
-            ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(guideSettings.EventSettings.TimeZoneId)
+        var eventSettings = guideSettings != null
+            ? await _guide.GetEventSettingsByIdAsync(guideSettings.EventSettingsId)
+            : null;
+        DateTimeZone? tz = eventSettings != null
+            ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId)
             : null;
 
         var counts = await _guide.GetEventStatusCountsAsync();
         var events = await _guide.GetEventsByStatusAsync(activeTab);
+
+        var campsById = await LoadCampsByIdAsync(eventSettings?.GateOpeningDate.Year);
+        var submitterInfoById = await LoadSubmittersAsync(events.Select(e => e.SubmitterUserId).Distinct());
 
         var model = new ModerationQueueViewModel
         {
@@ -58,8 +69,8 @@ public class EventsModerationController : HumansControllerBase
             ApprovedCount = counts.GetValueOrDefault(EventStatus.Approved),
             RejectedCount = counts.GetValueOrDefault(EventStatus.Rejected),
             ResubmitRequestedCount = counts.GetValueOrDefault(EventStatus.ResubmitRequested),
-            TimeZoneId = guideSettings?.EventSettings?.TimeZoneId,
-            Events = events.Select(e => BuildRow(e, tz)).ToList()
+            TimeZoneId = eventSettings?.TimeZoneId,
+            Events = events.Select(e => BuildRow(e, tz, campsById, submitterInfoById)).ToList()
         };
 
         // Duplicate detection for camp events
@@ -156,14 +167,25 @@ public class EventsModerationController : HumansControllerBase
         _logger.LogInformation("Moderator {UserId} {Action} event '{Title}' ({EventId})",
             moderator.Id, actionLabel, guideEvent.Title, eventId);
 
-        var submitterEmail = guideEvent.SubmitterUser.Email;
         var submitterInfo = await _users.GetUserInfoAsync(guideEvent.SubmitterUserId);
+        var submitterEmail = submitterInfo?.Email;
         var submitterName = submitterInfo?.DisplayName ?? "Unknown";
 
         if (submitterEmail != null)
         {
+            string? campSlug = null;
+            if (guideEvent.CampId.HasValue)
+            {
+                var guideSettings = await _guide.GetGuideSettingsAsync();
+                var eventSettings = guideSettings != null
+                    ? await _guide.GetEventSettingsByIdAsync(guideSettings.EventSettingsId)
+                    : null;
+                var campsById = await LoadCampsByIdAsync(eventSettings?.GateOpeningDate.Year);
+                campSlug = campsById.GetValueOrDefault(guideEvent.CampId.Value)?.Slug;
+            }
+
             var editUrl = guideEvent.CampId.HasValue
-                ? Url.Action("Edit", "BarrioEvents", new { slug = guideEvent.Camp?.Slug, eventId }, Request.Scheme)!
+                ? Url.Action("Edit", "BarrioEvents", new { slug = campSlug, eventId }, Request.Scheme)!
                 : Url.Action("Edit", "Events", new { eventId }, Request.Scheme)!;
 
             switch (actionType)
@@ -184,12 +206,18 @@ public class EventsModerationController : HumansControllerBase
         return RedirectToAction(nameof(Index));
     }
 
-    private static ModerationEventRowViewModel BuildRow(Event e, DateTimeZone? tz)
+    private static ModerationEventRowViewModel BuildRow(
+        Event e,
+        DateTimeZone? tz,
+        IReadOnlyDictionary<Guid, CampInfo> campsById,
+        IReadOnlyDictionary<Guid, UserInfo> submitterInfoById)
     {
-        var submitterName = e.SubmitterUser.Email
-            ?? "Unknown";
-        var campSeason = e.Camp?.Seasons.OrderByDescending(s => s.Year).FirstOrDefault();
-        var campName = campSeason?.Name ?? e.Camp?.Slug;
+        var submitter = submitterInfoById.GetValueOrDefault(e.SubmitterUserId);
+        var submitterName = submitter?.Email ?? submitter?.DisplayName ?? "Unknown";
+
+        var camp = e.CampId.HasValue ? campsById.GetValueOrDefault(e.CampId.Value) : null;
+        var seasonName = camp?.Seasons.OrderByDescending(s => s.Year).FirstOrDefault()?.Name;
+        var campName = seasonName ?? camp?.Slug;
 
         return new ModerationEventRowViewModel
         {
@@ -199,7 +227,7 @@ public class EventsModerationController : HumansControllerBase
             SubmitterName = submitterName,
             SubmitterUserId = e.SubmitterUserId,
             CampName = campName,
-            CampSlug = e.Camp?.Slug,
+            CampSlug = camp?.Slug,
             VenueName = e.EventVenue?.Name,
             CategoryName = e.Category.Name,
             StartAt = ToLocalDateTime(e.StartAt, tz),
@@ -220,6 +248,24 @@ public class EventsModerationController : HumansControllerBase
                     CreatedAt = ToLocalDateTime(a.CreatedAt, tz)
                 }).ToList()
         };
+    }
+
+    private async Task<Dictionary<Guid, CampInfo>> LoadCampsByIdAsync(int? year)
+    {
+        if (year is null) return [];
+        var camps = await _camps.GetCampsForYearAsync(year.Value);
+        return camps.ToDictionary(c => c.Id);
+    }
+
+    private async Task<Dictionary<Guid, UserInfo>> LoadSubmittersAsync(IEnumerable<Guid> userIds)
+    {
+        var result = new Dictionary<Guid, UserInfo>();
+        foreach (var id in userIds)
+        {
+            var info = await _users.GetUserInfoAsync(id);
+            if (info != null) result[id] = info;
+        }
+        return result;
     }
 
     private static DateTime ToLocalDateTime(Instant instant, DateTimeZone? tz)
