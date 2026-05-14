@@ -90,6 +90,14 @@ public sealed class CommunicationPreferenceRepository : ICommunicationPreference
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<CommunicationPreference>> GetAllAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.CommunicationPreferences
+            .AsNoTracking()
+            .ToListAsync(ct);
+    }
+
     public async Task<int> GetCountByCategoryAndStateAsync(
         MessageCategory category, bool optedOut, CancellationToken ct = default)
     {
