@@ -1,6 +1,8 @@
 using System.Text.Json;
 using Humans.Application.DTOs.Events;
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Events;
+using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -8,7 +10,7 @@ using NodaTime;
 
 namespace Humans.Application.Services.Events;
 
-public sealed class EventService : IEventService
+public sealed class EventService : IEventService, IUserDataContributor
 {
     private readonly IEventRepository _repo;
     private readonly IClock _clock;
@@ -255,5 +257,31 @@ public sealed class EventService : IEventService
             return Instant.FromDateTimeUtc(utc);
         }
         return localDateTime.InZoneLeniently(tz).ToInstant();
+    }
+
+    // ── GDPR Article 15 contributor ───────────────────────────────────────
+
+    public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
+    {
+        var favourites = await _repo.GetFavouritesForContributorAsync(userId, ct);
+        var preference = await _repo.GetPreferenceAsync(userId, ct);
+
+        var shaped = new
+        {
+            Favourites = favourites
+                .OrderBy(f => f.CreatedAt)
+                .Select(f => new
+                {
+                    f.GuideEventId,
+                    CreatedAt = f.CreatedAt.ToInvariantInstantString()
+                }).ToList(),
+            Preference = preference == null ? null : new
+            {
+                preference.ExcludedCategorySlugs,
+                UpdatedAt = preference.UpdatedAt.ToInvariantInstantString()
+            }
+        };
+
+        return [new UserDataSlice(GdprExportSections.Events, shaped)];
     }
 }

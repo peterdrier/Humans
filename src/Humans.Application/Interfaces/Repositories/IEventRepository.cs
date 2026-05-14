@@ -1,3 +1,4 @@
+using Humans.Application.Architecture;
 using Humans.Application.DTOs.Events;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -16,6 +17,13 @@ namespace Humans.Application.Interfaces.Repositories;
 /// in <see href="https://github.com/nobodies-collective/Humans/issues/719"/>.
 /// </para>
 /// </summary>
+/// <remarks>
+/// Surface-budget recent history (newest first):
+/// <list type="bullet">
+///   <item>2026-05-14 — initial budget pinned at 44 after Stage 3 atomic-method rewrite (replaced SaveChangesAsync/Add/Remove passthroughs with Add/Save/Delete/Upsert methods) and Stage 5 GDPR contributor add-on (section-align Events, issue #539).</item>
+/// </list>
+/// </remarks>
+[SurfaceBudget(44)]
 public interface IEventRepository : IRepository
 {
     // ── Settings ─────────────────────────────────────────────────────────
@@ -89,4 +97,8 @@ public interface IEventRepository : IRepository
     // ── Preferences ───────────────────────────────────────────────────────
     Task<EventPreference?> GetPreferenceAsync(Guid userId, CancellationToken ct = default);
     Task UpsertPreferenceAsync(Guid userId, string excludedCategorySlugsJson, NodaTime.Instant updatedAt, CancellationToken ct = default);
+
+    // ── GDPR contributor ──────────────────────────────────────────────────
+    /// <summary>All favourite rows for the user, regardless of underlying event status.</summary>
+    Task<IReadOnlyList<EventFavourite>> GetFavouritesForContributorAsync(Guid userId, CancellationToken ct = default);
 }

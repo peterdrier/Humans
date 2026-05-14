@@ -498,4 +498,15 @@ public sealed class EventRepository : IEventRepository
         }
         await ctx.SaveChangesAsync(ct);
     }
+
+    // ── GDPR contributor ──────────────────────────────────────────────────
+
+    public async Task<IReadOnlyList<EventFavourite>> GetFavouritesForContributorAsync(Guid userId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.EventFavourites
+            .AsNoTracking()
+            .Where(f => f.UserId == userId)
+            .ToListAsync(ct);
+    }
 }

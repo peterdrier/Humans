@@ -521,7 +521,6 @@ if (builder.Environment.IsProduction())
 }
 builder.Services.AddRazorPages();
 builder.Services.AddSignalR();
-builder.Services.AddEventsSection();
 
 // In Developement, compile Razor pages each time they are loaded
 if (builder.Environment.IsDevelopment())

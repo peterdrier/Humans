@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.DTOs.Events;
+using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Services.Events;
 using Humans.Domain.Entities;
@@ -210,6 +211,43 @@ public sealed class EventServiceTests
             && action.Reason == "Add location"
             && action.CreatedAt == _clock.GetCurrentInstant());
         _repo.SaveChangesCount.Should().Be(1);
+    }
+
+    [HumansFact]
+    public async Task ContributeForUserAsync_EmitsEventsSliceWithFavouritesAndPreference()
+    {
+        var userId = Guid.NewGuid();
+        var otherUserId = Guid.NewGuid();
+        var earlier = Instant.FromUtc(2026, 5, 1, 12, 0);
+        var later = Instant.FromUtc(2026, 5, 2, 12, 0);
+        var laterEventId = Guid.NewGuid();
+        var earlierEventId = Guid.NewGuid();
+        _repo.Favourites.Add(new EventFavourite { Id = Guid.NewGuid(), UserId = userId, GuideEventId = laterEventId, CreatedAt = later });
+        _repo.Favourites.Add(new EventFavourite { Id = Guid.NewGuid(), UserId = userId, GuideEventId = earlierEventId, CreatedAt = earlier });
+        _repo.Favourites.Add(new EventFavourite { Id = Guid.NewGuid(), UserId = otherUserId, GuideEventId = Guid.NewGuid(), CreatedAt = earlier });
+        _repo.Preference = new EventPreference
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            ExcludedCategorySlugs = "[\"adults\"]",
+            UpdatedAt = later
+        };
+
+        var slices = await _service.ContributeForUserAsync(userId, CancellationToken.None);
+
+        slices.Should().ContainSingle();
+        slices[0].SectionName.Should().Be(GdprExportSections.Events);
+        slices[0].Data.Should().NotBeNull();
+    }
+
+    [HumansFact]
+    public async Task ContributeForUserAsync_ReturnsEmptySliceWhenUserHasNoData()
+    {
+        var slices = await _service.ContributeForUserAsync(Guid.NewGuid(), CancellationToken.None);
+
+        slices.Should().ContainSingle();
+        slices[0].SectionName.Should().Be(GdprExportSections.Events);
+        slices[0].Data.Should().NotBeNull();
     }
 
     private sealed class FakeEventRepository : IEventRepository
@@ -458,5 +496,9 @@ public sealed class EventServiceTests
             SaveChangesCount++;
             return Task.CompletedTask;
         }
+
+        public Task<IReadOnlyList<EventFavourite>> GetFavouritesForContributorAsync(Guid userId, CancellationToken ct = default)
+            => Task.FromResult<IReadOnlyList<EventFavourite>>(
+                Favourites.Where(f => f.UserId == userId).ToList());
     }
 }

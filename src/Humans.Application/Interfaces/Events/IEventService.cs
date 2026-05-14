@@ -1,3 +1,4 @@
+using Humans.Application.Architecture;
 using Humans.Application.DTOs.Events;
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
@@ -6,6 +7,16 @@ using NodaTime;
 
 namespace Humans.Application.Interfaces.Events;
 
+/// <summary>
+/// Service for the Events section (camp-event guide).
+/// </summary>
+/// <remarks>
+/// Surface-budget recent history (newest first):
+/// <list type="bullet">
+///   <item>2026-05-14 — initial budget pinned at 46 after Stage 3 cross-section strip and Stage 5 IUserDataContributor add-on (section-align Events, issue #539).</item>
+/// </list>
+/// </remarks>
+[SurfaceBudget(46)]
 public interface IEventService : IApplicationService
 {
     // ── Settings ─────────────────────────────────────────────────────────
