@@ -178,9 +178,9 @@ Unique constraint on (UserId, GuideEventId).
 
 ## Cross-Section Dependencies
 
-- **Users**: `UserManager<User>` (Identity) to resolve current user in controllers; `User.GetEffectiveEmail()` for email dispatch; `User.Profile?.BurnerName` for display names.
-- **Barrios**: `GuideEvent.CampId` FK; edit URLs for barrio events routed through `CampEventsController`.
-- **Calendar/EventSettings**: `IEventGuideService` reads `EventSettings` (gate opening date, timezone, event name) via the `GuideSettings.EventSettings` navigation for day-offset computation and timezone conversion.
+- **Users**: controllers call `IUserService.GetUserInfoAsync(userId)` for submitter display name and email (replaces the dropped `Event.SubmitterUser` navigation). `UserManager<User>` (Identity) still resolves the current user.
+- **Camps**: controllers call `ICampService.GetCampsForYearAsync(year)` to resolve camp display data per event (replaces the dropped `Event.Camp` navigation). `Event.CampId` remains a bare FK column.
+- **Calendar/EventSettings** — **TEMP, see [#719](https://github.com/nobodies-collective/Humans/issues/719)**: `EventGuideSettings.EventSettings` navigation was dropped along with the cross-section FK. There is no `IEventSettingsService` yet, so `EventRepository.GetEventSettingsByIdAsync` reads `_db.EventSettings` directly as a documented stop-gap (marked with a `TODO: switch to IEventSettingsService once #719 ships` comment in both the repo and the interface). Callers fetch the settings row in two steps: load `EventGuideSettings` (bare `EventSettingsId`), then load `EventSettings` separately. Migrate the call sites once #719 ships.
 - **Email**: `IEmailService` for moderation outcome notifications.
 
 ## Architecture
@@ -194,6 +194,6 @@ Unique constraint on (UserId, GuideEventId).
 - `EventGuideService` lives in `Humans.Application.Services.EventGuide/` and never imports `Microsoft.EntityFrameworkCore`.
 - `IEventGuideRepository` (impl `EventGuideRepository` in `Humans.Infrastructure/Repositories/EventGuide/`) is the only code path that touches this section's tables via `DbContext`.
 - **Decorator decision** — No caching decorator. Rationale: guide data is mutable and moderated; stale cache would show rejected events as approved. Reads are lightweight at ~500-user scale.
-- **Cross-domain navs** — `GuideEvent.Camp` (navigation) and `GuideEvent.SubmitterUser` (navigation) are included only within this section's repository queries. They are legacy navigation properties retained for query convenience; no cross-section `.Include()` calls are made from outside this section.
-- **Cross-section calls** — `UserManager<User>` (Identity, in controllers only), `IEmailService` (in `ModerationController`).
+- **Cross-domain navs** — Stripped (PR #539, Stage 3). `Event.CampId`, `Event.SubmitterUserId`, `EventModerationAction.ActorUserId`, `EventFavourite.UserId`, `EventPreference.UserId`, and `EventGuideSettings.EventSettingsId` are bare FK columns — no navigation properties, no DB-level FK constraints, no cross-section `.Include()` chains. Camp / User data is fetched via supplier services (`ICampService`, `IUserService`). EventSettings remains a documented stop-gap until [#719](https://github.com/nobodies-collective/Humans/issues/719) ships an `IEventSettingsService`.
+- **Cross-section calls** — `UserManager<User>` (Identity, in controllers only), `ICampService.GetCampsForYearAsync`, `IUserService.GetUserInfoAsync`, `IEmailService` (in `EventsModerationController`).
 - **Architecture test** — `tests/Humans.Application.Tests/Architecture/EventGuideArchitectureTests.cs` pins the service/repository split and the canonical `Events` / `Barrios` / `api/events` route names.
