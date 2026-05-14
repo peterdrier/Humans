@@ -1,9 +1,9 @@
-using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application;
+using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
@@ -13,7 +13,7 @@ namespace Humans.Infrastructure.Services.Users;
 
 /// <summary>
 /// Issue #703. Singleton caching decorator for <see cref="IUserService"/>.
-/// Owns a private <see cref="ConcurrentDictionary{TKey,TValue}"/> of
+/// Inherits <see cref="TrackedCache{TKey, TValue}"/> for a hit/miss-tracked cache of
 /// <see cref="UserInfo"/> entries keyed by userId — the canonical
 /// "everything-about-a-person" cache spanning the User and Profile sections
 /// (8 contributing tables).
@@ -40,7 +40,7 @@ namespace Humans.Infrastructure.Services.Users;
 /// (<c>IDbContextFactory</c>-based).
 /// </para>
 /// </remarks>
-public sealed class CachingUserService : IUserService, IUserMerge, IUserInfoInvalidator
+public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserService, IUserMerge, IUserInfoInvalidator
 {
     /// <summary>
     /// DI service key under which the undecorated (inner) <see cref="IUserService"/>
@@ -58,8 +58,6 @@ public sealed class CachingUserService : IUserService, IUserMerge, IUserInfoInva
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<CachingUserService> _logger;
 
-    private readonly ConcurrentDictionary<Guid, UserInfo> _byUserId = new();
-
     public CachingUserService(
         IUserRepository userRepository,
         IUserEmailRepository userEmailRepository,
@@ -68,6 +66,7 @@ public sealed class CachingUserService : IUserService, IUserMerge, IUserInfoInva
         ICommunicationPreferenceRepository communicationPreferenceRepository,
         IServiceScopeFactory scopeFactory,
         ILogger<CachingUserService> logger)
+        : base("User.UserInfo")
     {
         _userRepository = userRepository;
         _userEmailRepository = userEmailRepository;
@@ -84,7 +83,7 @@ public sealed class CachingUserService : IUserService, IUserMerge, IUserInfoInva
 
     public ValueTask<UserInfo?> GetUserInfoAsync(Guid userId, CancellationToken ct = default)
     {
-        if (_byUserId.TryGetValue(userId, out var hit))
+        if (TryGet(userId, out var hit))
             return new ValueTask<UserInfo?>(hit);
 
         return new ValueTask<UserInfo?>(LoadAndCacheAsync(userId, ct));
@@ -96,12 +95,12 @@ public sealed class CachingUserService : IUserService, IUserMerge, IUserInfoInva
         var inner = scope.ServiceProvider.GetRequiredKeyedService<IUserService>(InnerServiceKey);
         var result = await inner.GetUserInfoAsync(userId, ct);
         if (result is not null)
-            _byUserId[userId] = result;
+            Set(userId, result);
         return result;
     }
 
     /// <inheritdoc cref="IUserService.GetAllUserInfos" />
-    public IReadOnlyCollection<UserInfo> GetAllUserInfos() => _byUserId.Values.ToArray();
+    public IReadOnlyCollection<UserInfo> GetAllUserInfos() => Values.ToArray();
 
     /// <summary>
     /// Rebuilds the cache entry for <paramref name="userId"/> directly from
@@ -112,7 +111,7 @@ public sealed class CachingUserService : IUserService, IUserMerge, IUserInfoInva
         var user = await _userRepository.GetByIdAsync(userId, ct);
         if (user is null)
         {
-            _byUserId.TryRemove(userId, out _);
+            Invalidate(userId);
             return;
         }
 
@@ -137,14 +136,14 @@ public sealed class CachingUserService : IUserService, IUserMerge, IUserInfoInva
         var communicationPreferences = await _communicationPreferenceRepository
             .GetByUserIdReadOnlyAsync(userId, ct);
 
-        _byUserId[userId] = UserInfo.Create(
+        Set(userId, UserInfo.Create(
             user, userEmails, participations, externalLogins,
             profile, contactFields, languages, volunteerHistory,
-            communicationPreferences);
+            communicationPreferences));
     }
 
     /// <summary>
-    /// Populates <see cref="_byUserId"/> with a <see cref="UserInfo"/> for every
+    /// Populates the inherited cache with a <see cref="UserInfo"/> for every
     /// existing user at startup. Bulk-loads each of the 8 contributing tables
     /// once and indexes by userId so per-user materialization is allocation-only.
     /// Trivial at ~500-user scale.
@@ -203,10 +202,10 @@ public sealed class CachingUserService : IUserService, IUserMerge, IUserInfoInva
             var preferences = preferencesByUser.TryGetValue(user.Id, out var pp)
                 ? pp : Array.Empty<CommunicationPreference>();
 
-            _byUserId[user.Id] = UserInfo.Create(
+            Set(user.Id, UserInfo.Create(
                 user, emails, participations, logins,
                 profile, contactFields, languages, volunteerHistory,
-                preferences);
+                preferences));
         }
     }
 
@@ -428,7 +427,7 @@ public sealed class CachingUserService : IUserService, IUserMerge, IUserInfoInva
         var deleted = await WithInnerAsync(inner => inner.DeleteUsersAsync(userIds, ct));
         foreach (var userId in userIds)
         {
-            _byUserId.TryRemove(userId, out _);
+            Invalidate(userId);
         }
         return deleted;
     }

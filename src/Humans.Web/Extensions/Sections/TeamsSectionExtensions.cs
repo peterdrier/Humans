@@ -38,6 +38,10 @@ internal static class TeamsSectionExtensions
         services.AddSingleton<CachingTeamService>();
         services.AddSingleton<ITeamService>(sp => sp.GetRequiredService<CachingTeamService>());
         services.AddSingleton<IUserMerge>(sp => sp.GetRequiredService<CachingTeamService>());
+
+        // Surface TeamInfo cache diagnostics on /Admin/CacheStats.
+        services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingTeamService>());
+
         services.AddHostedService<TeamsWarmupHostedService>();
 
         services.AddScoped<ITeamPageService, TeamsTeamPageService>();

@@ -1,5 +1,5 @@
-using System.Collections.Concurrent;
 using Humans.Application.DTOs.Shifts;
+using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Shifts;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -8,17 +8,19 @@ namespace Humans.Infrastructure.Services.Shifts;
 
 /// <summary>
 /// Singleton caching decorator for <see cref="IShiftView"/> and the
-/// implementation of <see cref="IShiftViewInvalidator"/>. Owns two
-/// <see cref="ConcurrentDictionary{TKey,TValue}"/>s — one keyed by user id
+/// implementation of <see cref="IShiftViewInvalidator"/>. Composes two
+/// <see cref="TrackedCache{TKey,TValue}"/> instances — one keyed by user id
 /// (<see cref="ShiftUserView"/>) and one keyed by rota id
 /// (<see cref="ShiftRotaView"/>). Dict hits complete synchronously via
 /// <see cref="ValueTask{TResult}"/>; misses resolve the Scoped inner via
-/// <see cref="IServiceScopeFactory"/> and lazily populate the dict.
+/// <see cref="IServiceScopeFactory"/> and lazily populate the cache.
 /// </summary>
 /// <remarks>
-/// Mirrors <c>CachingProfileService</c> / <c>CachingTeamService</c>. Inner is
-/// registered keyed (<see cref="InnerServiceKey"/>) so resolving the unkeyed
-/// <see cref="IShiftView"/> always hits this Singleton, never the inner.
+/// This decorator owns two caches with different value types, so it composes
+/// <see cref="TrackedCache{TKey,TValue}"/> rather than inheriting it. The two
+/// caches are exposed via <see cref="UserCacheStats"/> / <see cref="RotaCacheStats"/>
+/// and registered as <see cref="ICacheStats"/> in DI so /Admin/CacheStats can
+/// surface their counters.
 ///
 /// <para>
 /// Cold-build strategy: lazy per-key. No startup warmup — at ~500-user scale
@@ -39,8 +41,11 @@ public sealed class CachingShiftViewService : IShiftView, IShiftViewInvalidator
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<CachingShiftViewService> _logger;
 
-    private readonly ConcurrentDictionary<Guid, ShiftUserView> _byUserId = new();
-    private readonly ConcurrentDictionary<Guid, ShiftRotaView> _byRotaId = new();
+    private readonly TrackedCache<Guid, ShiftUserView> _userCache = new("ShiftView.UserView");
+    private readonly TrackedCache<Guid, ShiftRotaView> _rotaCache = new("ShiftView.RotaView");
+
+    public ICacheStats UserCacheStats => _userCache;
+    public ICacheStats RotaCacheStats => _rotaCache;
 
     public CachingShiftViewService(
         IServiceScopeFactory scopeFactory,
@@ -51,12 +56,12 @@ public sealed class CachingShiftViewService : IShiftView, IShiftViewInvalidator
     }
 
     // ==========================================================================
-    // Reads — dict cache + lazy load
+    // Reads — cache lookup + lazy load
     // ==========================================================================
 
     public ValueTask<ShiftUserView> GetUserAsync(Guid userId, CancellationToken ct = default)
     {
-        if (_byUserId.TryGetValue(userId, out var hit))
+        if (_userCache.TryGet(userId, out var hit))
             return new ValueTask<ShiftUserView>(hit);
         return new ValueTask<ShiftUserView>(LoadAndCacheUserAsync(userId, ct));
     }
@@ -76,7 +81,7 @@ public sealed class CachingShiftViewService : IShiftView, IShiftViewInvalidator
 
     public ValueTask<ShiftRotaView> GetRotaAsync(Guid rotaId, CancellationToken ct = default)
     {
-        if (_byRotaId.TryGetValue(rotaId, out var hit))
+        if (_rotaCache.TryGet(rotaId, out var hit))
             return new ValueTask<ShiftRotaView>(hit);
         return new ValueTask<ShiftRotaView>(LoadAndCacheRotaAsync(rotaId, ct));
     }
@@ -99,7 +104,7 @@ public sealed class CachingShiftViewService : IShiftView, IShiftViewInvalidator
         await using var scope = _scopeFactory.CreateAsyncScope();
         var inner = scope.ServiceProvider.GetRequiredKeyedService<IShiftView>(InnerServiceKey);
         var view = await inner.GetUserAsync(userId, ct).ConfigureAwait(false);
-        _byUserId[userId] = view;
+        _userCache.Set(userId, view);
         return view;
     }
 
@@ -108,7 +113,7 @@ public sealed class CachingShiftViewService : IShiftView, IShiftViewInvalidator
         await using var scope = _scopeFactory.CreateAsyncScope();
         var inner = scope.ServiceProvider.GetRequiredKeyedService<IShiftView>(InnerServiceKey);
         var view = await inner.GetRotaAsync(rotaId, ct).ConfigureAwait(false);
-        _byRotaId[rotaId] = view;
+        _rotaCache.Set(rotaId, view);
         return view;
     }
 
@@ -118,22 +123,22 @@ public sealed class CachingShiftViewService : IShiftView, IShiftViewInvalidator
 
     public void InvalidateUser(Guid userId)
     {
-        _byUserId.TryRemove(userId, out _);
+        _userCache.Invalidate(userId);
     }
 
     public void InvalidateRota(Guid rotaId)
     {
-        _byRotaId.TryRemove(rotaId, out _);
+        _rotaCache.Invalidate(rotaId);
 
         // ShiftUserView.Signups carries Shift.Rota nav data (Name, TeamId,
         // Period, …) — a rota metadata change (rename / team-move / period
         // flip) makes those user entries stale even if the signup rows are
         // unchanged. Walk the snapshot and evict every user with a signup on
         // a shift owned by this rota.
-        foreach (var kvp in _byUserId.ToArray())
+        foreach (var kvp in _userCache.Snapshot())
         {
             if (kvp.Value.Signups.Any(s => s.Shift?.RotaId == rotaId))
-                _byUserId.TryRemove(kvp.Key, out _);
+                _userCache.Invalidate(kvp.Key);
         }
     }
 
@@ -143,21 +148,21 @@ public sealed class CachingShiftViewService : IShiftView, IShiftViewInvalidator
         // harmless: if there's no cached rota/user entry referencing the
         // shift, there's nothing to evict, and the next read will load fresh
         // data anyway.
-        foreach (var kvp in _byRotaId.ToArray())
+        foreach (var kvp in _rotaCache.Snapshot())
         {
             if (kvp.Value.Shifts.Any(s => s.Id == shiftId))
-                _byRotaId.TryRemove(kvp.Key, out _);
+                _rotaCache.Invalidate(kvp.Key);
         }
-        foreach (var kvp in _byUserId.ToArray())
+        foreach (var kvp in _userCache.Snapshot())
         {
             if (kvp.Value.Signups.Any(s => s.ShiftId == shiftId))
-                _byUserId.TryRemove(kvp.Key, out _);
+                _userCache.Invalidate(kvp.Key);
         }
     }
 
     public void InvalidateAll()
     {
-        _byUserId.Clear();
-        _byRotaId.Clear();
+        _userCache.Clear();
+        _rotaCache.Clear();
     }
 }

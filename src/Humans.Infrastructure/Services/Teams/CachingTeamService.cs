@@ -1,7 +1,7 @@
-using System.Collections.Concurrent;
 using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Auth;
+using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
@@ -19,16 +19,20 @@ namespace Humans.Infrastructure.Services.Teams;
 /// <summary>
 /// Transparent singleton decorator for <see cref="ITeamService"/> team reads.
 /// The scoped inner service owns Teams behavior and writes; this decorator owns the
-/// process-local team read model and invalidates it after writes.
+/// process-local team read model and invalidates it after writes. Inherits
+/// <see cref="TrackedCache{TKey, TValue}"/> for hit/miss/invalidation tracking
+/// surfaced on /Admin/CacheStats — note that this service serves bulk reads
+/// (<see cref="GetTeamsByIdAsync"/>) so per-key hit/miss counts are not
+/// recorded; the meaningful diagnostics here are entry count and invalidation
+/// count.
 /// </summary>
-public sealed class CachingTeamService : ITeamService, IUserMerge
+public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamService, IUserMerge
 {
     public const string InnerServiceKey = "team-inner";
 
     private readonly ITeamRepository _teamRepository;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<CachingTeamService> _logger;
-    private readonly ConcurrentDictionary<Guid, TeamInfo> _byTeamId = new();
     private readonly SemaphoreSlim _loadLock = new(1, 1);
     private volatile bool _isLoaded;
 
@@ -36,6 +40,7 @@ public sealed class CachingTeamService : ITeamService, IUserMerge
         ITeamRepository teamRepository,
         IServiceScopeFactory scopeFactory,
         ILogger<CachingTeamService> logger)
+        : base("Team.TeamInfo")
     {
         _teamRepository = teamRepository;
         _scopeFactory = scopeFactory;
@@ -559,7 +564,7 @@ public sealed class CachingTeamService : ITeamService, IUserMerge
         _loadLock.Wait();
         try
         {
-            _byTeamId.Clear();
+            Clear();
             _isLoaded = false;
         }
         finally
@@ -644,13 +649,13 @@ public sealed class CachingTeamService : ITeamService, IUserMerge
         InvalidateTeamsCache();
     }
 
-    private async Task<ConcurrentDictionary<Guid, TeamInfo>> GetTeamsByIdAsync(CancellationToken ct)
+    private async Task<IReadOnlyDictionary<Guid, TeamInfo>> GetTeamsByIdAsync(CancellationToken ct)
     {
         if (_isLoaded)
-            return _byTeamId;
+            return AsReadOnlyDictionary;
 
         await WarmAllAsync(ct);
-        return _byTeamId;
+        return AsReadOnlyDictionary;
     }
 
     public async Task WarmAllAsync(CancellationToken ct = default)
@@ -676,9 +681,11 @@ public sealed class CachingTeamService : ITeamService, IUserMerge
                 ? new Dictionary<Guid, User>()
                 : await userService.GetByIdsWithEmailsAsync(allUserIds, ct);
 
-            _byTeamId.Clear();
+            // No defensive Clear() — InvalidateTeamsCache already emptied the cache
+            // before flipping _isLoaded to false (or the cache is empty on first
+            // startup). Set is upsert, so any rare leftover entry is overwritten.
             foreach (var team in teams)
-                _byTeamId[team.Id] = BuildTeamInfo(team, users);
+                Set(team.Id, BuildTeamInfo(team, users));
 
             _isLoaded = true;
         }

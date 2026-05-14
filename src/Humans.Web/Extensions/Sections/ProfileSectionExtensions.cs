@@ -88,6 +88,9 @@ internal static class ProfileSectionExtensions
         services.AddSingleton<IUserMerge>(sp =>
             sp.GetRequiredService<CachingProfileService>());
 
+        // Surface FullProfile cache diagnostics on /Admin/CacheStats.
+        services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingProfileService>());
+
         // Eagerly warm the FullProfile dict at startup so bulk reads
         // (birthday widget, location directory, admin human list, profile search)
         // return complete results immediately after deploy instead of filling

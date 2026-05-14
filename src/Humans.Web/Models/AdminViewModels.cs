@@ -315,6 +315,13 @@ public class CacheStatsViewModel
         : 0;
 
     public List<CacheStatEntryViewModel> Entries { get; set; } = [];
+
+    /// <summary>
+    /// Stats for the in-memory caching decorators (Profile / User / Team /
+    /// ShiftView), rendered in a separate table below the IMemoryCache stats.
+    /// These caches have no TTL and track invalidation count instead.
+    /// </summary>
+    public List<DecoratorCacheStatEntryViewModel> DecoratorEntries { get; set; } = [];
 }
 
 public class CacheStatEntryViewModel
@@ -326,6 +333,16 @@ public class CacheStatEntryViewModel
     public int ActiveEntries { get; set; }
     public string Ttl { get; set; } = string.Empty;
     public string Type { get; set; } = string.Empty;
+}
+
+public class DecoratorCacheStatEntryViewModel
+{
+    public string Name { get; set; } = string.Empty;
+    public int Entries { get; set; }
+    public long Hits { get; set; }
+    public long Misses { get; set; }
+    public long Invalidations { get; set; }
+    public double HitRatePercent { get; set; }
 }
 
 public class DuplicateAccountListViewModel

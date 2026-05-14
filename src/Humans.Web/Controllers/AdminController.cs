@@ -5,6 +5,7 @@ using Humans.Application.Configuration;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Admin;
 using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Dashboard;
 using Humans.Application.Interfaces.Feedback;
 using Humans.Application.Interfaces.Onboarding;
@@ -28,6 +29,7 @@ public class AdminController : HumansControllerBase
     private readonly ConfigurationRegistry _configRegistry;
     private readonly QueryStatistics _queryStatistics;
     private readonly ICacheStatsProvider _cacheStatsProvider;
+    private readonly IEnumerable<ICacheStats> _decoratorCacheStats;
     private readonly IUserEmailProviderBackfillService _userEmailProviderBackfillService;
     private readonly IAdminDatabaseDiagnosticsService _databaseDiagnostics;
 
@@ -39,6 +41,7 @@ public class AdminController : HumansControllerBase
         ConfigurationRegistry configRegistry,
         QueryStatistics queryStatistics,
         ICacheStatsProvider cacheStatsProvider,
+        IEnumerable<ICacheStats> decoratorCacheStats,
         IUserEmailProviderBackfillService userEmailProviderBackfillService,
         IAdminDatabaseDiagnosticsService databaseDiagnostics)
         : base(userManager)
@@ -50,6 +53,7 @@ public class AdminController : HumansControllerBase
         _configRegistry = configRegistry;
         _queryStatistics = queryStatistics;
         _cacheStatsProvider = cacheStatsProvider;
+        _decoratorCacheStats = decoratorCacheStats;
         _userEmailProviderBackfillService = userEmailProviderBackfillService;
         _databaseDiagnostics = databaseDiagnostics;
     }
@@ -383,7 +387,19 @@ public class AdminController : HumansControllerBase
                         Ttl = meta?.Ttl ?? "—",
                         Type = meta?.Type.ToString() ?? "—"
                     };
-                }).ToList()
+                }).ToList(),
+                DecoratorEntries = _decoratorCacheStats
+                    .OrderBy(s => s.Name, StringComparer.Ordinal)
+                    .Select(s => new DecoratorCacheStatEntryViewModel
+                    {
+                        Name = s.Name,
+                        Entries = s.Entries,
+                        Hits = s.Hits,
+                        Misses = s.Misses,
+                        Invalidations = s.Invalidations,
+                        HitRatePercent = s.HitRatePercent,
+                    })
+                    .ToList()
             };
             return View(model);
         }
@@ -403,6 +419,8 @@ public class AdminController : HumansControllerBase
         try
         {
             _cacheStatsProvider.Reset();
+            foreach (var s in _decoratorCacheStats)
+                s.ResetCounters();
             _logger.LogInformation("Admin reset cache statistics");
             SetSuccess("Cache statistics have been reset.");
         }
