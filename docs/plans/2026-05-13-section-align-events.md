@@ -865,25 +865,22 @@ The generated file's `Up` + `Down` bodies must be empty. Then immediately:
 dotnet ef migrations remove --project src/Humans.Infrastructure --startup-project src/Humans.Web
 ```
 
-**4.5 — Role rename: no DB touch.**
+**4.5 — Role rename: just rename the constant.**
 
-Humans does **NOT** use ASP.NET Identity's `AspNetRoles`. Application roles live in `role_assignments` (custom entity, managed by `RoleAssignmentService` via the existing admin UI). Role name is a plain string column. There is no roles-lookup table.
+Humans uses `role_assignments` (custom entity, plain string `RoleName` column). The feature isn't in prod, so there's no production data anywhere with `RoleName = "GuideModerator"`. QA gets reset as part of this PR (Stage 4.6) → no orphan rows to worry about.
 
-Specific steps:
-1. Rename the C# constant value: `RoleNames.GuideModerator = "GuideModerator"` → `RoleNames.EventsAdmin = "EventsAdmin"` (Stage 2.9 already covers the source rename).
-2. **Do NOT touch `role_assignments`.** No `migrationBuilder.Sql`. No `HasData`. No `InsertData` / `UpdateData` / `DeleteData`. The `feedback_never_manual_db_edits` rule prohibits all of these.
-3. Production: feature isn't shipped → zero `RoleName = "GuideModerator"` rows → nothing to do.
-4. QA: any existing holders (likely 0–2 since the feature is brand new and feature-flag-gated) lose moderator access on deploy because `IsInRole("EventsAdmin")` won't match their `"GuideModerator"` row.
-5. **Re-grant via `/Profile/{id}/Roles/Add`** (existing `RoleAssignmentService.AssignRoleAsync` path). Two clicks per holder.
-6. Orphan `RoleName = "GuideModerator"` rows sit inert — no role check matches them. Optionally revoked via the same admin UI later (`EndRoleAsync`). They never grant access.
+Step: rename `RoleNames.GuideModerator = "GuideModerator"` → `RoleNames.EventsAdmin = "EventsAdmin"` in `RoleNames.cs` (Stage 2.9 already covers the source rename). That's it.
 
-No data migration, no manual SQL, no seed manipulation.
+No migration. No SQL. No seed. No admin-UI re-grant ceremony. After the QA reset, any GuideModerator assignment that existed evaporates with the rest of the events-section data.
 
-**4.6 — Test the migration round-trip.**
+**4.6 — Reset QA and verify.**
 
-- Drop a local test DB, apply migrations, verify schema.
-- Run `dotnet test Humans.slnx -v quiet` — integration tests against the renamed schema.
-- Smoke-test on preview: `https://539.n.burn.camp` after push deploys.
+The feature isn't in prod, so on QA we wipe the events-section state instead of carrying schema/data through migration rollbacks. Specifically:
+
+1. **Local:** `dotnet ef migrations remove` removes the old `AddEventGuide` file + reverts the snapshot; rename C# entities + tables + role; `dotnet ef migrations add AddEventsSection` regenerates with final shape; build + test green.
+2. **QA:** reset the DB (drop and re-create via Coolify, or drop just the 7 events tables + the `__EFMigrationsHistory` row for `20260513151029_AddEventGuide` — whichever is cleaner operationally). After reset, `dotnet ef database update` applies the new `AddEventsSection` migration cleanly. The 6 seed categories re-seed via `HasData`.
+3. **Preview:** per-PR DBs are cloned from QA on PR open — once QA is reset, future preview clones inherit the clean state. The current preview env (`539.n.burn.camp`) gets recreated as part of this push cycle.
+4. Verify: schema check, `dotnet test Humans.slnx -v quiet`, smoke-test on `https://539.n.burn.camp`.
 
 ### Stage 5 — Arch tests + GDPR + interface budget
 
