@@ -1,4 +1,4 @@
-@model Humans.Web.Models.CampEventFormViewModel
+@model Humans.Web.Models.Events.CampEventFormViewModel
 @{
     var isEdit = Model.Id.HasValue;
     ViewData["Title"] = isEdit ? $"Edit Event — {Model.CampName}" : $"Submit Event — {Model.CampName}";

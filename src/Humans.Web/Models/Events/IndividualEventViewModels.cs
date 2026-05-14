@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using Humans.Domain.Enums;
 
-namespace Humans.Web.Models;
+namespace Humans.Web.Models.Events;
 
 public class MySubmissionsViewModel
 {

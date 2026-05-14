@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace Humans.Web.Models;
+namespace Humans.Web.Models.Events;
 
 public class GuideSettingsViewModel
 {

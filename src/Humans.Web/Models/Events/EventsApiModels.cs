@@ -1,4 +1,4 @@
-namespace Humans.Web.Models;
+namespace Humans.Web.Models.Events;
 
 public sealed record GuideEventApiDto(
     Guid Id,

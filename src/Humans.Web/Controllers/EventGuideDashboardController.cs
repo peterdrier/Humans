@@ -4,6 +4,7 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Filters;
 using Humans.Web.Models;
+using Humans.Web.Models.Events;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -34,7 +35,7 @@ public class EventGuideDashboardController : HumansControllerBase
 
         var allEvents = await _guide.GetAllEventsForDashboardAsync();
 
-        var model = new GuideDashboardViewModel
+        var model = new EventsDashboardViewModel
         {
             TotalCount = allEvents.Count,
             PendingCount = allEvents.Count(e => e.Status == EventStatus.Pending),
