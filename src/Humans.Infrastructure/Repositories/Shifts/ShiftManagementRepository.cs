@@ -184,6 +184,17 @@ public sealed class ShiftManagementRepository : IShiftManagementRepository
             .FirstOrDefaultAsync(r => r.Id == rotaId, ct);
     }
 
+    public async Task<Rota?> GetRotaForViewAsync(Guid rotaId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.Rotas
+            .AsNoTracking()
+            .Include(r => r.Shifts)
+                .ThenInclude(s => s.ShiftSignups)
+            .Include(r => r.Tags)
+            .FirstOrDefaultAsync(r => r.Id == rotaId, ct);
+    }
+
     public async Task<IReadOnlyList<Rota>> GetRotasByDepartmentAsync(
         Guid teamId, Guid eventSettingsId, CancellationToken ct = default)
     {

@@ -4,9 +4,11 @@ using ShiftsShiftManagementService = Humans.Application.Services.Shifts.ShiftMan
 using ShiftsShiftSignupService = Humans.Application.Services.Shifts.ShiftSignupService;
 using ShiftsGeneralAvailabilityService = Humans.Application.Services.Shifts.GeneralAvailabilityService;
 using ShiftsVolunteerTrackingService = Humans.Application.Services.Shifts.VolunteerTrackingService;
+using ShiftsShiftViewService = Humans.Application.Services.Shifts.ShiftViewService;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Repositories.Shifts;
+using Humans.Infrastructure.Services.Shifts;
 
 namespace Humans.Web.Extensions.Sections;
 
@@ -51,6 +53,17 @@ internal static class ShiftsSectionExtensions
         // share one EF change-tracker.
         services.AddScoped<IVolunteerTrackingRepository, VolunteerTrackingRepository>();
         services.AddScoped<IVolunteerTrackingService, ShiftsVolunteerTrackingService>();
+
+        // ShiftView — issue #720. Singleton caching decorator over a Scoped
+        // inner. Mirrors the Profiles / Teams pattern (CachingProfileService,
+        // CachingTeamService). The inner is registered keyed so the Singleton
+        // decorator can resolve a fresh Scoped instance per cache miss via
+        // IServiceScopeFactory without self-resolving the unkeyed
+        // IShiftView registration.
+        services.AddKeyedScoped<IShiftView, ShiftsShiftViewService>(CachingShiftViewService.InnerServiceKey);
+        services.AddSingleton<CachingShiftViewService>();
+        services.AddSingleton<IShiftView>(sp => sp.GetRequiredService<CachingShiftViewService>());
+        services.AddSingleton<IShiftViewInvalidator>(sp => sp.GetRequiredService<CachingShiftViewService>());
 
         return services;
     }
