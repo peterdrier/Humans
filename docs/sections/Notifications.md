@@ -109,12 +109,12 @@ The originating system for a notification, mapped to a `MessageCategory` for pre
 - After every successful send, resolve, dismiss, mark-read, mark-all-read, or click-through, the per-user `CacheKeys.NotificationBadgeCounts(userId)` entry is removed for each affected user (the `NotificationBellViewComponent` re-computes on next render). Dispatch and inbox services hold `IMemoryCache` directly for this — they do not route through `INavBadgeCacheInvalidator`.
 - Per-section meter caches invalidate via `INotificationMeterCacheInvalidator` after any write that changes an owning-section count (called from owning sections such as `ApplicationDecisionService`, `CachingProfileService`, etc.).
 - `INotificationInboxService.ResolveBySourceAsync(userId, source)` exists for sections that need to auto-resolve all open notifications of a given source for a user when the underlying condition is fixed (e.g. resolving `AccessSuspended` when consents are completed).
-- When an account merge accepts, `INotificationService.ReassignRecipientsToUserAsync` re-FKs `NotificationRecipient.UserId` from source to target (collapsing duplicates where the target already has a recipient row for the same notification). `Notification.ResolvedByUserId` is also re-FK'd. Called only by `IAccountMergeService.AcceptAsync` (Profiles section).
+- When an account merge accepts, `NotificationService` participates as an `IUserMerge` implementation: `IUserMerge.ReassignAsync` delegates to `INotificationRepository.ReassignRecipientsToUserAsync`, which re-FKs `NotificationRecipient.UserId` from source to target (collapsing duplicates where the target already has a recipient row for the same notification) and also re-FKs `Notification.ResolvedByUserId` so shared-resolution attribution points at the surviving user. Driven by `IAccountMergeService.AcceptAsync` (Profiles section) fanning out across registered `IUserMerge` implementations.
 
 ## Cross-Section Dependencies
 
 - **Auth:** `IRoleAssignmentService.GetActiveUserIdsInRoleAsync` (via `INotificationRecipientResolver`) — role-scoped fan-out.
-- **Teams:** `ITeamService.GetTeamByIdAsync` + `GetTeamMembersAsync` (via `INotificationRecipientResolver`) — team-scoped fan-out. `ITeamService.GetTotalPendingJoinRequestCountAsync` — admin team-join-requests meter.
+- **Teams:** `ITeamService.GetTeamAsync` (via `INotificationRecipientResolver`, members projected from the returned `TeamInfo`) — team-scoped fan-out. `ITeamService.GetTotalPendingJoinRequestCountAsync` — admin team-join-requests meter.
 - **Profiles / Users:** `IUserService.GetByIdsAsync` — display data for resolver + recipient rendering (stitched in memory). `IUserService.GetAllUsersAsync` — admin pending-deletions meter (count derived in-memory from the loaded user list). `IProfileService.GetConsentReviewPendingCountAsync` + `GetNotApprovedAndNotSuspendedCountAsync` — consent-review and onboarding-pending meters.
 - **Governance:** `IApplicationDecisionService.GetUnvotedApplicationCountAsync(boardMemberUserId)` — per-board-member voting meter.
 - **Tickets:** `ITicketSyncService.IsInErrorStateAsync` — admin ticket-sync-error meter.
@@ -147,7 +147,7 @@ Inbound (other sections → Notifications):
 
 ### Routes
 
-`NotificationController` is `[Authorize]` and rooted at `/Notifications`:
+`NotificationsController` is `[Authorize]` and rooted at `/Notifications`:
 
 | Verb | Route | Purpose |
 |------|-------|---------|
