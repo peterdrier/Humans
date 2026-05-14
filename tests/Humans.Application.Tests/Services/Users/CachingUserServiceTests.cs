@@ -53,7 +53,8 @@ public class CachingUserServiceTests
             profile: null,
             contactFields: Array.Empty<ContactField>(),
             profileLanguages: Array.Empty<ProfileLanguage>(),
-            volunteerHistory: Array.Empty<VolunteerHistoryEntry>());
+            volunteerHistory: Array.Empty<VolunteerHistoryEntry>(),
+            communicationPreferences: Array.Empty<CommunicationPreference>());
 
     [HumansFact]
     public async Task GetUserInfoAsync_DictMiss_DelegatesToInnerAndCaches()
@@ -333,7 +334,8 @@ public class CachingUserServiceTests
             profile,
             new[] { contactField },
             profile.Languages.ToList(),
-            profile.VolunteerHistory.ToList());
+            profile.VolunteerHistory.ToList(),
+            Array.Empty<CommunicationPreference>());
 
         _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(fullInfo));

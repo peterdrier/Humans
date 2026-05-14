@@ -48,6 +48,18 @@ public sealed record VolunteerHistoryInfo(
     string? Description);
 
 /// <summary>
+/// Compact projection of a <see cref="CommunicationPreference"/> row.
+/// </summary>
+public sealed record CommunicationPreferenceInfo(
+    Guid Id,
+    MessageCategory Category,
+    bool OptedOut,
+    bool InboxEnabled,
+    Instant UpdatedAt,
+    string UpdateSource,
+    Instant? SubscribedAt);
+
+/// <summary>
 /// Compact projection of an <see cref="EventParticipation"/> row.
 /// </summary>
 public sealed record EventParticipationInfo(
@@ -177,7 +189,8 @@ public sealed record UserInfo(
     IReadOnlyList<UserEmailInfo> UserEmails,
     IReadOnlyList<EventParticipationInfo> EventParticipations,
     IReadOnlyList<UserExternalLoginInfo> ExternalLogins,
-    ProfileInfo? Profile)
+    ProfileInfo? Profile,
+    IReadOnlyList<CommunicationPreferenceInfo> CommunicationPreferences)
 {
     /// <summary>
     /// Canonical effective email — first verified UserEmail (primary-preferred),
@@ -252,7 +265,8 @@ public sealed record UserInfo(
         Profile? profile,
         IReadOnlyList<ContactField> contactFields,
         IReadOnlyList<ProfileLanguage> profileLanguages,
-        IReadOnlyList<VolunteerHistoryEntry> volunteerHistory)
+        IReadOnlyList<VolunteerHistoryEntry> volunteerHistory,
+        IReadOnlyList<CommunicationPreference> communicationPreferences)
     {
         var userEmailInfos = userEmails
             .OrderByDescending(e => e.IsPrimary)
@@ -333,6 +347,13 @@ public sealed record UserInfo(
                 VolunteerHistory: volunteerHistoryInfos);
         }
 
+        var communicationPreferenceInfos = communicationPreferences
+            .OrderBy(c => c.Category)
+            .Select(c => new CommunicationPreferenceInfo(
+                c.Id, c.Category, c.OptedOut, c.InboxEnabled,
+                c.UpdatedAt, c.UpdateSource, c.SubscribedAt))
+            .ToList();
+
         return new UserInfo(
             Id: user.Id,
             DisplayName: user.DisplayName,
@@ -357,6 +378,7 @@ public sealed record UserInfo(
             UserEmails: userEmailInfos,
             EventParticipations: participationInfos,
             ExternalLogins: loginInfos,
-            Profile: profileInfo);
+            Profile: profileInfo,
+            CommunicationPreferences: communicationPreferenceInfos);
     }
 }

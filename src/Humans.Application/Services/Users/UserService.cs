@@ -96,7 +96,8 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
 
         return UserInfo.Create(
             user, userEmails, participations, externalLogins,
-            profile, contactFields, languages, volunteerHistory);
+            profile, contactFields, languages, volunteerHistory,
+            Array.Empty<CommunicationPreference>());
     }
 
     public Task<User?> GetByIdAsync(Guid userId, CancellationToken ct = default) =>

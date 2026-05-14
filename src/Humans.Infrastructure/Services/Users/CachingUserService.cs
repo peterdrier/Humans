@@ -130,7 +130,8 @@ public sealed class CachingUserService : IUserService, IUserMerge, IUserInfoInva
 
         _byUserId[userId] = UserInfo.Create(
             user, userEmails, participations, externalLogins,
-            profile, contactFields, languages, volunteerHistory);
+            profile, contactFields, languages, volunteerHistory,
+            Array.Empty<CommunicationPreference>());
     }
 
     /// <summary>
@@ -187,7 +188,8 @@ public sealed class CachingUserService : IUserService, IUserMerge, IUserInfoInva
 
             _byUserId[user.Id] = UserInfo.Create(
                 user, emails, participations, logins,
-                profile, contactFields, languages, volunteerHistory);
+                profile, contactFields, languages, volunteerHistory,
+                Array.Empty<CommunicationPreference>());
         }
     }
 
