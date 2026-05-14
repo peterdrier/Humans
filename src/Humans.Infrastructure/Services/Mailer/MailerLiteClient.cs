@@ -260,7 +260,10 @@ public sealed class MailerLiteClient : IMailerLiteService
         string? cursor = null;
         while (true)
         {
-            var url = "/api/subscribers?limit=100";
+            // include=groups is required — ML's list endpoint omits the per-subscriber
+            // groups array without it, which leaves GroupIds empty and breaks both the
+            // audience "currently in group" stat and the diff that suppresses re-assigns.
+            var url = "/api/subscribers?limit=100&include=groups";
             if (cursor is not null) url += $"&cursor={Uri.EscapeDataString(cursor)}";
             using var resp = await SendAsync(HttpMethod.Get, url, content: null, ct);
             resp.EnsureSuccessStatusCode();
@@ -317,8 +320,27 @@ public sealed class MailerLiteClient : IMailerLiteService
             throw;
         }
         if (resp.Headers.TryGetValues("X-RateLimit-Remaining", out var values)
-            && int.TryParse(values.FirstOrDefault(), CultureInfo.InvariantCulture, out var remaining) && remaining < 20)
-            _logger.LogWarning("MailerLite rate limit remaining: {Remaining}", remaining);
+            && int.TryParse(values.FirstOrDefault(), CultureInfo.InvariantCulture, out var remaining))
+        {
+            // Reactive back-off — ML allows 120 req/min and returns Remaining in every
+            // response. Sleep proportionally as the window drains so tight write loops
+            // (Assign/Unassign/BulkImport) don't slam into 429s. Tiers are intentionally
+            // wide; 429-with-Retry-After handling is a separate concern.
+            var delay = remaining switch
+            {
+                < 5 => TimeSpan.FromSeconds(5),
+                < 10 => TimeSpan.FromSeconds(2),
+                < 20 => TimeSpan.FromSeconds(1),
+                _ => TimeSpan.Zero,
+            };
+            if (delay > TimeSpan.Zero)
+            {
+                _logger.LogWarning(
+                    "MailerLite rate limit remaining: {Remaining}; sleeping {Delay}ms",
+                    remaining, (int)delay.TotalMilliseconds);
+                await Task.Delay(delay, ct);
+            }
+        }
         if (!resp.IsSuccessStatusCode)
             _logger.LogWarning("MailerLite returned {StatusCode}: {Method} {Url}",
                 (int)resp.StatusCode, method, url);
