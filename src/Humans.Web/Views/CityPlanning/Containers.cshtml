@@ -8,8 +8,8 @@
         Placement = c.Placement,
         CanManage = true,
         FormController = "CityPlanning",
-        EditAction = "EditOrgContainer",
-        DeleteAction = "DeleteOrgContainer",
+        EditAction = "EditContainer",
+        DeleteAction = "DeleteContainer",
         ExtraRouteValues = new Dictionary<string, string>(StringComparer.Ordinal),
     };
 }
@@ -67,31 +67,6 @@
     }
 </div>
 
-@* ── Org containers ──────────────────────────────────────────────────── *@
-<div class="d-flex align-items-center gap-2 mb-3">
-    <h2 class="h4 mb-0">@Localizer["CityPlanning_Admin_OrgContainersSection"]</h2>
-    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addOrgModal">
-        <i class="fa-solid fa-plus me-1"></i> @Localizer["Common_Add"]
-    </button>
-</div>
-
-@if (Model.OrgContainers.Count == 0)
-{
-    <div class="alert alert-secondary mb-4">@string.Format(Localizer["CityPlanning_Admin_OrgContainersEmpty"], Model.Year)</div>
-}
-else
-{
-    <ul class="list-group mb-4">
-        @foreach (var c in Model.OrgContainers)
-        {
-            <partial name="_ContainerCardRow" model="@CardFor(c)" />
-        }
-    </ul>
-}
-
-@* ── Barrio containers ───────────────────────────────────────────────── *@
-<h2 class="h4 mb-3 mt-2">@Localizer["CityPlanning_Admin_BarrioContainersSection"]</h2>
-
 @foreach (var group in Model.BarrioGroups)
 {
     <div class="d-flex align-items-center gap-2 mt-4 mb-2">
@@ -118,28 +93,6 @@ else
 
 @* ── Modals ──────────────────────────────────────────────────────────── *@
 
-<div class="modal fade" id="addOrgModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">@Localizer["CityPlanning_Admin_AddOrgContainer"]</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <form asp-action="CreateOrgContainer"
-                  method="post" enctype="multipart/form-data">
-                @Html.AntiForgeryToken()
-                <div class="modal-body">
-                    <partial name="_ContainerFormFields" model="@((Humans.Web.Models.ContainerViewModel?)null)" />
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@Localizer["Common_Cancel"]</button>
-                    <button type="submit" class="btn btn-primary">@Localizer["Common_Add"]</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
 @foreach (var group in Model.BarrioGroups)
 {
     <div class="modal fade" id="addBarrioModal-@group.CampId" tabindex="-1">
@@ -165,7 +118,7 @@ else
     </div>
 }
 
-@foreach (var c in Model.OrgContainers.Concat(Model.BarrioGroups.SelectMany(g => g.Containers)))
+@foreach (var c in Model.BarrioGroups.SelectMany(g => g.Containers))
 {
     <partial name="_ContainerCardModals" model="@CardFor(c)" />
 }

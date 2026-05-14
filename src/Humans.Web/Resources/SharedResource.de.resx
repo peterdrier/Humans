@@ -1523,14 +1523,8 @@
   <data name="CityPlanning_Admin_ContainerPlacement" xml:space="preserve"><value>Container-Platzierung</value></data>
   <data name="CityPlanning_Admin_OpenContainerPlacement" xml:space="preserve"><value>Öffnen</value></data>
   <data name="CityPlanning_Admin_CloseContainerPlacement" xml:space="preserve"><value>Schließen</value></data>
-  <data name="CityPlanning_Admin_OrgContainersSection" xml:space="preserve"><value>Nobodies Container</value></data>
-  <data name="CityPlanning_Admin_OrgContainersEmpty" xml:space="preserve"><value>Noch keine Nobodies Container für {0}.</value></data>
-  <data name="CityPlanning_Admin_BarrioContainersSection" xml:space="preserve"><value>Barrio Container</value></data>
   <data name="CityPlanning_Admin_BarrioContainersEmpty" xml:space="preserve"><value>Noch keine Container für {0}.</value></data>
-  <data name="CityPlanning_Admin_AddOrgContainer" xml:space="preserve"><value>Nobodies Container Hinzufügen</value></data>
   <data name="CityPlanning_Admin_AddBarrioContainer" xml:space="preserve"><value>Container Hinzufügen — {0}</value></data>
-  <data name="CityPlanning_Admin_OrgContainerNamePlaceholder" xml:space="preserve"><value>z.B. Lagercontainer A</value></data>
-  <data name="CityPlanning_Admin_OrgContainerDescPlaceholder" xml:space="preserve"><value>Typ, Farbe, Erkennungszeichen, sonstige Hinweise…</value></data>
   <!-- Import polygons -->
   <data name="CityPlanning_Admin_ImportCard" xml:space="preserve"><value>Polygone importieren</value></data>
   <data name="CityPlanning_Admin_ImportDescription" xml:space="preserve"><value>Lade eine GeoJSON FeatureCollection hoch, um Barrio-Polygone für {0} zu aktualisieren. Features werden anhand der Eigenschaft campName oder campSlug zugeordnet.</value></data>

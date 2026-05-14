@@ -19,9 +19,8 @@ public interface IContainerService : IApplicationService
 
     /// <summary>
     /// Org-wide admin overview of containers for a year, grouped by camp.
-    /// Per-camp barrio groupings include all camps with a season in the year
-    /// (even if the camp has no containers yet). Org-level containers belong
-    /// to the well-known Organization camp (SystemCampIds.Organization).
+    /// Includes every camp with a season in the year, even if the camp
+    /// currently has no containers.
     /// </summary>
     Task<ContainerAdminOverview> GetAdminOverviewAsync(int year, CancellationToken ct = default);
 
@@ -29,7 +28,6 @@ public interface IContainerService : IApplicationService
 
 public record ContainerAdminOverview(
     int Year,
-    IReadOnlyList<ContainerWithPlacement> OrgContainers,
     IReadOnlyList<ContainerCampGroup> CampGroups);
 
 public record ContainerCampGroup(

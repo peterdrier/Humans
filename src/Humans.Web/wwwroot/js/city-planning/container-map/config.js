@@ -7,7 +7,6 @@ export const CONFIG = {
     YEAR:                parseInt(el.dataset.year, 10),
     IS_MAP_ADMIN:        el.dataset.isMapAdmin === 'true',
     USER_CAMP_ID:        el.dataset.userCampId || null,
-    ORG_CAMP_ID:         el.dataset.orgCampId || null,
 
     ESRI_TILES,
     MAP_BOUNDS,

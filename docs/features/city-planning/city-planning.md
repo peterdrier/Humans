@@ -110,7 +110,7 @@ CityPlanningSettings
 ```
 Container
 ├── Id: Guid
-├── CampId: Guid (FK → camps.Id; SystemCampIds.Organization for org-level)
+├── CampId: Guid (FK → camps.Id, non-nullable)
 ├── Name: string
 ├── Description: string?
 ├── ImageStoragePath: string?
@@ -225,8 +225,7 @@ Map admin = `RoleChecks.IsCampAdmin(User)` **or** member of the City Planning te
 | `GET /CityPlanning/BarrioMap/Admin/DownloadOfficialZones` | Download official zones GeoJSON |
 | `POST /CityPlanning/BarrioMap/Admin/DeleteOfficialZones` | Delete official zones |
 | `GET /CityPlanning/BarrioMap/Admin/Containers/{year}` | Admin container list |
-| `POST /CityPlanning/BarrioMap/Admin/Containers/Create` | Create org-level container |
-| `POST /CityPlanning/BarrioMap/Admin/Containers/Barrios/{campId}/Create` | Create barrio container |
+| `POST /CityPlanning/BarrioMap/Admin/Containers/Barrios/{campId}/Create` | Create container for a camp (admin) |
 | `POST /CityPlanning/BarrioMap/Admin/Containers/{id}/Edit` | Edit container |
 | `POST /CityPlanning/BarrioMap/Admin/Containers/{id}/Delete` | Delete container |
 | `GET /CityPlanning/ContainerMap/{year}` | Container placement map |

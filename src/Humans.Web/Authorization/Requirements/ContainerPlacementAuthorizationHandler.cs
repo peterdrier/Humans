@@ -1,7 +1,6 @@
 using System.Security.Claims;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.CitiPlanning;
-using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 
@@ -13,9 +12,8 @@ namespace Humans.Web.Authorization.Requirements;
 /// Authorization logic:
 /// - Admin / CampAdmin: allow any container
 /// - City Planning team member: allow any container
-/// - Org-level containers (CampId == SystemCampIds.Organization): only the above
-/// - Camp lead: allow only barrio containers belonging to their camp,
-///   and only while container placement phase is open
+/// - Camp lead: allow only containers belonging to their camp, and only
+///   while container placement phase is open
 /// - Everyone else: deny
 /// </summary>
 public class ContainerPlacementAuthorizationHandler : AuthorizationHandler<ContainerPlacementRequirement, Container>
@@ -51,11 +49,6 @@ public class ContainerPlacementAuthorizationHandler : AuthorizationHandler<Conta
         if (await _cityPlanningService.IsCityPlanningTeamMemberAsync(userId))
         {
             context.Succeed(requirement);
-            return;
-        }
-
-        if (resource.CampId == SystemCampIds.Organization)
-        {
             return;
         }
 

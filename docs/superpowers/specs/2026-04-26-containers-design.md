@@ -176,12 +176,11 @@ Route prefix: `/CityPlanning/BarrioMap/Admin/Containers`
 | Action | Method | Route | Description |
 |---|---|---|---|
 | `Containers` | GET | `/CityPlanning/BarrioMap/Admin/Containers/{year}` | List org + all-barrio containers for a year |
-| `CreateOrgContainer` | POST | `/CityPlanning/BarrioMap/Admin/Containers/{year}/Create` | Add org container |
 | `CreateBarrioContainer` | POST | `/CityPlanning/BarrioMap/Admin/Containers/{year}/Barrios/{seasonId}/Create` | Add barrio container (admin) |
-| `EditOrgContainer` | POST | `/CityPlanning/BarrioMap/Admin/Containers/{id}/Edit` | Update org container |
-| `DeleteOrgContainer` | POST | `/CityPlanning/BarrioMap/Admin/Containers/{id}/Delete` | Delete org container |
+| `EditContainer` | POST | `/CityPlanning/BarrioMap/Admin/Containers/{id}/Edit` | Update org container |
+| `DeleteContainer` | POST | `/CityPlanning/BarrioMap/Admin/Containers/{id}/Delete` | Delete org container |
 | `UploadOrgContainerImage` | POST | `/CityPlanning/BarrioMap/Admin/Containers/{id}/Image/Upload` | Upload image |
-| `DeleteOrgContainerImage` | POST | `/CityPlanning/BarrioMap/Admin/Containers/{id}/Image/Delete` | Remove image |
+| `DeleteContainerImage` | POST | `/CityPlanning/BarrioMap/Admin/Containers/{id}/Image/Delete` | Remove image |
 
 Nav link: added to the City Planning BarrioMap admin page.
 
@@ -192,9 +191,9 @@ Nav link: added to the City Planning BarrioMap admin page.
 - **Camp-only redesign — Container/ContainerPlacement split (2026-05-10, pre-merge).** The originally-shipped shape had `Container.CampSeasonId?` (nullable) + `Year` on the container, with placement fields on the same row. This conflated two concerns: containers as physical assets that persist year-over-year, and per-year placement state. The redesign:
   - `Container` is year-agnostic and owned by a `Camp` (non-null `CampId`). Containers persist across seasons; deleting a season does not delete its containers.
   - A new `ContainerPlacement` entity carries the per-year state: composite PK on `(ContainerId, Year)`, with `LocationGeoJson`, `PlacementNotes`, and `PlacementImage*` fields.
-  - `Container.CampId` is non-nullable. The "no owner" / "org-level" case is represented by a real `Camp` row with the well-known id `SystemCampIds.Organization` (`00000000-0000-0000-0011-000000000001`, GUID block 0011 — see `docs/guid-reservations.md`). The row is created manually in production; no migration data seed.
-  - Service surface collapses: no `GetOrg*` / `GetAllByYear*` variants — one method set with the Organization id used inline where needed.
-  - Authorization helpers compare `CampId != SystemCampIds.Organization` instead of `CampId.HasValue`.
+  - Service surface collapses: no `GetOrg*` / `GetAllByYear*` variants — one method set keyed by `CampId`.
+
+- **Sentinel-org-camp removed (2026-05-14, pre-merge).** An intermediate redesign introduced a virtual `SystemCampIds.Organization` camp as a sentinel for "containers not tied to any barrio". The sentinel was dropped: every container belongs to a real `Camp`. Org-level containers are now owned by a production-created camp like any other camp; admin-only access drops out naturally when that camp has no assigned leads. The `SystemCampIds.cs` constant, `CreateOrgContainer` action, and the special-case branches in the auth handlers were removed.
 
 ## Out of Scope (Phase 2)
 

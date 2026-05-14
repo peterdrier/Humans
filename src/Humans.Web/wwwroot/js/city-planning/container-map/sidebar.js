@@ -8,19 +8,17 @@ let _containers     = [];    // current container data array
 let _campNames      = {};    // campId → campName
 let _activeId       = null;  // currently active container ID
 let _filterCampId   = null;  // if set, sidebar only shows this barrio's containers
-let _orgCampId      = null;  // well-known SystemCampIds.Organization
 let _onActivate  = null;  // callback(container) when user clicks an unplaced card
 let _onClear     = null;  // callback(container) when user clicks "Clear placement"
 let _onSelect    = null;  // callback(container) when user clicks a placed card
 let _onLocate    = null;  // callback(container) when user clicks the locate button
 
-export function initSidebar(onActivate, onClear, onSelect, onLocate, filterCampId = null, orgCampId = null) {
+export function initSidebar(onActivate, onClear, onSelect, onLocate, filterCampId = null) {
     _onActivate    = onActivate;
     _onClear       = onClear;
     _onSelect      = onSelect;
     _onLocate      = onLocate;
     _filterCampId  = filterCampId;
-    _orgCampId     = orgCampId;
 }
 
 /** Provide the campId → campName lookup used for barrio group headers. */
@@ -77,9 +75,7 @@ function renderSection(sectionEl, items, isPlaced) {
         if (showHeaders) {
             const hdr = document.createElement('div');
             hdr.className = 'list-group-item py-1 px-3 small text-muted bg-body-secondary';
-            hdr.textContent = (campId === null || campId === _orgCampId)
-                ? 'Nobodies'
-                : (_campNames[campId] ?? campId);
+            hdr.textContent = _campNames[campId] ?? campId;
             sectionEl.appendChild(hdr);
         }
         for (const c of groupItems) {
@@ -95,14 +91,8 @@ function groupByCamp(items) {
         if (!groups.has(key)) groups.set(key, []);
         groups.get(key).push(c);
     }
-    // Org containers (Organization camp id) first, then barrios sorted by name
-    return new Map([...groups.entries()].sort(([a], [b]) => {
-        const aOrg = a === null || a === _orgCampId;
-        const bOrg = b === null || b === _orgCampId;
-        if (aOrg && !bOrg) return -1;
-        if (!aOrg && bOrg) return 1;
-        return (_campNames[a] ?? '').localeCompare(_campNames[b] ?? '');
-    }));
+    return new Map([...groups.entries()].sort(([a], [b]) =>
+        (_campNames[a] ?? '').localeCompare(_campNames[b] ?? '')));
 }
 
 function makeUnplacedCard(c) {

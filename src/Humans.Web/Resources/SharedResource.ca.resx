@@ -1525,14 +1525,8 @@
   <data name="CityPlanning_Admin_ContainerPlacement" xml:space="preserve"><value>Col·locació de contenidors</value></data>
   <data name="CityPlanning_Admin_OpenContainerPlacement" xml:space="preserve"><value>Obrir</value></data>
   <data name="CityPlanning_Admin_CloseContainerPlacement" xml:space="preserve"><value>Tancar</value></data>
-  <data name="CityPlanning_Admin_OrgContainersSection" xml:space="preserve"><value>Contenidors de Nobodies</value></data>
-  <data name="CityPlanning_Admin_OrgContainersEmpty" xml:space="preserve"><value>Encara no hi ha contenidors de Nobodies per a {0}.</value></data>
-  <data name="CityPlanning_Admin_BarrioContainersSection" xml:space="preserve"><value>Contenidors de Barris</value></data>
   <data name="CityPlanning_Admin_BarrioContainersEmpty" xml:space="preserve"><value>Encara no hi ha contenidors per a {0}.</value></data>
-  <data name="CityPlanning_Admin_AddOrgContainer" xml:space="preserve"><value>Afegir Contenidor de Nobodies</value></data>
   <data name="CityPlanning_Admin_AddBarrioContainer" xml:space="preserve"><value>Afegir Contenidor — {0}</value></data>
-  <data name="CityPlanning_Admin_OrgContainerNamePlaceholder" xml:space="preserve"><value>p.ex. Contenidor d'Emmagatzematge A</value></data>
-  <data name="CityPlanning_Admin_OrgContainerDescPlaceholder" xml:space="preserve"><value>Tipus, color, signes d'identificació, altres notes…</value></data>
   <!-- Import polygons -->
   <data name="CityPlanning_Admin_ImportCard" xml:space="preserve"><value>Importar polígons</value></data>
   <data name="CityPlanning_Admin_ImportDescription" xml:space="preserve"><value>Puja una FeatureCollection GeoJSON per actualitzar en bloc els polígons de barrios de {0}. Les entitats s'associen per la propietat campName o campSlug.</value></data>

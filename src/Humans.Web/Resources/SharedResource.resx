@@ -1571,14 +1571,8 @@
   <data name="CityPlanning_Admin_ContainerPlacement" xml:space="preserve"><value>Container placement</value></data>
   <data name="CityPlanning_Admin_OpenContainerPlacement" xml:space="preserve"><value>Open</value></data>
   <data name="CityPlanning_Admin_CloseContainerPlacement" xml:space="preserve"><value>Close</value></data>
-  <data name="CityPlanning_Admin_OrgContainersSection" xml:space="preserve"><value>Nobodies Containers</value></data>
-  <data name="CityPlanning_Admin_OrgContainersEmpty" xml:space="preserve"><value>No Nobodies containers for {0} yet.</value><comment>{0} = year</comment></data>
-  <data name="CityPlanning_Admin_BarrioContainersSection" xml:space="preserve"><value>Barrio Containers</value></data>
   <data name="CityPlanning_Admin_BarrioContainersEmpty" xml:space="preserve"><value>No containers for {0} yet.</value><comment>{0} = camp name</comment></data>
-  <data name="CityPlanning_Admin_AddOrgContainer" xml:space="preserve"><value>Add Nobodies Container</value></data>
   <data name="CityPlanning_Admin_AddBarrioContainer" xml:space="preserve"><value>Add Container — {0}</value><comment>{0} = camp name</comment></data>
-  <data name="CityPlanning_Admin_OrgContainerNamePlaceholder" xml:space="preserve"><value>e.g. Storage Container A</value></data>
-  <data name="CityPlanning_Admin_OrgContainerDescPlaceholder" xml:space="preserve"><value>Type, color, identification signs, other notes…</value></data>
   <!-- Import polygons -->
   <data name="CityPlanning_Admin_ImportCard" xml:space="preserve"><value>Import polygons</value></data>
   <data name="CityPlanning_Admin_ImportDescription" xml:space="preserve"><value>Upload a GeoJSON FeatureCollection to bulk-update camp polygons for {0}. Features are matched by campName or campSlug property.</value><comment>{0} = year</comment></data>

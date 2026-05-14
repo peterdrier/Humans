@@ -1,7 +1,6 @@
 using System.Security.Claims;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.CitiPlanning;
-using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 
@@ -13,7 +12,7 @@ namespace Humans.Web.Authorization.Requirements;
 /// Authorization logic:
 /// - Admin / CampAdmin: allow any container
 /// - City Planning team member: allow any container
-/// - Camp lead: allow only barrio containers belonging to their camp
+/// - Camp lead: allow only containers belonging to their camp
 /// - Everyone else: deny
 /// </summary>
 public class ContainerAuthorizationHandler : AuthorizationHandler<ContainerOperationRequirement, Container>
@@ -50,9 +49,7 @@ public class ContainerAuthorizationHandler : AuthorizationHandler<ContainerOpera
             return;
         }
 
-        // Camp leads can manage barrio containers (not org-level)
-        if (resource.CampId != SystemCampIds.Organization
-            && await _campService.IsUserCampLeadAsync(userId, resource.CampId))
+        if (await _campService.IsUserCampLeadAsync(userId, resource.CampId))
         {
             context.Succeed(requirement);
         }

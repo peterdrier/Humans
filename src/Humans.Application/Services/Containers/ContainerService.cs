@@ -1,7 +1,6 @@
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Containers;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using NodaTime;
 
@@ -198,13 +197,7 @@ public sealed class ContainerService : IContainerService
             ToDto(c),
             placementByContainerId.TryGetValue(c.Id, out var p) ? ToPlacementDto(p) : null);
 
-        var orgContainers = allContainers
-            .Where(c => c.CampId == SystemCampIds.Organization)
-            .Select(Compose)
-            .ToList();
-
         var byCampId = allContainers
-            .Where(c => c.CampId != SystemCampIds.Organization)
             .GroupBy(c => c.CampId)
             .ToDictionary(g => g.Key, g => g.ToList());
 
@@ -218,7 +211,7 @@ public sealed class ContainerService : IContainerService
                     : []))
             .ToList();
 
-        return new ContainerAdminOverview(year, orgContainers, campGroups);
+        return new ContainerAdminOverview(year, campGroups);
     }
 
     private static void ValidateImage(ContainerImageUpload? image)

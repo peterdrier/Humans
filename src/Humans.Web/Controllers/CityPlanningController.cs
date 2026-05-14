@@ -1,7 +1,6 @@
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.CitiPlanning;
 using Humans.Application.Interfaces.Containers;
-using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Web.Authorization;
 using Humans.Web.Models;
@@ -401,10 +400,6 @@ public class CityPlanningController : HumansControllerBase
         {
             Year = year,
             IsContainerPlacementOpen = settings.IsContainerPlacementOpen,
-            OrgContainers = overview.OrgContainers
-                .OrderBy(c => c.Container.Name, StringComparer.OrdinalIgnoreCase)
-                .Select(ToContainerWithPlacementViewModel)
-                .ToList(),
             BarrioGroups = overview.CampGroups
                 .OrderBy(g => g.CampName, StringComparer.OrdinalIgnoreCase)
                 .Select(g => new BarrioContainerGroup
@@ -487,29 +482,9 @@ public class CityPlanningController : HumansControllerBase
         return RedirectToAction(nameof(Containers), new { year });
     }
 
-    [HttpPost("BarrioMap/Admin/Containers/Create")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> CreateOrgContainer(ContainerFormModel model, CancellationToken cancellationToken)
-    {
-        var (error, user) = await RequireCurrentUserAsync();
-        if (error != null) return error;
-
-        if (!await IsMapAdminAsync(user.Id, cancellationToken)) return Forbid();
-
-        var settings = await _cityPlanningService.GetSettingsAsync(cancellationToken);
-
-        if (!ModelState.IsValid)
-        {
-            SetError("Please correct the validation errors.");
-            return RedirectToAction(nameof(Containers), new { year = settings.Year });
-        }
-
-        return await TryCreateContainerAsync(model, SystemCampIds.Organization, settings.Year, cancellationToken);
-    }
-
     [HttpPost("BarrioMap/Admin/Containers/{id}/Edit")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> EditOrgContainer(Guid id, ContainerFormModel model, CancellationToken cancellationToken)
+    public async Task<IActionResult> EditContainer(Guid id, ContainerFormModel model, CancellationToken cancellationToken)
     {
         var (error, user) = await RequireCurrentUserAsync();
         if (error != null) return error;
@@ -550,7 +525,7 @@ public class CityPlanningController : HumansControllerBase
 
     [HttpPost("BarrioMap/Admin/Containers/{id}/Delete")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> DeleteOrgContainer(Guid id, CancellationToken cancellationToken)
+    public async Task<IActionResult> DeleteContainer(Guid id, CancellationToken cancellationToken)
     {
         var (error, user) = await RequireCurrentUserAsync();
         if (error != null) return error;
