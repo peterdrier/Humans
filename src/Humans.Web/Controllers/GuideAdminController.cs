@@ -28,10 +28,10 @@ public class GuideAdminController : HumansControllerBase
         _logger = logger;
     }
 
-    // ─── GuideSettings ────────────────────────────────────────────
+    // ─── EventGuideSettings ────────────────────────────────────────────
 
-    [HttpGet("GuideSettings")]
-    public async Task<IActionResult> GuideSettings()
+    [HttpGet("EventGuideSettings")]
+    public async Task<IActionResult> EventGuideSettings()
     {
         var existing = await _guide.GetGuideSettingsAsync();
         var eventSettingsOptions = await BuildEventSettingsOptionsAsync();
@@ -59,14 +59,14 @@ public class GuideAdminController : HumansControllerBase
         });
     }
 
-    [HttpPost("GuideSettings")]
+    [HttpPost("EventGuideSettings")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SaveGuideSettings(GuideSettingsViewModel model)
     {
         if (!ModelState.IsValid)
         {
             model.AvailableEventSettings = await BuildEventSettingsOptionsAsync();
-            return View(nameof(GuideSettings), model);
+            return View(nameof(EventGuideSettings), model);
         }
 
         var eventSettings = await _guide.GetEventSettingsByIdAsync(model.EventSettingsId);
@@ -74,7 +74,7 @@ public class GuideAdminController : HumansControllerBase
         {
             ModelState.AddModelError(nameof(model.EventSettingsId), "Selected event edition not found.");
             model.AvailableEventSettings = await BuildEventSettingsOptionsAsync();
-            return View(nameof(GuideSettings), model);
+            return View(nameof(EventGuideSettings), model);
         }
 
         try
@@ -89,13 +89,13 @@ public class GuideAdminController : HumansControllerBase
 
             _logger.LogInformation("Guide settings saved for event {EventSettingsId}", model.EventSettingsId);
             SetSuccess("Guide settings saved.");
-            return RedirectToAction(nameof(GuideSettings));
+            return RedirectToAction(nameof(EventGuideSettings));
         }
         catch (InvalidOperationException ex)
         {
             ModelState.AddModelError("", ex.Message);
             model.AvailableEventSettings = await BuildEventSettingsOptionsAsync();
-            return View(nameof(GuideSettings), model);
+            return View(nameof(EventGuideSettings), model);
         }
     }
 
@@ -274,7 +274,7 @@ public class GuideAdminController : HumansControllerBase
         if (!ModelState.IsValid)
             return View("GuideVenueForm", model);
 
-        var venue = new GuideSharedVenue
+        var venue = new EventVenue
         {
             Id = Guid.NewGuid(),
             Name = model.Name,

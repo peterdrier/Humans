@@ -25,18 +25,18 @@ public class IndividualEventRowViewModel
     public string CategoryName { get; set; } = string.Empty;
     public DateTime StartAt { get; set; }
     public int DurationMinutes { get; set; }
-    public GuideEventStatus Status { get; set; }
+    public EventStatus Status { get; set; }
     public bool CanEdit { get; set; }
     public bool CanWithdraw { get; set; }
 
     public string StatusBadgeClass => Status switch
     {
-        GuideEventStatus.Draft => "bg-secondary",
-        GuideEventStatus.Pending => "bg-warning text-dark",
-        GuideEventStatus.Approved => "bg-success",
-        GuideEventStatus.Rejected => "bg-danger",
-        GuideEventStatus.ResubmitRequested => "bg-info",
-        GuideEventStatus.Withdrawn => "bg-dark",
+        EventStatus.Draft => "bg-secondary",
+        EventStatus.Pending => "bg-warning text-dark",
+        EventStatus.Approved => "bg-success",
+        EventStatus.Rejected => "bg-danger",
+        EventStatus.ResubmitRequested => "bg-info",
+        EventStatus.Withdrawn => "bg-dark",
         _ => "bg-secondary"
     };
 }

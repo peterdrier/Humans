@@ -4,9 +4,9 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Humans.Infrastructure.Data.Configurations;
 
-public class GuideSettingsConfiguration : IEntityTypeConfiguration<GuideSettings>
+public class GuideSettingsConfiguration : IEntityTypeConfiguration<EventGuideSettings>
 {
-    public void Configure(EntityTypeBuilder<GuideSettings> builder)
+    public void Configure(EntityTypeBuilder<EventGuideSettings> builder)
     {
         builder.ToTable("guide_settings");
         builder.HasKey(g => g.Id);
@@ -15,7 +15,7 @@ public class GuideSettingsConfiguration : IEntityTypeConfiguration<GuideSettings
 
         builder.HasOne(g => g.EventSettings)
             .WithOne()
-            .HasForeignKey<GuideSettings>(g => g.EventSettingsId)
+            .HasForeignKey<EventGuideSettings>(g => g.EventSettingsId)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }

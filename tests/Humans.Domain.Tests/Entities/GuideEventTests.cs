@@ -18,16 +18,16 @@ public class GuideEventTests
     }
 
     [HumansTheory]
-    [InlineData(GuideEventStatus.Draft)]
-    [InlineData(GuideEventStatus.Rejected)]
-    [InlineData(GuideEventStatus.ResubmitRequested)]
-    public void Submit_FromValidState_SetsPendingAndTimestamps(GuideEventStatus source)
+    [InlineData(EventStatus.Draft)]
+    [InlineData(EventStatus.Rejected)]
+    [InlineData(EventStatus.ResubmitRequested)]
+    public void Submit_FromValidState_SetsPendingAndTimestamps(EventStatus source)
     {
         var guideEvent = CreateEvent(source);
 
         guideEvent.Submit(_clock);
 
-        guideEvent.Status.Should().Be(GuideEventStatus.Pending);
+        guideEvent.Status.Should().Be(EventStatus.Pending);
         guideEvent.SubmittedAt.Should().Be(_clock.GetCurrentInstant());
         guideEvent.LastUpdatedAt.Should().Be(_clock.GetCurrentInstant());
     }
@@ -35,7 +35,7 @@ public class GuideEventTests
     [HumansFact]
     public void Submit_FromWithdrawn_Throws()
     {
-        var guideEvent = CreateEvent(GuideEventStatus.Withdrawn);
+        var guideEvent = CreateEvent(EventStatus.Withdrawn);
 
         var action = () => guideEvent.Submit(_clock);
 
@@ -44,9 +44,9 @@ public class GuideEventTests
     }
 
     [HumansTheory]
-    [InlineData(GuideEventStatus.Approved)]
-    [InlineData(GuideEventStatus.Pending)]
-    public void Submit_FromInvalidState_Throws(GuideEventStatus source)
+    [InlineData(EventStatus.Approved)]
+    [InlineData(EventStatus.Pending)]
+    public void Submit_FromInvalidState_Throws(EventStatus source)
     {
         var guideEvent = CreateEvent(source);
 
@@ -57,24 +57,24 @@ public class GuideEventTests
     }
 
     [HumansTheory]
-    [InlineData(GuideEventStatus.Draft)]
-    [InlineData(GuideEventStatus.Pending)]
-    public void Withdraw_FromValidState_SetsWithdrawnAndLastUpdated(GuideEventStatus source)
+    [InlineData(EventStatus.Draft)]
+    [InlineData(EventStatus.Pending)]
+    public void Withdraw_FromValidState_SetsWithdrawnAndLastUpdated(EventStatus source)
     {
         var guideEvent = CreateEvent(source);
 
         guideEvent.Withdraw(_clock);
 
-        guideEvent.Status.Should().Be(GuideEventStatus.Withdrawn);
+        guideEvent.Status.Should().Be(EventStatus.Withdrawn);
         guideEvent.LastUpdatedAt.Should().Be(_clock.GetCurrentInstant());
     }
 
     [HumansTheory]
-    [InlineData(GuideEventStatus.Approved)]
-    [InlineData(GuideEventStatus.Rejected)]
-    [InlineData(GuideEventStatus.ResubmitRequested)]
-    [InlineData(GuideEventStatus.Withdrawn)]
-    public void Withdraw_FromInvalidState_Throws(GuideEventStatus source)
+    [InlineData(EventStatus.Approved)]
+    [InlineData(EventStatus.Rejected)]
+    [InlineData(EventStatus.ResubmitRequested)]
+    [InlineData(EventStatus.Withdrawn)]
+    public void Withdraw_FromInvalidState_Throws(EventStatus source)
     {
         var guideEvent = CreateEvent(source);
 
@@ -85,14 +85,14 @@ public class GuideEventTests
     }
 
     [HumansTheory]
-    [InlineData(ModerationActionType.Approved, GuideEventStatus.Approved)]
-    [InlineData(ModerationActionType.Rejected, GuideEventStatus.Rejected)]
-    [InlineData(ModerationActionType.ResubmitRequested, GuideEventStatus.ResubmitRequested)]
+    [InlineData(EventModerationActionType.Approved, EventStatus.Approved)]
+    [InlineData(EventModerationActionType.Rejected, EventStatus.Rejected)]
+    [InlineData(EventModerationActionType.ResubmitRequested, EventStatus.ResubmitRequested)]
     public void ApplyModerationAction_FromPending_TransitionsToExpectedStatus(
-        ModerationActionType action,
-        GuideEventStatus expectedStatus)
+        EventModerationActionType action,
+        EventStatus expectedStatus)
     {
-        var guideEvent = CreateEvent(GuideEventStatus.Pending);
+        var guideEvent = CreateEvent(EventStatus.Pending);
 
         guideEvent.ApplyModerationAction(action, _clock);
 
@@ -101,16 +101,16 @@ public class GuideEventTests
     }
 
     [HumansTheory]
-    [InlineData(GuideEventStatus.Draft)]
-    [InlineData(GuideEventStatus.Approved)]
-    [InlineData(GuideEventStatus.Rejected)]
-    [InlineData(GuideEventStatus.ResubmitRequested)]
-    [InlineData(GuideEventStatus.Withdrawn)]
-    public void ApplyModerationAction_FromInvalidState_Throws(GuideEventStatus source)
+    [InlineData(EventStatus.Draft)]
+    [InlineData(EventStatus.Approved)]
+    [InlineData(EventStatus.Rejected)]
+    [InlineData(EventStatus.ResubmitRequested)]
+    [InlineData(EventStatus.Withdrawn)]
+    public void ApplyModerationAction_FromInvalidState_Throws(EventStatus source)
     {
         var guideEvent = CreateEvent(source);
 
-        var action = () => guideEvent.ApplyModerationAction(ModerationActionType.Approved, _clock);
+        var action = () => guideEvent.ApplyModerationAction(EventModerationActionType.Approved, _clock);
 
         action.Should().Throw<InvalidOperationException>()
             .WithMessage($"Cannot moderate event in {source} state");
@@ -119,9 +119,9 @@ public class GuideEventTests
     [HumansFact]
     public void ApplyModerationAction_WithUnknownAction_Throws()
     {
-        var guideEvent = CreateEvent(GuideEventStatus.Pending);
+        var guideEvent = CreateEvent(EventStatus.Pending);
 
-        var action = () => guideEvent.ApplyModerationAction((ModerationActionType)999, _clock);
+        var action = () => guideEvent.ApplyModerationAction((EventModerationActionType)999, _clock);
 
         action.Should().Throw<ArgumentOutOfRangeException>();
     }
@@ -129,7 +129,7 @@ public class GuideEventTests
     [HumansFact]
     public void GetOccurrenceInstants_ForRecurringEvent_ReturnsExpandedInstants()
     {
-        var guideEvent = CreateEvent(GuideEventStatus.Draft);
+        var guideEvent = CreateEvent(EventStatus.Draft);
         guideEvent.IsRecurring = true;
         guideEvent.RecurrenceDays = "0,2,4";
 
@@ -141,9 +141,9 @@ public class GuideEventTests
         occurrences[2].Should().Be(guideEvent.StartAt.Plus(Duration.FromDays(4)));
     }
 
-    private GuideEvent CreateEvent(GuideEventStatus status)
+    private Event CreateEvent(EventStatus status)
     {
-        return new GuideEvent
+        return new Event
         {
             Id = Guid.NewGuid(),
             CategoryId = Guid.NewGuid(),

@@ -4,7 +4,7 @@ namespace Humans.Domain.Entities;
 /// Admin-managed communal or infrastructure space for individual event submissions
 /// (e.g. "Main Stage", "The Middle of Elsewhere").
 /// </summary>
-public class GuideSharedVenue
+public class EventVenue
 {
     /// <summary>
     /// Unique identifier.
@@ -41,5 +41,5 @@ public class GuideSharedVenue
     /// <summary>
     /// Navigation property to events at this venue.
     /// </summary>
-    public ICollection<GuideEvent> GuideEvents { get; } = new List<GuideEvent>();
+    public ICollection<Event> GuideEvents { get; } = new List<Event>();
 }

@@ -6,7 +6,7 @@ namespace Humans.Domain.Entities;
 /// Event guide configuration for a single event edition.
 /// Links to <see cref="EventSettings"/> for shared date/timezone context.
 /// </summary>
-public class GuideSettings
+public class EventGuideSettings
 {
     /// <summary>
     /// Unique identifier.

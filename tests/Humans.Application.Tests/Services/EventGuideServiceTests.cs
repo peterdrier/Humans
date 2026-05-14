@@ -37,7 +37,7 @@ public sealed class EventGuideServiceTests
     public async Task IsSubmissionOpenAsync_UsesInclusiveOpenAndCloseWindow(int hour, bool expected)
     {
         _clock.Reset(Instant.FromUtc(2026, 5, 5, hour, 0));
-        _repo.Settings = new GuideSettings
+        _repo.Settings = new EventGuideSettings
         {
             Id = Guid.NewGuid(),
             EventSettingsId = Guid.NewGuid(),
@@ -120,8 +120,8 @@ public sealed class EventGuideServiceTests
     [HumansFact]
     public async Task DeleteVenueAsync_ReturnsLinkedCountAndDoesNotRemove_WhenEventsReferenceVenue()
     {
-        var venue = new GuideSharedVenue { Id = Guid.NewGuid(), Name = "Main Stage" };
-        venue.GuideEvents.Add(new GuideEvent { Id = Guid.NewGuid(), Title = "Talk" });
+        var venue = new EventVenue { Id = Guid.NewGuid(), Name = "Main Stage" };
+        venue.GuideEvents.Add(new Event { Id = Guid.NewGuid(), Title = "Talk" });
         _repo.Venues.Add(venue);
 
         var result = await _service.DeleteVenueAsync(venue.Id);
@@ -149,7 +149,7 @@ public sealed class EventGuideServiceTests
     [HumansFact]
     public async Task ToggleFavouriteAsync_RemovesFavourite_WhenExisting()
     {
-        var fav = new UserEventFavourite
+        var fav = new EventFavourite
         {
             Id = Guid.NewGuid(),
             UserId = Guid.NewGuid(),
@@ -168,7 +168,7 @@ public sealed class EventGuideServiceTests
     public async Task SavePreferenceAsync_UpdatesExistingPreferenceJsonAndTimestamp()
     {
         var userId = Guid.NewGuid();
-        _repo.Preference = new UserGuidePreference
+        _repo.Preference = new EventPreference
         {
             Id = Guid.NewGuid(),
             UserId = userId,
@@ -186,10 +186,10 @@ public sealed class EventGuideServiceTests
     [HumansFact]
     public async Task ApplyModerationAsync_TransitionsEventAndAppendsModerationAction()
     {
-        var guideEvent = new GuideEvent
+        var guideEvent = new Event
         {
             Id = Guid.NewGuid(),
-            Status = GuideEventStatus.Pending,
+            Status = EventStatus.Pending,
             LastUpdatedAt = Instant.FromUtc(2026, 5, 1, 12, 0)
         };
         _repo.Events.Add(guideEvent);
@@ -198,15 +198,15 @@ public sealed class EventGuideServiceTests
         await _service.ApplyModerationAsync(
             guideEvent.Id,
             actorUserId,
-            ModerationActionType.ResubmitRequested,
+            EventModerationActionType.ResubmitRequested,
             "Add location");
 
-        guideEvent.Status.Should().Be(GuideEventStatus.ResubmitRequested);
+        guideEvent.Status.Should().Be(EventStatus.ResubmitRequested);
         guideEvent.LastUpdatedAt.Should().Be(_clock.GetCurrentInstant());
         _repo.ModerationActions.Should().ContainSingle(action =>
             action.GuideEventId == guideEvent.Id
             && action.ActorUserId == actorUserId
-            && action.Action == ModerationActionType.ResubmitRequested
+            && action.Action == EventModerationActionType.ResubmitRequested
             && action.Reason == "Add location"
             && action.CreatedAt == _clock.GetCurrentInstant());
         _repo.SaveChangesCount.Should().Be(1);
@@ -214,18 +214,18 @@ public sealed class EventGuideServiceTests
 
     private sealed class FakeEventGuideRepository : IEventGuideRepository
     {
-        public GuideSettings? Settings { get; set; }
+        public EventGuideSettings? Settings { get; set; }
         public Dictionary<Guid, EventSettings> EventSettings { get; } = [];
         public List<EventCategory> Categories { get; } = [];
-        public List<GuideSharedVenue> Venues { get; } = [];
-        public List<GuideSharedVenue> RemovedVenues { get; } = [];
-        public List<GuideEvent> Events { get; } = [];
-        public List<UserEventFavourite> Favourites { get; } = [];
-        public List<ModerationAction> ModerationActions { get; } = [];
-        public UserGuidePreference? Preference { get; set; }
+        public List<EventVenue> Venues { get; } = [];
+        public List<EventVenue> RemovedVenues { get; } = [];
+        public List<Event> Events { get; } = [];
+        public List<EventFavourite> Favourites { get; } = [];
+        public List<EventModerationAction> ModerationActions { get; } = [];
+        public EventPreference? Preference { get; set; }
         public int SaveChangesCount { get; private set; }
 
-        public Task<GuideSettings?> GetGuideSettingsAsync(CancellationToken ct = default)
+        public Task<EventGuideSettings?> GetGuideSettingsAsync(CancellationToken ct = default)
             => Task.FromResult(Settings);
 
         public Task<IReadOnlyList<EventSettings>> GetActiveEventSettingsAsync(CancellationToken ct = default)
@@ -234,7 +234,7 @@ public sealed class EventGuideServiceTests
         public Task<EventSettings?> GetEventSettingsByIdAsync(Guid id, CancellationToken ct = default)
             => Task.FromResult(EventSettings.GetValueOrDefault(id));
 
-        public void Add(GuideSettings settings) => Settings = settings;
+        public void Add(EventGuideSettings settings) => Settings = settings;
 
         public Task<IReadOnlyList<EventCategory>> GetActiveCategoriesAsync(CancellationToken ct = default)
             => Task.FromResult<IReadOnlyList<EventCategory>>(Categories.Where(c => c.IsActive).ToList());
@@ -260,88 +260,88 @@ public sealed class EventGuideServiceTests
         public void Add(EventCategory category) => Categories.Add(category);
         public void Remove(EventCategory category) => Categories.Remove(category);
 
-        public Task<IReadOnlyList<GuideSharedVenue>> GetActiveVenuesAsync(CancellationToken ct = default)
-            => Task.FromResult<IReadOnlyList<GuideSharedVenue>>(Venues.Where(v => v.IsActive).ToList());
+        public Task<IReadOnlyList<EventVenue>> GetActiveVenuesAsync(CancellationToken ct = default)
+            => Task.FromResult<IReadOnlyList<EventVenue>>(Venues.Where(v => v.IsActive).ToList());
 
-        public Task<IReadOnlyList<GuideSharedVenue>> GetAllVenuesAsync(CancellationToken ct = default)
-            => Task.FromResult<IReadOnlyList<GuideSharedVenue>>(Venues);
+        public Task<IReadOnlyList<EventVenue>> GetAllVenuesAsync(CancellationToken ct = default)
+            => Task.FromResult<IReadOnlyList<EventVenue>>(Venues);
 
-        public Task<GuideSharedVenue?> GetVenueAsync(Guid id, CancellationToken ct = default)
+        public Task<EventVenue?> GetVenueAsync(Guid id, CancellationToken ct = default)
             => Task.FromResult(Venues.FirstOrDefault(v => v.Id == id));
 
-        public Task<GuideSharedVenue?> GetVenueWithEventsAsync(Guid id, CancellationToken ct = default)
+        public Task<EventVenue?> GetVenueWithEventsAsync(Guid id, CancellationToken ct = default)
             => Task.FromResult(Venues.FirstOrDefault(v => v.Id == id));
 
         public Task<int> GetMaxVenueOrderAsync(CancellationToken ct = default)
             => Task.FromResult(Venues.Count == 0 ? 0 : Venues.Max(v => v.DisplayOrder));
 
-        public Task<List<GuideSharedVenue>> GetAllVenuesOrderedForSwapAsync(CancellationToken ct = default)
+        public Task<List<EventVenue>> GetAllVenuesOrderedForSwapAsync(CancellationToken ct = default)
             => Task.FromResult(Venues.OrderBy(v => v.DisplayOrder).ThenBy(v => v.Name, StringComparer.Ordinal).ToList());
 
-        public void Add(GuideSharedVenue venue) => Venues.Add(venue);
+        public void Add(EventVenue venue) => Venues.Add(venue);
 
-        public void Remove(GuideSharedVenue venue)
+        public void Remove(EventVenue venue)
         {
             RemovedVenues.Add(venue);
             Venues.Remove(venue);
         }
 
-        public Task<IReadOnlyList<GuideEvent>> GetUserSubmissionsAsync(Guid userId, CancellationToken ct = default)
-            => Task.FromResult<IReadOnlyList<GuideEvent>>(Events.Where(e => e.CampId == null && e.SubmitterUserId == userId).ToList());
+        public Task<IReadOnlyList<Event>> GetUserSubmissionsAsync(Guid userId, CancellationToken ct = default)
+            => Task.FromResult<IReadOnlyList<Event>>(Events.Where(e => e.CampId == null && e.SubmitterUserId == userId).ToList());
 
-        public Task<GuideEvent?> GetUserEventAsync(Guid eventId, Guid userId, CancellationToken ct = default)
+        public Task<Event?> GetUserEventAsync(Guid eventId, Guid userId, CancellationToken ct = default)
             => Task.FromResult(Events.FirstOrDefault(e => e.Id == eventId && e.CampId == null && e.SubmitterUserId == userId));
 
-        public Task<IReadOnlyList<GuideEvent>> GetCampSubmissionsAsync(Guid campId, CancellationToken ct = default)
-            => Task.FromResult<IReadOnlyList<GuideEvent>>(Events.Where(e => e.CampId == campId).ToList());
+        public Task<IReadOnlyList<Event>> GetCampSubmissionsAsync(Guid campId, CancellationToken ct = default)
+            => Task.FromResult<IReadOnlyList<Event>>(Events.Where(e => e.CampId == campId).ToList());
 
-        public Task<GuideEvent?> GetCampEventAsync(Guid eventId, Guid campId, CancellationToken ct = default)
+        public Task<Event?> GetCampEventAsync(Guid eventId, Guid campId, CancellationToken ct = default)
             => Task.FromResult(Events.FirstOrDefault(e => e.Id == eventId && e.CampId == campId));
 
-        public void Add(GuideEvent guideEvent) => Events.Add(guideEvent);
+        public void Add(Event guideEvent) => Events.Add(guideEvent);
 
-        public Task<IReadOnlyList<GuideEvent>> GetApprovedEventsAsync(Guid? campId, Guid? venueId, Guid? categoryId, string? q, IReadOnlyList<string> excludedSlugs, CancellationToken ct = default)
-            => Task.FromResult<IReadOnlyList<GuideEvent>>(Events.Where(e => e.Status == GuideEventStatus.Approved).ToList());
+        public Task<IReadOnlyList<Event>> GetApprovedEventsAsync(Guid? campId, Guid? venueId, Guid? categoryId, string? q, IReadOnlyList<string> excludedSlugs, CancellationToken ct = default)
+            => Task.FromResult<IReadOnlyList<Event>>(Events.Where(e => e.Status == EventStatus.Approved).ToList());
 
-        public Task<GuideEvent?> GetApprovedEventByIdAsync(Guid id, CancellationToken ct = default)
-            => Task.FromResult(Events.FirstOrDefault(e => e.Id == id && e.Status == GuideEventStatus.Approved));
+        public Task<Event?> GetApprovedEventByIdAsync(Guid id, CancellationToken ct = default)
+            => Task.FromResult(Events.FirstOrDefault(e => e.Id == id && e.Status == EventStatus.Approved));
 
-        public Task<IReadOnlyList<GuideEvent>> GetAllEventsForDashboardAsync(CancellationToken ct = default)
-            => Task.FromResult<IReadOnlyList<GuideEvent>>(Events);
+        public Task<IReadOnlyList<Event>> GetAllEventsForDashboardAsync(CancellationToken ct = default)
+            => Task.FromResult<IReadOnlyList<Event>>(Events);
 
-        public Task<Dictionary<GuideEventStatus, int>> GetModerationStatusCountsAsync(CancellationToken ct = default)
+        public Task<Dictionary<EventStatus, int>> GetModerationStatusCountsAsync(CancellationToken ct = default)
             => Task.FromResult(Events.GroupBy(e => e.Status).ToDictionary(g => g.Key, g => g.Count()));
 
-        public Task<IReadOnlyList<GuideEvent>> GetEventsByStatusAsync(GuideEventStatus status, CancellationToken ct = default)
-            => Task.FromResult<IReadOnlyList<GuideEvent>>(Events.Where(e => e.Status == status).ToList());
+        public Task<IReadOnlyList<Event>> GetEventsByStatusAsync(EventStatus status, CancellationToken ct = default)
+            => Task.FromResult<IReadOnlyList<Event>>(Events.Where(e => e.Status == status).ToList());
 
-        public Task<GuideEvent?> GetEventForModerationAsync(Guid eventId, CancellationToken ct = default)
+        public Task<Event?> GetEventForModerationAsync(Guid eventId, CancellationToken ct = default)
             => Task.FromResult(Events.FirstOrDefault(e => e.Id == eventId));
 
         public Task<IReadOnlyList<CampEventOverlap>> GetActiveCampEventsAsync(CancellationToken ct = default)
             => Task.FromResult<IReadOnlyList<CampEventOverlap>>([]);
 
-        public void Add(ModerationAction action) => ModerationActions.Add(action);
+        public void Add(EventModerationAction action) => ModerationActions.Add(action);
 
         public Task<HashSet<Guid>> GetFavouriteEventIdsAsync(Guid userId, CancellationToken ct = default)
             => Task.FromResult(Favourites.Where(f => f.UserId == userId).Select(f => f.GuideEventId).ToHashSet());
 
-        public Task<IReadOnlyList<UserEventFavourite>> GetFavouritesWithEventsAsync(Guid userId, CancellationToken ct = default)
-            => Task.FromResult<IReadOnlyList<UserEventFavourite>>(Favourites.Where(f => f.UserId == userId).ToList());
+        public Task<IReadOnlyList<EventFavourite>> GetFavouritesWithEventsAsync(Guid userId, CancellationToken ct = default)
+            => Task.FromResult<IReadOnlyList<EventFavourite>>(Favourites.Where(f => f.UserId == userId).ToList());
 
-        public Task<UserEventFavourite?> GetFavouriteAsync(Guid userId, Guid eventId, CancellationToken ct = default)
+        public Task<EventFavourite?> GetFavouriteAsync(Guid userId, Guid eventId, CancellationToken ct = default)
             => Task.FromResult(Favourites.FirstOrDefault(f => f.UserId == userId && f.GuideEventId == eventId));
 
         public Task<bool> FavouriteExistsAsync(Guid userId, Guid eventId, CancellationToken ct = default)
             => Task.FromResult(Favourites.Any(f => f.UserId == userId && f.GuideEventId == eventId));
 
-        public void Add(UserEventFavourite fav) => Favourites.Add(fav);
-        public void Remove(UserEventFavourite fav) => Favourites.Remove(fav);
+        public void Add(EventFavourite fav) => Favourites.Add(fav);
+        public void Remove(EventFavourite fav) => Favourites.Remove(fav);
 
-        public Task<UserGuidePreference?> GetPreferenceAsync(Guid userId, CancellationToken ct = default)
+        public Task<EventPreference?> GetPreferenceAsync(Guid userId, CancellationToken ct = default)
             => Task.FromResult(Preference?.UserId == userId ? Preference : null);
 
-        public void Add(UserGuidePreference pref) => Preference = pref;
+        public void Add(EventPreference pref) => Preference = pref;
 
         public Task SaveChangesAsync(CancellationToken ct = default)
         {

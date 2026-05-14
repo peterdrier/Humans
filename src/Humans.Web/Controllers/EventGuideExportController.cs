@@ -41,7 +41,7 @@ public class EventGuideExportController : HumansControllerBase
         {
             var campSeason = e.Camp?.Seasons.OrderByDescending(s => s.Year).FirstOrDefault();
             var campName = campSeason?.Name ?? e.Camp?.Slug ?? "";
-            var venueName = e.GuideSharedVenue?.Name ?? "";
+            var venueName = e.EventVenue?.Name ?? "";
             var submitterName = e.CampId == null
                 ? (e.SubmitterUser.Email ?? "")
                 : "";
@@ -83,7 +83,7 @@ public class EventGuideExportController : HumansControllerBase
         {
             var campSeason = e.Camp?.Seasons.OrderByDescending(s => s.Year).FirstOrDefault();
             var campName = campSeason?.Name ?? e.Camp?.Slug;
-            var venueName = e.GuideSharedVenue?.Name;
+            var venueName = e.EventVenue?.Name;
 
             foreach (var occ in e.GetOccurrenceInstants())
             {
@@ -133,7 +133,7 @@ public class EventGuideExportController : HumansControllerBase
 
     // ─── Helpers ──────────────────────────────────────────────────
 
-    private static DateTimeZone? GetTz(GuideSettings? settings)
+    private static DateTimeZone? GetTz(EventGuideSettings? settings)
         => settings?.EventSettings != null
             ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(settings.EventSettings.TimeZoneId)
             : null;
@@ -141,7 +141,7 @@ public class EventGuideExportController : HumansControllerBase
     private static DateTime ToLocal(Instant instant, DateTimeZone? tz)
         => tz == null ? instant.ToDateTimeUtc() : instant.InZone(tz).ToDateTimeUnspecified();
 
-    private static List<(string Date, string Time)> GetOccurrences(GuideEvent e, DateTimeZone? tz)
+    private static List<(string Date, string Time)> GetOccurrences(Event e, DateTimeZone? tz)
     {
         var results = new List<(string, string)>();
         foreach (var occurrence in e.GetOccurrenceInstants())

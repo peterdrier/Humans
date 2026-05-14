@@ -4,9 +4,9 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Humans.Infrastructure.Data.Configurations;
 
-public class ModerationActionConfiguration : IEntityTypeConfiguration<ModerationAction>
+public class ModerationActionConfiguration : IEntityTypeConfiguration<EventModerationAction>
 {
-    public void Configure(EntityTypeBuilder<ModerationAction> builder)
+    public void Configure(EntityTypeBuilder<EventModerationAction> builder)
     {
         builder.ToTable("moderation_actions");
         builder.HasKey(m => m.Id);
@@ -20,7 +20,7 @@ public class ModerationActionConfiguration : IEntityTypeConfiguration<Moderation
 
         builder.HasIndex(m => m.GuideEventId);
 
-        builder.HasOne(m => m.GuideEvent)
+        builder.HasOne(m => m.Event)
             .WithMany(e => e.ModerationActions)
             .HasForeignKey(m => m.GuideEventId)
             .OnDelete(DeleteBehavior.Restrict);

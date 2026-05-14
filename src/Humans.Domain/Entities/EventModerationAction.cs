@@ -4,10 +4,10 @@ using NodaTime;
 namespace Humans.Domain.Entities;
 
 /// <summary>
-/// Append-only audit log of a moderation decision on a <see cref="GuideEvent"/>.
+/// Append-only audit log of a moderation decision on a <see cref="Event"/>.
 /// No UPDATE or DELETE — query the latest action for current status.
 /// </summary>
-public class ModerationAction
+public class EventModerationAction
 {
     /// <summary>
     /// Unique identifier.
@@ -27,7 +27,7 @@ public class ModerationAction
     /// <summary>
     /// Type of moderation action.
     /// </summary>
-    public ModerationActionType Action { get; set; }
+    public EventModerationActionType Action { get; set; }
 
     /// <summary>
     /// Reason for the action (required for non-approval actions).
@@ -44,6 +44,6 @@ public class ModerationAction
     /// <summary>
     /// Navigation property to the event.
     /// </summary>
-    public GuideEvent GuideEvent { get; set; } = null!;
+    public Event Event { get; set; } = null!;
 
 }

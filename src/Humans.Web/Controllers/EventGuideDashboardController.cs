@@ -37,14 +37,14 @@ public class EventGuideDashboardController : HumansControllerBase
         var model = new GuideDashboardViewModel
         {
             TotalCount = allEvents.Count,
-            PendingCount = allEvents.Count(e => e.Status == GuideEventStatus.Pending),
-            ApprovedCount = allEvents.Count(e => e.Status == GuideEventStatus.Approved),
-            RejectedCount = allEvents.Count(e => e.Status == GuideEventStatus.Rejected),
-            ResubmitRequestedCount = allEvents.Count(e => e.Status == GuideEventStatus.ResubmitRequested),
-            WithdrawnCount = allEvents.Count(e => e.Status == GuideEventStatus.Withdrawn)
+            PendingCount = allEvents.Count(e => e.Status == EventStatus.Pending),
+            ApprovedCount = allEvents.Count(e => e.Status == EventStatus.Approved),
+            RejectedCount = allEvents.Count(e => e.Status == EventStatus.Rejected),
+            ResubmitRequestedCount = allEvents.Count(e => e.Status == EventStatus.ResubmitRequested),
+            WithdrawnCount = allEvents.Count(e => e.Status == EventStatus.Withdrawn)
         };
 
-        var approvedEvents = allEvents.Where(e => e.Status == GuideEventStatus.Approved).ToList();
+        var approvedEvents = allEvents.Where(e => e.Status == EventStatus.Approved).ToList();
         var gateOpeningDate = guideSettings?.EventSettings?.GateOpeningDate;
         var eventEndOffset = guideSettings?.EventSettings?.EventEndOffset ?? 0;
 
@@ -81,9 +81,9 @@ public class EventGuideDashboardController : HumansControllerBase
             {
                 CategoryName = cat.Name,
                 SubmittedCount = catEvents.Count,
-                ApprovedCount = catEvents.Count(e => e.Status == GuideEventStatus.Approved),
-                PendingCount = catEvents.Count(e => e.Status == GuideEventStatus.Pending),
-                RejectedCount = catEvents.Count(e => e.Status == GuideEventStatus.Rejected)
+                ApprovedCount = catEvents.Count(e => e.Status == EventStatus.Approved),
+                PendingCount = catEvents.Count(e => e.Status == EventStatus.Pending),
+                RejectedCount = catEvents.Count(e => e.Status == EventStatus.Rejected)
             };
         }).ToList();
 
@@ -98,8 +98,8 @@ public class EventGuideDashboardController : HumansControllerBase
                 {
                     CampName = season?.Name ?? first.Camp?.Slug ?? "Unknown",
                     SubmittedCount = g.Count(),
-                    ApprovedCount = g.Count(e => e.Status == GuideEventStatus.Approved),
-                    PendingCount = g.Count(e => e.Status == GuideEventStatus.Pending)
+                    ApprovedCount = g.Count(e => e.Status == EventStatus.Approved),
+                    PendingCount = g.Count(e => e.Status == EventStatus.Pending)
                 };
             })
             .OrderByDescending(c => c.SubmittedCount)

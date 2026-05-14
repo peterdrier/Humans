@@ -10,26 +10,26 @@
 
 <ul class="nav nav-tabs mb-4">
     <li class="nav-item">
-        <a class="nav-link @(Model.ActiveTab == GuideEventStatus.Pending ? "active" : "")"
-           asp-action="Index" asp-route-tab="@GuideEventStatus.Pending">
+        <a class="nav-link @(Model.ActiveTab == EventStatus.Pending ? "active" : "")"
+           asp-action="Index" asp-route-tab="@EventStatus.Pending">
             Pending <span class="badge bg-warning text-dark">@Model.PendingCount</span>
         </a>
     </li>
     <li class="nav-item">
-        <a class="nav-link @(Model.ActiveTab == GuideEventStatus.Approved ? "active" : "")"
-           asp-action="Index" asp-route-tab="@GuideEventStatus.Approved">
+        <a class="nav-link @(Model.ActiveTab == EventStatus.Approved ? "active" : "")"
+           asp-action="Index" asp-route-tab="@EventStatus.Approved">
             Approved <span class="badge bg-success">@Model.ApprovedCount</span>
         </a>
     </li>
     <li class="nav-item">
-        <a class="nav-link @(Model.ActiveTab == GuideEventStatus.Rejected ? "active" : "")"
-           asp-action="Index" asp-route-tab="@GuideEventStatus.Rejected">
+        <a class="nav-link @(Model.ActiveTab == EventStatus.Rejected ? "active" : "")"
+           asp-action="Index" asp-route-tab="@EventStatus.Rejected">
             Rejected <span class="badge bg-danger">@Model.RejectedCount</span>
         </a>
     </li>
     <li class="nav-item">
-        <a class="nav-link @(Model.ActiveTab == GuideEventStatus.ResubmitRequested ? "active" : "")"
-           asp-action="Index" asp-route-tab="@GuideEventStatus.ResubmitRequested">
+        <a class="nav-link @(Model.ActiveTab == EventStatus.ResubmitRequested ? "active" : "")"
+           asp-action="Index" asp-route-tab="@EventStatus.ResubmitRequested">
             Resubmit <span class="badge bg-info">@Model.ResubmitRequestedCount</span>
         </a>
     </li>
@@ -169,7 +169,7 @@ else
                                 }
                             </div>
 
-                            @if (evt.Status == GuideEventStatus.Pending)
+                            @if (evt.Status == EventStatus.Pending)
                             {
                                 <div class="col-md-4">
                                     <div class="card">

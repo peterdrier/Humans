@@ -4,9 +4,9 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Humans.Infrastructure.Data.Configurations;
 
-public class GuideSharedVenueConfiguration : IEntityTypeConfiguration<GuideSharedVenue>
+public class GuideSharedVenueConfiguration : IEntityTypeConfiguration<EventVenue>
 {
-    public void Configure(EntityTypeBuilder<GuideSharedVenue> builder)
+    public void Configure(EntityTypeBuilder<EventVenue> builder)
     {
         builder.ToTable("guide_shared_venues");
         builder.HasKey(v => v.Id);

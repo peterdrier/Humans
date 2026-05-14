@@ -3,7 +3,7 @@ namespace Humans.Domain.Enums;
 /// <summary>
 /// Status of an event guide submission through the moderation workflow.
 /// </summary>
-public enum GuideEventStatus
+public enum EventStatus
 {
     /// <summary>Saved but not yet submitted for review.</summary>
     Draft = 0,

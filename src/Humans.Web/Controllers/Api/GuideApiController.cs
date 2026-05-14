@@ -200,7 +200,7 @@ public class GuideApiController : ControllerBase
         var favourites = await _guide.GetFavouritesWithEventsAsync(user.Id);
         var results = favourites.Select(f =>
         {
-            var e = f.GuideEvent;
+            var e = f.Event;
             var campSeason = e.Camp?.Seasons.OrderByDescending(s => s.Year).FirstOrDefault();
             var campName = campSeason?.Name ?? e.Camp?.Slug;
             return BuildEventDto(e, e.StartAt, ComputeDayOffset(e.StartAt, gateOpeningDate, tz), campName);
@@ -246,7 +246,7 @@ public class GuideApiController : ControllerBase
     }
 
     private static GuideEventApiDto BuildEventDto(
-        GuideEvent e, Instant startAt, int dayOffset, string? campName)
+        Event e, Instant startAt, int dayOffset, string? campName)
     {
         return new GuideEventApiDto(
             e.Id,
@@ -262,8 +262,8 @@ public class GuideApiController : ControllerBase
             dayOffset,
             e.IsRecurring,
             e.CampId.HasValue ? new GuideEventCampApiDto(e.CampId.Value, campName) : null,
-            e.GuideSharedVenueId.HasValue && e.GuideSharedVenue != null
-                ? new GuideEventVenueApiDto(e.GuideSharedVenueId.Value, e.GuideSharedVenue.Name)
+            e.GuideSharedVenueId.HasValue && e.EventVenue != null
+                ? new GuideEventVenueApiDto(e.GuideSharedVenueId.Value, e.EventVenue.Name)
                 : null,
             e.LocationNote,
             e.PriorityRank);

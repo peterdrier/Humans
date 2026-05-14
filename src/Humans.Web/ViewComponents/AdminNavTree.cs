@@ -41,7 +41,7 @@ public static class AdminNavTree
         }),
         new("Events", new AdminNavItem[]
         {
-            new("Guide settings", "GuideAdmin", "GuideSettings", null, null, "fa-solid fa-calendar-days", PolicyNames.GuideModeratorOrAdmin),
+            new("Guide settings", "GuideAdmin", "EventGuideSettings", null, null, "fa-solid fa-calendar-days", PolicyNames.GuideModeratorOrAdmin),
             new("Guide categories", "GuideAdmin", "GuideCategories", null, null, "fa-solid fa-tags", PolicyNames.GuideModeratorOrAdmin),
             new("Guide venues", "GuideAdmin", "GuideVenues", null, null, "fa-solid fa-location-dot", PolicyNames.GuideModeratorOrAdmin),
         }),

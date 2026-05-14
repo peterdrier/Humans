@@ -4,9 +4,9 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Humans.Infrastructure.Data.Configurations;
 
-public class UserGuidePreferenceConfiguration : IEntityTypeConfiguration<UserGuidePreference>
+public class UserGuidePreferenceConfiguration : IEntityTypeConfiguration<EventPreference>
 {
-    public void Configure(EntityTypeBuilder<UserGuidePreference> builder)
+    public void Configure(EntityTypeBuilder<EventPreference> builder)
     {
         builder.ToTable("user_guide_preferences");
         builder.HasKey(p => p.Id);
@@ -17,7 +17,7 @@ public class UserGuidePreferenceConfiguration : IEntityTypeConfiguration<UserGui
 
         builder.HasOne<User>()
             .WithOne()
-            .HasForeignKey<UserGuidePreference>(p => p.UserId)
+            .HasForeignKey<EventPreference>(p => p.UserId)
             .OnDelete(DeleteBehavior.Cascade);
     }
 }

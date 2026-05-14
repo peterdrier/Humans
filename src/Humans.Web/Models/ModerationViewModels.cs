@@ -5,7 +5,7 @@ namespace Humans.Web.Models;
 
 public class ModerationQueueViewModel
 {
-    public GuideEventStatus ActiveTab { get; set; } = GuideEventStatus.Pending;
+    public EventStatus ActiveTab { get; set; } = EventStatus.Pending;
     public int PendingCount { get; set; }
     public int ApprovedCount { get; set; }
     public int RejectedCount { get; set; }
@@ -32,18 +32,18 @@ public class ModerationEventRowViewModel
     public string? RecurrenceDays { get; set; }
     public int PriorityRank { get; set; }
     public DateTime SubmittedAt { get; set; }
-    public GuideEventStatus Status { get; set; }
+    public EventStatus Status { get; set; }
     public List<ModerationHistoryItemViewModel> History { get; set; } = [];
     public List<DuplicateCandidateViewModel> DuplicateCandidates { get; set; } = [];
 
     public string StatusBadgeClass => Status switch
     {
-        GuideEventStatus.Draft => "bg-secondary",
-        GuideEventStatus.Pending => "bg-warning text-dark",
-        GuideEventStatus.Approved => "bg-success",
-        GuideEventStatus.Rejected => "bg-danger",
-        GuideEventStatus.ResubmitRequested => "bg-info",
-        GuideEventStatus.Withdrawn => "bg-dark",
+        EventStatus.Draft => "bg-secondary",
+        EventStatus.Pending => "bg-warning text-dark",
+        EventStatus.Approved => "bg-success",
+        EventStatus.Rejected => "bg-danger",
+        EventStatus.ResubmitRequested => "bg-info",
+        EventStatus.Withdrawn => "bg-dark",
         _ => "bg-secondary"
     };
 }
@@ -51,15 +51,15 @@ public class ModerationEventRowViewModel
 public class ModerationHistoryItemViewModel
 {
     public string ActorName { get; set; } = string.Empty;
-    public ModerationActionType Action { get; set; }
+    public EventModerationActionType Action { get; set; }
     public string? Reason { get; set; }
     public DateTime CreatedAt { get; set; }
 
     public string ActionBadgeClass => Action switch
     {
-        ModerationActionType.Approved => "bg-success",
-        ModerationActionType.Rejected => "bg-danger",
-        ModerationActionType.ResubmitRequested => "bg-info",
+        EventModerationActionType.Approved => "bg-success",
+        EventModerationActionType.Rejected => "bg-danger",
+        EventModerationActionType.ResubmitRequested => "bg-info",
         _ => "bg-secondary"
     };
 }
@@ -70,7 +70,7 @@ public class DuplicateCandidateViewModel
     public string Title { get; set; } = string.Empty;
     public DateTime StartAt { get; set; }
     public int DurationMinutes { get; set; }
-    public GuideEventStatus Status { get; set; }
+    public EventStatus Status { get; set; }
 }
 
 public class ModerationActionFormModel

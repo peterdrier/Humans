@@ -4,9 +4,9 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Humans.Infrastructure.Data.Configurations;
 
-public class GuideEventConfiguration : IEntityTypeConfiguration<GuideEvent>
+public class GuideEventConfiguration : IEntityTypeConfiguration<Event>
 {
-    public void Configure(EntityTypeBuilder<GuideEvent> builder)
+    public void Configure(EntityTypeBuilder<Event> builder)
     {
         builder.ToTable("guide_events");
         builder.HasKey(e => e.Id);
@@ -32,7 +32,7 @@ public class GuideEventConfiguration : IEntityTypeConfiguration<GuideEvent>
             .HasForeignKey(e => e.CampId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasOne(e => e.GuideSharedVenue)
+        builder.HasOne(e => e.EventVenue)
             .WithMany(v => v.GuideEvents)
             .HasForeignKey(e => e.GuideSharedVenueId)
             .OnDelete(DeleteBehavior.Restrict);

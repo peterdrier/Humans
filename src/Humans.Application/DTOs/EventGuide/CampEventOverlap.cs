@@ -9,4 +9,4 @@ public record CampEventOverlap(
     string Title,
     Instant StartAt,
     int DurationMinutes,
-    GuideEventStatus Status);
+    EventStatus Status);

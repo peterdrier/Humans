@@ -4,9 +4,9 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Humans.Infrastructure.Data.Configurations;
 
-public class UserEventFavouriteConfiguration : IEntityTypeConfiguration<UserEventFavourite>
+public class UserEventFavouriteConfiguration : IEntityTypeConfiguration<EventFavourite>
 {
-    public void Configure(EntityTypeBuilder<UserEventFavourite> builder)
+    public void Configure(EntityTypeBuilder<EventFavourite> builder)
     {
         builder.ToTable("user_event_favourites");
         builder.HasKey(f => f.Id);
@@ -18,7 +18,7 @@ public class UserEventFavouriteConfiguration : IEntityTypeConfiguration<UserEven
             .HasForeignKey(f => f.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasOne(f => f.GuideEvent)
+        builder.HasOne(f => f.Event)
             .WithMany(e => e.UserEventFavourites)
             .HasForeignKey(f => f.GuideEventId)
             .OnDelete(DeleteBehavior.Cascade);

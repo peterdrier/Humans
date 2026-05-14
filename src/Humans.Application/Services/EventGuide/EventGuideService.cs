@@ -21,7 +21,7 @@ public sealed class EventGuideService : IEventGuideService
 
     // ── Settings ─────────────────────────────────────────────────────────
 
-    public Task<GuideSettings?> GetGuideSettingsAsync(CancellationToken ct = default)
+    public Task<EventGuideSettings?> GetGuideSettingsAsync(CancellationToken ct = default)
         => _repo.GetGuideSettingsAsync(ct);
 
     public async Task<bool> IsSubmissionOpenAsync(CancellationToken ct = default)
@@ -52,7 +52,7 @@ public sealed class EventGuideService : IEventGuideService
         var existing = await _repo.GetGuideSettingsAsync(ct);
         if (existing == null)
         {
-            _repo.Add(new GuideSettings
+            _repo.Add(new EventGuideSettings
             {
                 Id = Guid.NewGuid(),
                 EventSettingsId = eventSettingsId,
@@ -128,25 +128,25 @@ public sealed class EventGuideService : IEventGuideService
 
     // ── Venues ────────────────────────────────────────────────────────────
 
-    public Task<IReadOnlyList<GuideSharedVenue>> GetActiveVenuesAsync(CancellationToken ct = default)
+    public Task<IReadOnlyList<EventVenue>> GetActiveVenuesAsync(CancellationToken ct = default)
         => _repo.GetActiveVenuesAsync(ct);
 
-    public Task<IReadOnlyList<GuideSharedVenue>> GetAllVenuesAsync(CancellationToken ct = default)
+    public Task<IReadOnlyList<EventVenue>> GetAllVenuesAsync(CancellationToken ct = default)
         => _repo.GetAllVenuesAsync(ct);
 
-    public Task<GuideSharedVenue?> GetVenueAsync(Guid id, CancellationToken ct = default)
+    public Task<EventVenue?> GetVenueAsync(Guid id, CancellationToken ct = default)
         => _repo.GetVenueAsync(id, ct);
 
     public async Task<int> GetNextVenueOrderAsync(CancellationToken ct = default)
         => await _repo.GetMaxVenueOrderAsync(ct) + 1;
 
-    public async Task CreateVenueAsync(GuideSharedVenue venue, CancellationToken ct = default)
+    public async Task CreateVenueAsync(EventVenue venue, CancellationToken ct = default)
     {
         _repo.Add(venue);
         await _repo.SaveChangesAsync(ct);
     }
 
-    public async Task UpdateVenueAsync(GuideSharedVenue venue, CancellationToken ct = default)
+    public async Task UpdateVenueAsync(EventVenue venue, CancellationToken ct = default)
         => await _repo.SaveChangesAsync(ct);
 
     public async Task<(bool deleted, int linkedCount)> DeleteVenueAsync(Guid id, CancellationToken ct = default)
@@ -173,31 +173,31 @@ public sealed class EventGuideService : IEventGuideService
 
     // ── Submissions ───────────────────────────────────────────────────────
 
-    public Task<IReadOnlyList<GuideEvent>> GetUserSubmissionsAsync(Guid userId, CancellationToken ct = default)
+    public Task<IReadOnlyList<Event>> GetUserSubmissionsAsync(Guid userId, CancellationToken ct = default)
         => _repo.GetUserSubmissionsAsync(userId, ct);
 
-    public Task<GuideEvent?> GetUserEventAsync(Guid eventId, Guid userId, CancellationToken ct = default)
+    public Task<Event?> GetUserEventAsync(Guid eventId, Guid userId, CancellationToken ct = default)
         => _repo.GetUserEventAsync(eventId, userId, ct);
 
-    public Task<IReadOnlyList<GuideEvent>> GetCampSubmissionsAsync(Guid campId, CancellationToken ct = default)
+    public Task<IReadOnlyList<Event>> GetCampSubmissionsAsync(Guid campId, CancellationToken ct = default)
         => _repo.GetCampSubmissionsAsync(campId, ct);
 
-    public Task<GuideEvent?> GetCampEventAsync(Guid eventId, Guid campId, CancellationToken ct = default)
+    public Task<Event?> GetCampEventAsync(Guid eventId, Guid campId, CancellationToken ct = default)
         => _repo.GetCampEventAsync(eventId, campId, ct);
 
-    public async Task SubmitEventAsync(GuideEvent guideEvent, CancellationToken ct = default)
+    public async Task SubmitEventAsync(Event guideEvent, CancellationToken ct = default)
     {
         _repo.Add(guideEvent);
         await _repo.SaveChangesAsync(ct);
     }
 
-    public async Task UpdateAndResubmitAsync(GuideEvent guideEvent, CancellationToken ct = default)
+    public async Task UpdateAndResubmitAsync(Event guideEvent, CancellationToken ct = default)
     {
         guideEvent.Submit(_clock);
         await _repo.SaveChangesAsync(ct);
     }
 
-    public async Task WithdrawEventAsync(GuideEvent guideEvent, CancellationToken ct = default)
+    public async Task WithdrawEventAsync(Event guideEvent, CancellationToken ct = default)
     {
         guideEvent.Withdraw(_clock);
         await _repo.SaveChangesAsync(ct);
@@ -205,12 +205,12 @@ public sealed class EventGuideService : IEventGuideService
 
     // ── Browse / API ──────────────────────────────────────────────────────
 
-    public Task<IReadOnlyList<GuideEvent>> GetApprovedEventsAsync(
+    public Task<IReadOnlyList<Event>> GetApprovedEventsAsync(
         Guid? campId, Guid? venueId, Guid? categoryId, string? q,
         IReadOnlyList<string> excludedSlugs, CancellationToken ct = default)
         => _repo.GetApprovedEventsAsync(campId, venueId, categoryId, q, excludedSlugs, ct);
 
-    public Task<GuideEvent?> GetApprovedEventByIdAsync(Guid id, CancellationToken ct = default)
+    public Task<Event?> GetApprovedEventByIdAsync(Guid id, CancellationToken ct = default)
         => _repo.GetApprovedEventByIdAsync(id, ct);
 
     // ── Favourites ────────────────────────────────────────────────────────
@@ -218,7 +218,7 @@ public sealed class EventGuideService : IEventGuideService
     public Task<HashSet<Guid>> GetFavouriteEventIdsAsync(Guid userId, CancellationToken ct = default)
         => _repo.GetFavouriteEventIdsAsync(userId, ct);
 
-    public Task<IReadOnlyList<UserEventFavourite>> GetFavouritesWithEventsAsync(Guid userId, CancellationToken ct = default)
+    public Task<IReadOnlyList<EventFavourite>> GetFavouritesWithEventsAsync(Guid userId, CancellationToken ct = default)
         => _repo.GetFavouritesWithEventsAsync(userId, ct);
 
     public async Task ToggleFavouriteAsync(Guid userId, Guid eventId, CancellationToken ct = default)
@@ -230,7 +230,7 @@ public sealed class EventGuideService : IEventGuideService
         }
         else
         {
-            _repo.Add(new UserEventFavourite
+            _repo.Add(new EventFavourite
             {
                 Id = Guid.NewGuid(),
                 UserId = userId,
@@ -244,7 +244,7 @@ public sealed class EventGuideService : IEventGuideService
     public async Task<bool> AddFavouriteAsync(Guid userId, Guid eventId, CancellationToken ct = default)
     {
         if (await _repo.FavouriteExistsAsync(userId, eventId, ct)) return false;
-        _repo.Add(new UserEventFavourite
+        _repo.Add(new EventFavourite
         {
             Id = Guid.NewGuid(),
             UserId = userId,
@@ -273,7 +273,7 @@ public sealed class EventGuideService : IEventGuideService
         return JsonSerializer.Deserialize<List<string>>(pref.ExcludedCategorySlugs) ?? [];
     }
 
-    public Task<UserGuidePreference?> GetPreferenceAsync(Guid userId, CancellationToken ct = default)
+    public Task<EventPreference?> GetPreferenceAsync(Guid userId, CancellationToken ct = default)
         => _repo.GetPreferenceAsync(userId, ct);
 
     public async Task SavePreferenceAsync(Guid userId, List<string> slugs, CancellationToken ct = default)
@@ -282,7 +282,7 @@ public sealed class EventGuideService : IEventGuideService
         var json = JsonSerializer.Serialize(slugs);
         if (pref == null)
         {
-            _repo.Add(new UserGuidePreference
+            _repo.Add(new EventPreference
             {
                 Id = Guid.NewGuid(),
                 UserId = userId,
@@ -300,27 +300,27 @@ public sealed class EventGuideService : IEventGuideService
 
     // ── Moderation ────────────────────────────────────────────────────────
 
-    public Task<Dictionary<GuideEventStatus, int>> GetEventStatusCountsAsync(CancellationToken ct = default)
+    public Task<Dictionary<EventStatus, int>> GetEventStatusCountsAsync(CancellationToken ct = default)
         => _repo.GetModerationStatusCountsAsync(ct);
 
-    public Task<IReadOnlyList<GuideEvent>> GetEventsByStatusAsync(GuideEventStatus status, CancellationToken ct = default)
+    public Task<IReadOnlyList<Event>> GetEventsByStatusAsync(EventStatus status, CancellationToken ct = default)
         => _repo.GetEventsByStatusAsync(status, ct);
 
-    public Task<GuideEvent?> GetEventForModerationAsync(Guid eventId, CancellationToken ct = default)
+    public Task<Event?> GetEventForModerationAsync(Guid eventId, CancellationToken ct = default)
         => _repo.GetEventForModerationAsync(eventId, ct);
 
     public Task<IReadOnlyList<CampEventOverlap>> GetCampEventsForOverlapAsync(CancellationToken ct = default)
         => _repo.GetActiveCampEventsAsync(ct);
 
     public async Task ApplyModerationAsync(
-        Guid eventId, Guid actorUserId, ModerationActionType actionType, string? reason, CancellationToken ct = default)
+        Guid eventId, Guid actorUserId, EventModerationActionType actionType, string? reason, CancellationToken ct = default)
     {
         var guideEvent = await _repo.GetEventForModerationAsync(eventId, ct)
-            ?? throw new InvalidOperationException($"GuideEvent {eventId} not found.");
+            ?? throw new InvalidOperationException($"Event {eventId} not found.");
 
         guideEvent.ApplyModerationAction(actionType, _clock);
 
-        _repo.Add(new ModerationAction
+        _repo.Add(new EventModerationAction
         {
             Id = Guid.NewGuid(),
             GuideEventId = eventId,
@@ -335,10 +335,10 @@ public sealed class EventGuideService : IEventGuideService
 
     // ── Dashboard / Export ────────────────────────────────────────────────
 
-    public Task<IReadOnlyList<GuideEvent>> GetAllEventsForDashboardAsync(CancellationToken ct = default)
+    public Task<IReadOnlyList<Event>> GetAllEventsForDashboardAsync(CancellationToken ct = default)
         => _repo.GetAllEventsForDashboardAsync(ct);
 
-    public async Task<(IReadOnlyList<GuideEvent> Events, GuideSettings? Settings)> GetApprovedEventsForExportAsync(CancellationToken ct = default)
+    public async Task<(IReadOnlyList<Event> Events, EventGuideSettings? Settings)> GetApprovedEventsForExportAsync(CancellationToken ct = default)
     {
         var settings = await _repo.GetGuideSettingsAsync(ct);
         var events = await _repo.GetApprovedEventsAsync(null, null, null, null, [], ct);

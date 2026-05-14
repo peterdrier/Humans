@@ -3,10 +3,10 @@ using NodaTime;
 namespace Humans.Domain.Entities;
 
 /// <summary>
-/// Links a user to a favourited <see cref="GuideEvent"/>.
+/// Links a user to a favourited <see cref="Event"/>.
 /// Deleted on unfavourite. Used to build the account-backed personal schedule.
 /// </summary>
-public class UserEventFavourite
+public class EventFavourite
 {
     /// <summary>
     /// Unique identifier.
@@ -33,5 +33,5 @@ public class UserEventFavourite
     /// <summary>
     /// Navigation property to the event.
     /// </summary>
-    public GuideEvent GuideEvent { get; set; } = null!;
+    public Event Event { get; set; } = null!;
 }

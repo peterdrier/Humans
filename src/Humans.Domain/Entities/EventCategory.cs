@@ -41,5 +41,5 @@ public class EventCategory
     /// <summary>
     /// Navigation property to events in this category.
     /// </summary>
-    public ICollection<GuideEvent> GuideEvents { get; } = new List<GuideEvent>();
+    public ICollection<Event> GuideEvents { get; } = new List<Event>();
 }

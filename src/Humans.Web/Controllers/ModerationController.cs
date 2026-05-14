@@ -38,9 +38,9 @@ public class ModerationController : HumansControllerBase
     }
 
     [HttpGet("")]
-    public async Task<IActionResult> Index([FromQuery] GuideEventStatus? tab)
+    public async Task<IActionResult> Index([FromQuery] EventStatus? tab)
     {
-        var activeTab = tab ?? GuideEventStatus.Pending;
+        var activeTab = tab ?? EventStatus.Pending;
 
         var guideSettings = await _guide.GetGuideSettingsAsync();
         DateTimeZone? tz = guideSettings?.EventSettings != null
@@ -53,10 +53,10 @@ public class ModerationController : HumansControllerBase
         var model = new ModerationQueueViewModel
         {
             ActiveTab = activeTab,
-            PendingCount = counts.GetValueOrDefault(GuideEventStatus.Pending),
-            ApprovedCount = counts.GetValueOrDefault(GuideEventStatus.Approved),
-            RejectedCount = counts.GetValueOrDefault(GuideEventStatus.Rejected),
-            ResubmitRequestedCount = counts.GetValueOrDefault(GuideEventStatus.ResubmitRequested),
+            PendingCount = counts.GetValueOrDefault(EventStatus.Pending),
+            ApprovedCount = counts.GetValueOrDefault(EventStatus.Approved),
+            RejectedCount = counts.GetValueOrDefault(EventStatus.Rejected),
+            ResubmitRequestedCount = counts.GetValueOrDefault(EventStatus.ResubmitRequested),
             TimeZoneId = guideSettings?.EventSettings?.TimeZoneId,
             Events = events.Select(e => BuildRow(e, tz)).ToList()
         };
@@ -96,7 +96,7 @@ public class ModerationController : HumansControllerBase
     [HttpPost("Approve")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Approve(ModerationActionFormModel model)
-        => await ProcessActionAsync(model.EventId, ModerationActionType.Approved, null);
+        => await ProcessActionAsync(model.EventId, EventModerationActionType.Approved, null);
 
     [HttpPost("Reject")]
     [ValidateAntiForgeryToken]
@@ -107,7 +107,7 @@ public class ModerationController : HumansControllerBase
             SetError("A reason is required when rejecting an event.");
             return RedirectToAction(nameof(Index));
         }
-        return await ProcessActionAsync(model.EventId, ModerationActionType.Rejected, model.Reason);
+        return await ProcessActionAsync(model.EventId, EventModerationActionType.Rejected, model.Reason);
     }
 
     [HttpPost("RequestEdit")]
@@ -119,12 +119,12 @@ public class ModerationController : HumansControllerBase
             SetError("A reason is required when requesting edits.");
             return RedirectToAction(nameof(Index));
         }
-        return await ProcessActionAsync(model.EventId, ModerationActionType.ResubmitRequested, model.Reason);
+        return await ProcessActionAsync(model.EventId, EventModerationActionType.ResubmitRequested, model.Reason);
     }
 
     // ─── Helpers ──────────────────────────────────────────────────
 
-    private async Task<IActionResult> ProcessActionAsync(Guid eventId, ModerationActionType actionType, string? reason)
+    private async Task<IActionResult> ProcessActionAsync(Guid eventId, EventModerationActionType actionType, string? reason)
     {
         var moderator = await GetCurrentUserAsync();
         if (moderator == null) return Challenge();
@@ -136,7 +136,7 @@ public class ModerationController : HumansControllerBase
             return RedirectToAction(nameof(Index));
         }
 
-        if (guideEvent.Status != GuideEventStatus.Pending)
+        if (guideEvent.Status != EventStatus.Pending)
         {
             SetError("This event is not in a pending state.");
             return RedirectToAction(nameof(Index));
@@ -146,9 +146,9 @@ public class ModerationController : HumansControllerBase
 
         var actionLabel = actionType switch
         {
-            ModerationActionType.Approved => "approved",
-            ModerationActionType.Rejected => "rejected",
-            ModerationActionType.ResubmitRequested => "returned for edits",
+            EventModerationActionType.Approved => "approved",
+            EventModerationActionType.Rejected => "rejected",
+            EventModerationActionType.ResubmitRequested => "returned for edits",
             _ => "moderated"
         };
 
@@ -167,13 +167,13 @@ public class ModerationController : HumansControllerBase
 
             switch (actionType)
             {
-                case ModerationActionType.Approved:
+                case EventModerationActionType.Approved:
                     await _emailService.SendEventApprovedAsync(submitterEmail, submitterName, guideEvent.Title);
                     break;
-                case ModerationActionType.Rejected:
+                case EventModerationActionType.Rejected:
                     await _emailService.SendEventRejectedAsync(submitterEmail, submitterName, guideEvent.Title, reason!, editUrl);
                     break;
-                case ModerationActionType.ResubmitRequested:
+                case EventModerationActionType.ResubmitRequested:
                     await _emailService.SendEventResubmitRequestedAsync(submitterEmail, submitterName, guideEvent.Title, reason!, editUrl);
                     break;
             }
@@ -183,7 +183,7 @@ public class ModerationController : HumansControllerBase
         return RedirectToAction(nameof(Index));
     }
 
-    private static ModerationEventRowViewModel BuildRow(GuideEvent e, DateTimeZone? tz)
+    private static ModerationEventRowViewModel BuildRow(Event e, DateTimeZone? tz)
     {
         var submitterName = e.SubmitterUser.Email
             ?? "Unknown";
@@ -199,7 +199,7 @@ public class ModerationController : HumansControllerBase
             SubmitterUserId = e.SubmitterUserId,
             CampName = campName,
             CampSlug = e.Camp?.Slug,
-            VenueName = e.GuideSharedVenue?.Name,
+            VenueName = e.EventVenue?.Name,
             CategoryName = e.Category.Name,
             StartAt = ToLocalDateTime(e.StartAt, tz),
             DurationMinutes = e.DurationMinutes,

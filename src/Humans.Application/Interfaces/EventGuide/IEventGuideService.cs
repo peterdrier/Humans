@@ -9,7 +9,7 @@ namespace Humans.Application.Interfaces.EventGuide;
 public interface IEventGuideService : IApplicationService
 {
     // ── Settings ─────────────────────────────────────────────────────────
-    Task<GuideSettings?> GetGuideSettingsAsync(CancellationToken ct = default);
+    Task<EventGuideSettings?> GetGuideSettingsAsync(CancellationToken ct = default);
     Task<bool> IsSubmissionOpenAsync(CancellationToken ct = default);
     Task<IReadOnlyList<EventSettings>> GetEventSettingsOptionsAsync(CancellationToken ct = default);
     Task<EventSettings?> GetEventSettingsByIdAsync(Guid id, CancellationToken ct = default);
@@ -34,12 +34,12 @@ public interface IEventGuideService : IApplicationService
     Task MoveCategoryAsync(Guid id, int direction, CancellationToken ct = default);
 
     // ── Venues ────────────────────────────────────────────────────────────
-    Task<IReadOnlyList<GuideSharedVenue>> GetActiveVenuesAsync(CancellationToken ct = default);
-    Task<IReadOnlyList<GuideSharedVenue>> GetAllVenuesAsync(CancellationToken ct = default);
-    Task<GuideSharedVenue?> GetVenueAsync(Guid id, CancellationToken ct = default);
+    Task<IReadOnlyList<EventVenue>> GetActiveVenuesAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<EventVenue>> GetAllVenuesAsync(CancellationToken ct = default);
+    Task<EventVenue?> GetVenueAsync(Guid id, CancellationToken ct = default);
     Task<int> GetNextVenueOrderAsync(CancellationToken ct = default);
-    Task CreateVenueAsync(GuideSharedVenue venue, CancellationToken ct = default);
-    Task UpdateVenueAsync(GuideSharedVenue venue, CancellationToken ct = default);
+    Task CreateVenueAsync(EventVenue venue, CancellationToken ct = default);
+    Task UpdateVenueAsync(EventVenue venue, CancellationToken ct = default);
     /// <summary>
     /// Deletes a shared venue when no guide events reference it.
     /// </summary>
@@ -48,40 +48,40 @@ public interface IEventGuideService : IApplicationService
     Task MoveVenueAsync(Guid id, int direction, CancellationToken ct = default);
 
     // ── Submissions ───────────────────────────────────────────────────────
-    Task<IReadOnlyList<GuideEvent>> GetUserSubmissionsAsync(Guid userId, CancellationToken ct = default);
-    Task<GuideEvent?> GetUserEventAsync(Guid eventId, Guid userId, CancellationToken ct = default);
-    Task<IReadOnlyList<GuideEvent>> GetCampSubmissionsAsync(Guid campId, CancellationToken ct = default);
-    Task<GuideEvent?> GetCampEventAsync(Guid eventId, Guid campId, CancellationToken ct = default);
-    Task SubmitEventAsync(GuideEvent guideEvent, CancellationToken ct = default);
-    Task UpdateAndResubmitAsync(GuideEvent guideEvent, CancellationToken ct = default);
-    Task WithdrawEventAsync(GuideEvent guideEvent, CancellationToken ct = default);
+    Task<IReadOnlyList<Event>> GetUserSubmissionsAsync(Guid userId, CancellationToken ct = default);
+    Task<Event?> GetUserEventAsync(Guid eventId, Guid userId, CancellationToken ct = default);
+    Task<IReadOnlyList<Event>> GetCampSubmissionsAsync(Guid campId, CancellationToken ct = default);
+    Task<Event?> GetCampEventAsync(Guid eventId, Guid campId, CancellationToken ct = default);
+    Task SubmitEventAsync(Event guideEvent, CancellationToken ct = default);
+    Task UpdateAndResubmitAsync(Event guideEvent, CancellationToken ct = default);
+    Task WithdrawEventAsync(Event guideEvent, CancellationToken ct = default);
 
     // ── Browse / API ──────────────────────────────────────────────────────
-    Task<IReadOnlyList<GuideEvent>> GetApprovedEventsAsync(
+    Task<IReadOnlyList<Event>> GetApprovedEventsAsync(
         Guid? campId, Guid? venueId, Guid? categoryId, string? q,
         IReadOnlyList<string> excludedSlugs, CancellationToken ct = default);
-    Task<GuideEvent?> GetApprovedEventByIdAsync(Guid id, CancellationToken ct = default);
+    Task<Event?> GetApprovedEventByIdAsync(Guid id, CancellationToken ct = default);
 
     // ── Favourites ────────────────────────────────────────────────────────
     Task<HashSet<Guid>> GetFavouriteEventIdsAsync(Guid userId, CancellationToken ct = default);
-    Task<IReadOnlyList<UserEventFavourite>> GetFavouritesWithEventsAsync(Guid userId, CancellationToken ct = default);
+    Task<IReadOnlyList<EventFavourite>> GetFavouritesWithEventsAsync(Guid userId, CancellationToken ct = default);
     Task ToggleFavouriteAsync(Guid userId, Guid eventId, CancellationToken ct = default);
     Task<bool> AddFavouriteAsync(Guid userId, Guid eventId, CancellationToken ct = default);
     Task<bool> RemoveFavouriteAsync(Guid userId, Guid eventId, CancellationToken ct = default);
 
     // ── Preferences ───────────────────────────────────────────────────────
     Task<List<string>> GetExcludedCategorySlugsAsync(Guid userId, CancellationToken ct = default);
-    Task<UserGuidePreference?> GetPreferenceAsync(Guid userId, CancellationToken ct = default);
+    Task<EventPreference?> GetPreferenceAsync(Guid userId, CancellationToken ct = default);
     Task SavePreferenceAsync(Guid userId, List<string> slugs, CancellationToken ct = default);
 
     // ── Moderation ────────────────────────────────────────────────────────
-    Task<Dictionary<GuideEventStatus, int>> GetEventStatusCountsAsync(CancellationToken ct = default);
-    Task<IReadOnlyList<GuideEvent>> GetEventsByStatusAsync(GuideEventStatus status, CancellationToken ct = default);
-    Task<GuideEvent?> GetEventForModerationAsync(Guid eventId, CancellationToken ct = default);
+    Task<Dictionary<EventStatus, int>> GetEventStatusCountsAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<Event>> GetEventsByStatusAsync(EventStatus status, CancellationToken ct = default);
+    Task<Event?> GetEventForModerationAsync(Guid eventId, CancellationToken ct = default);
     Task<IReadOnlyList<CampEventOverlap>> GetCampEventsForOverlapAsync(CancellationToken ct = default);
-    Task ApplyModerationAsync(Guid eventId, Guid actorUserId, ModerationActionType actionType, string? reason, CancellationToken ct = default);
+    Task ApplyModerationAsync(Guid eventId, Guid actorUserId, EventModerationActionType actionType, string? reason, CancellationToken ct = default);
 
     // ── Dashboard / Export ────────────────────────────────────────────────
-    Task<IReadOnlyList<GuideEvent>> GetAllEventsForDashboardAsync(CancellationToken ct = default);
-    Task<(IReadOnlyList<GuideEvent> Events, GuideSettings? Settings)> GetApprovedEventsForExportAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<Event>> GetAllEventsForDashboardAsync(CancellationToken ct = default);
+    Task<(IReadOnlyList<Event> Events, EventGuideSettings? Settings)> GetApprovedEventsForExportAsync(CancellationToken ct = default);
 }

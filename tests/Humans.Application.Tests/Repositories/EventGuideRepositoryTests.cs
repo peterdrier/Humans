@@ -62,10 +62,10 @@ public sealed class EventGuideRepositoryTests : IDisposable
         var category = SeedCategory("Workshop", "workshop", 1);
         var userId = Guid.NewGuid();
         var otherUserId = Guid.NewGuid();
-        var older = SeedEvent(category.Id, userId, GuideEventStatus.Pending, submittedAt: Instant.FromUtc(2026, 5, 1, 12, 0));
-        var newer = SeedEvent(category.Id, userId, GuideEventStatus.Approved, submittedAt: Instant.FromUtc(2026, 5, 2, 12, 0));
-        SeedEvent(category.Id, otherUserId, GuideEventStatus.Pending, submittedAt: Instant.FromUtc(2026, 5, 3, 12, 0));
-        SeedEvent(category.Id, userId, GuideEventStatus.Pending, submittedAt: Instant.FromUtc(2026, 5, 4, 12, 0), campId: Guid.NewGuid());
+        var older = SeedEvent(category.Id, userId, EventStatus.Pending, submittedAt: Instant.FromUtc(2026, 5, 1, 12, 0));
+        var newer = SeedEvent(category.Id, userId, EventStatus.Approved, submittedAt: Instant.FromUtc(2026, 5, 2, 12, 0));
+        SeedEvent(category.Id, otherUserId, EventStatus.Pending, submittedAt: Instant.FromUtc(2026, 5, 3, 12, 0));
+        SeedEvent(category.Id, userId, EventStatus.Pending, submittedAt: Instant.FromUtc(2026, 5, 4, 12, 0), campId: Guid.NewGuid());
         await _db.SaveChangesAsync();
 
         var result = await _repo.GetUserSubmissionsAsync(userId);
@@ -83,14 +83,14 @@ public sealed class EventGuideRepositoryTests : IDisposable
         var matching = SeedEvent(
             includedCategory.Id,
             Guid.NewGuid(),
-            GuideEventStatus.Approved,
+            EventStatus.Approved,
             submittedAt: Instant.FromUtc(2026, 5, 1, 12, 0),
             startAt: Instant.FromUtc(2026, 7, 1, 10, 0),
             campId: campId,
             venueId: venue.Id);
-        SeedEvent(includedCategory.Id, Guid.NewGuid(), GuideEventStatus.Pending, submittedAt: _clock.GetCurrentInstant(), campId: campId, venueId: venue.Id);
-        SeedEvent(excludedCategory.Id, Guid.NewGuid(), GuideEventStatus.Approved, submittedAt: _clock.GetCurrentInstant(), campId: campId, venueId: venue.Id);
-        SeedEvent(includedCategory.Id, Guid.NewGuid(), GuideEventStatus.Approved, submittedAt: _clock.GetCurrentInstant(), campId: Guid.NewGuid(), venueId: venue.Id);
+        SeedEvent(includedCategory.Id, Guid.NewGuid(), EventStatus.Pending, submittedAt: _clock.GetCurrentInstant(), campId: campId, venueId: venue.Id);
+        SeedEvent(excludedCategory.Id, Guid.NewGuid(), EventStatus.Approved, submittedAt: _clock.GetCurrentInstant(), campId: campId, venueId: venue.Id);
+        SeedEvent(includedCategory.Id, Guid.NewGuid(), EventStatus.Approved, submittedAt: _clock.GetCurrentInstant(), campId: Guid.NewGuid(), venueId: venue.Id);
         await _db.SaveChangesAsync();
 
         var result = await _repo.GetApprovedEventsAsync(
@@ -108,30 +108,30 @@ public sealed class EventGuideRepositoryTests : IDisposable
     public async Task GetModerationStatusCountsAsync_CountsOnlyModerationStatuses()
     {
         var category = SeedCategory("Workshop", "workshop", 1);
-        SeedEvent(category.Id, Guid.NewGuid(), GuideEventStatus.Pending, _clock.GetCurrentInstant());
-        SeedEvent(category.Id, Guid.NewGuid(), GuideEventStatus.Pending, _clock.GetCurrentInstant());
-        SeedEvent(category.Id, Guid.NewGuid(), GuideEventStatus.Approved, _clock.GetCurrentInstant());
-        SeedEvent(category.Id, Guid.NewGuid(), GuideEventStatus.Draft, _clock.GetCurrentInstant());
-        SeedEvent(category.Id, Guid.NewGuid(), GuideEventStatus.Withdrawn, _clock.GetCurrentInstant());
+        SeedEvent(category.Id, Guid.NewGuid(), EventStatus.Pending, _clock.GetCurrentInstant());
+        SeedEvent(category.Id, Guid.NewGuid(), EventStatus.Pending, _clock.GetCurrentInstant());
+        SeedEvent(category.Id, Guid.NewGuid(), EventStatus.Approved, _clock.GetCurrentInstant());
+        SeedEvent(category.Id, Guid.NewGuid(), EventStatus.Draft, _clock.GetCurrentInstant());
+        SeedEvent(category.Id, Guid.NewGuid(), EventStatus.Withdrawn, _clock.GetCurrentInstant());
         await _db.SaveChangesAsync();
 
         var result = await _repo.GetModerationStatusCountsAsync();
 
-        result.Should().ContainKey(GuideEventStatus.Pending).WhoseValue.Should().Be(2);
-        result.Should().ContainKey(GuideEventStatus.Approved).WhoseValue.Should().Be(1);
-        result.Should().NotContainKey(GuideEventStatus.Draft);
-        result.Should().NotContainKey(GuideEventStatus.Withdrawn);
+        result.Should().ContainKey(EventStatus.Pending).WhoseValue.Should().Be(2);
+        result.Should().ContainKey(EventStatus.Approved).WhoseValue.Should().Be(1);
+        result.Should().NotContainKey(EventStatus.Draft);
+        result.Should().NotContainKey(EventStatus.Withdrawn);
     }
 
     [HumansFact]
     public async Task GetEventsByStatusAsync_OrdersPendingOldestFirst()
     {
         var category = SeedCategory("Workshop", "workshop", 1);
-        var older = SeedEvent(category.Id, Guid.NewGuid(), GuideEventStatus.Pending, Instant.FromUtc(2026, 5, 1, 12, 0));
-        var newer = SeedEvent(category.Id, Guid.NewGuid(), GuideEventStatus.Pending, Instant.FromUtc(2026, 5, 2, 12, 0));
+        var older = SeedEvent(category.Id, Guid.NewGuid(), EventStatus.Pending, Instant.FromUtc(2026, 5, 1, 12, 0));
+        var newer = SeedEvent(category.Id, Guid.NewGuid(), EventStatus.Pending, Instant.FromUtc(2026, 5, 2, 12, 0));
         await _db.SaveChangesAsync();
 
-        var result = await _repo.GetEventsByStatusAsync(GuideEventStatus.Pending);
+        var result = await _repo.GetEventsByStatusAsync(EventStatus.Pending);
 
         result.Select(e => e.Id).Should().Equal([older.Id, newer.Id]);
     }
@@ -141,9 +141,9 @@ public sealed class EventGuideRepositoryTests : IDisposable
     {
         var category = SeedCategory("Workshop", "workshop", 1);
         var userId = Guid.NewGuid();
-        var later = SeedEvent(category.Id, userId, GuideEventStatus.Approved, _clock.GetCurrentInstant(), startAt: Instant.FromUtc(2026, 7, 2, 10, 0));
-        var earlier = SeedEvent(category.Id, userId, GuideEventStatus.Approved, _clock.GetCurrentInstant(), startAt: Instant.FromUtc(2026, 7, 1, 10, 0));
-        var pending = SeedEvent(category.Id, userId, GuideEventStatus.Pending, _clock.GetCurrentInstant(), startAt: Instant.FromUtc(2026, 7, 3, 10, 0));
+        var later = SeedEvent(category.Id, userId, EventStatus.Approved, _clock.GetCurrentInstant(), startAt: Instant.FromUtc(2026, 7, 2, 10, 0));
+        var earlier = SeedEvent(category.Id, userId, EventStatus.Approved, _clock.GetCurrentInstant(), startAt: Instant.FromUtc(2026, 7, 1, 10, 0));
+        var pending = SeedEvent(category.Id, userId, EventStatus.Pending, _clock.GetCurrentInstant(), startAt: Instant.FromUtc(2026, 7, 3, 10, 0));
         await _db.UserEventFavourites.AddRangeAsync(
             BuildFavourite(userId, later.Id),
             BuildFavourite(userId, earlier.Id),
@@ -159,10 +159,10 @@ public sealed class EventGuideRepositoryTests : IDisposable
     public async Task GetActiveCampEventsAsync_ReturnsOnlyPendingAndApprovedCampEvents()
     {
         var category = SeedCategory("Workshop", "workshop", 1);
-        var pendingCamp = SeedEvent(category.Id, Guid.NewGuid(), GuideEventStatus.Pending, _clock.GetCurrentInstant(), campId: Guid.NewGuid());
-        var approvedCamp = SeedEvent(category.Id, Guid.NewGuid(), GuideEventStatus.Approved, _clock.GetCurrentInstant(), campId: Guid.NewGuid());
-        SeedEvent(category.Id, Guid.NewGuid(), GuideEventStatus.Rejected, _clock.GetCurrentInstant(), campId: Guid.NewGuid());
-        SeedEvent(category.Id, Guid.NewGuid(), GuideEventStatus.Pending, _clock.GetCurrentInstant());
+        var pendingCamp = SeedEvent(category.Id, Guid.NewGuid(), EventStatus.Pending, _clock.GetCurrentInstant(), campId: Guid.NewGuid());
+        var approvedCamp = SeedEvent(category.Id, Guid.NewGuid(), EventStatus.Approved, _clock.GetCurrentInstant(), campId: Guid.NewGuid());
+        SeedEvent(category.Id, Guid.NewGuid(), EventStatus.Rejected, _clock.GetCurrentInstant(), campId: Guid.NewGuid());
+        SeedEvent(category.Id, Guid.NewGuid(), EventStatus.Pending, _clock.GetCurrentInstant());
         await _db.SaveChangesAsync();
 
         var result = await _repo.GetActiveCampEventsAsync();
@@ -185,9 +185,9 @@ public sealed class EventGuideRepositoryTests : IDisposable
         return category;
     }
 
-    private GuideSharedVenue SeedVenue(string name, int displayOrder)
+    private EventVenue SeedVenue(string name, int displayOrder)
     {
-        var venue = new GuideSharedVenue
+        var venue = new EventVenue
         {
             Id = Guid.NewGuid(),
             Name = name,
@@ -197,10 +197,10 @@ public sealed class EventGuideRepositoryTests : IDisposable
         return venue;
     }
 
-    private GuideEvent SeedEvent(
+    private Event SeedEvent(
         Guid categoryId,
         Guid submitterUserId,
-        GuideEventStatus status,
+        EventStatus status,
         Instant submittedAt,
         Instant? startAt = null,
         Guid? campId = null,
@@ -212,7 +212,7 @@ public sealed class EventGuideRepositoryTests : IDisposable
             EnsureCamp(campId.Value, submitterUserId);
         }
 
-        var guideEvent = new GuideEvent
+        var guideEvent = new Event
         {
             Id = Guid.NewGuid(),
             CategoryId = categoryId,
@@ -266,7 +266,7 @@ public sealed class EventGuideRepositoryTests : IDisposable
         });
     }
 
-    private UserEventFavourite BuildFavourite(Guid userId, Guid guideEventId)
+    private EventFavourite BuildFavourite(Guid userId, Guid guideEventId)
         => new()
         {
             Id = Guid.NewGuid(),

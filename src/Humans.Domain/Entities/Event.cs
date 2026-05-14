@@ -9,7 +9,7 @@ namespace Humans.Domain.Entities;
 /// <see cref="CampId"/> or <see cref="GuideSharedVenueId"/> must be set.
 /// State transitions are enforced by domain methods with <see cref="IClock"/>.
 /// </summary>
-public class GuideEvent
+public class Event
 {
     /// <summary>
     /// Unique identifier.
@@ -80,7 +80,7 @@ public class GuideEvent
     /// <summary>
     /// Current moderation status.
     /// </summary>
-    public GuideEventStatus Status { get; set; }
+    public EventStatus Status { get; set; }
 
     /// <summary>
     /// Internal moderator notes (not visible to submitter).
@@ -107,7 +107,7 @@ public class GuideEvent
     /// <summary>
     /// Navigation property to the shared venue (null for camp events).
     /// </summary>
-    public GuideSharedVenue? GuideSharedVenue { get; set; }
+    public EventVenue? EventVenue { get; set; }
 
     /// <summary>
     /// Navigation property to the submitter.
@@ -122,12 +122,12 @@ public class GuideEvent
     /// <summary>
     /// Navigation property to moderation actions on this event.
     /// </summary>
-    public ICollection<ModerationAction> ModerationActions { get; } = new List<ModerationAction>();
+    public ICollection<EventModerationAction> ModerationActions { get; } = new List<EventModerationAction>();
 
     /// <summary>
     /// Navigation property to user favourites of this event.
     /// </summary>
-    public ICollection<UserEventFavourite> UserEventFavourites { get; } = new List<UserEventFavourite>();
+    public ICollection<EventFavourite> UserEventFavourites { get; } = new List<EventFavourite>();
 
     // State transition methods
 
@@ -136,11 +136,11 @@ public class GuideEvent
     /// </summary>
     public void Submit(IClock clock)
     {
-        if (Status is not (GuideEventStatus.Draft or GuideEventStatus.Rejected
-            or GuideEventStatus.ResubmitRequested))
+        if (Status is not (EventStatus.Draft or EventStatus.Rejected
+            or EventStatus.ResubmitRequested))
             throw new InvalidOperationException($"Cannot submit event in {Status} state");
         var now = clock.GetCurrentInstant();
-        Status = GuideEventStatus.Pending;
+        Status = EventStatus.Pending;
         SubmittedAt = now;
         LastUpdatedAt = now;
     }
@@ -150,25 +150,25 @@ public class GuideEvent
     /// </summary>
     public void Withdraw(IClock clock)
     {
-        if (Status is not (GuideEventStatus.Draft or GuideEventStatus.Pending))
+        if (Status is not (EventStatus.Draft or EventStatus.Pending))
             throw new InvalidOperationException($"Cannot withdraw event in {Status} state");
-        Status = GuideEventStatus.Withdrawn;
+        Status = EventStatus.Withdrawn;
         LastUpdatedAt = clock.GetCurrentInstant();
     }
 
     /// <summary>
     /// Apply a moderation decision to this event.
     /// </summary>
-    public void ApplyModerationAction(ModerationActionType actionType, IClock clock)
+    public void ApplyModerationAction(EventModerationActionType actionType, IClock clock)
     {
-        if (Status is not GuideEventStatus.Pending)
+        if (Status is not EventStatus.Pending)
             throw new InvalidOperationException($"Cannot moderate event in {Status} state");
 
         Status = actionType switch
         {
-            ModerationActionType.Approved => GuideEventStatus.Approved,
-            ModerationActionType.Rejected => GuideEventStatus.Rejected,
-            ModerationActionType.ResubmitRequested => GuideEventStatus.ResubmitRequested,
+            EventModerationActionType.Approved => EventStatus.Approved,
+            EventModerationActionType.Rejected => EventStatus.Rejected,
+            EventModerationActionType.ResubmitRequested => EventStatus.ResubmitRequested,
             _ => throw new ArgumentOutOfRangeException(nameof(actionType))
         };
         LastUpdatedAt = clock.GetCurrentInstant();

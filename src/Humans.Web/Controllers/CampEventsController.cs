@@ -58,8 +58,8 @@ public class CampEventsController : HumansCampControllerBase
             SubmissionCloseAt = guideSettings != null ? ToLocalDateTime(guideSettings.SubmissionCloseAt, tz) : null,
             TimeZoneId = guideSettings?.EventSettings?.TimeZoneId,
             SubmittedCount = events.Count,
-            ApprovedCount = events.Count(e => e.Status == GuideEventStatus.Approved),
-            PendingCount = events.Count(e => e.Status == GuideEventStatus.Pending),
+            ApprovedCount = events.Count(e => e.Status == EventStatus.Approved),
+            PendingCount = events.Count(e => e.Status == EventStatus.Pending),
             Events = events.Select(e => new CampEventRowViewModel
             {
                 Id = e.Id,
@@ -69,8 +69,8 @@ public class CampEventsController : HumansCampControllerBase
                 DurationMinutes = e.DurationMinutes,
                 Status = e.Status,
                 PriorityRank = e.PriorityRank,
-                CanEdit = e.Status is GuideEventStatus.Rejected or GuideEventStatus.ResubmitRequested or GuideEventStatus.Pending,
-                CanWithdraw = e.Status == GuideEventStatus.Pending
+                CanEdit = e.Status is EventStatus.Rejected or EventStatus.ResubmitRequested or EventStatus.Pending,
+                CanWithdraw = e.Status == EventStatus.Pending
             }).ToList()
         };
 
@@ -119,7 +119,7 @@ public class CampEventsController : HumansCampControllerBase
 
         var tz = GetTimeZone(guideSettings!);
 
-        var guideEvent = new GuideEvent
+        var guideEvent = new Event
         {
             Id = Guid.NewGuid(),
             CampId = camp.Id,
@@ -161,7 +161,7 @@ public class CampEventsController : HumansCampControllerBase
         var guideEvent = await _guide.GetCampEventAsync(eventId, camp.Id);
         if (guideEvent == null) return NotFound();
 
-        if (guideEvent.Status is not (GuideEventStatus.Pending or GuideEventStatus.Rejected or GuideEventStatus.ResubmitRequested))
+        if (guideEvent.Status is not (EventStatus.Pending or EventStatus.Rejected or EventStatus.ResubmitRequested))
         {
             SetError("This event cannot be edited in its current state.");
             return RedirectToAction(nameof(Index), new { slug });
@@ -189,7 +189,7 @@ public class CampEventsController : HumansCampControllerBase
         model.IsRecurring = guideEvent.IsRecurring;
         model.RecurrenceDays = guideEvent.RecurrenceDays;
         model.PriorityRank = guideEvent.PriorityRank;
-        model.IsResubmit = guideEvent.Status is GuideEventStatus.Rejected or GuideEventStatus.ResubmitRequested;
+        model.IsResubmit = guideEvent.Status is EventStatus.Rejected or EventStatus.ResubmitRequested;
 
         return View("CampEventForm", model);
     }
@@ -204,7 +204,7 @@ public class CampEventsController : HumansCampControllerBase
         var guideEvent = await _guide.GetCampEventAsync(eventId, camp.Id);
         if (guideEvent == null) return NotFound();
 
-        if (guideEvent.Status is not (GuideEventStatus.Pending or GuideEventStatus.Rejected or GuideEventStatus.ResubmitRequested))
+        if (guideEvent.Status is not (EventStatus.Pending or EventStatus.Rejected or EventStatus.ResubmitRequested))
         {
             SetError("This event cannot be edited in its current state.");
             return RedirectToAction(nameof(Index), new { slug });
@@ -258,7 +258,7 @@ public class CampEventsController : HumansCampControllerBase
         var guideEvent = await _guide.GetCampEventAsync(eventId, camp.Id);
         if (guideEvent == null) return NotFound();
 
-        if (guideEvent.Status != GuideEventStatus.Pending)
+        if (guideEvent.Status != EventStatus.Pending)
         {
             SetError("This event cannot be withdrawn in its current state.");
             return RedirectToAction(nameof(Index), new { slug });
@@ -275,14 +275,14 @@ public class CampEventsController : HumansCampControllerBase
 
     // ─── Helpers ──────────────────────────────────────────────────
 
-    private bool IsSubmissionOpen(GuideSettings? settings)
+    private bool IsSubmissionOpen(EventGuideSettings? settings)
     {
         if (settings == null) return false;
         var now = _clock.GetCurrentInstant();
         return now >= settings.SubmissionOpenAt && now <= settings.SubmissionCloseAt;
     }
 
-    private async Task<CampEventFormViewModel> BuildFormAsync(string slug, CampLookup camp, GuideSettings guideSettings)
+    private async Task<CampEventFormViewModel> BuildFormAsync(string slug, CampLookup camp, EventGuideSettings guideSettings)
     {
         var model = new CampEventFormViewModel
         {
@@ -295,7 +295,7 @@ public class CampEventsController : HumansCampControllerBase
         return model;
     }
 
-    private async Task PopulateDropdownsAsync(CampEventFormViewModel model, GuideSettings guideSettings)
+    private async Task PopulateDropdownsAsync(CampEventFormViewModel model, EventGuideSettings guideSettings)
     {
         var categories = await _guide.GetActiveCategoriesAsync();
         model.Categories = categories.Select(c => new CategoryOptionViewModel { Id = c.Id, Name = c.Name }).ToList();
@@ -327,7 +327,7 @@ public class CampEventsController : HumansCampControllerBase
         return currentSeason?.Name ?? camp.Slug;
     }
 
-    private static DateTimeZone? GetTimeZone(GuideSettings? guideSettings)
+    private static DateTimeZone? GetTimeZone(EventGuideSettings? guideSettings)
         => guideSettings?.EventSettings != null
             ? DateTimeZoneProviders.Tzdb.GetZoneOrNull(guideSettings.EventSettings.TimeZoneId)
             : null;

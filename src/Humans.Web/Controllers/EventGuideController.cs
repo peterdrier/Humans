@@ -60,19 +60,19 @@ public class EventGuideController : HumansControllerBase
             SubmissionCloseAt = guideSettings != null ? ToLocalDateTime(guideSettings.SubmissionCloseAt, tz) : null,
             TimeZoneId = guideSettings?.EventSettings?.TimeZoneId,
             SubmittedCount = events.Count,
-            ApprovedCount = events.Count(e => e.Status == GuideEventStatus.Approved),
-            PendingCount = events.Count(e => e.Status == GuideEventStatus.Pending),
+            ApprovedCount = events.Count(e => e.Status == EventStatus.Approved),
+            PendingCount = events.Count(e => e.Status == EventStatus.Pending),
             Events = events.Select(e => new IndividualEventRowViewModel
             {
                 Id = e.Id,
                 Title = e.Title,
-                VenueName = e.GuideSharedVenue?.Name ?? "—",
+                VenueName = e.EventVenue?.Name ?? "—",
                 CategoryName = e.Category.Name,
                 StartAt = ToLocalDateTime(e.StartAt, tz),
                 DurationMinutes = e.DurationMinutes,
                 Status = e.Status,
-                CanEdit = e.Status is GuideEventStatus.Draft or GuideEventStatus.Rejected or GuideEventStatus.ResubmitRequested,
-                CanWithdraw = e.Status is GuideEventStatus.Draft or GuideEventStatus.Pending
+                CanEdit = e.Status is EventStatus.Draft or EventStatus.Rejected or EventStatus.ResubmitRequested,
+                CanWithdraw = e.Status is EventStatus.Draft or EventStatus.Pending
             }).ToList()
         };
 
@@ -117,7 +117,7 @@ public class EventGuideController : HumansControllerBase
         var durationMinutes = model.IsAllDay ? 1440 : model.DurationMinutes;
         var startTime = model.IsAllDay ? TimeSpan.Zero : model.StartTime;
 
-        var guideEvent = new GuideEvent
+        var guideEvent = new Event
         {
             Id = Guid.NewGuid(),
             CampId = null,
@@ -159,7 +159,7 @@ public class EventGuideController : HumansControllerBase
         var guideEvent = await _guide.GetUserEventAsync(eventId, user.Id);
         if (guideEvent == null) return NotFound();
 
-        if (guideEvent.Status is not (GuideEventStatus.Draft or GuideEventStatus.Rejected or GuideEventStatus.ResubmitRequested))
+        if (guideEvent.Status is not (EventStatus.Draft or EventStatus.Rejected or EventStatus.ResubmitRequested))
         {
             SetError("This event cannot be edited in its current state.");
             return RedirectToAction(nameof(MySubmissions));
@@ -188,7 +188,7 @@ public class EventGuideController : HumansControllerBase
         model.LocationNote = guideEvent.LocationNote;
         model.IsRecurring = guideEvent.IsRecurring;
         model.RecurrenceDays = guideEvent.RecurrenceDays;
-        model.IsResubmit = guideEvent.Status is GuideEventStatus.Rejected or GuideEventStatus.ResubmitRequested;
+        model.IsResubmit = guideEvent.Status is EventStatus.Rejected or EventStatus.ResubmitRequested;
 
         return View("IndividualEventForm", model);
     }
@@ -203,7 +203,7 @@ public class EventGuideController : HumansControllerBase
         var guideEvent = await _guide.GetUserEventAsync(eventId, user.Id);
         if (guideEvent == null) return NotFound();
 
-        if (guideEvent.Status is not (GuideEventStatus.Draft or GuideEventStatus.Rejected or GuideEventStatus.ResubmitRequested))
+        if (guideEvent.Status is not (EventStatus.Draft or EventStatus.Rejected or EventStatus.ResubmitRequested))
         {
             SetError("This event cannot be edited in its current state.");
             return RedirectToAction(nameof(MySubmissions));
@@ -255,7 +255,7 @@ public class EventGuideController : HumansControllerBase
         var guideEvent = await _guide.GetUserEventAsync(eventId, user.Id);
         if (guideEvent == null) return NotFound();
 
-        if (guideEvent.Status is not (GuideEventStatus.Draft or GuideEventStatus.Pending))
+        if (guideEvent.Status is not (EventStatus.Draft or EventStatus.Pending))
         {
             SetError("This event cannot be withdrawn in its current state.");
             return RedirectToAction(nameof(MySubmissions));
@@ -284,7 +284,7 @@ public class EventGuideController : HumansControllerBase
 
         var scheduleItems = favourites.Select(f =>
         {
-            var e = f.GuideEvent;
+            var e = f.Event;
             var campSeason = e.Camp?.Seasons.OrderByDescending(s => s.Year).FirstOrDefault();
             var campName = campSeason?.Name ?? e.Camp?.Slug;
             var localStart = ToLocalDateTime(e.StartAt, tz);
@@ -304,7 +304,7 @@ public class EventGuideController : HumansControllerBase
                 Title = e.Title,
                 CategoryName = e.Category.Name,
                 CampName = campName,
-                VenueName = e.GuideSharedVenue?.Name,
+                VenueName = e.EventVenue?.Name,
                 LocationNote = e.LocationNote,
                 StartAt = localStart,
                 DurationMinutes = e.DurationMinutes,
@@ -398,7 +398,7 @@ public class EventGuideController : HumansControllerBase
                     Description = e.Description,
                     CategoryName = e.Category.Name,
                     CampName = campName,
-                    VenueName = e.GuideSharedVenue?.Name,
+                    VenueName = e.EventVenue?.Name,
                     LocationNote = e.LocationNote,
                     StartAt = ToLocalDateTime(startInstant, tz),
                     DurationMinutes = e.DurationMinutes,
@@ -484,14 +484,14 @@ public class EventGuideController : HumansControllerBase
 
     // ─── Helpers ──────────────────────────────────────────────────
 
-    private bool IsSubmissionOpen(GuideSettings? settings)
+    private bool IsSubmissionOpen(EventGuideSettings? settings)
     {
         if (settings == null) return false;
         var now = _clock.GetCurrentInstant();
         return now >= settings.SubmissionOpenAt && now <= settings.SubmissionCloseAt;
     }
 
-    private async Task<IndividualEventFormViewModel> BuildFormAsync(GuideSettings guideSettings)
+    private async Task<IndividualEventFormViewModel> BuildFormAsync(EventGuideSettings guideSettings)
     {
         var model = new IndividualEventFormViewModel
         {
@@ -501,7 +501,7 @@ public class EventGuideController : HumansControllerBase
         return model;
     }
 
-    private async Task PopulateDropdownsAsync(IndividualEventFormViewModel model, GuideSettings guideSettings)
+    private async Task PopulateDropdownsAsync(IndividualEventFormViewModel model, EventGuideSettings guideSettings)
     {
         var categories = await _guide.GetActiveCategoriesAsync();
         var venues = await _guide.GetActiveVenuesAsync();
@@ -530,7 +530,7 @@ public class EventGuideController : HumansControllerBase
         }
     }
 
-    private static DateTimeZone? GetTimeZone(GuideSettings guideSettings)
+    private static DateTimeZone? GetTimeZone(EventGuideSettings guideSettings)
         => DateTimeZoneProviders.Tzdb.GetZoneOrNull(guideSettings.EventSettings.TimeZoneId);
 
     private static DateTime ToLocalDateTime(Instant instant, DateTimeZone? tz)
