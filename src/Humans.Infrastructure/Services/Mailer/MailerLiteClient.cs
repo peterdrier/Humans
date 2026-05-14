@@ -112,7 +112,7 @@ public sealed class MailerLiteClient : IMailerLiteService
         var env = await resp.Content.ReadFromJsonAsync<GroupSingleEnvelope>(Json, ct)
             ?? throw new InvalidOperationException("MailerLite returned empty body on CreateGroup.");
 
-        InvalidateGroupsCache();
+        await AppendToGroupsCacheAsync(env.Data, ct);
         return env.Data;
     }
 
@@ -200,10 +200,20 @@ public sealed class MailerLiteClient : IMailerLiteService
         return group;
     }
 
-    private void InvalidateGroupsCache()
+    // Merges a newly-created group into the cached list under the gate so the
+    // next RequireHumansGroupAsync call doesn't trigger a full re-populate.
+    // Nullifying _groups would cascade into EnsurePopulatedAsync re-fetching the
+    // entire subscriber list too — eviction would be disproportionate to the
+    // change. If the cache hasn't been populated yet, this is a no-op; the first
+    // read will pull the new group along with everything else.
+    private async Task AppendToGroupsCacheAsync(MailerLiteGroup newGroup, CancellationToken ct)
     {
-        _gate.Wait();
-        try { _groups = null; }
+        await _gate.WaitAsync(ct);
+        try
+        {
+            if (_groups is not null)
+                _groups = _groups.Append(newGroup).ToList();
+        }
         finally { _gate.Release(); }
     }
 

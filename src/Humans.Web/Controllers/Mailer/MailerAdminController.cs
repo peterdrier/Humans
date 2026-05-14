@@ -122,6 +122,13 @@ public sealed class MailerAdminController : HumansControllerBase
             _logger.LogError(ex, "Audience sync failed for {Audience}", key);
             TempData["Banner"] = $"{audience.DisplayName}: sync failed — {ex.Message}";
         }
+        catch (TaskCanceledException) when (!ct.IsCancellationRequested)
+        {
+            // MailerLiteClient surfaces HttpClient timeouts as TaskCanceledException
+            // when the caller did not cancel. Treat it as a transient failure.
+            _logger.LogWarning("Audience sync timed out for {Audience}", key);
+            TempData["Banner"] = $"{audience.DisplayName}: sync timed out. Try again shortly.";
+        }
         return RedirectToAction(nameof(Index));
     }
 
