@@ -448,6 +448,17 @@ public sealed class NotificationRepository : INotificationRepository
             });
         }
 
+        // Re-FK shared-resolution attribution from source to target so that
+        // "Resolved by" lookups after merge keep pointing to a live user
+        // rather than a tombstone.
+        var resolvedBySource = await ctx.Notifications
+            .Where(n => n.ResolvedByUserId == sourceUserId)
+            .ToListAsync(ct);
+        foreach (var n in resolvedBySource)
+        {
+            n.ResolvedByUserId = targetUserId;
+        }
+
         await ctx.SaveChangesAsync(ct);
 
         return await ctx.NotificationRecipients
