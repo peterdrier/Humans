@@ -334,7 +334,18 @@ public sealed class MailerLiteClient : IMailerLiteService
                 _ => TimeSpan.Zero,
             };
             if (delay > TimeSpan.Zero)
-                await Task.Delay(delay, ct);
+            {
+                try
+                {
+                    await Task.Delay(delay, ct);
+                }
+                catch
+                {
+                    // Caller never sees this response — dispose it so we don't leak the socket.
+                    resp.Dispose();
+                    throw;
+                }
+            }
         }
         if (!resp.IsSuccessStatusCode)
             _logger.LogWarning("MailerLite returned {StatusCode}: {Method} {Url}",
