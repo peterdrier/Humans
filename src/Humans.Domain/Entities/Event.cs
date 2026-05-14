@@ -100,19 +100,9 @@ public class Event
     // Navigation properties
 
     /// <summary>
-    /// Navigation property to the camp/barrio (null for individual events).
-    /// </summary>
-    public Camp? Camp { get; set; }
-
-    /// <summary>
     /// Navigation property to the shared venue (null for camp events).
     /// </summary>
     public EventVenue? EventVenue { get; set; }
-
-    /// <summary>
-    /// Navigation property to the submitter.
-    /// </summary>
-    public User SubmitterUser { get; set; } = null!;
 
     /// <summary>
     /// Navigation property to the category.

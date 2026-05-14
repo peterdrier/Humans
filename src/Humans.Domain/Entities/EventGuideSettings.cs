@@ -47,11 +47,4 @@ public class EventGuideSettings
     /// When this record was last updated.
     /// </summary>
     public Instant UpdatedAt { get; set; }
-
-    // Navigation properties
-
-    /// <summary>
-    /// Navigation property to the parent event settings.
-    /// </summary>
-    public EventSettings EventSettings { get; set; } = null!;
 }
