@@ -11,9 +11,9 @@ namespace Humans.Infrastructure.Services.Shifts;
 /// implementation of <see cref="IShiftViewInvalidator"/>. Owns two
 /// <see cref="ConcurrentDictionary{TKey,TValue}"/>s — one keyed by user id
 /// (<see cref="ShiftUserView"/>) and one keyed by rota id
-/// (<see cref="ShiftRotaView"/>). Dict hits return synchronously; misses
-/// resolve the Scoped inner service via <see cref="IServiceScopeFactory"/>
-/// and lazily populate the dict.
+/// (<see cref="ShiftRotaView"/>). Dict hits complete synchronously via
+/// <see cref="ValueTask{TResult}"/>; misses resolve the Scoped inner via
+/// <see cref="IServiceScopeFactory"/> and lazily populate the dict.
 /// </summary>
 /// <remarks>
 /// Mirrors <c>CachingProfileService</c> / <c>CachingTeamService</c>. Inner is
@@ -54,58 +54,60 @@ public sealed class CachingShiftViewService : IShiftView, IShiftViewInvalidator
     // Reads — dict cache + lazy load
     // ==========================================================================
 
-    public ShiftUserView GetUser(Guid userId)
+    public ValueTask<ShiftUserView> GetUserAsync(Guid userId, CancellationToken ct = default)
     {
         if (_byUserId.TryGetValue(userId, out var hit))
-            return hit;
-        return LoadAndCacheUser(userId);
+            return new ValueTask<ShiftUserView>(hit);
+        return new ValueTask<ShiftUserView>(LoadAndCacheUserAsync(userId, ct));
     }
 
-    public IReadOnlyDictionary<Guid, ShiftUserView> GetUsers(IEnumerable<Guid> userIds)
+    public async ValueTask<IReadOnlyDictionary<Guid, ShiftUserView>> GetUsersAsync(
+        IEnumerable<Guid> userIds, CancellationToken ct = default)
     {
         var ids = userIds as IList<Guid> ?? userIds.Distinct().ToList();
         var result = new Dictionary<Guid, ShiftUserView>(ids.Count);
         foreach (var id in ids)
         {
             if (!result.ContainsKey(id))
-                result[id] = GetUser(id);
+                result[id] = await GetUserAsync(id, ct).ConfigureAwait(false);
         }
         return result;
     }
 
-    public ShiftRotaView GetRota(Guid rotaId)
+    public ValueTask<ShiftRotaView> GetRotaAsync(Guid rotaId, CancellationToken ct = default)
     {
         if (_byRotaId.TryGetValue(rotaId, out var hit))
-            return hit;
-        return LoadAndCacheRota(rotaId);
+            return new ValueTask<ShiftRotaView>(hit);
+        return new ValueTask<ShiftRotaView>(LoadAndCacheRotaAsync(rotaId, ct));
     }
 
-    public IReadOnlyDictionary<Guid, ShiftRotaView> GetRotas(IEnumerable<Guid> rotaIds)
+    public async ValueTask<IReadOnlyDictionary<Guid, ShiftRotaView>> GetRotasAsync(
+        IEnumerable<Guid> rotaIds, CancellationToken ct = default)
     {
         var ids = rotaIds as IList<Guid> ?? rotaIds.Distinct().ToList();
         var result = new Dictionary<Guid, ShiftRotaView>(ids.Count);
         foreach (var id in ids)
         {
             if (!result.ContainsKey(id))
-                result[id] = GetRota(id);
+                result[id] = await GetRotaAsync(id, ct).ConfigureAwait(false);
         }
         return result;
     }
 
-    private ShiftUserView LoadAndCacheUser(Guid userId)
+    private async Task<ShiftUserView> LoadAndCacheUserAsync(Guid userId, CancellationToken ct)
     {
-        using var scope = _scopeFactory.CreateScope();
+        await using var scope = _scopeFactory.CreateAsyncScope();
         var inner = scope.ServiceProvider.GetRequiredKeyedService<IShiftView>(InnerServiceKey);
-        var view = inner.GetUser(userId);
+        var view = await inner.GetUserAsync(userId, ct).ConfigureAwait(false);
         _byUserId[userId] = view;
         return view;
     }
 
-    private ShiftRotaView LoadAndCacheRota(Guid rotaId)
+    private async Task<ShiftRotaView> LoadAndCacheRotaAsync(Guid rotaId, CancellationToken ct)
     {
-        using var scope = _scopeFactory.CreateScope();
+        await using var scope = _scopeFactory.CreateAsyncScope();
         var inner = scope.ServiceProvider.GetRequiredKeyedService<IShiftView>(InnerServiceKey);
-        var view = inner.GetRota(rotaId);
+        var view = await inner.GetRotaAsync(rotaId, ct).ConfigureAwait(false);
         _byRotaId[rotaId] = view;
         return view;
     }

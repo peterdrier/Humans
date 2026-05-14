@@ -138,8 +138,10 @@ public class DashboardService : IDashboardService
                 // comes from the cached ShiftUserView. The view holds every
                 // signup row for the user; filter to the active event in
                 // memory. Shift.Rota.EventSettings is loaded by the inner
-                // ShiftViewService.
-                var userSignups = _shiftView.GetUser(userId).Signups
+                // ShiftViewService. Cache hits complete synchronously via
+                // ValueTask (no Task allocation, no thread hop).
+                var userView = await _shiftView.GetUserAsync(userId, cancellationToken);
+                var userSignups = userView.Signups
                     .Where(s => s.Shift?.Rota?.EventSettingsId == activeEvent.Id)
                     .ToList();
                 pendingCount = userSignups

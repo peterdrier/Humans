@@ -23,7 +23,7 @@ public class ShiftViewServiceTests
         new(_management, _signups, _availability, _tracking);
 
     [HumansFact]
-    public void GetUser_NoActiveEvent_ReturnsEmptyAvailabilityAndBuildStatus()
+    public async Task GetUserAsync_NoActiveEvent_ReturnsEmptyAvailabilityAndBuildStatus()
     {
         var userId = Guid.NewGuid();
         _management.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
@@ -36,7 +36,7 @@ public class ShiftViewServiceTests
             .Returns(Array.Empty<ShiftSignup>());
 
         var sut = CreateSut();
-        var view = sut.GetUser(userId);
+        var view = await sut.GetUserAsync(userId);
 
         view.Should().NotBeNull();
         view.UserId.Should().Be(userId);
@@ -48,7 +48,7 @@ public class ShiftViewServiceTests
     }
 
     [HumansFact]
-    public void GetUser_WithActiveEvent_LoadsEventScopedAvailabilityAndBuildStatus()
+    public async Task GetUserAsync_WithActiveEvent_LoadsEventScopedAvailabilityAndBuildStatus()
     {
         var userId = Guid.NewGuid();
         var eventId = Guid.NewGuid();
@@ -69,21 +69,21 @@ public class ShiftViewServiceTests
             .Returns(buildStatus);
 
         var sut = CreateSut();
-        var view = sut.GetUser(userId);
+        var view = await sut.GetUserAsync(userId);
 
         view.Availability.Should().BeSameAs(availability);
         view.BuildStatus.Should().BeSameAs(buildStatus);
     }
 
     [HumansFact]
-    public void GetRota_UnknownRotaId_ReturnsEmptyView()
+    public async Task GetRotaAsync_UnknownRotaId_ReturnsEmptyView()
     {
         var rotaId = Guid.NewGuid();
         _management.GetRotaForViewAsync(rotaId, Arg.Any<CancellationToken>())
             .Returns((Rota?)null);
 
         var sut = CreateSut();
-        var view = sut.GetRota(rotaId);
+        var view = await sut.GetRotaAsync(rotaId);
 
         view.Should().NotBeNull();
         view.RotaId.Should().Be(rotaId);
@@ -94,7 +94,7 @@ public class ShiftViewServiceTests
     }
 
     [HumansFact]
-    public void GetRota_FlattensSignupsFromAllShifts()
+    public async Task GetRotaAsync_FlattensSignupsFromAllShifts()
     {
         var rotaId = Guid.NewGuid();
         var shift1 = new Shift { Id = Guid.NewGuid(), RotaId = rotaId };
@@ -111,7 +111,7 @@ public class ShiftViewServiceTests
         _management.GetRotaForViewAsync(rotaId, Arg.Any<CancellationToken>()).Returns(rota);
 
         var sut = CreateSut();
-        var view = sut.GetRota(rotaId);
+        var view = await sut.GetRotaAsync(rotaId);
 
         view.Rota.Should().BeSameAs(rota);
         view.Shifts.Should().HaveCount(2);
@@ -120,7 +120,7 @@ public class ShiftViewServiceTests
     }
 
     [HumansFact]
-    public void GetUsers_DeduplicatesAndKeysByUserId()
+    public async Task GetUsersAsync_DeduplicatesAndKeysByUserId()
     {
         var userA = Guid.NewGuid();
         var userB = Guid.NewGuid();
@@ -134,7 +134,7 @@ public class ShiftViewServiceTests
             .Returns(Array.Empty<ShiftSignup>());
 
         var sut = CreateSut();
-        var batch = sut.GetUsers(new[] { userA, userA, userB });
+        var batch = await sut.GetUsersAsync(new[] { userA, userA, userB });
 
         batch.Should().ContainKey(userA);
         batch.Should().ContainKey(userB);

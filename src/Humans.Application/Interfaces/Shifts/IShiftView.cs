@@ -8,11 +8,12 @@ namespace Humans.Application.Interfaces.Shifts;
 /// keyed by user / rota id.
 /// </summary>
 /// <remarks>
-/// Synchronous. The public registration is a Singleton decorator
-/// (<c>CachingShiftViewService</c>) that serves dict hits without a DB call
-/// and lazily loads on miss via a Scoped inner service. Missing ids — or no
-/// active event — return an empty view record, never <c>null</c>, never an
-/// exception.
+/// Methods return <see cref="ValueTask{TResult}"/>: the public registration is
+/// a Singleton decorator (<c>CachingShiftViewService</c>) that completes
+/// synchronously on dict hits (no <see cref="System.Threading.Tasks.Task"/>
+/// allocation, no thread hop) and falls through to an awaiting load on miss.
+/// Missing ids — or no active event — return an empty view record, never
+/// <c>null</c>, never an exception.
 ///
 /// <para>
 /// Issue #720. Foundation for shifts caching: existing read methods on
@@ -26,23 +27,25 @@ public interface IShiftView
     /// Returns the cached view for a single user. Never <c>null</c> — empty
     /// view for unknown users / no active event.
     /// </summary>
-    ShiftUserView GetUser(Guid userId);
+    ValueTask<ShiftUserView> GetUserAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
     /// Returns cached views for many users in one call, keyed by user id.
     /// Unknown users yield an empty view entry.
     /// </summary>
-    IReadOnlyDictionary<Guid, ShiftUserView> GetUsers(IEnumerable<Guid> userIds);
+    ValueTask<IReadOnlyDictionary<Guid, ShiftUserView>> GetUsersAsync(
+        IEnumerable<Guid> userIds, CancellationToken ct = default);
 
     /// <summary>
     /// Returns the cached view for a single rota. Never <c>null</c> — empty
     /// view (with <c>Rota = null</c>) for unknown rota ids.
     /// </summary>
-    ShiftRotaView GetRota(Guid rotaId);
+    ValueTask<ShiftRotaView> GetRotaAsync(Guid rotaId, CancellationToken ct = default);
 
     /// <summary>
     /// Returns cached views for many rotas in one call, keyed by rota id.
     /// Unknown rotas yield an empty view entry.
     /// </summary>
-    IReadOnlyDictionary<Guid, ShiftRotaView> GetRotas(IEnumerable<Guid> rotaIds);
+    ValueTask<IReadOnlyDictionary<Guid, ShiftRotaView>> GetRotasAsync(
+        IEnumerable<Guid> rotaIds, CancellationToken ct = default);
 }

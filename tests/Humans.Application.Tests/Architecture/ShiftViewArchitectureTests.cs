@@ -128,19 +128,20 @@ public class ShiftViewArchitectureTests
     // ── IShiftView contract ──────────────────────────────────────────────────
 
     [HumansFact]
-    public void IShiftView_AllMethodsAreSynchronous()
+    public void IShiftView_AllMethodsReturnValueTask()
     {
+        // ValueTask<T> lets the decorator complete synchronously on dict hits
+        // (no Task allocation, no thread hop) while still supporting the
+        // awaiting load path on miss. Mirrors IProfileService.GetFullProfileAsync.
         var methods = typeof(IShiftView).GetMethods();
         foreach (var method in methods)
         {
-            var returnsTask = typeof(Task).IsAssignableFrom(method.ReturnType)
-                || typeof(ValueTask).IsAssignableFrom(method.ReturnType)
-                || (method.ReturnType.IsGenericType
-                    && (method.ReturnType.GetGenericTypeDefinition() == typeof(Task<>)
-                        || method.ReturnType.GetGenericTypeDefinition() == typeof(ValueTask<>)));
+            var rt = method.ReturnType;
+            var isValueTaskOfT = rt.IsGenericType
+                && rt.GetGenericTypeDefinition() == typeof(ValueTask<>);
 
-            returnsTask.Should().BeFalse(
-                because: $"IShiftView is intentionally synchronous (issue #720) — '{method.Name}' returned an awaitable");
+            isValueTaskOfT.Should().BeTrue(
+                because: $"IShiftView methods return ValueTask<T> for cache-friendly async (issue #720) — '{method.Name}' returned '{rt.Name}'");
         }
     }
 

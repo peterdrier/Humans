@@ -12,17 +12,6 @@ namespace Humans.Application.Services.Shifts;
 /// refresh via the keyed registration (<c>CachingShiftViewService.InnerServiceKey</c>).
 /// Issue #720.
 /// </summary>
-/// <remarks>
-/// <see cref="IShiftView"/> is intentionally synchronous (see the interface
-/// remarks: "consumers compute what they need from the raw rows", no <c>await</c>
-/// ceremony at call sites). Repository calls underneath are async, so each
-/// public method awaits internally via <c>.GetAwaiter().GetResult()</c>. This
-/// is safe at ~500-user single-server scale (ASP.NET Core has no captured
-/// <see cref="System.Threading.SynchronizationContext"/>) and only runs on
-/// the rare cache-miss path — cache hits short-circuit in the Singleton
-/// decorator without entering this service at all. The VSTHRD002 suppressions
-/// are scoped to that one pattern.
-/// </remarks>
 public sealed class ShiftViewService : IShiftView
 {
     private readonly IShiftManagementRepository _management;
@@ -42,56 +31,22 @@ public sealed class ShiftViewService : IShiftView
         _tracking = tracking;
     }
 
-    public ShiftUserView GetUser(Guid userId) =>
-#pragma warning disable VSTHRD002 // sync wrapper around async repo calls — see class remarks
-        BuildUserAsync(userId).GetAwaiter().GetResult();
-#pragma warning restore VSTHRD002
-
-    public IReadOnlyDictionary<Guid, ShiftUserView> GetUsers(IEnumerable<Guid> userIds)
+    public async ValueTask<ShiftUserView> GetUserAsync(Guid userId, CancellationToken ct = default)
     {
-        var ids = userIds as IList<Guid> ?? userIds.Distinct().ToList();
-        var result = new Dictionary<Guid, ShiftUserView>(ids.Count);
-        foreach (var id in ids)
-        {
-            if (!result.ContainsKey(id))
-                result[id] = GetUser(id);
-        }
-        return result;
-    }
+        var activeEvent = await _management.GetActiveEventSettingsAsync(ct).ConfigureAwait(false);
 
-    public ShiftRotaView GetRota(Guid rotaId) =>
-#pragma warning disable VSTHRD002 // sync wrapper around async repo calls — see class remarks
-        BuildRotaAsync(rotaId).GetAwaiter().GetResult();
-#pragma warning restore VSTHRD002
-
-    public IReadOnlyDictionary<Guid, ShiftRotaView> GetRotas(IEnumerable<Guid> rotaIds)
-    {
-        var ids = rotaIds as IList<Guid> ?? rotaIds.Distinct().ToList();
-        var result = new Dictionary<Guid, ShiftRotaView>(ids.Count);
-        foreach (var id in ids)
-        {
-            if (!result.ContainsKey(id))
-                result[id] = GetRota(id);
-        }
-        return result;
-    }
-
-    private async Task<ShiftUserView> BuildUserAsync(Guid userId)
-    {
-        var activeEvent = await _management.GetActiveEventSettingsAsync().ConfigureAwait(false);
-
-        var profile = await _management.GetVolunteerEventProfileAsync(userId).ConfigureAwait(false);
-        var tagPrefs = await _signups.GetVolunteerTagPreferencesForUserAsync(userId).ConfigureAwait(false);
-        var allSignups = await _signups.GetByUserAsync(userId).ConfigureAwait(false);
+        var profile = await _management.GetVolunteerEventProfileAsync(userId, ct).ConfigureAwait(false);
+        var tagPrefs = await _signups.GetVolunteerTagPreferencesForUserAsync(userId, ct).ConfigureAwait(false);
+        var allSignups = await _signups.GetByUserAsync(userId, eventSettingsId: null, ct).ConfigureAwait(false);
 
         GeneralAvailability? availability = null;
         VolunteerBuildStatus? buildStatus = null;
         if (activeEvent is not null)
         {
             availability = await _availability
-                .GetByUserAndEventAsync(userId, activeEvent.Id).ConfigureAwait(false);
+                .GetByUserAndEventAsync(userId, activeEvent.Id, ct).ConfigureAwait(false);
             buildStatus = await _tracking
-                .GetAsync(userId, activeEvent.Id).ConfigureAwait(false);
+                .GetAsync(userId, activeEvent.Id, ct).ConfigureAwait(false);
         }
 
         return new ShiftUserView(
@@ -103,9 +58,22 @@ public sealed class ShiftViewService : IShiftView
             allSignups);
     }
 
-    private async Task<ShiftRotaView> BuildRotaAsync(Guid rotaId)
+    public async ValueTask<IReadOnlyDictionary<Guid, ShiftUserView>> GetUsersAsync(
+        IEnumerable<Guid> userIds, CancellationToken ct = default)
     {
-        var rota = await _management.GetRotaForViewAsync(rotaId).ConfigureAwait(false);
+        var ids = userIds as IList<Guid> ?? userIds.Distinct().ToList();
+        var result = new Dictionary<Guid, ShiftUserView>(ids.Count);
+        foreach (var id in ids)
+        {
+            if (!result.ContainsKey(id))
+                result[id] = await GetUserAsync(id, ct).ConfigureAwait(false);
+        }
+        return result;
+    }
+
+    public async ValueTask<ShiftRotaView> GetRotaAsync(Guid rotaId, CancellationToken ct = default)
+    {
+        var rota = await _management.GetRotaForViewAsync(rotaId, ct).ConfigureAwait(false);
         if (rota is null)
             return ShiftRotaView.Empty(rotaId);
 
@@ -114,5 +82,18 @@ public sealed class ShiftViewService : IShiftView
         var signups = shifts.SelectMany(s => s.ShiftSignups).ToList();
 
         return new ShiftRotaView(rotaId, rota, shifts, tags, signups);
+    }
+
+    public async ValueTask<IReadOnlyDictionary<Guid, ShiftRotaView>> GetRotasAsync(
+        IEnumerable<Guid> rotaIds, CancellationToken ct = default)
+    {
+        var ids = rotaIds as IList<Guid> ?? rotaIds.Distinct().ToList();
+        var result = new Dictionary<Guid, ShiftRotaView>(ids.Count);
+        foreach (var id in ids)
+        {
+            if (!result.ContainsKey(id))
+                result[id] = await GetRotaAsync(id, ct).ConfigureAwait(false);
+        }
+        return result;
     }
 }

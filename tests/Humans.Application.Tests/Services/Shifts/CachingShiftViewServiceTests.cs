@@ -31,32 +31,33 @@ public class CachingShiftViewServiceTests
             NullLogger<CachingShiftViewService>.Instance);
     }
 
-    // ── GetUser ─────────────────────────────────────────────────────────────
+    // ── GetUserAsync ────────────────────────────────────────────────────────
 
     [HumansFact]
-    public void GetUser_DictMiss_DelegatesToInner_AndCachesResult()
+    public async Task GetUserAsync_DictMiss_DelegatesToInner_AndCachesResult()
     {
         var userId = Guid.NewGuid();
         var view = new ShiftUserView(
             userId, Profile: null, Availability: null, BuildStatus: null,
             TagPreferences: Array.Empty<VolunteerTagPreference>(),
             Signups: Array.Empty<ShiftSignup>());
-        _inner.GetUser(userId).Returns(view);
+        _inner.GetUserAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<ShiftUserView>(view));
 
         var sut = CreateSut();
 
-        var first = sut.GetUser(userId);
+        var first = await sut.GetUserAsync(userId);
         first.Should().BeSameAs(view);
-        _inner.Received(1).GetUser(userId);
+        await _inner.Received(1).GetUserAsync(userId, Arg.Any<CancellationToken>());
 
-        var second = sut.GetUser(userId);
+        var second = await sut.GetUserAsync(userId);
         second.Should().BeSameAs(view);
         // Hot path: no further calls to inner.
-        _inner.Received(1).GetUser(userId);
+        await _inner.Received(1).GetUserAsync(userId, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
-    public void GetUser_AfterInvalidate_ReloadsFromInner()
+    public async Task GetUserAsync_AfterInvalidate_ReloadsFromInner()
     {
         var userId = Guid.NewGuid();
         var view1 = new ShiftUserView(
@@ -64,19 +65,20 @@ public class CachingShiftViewServiceTests
             Array.Empty<VolunteerTagPreference>(), Array.Empty<ShiftSignup>());
         var view2 = view1 with { Signups = new[] { new ShiftSignup { Id = Guid.NewGuid(), UserId = userId } } };
 
-        _inner.GetUser(userId).Returns(view1, view2);
+        _inner.GetUserAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<ShiftUserView>(view1), new ValueTask<ShiftUserView>(view2));
 
         var sut = CreateSut();
 
-        sut.GetUser(userId).Should().BeSameAs(view1);
+        (await sut.GetUserAsync(userId)).Should().BeSameAs(view1);
         sut.InvalidateUser(userId);
-        sut.GetUser(userId).Should().BeSameAs(view2);
+        (await sut.GetUserAsync(userId)).Should().BeSameAs(view2);
 
-        _inner.Received(2).GetUser(userId);
+        await _inner.Received(2).GetUserAsync(userId, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
-    public void GetUsers_BatchPopulatesDict_AndSubsequentSingleReadsHitCache()
+    public async Task GetUsersAsync_BatchPopulatesDict_AndSubsequentSingleReadsHitCache()
     {
         var u1 = Guid.NewGuid();
         var u2 = Guid.NewGuid();
@@ -84,27 +86,29 @@ public class CachingShiftViewServiceTests
             Array.Empty<VolunteerTagPreference>(), Array.Empty<ShiftSignup>());
         var v2 = new ShiftUserView(u2, null, null, null,
             Array.Empty<VolunteerTagPreference>(), Array.Empty<ShiftSignup>());
-        _inner.GetUser(u1).Returns(v1);
-        _inner.GetUser(u2).Returns(v2);
+        _inner.GetUserAsync(u1, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<ShiftUserView>(v1));
+        _inner.GetUserAsync(u2, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<ShiftUserView>(v2));
 
         var sut = CreateSut();
 
-        var batch = sut.GetUsers(new[] { u1, u2 });
+        var batch = await sut.GetUsersAsync(new[] { u1, u2 });
         batch.Should().ContainKeys(u1, u2);
         batch[u1].Should().BeSameAs(v1);
         batch[u2].Should().BeSameAs(v2);
 
-        sut.GetUser(u1).Should().BeSameAs(v1);
-        sut.GetUser(u2).Should().BeSameAs(v2);
+        (await sut.GetUserAsync(u1)).Should().BeSameAs(v1);
+        (await sut.GetUserAsync(u2)).Should().BeSameAs(v2);
 
-        _inner.Received(1).GetUser(u1);
-        _inner.Received(1).GetUser(u2);
+        await _inner.Received(1).GetUserAsync(u1, Arg.Any<CancellationToken>());
+        await _inner.Received(1).GetUserAsync(u2, Arg.Any<CancellationToken>());
     }
 
-    // ── GetRota ─────────────────────────────────────────────────────────────
+    // ── GetRotaAsync ────────────────────────────────────────────────────────
 
     [HumansFact]
-    public void GetRota_DictMiss_DelegatesToInner_AndCachesResult()
+    public async Task GetRotaAsync_DictMiss_DelegatesToInner_AndCachesResult()
     {
         var rotaId = Guid.NewGuid();
         var view = new ShiftRotaView(
@@ -112,44 +116,47 @@ public class CachingShiftViewServiceTests
             Shifts: Array.Empty<Shift>(),
             Tags: Array.Empty<ShiftTag>(),
             Signups: Array.Empty<ShiftSignup>());
-        _inner.GetRota(rotaId).Returns(view);
+        _inner.GetRotaAsync(rotaId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<ShiftRotaView>(view));
 
         var sut = CreateSut();
 
-        sut.GetRota(rotaId).Should().BeSameAs(view);
-        sut.GetRota(rotaId).Should().BeSameAs(view);
+        (await sut.GetRotaAsync(rotaId)).Should().BeSameAs(view);
+        (await sut.GetRotaAsync(rotaId)).Should().BeSameAs(view);
 
-        _inner.Received(1).GetRota(rotaId);
+        await _inner.Received(1).GetRotaAsync(rotaId, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
-    public void InvalidateAll_ClearsBothDicts()
+    public async Task InvalidateAll_ClearsBothDicts()
     {
         var userId = Guid.NewGuid();
         var rotaId = Guid.NewGuid();
-        _inner.GetUser(userId).Returns(new ShiftUserView(
-            userId, null, null, null,
-            Array.Empty<VolunteerTagPreference>(), Array.Empty<ShiftSignup>()));
-        _inner.GetRota(rotaId).Returns(new ShiftRotaView(
-            rotaId, null, Array.Empty<Shift>(), Array.Empty<ShiftTag>(), Array.Empty<ShiftSignup>()));
+        _inner.GetUserAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<ShiftUserView>(new ShiftUserView(
+                userId, null, null, null,
+                Array.Empty<VolunteerTagPreference>(), Array.Empty<ShiftSignup>())));
+        _inner.GetRotaAsync(rotaId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<ShiftRotaView>(new ShiftRotaView(
+                rotaId, null, Array.Empty<Shift>(), Array.Empty<ShiftTag>(), Array.Empty<ShiftSignup>())));
 
         var sut = CreateSut();
-        sut.GetUser(userId);
-        sut.GetRota(rotaId);
+        await sut.GetUserAsync(userId);
+        await sut.GetRotaAsync(rotaId);
 
         sut.InvalidateAll();
 
-        sut.GetUser(userId);
-        sut.GetRota(rotaId);
+        await sut.GetUserAsync(userId);
+        await sut.GetRotaAsync(rotaId);
 
-        _inner.Received(2).GetUser(userId);
-        _inner.Received(2).GetRota(rotaId);
+        await _inner.Received(2).GetUserAsync(userId, Arg.Any<CancellationToken>());
+        await _inner.Received(2).GetRotaAsync(rotaId, Arg.Any<CancellationToken>());
     }
 
     // ── InvalidateShift fan-out from the live snapshot ───────────────────────
 
     [HumansFact]
-    public void InvalidateShift_EvictsAffectedRotaAndUsers()
+    public async Task InvalidateShift_EvictsAffectedRotaAndUsers()
     {
         var shiftId = Guid.NewGuid();
         var rotaId = Guid.NewGuid();
@@ -173,27 +180,30 @@ public class CachingShiftViewServiceTests
             Array.Empty<VolunteerTagPreference>(),
             new[] { new ShiftSignup { Id = Guid.NewGuid(), UserId = unrelatedUserId, ShiftId = Guid.NewGuid() } });
 
-        _inner.GetRota(rotaId).Returns(rotaView);
-        _inner.GetUser(userId).Returns(userView);
-        _inner.GetUser(unrelatedUserId).Returns(unrelatedUserView);
+        _inner.GetRotaAsync(rotaId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<ShiftRotaView>(rotaView));
+        _inner.GetUserAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<ShiftUserView>(userView));
+        _inner.GetUserAsync(unrelatedUserId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<ShiftUserView>(unrelatedUserView));
 
         var sut = CreateSut();
 
         // Prime the cache so InvalidateShift has something to walk.
-        sut.GetRota(rotaId);
-        sut.GetUser(userId);
-        sut.GetUser(unrelatedUserId);
+        await sut.GetRotaAsync(rotaId);
+        await sut.GetUserAsync(userId);
+        await sut.GetUserAsync(unrelatedUserId);
 
         sut.InvalidateShift(shiftId);
 
         // Affected entries reload.
-        sut.GetRota(rotaId);
-        sut.GetUser(userId);
+        await sut.GetRotaAsync(rotaId);
+        await sut.GetUserAsync(userId);
         // Unrelated user stays cached.
-        sut.GetUser(unrelatedUserId);
+        await sut.GetUserAsync(unrelatedUserId);
 
-        _inner.Received(2).GetRota(rotaId);
-        _inner.Received(2).GetUser(userId);
-        _inner.Received(1).GetUser(unrelatedUserId);
+        await _inner.Received(2).GetRotaAsync(rotaId, Arg.Any<CancellationToken>());
+        await _inner.Received(2).GetUserAsync(userId, Arg.Any<CancellationToken>());
+        await _inner.Received(1).GetUserAsync(unrelatedUserId, Arg.Any<CancellationToken>());
     }
 }
