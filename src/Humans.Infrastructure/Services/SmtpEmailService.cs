@@ -291,44 +291,24 @@ public class SmtpEmailService : IEmailService
     }
 
     /// <inheritdoc />
-    public async Task SendEventSubmittedAsync(
-        string userEmail, string userName, string eventTitle, string viewUrl,
-        string? culture = null, CancellationToken cancellationToken = default)
+    public async Task SendEventLifecycleNotificationAsync(
+        EventLifecycleNotification request,
+        string userEmail,
+        CancellationToken cancellationToken = default)
     {
-        var content = _renderer.RenderEventSubmitted(userName, eventTitle, viewUrl, culture);
+        var content = _renderer.RenderEventLifecycle(request);
         await SendEmailAsync(userEmail, content.Subject, content.HtmlBody, cancellationToken);
-        _metrics.RecordEmailSent("event_submitted");
+        _metrics.RecordEmailSent(EventLifecycleMetric(request.NewStatus));
     }
 
-    /// <inheritdoc />
-    public async Task SendEventApprovedAsync(
-        string userEmail, string userName, string eventTitle,
-        string? culture = null, CancellationToken cancellationToken = default)
+    private static string EventLifecycleMetric(EventStatus status) => status switch
     {
-        var content = _renderer.RenderEventApproved(userName, eventTitle, culture);
-        await SendEmailAsync(userEmail, content.Subject, content.HtmlBody, cancellationToken);
-        _metrics.RecordEmailSent("event_approved");
-    }
-
-    /// <inheritdoc />
-    public async Task SendEventRejectedAsync(
-        string userEmail, string userName, string eventTitle, string reason, string editUrl,
-        string? culture = null, CancellationToken cancellationToken = default)
-    {
-        var content = _renderer.RenderEventRejected(userName, eventTitle, reason, editUrl, culture);
-        await SendEmailAsync(userEmail, content.Subject, content.HtmlBody, cancellationToken);
-        _metrics.RecordEmailSent("event_rejected");
-    }
-
-    /// <inheritdoc />
-    public async Task SendEventResubmitRequestedAsync(
-        string userEmail, string userName, string eventTitle, string reason, string editUrl,
-        string? culture = null, CancellationToken cancellationToken = default)
-    {
-        var content = _renderer.RenderEventResubmitRequested(userName, eventTitle, reason, editUrl, culture);
-        await SendEmailAsync(userEmail, content.Subject, content.HtmlBody, cancellationToken);
-        _metrics.RecordEmailSent("event_resubmit_requested");
-    }
+        EventStatus.Pending => "event_submitted",
+        EventStatus.Approved => "event_approved",
+        EventStatus.Rejected => "event_rejected",
+        EventStatus.ResubmitRequested => "event_resubmit_requested",
+        _ => "event_unknown"
+    };
 
     /// <inheritdoc />
     public async Task SendIssueCommentAsync(

@@ -344,17 +344,18 @@ public sealed class OutboxEmailServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task SendEventSubmittedAsync_CreatesOutboxRowAndTriggersImmediate()
+    public async Task SendEventLifecycleNotificationAsync_CreatesOutboxRowAndTriggersImmediate()
     {
-        _renderer.RenderEventSubmitted("Alice", "Sunrise Parade", "https://humans.example/Events/MySubmissions", "en")
+        var request = new EventLifecycleNotification(
+            NewStatus: EventStatus.Pending,
+            UserName: "Alice",
+            EventTitle: "Sunrise Parade",
+            ActionUrl: "https://humans.example/Events/MySubmissions",
+            Culture: "en");
+        _renderer.RenderEventLifecycle(request, null)
             .Returns(new EmailContent("Event received", "<p>Thanks for your submission</p>"));
 
-        await _service.SendEventSubmittedAsync(
-            "alice@example.com",
-            "Alice",
-            "Sunrise Parade",
-            "https://humans.example/Events/MySubmissions",
-            "en");
+        await _service.SendEventLifecycleNotificationAsync(request, "alice@example.com");
 
         var msg = await _dbContext.EmailOutboxMessages.SingleAsync();
         msg.RecipientEmail.Should().Be("alice@example.com");

@@ -188,17 +188,23 @@ public class EventsModerationController : HumansControllerBase
                 ? Url.Action("Edit", "BarrioEvents", new { slug = campSlug, eventId }, Request.Scheme)!
                 : Url.Action("Edit", "Events", new { eventId }, Request.Scheme)!;
 
-            switch (actionType)
+            var lifecycleStatus = actionType switch
             {
-                case EventModerationActionType.Approved:
-                    await _emailService.SendEventApprovedAsync(submitterEmail, submitterName, guideEvent.Title);
-                    break;
-                case EventModerationActionType.Rejected:
-                    await _emailService.SendEventRejectedAsync(submitterEmail, submitterName, guideEvent.Title, reason!, editUrl);
-                    break;
-                case EventModerationActionType.ResubmitRequested:
-                    await _emailService.SendEventResubmitRequestedAsync(submitterEmail, submitterName, guideEvent.Title, reason!, editUrl);
-                    break;
+                EventModerationActionType.Approved => (EventStatus?)EventStatus.Approved,
+                EventModerationActionType.Rejected => EventStatus.Rejected,
+                EventModerationActionType.ResubmitRequested => EventStatus.ResubmitRequested,
+                _ => null
+            };
+            if (lifecycleStatus.HasValue)
+            {
+                await _emailService.SendEventLifecycleNotificationAsync(
+                    new EventLifecycleNotification(
+                        NewStatus: lifecycleStatus.Value,
+                        UserName: submitterName,
+                        EventTitle: guideEvent.Title,
+                        Reason: reason,
+                        ActionUrl: editUrl),
+                    submitterEmail);
             }
         }
 

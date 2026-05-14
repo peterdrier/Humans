@@ -159,7 +159,13 @@ public class EventsController : HumansControllerBase
         if (userEmail != null)
         {
             var viewUrl = Url.Action(nameof(MySubmissions), "Events", null, Request.Scheme)!;
-            await _emailService.SendEventSubmittedAsync(userEmail, user.UserName ?? userEmail, model.Title, viewUrl);
+            await _emailService.SendEventLifecycleNotificationAsync(
+                new EventLifecycleNotification(
+                    NewStatus: EventStatus.Pending,
+                    UserName: user.UserName ?? userEmail,
+                    EventTitle: model.Title,
+                    ActionUrl: viewUrl),
+                userEmail);
         }
 
         SetSuccess($"Event \"{model.Title}\" submitted for review.");

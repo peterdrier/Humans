@@ -288,14 +288,13 @@ public interface IEmailService : IApplicationService
     Task SendCampaignCodeAsync(CampaignCodeEmailRequest request, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Sends an event submission received notification.
+    /// Sends an event lifecycle notification (submitted / approved / rejected /
+    /// resubmit-requested) — dispatches on <see cref="EventLifecycleNotification.NewStatus"/>
+    /// to pick the matching template.
     /// </summary>
-    Task SendEventSubmittedAsync(
+    Task SendEventLifecycleNotificationAsync(
+        EventLifecycleNotification request,
         string userEmail,
-        string userName,
-        string eventTitle,
-        string viewUrl,
-        string? culture = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -312,16 +311,6 @@ public interface IEmailService : IApplicationService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Sends an event approved notification.
-    /// </summary>
-    Task SendEventApprovedAsync(
-        string userEmail,
-        string userName,
-        string eventTitle,
-        string? culture = null,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Sends a notification that a Google Drive permission has been removed
     /// (Variant 1 — full loss of access, Drive sub-template). System category;
     /// no unsubscribe footer (issue peterdrier/Humans#639).
@@ -330,30 +319,6 @@ public interface IEmailService : IApplicationService
         string removedEmail,
         string userName,
         string folderName,
-        string? culture = null,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Sends an event rejected notification.
-    /// </summary>
-    Task SendEventRejectedAsync(
-        string userEmail,
-        string userName,
-        string eventTitle,
-        string reason,
-        string editUrl,
-        string? culture = null,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Sends a resubmit-requested notification for an event.
-    /// </summary>
-    Task SendEventResubmitRequestedAsync(
-        string userEmail,
-        string userName,
-        string eventTitle,
-        string reason,
-        string editUrl,
         string? culture = null,
         CancellationToken cancellationToken = default);
 
@@ -384,3 +349,19 @@ public record CampaignCodeEmailRequest(
     string MarkdownBody,
     string Code,
     string? ReplyTo);
+
+/// <summary>
+/// Payload for an event lifecycle notification. <see cref="NewStatus"/> picks
+/// the template: <see cref="EventStatus.Pending"/> = submission received,
+/// <see cref="EventStatus.Approved"/> = approved, <see cref="EventStatus.Rejected"/>
+/// = rejected (requires <see cref="Reason"/> and <see cref="ActionUrl"/> for the
+/// edit link), <see cref="EventStatus.ResubmitRequested"/> = changes requested
+/// (also requires <see cref="Reason"/> and <see cref="ActionUrl"/>).
+/// </summary>
+public record EventLifecycleNotification(
+    EventStatus NewStatus,
+    string UserName,
+    string EventTitle,
+    string? Reason = null,
+    string? ActionUrl = null,
+    string? Culture = null);

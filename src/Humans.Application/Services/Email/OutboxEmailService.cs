@@ -465,56 +465,24 @@ public sealed class OutboxEmailService : IEmailService
         }
     }
 
-    public async Task SendEventSubmittedAsync(
+    public async Task SendEventLifecycleNotificationAsync(
+        EventLifecycleNotification request,
         string userEmail,
-        string userName,
-        string eventTitle,
-        string viewUrl,
-        string? culture = null,
         CancellationToken cancellationToken = default)
     {
-        var content = _renderer.RenderEventSubmitted(userName, eventTitle, viewUrl, culture);
-        await EnqueueAsync(userEmail, userName, content, "event_submitted", cancellationToken,
+        var content = _renderer.RenderEventLifecycle(request);
+        await EnqueueAsync(userEmail, request.UserName, content,
+            EventLifecycleTemplateName(request.NewStatus), cancellationToken,
             triggerImmediate: true);
     }
 
-    public async Task SendEventApprovedAsync(
-        string userEmail,
-        string userName,
-        string eventTitle,
-        string? culture = null,
-        CancellationToken cancellationToken = default)
+    private static string EventLifecycleTemplateName(EventStatus status) => status switch
     {
-        var content = _renderer.RenderEventApproved(userName, eventTitle, culture);
-        await EnqueueAsync(userEmail, userName, content, "event_approved", cancellationToken,
-            triggerImmediate: true);
-    }
-
-    public async Task SendEventRejectedAsync(
-        string userEmail,
-        string userName,
-        string eventTitle,
-        string reason,
-        string editUrl,
-        string? culture = null,
-        CancellationToken cancellationToken = default)
-    {
-        var content = _renderer.RenderEventRejected(userName, eventTitle, reason, editUrl, culture);
-        await EnqueueAsync(userEmail, userName, content, "event_rejected", cancellationToken,
-            triggerImmediate: true);
-    }
-
-    public async Task SendEventResubmitRequestedAsync(
-        string userEmail,
-        string userName,
-        string eventTitle,
-        string reason,
-        string editUrl,
-        string? culture = null,
-        CancellationToken cancellationToken = default)
-    {
-        var content = _renderer.RenderEventResubmitRequested(userName, eventTitle, reason, editUrl, culture);
-        await EnqueueAsync(userEmail, userName, content, "event_resubmit_requested", cancellationToken,
-            triggerImmediate: true);
-    }
+        EventStatus.Pending => "event_submitted",
+        EventStatus.Approved => "event_approved",
+        EventStatus.Rejected => "event_rejected",
+        EventStatus.ResubmitRequested => "event_resubmit_requested",
+        _ => throw new ArgumentOutOfRangeException(nameof(status),
+            $"EventLifecycleNotification does not support status {status}")
+    };
 }
