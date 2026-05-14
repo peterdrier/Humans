@@ -95,6 +95,11 @@ public sealed class MailerAdminController : HumansControllerBase
             _logger.LogWarning(ex, "Audience stats failed");
             audienceRows = Array.Empty<AudienceCardRow>();
         }
+        catch (TaskCanceledException) when (!ct.IsCancellationRequested)
+        {
+            _logger.LogWarning("Audience stats timed out");
+            audienceRows = Array.Empty<AudienceCardRow>();
+        }
 
         var vm = new MailerDashboardViewModel(
             summary, groups, mlContacts, optedIn, optedOut,
