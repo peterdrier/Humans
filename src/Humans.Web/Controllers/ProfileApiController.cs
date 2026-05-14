@@ -15,25 +15,24 @@ namespace Humans.Web.Controllers;
 [Authorize]
 [ApiController]
 [Route("api/profiles")]
-public class ProfileApiController : ControllerBase
+public class ProfileApiController : HumansControllerBase
 {
     private const int MaxResults = 10;
 
     private readonly IProfileService _profileService;
     private readonly IContactFieldService _contactFieldService;
     private readonly IUserEmailService _userEmailService;
-    private readonly UserManager<User> _userManager;
 
     public ProfileApiController(
         IProfileService profileService,
         IContactFieldService contactFieldService,
         IUserEmailService userEmailService,
         UserManager<User> userManager)
+        : base(userManager)
     {
         _profileService = profileService;
         _contactFieldService = contactFieldService;
         _userEmailService = userEmailService;
-        _userManager = userManager;
     }
 
     [HttpGet("search")]
@@ -62,7 +61,7 @@ public class ProfileApiController : ControllerBase
             userIds,
             ct);
 
-        var viewer = await _userManager.GetUserAsync(User);
+        var viewer = await GetCurrentUserAsync();
         var viewerUserId = viewer?.Id;
 
         var response = new List<HumanLookupSearchResult>(results.Count);
@@ -106,7 +105,7 @@ public class ProfileApiController : ControllerBase
             new[] { userId },
             ct);
 
-        var viewer = await _userManager.GetUserAsync(User);
+        var viewer = await GetCurrentUserAsync();
         var viewerUserId = viewer?.Id;
 
         var detail = await GetSharedDetailAsync(
