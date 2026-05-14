@@ -37,90 +37,58 @@ public class ContainerController : HumansControllerBase
         _logger = logger;
     }
 
-    private sealed record CampContext(CampLookup Camp, bool CanManage, bool IsPrivileged);
-
-    private async Task<bool> CanManageAsync(Guid userId, Guid campId, CancellationToken ct)
-    {
-        if (RoleChecks.IsCampAdmin(User)) return true;
-        if (await _cityPlanningService.IsCityPlanningTeamMemberAsync(userId, ct)) return true;
-        if (await _campService.IsUserCampLeadAsync(userId, campId, ct)) return true;
-        return false;
-    }
-
-    private async Task<bool> IsPrivilegedAsync(Guid userId, CancellationToken ct)
-    {
-        if (RoleChecks.IsCampAdmin(User)) return true;
-        return await _cityPlanningService.IsCityPlanningTeamMemberAsync(userId, ct);
-    }
-
-    private async Task<(IActionResult? Error, CampContext? Ctx)> ResolveCampContextAsync(
-        string slug, Guid userId, CancellationToken ct)
-    {
-        var camp = await _campService.GetCampBySlugAsync(slug, ct);
-        if (camp is null) return (NotFound(), null);
-
-        var canManage = await CanManageAsync(userId, camp.Id, ct);
-        if (!canManage) return (Forbid(), null);
-
-        var isPrivileged = await IsPrivilegedAsync(userId, ct);
-        return (null, new CampContext(camp, canManage, isPrivileged));
-    }
-
-    private async Task<IActionResult?> CheckPlacementPhaseAsync(
-        Guid userId, string slug, CancellationToken ct)
-    {
-        if (await IsPrivilegedAsync(userId, ct)) return null;
-        var settings = await _cityPlanningService.GetSettingsAsync(ct);
-        if (settings.IsContainerPlacementOpen) return null;
-        SetError("Container placement is currently closed.");
-        return RedirectToAction(nameof(Index), new { slug });
-    }
+    private async Task<bool> AuthorizeAsync(ContainerAuthorizationTarget target, ContainerOperationRequirement requirement) =>
+        (await _authorizationService.AuthorizeAsync(User, target, requirement)).Succeeded;
 
     [HttpGet("")]
     public async Task<IActionResult> Index(string slug, CancellationToken ct)
     {
-        var (userError, user) = await RequireCurrentUserAsync();
-        if (userError is not null) return userError;
+        var camp = await _campService.GetCampBySlugAsync(slug, ct);
+        if (camp is null) return NotFound();
 
-        var (resolveError, ctx) = await ResolveCampContextAsync(slug, user.Id, ct);
-        if (resolveError is not null) return resolveError;
+        var target = ContainerAuthorizationTarget.ForCamp(camp.Id);
+        if (!await AuthorizeAsync(target, ContainerOperationRequirement.Manage)) return Forbid();
+
+        // Place fails for leads when phase is closed — that's the signal we
+        // use to render the "lead but phase closed" message in the view.
+        var canPlace = await AuthorizeAsync(target, ContainerOperationRequirement.Place);
 
         var settings = await _cityPlanningService.GetSettingsAsync(ct);
-        var containers = await _containerService.GetByCampAsync(ctx!.Camp.Id, ct);
+        var containers = await _containerService.GetByCampAsync(camp.Id, ct);
         var sortedContainers = containers
             .OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
         var placements = await _containerService.GetPlacementsByYearAsync(settings.Year, ct);
 
-        var vm = BuildIndexViewModel(ctx, settings.Year, settings.IsContainerPlacementOpen, sortedContainers, placements);
+        var vm = BuildIndexViewModel(camp, settings.Year, settings.IsContainerPlacementOpen, canPlace, sortedContainers, placements);
         return View(vm);
     }
 
     private static ContainerIndexViewModel BuildIndexViewModel(
-        CampContext ctx,
+        CampLookup camp,
         int currentYear,
         bool isPlacementOpen,
+        bool canPlace,
         IReadOnlyList<ContainerDto> containers,
         IReadOnlyList<ContainerPlacementDto> placements)
     {
-        var isLead = ctx.CanManage && !ctx.IsPrivileged;
-        var displayName = ctx.Camp.Seasons
+        var displayName = camp.Seasons
             .OrderByDescending(s => s.Year)
             .FirstOrDefault()?.Name
-            ?? ctx.Camp.Slug;
+            ?? camp.Slug;
         var containerIds = containers.Select(c => c.Id).ToHashSet();
         var placementsByContainerId = placements
             .Where(p => containerIds.Contains(p.ContainerId))
             .ToDictionary(p => p.ContainerId, ToPlacementViewModel);
         return new ContainerIndexViewModel
         {
-            CampSlug = ctx.Camp.Slug,
+            CampSlug = camp.Slug,
             CampName = displayName,
-            CampId = ctx.Camp.Id,
+            CampId = camp.Id,
             CurrentYear = currentYear,
-            CanManage = ctx.CanManage,
+            CanManage = true, // controller already authorized Manage above
             IsPlacementOpen = isPlacementOpen,
-            IsLeadButPhaseClosed = isLead && !isPlacementOpen,
+            IsLeadButPhaseClosed = !canPlace && !isPlacementOpen,
             Containers = containers.Select(ToContainerViewModel).ToList(),
             PlacementsByContainerId = placementsByContainerId,
         };
@@ -149,14 +117,12 @@ public class ContainerController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(string slug, ContainerFormModel model, CancellationToken ct)
     {
-        var (userError, user) = await RequireCurrentUserAsync();
-        if (userError is not null) return userError;
+        var camp = await _campService.GetCampBySlugAsync(slug, ct);
+        if (camp is null) return NotFound();
 
-        var (resolveError, ctx) = await ResolveCampContextAsync(slug, user.Id, ct);
-        if (resolveError is not null) return resolveError;
-
-        var blockResult = await CheckPlacementPhaseAsync(user.Id, slug, ct);
-        if (blockResult is not null) return blockResult;
+        // Place includes the phase-gate for leads — write actions need it.
+        var target = ContainerAuthorizationTarget.ForCamp(camp.Id);
+        if (!await AuthorizeAsync(target, ContainerOperationRequirement.Place)) return Forbid();
 
         if (!ModelState.IsValid)
         {
@@ -165,7 +131,7 @@ public class ContainerController : HumansControllerBase
         }
 
         return await TryRunContainerWriteAsync(
-            () => _containerService.CreateAsync(model.ToContainerData(ctx!.Camp.Id), ct),
+            () => _containerService.CreateAsync(model.ToContainerData(camp.Id), ct),
             slug,
             "Container added.");
     }
@@ -174,14 +140,8 @@ public class ContainerController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit(string slug, Guid id, ContainerFormModel model, CancellationToken ct)
     {
-        var (userError, user) = await RequireCurrentUserAsync();
-        if (userError is not null) return userError;
-
-        var (authError, entity) = await AuthorizeContainerOpAsync(id, ct);
-        if (authError is not null) return authError;
-
-        var blockResult = await CheckPlacementPhaseAsync(user.Id, slug, ct);
-        if (blockResult is not null) return blockResult;
+        var (notFound, container) = await ResolveAndAuthorizeAsync(id, ContainerOperationRequirement.Place, ct);
+        if (notFound is not null) return notFound;
 
         if (!ModelState.IsValid)
         {
@@ -190,41 +150,34 @@ public class ContainerController : HumansControllerBase
         }
 
         return await TryRunContainerWriteAsync(
-            () => _containerService.UpdateAsync(id, model.ToContainerData(entity!.CampId), ct),
+            () => _containerService.UpdateAsync(id, model.ToContainerData(container!.CampId), ct),
             slug,
             "Container updated.");
-    }
-
-    private async Task<(IActionResult? Error, Container? Entity)> AuthorizeContainerOpAsync(Guid id, CancellationToken ct)
-    {
-        var entity = await GetContainerEntityAsync(id, ct);
-        if (entity is null) return (NotFound(), null);
-
-        var authResult = await _authorizationService.AuthorizeAsync(User, entity, ContainerOperationRequirement.Manage);
-        if (!authResult.Succeeded) return (Forbid(), null);
-
-        return (null, entity);
     }
 
     [HttpPost("{id}/Delete")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Delete(string slug, Guid id, CancellationToken ct)
     {
-        var entity = await GetContainerEntityAsync(id, ct);
-        if (entity is null) return NotFound();
-
-        var (userError, user) = await RequireCurrentUserAsync();
-        if (userError is not null) return userError;
-
-        var authResult = await _authorizationService.AuthorizeAsync(User, entity, ContainerOperationRequirement.Manage);
-        if (!authResult.Succeeded) return Forbid();
-
-        var blockResult = await CheckPlacementPhaseAsync(user.Id, slug, ct);
-        if (blockResult is not null) return blockResult;
+        var (notFound, _) = await ResolveAndAuthorizeAsync(id, ContainerOperationRequirement.Place, ct);
+        if (notFound is not null) return notFound;
 
         await _containerService.DeleteAsync(id, ct);
         SetSuccess("Container deleted.");
         return RedirectToAction(nameof(Index), new { slug });
+    }
+
+    private async Task<(IActionResult? Error, ContainerDto? Container)> ResolveAndAuthorizeAsync(
+        Guid id, ContainerOperationRequirement requirement, CancellationToken ct)
+    {
+        var dto = await _containerService.GetByIdAsync(id, ct);
+        if (dto is null) return (NotFound(), null);
+
+        if (!await AuthorizeAsync(ContainerAuthorizationTarget.For(dto), requirement))
+        {
+            return (Forbid(), null);
+        }
+        return (null, dto);
     }
 
     private async Task<IActionResult> TryRunContainerWriteAsync(
@@ -243,19 +196,5 @@ public class ContainerController : HumansControllerBase
 
         SetSuccess(successMessage);
         return RedirectToAction(nameof(Index), new { slug });
-    }
-
-    private async Task<Container?> GetContainerEntityAsync(Guid id, CancellationToken ct)
-    {
-        var dto = await _containerService.GetByIdAsync(id, ct);
-        if (dto is null) return null;
-
-        // ContainerAuthorizationHandler only reads CampId (camp lead ownership).
-        // If the handler is extended to inspect other fields, populate them here too.
-        return new Container
-        {
-            Id = dto.Id,
-            CampId = dto.CampId,
-        };
     }
 }

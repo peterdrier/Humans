@@ -1,7 +1,6 @@
 using System.Security.Claims;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.CitiPlanning;
-using Humans.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 
 namespace Humans.Web.Authorization.Requirements;
@@ -12,10 +11,11 @@ namespace Humans.Web.Authorization.Requirements;
 /// Authorization logic:
 /// - Admin / CampAdmin: allow any container
 /// - City Planning team member: allow any container
-/// - Camp lead: allow only containers belonging to their camp
+/// - Camp lead: allow only containers belonging to their camp; for
+///   <see cref="ContainerOperation.Place"/> the placement phase must also be open
 /// - Everyone else: deny
 /// </summary>
-public class ContainerAuthorizationHandler : AuthorizationHandler<ContainerOperationRequirement, Container>
+public class ContainerAuthorizationHandler : AuthorizationHandler<ContainerOperationRequirement, ContainerAuthorizationTarget>
 {
     private readonly ICampService _campService;
     private readonly ICityPlanningService _cityPlanningService;
@@ -29,7 +29,7 @@ public class ContainerAuthorizationHandler : AuthorizationHandler<ContainerOpera
     protected override async Task HandleRequirementAsync(
         AuthorizationHandlerContext context,
         ContainerOperationRequirement requirement,
-        Container resource)
+        ContainerAuthorizationTarget resource)
     {
         if (RoleChecks.IsCampAdmin(context.User))
         {
@@ -47,6 +47,15 @@ public class ContainerAuthorizationHandler : AuthorizationHandler<ContainerOpera
         {
             context.Succeed(requirement);
             return;
+        }
+
+        if (requirement.Operation == ContainerOperation.Place)
+        {
+            var settings = await _cityPlanningService.GetSettingsAsync();
+            if (!settings.IsContainerPlacementOpen)
+            {
+                return;
+            }
         }
 
         if (await _campService.IsUserCampLeadAsync(userId, resource.CampId))

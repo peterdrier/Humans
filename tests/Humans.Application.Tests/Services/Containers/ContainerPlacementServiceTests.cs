@@ -1,6 +1,6 @@
 using AwesomeAssertions;
+using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Camps;
-using Humans.Application.Interfaces.Containers;
 using Humans.Application.Services.Containers;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
@@ -33,7 +33,7 @@ public class ContainerPlacementServiceTests : IDisposable
         var repo = new ContainerRepository(new TestDbContextFactory(_dbOptions));
         _sut = new ContainerService(
             repo,
-            Substitute.For<IContainerImageStorage>(),
+            Substitute.For<IFileStorage>(),
             Substitute.For<ICampService>(),
             _clock);
     }

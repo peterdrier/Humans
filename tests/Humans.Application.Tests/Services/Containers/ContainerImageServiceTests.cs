@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Containers;
 using Humans.Application.Services.Containers;
@@ -18,7 +19,7 @@ public class ContainerImageServiceTests : IDisposable
 {
     private readonly DbContextOptions<HumansDbContext> _dbOptions;
     private readonly FakeClock _clock;
-    private readonly IContainerImageStorage _imageStorage;
+    private readonly IFileStorage _fileStorage;
     private readonly ContainerService _sut;
     private readonly Instant _startTime = Instant.FromUtc(2026, 5, 8, 10, 0, 0);
     private static readonly Guid CampId = Guid.Parse("00000000-0000-0000-0099-000000000001");
@@ -29,11 +30,11 @@ public class ContainerImageServiceTests : IDisposable
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
         _clock = new FakeClock(_startTime);
-        _imageStorage = Substitute.For<IContainerImageStorage>();
+        _fileStorage = Substitute.For<IFileStorage>();
         var repo = new ContainerRepository(new TestDbContextFactory(_dbOptions));
         _sut = new ContainerService(
             repo,
-            _imageStorage,
+            _fileStorage,
             Substitute.For<ICampService>(),
             _clock);
     }
@@ -66,19 +67,21 @@ public class ContainerImageServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task CreateAsync_WithMainImage_SavesMainImage()
+    public async Task CreateAsync_WithMainImage_SavesUnderContainersPrefix()
     {
-        _imageStorage.SaveImageAsync(Arg.Any<Guid>(), Arg.Any<Stream>(), "image/jpeg", ContainerImageKind.Main, Arg.Any<CancellationToken>())
-            .Returns("uploads/containers/id/main-guid.jpg");
-
         var result = await _sut.CreateAsync(new ContainerData(
             CampId: CampId,
             Name: "Test",
             Description: null,
             MainImage: FakeImage("main")));
 
-        result.ImageStoragePath.Should().Be("/uploads/containers/id/main-guid.jpg");
         result.CampId.Should().Be(CampId);
+        result.ImageStoragePath.Should().StartWith($"/uploads/containers/{result.Id}/");
+        result.ImageStoragePath.Should().EndWith(".jpg");
+        await _fileStorage.Received(1).SaveAsync(
+            Arg.Is<string>(k => k.StartsWith($"uploads/containers/{result.Id}/") && k.EndsWith(".jpg")),
+            Arg.Any<Stream>(),
+            Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -92,7 +95,7 @@ public class ContainerImageServiceTests : IDisposable
             Description: null,
             RemoveMainImage: true));
 
-        _imageStorage.Received(1).DeleteImage("uploads/containers/id/main-guid.jpg");
+        await _fileStorage.Received(1).DeleteAsync("uploads/containers/id/main-guid.jpg", Arg.Any<CancellationToken>());
 
         var updated = await _sut.GetByIdAsync(container.Id);
         updated!.ImageStoragePath.Should().BeNull();
@@ -102,8 +105,6 @@ public class ContainerImageServiceTests : IDisposable
     public async Task UpdateAsync_ReplaceMainImage_DeletesPriorMainAndSavesNew()
     {
         var container = await SeedContainerAsync(imagePath: "uploads/containers/id/main-old.jpg");
-        _imageStorage.SaveImageAsync(Arg.Any<Guid>(), Arg.Any<Stream>(), "image/jpeg", ContainerImageKind.Main, Arg.Any<CancellationToken>())
-            .Returns("uploads/containers/id/main-new.jpg");
 
         await _sut.UpdateAsync(container.Id, new ContainerData(
             CampId: container.CampId,
@@ -111,10 +112,11 @@ public class ContainerImageServiceTests : IDisposable
             Description: null,
             MainImage: FakeImage("main")));
 
-        _imageStorage.Received(1).DeleteImage("uploads/containers/id/main-old.jpg");
+        await _fileStorage.Received(1).DeleteAsync("uploads/containers/id/main-old.jpg", Arg.Any<CancellationToken>());
 
         var updated = await _sut.GetByIdAsync(container.Id);
-        updated!.ImageStoragePath.Should().Be("/uploads/containers/id/main-new.jpg");
+        updated!.ImageStoragePath.Should().StartWith($"/uploads/containers/{container.Id}/");
+        updated.ImageStoragePath.Should().EndWith(".jpg");
     }
 
     [HumansFact]
@@ -124,6 +126,19 @@ public class ContainerImageServiceTests : IDisposable
 
         await _sut.DeleteAsync(container.Id);
 
-        _imageStorage.Received(1).DeleteImage("uploads/containers/id/main.jpg");
+        await _fileStorage.Received(1).DeleteAsync("uploads/containers/id/main.jpg", Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task CreateAsync_RejectsImageWithUnsupportedExtension()
+    {
+        var act = async () => await _sut.CreateAsync(new ContainerData(
+            CampId: CampId,
+            Name: "Bad",
+            Description: null,
+            MainImage: new(Stream.Null, "image/jpeg", "trojan.html", 1024)));
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*end in .jpg*");
     }
 }

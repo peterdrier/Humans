@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Containers;
 using Humans.Application.Interfaces.Repositories;
@@ -8,22 +9,25 @@ namespace Humans.Application.Services.Containers;
 
 public sealed class ContainerService : IContainerService
 {
-    private static readonly string[] AllowedContentTypes = ["image/jpeg", "image/png", "image/webp"];
+    private static readonly HashSet<string> AllowedContentTypes =
+        new(StringComparer.OrdinalIgnoreCase) { "image/jpeg", "image/png", "image/webp" };
+    private static readonly HashSet<string> AllowedImageExtensions =
+        new(StringComparer.OrdinalIgnoreCase) { ".jpg", ".jpeg", ".png", ".webp" };
     private const long MaxImageBytes = 10 * 1024 * 1024;
 
     private readonly IContainerRepository _repo;
-    private readonly IContainerImageStorage _imageStorage;
+    private readonly IFileStorage _fileStorage;
     private readonly ICampService _campService;
     private readonly IClock _clock;
 
     public ContainerService(
         IContainerRepository repo,
-        IContainerImageStorage imageStorage,
+        IFileStorage fileStorage,
         ICampService campService,
         IClock clock)
     {
         _repo = repo;
-        _imageStorage = imageStorage;
+        _fileStorage = fileStorage;
         _campService = campService;
         _clock = clock;
     }
@@ -64,7 +68,7 @@ public sealed class ContainerService : IContainerService
 
         if (data.MainImage is not null)
         {
-            container.ImageStoragePath = await _imageStorage.SaveImageAsync(id, data.MainImage.Content, data.MainImage.ContentType, ContainerImageKind.Main, ct);
+            container.ImageStoragePath = await SaveImageAsync(id, data.MainImage, ct);
             container.ImageContentType = data.MainImage.ContentType;
             container.ImageFileName = data.MainImage.FileName;
         }
@@ -86,7 +90,7 @@ public sealed class ContainerService : IContainerService
 
         if (data.RemoveMainImage && container.ImageStoragePath is not null)
         {
-            _imageStorage.DeleteImage(container.ImageStoragePath);
+            await _fileStorage.DeleteAsync(container.ImageStoragePath, ct);
             container.ImageStoragePath = null;
             container.ImageContentType = null;
             container.ImageFileName = null;
@@ -95,9 +99,9 @@ public sealed class ContainerService : IContainerService
         {
             if (container.ImageStoragePath is not null)
             {
-                _imageStorage.DeleteImage(container.ImageStoragePath);
+                await _fileStorage.DeleteAsync(container.ImageStoragePath, ct);
             }
-            container.ImageStoragePath = await _imageStorage.SaveImageAsync(id, data.MainImage.Content, data.MainImage.ContentType, ContainerImageKind.Main, ct);
+            container.ImageStoragePath = await SaveImageAsync(id, data.MainImage, ct);
             container.ImageContentType = data.MainImage.ContentType;
             container.ImageFileName = data.MainImage.FileName;
         }
@@ -113,7 +117,7 @@ public sealed class ContainerService : IContainerService
 
         if (container.ImageStoragePath is not null)
         {
-            _imageStorage.DeleteImage(container.ImageStoragePath);
+            await _fileStorage.DeleteAsync(container.ImageStoragePath, ct);
         }
 
         // Placement-image files for this container are not cleaned up on
@@ -206,6 +210,23 @@ public sealed class ContainerService : IContainerService
         {
             throw new InvalidOperationException("Image must be under 10 MB.");
         }
+        // Filename extension must also be on the whitelist — a client could
+        // pass MIME validation with image/jpeg but supply a .html filename,
+        // and static-file middleware would then serve the upload as HTML.
+        var ext = Path.GetExtension(image.FileName);
+        if (!AllowedImageExtensions.Contains(ext))
+        {
+            throw new InvalidOperationException(
+                "Image filename must end in .jpg, .jpeg, .png, or .webp.");
+        }
+    }
+
+    private async Task<string> SaveImageAsync(Guid containerId, ContainerImageUpload image, CancellationToken ct)
+    {
+        var ext = Path.GetExtension(image.FileName);
+        var key = $"uploads/containers/{containerId}/{Guid.NewGuid()}{ext}";
+        await _fileStorage.SaveAsync(key, image.Content, ct);
+        return key;
     }
 
     private static ContainerDto ToDto(Container c) => new(

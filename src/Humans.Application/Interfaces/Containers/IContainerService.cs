@@ -38,14 +38,6 @@ public record ContainerCampGroup(
 
 public record ContainerWithPlacement(ContainerDto Container, ContainerPlacementDto? Placement);
 
-public interface IContainerImageStorage
-{
-    Task<string> SaveImageAsync(Guid containerId, Stream stream, string contentType, ContainerImageKind kind, CancellationToken ct = default);
-    void DeleteImage(string storagePath);
-}
-
-public enum ContainerImageKind { Main, Placement }
-
 public record ContainerImageUpload(Stream Content, string ContentType, string FileName, long Length);
 
 public record ContainerDto(

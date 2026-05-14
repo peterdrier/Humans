@@ -281,8 +281,8 @@ public class CityPlanningApiController : ControllerBase
         var container = await _containerService.GetByIdAsync(id, cancellationToken);
         if (container is null) return NotFound();
 
-        var entity = new Container { Id = container.Id, CampId = container.CampId };
-        var authResult = await _authorizationService.AuthorizeAsync(User, entity, ContainerPlacementRequirement.Place);
+        var authResult = await _authorizationService.AuthorizeAsync(
+            User, ContainerAuthorizationTarget.For(container), ContainerOperationRequirement.Place);
         if (!authResult.Succeeded) return Forbid();
 
         if (string.IsNullOrWhiteSpace(request.GeoJson) || !IsValidContainerPlacementGeoJson(request.GeoJson))
@@ -302,8 +302,8 @@ public class CityPlanningApiController : ControllerBase
         var container = await _containerService.GetByIdAsync(id, cancellationToken);
         if (container is null) return NotFound();
 
-        var entity = new Container { Id = container.Id, CampId = container.CampId };
-        var authResult = await _authorizationService.AuthorizeAsync(User, entity, ContainerPlacementRequirement.Place);
+        var authResult = await _authorizationService.AuthorizeAsync(
+            User, ContainerAuthorizationTarget.For(container), ContainerOperationRequirement.Place);
         if (!authResult.Succeeded) return Forbid();
 
         await _containerService.ClearPlacementAsync(id, year, cancellationToken);
