@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Profiles;
@@ -6,6 +7,8 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Dashboard;
 using Humans.Domain.Entities;
+using Humans.Domain.Enums;
+using NodaTime;
 using NSubstitute;
 using Xunit;
 
@@ -33,23 +36,27 @@ public class AdminDashboardServiceTests
         var u1 = Guid.NewGuid();
         var u2 = Guid.NewGuid();
         var u3 = Guid.NewGuid();
-        var users = new List<User>
+        var u4Suspended = Guid.NewGuid();
+        var snapshot = new List<UserInfo>
         {
-            new() { Id = u1 },
-            new() { Id = u2 },
-            new() { Id = u3 },
+            MakeUserInfo(u1, "en"),
+            MakeUserInfo(u2, "en"),
+            MakeUserInfo(u3, "es"),
+            // Suspended user must NOT be counted in the language tally — verifies
+            // the in-memory filter respects the Active+MissingConsents union.
+            MakeUserInfo(u4Suspended, "fr"),
         };
-        _userService.GetAllUsersAsync(Arg.Any<CancellationToken>()).Returns(users);
+        _userService.GetAllUserInfos().Returns(snapshot);
 
         var partition = new MembershipPartition(
             IncompleteSignup: [],
             PendingApproval: [],
             Active: [u1, u2],
             MissingConsents: [u3],
-            Suspended: [],
+            Suspended: [u4Suspended],
             PendingDeletion: []);
         _membershipCalculator.PartitionUsersAsync(
-                Arg.Is<IEnumerable<Guid>>(ids => ids.Count() == 3),
+                Arg.Is<IEnumerable<Guid>>(ids => ids.Count() == 4),
                 Arg.Any<CancellationToken>())
             .Returns(partition);
 
@@ -60,21 +67,14 @@ public class AdminDashboardServiceTests
                 Total: 50, Approved: 40, Rejected: 10,
                 ColaboradorApplied: 30, AsociadoApplied: 20));
 
-        // Language distribution: pass exactly the Active+MissingConsents union
-        var unionExpectation = (IReadOnlyCollection<Guid>)((IEnumerable<Guid>)[u1, u2, u3]).ToList();
-        _userService.GetLanguageDistributionForUserIdsAsync(
-                Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 3),
-                Arg.Any<CancellationToken>())
-            .Returns([("en", 2), ("es", 1)]);
-
         var sut = BuildSut();
 
         var result = await sut.GetAdminDashboardAsync();
 
-        result.TotalMembers.Should().Be(3);
+        result.TotalMembers.Should().Be(4);
         result.ActiveMembers.Should().Be(2);
         result.MissingConsents.Should().Be(1);
-        result.Suspended.Should().Be(0);
+        result.Suspended.Should().Be(1);
         result.PendingApplications.Should().Be(7);
         result.TotalApplications.Should().Be(50);
         result.ApprovedApplications.Should().Be(40);
@@ -84,7 +84,27 @@ public class AdminDashboardServiceTests
         result.LanguageDistribution.Should().HaveCount(2);
         result.LanguageDistribution.Should().Contain(l => l.Language == "en" && l.Count == 2);
         result.LanguageDistribution.Should().Contain(l => l.Language == "es" && l.Count == 1);
+        // Suspended user's "fr" must NOT appear.
+        result.LanguageDistribution.Should().NotContain(l => l.Language == "fr");
     }
+
+    private static UserInfo MakeUserInfo(Guid id, string preferredLanguage) => UserInfo.Create(
+        user: new User
+        {
+            Id = id,
+            DisplayName = "U",
+            PreferredLanguage = preferredLanguage,
+            CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+            GoogleEmailStatus = GoogleEmailStatus.Unknown,
+        },
+        userEmails: Array.Empty<UserEmail>(),
+        eventParticipations: Array.Empty<EventParticipation>(),
+        externalLogins: Array.Empty<(string, string)>(),
+        profile: null,
+        contactFields: Array.Empty<ContactField>(),
+        profileLanguages: Array.Empty<ProfileLanguage>(),
+        volunteerHistory: Array.Empty<VolunteerHistoryEntry>(),
+        communicationPreferences: Array.Empty<CommunicationPreference>());
 
     [HumansFact]
     public async Task GetPendingReviewCountAsync_DelegatesToProfileService()

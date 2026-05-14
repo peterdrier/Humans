@@ -13,6 +13,7 @@ namespace Humans.Application.Interfaces.Users;
 /// <remarks>
 /// Surface-budget recent history (newest first):
 /// <list type="bullet">
+///   <item>33→32 — admin dashboard language tile (PR #553 follow-up): removed GetLanguageDistributionForUserIdsAsync. Sole caller (AdminDashboardService) now groups in memory over the cached UserInfo snapshot rather than a per-render SQL GROUP BY against `users` — eliminates a DB round-trip on every admin dashboard render.</item>
 ///   <item>32→33 — admin stats + /Users/Admin/Debug + /Tickets Venn: added GetAllUserInfos. Snapshot accessor — the cache is the canonical read-model; all aggregate consumers read from it rather than re-querying the underlying tables.</item>
 ///   <item>32→31 — mailer-inbound-import follow-up: removed GetDisplayNamesByIdsAsync. HumanViewComponent already renders the cached DisplayName from a userId Guid; pre-fetching the dictionary was redundant.</item>
 ///   <item>33→32 — merge with main: issue-695 HUM0009 service-DbContext analyzer PR landed on main with net -1 (removed two [Obsolete] Google-email methods TrySetGoogleEmailAsync + SetGoogleEmailAsync; added DeleteUsersAsync for admin dev-reset).</item>
@@ -27,7 +28,7 @@ namespace Humans.Application.Interfaces.Users;
 ///   <item>-1 GetContactUsersAsync removed (/Contacts surface deleted in PR 2 of email-identity-decoupling — only ContactService called it).</item>
 /// </list>
 /// </remarks>
-[SurfaceBudget(33)]
+[SurfaceBudget(32)]
 public interface IUserService : IApplicationService, IUserMerge
 {
     /// <summary>
@@ -128,15 +129,6 @@ public interface IUserService : IApplicationService, IUserMerge
     /// Used by admin list views that must include profileless users.
     /// </summary>
     Task<IReadOnlyList<User>> GetAllUsersAsync(CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns the language distribution for the given user ids, grouped by
-    /// <see cref="User.PreferredLanguage"/>. Used by the admin dashboard
-    /// to render language stats for approved humans.
-    /// </summary>
-    Task<IReadOnlyList<(string Language, int Count)>>
-        GetLanguageDistributionForUserIdsAsync(
-            IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
 
     /// <summary>
     /// Purges a human at the User aggregate — removes all UserEmail rows for

@@ -52,16 +52,6 @@ public interface IUserRepository : IRepository
     Task<IReadOnlyList<User>> GetAllAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// Returns the language distribution of the given user ids, grouped by
-    /// <see cref="User.PreferredLanguage"/>. Used by the admin dashboard to
-    /// render language stats for approved humans after the caller has
-    /// resolved the approved user id set from the Profile section.
-    /// </summary>
-    Task<IReadOnlyList<(string Language, int Count)>>
-        GetLanguageDistributionForUserIdsAsync(
-            IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
-
-    /// <summary>
     /// Finds a user whose <c>Email</c> or <c>GoogleEmail</c> matches the given
     /// normalized address (case-insensitive). If <paramref name="alternateEmail"/>
     /// is non-null, also matches users whose email matches the alternate form

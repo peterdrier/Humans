@@ -78,25 +78,6 @@ public sealed class UserRepository : IUserRepository
             .ToListAsync(ct);
     }
 
-    public async Task<IReadOnlyList<(string Language, int Count)>>
-        GetLanguageDistributionForUserIdsAsync(
-            IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
-    {
-        if (userIds.Count == 0)
-            return [];
-
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var grouped = await ctx.Users
-            .AsNoTracking()
-            .Where(u => userIds.Contains(u.Id))
-            .GroupBy(u => u.PreferredLanguage)
-            .Select(g => new { Language = g.Key, Count = g.Count() })
-            .OrderByDescending(g => g.Count)
-            .ToListAsync(ct);
-
-        return grouped.Select(g => (g.Language, g.Count)).ToList();
-    }
-
     public async Task<User?> GetByEmailOrAlternateAsync(
         string normalizedEmail, string? alternateEmail, CancellationToken ct = default)
     {

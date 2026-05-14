@@ -126,11 +126,6 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
     public Task<IReadOnlyList<User>> GetAllUsersAsync(CancellationToken ct = default) =>
         _repo.GetAllAsync(ct);
 
-    public Task<IReadOnlyList<(string Language, int Count)>>
-        GetLanguageDistributionForUserIdsAsync(
-            IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
-        _repo.GetLanguageDistributionForUserIdsAsync(userIds, ct);
-
     public async Task<string?> PurgeOwnDataAsync(Guid userId, CancellationToken ct = default)
     {
         var displayName = await _repo.PurgeAsync(userId, ct);

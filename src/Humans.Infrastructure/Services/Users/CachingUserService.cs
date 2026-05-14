@@ -269,11 +269,6 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
     public Task<IReadOnlyList<User>> GetAllUsersAsync(CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.GetAllUsersAsync(ct));
 
-    public Task<IReadOnlyList<(string Language, int Count)>>
-        GetLanguageDistributionForUserIdsAsync(
-            IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
-        WithInnerAsync(inner => inner.GetLanguageDistributionForUserIdsAsync(userIds, ct));
-
     public Task<User?> GetByEmailOrAlternateAsync(string email, CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.GetByEmailOrAlternateAsync(email, ct));
 

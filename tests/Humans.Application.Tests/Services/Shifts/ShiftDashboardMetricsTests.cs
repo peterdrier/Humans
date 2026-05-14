@@ -1060,7 +1060,6 @@ public class ShiftDashboardMetricsTests : IDisposable
         public Task<User?> GetByEmailOrAlternateAsync(string email, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<IReadOnlyList<User>> GetContactUsersAsync(string? search, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<Guid?> GetOtherUserIdHavingGoogleEmailAsync(string email, Guid excludeUserId, CancellationToken ct = default) => throw new NotSupportedException();
-        public Task<IReadOnlyList<(string Language, int Count)>> GetLanguageDistributionForUserIdsAsync(IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<string?> PurgeOwnDataAsync(Guid userId, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<ExpiredDeletionAnonymizationResult?> ApplyExpiredDeletionAnonymizationAsync(Guid userId, CancellationToken ct = default) => throw new NotSupportedException();
         public Task SetLastConsentReminderSentAsync(Guid userId, Instant sentAt, CancellationToken ct = default) => throw new NotSupportedException();
