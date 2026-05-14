@@ -36,12 +36,14 @@ public sealed class UserServiceContactSourceCountTests : IDisposable
         var userEmailRepo = new UserEmailRepository(factory);
         var profileRepo = new ProfileRepository(factory, new FakeClock(Instant.FromUtc(2026, 1, 1, 0, 0)));
         var contactFieldRepo = new ContactFieldRepository(factory);
+        var communicationPreferenceRepo = new CommunicationPreferenceRepository(factory);
 
         _service = new UserService(
             userRepo,
             userEmailRepo,
             profileRepo,
             contactFieldRepo,
+            communicationPreferenceRepo,
             Substitute.For<IFullProfileInvalidator>(),
             Substitute.For<IAdminAuthorizationService>(),
             new FakeClock(Instant.FromUtc(2026, 1, 1, 0, 0)),
