@@ -1,6 +1,7 @@
 using System.Security.Claims;
+using Humans.Application;
 using Humans.Application.Interfaces.Consent;
-using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Testing;
@@ -28,7 +29,7 @@ public class ConsentControllerTests
 {
     private readonly UserManager<User> _userManager;
     private readonly IConsentService _consentService = Substitute.For<IConsentService>();
-    private readonly IProfileService _profileService = Substitute.For<IProfileService>();
+    private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IStringLocalizer<Humans.Web.SharedResource> _localizer =
         Substitute.For<IStringLocalizer<Humans.Web.SharedResource>>();
     private readonly DefaultHttpContext _http = new();
@@ -57,7 +58,7 @@ public class ConsentControllerTests
         var ctrl = new ConsentController(
             _userManager,
             _consentService,
-            _profileService,
+            _userService,
             _localizer,
             NullLogger<ConsentController>.Instance);
         ctrl.ControllerContext = new ControllerContext
@@ -94,12 +95,30 @@ public class ConsentControllerTests
         UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
     };
 
+    private static UserInfo WrapInUserInfo(Profile profile) => UserInfo.Create(
+        user: new User
+        {
+            Id = profile.UserId,
+            DisplayName = profile.BurnerName ?? "",
+            PreferredLanguage = "en",
+            CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+            GoogleEmailStatus = GoogleEmailStatus.Unknown,
+        },
+        userEmails: Array.Empty<UserEmail>(),
+        eventParticipations: Array.Empty<EventParticipation>(),
+        externalLogins: Array.Empty<(string, string)>(),
+        profile: profile,
+        contactFields: Array.Empty<ContactField>(),
+        profileLanguages: Array.Empty<ProfileLanguage>(),
+        volunteerHistory: Array.Empty<VolunteerHistoryEntry>(),
+        communicationPreferences: Array.Empty<CommunicationPreference>());
+
     [HumansFact]
     public async Task Review_Get_StubProfile_RedirectsToProfileEdit()
     {
         var userId = Guid.NewGuid();
-        _profileService.GetProfileAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(StubProfile(userId));
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(WrapInUserInfo(StubProfile(userId)));
         var ctrl = BuildSut(userId);
 
         var result = await ctrl.Review(Guid.NewGuid());
@@ -116,8 +135,8 @@ public class ConsentControllerTests
     public async Task Submit_Post_StubProfile_RedirectsToProfileEdit_AndDoesNotSubmit()
     {
         var userId = Guid.NewGuid();
-        _profileService.GetProfileAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(StubProfile(userId));
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(WrapInUserInfo(StubProfile(userId)));
         var ctrl = BuildSut(userId);
 
         var result = await ctrl.Submit(new Humans.Web.Models.ConsentSubmitModel
@@ -138,8 +157,8 @@ public class ConsentControllerTests
     public async Task Review_Get_ActiveProfile_DoesNotRedirect()
     {
         var userId = Guid.NewGuid();
-        _profileService.GetProfileAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(ActiveProfile(userId));
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(WrapInUserInfo(ActiveProfile(userId)));
         var documentVersionId = Guid.NewGuid();
         // Service returns nothing — controller will NotFound. The point of
         // the test is that the Stub redirect was NOT taken; a NotFound is

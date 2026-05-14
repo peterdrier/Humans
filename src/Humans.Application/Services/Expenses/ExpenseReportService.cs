@@ -6,7 +6,6 @@ using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Expenses;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Holded;
-using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
@@ -31,7 +30,6 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
     private readonly IBudgetService _budgetService;
     private readonly ITeamService _teamService;
     private readonly IUserService _userService;
-    private readonly IProfileService _profileService;
     private readonly IAuditLogService _auditLogService;
     private readonly IHoldedClient _holdedClient;
     private readonly IClock _clock;
@@ -43,7 +41,6 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
         IBudgetService budgetService,
         ITeamService teamService,
         IUserService userService,
-        IProfileService profileService,
         IAuditLogService auditLogService,
         IHoldedClient holdedClient,
         IClock clock,
@@ -54,7 +51,6 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
         _budgetService = budgetService;
         _teamService = teamService;
         _userService = userService;
-        _profileService = profileService;
         _auditLogService = auditLogService;
         _holdedClient = holdedClient;
         _clock = clock;
@@ -353,7 +349,7 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
             throw new InvalidOperationException("Every line must have an attachment before submitting.");
 
         // Validate + snapshot IBAN
-        var profile = await _profileService.GetProfileAsync(submitterUserId, ct);
+        var profile = (await _userService.GetUserInfoAsync(submitterUserId, ct))?.Profile;
         if (profile?.Iban is null)
             throw new InvalidOperationException("Submitter must have an IBAN set on their profile.");
 
@@ -855,7 +851,7 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
         }
 
         // Fetch current IBAN from profile (masked per spec)
-        var profile = await _profileService.GetProfileAsync(userId, ct);
+        var profile = (await _userService.GetUserInfoAsync(userId, ct))?.Profile;
         var maskedIban = string.IsNullOrEmpty(profile?.Iban)
             ? null
             : IbanFormatter.Mask(profile.Iban);

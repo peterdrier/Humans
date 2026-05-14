@@ -1,10 +1,10 @@
 using AwesomeAssertions;
+using Humans.Application;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Expenses;
 using Humans.Application.Interfaces.Holded;
-using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
@@ -33,7 +33,6 @@ public class ExpenseReportServiceTests
     private readonly IBudgetService _budgetService;
     private readonly ITeamService _teamService;
     private readonly IUserService _userService;
-    private readonly IProfileService _profileService;
     private readonly IAuditLogService _auditLogService;
     private readonly ExpenseReportService _sut;
 
@@ -49,7 +48,6 @@ public class ExpenseReportServiceTests
         _budgetService = Substitute.For<IBudgetService>();
         _teamService = Substitute.For<ITeamService>();
         _userService = Substitute.For<IUserService>();
-        _profileService = Substitute.For<IProfileService>();
         _auditLogService = Substitute.For<IAuditLogService>();
 
         _sut = new ExpenseReportService(
@@ -58,12 +56,29 @@ public class ExpenseReportServiceTests
             _budgetService,
             _teamService,
             _userService,
-            _profileService,
             _auditLogService,
             Substitute.For<IHoldedClient>(),
             new FakeClock(FakeNow),
             NullLogger<ExpenseReportService>.Instance);
     }
+
+    private static UserInfo WrapInUserInfo(Profile profile) => UserInfo.Create(
+        user: new User
+        {
+            Id = profile.UserId,
+            DisplayName = profile.BurnerName ?? "",
+            PreferredLanguage = "en",
+            CreatedAt = FakeNow,
+            GoogleEmailStatus = GoogleEmailStatus.Unknown,
+        },
+        userEmails: Array.Empty<UserEmail>(),
+        eventParticipations: Array.Empty<EventParticipation>(),
+        externalLogins: Array.Empty<(string, string)>(),
+        profile: profile,
+        contactFields: Array.Empty<ContactField>(),
+        profileLanguages: Array.Empty<ProfileLanguage>(),
+        volunteerHistory: Array.Empty<VolunteerHistoryEntry>(),
+        communicationPreferences: Array.Empty<CommunicationPreference>());
 
     // ─────────────────────────────── 4.2 ─────────────────────────────────────
 
@@ -367,8 +382,8 @@ public class ExpenseReportServiceTests
         await _expenseRepo.SetLineAttachmentAsync(lineId, attachId);
 
         // Profile with no IBAN
-        _profileService.GetProfileAsync(submitter, Arg.Any<CancellationToken>())
-            .Returns(new Profile { Id = Guid.NewGuid(), UserId = submitter });
+        _userService.GetUserInfoAsync(submitter, Arg.Any<CancellationToken>())
+            .Returns(WrapInUserInfo(new Profile { Id = Guid.NewGuid(), UserId = submitter }));
 
         var act = async () => await _sut.SubmitAsync(id, submitter);
         await act.Should().ThrowAsync<InvalidOperationException>()
@@ -736,8 +751,8 @@ public class ExpenseReportServiceTests
     {
         _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new User { Id = userId, DisplayName = displayName });
-        _profileService.GetProfileAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new Profile { Id = Guid.NewGuid(), UserId = userId, Iban = iban });
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(WrapInUserInfo(new Profile { Id = Guid.NewGuid(), UserId = userId, Iban = iban }));
     }
 
     private void SetupCoordinatorAuthz(Guid categoryId, Guid teamId, Guid coordinatorUserId)

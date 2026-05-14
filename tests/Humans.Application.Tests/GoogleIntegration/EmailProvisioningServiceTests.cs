@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Email;
@@ -9,6 +10,8 @@ using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.GoogleIntegration;
 using Humans.Domain.Entities;
+using Humans.Domain.Enums;
+using NodaTime;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Xunit;
@@ -93,7 +96,6 @@ public class EmailProvisioningServiceTests
     private sealed record ProvisioningFixture(
         EmailProvisioningService Service,
         IUserService UserService,
-        IProfileService ProfileService,
         IGoogleWorkspaceUserService WorkspaceUserService,
         IUserEmailService UserEmailService,
         ITeamService TeamService,
@@ -104,7 +106,6 @@ public class EmailProvisioningServiceTests
     private static ProvisioningFixture BuildFixture()
     {
         var userService = Substitute.For<IUserService>();
-        var profileService = Substitute.For<IProfileService>();
         var workspace = Substitute.For<IGoogleWorkspaceUserService>();
         var userEmail = Substitute.For<IUserEmailService>();
         var teamService = Substitute.For<ITeamService>();
@@ -113,14 +114,32 @@ public class EmailProvisioningServiceTests
         var audit = Substitute.For<IAuditLogService>();
 
         var service = new EmailProvisioningService(
-            userService, profileService, workspace, userEmail, teamService,
+            userService, workspace, userEmail, teamService,
             email, notify, audit,
             NullLogger<EmailProvisioningService>.Instance);
 
         return new ProvisioningFixture(
-            service, userService, profileService, workspace, userEmail,
+            service, userService, workspace, userEmail,
             teamService, email, notify, audit);
     }
+
+    private static UserInfo WrapInUserInfo(Guid userId, Profile profile) => UserInfo.Create(
+        user: new User
+        {
+            Id = userId,
+            DisplayName = profile.BurnerName ?? "",
+            PreferredLanguage = "en",
+            CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+            GoogleEmailStatus = GoogleEmailStatus.Unknown,
+        },
+        userEmails: Array.Empty<UserEmail>(),
+        eventParticipations: Array.Empty<EventParticipation>(),
+        externalLogins: Array.Empty<(string, string)>(),
+        profile: profile,
+        contactFields: Array.Empty<ContactField>(),
+        profileLanguages: Array.Empty<ProfileLanguage>(),
+        volunteerHistory: Array.Empty<VolunteerHistoryEntry>(),
+        communicationPreferences: Array.Empty<CommunicationPreference>());
 
     private static void StubTargetUser(ProvisioningFixture f, Guid userId, string? oauthEmail = "target@example.com")
     {
@@ -131,8 +150,8 @@ public class EmailProvisioningServiceTests
                 Email = oauthEmail,
                 DisplayName = "Target",
             });
-        f.ProfileService.GetProfileAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new Profile { FirstName = "Target", LastName = "Two" });
+        f.UserService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(WrapInUserInfo(userId, new Profile { FirstName = "Target", LastName = "Two" }));
     }
 
     [HumansFact]
@@ -203,8 +222,8 @@ public class EmailProvisioningServiceTests
 
         var userId = Guid.NewGuid();
         StubTargetUser(f, userId, oauthEmail: "person@example.com");
-        f.ProfileService.GetProfileAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new Profile { FirstName = "Person", LastName = "Test" });
+        f.UserService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(WrapInUserInfo(userId, new Profile { FirstName = "Person", LastName = "Test" }));
         f.UserEmailService.GetUserEmailsAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<UserEmailEditDto>());
 
@@ -244,8 +263,8 @@ public class EmailProvisioningServiceTests
         var userId = Guid.NewGuid();
         var existingRowId = Guid.NewGuid();
         StubTargetUser(f, userId, oauthEmail: "person@example.com");
-        f.ProfileService.GetProfileAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new Profile { FirstName = "Person", LastName = "Test" });
+        f.UserService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(WrapInUserInfo(userId, new Profile { FirstName = "Person", LastName = "Test" }));
 
         // Pre-existing UNVERIFIED row before AdminMarkVerifiedAsync runs;
         // post-verification the row reads back verified but IsGoogle=false

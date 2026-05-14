@@ -7,6 +7,7 @@ using Humans.Web.Authorization;
 using Humans.Web.Models;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Users;
 
 namespace Humans.Web.Controllers;
 
@@ -15,20 +16,20 @@ namespace Humans.Web.Controllers;
 public class AdminDuplicateAccountsController : HumansControllerBase
 {
     private readonly IDuplicateAccountService _duplicateService;
-    private readonly IProfileService _profileService;
+    private readonly IUserService _userService;
     private readonly ITeamService _teamService;
     private readonly ILogger<AdminDuplicateAccountsController> _logger;
 
     public AdminDuplicateAccountsController(
         UserManager<User> userManager,
         IDuplicateAccountService duplicateService,
-        IProfileService profileService,
+        IUserService userService,
         ITeamService teamService,
         ILogger<AdminDuplicateAccountsController> logger)
         : base(userManager)
     {
         _duplicateService = duplicateService;
-        _profileService = profileService;
+        _userService = userService;
         _teamService = teamService;
         _logger = logger;
     }
@@ -117,7 +118,7 @@ public class AdminDuplicateAccountsController : HumansControllerBase
     private async Task<ProfileSummaryViewModel> BuildProfileCardAsync(
         Guid userId, DuplicateAccountInfo accountInfo)
     {
-        var profile = await _profileService.GetProfileAsync(userId);
+        var profile = (await _userService.GetUserInfoAsync(userId))?.Profile;
         var teams = await _teamService.GetUserTeamsAsync(userId);
         var activeTeamNames = teams
             .Where(m => m.LeftAt is null)

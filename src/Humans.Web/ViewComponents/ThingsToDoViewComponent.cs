@@ -6,26 +6,26 @@ using Humans.Domain.Enums;
 using Humans.Web.Models;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Governance;
-using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Users;
 
 namespace Humans.Web.ViewComponents;
 
 public class ThingsToDoViewComponent : ViewComponent
 {
-    private readonly IProfileService _profileService;
+    private readonly IUserService _userService;
     private readonly IShiftManagementService _shiftMgmt;
     private readonly IMembershipCalculator _membershipCalculator;
     private readonly IStringLocalizer<SharedResource> _localizer;
     private readonly ILogger<ThingsToDoViewComponent> _logger;
 
     public ThingsToDoViewComponent(
-        IProfileService profileService,
+        IUserService userService,
         IShiftManagementService shiftMgmt,
         IMembershipCalculator membershipCalculator,
         IStringLocalizer<SharedResource> localizer,
         ILogger<ThingsToDoViewComponent> logger)
     {
-        _profileService = profileService;
+        _userService = userService;
         _shiftMgmt = shiftMgmt;
         _membershipCalculator = membershipCalculator;
         _localizer = localizer;
@@ -42,7 +42,7 @@ public class ThingsToDoViewComponent : ViewComponent
 
         try
         {
-            var profile = await _profileService.GetProfileAsync(userId);
+            var profile = (await _userService.GetUserInfoAsync(userId))?.Profile;
             var membershipSnapshot = await _membershipCalculator.GetMembershipSnapshotAsync(userId);
 
             // Hidden/derived required fields can cap real-user completion in the

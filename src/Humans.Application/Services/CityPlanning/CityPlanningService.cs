@@ -1,7 +1,6 @@
 using Humans.Application.Configuration;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.CitiPlanning;
-using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
@@ -21,10 +20,11 @@ namespace Humans.Application.Services.CityPlanning;
 /// <remarks>
 /// Cross-section reads route through the other sections' public service
 /// interfaces: <see cref="ICampService"/> for camp season metadata,
-/// <see cref="ITeamService"/> for city-planning team membership,
-/// <see cref="IProfileService"/> for burner names on display, and
-/// <see cref="IUserService"/> for user display names on polygon history
-/// (replaces the prior cross-domain <c>.Include(h => h.ModifiedByUser)</c>).
+/// <see cref="ITeamService"/> for city-planning team membership, and
+/// <see cref="IUserService"/> for the cached <see cref="UserInfo"/>
+/// read-model used to resolve burner names on display and user display
+/// names on polygon history (replaces the prior cross-domain
+/// <c>.Include(h => h.ModifiedByUser)</c>).
 /// </remarks>
 public sealed class CityPlanningService : ICityPlanningService
 {
@@ -33,7 +33,6 @@ public sealed class CityPlanningService : ICityPlanningService
     private readonly IOptions<CityPlanningOptions> _options;
     private readonly ICampService _campService;
     private readonly ITeamService _teamService;
-    private readonly IProfileService _profileService;
     private readonly IUserService _userService;
 
     public CityPlanningService(
@@ -42,7 +41,6 @@ public sealed class CityPlanningService : ICityPlanningService
         IOptions<CityPlanningOptions> options,
         ICampService campService,
         ITeamService teamService,
-        IProfileService profileService,
         IUserService userService)
     {
         _repo = repo;
@@ -50,7 +48,6 @@ public sealed class CityPlanningService : ICityPlanningService
         _options = options;
         _campService = campService;
         _teamService = teamService;
-        _profileService = profileService;
         _userService = userService;
     }
 
@@ -86,10 +83,8 @@ public sealed class CityPlanningService : ICityPlanningService
     public async Task<string?> GetUserDisplayNameAsync(
         Guid userId, CancellationToken cancellationToken = default)
     {
-        // Use targeted per-user lookup (GetProfileAsync) instead of GetFullProfileAsync
-        // to avoid warming the full profile cache on cold-cache paths like SignalR connect.
-        var profile = await _profileService.GetProfileAsync(userId, cancellationToken);
-        return profile?.BurnerName;
+        var info = await _userService.GetUserInfoAsync(userId, cancellationToken);
+        return info?.Profile?.BurnerName;
     }
 
     public async Task<List<CampSeasonSummaryDto>> GetCampSeasonsWithoutCampPolygonAsync(

@@ -61,6 +61,7 @@ Atomic rules. Fetch the body when the description's trigger matches your task. S
 - [`no-extensions-for-owned-classes`](code/no-extensions-for-owned-classes.md) — methods/properties go on owned classes; extensions only for BCL/NuGet types
 - [`no-hallucinated-content`](code/no-hallucinated-content.md) — never hardcode invented copy (benefits, policies, pricing); wire to admin-editable fields or ask
 - [`no-magic-strings`](code/no-magic-strings.md) — `nameof()`/constants/enums for code-identifier strings (`RedirectToAction`, role names, audit entity types)
+- [`no-paving-obsolete-fields`](code/no-paving-obsolete-fields.md) — when migrating a read/write, switch to the canonical replacement; never carry the obsolete field/predicate into new code. `Profile.IsSuspended` → `State == Suspended`; `HasRequiredIdentityFields()` → `State == Stub`.
 - [`no-remove-unused-properties`](code/no-remove-unused-properties.md) — properties may be reflection-bound (serialization, change tracking); verify before removing
 - [`no-rename-serialized-fields`](code/no-rename-serialized-fields.md) — never rename properties on JSON-serialized classes; existing data expects current names
 - [`no-system-subfolder`](code/no-system-subfolder.md) — never create `System/` subfolder; shadows BCL `System`. Use `SystemSettings/`/`Platform/`/`Infra/`.

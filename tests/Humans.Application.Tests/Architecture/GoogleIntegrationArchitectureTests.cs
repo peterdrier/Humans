@@ -82,9 +82,9 @@ public class GoogleIntegrationArchitectureTests
         var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
 
         paramTypes.Should().Contain(typeof(IUserService),
-            because: "User reads and GoogleEmail set go through IUserService per design-rules §9");
-        paramTypes.Should().Contain(typeof(IProfileService),
-            because: "Profile reads (FirstName/LastName) go through IProfileService per design-rules §9");
+            because: "User and Profile reads (including FirstName/LastName) go through the cached UserInfo read-model on IUserService.GetUserInfoAsync per design-rules §9; GoogleEmail set also routes through IUserService");
+        paramTypes.Should().NotContain(typeof(IProfileService),
+            because: "Profile reads moved off IProfileService onto IUserService.GetUserInfoAsync — IProfileService is being retired in the IUserService consolidation");
         paramTypes.Should().Contain(typeof(IUserEmailService),
             because: "UserEmail reads/writes go through IUserEmailService per design-rules §9");
         paramTypes.Should().Contain(typeof(IGoogleWorkspaceUserService),

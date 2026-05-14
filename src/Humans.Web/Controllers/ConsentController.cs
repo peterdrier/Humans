@@ -3,9 +3,10 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
 using Humans.Domain.Entities;
+using Humans.Domain.Enums;
 using Humans.Web.Models;
 using Humans.Application.Interfaces.Consent;
-using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Users;
 
 namespace Humans.Web.Controllers;
 
@@ -13,20 +14,20 @@ namespace Humans.Web.Controllers;
 public class ConsentController : HumansControllerBase
 {
     private readonly IConsentService _consentService;
-    private readonly IProfileService _profileService;
+    private readonly IUserService _userService;
     private readonly IStringLocalizer<SharedResource> _localizer;
     private readonly ILogger<ConsentController> _logger;
 
     public ConsentController(
         UserManager<User> userManager,
         IConsentService consentService,
-        IProfileService profileService,
+        IUserService userService,
         IStringLocalizer<SharedResource> localizer,
         ILogger<ConsentController> logger)
         : base(userManager)
     {
         _consentService = consentService;
-        _profileService = profileService;
+        _userService = userService;
         _localizer = localizer;
         _logger = logger;
     }
@@ -155,11 +156,11 @@ public class ConsentController : HumansControllerBase
 
     private async Task<bool> IsStubProfileAsync(Guid userId)
     {
-        var profile = await _profileService.GetProfileAsync(userId);
+        var profile = (await _userService.GetUserInfoAsync(userId))?.Profile;
         // Treat a missing profile as non-Stub (NotFound semantics flow through
         // the existing service path); only block when the profile exists and
-        // is missing required identity fields.
-        return profile is not null && !profile.HasRequiredIdentityFields();
+        // is still in the Stub lifecycle stage.
+        return profile is not null && profile.State == ProfileState.Stub;
     }
 
     private IActionResult RedirectToProfileEditForStub()

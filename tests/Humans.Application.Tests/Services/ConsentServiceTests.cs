@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
+using Humans.Application;
 using Humans.Application.Interfaces;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
@@ -17,7 +18,6 @@ using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.GoogleIntegration;
-using Humans.Application.Interfaces.Profiles;
 using Humans.Domain.Enums;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
@@ -35,7 +35,6 @@ public class ConsentServiceTests : IDisposable
     private readonly ILegalDocumentSyncService _legalDocumentSyncService = Substitute.For<ILegalDocumentSyncService>();
     private readonly INotificationInboxService _notificationInboxService = Substitute.For<INotificationInboxService>();
     private readonly ISystemTeamSync _syncJob = Substitute.For<ISystemTeamSync>();
-    private readonly IProfileService _profileService = Substitute.For<IProfileService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IShiftSignupService _shiftSignupService = Substitute.For<IShiftSignupService>();
     private readonly IHumansMetrics _metrics = Substitute.For<IHumansMetrics>();
@@ -83,11 +82,12 @@ public class ConsentServiceTests : IDisposable
         _userService.GetMergedSourceIdsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns((IReadOnlySet<Guid>)new HashSet<Guid>());
 
-        // Default: requesting any profile returns an Active profile with all
-        // required identity fields populated. Tests that need a Stub-state
-        // (or missing) profile override this for the specific userId.
-        _profileService.GetProfileAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(callInfo => new Profile
+        // Default: requesting any user returns a UserInfo carrying an Active
+        // profile with all required identity fields populated. Tests that need
+        // a Stub-state (or missing) profile override this for the specific
+        // userId.
+        _userService.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo => WrapInUserInfo(new Profile
             {
                 Id = Guid.NewGuid(),
                 UserId = callInfo.ArgAt<Guid>(0),
@@ -97,7 +97,7 @@ public class ConsentServiceTests : IDisposable
                 State = ProfileState.Active,
                 CreatedAt = _clock.GetCurrentInstant(),
                 UpdatedAt = _clock.GetCurrentInstant()
-            });
+            }));
 
         _service = new ConsentService(
             consentRepository,
@@ -105,7 +105,6 @@ public class ConsentServiceTests : IDisposable
             _legalDocumentSyncService,
             _notificationInboxService,
             _syncJob,
-            _profileService,
             _userService,
             serviceProvider,
             _metrics,
@@ -118,6 +117,24 @@ public class ConsentServiceTests : IDisposable
         _dbContext.Dispose();
         GC.SuppressFinalize(this);
     }
+
+    private static UserInfo WrapInUserInfo(Profile profile) => UserInfo.Create(
+        user: new User
+        {
+            Id = profile.UserId,
+            DisplayName = profile.BurnerName ?? "",
+            PreferredLanguage = "en",
+            CreatedAt = profile.CreatedAt,
+            GoogleEmailStatus = GoogleEmailStatus.Unknown,
+        },
+        userEmails: Array.Empty<UserEmail>(),
+        eventParticipations: Array.Empty<EventParticipation>(),
+        externalLogins: Array.Empty<(string, string)>(),
+        profile: profile,
+        contactFields: Array.Empty<ContactField>(),
+        profileLanguages: Array.Empty<ProfileLanguage>(),
+        volunteerHistory: Array.Empty<VolunteerHistoryEntry>(),
+        communicationPreferences: Array.Empty<CommunicationPreference>());
 
     [HumansFact]
     public async Task SubmitConsentAsync_ValidConsent_CreatesRecord()
@@ -293,8 +310,8 @@ public class ConsentServiceTests : IDisposable
             CreatedAt = _clock.GetCurrentInstant(),
             UpdatedAt = _clock.GetCurrentInstant()
         };
-        _profileService.GetProfileAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(stubProfile);
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(WrapInUserInfo(stubProfile));
 
         var result = await _service.SubmitConsentAsync(userId, versionId, true, "127.0.0.1", "Agent");
 
@@ -321,8 +338,8 @@ public class ConsentServiceTests : IDisposable
             CreatedAt = _clock.GetCurrentInstant(),
             UpdatedAt = _clock.GetCurrentInstant()
         };
-        _profileService.GetProfileAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(activeProfile);
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(WrapInUserInfo(activeProfile));
 
         var result = await _service.SubmitConsentAsync(userId, versionId, true, "127.0.0.1", "Agent");
 
@@ -535,7 +552,7 @@ public class ConsentServiceTests : IDisposable
             CreatedAt = _clock.GetCurrentInstant(),
             UpdatedAt = _clock.GetCurrentInstant()
         };
-        _profileService.GetProfileAsync(userId, Arg.Any<CancellationToken>()).Returns(profile);
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(WrapInUserInfo(profile));
         await _dbContext.SaveChangesAsync();
 
         var (version, consent, fullName) = await _service.GetConsentReviewDetailAsync(versionId, userId);
@@ -562,7 +579,7 @@ public class ConsentServiceTests : IDisposable
             CreatedAt = _clock.GetCurrentInstant(),
             UpdatedAt = _clock.GetCurrentInstant()
         };
-        _profileService.GetProfileAsync(userId, Arg.Any<CancellationToken>()).Returns(profile);
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(WrapInUserInfo(profile));
         await _dbContext.SaveChangesAsync();
 
         var (version, consent, fullName) = await _service.GetConsentReviewDetailAsync(versionId, userId);
@@ -588,7 +605,7 @@ public class ConsentServiceTests : IDisposable
         var userId = Guid.NewGuid();
         var versionId = Guid.NewGuid();
         SeedDocumentVersion(versionId, "Test Doc", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "text" });
-        _profileService.GetProfileAsync(userId, Arg.Any<CancellationToken>()).Returns((Profile?)null);
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns((UserInfo?)null);
 
         var (version, consent, fullName) = await _service.GetConsentReviewDetailAsync(versionId, userId);
 

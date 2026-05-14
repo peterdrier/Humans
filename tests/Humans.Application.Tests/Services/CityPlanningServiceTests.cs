@@ -1,7 +1,7 @@
 using AwesomeAssertions;
+using Humans.Application;
 using Humans.Application.Configuration;
 using Humans.Application.Interfaces.Camps;
-using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.CityPlanning;
@@ -25,7 +25,6 @@ public class CityPlanningServiceTests : IDisposable
     private readonly FakeClock _clock;
     private readonly ICampService _campService;
     private readonly ITeamService _teamService;
-    private readonly IProfileService _profileService;
     private readonly IUserService _userService;
     private readonly CityPlanningService _sut;
     private readonly CityPlanningOptions _options = new() { CityPlanningTeamSlug = "city-planning" };
@@ -39,13 +38,30 @@ public class CityPlanningServiceTests : IDisposable
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 15, 12, 0, 0));
         _campService = Substitute.For<ICampService>();
         _teamService = Substitute.For<ITeamService>();
-        _profileService = Substitute.For<IProfileService>();
         _userService = Substitute.For<IUserService>();
         var repo = new CityPlanningRepository(new TestDbContextFactory(dbOptions));
         _sut = new CityPlanningService(
             repo, _clock, Options.Create(_options),
-            _campService, _teamService, _profileService, _userService);
+            _campService, _teamService, _userService);
     }
+
+    private static UserInfo WrapInUserInfo(Profile profile) => UserInfo.Create(
+        user: new User
+        {
+            Id = profile.UserId,
+            DisplayName = profile.BurnerName ?? "",
+            PreferredLanguage = "en",
+            CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+            GoogleEmailStatus = GoogleEmailStatus.Unknown,
+        },
+        userEmails: Array.Empty<UserEmail>(),
+        eventParticipations: Array.Empty<EventParticipation>(),
+        externalLogins: Array.Empty<(string, string)>(),
+        profile: profile,
+        contactFields: Array.Empty<ContactField>(),
+        profileLanguages: Array.Empty<ProfileLanguage>(),
+        volunteerHistory: Array.Empty<VolunteerHistoryEntry>(),
+        communicationPreferences: Array.Empty<CommunicationPreference>());
 
     public void Dispose()
     {
@@ -541,8 +557,8 @@ public class CityPlanningServiceTests : IDisposable
     public async Task GetUserDisplayNameAsync_ReturnsProfileBurnerName()
     {
         var userId = Guid.NewGuid();
-        _profileService.GetProfileAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new Profile { UserId = userId, BurnerName = "Burner Name" });
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(WrapInUserInfo(new Profile { UserId = userId, BurnerName = "Burner Name" }));
 
         var result = await _sut.GetUserDisplayNameAsync(userId);
 
@@ -553,8 +569,8 @@ public class CityPlanningServiceTests : IDisposable
     public async Task GetUserDisplayNameAsync_ReturnsNull_WhenNoProfile()
     {
         var userId = Guid.NewGuid();
-        _profileService.GetProfileAsync(userId, Arg.Any<CancellationToken>())
-            .Returns((Profile?)null);
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns((UserInfo?)null);
 
         var result = await _sut.GetUserDisplayNameAsync(userId);
 

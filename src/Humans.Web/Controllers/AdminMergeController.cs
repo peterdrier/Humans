@@ -3,9 +3,11 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
+using Humans.Domain.Enums;
 using Humans.Web.Authorization;
 using Humans.Web.Models;
 using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Users;
 using Humans.Application.Interfaces.Profiles;
 
 namespace Humans.Web.Controllers;
@@ -15,20 +17,20 @@ namespace Humans.Web.Controllers;
 public class AdminMergeController : HumansControllerBase
 {
     private readonly IAccountMergeService _mergeService;
-    private readonly IProfileService _profileService;
+    private readonly IUserService _userService;
     private readonly ITeamService _teamService;
     private readonly ILogger<AdminMergeController> _logger;
 
     public AdminMergeController(
         UserManager<User> userManager,
         IAccountMergeService mergeService,
-        IProfileService profileService,
+        IUserService userService,
         ITeamService teamService,
         ILogger<AdminMergeController> logger)
         : base(userManager)
     {
         _mergeService = mergeService;
-        _profileService = profileService;
+        _userService = userService;
         _teamService = teamService;
         _logger = logger;
     }
@@ -85,7 +87,7 @@ public class AdminMergeController : HumansControllerBase
 
     private async Task<ProfileSummaryViewModel> BuildProfileCardAsync(User user)
     {
-        var profile = await _profileService.GetProfileAsync(user.Id);
+        var profile = (await _userService.GetUserInfoAsync(user.Id))?.Profile;
         var teams = await _teamService.GetUserTeamsAsync(user.Id);
         var activeTeamNames = teams
             .Where(m => m.LeftAt is null)
@@ -101,7 +103,7 @@ public class AdminMergeController : HumansControllerBase
             ProfilePictureUrl = user.ProfilePictureUrl,
             PreferredLanguage = user.PreferredLanguage,
             MembershipTier = profile?.MembershipTier.ToString(),
-            MembershipStatus = profile?.IsSuspended == true ? "Suspended"
+            MembershipStatus = profile?.State == ProfileState.Suspended ? "Suspended"
                 : profile?.IsApproved == true ? "Active" : "Pending",
             MemberSince = profile?.CreatedAt.ToDateTimeUtc(),
             LastLogin = user.LastLoginAt?.ToDateTimeUtc(),

@@ -22,15 +22,16 @@ namespace Humans.Application.Services.GoogleIntegration;
 /// </summary>
 /// <remarks>
 /// All DbContext access has been pushed behind the cross-section service
-/// interfaces (<see cref="IUserService"/>, <see cref="IProfileService"/>,
-/// <see cref="IUserEmailService"/>). The Google Workspace Users API bridge
-/// is <see cref="IGoogleWorkspaceUserService"/>. Audit and notification
-/// calls go through their existing interfaces unchanged.
+/// interfaces (<see cref="IUserService"/>, <see cref="IUserEmailService"/>).
+/// The Google Workspace Users API bridge is
+/// <see cref="IGoogleWorkspaceUserService"/>. Audit and notification calls
+/// go through their existing interfaces unchanged. Profile slice is read
+/// from the unified <see cref="UserInfo"/> read-model exposed by
+/// <see cref="IUserService.GetUserInfoAsync"/>.
 /// </remarks>
 public sealed class EmailProvisioningService : IEmailProvisioningService
 {
     private readonly IUserService _userService;
-    private readonly IProfileService _profileService;
     private readonly IGoogleWorkspaceUserService _workspaceUserService;
     private readonly IUserEmailService _userEmailService;
     private readonly ITeamService _teamService;
@@ -41,7 +42,6 @@ public sealed class EmailProvisioningService : IEmailProvisioningService
 
     public EmailProvisioningService(
         IUserService userService,
-        IProfileService profileService,
         IGoogleWorkspaceUserService workspaceUserService,
         IUserEmailService userEmailService,
         ITeamService teamService,
@@ -51,7 +51,6 @@ public sealed class EmailProvisioningService : IEmailProvisioningService
         ILogger<EmailProvisioningService> logger)
     {
         _userService = userService;
-        _profileService = profileService;
         _workspaceUserService = workspaceUserService;
         _userEmailService = userEmailService;
         _teamService = teamService;
@@ -123,9 +122,9 @@ public sealed class EmailProvisioningService : IEmailProvisioningService
                 return new EmailProvisioningResult(false, fullEmail, ErrorMessage: $"Account {fullEmail} already exists in Google Workspace.");
 
             // Use real name from profile, not display/burner name.
-            // Cross-section read — route through IProfileService rather than a
-            // cross-domain .Include (design-rules §6).
-            var profile = await _profileService.GetProfileAsync(userId);
+            // Cross-section read — route through the cached UserInfo read-model
+            // rather than a cross-domain .Include (design-rules §6).
+            var profile = (await _userService.GetUserInfoAsync(userId))?.Profile;
             var firstName = profile?.FirstName;
             var lastName = profile?.LastName;
             if (string.IsNullOrWhiteSpace(firstName) || string.IsNullOrWhiteSpace(lastName))

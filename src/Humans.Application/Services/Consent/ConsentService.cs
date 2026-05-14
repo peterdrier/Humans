@@ -9,7 +9,6 @@ using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Legal;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Onboarding;
-using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
@@ -36,7 +35,7 @@ namespace Humans.Application.Services.Consent;
 /// Cross-section dependencies are injected as service interfaces
 /// (<see cref="IOnboardingService"/>, <see cref="ILegalDocumentSyncService"/>,
 /// <see cref="ISystemTeamSync"/>, <see cref="INotificationInboxService"/>,
-/// <see cref="IProfileService"/>). Legal-document repository migration is
+/// <see cref="IUserService"/>). Legal-document repository migration is
 /// tracked as sub-task #547a; until it lands, legal document data still
 /// flows through <see cref="ILegalDocumentSyncService"/>.
 /// </para>
@@ -53,7 +52,6 @@ public sealed class ConsentService : IConsentService, IUserDataContributor
     private readonly ILegalDocumentSyncService _legalDocumentSyncService;
     private readonly INotificationInboxService _notificationInboxService;
     private readonly ISystemTeamSync _syncJob;
-    private readonly IProfileService _profileService;
     private readonly IUserService _userService;
     private readonly IServiceProvider _serviceProvider;
     private readonly IHumansMetrics _metrics;
@@ -66,7 +64,6 @@ public sealed class ConsentService : IConsentService, IUserDataContributor
         ILegalDocumentSyncService legalDocumentSyncService,
         INotificationInboxService notificationInboxService,
         ISystemTeamSync syncJob,
-        IProfileService profileService,
         IUserService userService,
         IServiceProvider serviceProvider,
         IHumansMetrics metrics,
@@ -78,7 +75,6 @@ public sealed class ConsentService : IConsentService, IUserDataContributor
         _legalDocumentSyncService = legalDocumentSyncService;
         _notificationInboxService = notificationInboxService;
         _syncJob = syncJob;
-        _profileService = profileService;
         _userService = userService;
         _serviceProvider = serviceProvider;
         _metrics = metrics;
@@ -171,8 +167,9 @@ public sealed class ConsentService : IConsentService, IUserDataContributor
             : await _repo.GetByUserIdsAndVersionAsync(chainIds, documentVersionId, ct);
 
         // Cross-section lookup: profile is owned by Profiles section. Route
-        // through IProfileService rather than querying _dbContext.Profiles.
-        var profile = await _profileService.GetProfileAsync(userId, ct);
+        // through the UserInfo cached read-model rather than querying
+        // _dbContext.Profiles.
+        var profile = (await _userService.GetUserInfoAsync(userId, ct))?.Profile;
 
         return (version, consentRecord, profile?.FullName);
     }
@@ -186,8 +183,8 @@ public sealed class ConsentService : IConsentService, IUserDataContributor
         // that bypasses the controller — including the case where the profile
         // row is missing entirely — must still be refused so a ConsentRecord
         // is never written for a Profile with no verified legal name.
-        var profile = await _profileService.GetProfileAsync(userId, ct);
-        if (profile is null || !profile.HasRequiredIdentityFields())
+        var profile = (await _userService.GetUserInfoAsync(userId, ct))?.Profile;
+        if (profile is null || profile.State == ProfileState.Stub)
             return new ConsentSubmitResult(false, ErrorKey: "StubProfile");
 
         var version = await _legalDocumentSyncService.GetVersionByIdAsync(documentVersionId, ct);
