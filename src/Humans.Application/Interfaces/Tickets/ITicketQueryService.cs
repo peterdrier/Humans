@@ -264,13 +264,24 @@ public record UserTicketOrderSummary(
     string Currency);
 
 /// <summary>
-/// Holdings summary for a single user — orders they bought + attendee names
-/// of the tickets they currently hold (per the ownership cascade). Used by
-/// the &lt;vc:ticket-holdings&gt; profile sidebar and the transfer-review page.
+/// Holdings summary for a single user — orders they bought + per-ticket rows
+/// for every ticket they currently hold (per the ownership cascade). Includes
+/// voided tickets so the UI can show them distinctly rather than hide them.
+/// Used by the &lt;vc:ticket-holdings&gt; profile sidebar.
 /// </summary>
 public record UserTicketHoldings(
     int OrderCount,
-    IReadOnlyList<string> AttendeeNames);
+    IReadOnlyList<UserTicketHoldingRow> Tickets);
+
+/// <summary>
+/// One ticket held by a user, with enough info for the holdings widget to
+/// render name, type, and status distinctly (voided tickets are kept in the
+/// list so they're visible but visually muted).
+/// </summary>
+public record UserTicketHoldingRow(
+    string AttendeeName,
+    string TicketTypeName,
+    Humans.Domain.Enums.TicketAttendeeStatus Status);
 
 /// <summary>
 /// A single row in the order-drift diagnostic: a paid order whose live
