@@ -786,13 +786,17 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
         var orderCount = orders.Count;
 
         var attendees = await _ticketRepository.GetAttendeesVisibleToUserAsync(userId, ct);
-        var names = attendees
+        var tickets = attendees
             .Where(a => TicketAttendeeOwnership.IsCurrentOwner(a, userId))
-            .OrderBy(a => a.AttendeeName, StringComparer.OrdinalIgnoreCase)
-            .Select(a => a.AttendeeName ?? string.Empty)
+            .OrderBy(a => a.Status == TicketAttendeeStatus.Void ? 1 : 0)
+            .ThenBy(a => a.AttendeeName, StringComparer.OrdinalIgnoreCase)
+            .Select(a => new UserTicketHoldingRow(
+                a.AttendeeName ?? string.Empty,
+                a.TicketTypeName ?? string.Empty,
+                a.Status))
             .ToList();
 
-        var holdings = new UserTicketHoldings(orderCount, names);
+        var holdings = new UserTicketHoldings(orderCount, tickets);
         _cache.Set(cacheKey, holdings, TimeSpan.FromMinutes(5));
         return holdings;
     }

@@ -16,11 +16,11 @@ public sealed class TicketHoldingsViewComponent : ViewComponent
     {
         var holdings = await _queryService.GetUserTicketHoldingsAsync(userId);
 
-        if (!showEmpty && holdings.OrderCount == 0 && holdings.AttendeeNames.Count == 0)
+        if (!showEmpty && holdings.OrderCount == 0 && holdings.Tickets.Count == 0)
             return Content(string.Empty);
 
-        return View(new TicketHoldingsViewModel(holdings.OrderCount, holdings.AttendeeNames));
+        return View(new TicketHoldingsViewModel(holdings.OrderCount, holdings.Tickets));
     }
 }
 
-public sealed record TicketHoldingsViewModel(int OrderCount, IReadOnlyList<string> AttendeeNames);
+public sealed record TicketHoldingsViewModel(int OrderCount, IReadOnlyList<UserTicketHoldingRow> Tickets);
