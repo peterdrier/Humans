@@ -865,14 +865,19 @@ The generated file's `Up` + `Down` bodies must be empty. Then immediately:
 dotnet ef migrations remove --project src/Humans.Infrastructure --startup-project src/Humans.Web
 ```
 
-**4.5 — Role-row data migration.**
+**4.5 — Role rename: no DB touch.**
 
-ASP.NET Identity stores roles as rows in `AspNetRoles`. The constant rename (Stage 2.9) doesn't move the row. Two options:
+Humans does **NOT** use ASP.NET Identity's `AspNetRoles`. Application roles live in `role_assignments` (custom entity, managed by `RoleAssignmentService` via the existing admin UI). Role name is a plain string column. There is no roles-lookup table.
 
-- **Option A (preferred):** add a small `AddEventsAdminRole` data migration that does `INSERT INTO ... DELETE FROM ... UPDATE AspNetUserRoles` to rename the existing role + remap assignments. Per `architecture_no_hand_edited_migrations`, schema migrations can't be hand-edited but data-only migrations using `migrationBuilder.Sql(...)` are the documented pattern for this case (see Camps' historical role migrations).
-- **Option B:** rely on a startup seeder if one exists — check `Program.cs` for `RoleManager` seeding code. If present, just bumping the constant + deleting the old row in a data migration is sufficient.
+Specific steps:
+1. Rename the C# constant value: `RoleNames.GuideModerator = "GuideModerator"` → `RoleNames.EventsAdmin = "EventsAdmin"` (Stage 2.9 already covers the source rename).
+2. **Do NOT touch `role_assignments`.** No `migrationBuilder.Sql`. No `HasData`. No `InsertData` / `UpdateData` / `DeleteData`. The `feedback_never_manual_db_edits` rule prohibits all of these.
+3. Production: feature isn't shipped → zero `RoleName = "GuideModerator"` rows → nothing to do.
+4. QA: any existing holders (likely 0–2 since the feature is brand new and feature-flag-gated) lose moderator access on deploy because `IsInRole("EventsAdmin")` won't match their `"GuideModerator"` row.
+5. **Re-grant via `/Profile/{id}/Roles/Add`** (existing `RoleAssignmentService.AssignRoleAsync` path). Two clicks per holder.
+6. Orphan `RoleName = "GuideModerator"` rows sit inert — no role check matches them. Optionally revoked via the same admin UI later (`EndRoleAsync`). They never grant access.
 
-Inspection needed at execution time; the orchestrator picks A or B based on what's actually in `Program.cs`.
+No data migration, no manual SQL, no seed manipulation.
 
 **4.6 — Test the migration round-trip.**
 
