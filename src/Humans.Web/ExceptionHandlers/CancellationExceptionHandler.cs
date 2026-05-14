@@ -36,8 +36,27 @@ public sealed class CancellationExceptionHandler : IExceptionHandler
             return ValueTask.FromResult(false);
         }
 
+        // Differentiated log messages so triage can tell "user clicked away" from
+        // "server-initiated cancellation" — but BOTH paths are intentionally
+        // swallowed at Warning + 499, never escalated to Error:
+        //   - Client abort: the response is dead, there's nothing useful to send,
+        //     stack-trace-level logging is noise.
+        //   - Non-client cancellation (linked CTS timeout, scope dispose, host
+        //     shutdown): same thing — the response is going nowhere; an Error log
+        //     with stack trace would imply an actionable bug when typically there
+        //     is none. We log at Warning so it stays visible in the prod log
+        //     viewer; if a real server-side timeout ever needs Error-level
+        //     attention, the code introducing the timeout should log it directly
+        //     before letting the OCE escape.
+        // This comment exists to prevent re-tightening the predicate; the prior
+        // form gated on `RequestAborted.IsCancellationRequested` and missed real
+        // client aborts where Npgsql/EF threw with a linked token, surfacing them
+        // as 500s.
+        var clientAborted = httpContext.RequestAborted.IsCancellationRequested;
         _logger.LogWarning(
-            "Request cancelled on {Method} {Path}",
+            clientAborted
+                ? "Request cancelled by client on {Method} {Path}"
+                : "Request cancelled (non-client) on {Method} {Path}",
             httpContext.Request.Method,
             httpContext.Request.Path);
 
