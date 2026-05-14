@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
@@ -6,6 +7,7 @@ using Humans.Infrastructure.Repositories.Shifts;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using NodaTime.Testing;
+using NSubstitute;
 using Xunit;
 using GeneralAvailabilityService = Humans.Application.Services.Shifts.GeneralAvailabilityService;
 
@@ -27,7 +29,7 @@ public class GeneralAvailabilityServiceTests : IDisposable
 
         _dbContext = new HumansDbContext(options);
         _repo = new GeneralAvailabilityRepository(new TestDbContextFactory(options));
-        _service = new GeneralAvailabilityService(_repo, new FakeClock(TestNow));
+        _service = new GeneralAvailabilityService(_repo, Substitute.For<IShiftViewInvalidator>(), new FakeClock(TestNow));
     }
 
     public void Dispose()

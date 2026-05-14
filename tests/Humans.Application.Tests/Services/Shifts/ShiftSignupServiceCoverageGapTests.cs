@@ -3,6 +3,7 @@ using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Notifications;
+using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Services.Shifts;
 using Humans.Application.Tests.Infrastructure;
@@ -64,6 +65,7 @@ public class ShiftSignupServiceCoverageGapTests : IDisposable
             Substitute.For<IAdminAuthorizationService>(),
             serviceProvider,
             new MemoryCache(new MemoryCacheOptions()),
+            Substitute.For<IShiftViewInvalidator>(),
             _clock,
             NullLogger<ShiftManagementService>.Instance);
 
@@ -80,6 +82,7 @@ public class ShiftSignupServiceCoverageGapTests : IDisposable
             auditLog,
             _notificationService,
             Substitute.For<IAdminAuthorizationService>(),
+            Substitute.For<IShiftViewInvalidator>(),
             serviceProvider,
             _clock,
             NullLogger<ShiftSignupService>.Instance);

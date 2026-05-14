@@ -47,6 +47,7 @@ public sealed class AccountDeletionService : IAccountDeletionService
     private readonly ITicketQueryService _ticketQueryService;
     private readonly IRoleAssignmentClaimsCacheInvalidator _roleAssignmentClaimsInvalidator;
     private readonly IShiftAuthorizationInvalidator _shiftAuthorizationInvalidator;
+    private readonly IShiftViewInvalidator _shiftViewInvalidator;
     private readonly IAuditLogService _auditLogService;
     private readonly IEmailService _emailService;
     private readonly IClock _clock;
@@ -63,6 +64,7 @@ public sealed class AccountDeletionService : IAccountDeletionService
         ITicketQueryService ticketQueryService,
         IRoleAssignmentClaimsCacheInvalidator roleAssignmentClaimsInvalidator,
         IShiftAuthorizationInvalidator shiftAuthorizationInvalidator,
+        IShiftViewInvalidator shiftViewInvalidator,
         IAuditLogService auditLogService,
         IEmailService emailService,
         IClock clock,
@@ -78,6 +80,7 @@ public sealed class AccountDeletionService : IAccountDeletionService
         _ticketQueryService = ticketQueryService;
         _roleAssignmentClaimsInvalidator = roleAssignmentClaimsInvalidator;
         _shiftAuthorizationInvalidator = shiftAuthorizationInvalidator;
+        _shiftViewInvalidator = shiftViewInvalidator;
         _auditLogService = auditLogService;
         _emailService = emailService;
         _clock = clock;
@@ -155,6 +158,7 @@ public sealed class AccountDeletionService : IAccountDeletionService
         //    callers of IAccountDeletionService don't depend on routing through
         //    the Profile caching decorator for correctness.
         _shiftAuthorizationInvalidator.Invalidate(userId);
+        _shiftViewInvalidator.InvalidateUser(userId);
 
         return new DeletionRequestResult(
             Success: true,
@@ -205,6 +209,7 @@ public sealed class AccountDeletionService : IAccountDeletionService
         // shift-authorization cache (60 s TTL on shift-coordinator privilege).
         _roleAssignmentClaimsInvalidator.Invalidate(userId);
         _shiftAuthorizationInvalidator.Invalidate(userId);
+        _shiftViewInvalidator.InvalidateUser(userId);
 
         // GDPR audit trail: admin-initiated purge is irreversible identity
         // collapse. Record the actor + the pre-purge display name so a
@@ -295,6 +300,7 @@ public sealed class AccountDeletionService : IAccountDeletionService
         _teamService.RemoveMemberFromAllTeamsCache(userId);
         _roleAssignmentClaimsInvalidator.Invalidate(userId);
         _shiftAuthorizationInvalidator.Invalidate(userId);
+        _shiftViewInvalidator.InvalidateUser(userId);
 
         return new AnonymizedAccountSummary(
             identity.OriginalEmail,

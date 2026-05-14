@@ -20,6 +20,7 @@ using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Auth;
+using Humans.Application.Interfaces.Shifts;
 using Humans.Infrastructure.Repositories.Shifts;
 
 namespace Humans.Application.Tests.Services.Shifts;
@@ -60,6 +61,7 @@ public class ShiftSignupServiceTests : IDisposable
             Substitute.For<IAdminAuthorizationService>(),
             serviceProvider,
             new MemoryCache(new MemoryCacheOptions()),
+            Substitute.For<IShiftViewInvalidator>(),
             _clock,
             NullLogger<ShiftManagementService>.Instance);
 
@@ -75,6 +77,7 @@ public class ShiftSignupServiceTests : IDisposable
             _auditLog,
             Substitute.For<INotificationService>(),
             Substitute.For<IAdminAuthorizationService>(),
+            Substitute.For<IShiftViewInvalidator>(),
             serviceProvider,
             _clock,
             NullLogger<ShiftSignupService>.Instance);

@@ -42,6 +42,7 @@ public class ShiftUrgencyTests
             Substitute.For<IAdminAuthorizationService>(),
             serviceProvider,
             new MemoryCache(new MemoryCacheOptions()),
+            Substitute.For<IShiftViewInvalidator>(),
             new FakeClock(TestNow),
             NullLogger<ShiftManagementService>.Instance);
     }

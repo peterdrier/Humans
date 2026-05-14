@@ -73,6 +73,7 @@ public class TeamRoleServiceTests : IDisposable
             Substitute.For<IAdminAuthorizationService>(),
             serviceProvider,
             cache,
+            Substitute.For<IShiftViewInvalidator>(),
             _clock,
             NullLogger<ShiftManagementService>.Instance);
         var teamRepo = new TeamRepository(new TestDbContextFactory(options));

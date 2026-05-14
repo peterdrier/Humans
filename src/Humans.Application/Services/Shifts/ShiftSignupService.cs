@@ -55,6 +55,7 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
     private readonly IAuditLogService _auditLogService;
     private readonly INotificationService _notificationService;
     private readonly IAdminAuthorizationService _adminAuthorization;
+    private readonly IShiftViewInvalidator _viewInvalidator;
     private readonly IServiceProvider _serviceProvider;
     private readonly IClock _clock;
     private readonly ILogger<ShiftSignupService> _logger;
@@ -70,6 +71,7 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
         IAuditLogService auditLogService,
         INotificationService notificationService,
         IAdminAuthorizationService adminAuthorization,
+        IShiftViewInvalidator viewInvalidator,
         IServiceProvider serviceProvider,
         IClock clock,
         ILogger<ShiftSignupService> logger)
@@ -80,6 +82,7 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
         _auditLogService = auditLogService;
         _notificationService = notificationService;
         _adminAuthorization = adminAuthorization;
+        _viewInvalidator = viewInvalidator;
         _serviceProvider = serviceProvider;
         _clock = clock;
         _logger = logger;
@@ -160,6 +163,7 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
         _repo.Add(signup);
 
         await _repo.SaveChangesAsync();
+        _viewInvalidator.InvalidateUser(userId);
 
         var shiftDate = FormatShiftDate(es.GateOpeningDate.PlusDays(shift.DayOffset));
         var statusSuffix = autoConfirm ? "confirmed" : "pending";
@@ -219,6 +223,7 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
         signup.Confirm(reviewerUserId, _clock);
 
         await _repo.SaveChangesAsync();
+        _viewInvalidator.InvalidateUser(signup.UserId);
 
         await _auditLogService.LogAsync(
             AuditAction.ShiftSignupConfirmed, nameof(ShiftSignup), signup.Id,
@@ -240,6 +245,7 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
         signup.Refuse(reviewerUserId, _clock, reason);
 
         await _repo.SaveChangesAsync();
+        _viewInvalidator.InvalidateUser(signup.UserId);
 
         await _auditLogService.LogAsync(
             AuditAction.ShiftSignupRefused, nameof(ShiftSignup), signup.Id,
@@ -280,6 +286,7 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
         signup.Bail(actorUserId, _clock, reason);
 
         await _repo.SaveChangesAsync();
+        _viewInvalidator.InvalidateUser(signup.UserId);
 
         await _auditLogService.LogAsync(
             AuditAction.ShiftSignupBailed, nameof(ShiftSignup), signup.Id,
@@ -336,6 +343,7 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
         _repo.Add(signup);
 
         await _repo.SaveChangesAsync();
+        _viewInvalidator.InvalidateUser(userId);
 
         await _auditLogService.LogAsync(
             AuditAction.ShiftSignupVoluntold, nameof(ShiftSignup), signup.Id,
@@ -461,6 +469,7 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
         }
 
         await _repo.SaveChangesAsync();
+        _viewInvalidator.InvalidateUser(userId);
 
         foreach (var (auditedSignup, dayOffset) in voluntoldForAudit)
         {
@@ -509,6 +518,7 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
         signup.MarkNoShow(reviewerUserId, _clock);
 
         await _repo.SaveChangesAsync();
+        _viewInvalidator.InvalidateUser(signup.UserId);
 
         await _auditLogService.LogAsync(
             AuditAction.ShiftSignupNoShow, nameof(ShiftSignup), signup.Id,
@@ -530,6 +540,7 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
         signup.Remove(removedByUserId, _clock, reason);
 
         await _repo.SaveChangesAsync();
+        _viewInvalidator.InvalidateUser(signup.UserId);
 
         await _auditLogService.LogAsync(
             AuditAction.ShiftSignupCancelled, nameof(ShiftSignup), signup.Id,
@@ -729,6 +740,7 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
         }
 
         await _repo.SaveChangesAsync();
+        _viewInvalidator.InvalidateUser(userId);
 
         var statusSuffix = autoConfirm ? "confirmed" : "pending";
         foreach (var (auditedSignup, dayOffset) in rangeSignupsForAudit)
@@ -811,6 +823,7 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
             if (skippedAtCapacity.Count > 0)
             {
                 await _repo.SaveChangesAsync();
+                _viewInvalidator.InvalidateUser(skippedAtCapacity[0].UserId);
 
                 foreach (var skipped in skippedAtCapacity)
                 {
@@ -825,6 +838,7 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
         }
 
         await _repo.SaveChangesAsync();
+        _viewInvalidator.InvalidateUser(approved[0].UserId);
 
         foreach (var approvedSignup in approved)
         {
@@ -863,6 +877,7 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
         }
 
         await _repo.SaveChangesAsync();
+        _viewInvalidator.InvalidateUser(signups[0].UserId);
 
         foreach (var signup in signups)
         {
@@ -905,6 +920,7 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
         }
 
         await _repo.SaveChangesAsync();
+        _viewInvalidator.InvalidateUser(firstSignup.UserId);
 
         foreach (var signup in signups)
         {
@@ -1156,16 +1172,23 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
         return [signupSlice, vepSlice, availabilitySlice, tagPreferenceSlice];
     }
 
-    public Task<IReadOnlyList<(Guid SignupId, Guid ShiftId)>> CancelActiveSignupsForUserAsync(
-        Guid userId, string reason, CancellationToken ct = default) =>
-        _repo.CancelActiveSignupsForUserAsync(userId, reason, ct);
+    public async Task<IReadOnlyList<(Guid SignupId, Guid ShiftId)>> CancelActiveSignupsForUserAsync(
+        Guid userId, string reason, CancellationToken ct = default)
+    {
+        var cancelled = await _repo.CancelActiveSignupsForUserAsync(userId, reason, ct);
+        _viewInvalidator.InvalidateUser(userId);
+        return cancelled;
+    }
 
     public async Task<int> DeleteAllForUsersAsync(
         IReadOnlyCollection<Guid> userIds,
         CancellationToken ct = default)
     {
         await _adminAuthorization.RequireCurrentUserIsAdminAsync(ct);
-        return await _repo.DeleteAllForUsersAsync(userIds, ct);
+        var deleted = await _repo.DeleteAllForUsersAsync(userIds, ct);
+        foreach (var userId in userIds)
+            _viewInvalidator.InvalidateUser(userId);
+        return deleted;
     }
 
     public Task<IReadOnlyList<ShiftSignup>> GetAllForOrphanScanAsync(CancellationToken ct = default) =>
@@ -1229,6 +1252,7 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
         if (promoted.Count == 0) return;
 
         await _repo.SaveChangesAsync(ct);
+        _viewInvalidator.InvalidateUser(userId);
 
         foreach (var signup in promoted)
         {
@@ -1260,6 +1284,9 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
         CancellationToken ct)
     {
         var movedCount = await _repo.ReassignToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
+
+        _viewInvalidator.InvalidateUser(sourceUserId);
+        _viewInvalidator.InvalidateUser(targetUserId);
 
         if (movedCount > 0)
         {

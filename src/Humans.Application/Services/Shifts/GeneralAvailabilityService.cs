@@ -30,20 +30,24 @@ namespace Humans.Application.Services.Shifts;
 public sealed class GeneralAvailabilityService : IGeneralAvailabilityService, IUserMerge
 {
     private readonly IGeneralAvailabilityRepository _repo;
+    private readonly IShiftViewInvalidator _viewInvalidator;
     private readonly IClock _clock;
 
     public GeneralAvailabilityService(
         IGeneralAvailabilityRepository repo,
+        IShiftViewInvalidator viewInvalidator,
         IClock clock)
     {
         _repo = repo;
+        _viewInvalidator = viewInvalidator;
         _clock = clock;
     }
 
-    public Task SetAvailabilityAsync(Guid userId, Guid eventSettingsId, List<int> dayOffsets)
+    public async Task SetAvailabilityAsync(Guid userId, Guid eventSettingsId, List<int> dayOffsets)
     {
         var now = _clock.GetCurrentInstant();
-        return _repo.UpsertAsync(userId, eventSettingsId, dayOffsets, now);
+        await _repo.UpsertAsync(userId, eventSettingsId, dayOffsets, now);
+        _viewInvalidator.InvalidateUser(userId);
     }
 
     public Task<GeneralAvailability?> GetByUserAsync(Guid userId, Guid eventSettingsId) =>
@@ -59,10 +63,17 @@ public sealed class GeneralAvailabilityService : IGeneralAvailabilityService, IU
         return all.Where(g => g.AvailableDayOffsets.Contains(dayOffset)).ToList();
     }
 
-    public Task DeleteAsync(Guid userId, Guid eventSettingsId) =>
-        _repo.DeleteAsync(userId, eventSettingsId);
+    public async Task DeleteAsync(Guid userId, Guid eventSettingsId)
+    {
+        await _repo.DeleteAsync(userId, eventSettingsId);
+        _viewInvalidator.InvalidateUser(userId);
+    }
 
-    public Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
+    public async Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
         CancellationToken ct)
-        => _repo.ReassignToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
+    {
+        await _repo.ReassignToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
+        _viewInvalidator.InvalidateUser(sourceUserId);
+        _viewInvalidator.InvalidateUser(targetUserId);
+    }
 }

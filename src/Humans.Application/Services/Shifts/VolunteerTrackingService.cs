@@ -14,6 +14,7 @@ public sealed class VolunteerTrackingService : IVolunteerTrackingService
     private readonly IShiftManagementRepository _shiftManagement;
     private readonly IGeneralAvailabilityRepository _availability;
     private readonly IUserService _userService;
+    private readonly IShiftViewInvalidator _viewInvalidator;
     private readonly IClock _clock;
 
     public VolunteerTrackingService(
@@ -21,12 +22,14 @@ public sealed class VolunteerTrackingService : IVolunteerTrackingService
         IShiftManagementRepository shiftManagement,
         IGeneralAvailabilityRepository availability,
         IUserService userService,
+        IShiftViewInvalidator viewInvalidator,
         IClock clock)
     {
         _trackingRepo = trackingRepo;
         _shiftManagement = shiftManagement;
         _availability = availability;
         _userService = userService;
+        _viewInvalidator = viewInvalidator;
         _clock = clock;
     }
 
@@ -254,6 +257,7 @@ public sealed class VolunteerTrackingService : IVolunteerTrackingService
             setupOffsetThreshold: setupOffset,
             ct).ConfigureAwait(false);
 
+        _viewInvalidator.InvalidateUser(targetUserId);
         return new SetCampSetupResult(true, null, trimmed);
     }
 
@@ -270,6 +274,7 @@ public sealed class VolunteerTrackingService : IVolunteerTrackingService
             setAt: null,
             setupOffsetThreshold: null,
             ct).ConfigureAwait(false);
+        _viewInvalidator.InvalidateUser(targetUserId);
     }
 
     public async Task<SetDayOffResult> SetDayOffAsync(
@@ -303,6 +308,7 @@ public sealed class VolunteerTrackingService : IVolunteerTrackingService
             MarkedAt: _clock.GetCurrentInstant());
 
         await _trackingRepo.UpsertDayOffAsync(targetUserId, es.Id, entry, ct).ConfigureAwait(false);
+        _viewInvalidator.InvalidateUser(targetUserId);
         return new SetDayOffResult(true, null);
     }
 
@@ -314,6 +320,8 @@ public sealed class VolunteerTrackingService : IVolunteerTrackingService
         var removed = await _trackingRepo
             .RemoveDayOffAsync(targetUserId, es.Id, dayOffset, ct)
             .ConfigureAwait(false);
+        if (removed)
+            _viewInvalidator.InvalidateUser(targetUserId);
         return new ClearDayOffResult(removed);
     }
 

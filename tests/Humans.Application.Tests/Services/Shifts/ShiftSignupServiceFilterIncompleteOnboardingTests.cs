@@ -3,6 +3,7 @@ using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Notifications;
+using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Services.Shifts;
 using Humans.Application.Tests.Infrastructure;
@@ -57,6 +58,7 @@ public class ShiftSignupServiceFilterIncompleteOnboardingTests : IDisposable
             Substitute.For<IAdminAuthorizationService>(),
             serviceProvider,
             new MemoryCache(new MemoryCacheOptions()),
+            Substitute.For<IShiftViewInvalidator>(),
             clock,
             NullLogger<ShiftManagementService>.Instance);
 
@@ -68,6 +70,7 @@ public class ShiftSignupServiceFilterIncompleteOnboardingTests : IDisposable
             auditLog,
             Substitute.For<INotificationService>(),
             Substitute.For<IAdminAuthorizationService>(),
+            Substitute.For<IShiftViewInvalidator>(),
             serviceProvider,
             clock,
             NullLogger<ShiftSignupService>.Instance);
