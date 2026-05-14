@@ -330,6 +330,15 @@ public class TeamAdminController : HumansTeamControllerBase
             return teamError;
         }
 
+        // Form posted without a user selected (or the hidden input was empty / tampered).
+        // Reject at the controller so we don't reach EF and crash on the
+        // google_sync_outbox FK with Guid.Empty.
+        if (model.UserId == Guid.Empty)
+        {
+            SetError("Select a user to add.");
+            return RedirectToAction(nameof(Members), new { slug });
+        }
+
         try
         {
             await _teamService.AddMemberToTeamAsync(team.Id, model.UserId, user.Id);
