@@ -16,7 +16,7 @@ using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Infrastructure.Repositories.Notifications;
 
-namespace Humans.Application.Tests.Services;
+namespace Humans.Application.Tests.Notifications;
 
 public class NotificationServiceTests : IDisposable
 {

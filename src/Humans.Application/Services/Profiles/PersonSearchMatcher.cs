@@ -68,6 +68,7 @@ public static class PersonSearchMatcher
 
             return new[] { new HumanSearchResult(
                 UserId: byId.UserId,
+                ProfileId: byId.ProfileId,
                 BurnerName: idBurnerName,
                 ProfilePictureUrl: byId.ProfilePictureUrl,
                 MatchField: "User ID",
@@ -97,6 +98,7 @@ public static class PersonSearchMatcher
 
             results.Add(new HumanSearchResult(
                 UserId: p.UserId,
+                ProfileId: p.ProfileId,
                 BurnerName: burnerName,
                 ProfilePictureUrl: p.ProfilePictureUrl,
                 MatchField: match.Value.Field,

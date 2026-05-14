@@ -15,7 +15,7 @@ using NodaTime.Testing;
 using NSubstitute;
 using Xunit;
 
-namespace Humans.Application.Tests.Jobs;
+namespace Humans.Application.Tests.Notifications;
 
 public class CleanupNotificationsJobTests : IDisposable
 {

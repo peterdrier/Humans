@@ -27,7 +27,7 @@ public class DashboardService : IDashboardService
     private readonly IMembershipCalculator _membershipCalculator;
     private readonly IApplicationDecisionService _applicationDecisionService;
     private readonly IShiftManagementService _shiftMgmt;
-    private readonly IShiftSignupService _shiftSignup;
+    private readonly IShiftView _shiftView;
     private readonly ITicketQueryService _ticketQueryService;
     private readonly IUserService _userService;
     private readonly ITeamService _teamService;
@@ -40,7 +40,7 @@ public class DashboardService : IDashboardService
         IMembershipCalculator membershipCalculator,
         IApplicationDecisionService applicationDecisionService,
         IShiftManagementService shiftMgmt,
-        IShiftSignupService shiftSignup,
+        IShiftView shiftView,
         ITicketQueryService ticketQueryService,
         IUserService userService,
         ITeamService teamService,
@@ -52,7 +52,7 @@ public class DashboardService : IDashboardService
         _membershipCalculator = membershipCalculator;
         _applicationDecisionService = applicationDecisionService;
         _shiftMgmt = shiftMgmt;
-        _shiftSignup = shiftSignup;
+        _shiftView = shiftView;
         _ticketQueryService = ticketQueryService;
         _userService = userService;
         _teamService = teamService;
@@ -133,7 +133,17 @@ public class DashboardService : IDashboardService
             try
             {
                 var now = _clock.GetCurrentInstant();
-                var userSignups = await _shiftSignup.GetByUserAsync(userId, activeEvent.Id);
+                // Pilot consumer for IShiftView (#720): the user-signup read
+                // that previously hit the DB on every dashboard render now
+                // comes from the cached ShiftUserView. The view holds every
+                // signup row for the user; filter to the active event in
+                // memory. Shift.Rota.EventSettings is loaded by the inner
+                // ShiftViewService. Cache hits complete synchronously via
+                // ValueTask (no Task allocation, no thread hop).
+                var userView = await _shiftView.GetUserAsync(userId, cancellationToken);
+                var userSignups = userView.Signups
+                    .Where(s => s.Shift?.Rota?.EventSettingsId == activeEvent.Id)
+                    .ToList();
                 pendingCount = userSignups
                     .Where(s => s.Status == SignupStatus.Pending)
                     .Select(s => s.SignupBlockId ?? s.Id)

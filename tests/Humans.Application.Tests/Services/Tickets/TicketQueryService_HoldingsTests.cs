@@ -56,7 +56,7 @@ public sealed class TicketQueryService_HoldingsTests
     {
         var result = await Service.GetUserTicketHoldingsAsync(UserA);
         result.OrderCount.Should().Be(0);
-        result.AttendeeNames.Should().BeEmpty();
+        result.Tickets.Should().BeEmpty();
     }
 
     [HumansFact]
@@ -122,6 +122,41 @@ public sealed class TicketQueryService_HoldingsTests
         var result = await Service.GetUserTicketHoldingsAsync(UserA);
 
         result.OrderCount.Should().Be(2);
-        result.AttendeeNames.Should().HaveCount(3);
+        result.Tickets.Should().HaveCount(3);
+    }
+
+    [HumansFact]
+    public async Task IncludesVoidedTicketsButSortsThemLast()
+    {
+        var orderId = Guid.NewGuid();
+        var order = new TicketOrder { Id = orderId, MatchedUserId = UserA };
+
+        var voided = new TicketAttendee
+        {
+            Id = Guid.NewGuid(),
+            AttendeeName = "Aaron Voided",
+            MatchedUserId = UserA,
+            Status = TicketAttendeeStatus.Void,
+            TicketOrder = order,
+            TicketOrderId = orderId,
+        };
+        var active = new TicketAttendee
+        {
+            Id = Guid.NewGuid(),
+            AttendeeName = "Zoe Valid",
+            MatchedUserId = UserA,
+            Status = TicketAttendeeStatus.Valid,
+            TicketOrder = order,
+            TicketOrderId = orderId,
+        };
+
+        _ticketRepo.GetAttendeesVisibleToUserAsync(UserA, Arg.Any<CancellationToken>())
+            .Returns(new[] { voided, active });
+
+        var result = await Service.GetUserTicketHoldingsAsync(UserA);
+
+        result.Tickets.Should().HaveCount(2);
+        result.Tickets[0].Status.Should().Be(TicketAttendeeStatus.Valid);
+        result.Tickets[1].Status.Should().Be(TicketAttendeeStatus.Void);
     }
 }

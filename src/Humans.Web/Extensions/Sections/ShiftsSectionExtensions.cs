@@ -1,12 +1,15 @@
+using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Repositories;
 using ShiftsShiftManagementService = Humans.Application.Services.Shifts.ShiftManagementService;
 using ShiftsShiftSignupService = Humans.Application.Services.Shifts.ShiftSignupService;
 using ShiftsGeneralAvailabilityService = Humans.Application.Services.Shifts.GeneralAvailabilityService;
 using ShiftsVolunteerTrackingService = Humans.Application.Services.Shifts.VolunteerTrackingService;
+using ShiftsShiftViewService = Humans.Application.Services.Shifts.ShiftViewService;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Repositories.Shifts;
+using Humans.Infrastructure.Services.Shifts;
 
 namespace Humans.Web.Extensions.Sections;
 
@@ -51,6 +54,21 @@ internal static class ShiftsSectionExtensions
         // share one EF change-tracker.
         services.AddScoped<IVolunteerTrackingRepository, VolunteerTrackingRepository>();
         services.AddScoped<IVolunteerTrackingService, ShiftsVolunteerTrackingService>();
+
+        // ShiftView — issue #720. Singleton caching decorator over a Scoped
+        // inner. Mirrors the Profiles / Teams pattern (CachingProfileService,
+        // CachingTeamService). The inner is registered keyed so the Singleton
+        // decorator can resolve a fresh Scoped instance per cache miss via
+        // IServiceScopeFactory without self-resolving the unkeyed
+        // IShiftView registration.
+        services.AddKeyedScoped<IShiftView, ShiftsShiftViewService>(CachingShiftViewService.InnerServiceKey);
+        services.AddSingleton<CachingShiftViewService>();
+        services.AddSingleton<IShiftView>(sp => sp.GetRequiredService<CachingShiftViewService>());
+        services.AddSingleton<IShiftViewInvalidator>(sp => sp.GetRequiredService<CachingShiftViewService>());
+
+        // Surface both ShiftView caches (User + Rota) on /Admin/CacheStats.
+        services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingShiftViewService>().UserCacheStats);
+        services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingShiftViewService>().RotaCacheStats);
 
         return services;
     }

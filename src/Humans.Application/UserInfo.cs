@@ -48,6 +48,18 @@ public sealed record VolunteerHistoryInfo(
     string? Description);
 
 /// <summary>
+/// Compact projection of a <see cref="CommunicationPreference"/> row.
+/// </summary>
+public sealed record CommunicationPreferenceInfo(
+    Guid Id,
+    MessageCategory Category,
+    bool OptedOut,
+    bool InboxEnabled,
+    Instant UpdatedAt,
+    string UpdateSource,
+    Instant? SubscribedAt);
+
+/// <summary>
 /// Compact projection of an <see cref="EventParticipation"/> row.
 /// </summary>
 public sealed record EventParticipationInfo(
@@ -177,8 +189,28 @@ public sealed record UserInfo(
     IReadOnlyList<UserEmailInfo> UserEmails,
     IReadOnlyList<EventParticipationInfo> EventParticipations,
     IReadOnlyList<UserExternalLoginInfo> ExternalLogins,
-    ProfileInfo? Profile)
+    ProfileInfo? Profile,
+    IReadOnlyList<CommunicationPreferenceInfo> CommunicationPreferences)
 {
+    /// <summary>
+    /// Canonical public-facing name. <see cref="ProfileInfo.BurnerName"/>
+    /// when a profile exists and has a non-blank burner name; otherwise
+    /// <see cref="DisplayName"/> (the legacy Identity column mirror).
+    /// <para>
+    /// External render callers (avatars, lists, popovers, notifications,
+    /// audit-log labels) MUST use this property, not <see cref="DisplayName"/>.
+    /// Reading <see cref="DisplayName"/> directly leaks the legacy column
+    /// onto public surfaces for any user who has chosen a burner name. The
+    /// only legitimate consumers of the raw <see cref="DisplayName"/> field
+    /// are debug screens (e.g. <c>/Users/Admin/Debug</c>) and the
+    /// <see cref="BurnerName"/> fallback itself.
+    /// </para>
+    /// </summary>
+    public string BurnerName =>
+        Profile is not null && !string.IsNullOrWhiteSpace(Profile.BurnerName)
+            ? Profile.BurnerName
+            : DisplayName;
+
     /// <summary>
     /// Canonical effective email — first verified UserEmail (primary-preferred),
     /// falling back to the underlying Identity column when no UserEmails are
@@ -240,6 +272,42 @@ public sealed record UserInfo(
         .ToList();
 
     /// <summary>
+    /// Marketing-category opt-in tri-state: null when no preference row exists
+    /// (e.g., user imported from an external source who never hit the prefs
+    /// flow), true when opted out, false when opted in.
+    /// </summary>
+    public bool? MarketingOptedOut => CommunicationPreferences
+        .Where(c => c.Category == MessageCategory.Marketing)
+        .Select(c => (bool?)c.OptedOut)
+        .FirstOrDefault();
+
+    /// <summary>
+    /// True when the user has <em>any</em> event participation in the
+    /// <see cref="ParticipationStatus.Ticketed"/> or
+    /// <see cref="ParticipationStatus.Attended"/> state, across every year.
+    /// Year-agnostic — for diagnostic surfaces where "this user is on a
+    /// ticket somewhere in the cache" is the useful signal. For year-scoped
+    /// counts (dashboard tiles, the Tickets Venn) use
+    /// <see cref="HasTicketForYear"/> against the active event year so
+    /// counts don't carry stale post-rollover data.
+    /// </summary>
+    public bool HasTicket => EventParticipations.Any(p =>
+        p.Status == ParticipationStatus.Ticketed ||
+        p.Status == ParticipationStatus.Attended);
+
+    /// <summary>
+    /// True when the user has a <see cref="ParticipationStatus.Ticketed"/>
+    /// or <see cref="ParticipationStatus.Attended"/> participation in the
+    /// given <paramref name="year"/>. The right predicate for "current ticket
+    /// holder" stats — pass the active event year so post-rollover users
+    /// stop counting against the new year's totals.
+    /// </summary>
+    public bool HasTicketForYear(int year) => EventParticipations.Any(p =>
+        p.Year == year &&
+        (p.Status == ParticipationStatus.Ticketed ||
+         p.Status == ParticipationStatus.Attended));
+
+    /// <summary>
     /// Builds a <see cref="UserInfo"/> from the 8 contributing tables. Each
     /// input is the raw read-only entity (or empty list) — all snapshotting,
     /// projection, and ordering happens here so the cached payload is immutable.
@@ -252,7 +320,8 @@ public sealed record UserInfo(
         Profile? profile,
         IReadOnlyList<ContactField> contactFields,
         IReadOnlyList<ProfileLanguage> profileLanguages,
-        IReadOnlyList<VolunteerHistoryEntry> volunteerHistory)
+        IReadOnlyList<VolunteerHistoryEntry> volunteerHistory,
+        IReadOnlyList<CommunicationPreference> communicationPreferences)
     {
         var userEmailInfos = userEmails
             .OrderByDescending(e => e.IsPrimary)
@@ -333,6 +402,13 @@ public sealed record UserInfo(
                 VolunteerHistory: volunteerHistoryInfos);
         }
 
+        var communicationPreferenceInfos = communicationPreferences
+            .OrderBy(c => c.Category)
+            .Select(c => new CommunicationPreferenceInfo(
+                c.Id, c.Category, c.OptedOut, c.InboxEnabled,
+                c.UpdatedAt, c.UpdateSource, c.SubscribedAt))
+            .ToList();
+
         return new UserInfo(
             Id: user.Id,
             DisplayName: user.DisplayName,
@@ -357,6 +433,7 @@ public sealed record UserInfo(
             UserEmails: userEmailInfos,
             EventParticipations: participationInfos,
             ExternalLogins: loginInfos,
-            Profile: profileInfo);
+            Profile: profileInfo,
+            CommunicationPreferences: communicationPreferenceInfos);
     }
 }

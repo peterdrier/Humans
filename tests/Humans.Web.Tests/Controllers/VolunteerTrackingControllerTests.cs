@@ -1,10 +1,11 @@
 using System.Reflection;
 using System.Security.Claims;
 using AwesomeAssertions;
+using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.AuditLog;
-using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Testing;
@@ -46,7 +47,7 @@ public class VolunteerTrackingControllerTests
 {
     private readonly UserManager<User> _userManager;
     private readonly IVolunteerTrackingService _service = Substitute.For<IVolunteerTrackingService>();
-    private readonly IProfileService _profileService = Substitute.For<IProfileService>();
+    private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IAuditLogService _auditLog = Substitute.For<IAuditLogService>();
     private readonly IStringLocalizer<Humans.Web.SharedResource> _localizer =
         Substitute.For<IStringLocalizer<Humans.Web.SharedResource>>();
@@ -68,7 +69,7 @@ public class VolunteerTrackingControllerTests
         }
 
         var ctrl = new VolunteerTrackingController(
-            _service, _profileService, _auditLog, _userManager, _localizer);
+            _service, _userService, _auditLog, _userManager, _localizer);
 
         var http = new DefaultHttpContext();
         if (currentUser is not null)
@@ -202,12 +203,12 @@ public class VolunteerTrackingControllerTests
         _service.GetTrackingDataAsync(Arg.Any<CancellationToken>())
             .Returns(new VolunteerTrackingViewModel(true, -10, new LocalDate(2026, 6, 24), new LocalDate(2026, 6, 15), rows,
                 Array.Empty<VolunteerCohortRow>()));
-        _profileService.GetFullProfileAsync(aliceId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<Humans.Application.FullProfile?>(StubFullProfile("Alice")));
-        _profileService.GetFullProfileAsync(bobId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<Humans.Application.FullProfile?>(StubFullProfile("Bob")));
-        _profileService.GetFullProfileAsync(carolId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<Humans.Application.FullProfile?>(StubFullProfile("Carol")));
+        _userService.GetUserInfoAsync(aliceId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(StubUserInfo(aliceId, "Alice")));
+        _userService.GetUserInfoAsync(bobId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(StubUserInfo(bobId, "Bob")));
+        _userService.GetUserInfoAsync(carolId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(StubUserInfo(carolId, "Carol")));
 
         var ctrl = BuildSut(new User { Id = Guid.NewGuid() });
 
@@ -564,14 +565,36 @@ public class VolunteerTrackingControllerTests
             Arg.Any<string>(), current.Id, Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
-    private static Humans.Application.FullProfile StubFullProfile(string displayName) =>
-        new(
-            UserId: Guid.NewGuid(), DisplayName: displayName, ProfilePictureUrl: null,
-            HasCustomPicture: false, ProfileId: Guid.NewGuid(), UpdatedAtTicks: 0,
-            BurnerName: null, Bio: null, Pronouns: null, ContributionInterests: null,
-            City: null, CountryCode: null, Latitude: null, Longitude: null,
-            BirthdayDay: null, BirthdayMonth: null,
-            IsApproved: true, IsSuspended: false,
-            CVEntries: Array.Empty<Humans.Application.CVEntry>(),
-            PrimaryEmail: null);
+    private static UserInfo StubUserInfo(Guid userId, string burnerName)
+    {
+        var user = new User
+        {
+            Id = userId,
+            DisplayName = burnerName,
+            PreferredLanguage = "en",
+            CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+            GoogleEmailStatus = GoogleEmailStatus.Unknown,
+        };
+        var profile = new Profile
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            BurnerName = burnerName,
+            FirstName = burnerName,
+            LastName = "Test",
+            IsApproved = true,
+            CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+            UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+        };
+        return UserInfo.Create(
+            user: user,
+            userEmails: Array.Empty<UserEmail>(),
+            eventParticipations: Array.Empty<EventParticipation>(),
+            externalLogins: Array.Empty<(string, string)>(),
+            profile: profile,
+            contactFields: Array.Empty<ContactField>(),
+            profileLanguages: Array.Empty<ProfileLanguage>(),
+            volunteerHistory: Array.Empty<VolunteerHistoryEntry>(),
+            communicationPreferences: Array.Empty<CommunicationPreference>());
+    }
 }

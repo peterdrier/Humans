@@ -825,6 +825,7 @@ public sealed class TicketTransferServiceTests
     private static HumanSearchResult MakeSearchResult(Guid userId, string displayName) =>
         new(
             UserId: userId,
+            ProfileId: Guid.NewGuid(),
             BurnerName: displayName,
             ProfilePictureUrl: null,
             MatchField: "Name",

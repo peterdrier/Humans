@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using Xunit;
 
-namespace Humans.Application.Tests.Repositories;
+namespace Humans.Application.Tests.Notifications;
 
 public class NotificationRepositoryTests : IDisposable
 {
@@ -199,6 +199,96 @@ public class NotificationRepositoryTests : IDisposable
 
         actionable.Should().Be(2);
         informational.Should().Be(1);
+    }
+
+    // ── ReassignRecipientsToUserAsync (account-merge fold) ────────────────────
+
+    [HumansFact]
+    public async Task ReassignRecipientsToUserAsync_MovesRowsFromSourceToTarget_PreservingReadAt()
+    {
+        var source = Guid.NewGuid();
+        var target = Guid.NewGuid();
+
+        var n = CreateNotification(source);
+        n.Recipients.Single().ReadAt = _now;
+        await _repo.AddAsync(n);
+
+        var count = await _repo.ReassignRecipientsToUserAsync(source, target, _now);
+
+        count.Should().Be(1);
+        var rows = await _dbContext.NotificationRecipients.AsNoTracking().ToListAsync();
+        rows.Should().ContainSingle();
+        rows[0].UserId.Should().Be(target);
+        rows[0].NotificationId.Should().Be(n.Id);
+        rows[0].ReadAt.Should().Be(_now);
+    }
+
+    [HumansFact]
+    public async Task ReassignRecipientsToUserAsync_CollapsesDuplicateOnSameNotification_TargetWins()
+    {
+        var source = Guid.NewGuid();
+        var target = Guid.NewGuid();
+
+        // Both users are already recipients of the same shared notification.
+        var n = new Notification
+        {
+            Id = Guid.NewGuid(),
+            Title = "Shared",
+            Source = NotificationSource.TeamMemberAdded,
+            Class = NotificationClass.Informational,
+            Priority = NotificationPriority.Normal,
+            CreatedAt = _now,
+        };
+        n.Recipients.Add(new NotificationRecipient { NotificationId = n.Id, UserId = source });
+        n.Recipients.Add(new NotificationRecipient { NotificationId = n.Id, UserId = target, ReadAt = _now });
+        await _repo.AddAsync(n);
+
+        var count = await _repo.ReassignRecipientsToUserAsync(source, target, _now);
+
+        count.Should().Be(1);
+        var rows = await _dbContext.NotificationRecipients.AsNoTracking().ToListAsync();
+        rows.Should().ContainSingle(r => r.NotificationId == n.Id && r.UserId == target);
+        // Target's pre-existing ReadAt is preserved (not overwritten by source's null).
+        rows.Single().ReadAt.Should().Be(_now);
+        // Source row dropped entirely (no leftover for the source user).
+        rows.Should().NotContain(r => r.UserId == source);
+    }
+
+    [HumansFact]
+    public async Task ReassignRecipientsToUserAsync_ReFKsNotificationResolvedByUserId_FromSourceToTarget()
+    {
+        var source = Guid.NewGuid();
+        var target = Guid.NewGuid();
+
+        // Notification resolved by the source user (now being merged away).
+        var n = CreateNotification(target, NotificationClass.Actionable);
+        n.ResolvedAt = _now;
+        n.ResolvedByUserId = source;
+        await _repo.AddAsync(n);
+
+        await _repo.ReassignRecipientsToUserAsync(source, target, _now);
+
+        var resolved = await _dbContext.Notifications.AsNoTracking().SingleAsync();
+        resolved.ResolvedByUserId.Should().Be(target);
+        resolved.ResolvedAt.Should().Be(_now);
+    }
+
+    [HumansFact]
+    public async Task ReassignRecipientsToUserAsync_LeavesUnrelatedRowsUnchanged()
+    {
+        var source = Guid.NewGuid();
+        var target = Guid.NewGuid();
+        var bystander = Guid.NewGuid();
+
+        await _repo.AddAsync(CreateNotification(source));
+        await _repo.AddAsync(CreateNotification(bystander));
+
+        await _repo.ReassignRecipientsToUserAsync(source, target, _now);
+
+        var rows = await _dbContext.NotificationRecipients.AsNoTracking().ToListAsync();
+        rows.Should().ContainSingle(r => r.UserId == target);
+        rows.Should().ContainSingle(r => r.UserId == bystander);
+        rows.Should().NotContain(r => r.UserId == source);
     }
 
     private Notification CreateNotification(

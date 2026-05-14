@@ -46,12 +46,14 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
     private readonly IUserEmailRepository _userEmailRepo;
     private readonly IProfileRepository _profileRepo;
     private readonly IContactFieldRepository _contactFieldRepo;
+    private readonly ICommunicationPreferenceRepository _communicationPreferenceRepo;
 
     public UserService(
         IUserRepository repo,
         IUserEmailRepository userEmailRepo,
         IProfileRepository profileRepo,
         IContactFieldRepository contactFieldRepo,
+        ICommunicationPreferenceRepository communicationPreferenceRepo,
         IFullProfileInvalidator fullProfileInvalidator,
         IAdminAuthorizationService adminAuthorization,
         IClock clock,
@@ -61,6 +63,7 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
         _userEmailRepo = userEmailRepo;
         _profileRepo = profileRepo;
         _contactFieldRepo = contactFieldRepo;
+        _communicationPreferenceRepo = communicationPreferenceRepo;
         _fullProfileInvalidator = fullProfileInvalidator;
         _adminAuthorization = adminAuthorization;
         _clock = clock;
@@ -94,10 +97,20 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
             volunteerHistory = profile.VolunteerHistory.ToList();
         }
 
+        var communicationPreferences = await _communicationPreferenceRepo
+            .GetByUserIdReadOnlyAsync(userId, ct);
+
         return UserInfo.Create(
             user, userEmails, participations, externalLogins,
-            profile, contactFields, languages, volunteerHistory);
+            profile, contactFields, languages, volunteerHistory,
+            communicationPreferences);
     }
+
+    public IReadOnlyCollection<UserInfo> GetAllUserInfos() =>
+        throw new NotSupportedException(
+            "GetAllUserInfos is only meaningful through CachingUserService. " +
+            "If this is being called on the inner UserService it indicates a DI " +
+            "registration mistake — IUserService should resolve to CachingUserService.");
 
     public Task<User?> GetByIdAsync(Guid userId, CancellationToken ct = default) =>
         _repo.GetByIdAsync(userId, ct);

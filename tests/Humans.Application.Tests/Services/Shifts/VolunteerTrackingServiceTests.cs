@@ -1,6 +1,7 @@
 using AwesomeAssertions;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Shifts;
 using Humans.Domain.Entities;
@@ -689,7 +690,7 @@ public class VolunteerTrackingServiceTests
             buildStatuses ?? Array.Empty<VolunteerBuildStatus>());
 
         return new VolunteerTrackingService(
-            trackingRepo, shiftMgmt, availabilityRepo, userService, clock);
+            trackingRepo, shiftMgmt, availabilityRepo, userService, Substitute.For<IShiftViewInvalidator>(), clock);
     }
 
     private static EventSettings MakeEvent(int buildStartOffset = -5, LocalDate? gateOpening = null)

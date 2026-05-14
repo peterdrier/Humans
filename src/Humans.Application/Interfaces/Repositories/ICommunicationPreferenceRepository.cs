@@ -48,6 +48,13 @@ public interface ICommunicationPreferenceRepository : IRepository
         Guid userId, CancellationToken ct = default);
 
     /// <summary>
+    /// Returns every <c>communication_preferences</c> row, read-only. Used by
+    /// the <see cref="UserInfo"/> cache warm path to bulk-load preferences
+    /// once at startup.
+    /// </summary>
+    Task<IReadOnlyList<CommunicationPreference>> GetAllAsync(CancellationToken ct = default);
+
+    /// <summary>
     /// Returns the count of preferences matching the given category and opt-out state.
     /// Used for dashboard metrics.
     /// </summary>

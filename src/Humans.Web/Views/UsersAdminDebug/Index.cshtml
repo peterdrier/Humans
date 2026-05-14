@@ -1,0 +1,76 @@
+@model Humans.Web.Models.UsersDebugViewModel
+@{
+    ViewData["Title"] = "All users (debug)";
+
+    string Toggle(string column)
+    {
+        var newDir = (Model.Sort == column && Model.IsAsc) ? "desc" : "asc";
+        return Url.Action("Index", new { page = 1, pageSize = Model.PageSize, sort = column, dir = newDir })!;
+    }
+
+    string ArrowFor(string column) =>
+        Model.Sort != column ? "" : Model.IsAsc ? " ↑" : " ↓";
+
+    string Tri(bool? value) => value is null ? "—" : value.Value ? "Yes" : "No";
+}
+
+<div class="page-head">
+    <h1 class="title">All users (debug)</h1>
+    <p class="sub">
+        @Model.TotalCount users · page @Model.Page of @Model.TotalPages · all fields read from the in-memory UserInfo cache
+    </p>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th><a href="@Toggle("userId")">UserId@(ArrowFor("userId"))</a></th>
+                        <th class="text-center"><a href="@Toggle("hasProfile")">HasProfile@(ArrowFor("hasProfile"))</a></th>
+                        <th class="text-center"><a href="@Toggle("hasTicket")">HasTicket@(ArrowFor("hasTicket"))</a></th>
+                        <th class="text-center"><a href="@Toggle("marketing")">Marketing@(ArrowFor("marketing"))</a></th>
+                        <th><a href="@Toggle("displayName")">Display name@(ArrowFor("displayName"))</a></th>
+                        <th><a href="@Toggle("burnerName")">Burner name@(ArrowFor("burnerName"))</a></th>
+                        <th><a href="@Toggle("legalName")">Legal name@(ArrowFor("legalName"))</a></th>
+                        <th class="text-center"><a href="@Toggle("hasConsent")">HasConsent@(ArrowFor("hasConsent"))</a></th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var row in Model.Rows)
+                {
+                    <tr>
+                        <td><a asp-controller="Profile" asp-action="AdminDetail" asp-route-id="@row.UserId"><code class="small">@row.UserId</code></a></td>
+                        <td class="text-center">@Tri(row.HasProfile)</td>
+                        <td class="text-center">@Tri(row.HasTicket)</td>
+                        <td class="text-center">@(row.MarketingOptedOut is null ? "—" : row.MarketingOptedOut.Value ? "No" : "Yes")</td>
+                        <td>@row.DisplayName</td>
+                        <td>@row.BurnerName</td>
+                        <td>@row.LegalName</td>
+                        <td class="text-center">@Tri(row.HasConsent)</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@if (Model.TotalPages > 1)
+{
+    <nav class="mt-3" aria-label="pager">
+        <ul class="pagination">
+            @for (var p = 1; p <= Model.TotalPages; p++)
+            {
+                var href = Url.Action("Index", new { page = p, pageSize = Model.PageSize, sort = Model.Sort, dir = Model.Dir });
+                <li class="page-item @(p == Model.Page ? "active" : "")">
+                    <a class="page-link" href="@href">@p</a>
+                </li>
+            }
+        </ul>
+    </nav>
+}
+
+@* Marketing tri-state: "Yes" when subscribed (OptedOut == false), "No" when opted out, "—" when no row exists. *@
+@* TODO: HasShift column — pending IShiftManager caching. *@

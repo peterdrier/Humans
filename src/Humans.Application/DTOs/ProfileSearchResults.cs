@@ -7,6 +7,9 @@ namespace Humans.Application.DTOs;
 /// lets more rows match.
 /// </summary>
 /// <param name="UserId">Owning user id.</param>
+/// <param name="ProfileId">Owning profile id. Surfaced so callers that need
+/// to fan out into <c>IContactFieldService</c> (which keys by profile id)
+/// don't have to round-trip through <c>GetByUserIdsAsync</c>.</param>
 /// <param name="BurnerName">The human's primary public display label.
 /// Falls back to <c>User.DisplayName</c> when
 /// <see cref="Humans.Domain.Entities.Profile.BurnerName"/> is unset.</param>
@@ -25,6 +28,7 @@ namespace Humans.Application.DTOs;
 /// content into the basic shape.</param>
 public record HumanSearchResult(
     Guid UserId,
+    Guid ProfileId,
     string BurnerName,
     string? ProfilePictureUrl,
     string? MatchField,

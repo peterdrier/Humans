@@ -57,6 +57,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
     private readonly IAdminAuthorizationService _adminAuthorization;
     private readonly IServiceProvider _serviceProvider;
     private readonly IMemoryCache _cache;
+    private readonly IShiftViewInvalidator _viewInvalidator;
     private readonly IClock _clock;
     private readonly ILogger<ShiftManagementService> _logger;
 
@@ -80,6 +81,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         IAdminAuthorizationService adminAuthorization,
         IServiceProvider serviceProvider,
         IMemoryCache cache,
+        IShiftViewInvalidator viewInvalidator,
         IClock clock,
         ILogger<ShiftManagementService> logger)
     {
@@ -88,6 +90,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         _adminAuthorization = adminAuthorization;
         _serviceProvider = serviceProvider;
         _cache = cache;
+        _viewInvalidator = viewInvalidator;
         _clock = clock;
         _logger = logger;
     }
@@ -165,6 +168,10 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
 
         entity.UpdatedAt = _clock.GetCurrentInstant();
         await _repo.AddEventSettingsAsync(entity);
+        // Event-settings activation can flip the "active event" — every
+        // ShiftUserView's Availability / BuildStatus is event-scoped.
+        if (entity.IsActive)
+            _viewInvalidator.InvalidateAll();
     }
 
     public async Task UpdateAsync(EventSettings entity)
@@ -180,6 +187,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         await _repo.UpdateEventSettingsAsync(entity);
 
         EvictDashboardCaches(entity.Id);
+        _viewInvalidator.InvalidateAll();
     }
 
     public async Task<int> DeleteEventAsync(
@@ -189,6 +197,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         await _adminAuthorization.RequireCurrentUserIsAdminAsync(cancellationToken);
         var deleted = await _repo.DeleteEventCascadeAsync(eventSettingsId, cancellationToken);
         EvictDashboardCaches(eventSettingsId);
+        _viewInvalidator.InvalidateAll();
         return deleted;
     }
 
@@ -211,12 +220,14 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
 
         rota.UpdatedAt = _clock.GetCurrentInstant();
         await _repo.AddRotaAsync(rota);
+        _viewInvalidator.InvalidateRota(rota.Id);
     }
 
     public async Task UpdateRotaAsync(Rota rota)
     {
         rota.UpdatedAt = _clock.GetCurrentInstant();
         await _repo.UpdateRotaAsync(rota);
+        _viewInvalidator.InvalidateRota(rota.Id);
     }
 
     public async Task MoveRotaToTeamAsync(Guid rotaId, Guid targetTeamId, Guid actorUserId)
@@ -244,6 +255,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         // does not have their save clobbered by this detached-graph update.
         await _repo.UpdateRotaTeamAssignmentAsync(
             rota.Id, targetTeamId, _clock.GetCurrentInstant());
+        _viewInvalidator.InvalidateRota(rota.Id);
 
         await _auditLogService.LogAsync(
             AuditAction.RotaMovedToTeam, nameof(Rota), rota.Id,
@@ -275,7 +287,20 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
             }
         }
 
+        // Collect affected user-ids from the pre-delete snapshot so the cache
+        // can be evicted after the cascade — once the rows are gone the cache
+        // cannot resolve the user set on its own.
+        var affectedUserIds = rota.Shifts
+            .SelectMany(s => s.ShiftSignups)
+            .Select(d => d.UserId)
+            .Distinct()
+            .ToList();
+
         await _repo.DeleteRotaCascadeAsync(rotaId);
+
+        _viewInvalidator.InvalidateRota(rotaId);
+        foreach (var uid in affectedUserIds)
+            _viewInvalidator.InvalidateUser(uid);
     }
 
     public Task<Rota?> GetRotaByIdAsync(Guid rotaId) =>
@@ -371,7 +396,10 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         }
 
         if (toInsert.Count > 0)
+        {
             await _repo.AddShiftsAsync(toInsert);
+            _viewInvalidator.InvalidateRota(rotaId);
+        }
     }
 
     public async Task GenerateEventShiftsAsync(Guid rotaId, int startDayOffset, int endDayOffset,
@@ -406,7 +434,10 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         }
 
         if (toInsert.Count > 0)
+        {
             await _repo.AddShiftsAsync(toInsert);
+            _viewInvalidator.InvalidateRota(rotaId);
+        }
     }
 
     // ============================================================
@@ -428,12 +459,14 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
 
         shift.UpdatedAt = _clock.GetCurrentInstant();
         await _repo.AddShiftAsync(shift);
+        _viewInvalidator.InvalidateRota(shift.RotaId);
     }
 
     public async Task UpdateShiftAsync(Shift shift)
     {
         shift.UpdatedAt = _clock.GetCurrentInstant();
         await _repo.UpdateShiftAsync(shift);
+        _viewInvalidator.InvalidateShift(shift.Id);
     }
 
     public async Task DeleteShiftAsync(Guid shiftId)
@@ -451,7 +484,15 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
             signup.Cancel(_clock, "Shift deleted");
         }
 
+        var rotaId = shift.RotaId;
+        var affectedUserIds = shift.ShiftSignups.Select(d => d.UserId).Distinct().ToList();
+
         await _repo.DeleteShiftCascadeAsync(shiftId);
+
+        _viewInvalidator.InvalidateShift(shiftId);
+        _viewInvalidator.InvalidateRota(rotaId);
+        foreach (var uid in affectedUserIds)
+            _viewInvalidator.InvalidateUser(uid);
     }
 
     public Task<Shift?> GetShiftByIdAsync(Guid shiftId) =>
@@ -1644,14 +1685,20 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         return tag;
     }
 
-    public Task SetRotaTagsAsync(Guid rotaId, IReadOnlyList<Guid> tagIds) =>
-        _repo.SetRotaTagsAsync(rotaId, tagIds);
+    public async Task SetRotaTagsAsync(Guid rotaId, IReadOnlyList<Guid> tagIds)
+    {
+        await _repo.SetRotaTagsAsync(rotaId, tagIds);
+        _viewInvalidator.InvalidateRota(rotaId);
+    }
 
     public Task<IReadOnlyList<ShiftTag>> GetVolunteerTagPreferencesAsync(Guid userId) =>
         _repo.GetVolunteerTagPreferencesAsync(userId);
 
-    public Task SetVolunteerTagPreferencesAsync(Guid userId, IReadOnlyList<Guid> tagIds) =>
-        _repo.SetVolunteerTagPreferencesAsync(userId, tagIds);
+    public async Task SetVolunteerTagPreferencesAsync(Guid userId, IReadOnlyList<Guid> tagIds)
+    {
+        await _repo.SetVolunteerTagPreferencesAsync(userId, tagIds);
+        _viewInvalidator.InvalidateUser(userId);
+    }
 
     public async Task<IReadOnlyDictionary<Guid, int>> GetPendingShiftSignupCountsByTeamAsync(
         Guid eventSettingsId,
@@ -1683,6 +1730,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         };
 
         await _repo.AddVolunteerEventProfileAsync(profile);
+        _viewInvalidator.InvalidateUser(userId);
         return profile;
     }
 
@@ -1690,6 +1738,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
     {
         profile.UpdatedAt = _clock.GetCurrentInstant();
         await _repo.UpdateVolunteerEventProfileAsync(profile);
+        _viewInvalidator.InvalidateUser(profile.UserId);
     }
 
     public async Task<VolunteerEventProfile?> GetShiftProfileAsync(Guid userId, bool includeMedical)
@@ -1704,11 +1753,19 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         return profile;
     }
 
-    public Task<int> DeleteShiftProfilesForUserAsync(
-        Guid userId, CancellationToken ct = default) =>
-        _repo.DeleteVolunteerEventProfilesForUserAsync(userId, ct);
+    public async Task<int> DeleteShiftProfilesForUserAsync(
+        Guid userId, CancellationToken ct = default)
+    {
+        var deleted = await _repo.DeleteVolunteerEventProfilesForUserAsync(userId, ct);
+        _viewInvalidator.InvalidateUser(userId);
+        return deleted;
+    }
 
-    public Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
-        CancellationToken ct) =>
-        _repo.ReassignProfilesAndTagPrefsToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
+    public async Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
+        CancellationToken ct)
+    {
+        await _repo.ReassignProfilesAndTagPrefsToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
+        _viewInvalidator.InvalidateUser(sourceUserId);
+        _viewInvalidator.InvalidateUser(targetUserId);
+    }
 }

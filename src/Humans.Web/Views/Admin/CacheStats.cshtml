@@ -57,6 +57,7 @@
     </div>
 </div>
 
+<h2 class="h5 mt-4">IMemoryCache</h2>
 @if (Model.Entries.Count == 0)
 {
     <div class="alert alert-info">
@@ -110,33 +111,82 @@ else
     </div>
 }
 
+<h2 class="h5 mt-4">Caching Decorators</h2>
+@if (Model.DecoratorEntries.Count == 0)
+{
+    <div class="alert alert-info">
+        <i class="fa-solid fa-info-circle me-1"></i>No decorator caches registered.
+    </div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-sm table-hover font-monospace" style="font-size: 0.85rem;" id="decoratorCacheStatsTable">
+            <thead>
+                <tr>
+                    <th style="cursor:pointer;" data-sort-col="0">Name <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th style="cursor:pointer;" data-sort-col="1" class="text-end">Entries <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th style="cursor:pointer;" data-sort-col="2" class="text-end">Hits <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th style="cursor:pointer;" data-sort-col="3" class="text-end">Misses <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th style="cursor:pointer;" data-sort-col="4" class="text-end">Hit Rate % <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th style="cursor:pointer;" data-sort-col="5" class="text-end">Invalidations <i class="fa-solid fa-sort fa-xs"></i></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var entry in Model.DecoratorEntries)
+                {
+                    var rateClass = (entry.Hits + entry.Misses) == 0
+                        ? ""
+                        : entry.HitRatePercent switch
+                        {
+                            >= 80 => "table-success",
+                            >= 50 => "",
+                            _ => "table-warning"
+                        };
+                    <tr class="@rateClass">
+                        <td>@entry.Name</td>
+                        <td class="text-end">@entry.Entries.ToString("N0")</td>
+                        <td class="text-end">@entry.Hits.ToString("N0")</td>
+                        <td class="text-end">@entry.Misses.ToString("N0")</td>
+                        <td class="text-end">@(entry.Hits + entry.Misses == 0 ? "—" : entry.HitRatePercent.ToString("F1") + "%")</td>
+                        <td class="text-end">@entry.Invalidations.ToString("N0")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
 @section Scripts {
     <script>
         (function () {
-            const sortDir = {};
-            const numericCols = [2, 4, 5, 6];
-            document.querySelectorAll('#cacheStatsTable th[data-sort-col]').forEach(th => {
-                th.addEventListener('click', function () {
-                    const colIndex = parseInt(this.dataset.sortCol);
-                    const tbody = document.querySelector('#cacheStatsTable tbody');
-                    const rows = Array.from(tbody.querySelectorAll('tr'));
-                    const isNumeric = numericCols.includes(colIndex);
+            function wireTable(tableId, numericCols) {
+                const sortDir = {};
+                document.querySelectorAll('#' + tableId + ' th[data-sort-col]').forEach(th => {
+                    th.addEventListener('click', function () {
+                        const colIndex = parseInt(this.dataset.sortCol);
+                        const tbody = document.querySelector('#' + tableId + ' tbody');
+                        const rows = Array.from(tbody.querySelectorAll('tr'));
+                        const isNumeric = numericCols.includes(colIndex);
 
-                    sortDir[colIndex] = !sortDir[colIndex];
-                    const dir = sortDir[colIndex] ? 1 : -1;
+                        sortDir[colIndex] = !sortDir[colIndex];
+                        const dir = sortDir[colIndex] ? 1 : -1;
 
-                    rows.sort((a, b) => {
-                        const aVal = a.cells[colIndex].textContent.trim().replace(/[,%]/g, '');
-                        const bVal = b.cells[colIndex].textContent.trim().replace(/[,%]/g, '');
-                        if (isNumeric) {
-                            return (parseFloat(aVal) - parseFloat(bVal)) * dir;
-                        }
-                        return aVal.localeCompare(bVal) * dir;
+                        rows.sort((a, b) => {
+                            const aVal = a.cells[colIndex].textContent.trim().replace(/[,%]/g, '');
+                            const bVal = b.cells[colIndex].textContent.trim().replace(/[,%]/g, '');
+                            if (isNumeric) {
+                                return (parseFloat(aVal) - parseFloat(bVal)) * dir;
+                            }
+                            return aVal.localeCompare(bVal) * dir;
+                        });
+
+                        rows.forEach(row => tbody.appendChild(row));
                     });
-
-                    rows.forEach(row => tbody.appendChild(row));
                 });
-            });
+            }
+            wireTable('cacheStatsTable', [2, 4, 5, 6]);
+            wireTable('decoratorCacheStatsTable', [1, 2, 3, 4, 5]);
         })();
     </script>
 }

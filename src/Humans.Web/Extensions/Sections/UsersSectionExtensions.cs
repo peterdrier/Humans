@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Dashboard;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Repositories;
@@ -50,6 +51,9 @@ internal static class UsersSectionExtensions
             sp.GetRequiredService<CachingUserService>());
         services.AddSingleton<IUserMerge>(sp =>
             sp.GetRequiredService<CachingUserService>());
+
+        // Surface UserInfo cache diagnostics on /Admin/CacheStats.
+        services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingUserService>());
 
         // SaveChanges interceptor — catches Identity-machinery writes
         // (UserManager.UpdateAsync, sign-in LastLoginAt, OAuth UserEmail

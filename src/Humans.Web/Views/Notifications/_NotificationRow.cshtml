@@ -71,7 +71,7 @@
             {
                 @if (!string.IsNullOrEmpty(Model.ActionUrl))
                 {
-                    <a href="@Url.Action("ClickThrough", "Notification", new { id = Model.Id })"
+                    <a href="@Url.Action("ClickThrough", "Notifications", new { id = Model.Id })"
                        class="btn btn-sm btn-outline-primary notification-action-btn">
                         @Model.ActionLabel
                     </a>
@@ -81,10 +81,10 @@
             {
                 @if (!string.IsNullOrEmpty(Model.ActionUrl))
                 {
-                    <a href="@Url.Action("ClickThrough", "Notification", new { id = Model.Id })"
+                    <a href="@Url.Action("ClickThrough", "Notifications", new { id = Model.Id })"
                        class="notification-text-link">@Model.ActionLabel</a>
                 }
-                <form method="post" asp-controller="Notification" asp-action="Dismiss" asp-route-id="@Model.Id"
+                <form method="post" asp-controller="Notifications" asp-action="Dismiss" asp-route-id="@Model.Id"
                       class="d-inline">
                     @Html.AntiForgeryToken()
                     <button type="submit" class="notification-dismiss-btn" data-ajax-dismiss

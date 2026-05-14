@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NodaTime;
@@ -18,11 +17,11 @@ using Humans.Application.Services.Profiles;
 namespace Humans.Infrastructure.Services.Profiles;
 
 /// <summary>
-/// Singleton caching decorator for <see cref="IProfileService"/>. Owns a private
-/// <see cref="ConcurrentDictionary{TKey,TValue}"/> of <see cref="FullProfile"/>
-/// entries keyed by userId. Reads serve dict hits synchronously via
-/// <see cref="ValueTask{TResult}"/>; writes reload the affected entry from
-/// repositories via <c>RefreshEntryAsync</c>.
+/// Singleton caching decorator for <see cref="IProfileService"/>. Inherits
+/// <see cref="TrackedCache{TKey, TValue}"/> to own a hit/miss-tracked cache of
+/// <see cref="FullProfile"/> entries keyed by userId. Reads serve cache hits
+/// synchronously via <see cref="ValueTask{TResult}"/>; writes reload the
+/// affected entry from repositories via <c>RefreshEntryAsync</c>.
 ///
 /// <para>
 /// Registered as Singleton so the dict persists across requests. Dependencies
@@ -38,7 +37,7 @@ namespace Humans.Infrastructure.Services.Profiles;
 /// injected directly because they are also Singleton (IDbContextFactory-based).
 /// </para>
 /// </summary>
-public sealed class CachingProfileService : IProfileService, IFullProfileInvalidator
+public sealed class CachingProfileService : TrackedCache<Guid, FullProfile>, IProfileService, IFullProfileInvalidator
 {
     // Phase 3 cache-collapse note:
     //
@@ -87,8 +86,6 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
     private readonly IServiceProvider _services;
     private IUserInfoInvalidator? _userInfoInvalidator;
 
-    private readonly ConcurrentDictionary<Guid, FullProfile> _byUserId = new();
-
     public CachingProfileService(
         IProfileRepository profileRepository,
         IUserEmailRepository userEmailRepository,
@@ -96,6 +93,7 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
         IServiceScopeFactory scopeFactory,
         IServiceProvider services,
         ILogger<CachingProfileService> logger)
+        : base("Profile.FullProfile")
     {
         _profileRepository = profileRepository;
         _userEmailRepository = userEmailRepository;
@@ -126,7 +124,7 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
     // Reads — dict cache + pass-through
     // ==========================================================================
 
-    // Pure pass-through: FullProfile dict (_byUserId) is the Profile cache now.
+    // Pure pass-through: the inherited FullProfile cache is the Profile cache now.
     // No separate IMemoryCache layer for raw Profile entities.
     public async Task<Profile?> GetProfileAsync(Guid userId, CancellationToken ct = default)
     {
@@ -137,7 +135,7 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
 
     public ValueTask<FullProfile?> GetFullProfileAsync(Guid userId, CancellationToken ct = default)
     {
-        if (_byUserId.TryGetValue(userId, out var hit))
+        if (TryGet(userId, out var hit))
             return new ValueTask<FullProfile?>(hit);
 
         return new ValueTask<FullProfile?>(LoadAndCacheAsync(userId, ct));
@@ -149,7 +147,7 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
         var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
         var result = await inner.GetFullProfileAsync(userId, ct);
         if (result is not null)
-            _byUserId[userId] = result;
+            Set(userId, result);
         return result;
     }
 
@@ -159,7 +157,7 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
 
     /// <summary>
     /// Reloads the <see cref="FullProfile"/> for <paramref name="userId"/> directly
-    /// from repositories and upserts it in <see cref="_byUserId"/>.
+    /// from repositories and upserts it in the inherited cache.
     /// If the profile or user no longer exists, the entry is removed instead.
     /// Called after every mutation so the dict stays consistent without eviction.
     /// </summary>
@@ -181,7 +179,7 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
         var profile = await _profileRepository.GetByUserIdReadOnlyAsync(userId, ct);
         if (profile is null)
         {
-            _byUserId.TryRemove(userId, out _);
+            Invalidate(userId);
             return;
         }
 
@@ -191,7 +189,7 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
         var user = await userService.GetByIdAsync(userId, ct);
         if (user is null)
         {
-            _byUserId.TryRemove(userId, out _);
+            Invalidate(userId);
             return;
         }
 
@@ -202,7 +200,7 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
         // Issue #635 (§15i): pass userEmails directly so PrimaryEmail /
         // AllVerifiedEmails / GoogleEmail derive from already-loaded data
         // without per-property repo calls.
-        _byUserId[userId] = FullProfile.Create(profile, user, profile.VolunteerHistory.ToList(), userEmails);
+        Set(userId, FullProfile.Create(profile, user, profile.VolunteerHistory.ToList(), userEmails));
     }
 
     /// <summary>
@@ -260,7 +258,7 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
     }
 
     /// <summary>
-    /// Populates <see cref="_byUserId"/> with a <see cref="FullProfile"/> for every
+    /// Populates the inherited cache with a <see cref="FullProfile"/> for every
     /// existing profile. Called at application startup by
     /// <c>FullProfileWarmupHostedService</c> so bulk-read methods
     /// (<see cref="GetBirthdayProfilesAsync"/>,
@@ -305,8 +303,8 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
             var userEmails = emailsByUserId.TryGetValue(profile.UserId, out var list)
                 ? list
                 : Array.Empty<UserEmail>();
-            _byUserId[profile.UserId] =
-                FullProfile.Create(profile, user, profile.VolunteerHistory.ToList(), userEmails);
+            Set(profile.UserId,
+                FullProfile.Create(profile, user, profile.VolunteerHistory.ToList(), userEmails));
         }
     }
 
@@ -378,14 +376,14 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
         GetBirthdayProfilesAsync(int month, CancellationToken ct = default)
     {
         return Task.FromResult(
-            ProfilesProfileService.GetBirthdayProfilesFromSnapshot(_byUserId.Values, month));
+            ProfilesProfileService.GetBirthdayProfilesFromSnapshot(Values, month));
     }
 
     public Task<IReadOnlyList<Application.DTOs.LocationProfileInfo>>
         GetApprovedProfilesWithLocationAsync(CancellationToken ct = default)
     {
         return Task.FromResult(
-            ProfilesProfileService.GetApprovedProfilesWithLocationFromSnapshot(_byUserId.Values));
+            ProfilesProfileService.GetApprovedProfilesWithLocationFromSnapshot(Values));
     }
 
     public async Task<(bool CanAdd, int MinutesUntilResend, Guid? PendingEmailId)>
@@ -407,7 +405,7 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
 
         // Snapshot the dict values once so the search reads a stable
         // collection across awaits.
-        var snapshot = _byUserId.Values.Where(p => !p.IsRejected).ToList();
+        var snapshot = Values.Where(p => !p.IsRejected).ToList();
 
         IReadOnlyDictionary<Guid, IReadOnlyList<ContactField>>? contactFieldsByProfileId = null;
         if ((fields & (PersonSearchFields.Bio | PersonSearchFields.Admin)) != PersonSearchFields.None)
@@ -437,11 +435,10 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
         var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
         await inner.SaveProfileLanguagesAsync(profileId, languages, ct);
 
-        // SaveProfileLanguagesAsync takes profileId, not userId; resolve via the dict.
-        // At ~500-user scale an O(n) scan over dict values is negligible.
-        // _byUserId.Values is a ConcurrentDictionary snapshot — safe against concurrent
-        // adds/removes. O(n) at ≤500 users.
-        var userId = _byUserId.Values.FirstOrDefault(p => p.ProfileId == profileId)?.UserId;
+        // SaveProfileLanguagesAsync takes profileId, not userId; resolve via the cache.
+        // At ~500-user scale an O(n) scan over Values is negligible. Values is a
+        // ConcurrentDictionary snapshot — safe against concurrent adds/removes.
+        var userId = Values.FirstOrDefault(p => p.ProfileId == profileId)?.UserId;
         if (userId.HasValue)
             await RefreshEntryAsync(userId.Value, ct);
     }
@@ -462,8 +459,8 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
         var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
         await inner.ReassignAsync(mergedFromUserId, mergedToUserId, actorUserId, now, ct);
 
-        _byUserId.TryRemove(mergedFromUserId, out _);
-        _byUserId.TryRemove(mergedToUserId, out _);
+        Invalidate(mergedFromUserId);
+        Invalidate(mergedToUserId);
 
         // Issue #703: also flush UserInfo for both ends. CachingUserService's
         // own ReassignAsync covers the user-section invalidation; this is the

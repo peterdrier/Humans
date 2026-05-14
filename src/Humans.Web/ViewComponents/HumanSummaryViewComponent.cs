@@ -1,6 +1,6 @@
-using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
+using Humans.Domain.Enums;
 using Humans.Web.Controllers;
 using Humans.Web.Helpers;
 using Humans.Web.Models;
@@ -18,26 +18,20 @@ namespace Humans.Web.ViewComponents;
 public sealed class HumanSummaryViewComponent : ViewComponent
 {
     private readonly IUserService _userService;
-    private readonly IProfileService _profileService;
-    private readonly IUserEmailService _userEmailService;
     private readonly ITeamService _teamService;
 
     public HumanSummaryViewComponent(
         IUserService userService,
-        IProfileService profileService,
-        IUserEmailService userEmailService,
         ITeamService teamService)
     {
         _userService = userService;
-        _profileService = profileService;
-        _userEmailService = userEmailService;
         _teamService = teamService;
     }
 
     public async Task<IViewComponentResult> InvokeAsync(Guid userId)
     {
-        var user = await _userService.GetByIdAsync(userId);
-        if (user is null)
+        var info = await _userService.GetUserInfoAsync(userId);
+        if (info is null)
         {
             return View("Default", new ProfileSummaryViewModel
             {
@@ -47,53 +41,50 @@ public sealed class HumanSummaryViewComponent : ViewComponent
             });
         }
 
-        var profile = await _profileService.GetProfileAsync(userId);
-        if (profile is null)
+        if (info.Profile is null)
         {
-            var userEmails = await _userEmailService.GetUserEmailsAsync(userId);
-            var fallbackEmail = userEmails.FirstOrDefault(e => e.IsVerified && e.IsPrimary)?.Email
-                ?? userEmails.FirstOrDefault(e => e.IsVerified)?.Email;
             return View("Default", new ProfileSummaryViewModel
             {
                 UserId = userId,
-                DisplayName = user.DisplayName,
-                Email = fallbackEmail,
-                ProfilePictureUrl = user.ProfilePictureUrl,
-                PreferredLanguage = user.PreferredLanguage,
+                DisplayName = info.BurnerName,
+                Email = info.PrimaryEmail
+                    ?? info.UserEmails.FirstOrDefault(e => e.IsVerified)?.Email,
+                ProfilePictureUrl = info.ProfilePictureUrl,
+                PreferredLanguage = info.PreferredLanguage,
                 HasProfile = false,
             });
         }
 
+        var profile = info.Profile;
         var memberships = (await _teamService.GetActiveTeamMembershipsForUserAsync(userId))
             .OrderBy(m => m.TeamName, StringComparer.OrdinalIgnoreCase)
             .ToList();
         var publicTeams = memberships.Where(m => !m.IsHidden).Select(m => m.TeamName).ToList();
         var hiddenTeams = memberships.Where(m => m.IsHidden).Select(m => m.TeamName).ToList();
-        var profileLanguages = await _profileService.GetProfileLanguagesAsync(profile.Id);
 
-        var effectivePictureUrl = profile.HasCustomProfilePicture
+        var effectivePictureUrl = profile.HasCustomPicture
             ? Url.Action(nameof(ProfileController.Picture), "Profile",
                 new { id = profile.Id, v = profile.UpdatedAt.ToUnixTimeTicks() })
-            : user.ProfilePictureUrl;
+            : info.ProfilePictureUrl;
+
+        var isSuspended = profile.State == ProfileState.Suspended;
 
         var vm = new ProfileSummaryViewModel
         {
             UserId = userId,
-            DisplayName = !string.IsNullOrWhiteSpace(profile.BurnerName)
-                ? profile.BurnerName
-                : user.DisplayName,
-            Email = user.Email,
+            DisplayName = info.BurnerName,
+            Email = info.Email,
             ProfilePictureUrl = effectivePictureUrl,
-            PreferredLanguage = user.PreferredLanguage,
+            PreferredLanguage = info.PreferredLanguage,
             MembershipTier = profile.MembershipTier.ToString(),
-            MembershipStatus = profile.IsSuspended ? "Suspended"
+            MembershipStatus = isSuspended ? "Suspended"
                 : profile.IsApproved ? "Active" : "Pending",
             City = profile.City,
             CountryCode = profile.CountryCode,
-            IsSuspended = profile.IsSuspended,
+            IsSuspended = isSuspended,
             Teams = publicTeams,
             HiddenTeams = hiddenTeams,
-            Languages = profileLanguages.Select(pl => new ProfileLanguageDisplayViewModel
+            Languages = profile.Languages.Select(pl => new ProfileLanguageDisplayViewModel
             {
                 LanguageCode = pl.LanguageCode,
                 LanguageName = LanguageCatalog.GetDisplayName(pl.LanguageCode),

@@ -3,6 +3,7 @@ using Humans.Application.Enums;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Shifts;
@@ -86,6 +87,7 @@ public class ShiftManagementServiceTests : IDisposable
             Substitute.For<IAdminAuthorizationService>(),
             serviceProvider,
             new MemoryCache(new MemoryCacheOptions()),
+            Substitute.For<IShiftViewInvalidator>(),
             _clock,
             NullLogger<ShiftManagementService>.Instance);
     }
@@ -125,6 +127,7 @@ public class ShiftManagementServiceTests : IDisposable
             adminAuthorization,
             Substitute.For<IServiceProvider>(),
             cache,
+            Substitute.For<IShiftViewInvalidator>(),
             _clock,
             NullLogger<ShiftManagementService>.Instance);
 

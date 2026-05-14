@@ -98,6 +98,13 @@ public interface IShiftManagementRepository : IRepository
     Task<Rota?> GetRotaByIdWithShiftsAsync(Guid rotaId, CancellationToken ct = default);
 
     /// <summary>
+    /// Loads a rota with its shifts, shift signups, and tags (same-section navs)
+    /// for the <see cref="DTOs.Shifts.ShiftRotaView"/> cache decorator. Read-only.
+    /// Returns null if the rota does not exist. Issue #720.
+    /// </summary>
+    Task<Rota?> GetRotaForViewAsync(Guid rotaId, CancellationToken ct = default);
+
+    /// <summary>
     /// Loads all rotas for a team+event with shifts, shift signups, and tags.
     /// Read-only. Cross-domain navs (<see cref="Rota.Team"/>,
     /// <see cref="ShiftSignup.User"/>) are NOT populated.

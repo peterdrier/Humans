@@ -25,6 +25,7 @@ public class CachingUserServiceTests
     private readonly IUserEmailRepository _userEmailRepo = Substitute.For<IUserEmailRepository>();
     private readonly IProfileRepository _profileRepo = Substitute.For<IProfileRepository>();
     private readonly IContactFieldRepository _contactFieldRepo = Substitute.For<IContactFieldRepository>();
+    private readonly ICommunicationPreferenceRepository _communicationPreferenceRepo = Substitute.For<ICommunicationPreferenceRepository>();
 
     private CachingUserService CreateSut()
     {
@@ -33,6 +34,7 @@ public class CachingUserServiceTests
         var scopeFactory = services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>();
         return new CachingUserService(
             _userRepo, _userEmailRepo, _profileRepo, _contactFieldRepo,
+            _communicationPreferenceRepo,
             scopeFactory, NullLogger<CachingUserService>.Instance);
     }
 
@@ -53,7 +55,8 @@ public class CachingUserServiceTests
             profile: null,
             contactFields: Array.Empty<ContactField>(),
             profileLanguages: Array.Empty<ProfileLanguage>(),
-            volunteerHistory: Array.Empty<VolunteerHistoryEntry>());
+            volunteerHistory: Array.Empty<VolunteerHistoryEntry>(),
+            communicationPreferences: Array.Empty<CommunicationPreference>());
 
     [HumansFact]
     public async Task GetUserInfoAsync_DictMiss_DelegatesToInnerAndCaches()
@@ -333,7 +336,8 @@ public class CachingUserServiceTests
             profile,
             new[] { contactField },
             profile.Languages.ToList(),
-            profile.VolunteerHistory.ToList());
+            profile.VolunteerHistory.ToList(),
+            Array.Empty<CommunicationPreference>());
 
         _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(fullInfo));

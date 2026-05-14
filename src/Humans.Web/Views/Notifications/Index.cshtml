@@ -142,7 +142,7 @@
     </div>
 
     <div class="notification-inbox-footer">
-        <form method="post" asp-controller="Notification" asp-action="MarkAllRead">
+        <form method="post" asp-controller="Notifications" asp-action="MarkAllRead">
             @Html.AntiForgeryToken()
             <button type="submit" class="btn btn-sm btn-outline-secondary">
                 @Localizer["Notification_MarkAllRead"]
@@ -236,12 +236,12 @@
 
     if (resolveBtn) {
         resolveBtn.addEventListener('click', function() {
-            bulkAction('@Url.Action("BulkResolve", "Notification")', 'actionable');
+            bulkAction('@Url.Action("BulkResolve", "Notifications")', 'actionable');
         });
     }
     if (dismissBtn) {
         dismissBtn.addEventListener('click', function() {
-            bulkAction('@Url.Action("BulkDismiss", "Notification")', 'informational');
+            bulkAction('@Url.Action("BulkDismiss", "Notifications")', 'informational');
         });
     }
 

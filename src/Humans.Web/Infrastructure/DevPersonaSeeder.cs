@@ -540,6 +540,7 @@ public sealed class DevPersonaSeeder
 
     /// <summary>
     /// Returns the first 100 users (display name ordered) for the dev user-chooser view.
+    /// Filters out ephemeral guest accounts minted by the Guest dev-login button.
     /// </summary>
     public async Task<IReadOnlyList<(Guid Id, string DisplayName, string Email)>> GetUsersForChooserAsync(
         CancellationToken ct = default)
@@ -547,6 +548,7 @@ public sealed class DevPersonaSeeder
         var users = await _userService.GetAllUsersAsync(ct);
 
         return users
+            .Where(u => !(u.Email ?? string.Empty).StartsWith("dev-guest-", StringComparison.OrdinalIgnoreCase))
             .OrderBy(u => u.DisplayName, StringComparer.Ordinal)
             .Take(100)
             .Select(u => (u.Id, u.DisplayName ?? u.Email ?? "Unknown", u.Email ?? string.Empty))

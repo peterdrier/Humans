@@ -1776,24 +1776,13 @@ public class ProfileController : HumansControllerBase
         // store directly — IProfileService owns the FS-first / DB-fallback /
         // migrate-on-read orchestration AND the anonymization gate (issue
         // nobodies-collective/Humans#527).
-        try
+        var result = await _profileService.GetProfilePictureAsync(id, ct);
+        if (result is null)
         {
-            var result = await _profileService.GetProfilePictureAsync(id, ct);
-            if (result is null)
-            {
-                return NotFound();
-            }
+            return NotFound();
+        }
 
-            return File(result.Value.Data, result.Value.ContentType);
-        }
-        catch (OperationCanceledException) when (HttpContext.RequestAborted.IsCancellationRequested)
-        {
-            // Client aborted the request mid-read. Don't surface as 500/Error;
-            // log at Warning without the exception object so the prod log viewer
-            // still sees the event but the stack-trace noise is dropped.
-            _logger.LogWarning("Request aborted while reading profile picture for {ProfileId}", id);
-            return new EmptyResult();
-        }
+        return File(result.Value.Data, result.Value.ContentType);
     }
 
     [HttpPost("Me/ImportGooglePhoto")]
@@ -1990,79 +1979,69 @@ public class ProfileController : HumansControllerBase
     [HttpGet("{id:guid}/Popover")]
     public async Task<IActionResult> Popover(Guid id, CancellationToken ct)
     {
-        try
+        var userTask = _userService.GetByIdAsync(id, ct);
+        var profileTask = _profileService.GetProfileAsync(id, ct);
+        await Task.WhenAll(userTask, profileTask);
+        var popoverUser = await userTask;
+        if (popoverUser is null) return NotFound();
+
+        var profile = await profileTask;
+        if (profile is null)
         {
-            var userTask = _userService.GetByIdAsync(id, ct);
-            var profileTask = _profileService.GetProfileAsync(id, ct);
-            await Task.WhenAll(userTask, profileTask);
-            var popoverUser = await userTask;
-            if (popoverUser is null) return NotFound();
+            // popoverUser.Email is unsafe here — User.Email SILENT-FALLBACK FOOTGUN.
+            var userEmails = await _userEmailService.GetUserEmailsAsync(id, ct);
+            var fallbackEmail = userEmails.FirstOrDefault(e => e.IsVerified && e.IsPrimary)?.Email
+                ?? userEmails.FirstOrDefault(e => e.IsVerified)?.Email;
 
-            var profile = await profileTask;
-            if (profile is null)
-            {
-                // popoverUser.Email is unsafe here — User.Email SILENT-FALLBACK FOOTGUN.
-                var userEmails = await _userEmailService.GetUserEmailsAsync(id, ct);
-                var fallbackEmail = userEmails.FirstOrDefault(e => e.IsVerified && e.IsPrimary)?.Email
-                    ?? userEmails.FirstOrDefault(e => e.IsVerified)?.Email;
-
-                var fallbackVm = new ProfileSummaryViewModel
-                {
-                    UserId = id,
-                    DisplayName = popoverUser.DisplayName,
-                    Email = fallbackEmail,
-                    ProfilePictureUrl = popoverUser.ProfilePictureUrl,
-                    PreferredLanguage = popoverUser.PreferredLanguage,
-                    HasProfile = false,
-                };
-
-                return PartialView("_HumanPopover", fallbackVm);
-            }
-
-            var memberships = (await _teamService.GetActiveTeamMembershipsForUserAsync(id, ct))
-                .OrderBy(m => m.TeamName, StringComparer.OrdinalIgnoreCase)
-                .ToList();
-            var publicTeams = memberships.Where(m => !m.IsHidden).Select(m => m.TeamName).ToList();
-            var hiddenTeams = memberships.Where(m => m.IsHidden).Select(m => m.TeamName).ToList();
-            var profileLanguages = await _profileService.GetProfileLanguagesAsync(profile.Id, ct);
-
-            var effectivePictureUrl = profile.HasCustomProfilePicture
-                ? Url.Action(nameof(Picture), "Profile",
-                    new { id = profile.Id, v = profile.UpdatedAt.ToUnixTimeTicks() })
-                : popoverUser.ProfilePictureUrl;
-
-            var vm = new ProfileSummaryViewModel
+            var fallbackVm = new ProfileSummaryViewModel
             {
                 UserId = id,
                 DisplayName = popoverUser.DisplayName,
-                Email = popoverUser.Email,
-                ProfilePictureUrl = effectivePictureUrl,
+                Email = fallbackEmail,
+                ProfilePictureUrl = popoverUser.ProfilePictureUrl,
                 PreferredLanguage = popoverUser.PreferredLanguage,
-                MembershipTier = profile.MembershipTier.ToString(),
-                MembershipStatus = profile.IsSuspended ? "Suspended"
-                    : profile.IsApproved ? "Active" : "Pending",
-                City = profile.City,
-                CountryCode = profile.CountryCode,
-                IsSuspended = profile.IsSuspended,
-                Teams = publicTeams,
-                HiddenTeams = hiddenTeams,
-                Languages = profileLanguages.Select(pl => new ProfileLanguageDisplayViewModel
-                {
-                    LanguageCode = pl.LanguageCode,
-                    LanguageName = Helpers.LanguageCatalog.GetDisplayName(pl.LanguageCode),
-                    Proficiency = pl.Proficiency
-                }).ToList()
+                HasProfile = false,
             };
 
-            return PartialView("_HumanPopover", vm);
+            return PartialView("_HumanPopover", fallbackVm);
         }
-        catch (OperationCanceledException) when (HttpContext.RequestAborted.IsCancellationRequested)
+
+        var memberships = (await _teamService.GetActiveTeamMembershipsForUserAsync(id, ct))
+            .OrderBy(m => m.TeamName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        var publicTeams = memberships.Where(m => !m.IsHidden).Select(m => m.TeamName).ToList();
+        var hiddenTeams = memberships.Where(m => m.IsHidden).Select(m => m.TeamName).ToList();
+        var profileLanguages = await _profileService.GetProfileLanguagesAsync(profile.Id, ct);
+
+        var effectivePictureUrl = profile.HasCustomProfilePicture
+            ? Url.Action(nameof(Picture), "Profile",
+                new { id = profile.Id, v = profile.UpdatedAt.ToUnixTimeTicks() })
+            : popoverUser.ProfilePictureUrl;
+
+        var vm = new ProfileSummaryViewModel
         {
-            // Client aborted the request mid-read. Don't surface as 500/Error;
-            // log at Warning without the exception object.
-            _logger.LogWarning("Request aborted while loading popover for {ProfileId}", id);
-            return new EmptyResult();
-        }
+            UserId = id,
+            DisplayName = popoverUser.DisplayName,
+            Email = popoverUser.Email,
+            ProfilePictureUrl = effectivePictureUrl,
+            PreferredLanguage = popoverUser.PreferredLanguage,
+            MembershipTier = profile.MembershipTier.ToString(),
+            MembershipStatus = profile.IsSuspended ? "Suspended"
+                : profile.IsApproved ? "Active" : "Pending",
+            City = profile.City,
+            CountryCode = profile.CountryCode,
+            IsSuspended = profile.IsSuspended,
+            Teams = publicTeams,
+            HiddenTeams = hiddenTeams,
+            Languages = profileLanguages.Select(pl => new ProfileLanguageDisplayViewModel
+            {
+                LanguageCode = pl.LanguageCode,
+                LanguageName = Helpers.LanguageCatalog.GetDisplayName(pl.LanguageCode),
+                Proficiency = pl.Proficiency
+            }).ToList()
+        };
+
+        return PartialView("_HumanPopover", vm);
     }
 
     [HttpGet("{id:guid}/SendMessage")]

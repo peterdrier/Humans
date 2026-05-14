@@ -42,6 +42,8 @@ public class AccountDeletionServiceTests
         Substitute.For<IRoleAssignmentClaimsCacheInvalidator>();
     private readonly IShiftAuthorizationInvalidator _shiftAuthorizationInvalidator =
         Substitute.For<IShiftAuthorizationInvalidator>();
+    private readonly IShiftViewInvalidator _shiftViewInvalidator =
+        Substitute.For<IShiftViewInvalidator>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 3, 14, 12, 0));
@@ -60,6 +62,7 @@ public class AccountDeletionServiceTests
             _ticketQueryService,
             _roleAssignmentClaimsInvalidator,
             _shiftAuthorizationInvalidator,
+            _shiftViewInvalidator,
             _auditLogService,
             _emailService,
             _clock,

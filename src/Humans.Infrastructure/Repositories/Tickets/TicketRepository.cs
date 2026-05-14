@@ -1073,6 +1073,9 @@ public sealed class TicketRepository : ITicketRepository
         if (string.Equals(sortBy, "status", StringComparison.OrdinalIgnoreCase))
             return sortDesc ? query.OrderByDescending(a => a.Status) : query.OrderBy(a => a.Status);
 
+        if (string.Equals(sortBy, "email", StringComparison.OrdinalIgnoreCase))
+            return sortDesc ? query.OrderByDescending(a => a.AttendeeEmail) : query.OrderBy(a => a.AttendeeEmail);
+
         return sortDesc ? query.OrderByDescending(a => a.AttendeeName) : query.OrderBy(a => a.AttendeeName);
     }
 }

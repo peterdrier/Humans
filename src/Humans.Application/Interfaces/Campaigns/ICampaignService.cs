@@ -1,3 +1,4 @@
+using Humans.Application.Architecture;
 using Humans.Application.Interfaces;
 using Humans.Application.DTOs;
 using Humans.Domain.Entities;
@@ -18,6 +19,7 @@ public record WaveSendPreview(
 /// </summary>
 public record DiscountCodeRedemption(string Code, Instant RedeemedAt);
 
+[SurfaceBudget(20)]
 public interface ICampaignService : IApplicationService
 {
     Task<Campaign> CreateAsync(string title, string? description,
