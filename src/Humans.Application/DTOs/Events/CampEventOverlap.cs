@@ -1,7 +1,7 @@
 using Humans.Domain.Enums;
 using NodaTime;
 
-namespace Humans.Application.DTOs.EventGuide;
+namespace Humans.Application.DTOs.Events;
 
 public record CampEventOverlap(
     Guid Id,

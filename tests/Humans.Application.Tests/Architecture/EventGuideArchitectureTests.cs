@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces.EventGuide;
+using Humans.Application.Interfaces.Events;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Infrastructure.Repositories.Events;
 using Humans.Web.Controllers;
@@ -7,7 +7,7 @@ using Humans.Web.Controllers.Api;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
-using EventGuideService = Humans.Application.Services.EventGuide.EventGuideService;
+using EventService = Humans.Application.Services.Events.EventService;
 
 namespace Humans.Application.Tests.Architecture;
 
@@ -21,15 +21,15 @@ public class EventGuideArchitectureTests
     [HumansFact]
     public void EventGuideService_LivesInHumansApplicationServicesEventGuideNamespace()
     {
-        typeof(EventGuideService).Namespace
-            .Should().Be("Humans.Application.Services.EventGuide",
+        typeof(EventService).Namespace
+            .Should().Be("Humans.Application.Services.Events",
                 because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
     }
 
     [HumansFact]
     public void EventGuideService_HasNoDbContextConstructorParameter()
     {
-        var ctor = typeof(EventGuideService).GetConstructors().Single();
+        var ctor = typeof(EventService).GetConstructors().Single();
 
         ctor.GetParameters()
             .Should().NotContain(
@@ -40,7 +40,7 @@ public class EventGuideArchitectureTests
     [HumansFact]
     public void EventGuideService_TakesRepositoryInterface()
     {
-        var ctor = typeof(EventGuideService).GetConstructors().Single();
+        var ctor = typeof(EventService).GetConstructors().Single();
         var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
 
         paramTypes.Should().Contain(typeof(IEventRepository));
@@ -49,8 +49,8 @@ public class EventGuideArchitectureTests
     [HumansFact]
     public void IEventGuideService_LivesInApplicationInterfacesEventGuideNamespace()
     {
-        typeof(IEventGuideService).Namespace
-            .Should().Be("Humans.Application.Interfaces.EventGuide");
+        typeof(IEventService).Namespace
+            .Should().Be("Humans.Application.Interfaces.Events");
     }
 
     [HumansFact]

@@ -1,4 +1,4 @@
-using Humans.Application.DTOs.EventGuide;
+using Humans.Application.DTOs.Events;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;

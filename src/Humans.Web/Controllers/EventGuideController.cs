@@ -1,5 +1,5 @@
 using Humans.Application.Interfaces.Email;
-using Humans.Application.Interfaces.EventGuide;
+using Humans.Application.Interfaces.Events;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Filters;
@@ -16,13 +16,13 @@ namespace Humans.Web.Controllers;
 [ServiceFilter(typeof(EventGuideFeatureFilter))]
 public class EventGuideController : HumansControllerBase
 {
-    private readonly IEventGuideService _guide;
+    private readonly IEventService _guide;
     private readonly IClock _clock;
     private readonly IEmailService _emailService;
     private readonly ILogger<EventGuideController> _logger;
 
     public EventGuideController(
-        IEventGuideService guide,
+        IEventService guide,
         UserManager<User> userManager,
         IClock clock,
         IEmailService emailService,

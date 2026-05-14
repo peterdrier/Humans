@@ -1,6 +1,6 @@
 using System.Globalization;
 using System.Text;
-using Humans.Application.Interfaces.EventGuide;
+using Humans.Application.Interfaces.Events;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Web.Filters;
@@ -16,9 +16,9 @@ namespace Humans.Web.Controllers;
 [ServiceFilter(typeof(EventGuideFeatureFilter))]
 public class EventGuideExportController : HumansControllerBase
 {
-    private readonly IEventGuideService _guide;
+    private readonly IEventService _guide;
 
-    public EventGuideExportController(IEventGuideService guide, UserManager<User> userManager)
+    public EventGuideExportController(IEventService guide, UserManager<User> userManager)
         : base(userManager)
     {
         _guide = guide;

@@ -1,4 +1,4 @@
-using Humans.Application.Interfaces.EventGuide;
+using Humans.Application.Interfaces.Events;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Web.Filters;
@@ -15,11 +15,11 @@ namespace Humans.Web.Controllers;
 [ServiceFilter(typeof(EventGuideFeatureFilter))]
 public class GuideAdminController : HumansControllerBase
 {
-    private readonly IEventGuideService _guide;
+    private readonly IEventService _guide;
     private readonly ILogger<GuideAdminController> _logger;
 
     public GuideAdminController(
-        IEventGuideService guide,
+        IEventService guide,
         ILogger<GuideAdminController> logger,
         UserManager<User> userManager)
         : base(userManager)

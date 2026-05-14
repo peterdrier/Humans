@@ -1,7 +1,7 @@
 using AwesomeAssertions;
-using Humans.Application.DTOs.EventGuide;
+using Humans.Application.DTOs.Events;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Application.Services.EventGuide;
+using Humans.Application.Services.Events;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
@@ -14,11 +14,11 @@ public sealed class EventGuideServiceTests
 {
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 5, 5, 12, 0));
     private readonly FakeEventGuideRepository _repo = new();
-    private readonly EventGuideService _service;
+    private readonly EventService _service;
 
     public EventGuideServiceTests()
     {
-        _service = new EventGuideService(_repo, _clock);
+        _service = new EventService(_repo, _clock);
     }
 
     [HumansFact]

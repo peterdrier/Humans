@@ -522,7 +522,7 @@ builder.Services.AddRazorPages();
 builder.Services.AddSignalR();
 builder.Services.AddScoped<Humans.Web.Filters.EventGuideFeatureFilter>();
 builder.Services.AddScoped<Humans.Application.Interfaces.Repositories.IEventRepository, Humans.Infrastructure.Repositories.Events.EventRepository>();
-builder.Services.AddScoped<Humans.Application.Interfaces.EventGuide.IEventGuideService, Humans.Application.Services.EventGuide.EventGuideService>();
+builder.Services.AddScoped<Humans.Application.Interfaces.Events.IEventService, Humans.Application.Services.Events.EventService>();
 
 // In Developement, compile Razor pages each time they are loaded
 if (builder.Environment.IsDevelopment())

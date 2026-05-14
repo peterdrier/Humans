@@ -1,4 +1,4 @@
-using Humans.Application.Interfaces.EventGuide;
+using Humans.Application.Interfaces.Events;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -16,9 +16,9 @@ namespace Humans.Web.Controllers;
 [ServiceFilter(typeof(EventGuideFeatureFilter))]
 public class EventGuideDashboardController : HumansControllerBase
 {
-    private readonly IEventGuideService _guide;
+    private readonly IEventService _guide;
 
-    public EventGuideDashboardController(IEventGuideService guide, UserManager<User> userManager)
+    public EventGuideDashboardController(IEventService guide, UserManager<User> userManager)
         : base(userManager)
     {
         _guide = guide;

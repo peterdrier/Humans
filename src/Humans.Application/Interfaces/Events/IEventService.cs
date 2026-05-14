@@ -1,12 +1,12 @@
-using Humans.Application.DTOs.EventGuide;
+using Humans.Application.DTOs.Events;
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
 
-namespace Humans.Application.Interfaces.EventGuide;
+namespace Humans.Application.Interfaces.Events;
 
-public interface IEventGuideService : IApplicationService
+public interface IEventService : IApplicationService
 {
     // ── Settings ─────────────────────────────────────────────────────────
     Task<EventGuideSettings?> GetGuideSettingsAsync(CancellationToken ct = default);

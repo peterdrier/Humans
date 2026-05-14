@@ -1,5 +1,5 @@
 using Humans.Application.Interfaces.Email;
-using Humans.Application.Interfaces.EventGuide;
+using Humans.Application.Interfaces.Events;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
@@ -18,13 +18,13 @@ namespace Humans.Web.Controllers;
 [ServiceFilter(typeof(EventGuideFeatureFilter))]
 public class ModerationController : HumansControllerBase
 {
-    private readonly IEventGuideService _guide;
+    private readonly IEventService _guide;
     private readonly IEmailService _emailService;
     private readonly IUserService _users;
     private readonly ILogger<ModerationController> _logger;
 
     public ModerationController(
-        IEventGuideService guide,
+        IEventService guide,
         UserManager<User> userManager,
         IEmailService emailService,
         IUserService users,

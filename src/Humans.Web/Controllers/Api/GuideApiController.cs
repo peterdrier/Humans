@@ -1,4 +1,4 @@
-using Humans.Application.Interfaces.EventGuide;
+using Humans.Application.Interfaces.Events;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Filters;
@@ -18,10 +18,10 @@ namespace Humans.Web.Controllers.Api;
 [ServiceFilter(typeof(EventGuideFeatureFilter))]
 public class GuideApiController : ControllerBase
 {
-    private readonly IEventGuideService _guide;
+    private readonly IEventService _guide;
     private readonly UserManager<User> _userManager;
 
-    public GuideApiController(IEventGuideService guide, UserManager<User> userManager)
+    public GuideApiController(IEventService guide, UserManager<User> userManager)
     {
         _guide = guide;
         _userManager = userManager;

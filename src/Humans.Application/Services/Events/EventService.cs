@@ -1,19 +1,19 @@
 using System.Text.Json;
-using Humans.Application.DTOs.EventGuide;
-using Humans.Application.Interfaces.EventGuide;
+using Humans.Application.DTOs.Events;
+using Humans.Application.Interfaces.Events;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
 
-namespace Humans.Application.Services.EventGuide;
+namespace Humans.Application.Services.Events;
 
-public sealed class EventGuideService : IEventGuideService
+public sealed class EventService : IEventService
 {
     private readonly IEventRepository _repo;
     private readonly IClock _clock;
 
-    public EventGuideService(IEventRepository repo, IClock clock)
+    public EventService(IEventRepository repo, IClock clock)
     {
         _repo = repo;
         _clock = clock;
