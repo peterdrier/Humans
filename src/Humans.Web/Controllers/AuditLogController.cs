@@ -3,8 +3,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.GoogleIntegration;
-using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.AuditLog;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -17,18 +17,18 @@ namespace Humans.Web.Controllers;
 public class AuditLogController : HumansControllerBase
 {
     private readonly IAuditViewerService _auditViewer;
-    private readonly IProfileService _profileService;
+    private readonly IUserService _userService;
     private readonly ILogger<AuditLogController> _logger;
 
     public AuditLogController(
         UserManager<User> userManager,
         IAuditViewerService auditViewer,
-        IProfileService profileService,
+        IUserService userService,
         ILogger<AuditLogController> logger)
         : base(userManager)
     {
         _auditViewer = auditViewer;
-        _profileService = profileService;
+        _userService = userService;
         _logger = logger;
     }
 
@@ -112,8 +112,8 @@ public class AuditLogController : HumansControllerBase
         }
 
         var events = await _auditViewer.GetGoogleSyncForUserAsync(id);
-        var profile = await _profileService.GetFullProfileAsync(id);
-        var displayName = profile?.DisplayName ?? user.DisplayName;
+        var info = await _userService.GetUserInfoAsync(id);
+        var displayName = info?.BurnerName ?? user.DisplayName;
         return GoogleSyncAuditView(
             $"Google Sync Audit: {displayName}",
             Url.Action(nameof(ProfileController.AdminDetail), "Profile", new { id }),

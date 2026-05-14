@@ -1,7 +1,7 @@
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.AuditLog;
-using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Authorization;
@@ -29,20 +29,20 @@ namespace Humans.Web.Controllers;
 public sealed class VolunteerTrackingController : HumansControllerBase
 {
     private readonly IVolunteerTrackingService _service;
-    private readonly IProfileService _profileService;
+    private readonly IUserService _userService;
     private readonly IAuditLogService _auditLogService;
     private readonly IStringLocalizer<SharedResource> _localizer;
 
     public VolunteerTrackingController(
         IVolunteerTrackingService service,
-        IProfileService profileService,
+        IUserService userService,
         IAuditLogService auditLogService,
         UserManager<User> userManager,
         IStringLocalizer<SharedResource> localizer)
         : base(userManager)
     {
         _service = service;
-        _profileService = profileService;
+        _userService = userService;
         _auditLogService = auditLogService;
         _localizer = localizer;
     }
@@ -60,11 +60,13 @@ public sealed class VolunteerTrackingController : HumansControllerBase
             return View(VolunteerTrackingPageViewModel.Empty);
         }
 
-        // Resolve BurnerName-aware display names for the sort key. Per
+        // Resolve BurnerName-aware display names for the sort key and the
+        // partials' tooltip/search strings. One sync-on-hit lookup per user
+        // (no DB round-trip in steady state). Per
         // memory/architecture/burnername-is-the-display-name.md, never read
-        // user.DisplayName for rendering when a Profile exists. The cell-
-        // rendering path uses <vc:human> which fetches its own FullProfile;
-        // here we only need a stable string per user-id for the row sort.
+        // user.DisplayName for rendering when a Profile exists — cell render
+        // uses <vc:human>; this dict is just for the controller-side sort
+        // and the row tooltip text in the partial.
         var displayUserIds = data.MainCohort.Select(r => r.UserId)
             .Concat(data.UnbookedCohort.Select(r => r.UserId))
             .Distinct()
@@ -72,8 +74,8 @@ public sealed class VolunteerTrackingController : HumansControllerBase
         var nameByUserId = new Dictionary<Guid, string>(displayUserIds.Length);
         foreach (var uid in displayUserIds)
         {
-            var fp = await _profileService.GetFullProfileAsync(uid, ct);
-            nameByUserId[uid] = fp?.DisplayName ?? "";
+            var info = await _userService.GetUserInfoAsync(uid, ct);
+            nameByUserId[uid] = info?.BurnerName ?? "";
         }
 
         // Display sort in the controller (presentation concern).
@@ -99,6 +101,7 @@ public sealed class VolunteerTrackingController : HumansControllerBase
             data.Today,
             mainSorted,
             unbookedSorted,
+            nameByUserId,
             hideNoGaps,
             hideCampSetup,
             hideUnbookedSection);

@@ -1,11 +1,9 @@
 @model Humans.Web.Models.UnbookedHeatmapPartialModel
 @using Humans.Application.DTOs
-@using Humans.Application.Interfaces.Profiles
 @using Humans.Web.Authorization
 @using Microsoft.AspNetCore.Authorization
 @using NodaTime
 @inject IAuthorizationService AuthService
-@inject IProfileService ProfileService
 
 @{
     var canWrite = (await AuthService.AuthorizeAsync(User, PolicyNames.VolunteerTrackingWrite)).Succeeded;
@@ -70,8 +68,11 @@
                 @foreach (var row in Model.Rows)
                 {
                     // BurnerName-resolved name for tooltips/aria — see _VolunteerHeatmap.cshtml.
-                    var fullProfile = await ProfileService.GetFullProfileAsync(row.UserId);
-                    var displayName = fullProfile?.DisplayName ?? Localizer["VolTrack_UnknownUser"].Value;
+                    var displayName = Model.DisplayNameByUserId.GetValueOrDefault(row.UserId, "");
+                    if (string.IsNullOrEmpty(displayName))
+                    {
+                        displayName = Localizer["VolTrack_UnknownUser"].Value;
+                    }
                     var availableDays = row.Cells.Count(c => IsAvailable(c.State));
 
                     <tr data-vt-search-name="@displayName.ToLowerInvariant()">
