@@ -1,0 +1,72 @@
+@using Humans.Application.DTOs
+@using Humans.Domain.Enums
+@model Humans.Web.ViewComponents.TicketTransferTimelineViewModel
+
+<div class="card mb-3">
+    <div class="card-header py-2"><h3 class="h6 mb-0">Vendor step history</h3></div>
+    <div class="card-body py-2 small">
+        <div class="mb-2">
+            <strong>Requested</strong>
+            <span class="text-muted">@Model.Request.RequestedAt.ToDisplayDateTime()</span>
+            — @Model.Request.SenderDisplayName
+            @if (!string.IsNullOrWhiteSpace(Model.Request.SenderReason))
+            {
+                <span class="text-muted">— "@Model.Request.SenderReason"</span>
+            }
+        </div>
+
+        @if (Model.Request.DecidedAt is not null)
+        {
+            var statusLabel = Model.Request.Status switch
+            {
+                TicketTransferStatus.Approved => "Approved",
+                TicketTransferStatus.Rejected => "Rejected",
+                TicketTransferStatus.Cancelled => "Cancelled",
+                _ => Model.Request.Status.ToString(),
+            };
+            <div class="mb-2">
+                <strong>@statusLabel</strong>
+                <span class="text-muted">@Model.Request.DecidedAt!.Value.ToDisplayDateTime()</span>
+                @if (!string.IsNullOrEmpty(Model.Request.DecidedByDisplayName))
+                {
+                    <text> — @Model.Request.DecidedByDisplayName</text>
+                }
+                @if (!string.IsNullOrEmpty(Model.Request.AdminNotes))
+                {
+                    <div class="text-muted">@Model.Request.AdminNotes</div>
+                }
+            </div>
+        }
+
+        @if (Model.Steps.Count == 0)
+        {
+            <p class="text-muted mb-0">No vendor step detail recorded (transfer pre-dates step-log feature).</p>
+        }
+        else
+        {
+            <ul class="list-unstyled mb-0">
+                @foreach (var step in Model.Steps)
+                {
+                    var icon = step.Success ? "fa-circle-check text-success" : "fa-circle-xmark text-danger";
+                    <li class="mb-1">
+                        <i class="fa-solid @icon me-1"></i>
+                        <strong>@step.Kind</strong>
+                        <span class="text-muted">@step.OccurredAt.ToDisplayDateTime()</span>
+                        @if (!string.IsNullOrEmpty(step.VendorReferenceId))
+                        {
+                            <code class="ms-1">@step.VendorReferenceId</code>
+                        }
+                        @if (!string.IsNullOrEmpty(step.ResponseSummary))
+                        {
+                            <span class="text-muted ms-1">— @step.ResponseSummary</span>
+                        }
+                        @if (!string.IsNullOrEmpty(step.ErrorMessage))
+                        {
+                            <div class="text-danger ms-4 small">@step.ErrorMessage</div>
+                        }
+                    </li>
+                }
+            </ul>
+        }
+    </div>
+</div>

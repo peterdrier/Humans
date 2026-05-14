@@ -231,6 +231,13 @@ public interface IShiftSignupRepository : IRepository
         Guid userId, string reason, CancellationToken ct = default);
 
     /// <summary>
+    /// Deletes every signup row owned by the supplied users. Returns deleted row count.
+    /// </summary>
+    Task<int> DeleteAllForUsersAsync(
+        IReadOnlyCollection<Guid> userIds,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Account-merge fold: re-FKs <c>shift_signups</c> rows from
     /// <paramref name="sourceUserId"/> to <paramref name="targetUserId"/>.
     /// Plain re-FK with one defensive guard — when source and target both
@@ -254,4 +261,11 @@ public interface IShiftSignupRepository : IRepository
     /// reconciliation screen. Read-only.
     /// </summary>
     Task<IReadOnlyList<ShiftSignup>> GetAllForOrphanScanAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns user-ids with at least one Pending or Confirmed signup for the
+    /// given event. Read-only. Used by Mailer audience computations.
+    /// </summary>
+    Task<IReadOnlySet<Guid>> GetActiveCommittedUserIdsForEventAsync(
+        Guid eventSettingsId, CancellationToken ct = default);
 }

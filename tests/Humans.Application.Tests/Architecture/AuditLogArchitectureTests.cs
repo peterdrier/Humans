@@ -1,15 +1,15 @@
+using System.Text.RegularExpressions;
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Tests.Architecture.Ratchet;
 using Humans.Infrastructure.Repositories.AuditLog;
-using Microsoft.EntityFrameworkCore;
 using Xunit;
-using AuditLogService = Humans.Application.Services.AuditLog.AuditLogService;
 
 namespace Humans.Application.Tests.Architecture;
 
 /// <summary>
-/// Architecture tests enforcing the §15 repository pattern for the Audit
-/// Log section — migrated per issue #552.
+/// Architecture tests enforcing section-specific invariants for the Audit
+/// Log section.
 ///
 /// <para>
 /// Audit Log chose <b>Option A</b> (no caching decorator, no dict cache).
@@ -17,6 +17,12 @@ namespace Humans.Application.Tests.Architecture;
 /// admin-only, so a cache is not warranted — same rationale used by Users
 /// (#243), Governance (#242), Budget (#544), and City Planning (#543) when
 /// they skipped the decorator.
+/// </para>
+///
+/// <para>
+/// Generic cross-section invariants (sealed repos, no DbContext in services,
+/// no IMemoryCache unless allowlisted, namespace placement) are covered by
+/// the generic rules in <c>Architecture/Rules/</c> and are not repeated here.
 /// </para>
 ///
 /// <para>
@@ -29,77 +35,7 @@ namespace Humans.Application.Tests.Architecture;
 /// </summary>
 public class AuditLogArchitectureTests
 {
-    // ── AuditLogService ──────────────────────────────────────────────────────
-
-    [HumansFact]
-    public void AuditLogService_LivesInHumansApplicationServicesAuditLogNamespace()
-    {
-        typeof(AuditLogService).Namespace
-            .Should().Be("Humans.Application.Services.AuditLog",
-                because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
-    }
-
-    [HumansFact]
-    public void AuditLogService_HasNoDbContextConstructorParameter()
-    {
-        var ctor = typeof(AuditLogService).GetConstructors().Single();
-        ctor.GetParameters()
-            .Should().NotContain(
-                p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
-                because: "services in Humans.Application must never take DbContext — use IAuditLogRepository instead (design-rules §3)");
-    }
-
-    [HumansFact]
-    public void AuditLogService_HasNoIMemoryCacheConstructorParameter()
-    {
-        var ctor = typeof(AuditLogService).GetConstructors().Single();
-        var cachingParam = ctor.GetParameters()
-            .FirstOrDefault(p => (p.ParameterType.FullName ?? string.Empty)
-                .StartsWith("Microsoft.Extensions.Caching.Memory", StringComparison.Ordinal));
-
-        cachingParam.Should().BeNull(
-            because: "canonical Audit Log data is not IMemoryCache-backed; §15 Option A applies (no caching decorator warranted)");
-    }
-
-    [HumansFact]
-    public void AuditLogService_TakesRepository()
-    {
-        var ctor = typeof(AuditLogService).GetConstructors().Single();
-        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
-
-        paramTypes.Should().Contain(typeof(IAuditLogRepository));
-    }
-
-    [HumansFact]
-    public void AuditLogService_ConstructorTakesNoStoreType()
-    {
-        var ctor = typeof(AuditLogService).GetConstructors().Single();
-        var storeParam = ctor.GetParameters()
-            .FirstOrDefault(p => (p.ParameterType.Namespace ?? string.Empty)
-                .StartsWith("Humans.Application.Interfaces.Stores", StringComparison.Ordinal));
-
-        storeParam.Should().BeNull(
-            because: "Application services must not depend on store abstractions (design-rules §15); Audit Log Option A does not use a store at all");
-    }
-
     // ── IAuditLogRepository ──────────────────────────────────────────────────
-
-    [HumansFact]
-    public void IAuditLogRepository_LivesInApplicationInterfacesRepositoriesNamespace()
-    {
-        typeof(IAuditLogRepository).Namespace
-            .Should().Be("Humans.Application.Interfaces.Repositories",
-                because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
-    }
-
-    [HumansFact]
-    public void AuditLogRepository_IsSealed()
-    {
-        var repoType = typeof(AuditLogRepository);
-
-        repoType.IsSealed.Should().BeTrue(
-            because: "repository implementations are sealed to prevent ad-hoc extension; any new behavior belongs on the interface");
-    }
 
     [HumansFact]
     public void IAuditLogRepository_HasNoUpdateOrDeleteMethods()
@@ -113,5 +49,62 @@ public class AuditLogArchitectureTests
                  || m.StartsWith("Delete", StringComparison.Ordinal)
                  || m.StartsWith("Remove", StringComparison.Ordinal),
             because: "audit_log is append-only (§12); repositories for append-only tables expose only Add/Get methods");
+    }
+
+    // ── Sole-writer DbSet rule ───────────────────────────────────────────────
+
+    /// <summary>
+    /// Only <c>AuditLogRepository</c> may write to <c>ctx.AuditLogEntries</c>.
+    /// Any other production class that calls <c>.Add</c>, <c>.AddRange</c>,
+    /// <c>.Update</c>, <c>.Remove</c>, or <c>.Attach</c> on
+    /// <c>AuditLogEntries</c> is a cross-section boundary violation.
+    ///
+    /// <para>
+    /// Current known violation: <c>DriveActivityMonitorRepository.PersistAnomaliesAsync</c>
+    /// calls <c>ctx.AuditLogEntries.AddRange(anomalies)</c> directly. This is
+    /// baselining until the GoogleIntegration /section-align run switches to
+    /// calling <c>IAuditLogService.LogAsync</c> per anomaly.
+    /// </para>
+    /// </summary>
+    [HumansFact]
+    public void Only_AuditLogRepository_Writes_AuditLogEntries_DbSet()
+    {
+        var repoRoot = RatchetTestRunner.LocateRepoRoot();
+        var violations = ScanAuditLogEntriesWrites(repoRoot);
+        RatchetTestRunner.Run(
+            "OnlyAuditLogRepositoryWritesAuditLogEntries",
+            "tests/Humans.Application.Tests/Architecture/Baselines/OnlyAuditLogRepositoryWritesAuditLogEntries.baseline.txt",
+            violations);
+    }
+
+    // Matches the write-operation call chains on the AuditLogEntries DbSet.
+    // e.g. ctx.AuditLogEntries.Add(...)  /  .AddRange  /  .Update  /  .Remove  /  .Attach
+    private static readonly Regex AuditLogWriteRegex = new(
+        @"AuditLogEntries\s*\.\s*(?:Add|AddRange|Update|Remove|Attach)\b",
+        RegexOptions.Compiled | RegexOptions.ExplicitCapture,
+        TimeSpan.FromSeconds(2));
+
+    internal static IEnumerable<string> ScanAuditLogEntriesWrites(string repoRoot)
+    {
+        foreach (var path in RatchetTestRunner.EnumerateSourceFiles(repoRoot))
+        {
+            // The canonical owner is AuditLogRepository — exclude it from violation reporting.
+            if (path.Replace('\\', '/').EndsWith(
+                    "Infrastructure/Repositories/AuditLog/AuditLogRepository.cs",
+                    StringComparison.Ordinal))
+                continue;
+
+            var content = File.ReadAllText(path);
+            if (!AuditLogWriteRegex.IsMatch(content)) continue;
+
+            var rel = RatchetTestRunner.ToRelativePath(repoRoot, path);
+            var ordinal = 0;
+            foreach (var match in AuditLogWriteRegex.Matches(content).Cast<System.Text.RegularExpressions.Match>())
+            {
+                ordinal++;
+                var line = RatchetTestRunner.LineNumberAt(content, match.Index);
+                yield return $"{rel}:AuditLogEntries-write#{ordinal} # L{line}";
+            }
+        }
     }
 }

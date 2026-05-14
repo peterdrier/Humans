@@ -1,5 +1,5 @@
 <!-- freshness:flag-on-change
-  Forward-looking inventory of Roslyn analyzer candidates beyond HUM0001-HUM0006/HUM0008.
+  Forward-looking inventory of Roslyn analyzer candidates beyond HUM0001-HUM0006/HUM0008/HUM0009.
   Flag if a new analyzer ships (move that entry from Tier 1 → catalogue in code-analysis.md),
   if a new atom lands with call-site shape, or if a recent clamp-fix commit would have been
   prevented by a not-yet-shipped analyzer.
@@ -8,7 +8,7 @@
 # Roslyn Analyzer Candidates
 
 Forward-looking inventory of *additional* in-repo analyzer rules beyond the
-shipped `HUM0001`–`HUM0006` / `HUM0008` (catalogued in
+shipped `HUM0001`–`HUM0006` / `HUM0008` / `HUM0009` (catalogued in
 [`code-analysis.md`](code-analysis.md)). This file is the queue we draw from
 when adding the next analyzer; do not start writing one without checking here
 first.
@@ -56,22 +56,6 @@ project at least one fix commit.
   gives Peter a build-break the moment someone adds one, in-editor, with the
   atom link in the diagnostic message.
 - Current coverage: `NoConcurrencyTokensRule` (ratchet). Migrate it.
-
-### HUM0009 — Application services may not inject `HumansDbContext`
-
-- Rule: any class under namespace `Humans.Application.Services.*` may not have
-  a constructor parameter typed `HumansDbContext`.
-- Source: same atom as HUM0008 + design-rules §2b.
-- Call-site shape: `INamedTypeSymbol.ContainingNamespace` starts with
-  `Humans.Application.Services`, scan constructors. Pure scope-by-namespace
-  guard, no allowlist.
-- Why analyzer, not ratchet: zero legitimate uses ever (the Application
-  project doesn't even reference EF Core, so this normally fails at compile
-  time — but the project graph can be wiggled, and an analyzer prevents
-  someone from "just adding it" by editing the csproj). In-editor squiggle
-  on the constructor parameter beats a build-time test that reports
-  `path:line`.
-- Current coverage: `NoServiceInjectsDbContextRule` (ratchet, baselined).
 
 ### HUM0010 — View components may not inject `IMemoryCache`
 
@@ -135,6 +119,26 @@ project at least one fix commit.
   cascade.
 - Current coverage: none — caught by the resulting compile error far from
   the cause.
+
+### HUM0015 / HUM0016 — `[SurfaceBudget(N)]` analyzer (SHIPPED)
+
+- Rule: a type (interface, class, or struct) decorated with
+  `Humans.Application.Architecture.SurfaceBudgetAttribute(N)` must declare
+  exactly `N` directly-declared **public-instance** ordinary methods.
+  Over-budget fires HUM0015; under-budget (slack) fires HUM0016.
+- Source: replaces the retired `InterfaceMethodBudgetTests`
+  (issue [nobodies-collective/Humans#700](https://github.com/nobodies-collective/Humans/issues/700)).
+  Budgets now live as a per-type attribute with the rationale captured in
+  XML `<remarks>` on the type itself — visible in tooltips, diffed alongside
+  the surface change, scoped to a single symbol. Currently applied to service
+  interfaces only; the attribute is valid on classes/structs too if you want
+  to budget an implementation's public surface directly.
+- Call-site shape: `SymbolKind.NamedType`, filter to interface/class/struct
+  carrying the attribute, count public-instance `MethodKind == Ordinary`
+  members directly on the symbol. Accessibility filter is a no-op on
+  interfaces (all members are implicitly public-instance) but discriminates
+  on classes/structs.
+- Status: shipped. Catalogued in `code-analysis.md`.
 
 ### HUM0014 — `Cached*` type names forbidden for public surface
 
@@ -218,7 +222,6 @@ Listed so the next maintainer doesn't propose them as analyzers. Each one is
 shaped for ratchet / marker / filesystem-aware enforcement, not for an
 analyzer.
 
-- `NoServiceInjectsDbContextRule` (`tests/.../Rules/NoServiceInjectsDbContextRule.cs`) — promoted in Tier 1 as HUM0009, kept here until the analyzer ships.
 - `NoConcurrencyTokensRule` (`tests/.../Rules/NoConcurrencyTokensRule.cs`) — promoted in Tier 1 as HUM0007.
 - `NoCrossSectionEfJoinsRule` (`tests/.../Rules/NoCrossSectionEfJoinsRule.cs`) — section ownership is encoded in the `Configurations/<Section>/` folder layout; filesystem-aware. Stay as ratchet.
 - `NoLinqAtDbLayerRule` (`tests/.../Rules/NoLinqAtDbLayerRule.cs`) — accumulated debt across services; baseline-ratcheted. Stay as ratchet.
@@ -227,7 +230,6 @@ analyzer.
 - `NoDestructiveMigrationOpsRule` (`tests/.../Rules/NoDestructiveMigrationOpsRule.cs`) — operates on EF-generated migration files which legitimately contain destructive ops in other contexts. Filesystem-aware. Stay as ratchet.
 - `NoStartupGuardsRule` (`tests/.../Rules/NoStartupGuardsRule.cs`) — heuristic regex over `Program.cs` and startup classes; pattern is too fuzzy for crisp call-site analyzer detection. Stay as ratchet.
 - `DisplaySortInControllersRule` (`tests/.../Rules/DisplaySortInControllersRule.cs`) — accumulated debt + inline `// arch:db-sort-ok` opt-out; baseline-ratcheted today, see Tier 2 for the analyzer prerequisite.
-- `InterfaceMethodBudgetTests` (`tests/.../Architecture/InterfaceMethodBudgetTests.cs`) — accumulated method counts per interface, down-only ratchet. Stay as ratchet.
 - `ServiceBoundaryArchitectureTests` (`tests/.../Architecture/ServiceBoundaryArchitectureTests.cs`) — seven boundary scans (marker-attribute presence, ownership-map completeness, repository-injection rules across Web, cross-section repo injections in Application). All shaped as reflection/marker tests or baselined ratchets. Stay as tests.
 - The per-section `*ArchitectureTests.cs` files (Camps, Teams, Shifts, Profile, etc.) — each pins namespace location, ctor shape, no-DbContext-injection, and "owned entities have no cross-domain navs" using reflection on the loaded assemblies. Marker/existence + reflection shape. Stay as tests.
 

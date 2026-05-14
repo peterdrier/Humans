@@ -34,7 +34,7 @@
                     <p class="card-text text-muted">
                         @Localizer["Governance_Optional"]
                     </p>
-                    <a asp-controller="Application" asp-action="Create" class="btn btn-outline-primary">@Localizer["Governance_ApplyButton"]</a>
+                    <a asp-controller="GovernanceApplications" asp-action="Create" class="btn btn-outline-primary">@Localizer["Governance_ApplyButton"]</a>
                 </div>
             </div>
         }
@@ -97,7 +97,7 @@
                         <p class="text-muted mb-0">@Localizer["Governance_RejectedMessage"]</p>
                         @if (Model.CanApply)
                         {
-                            <a asp-controller="Application" asp-action="Create" class="btn btn-outline-primary mt-3">@Localizer["Governance_ApplyButton"]</a>
+                            <a asp-controller="GovernanceApplications" asp-action="Create" class="btn btn-outline-primary mt-3">@Localizer["Governance_ApplyButton"]</a>
                         }
                     }
                 </div>
@@ -160,7 +160,7 @@
             <div class="card mt-3 border-info">
                 <div class="card-body text-info-emphasis bg-info-subtle">
                     <p class="mb-2">@Localizer["Governance_ColaboradorCanApply"]</p>
-                    <a asp-controller="Application" asp-action="Create" class="btn btn-sm btn-outline-info">@Localizer["Governance_ApplyForAsociado"]</a>
+                    <a asp-controller="GovernanceApplications" asp-action="Create" class="btn btn-sm btn-outline-info">@Localizer["Governance_ApplyForAsociado"]</a>
                 </div>
             </div>
         }

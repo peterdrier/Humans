@@ -1,3 +1,4 @@
+using Humans.Application.Architecture;
 using Humans.Application.Interfaces;
 using Humans.Application.DTOs;
 using Humans.Domain.Entities;
@@ -126,6 +127,19 @@ public record TeamCoordinatorRef(Guid TeamId, Guid UserId);
 /// <summary>
 /// Service for managing teams and team membership.
 /// </summary>
+/// <remarks>
+/// Surface-budget recent history (newest first):
+/// <list type="bullet">
+///   <item>71→70 — PR #478 (issue #615): removed GetActiveChildMembersByParentIdsAsync; the child-team rollup is now inside GetExpectedAsync via GetActiveMembersForTeamsAsync.</item>
+///   <item>2026-05-11 — InterfaceMethodBudgetTests retired; budget migrated to [SurfaceBudget(71)] (issue nobodies-collective/Humans#700).</item>
+///   <item>73→71 — tech-debt query consolidation: removed GetTeamMembersAsync and GetActiveMemberUserIdsAsync; callers project members/user IDs from GetTeamAsync/GetTeamsAsync read models.</item>
+///   <item>71→73 — team-cache decorator groundwork: added canonical GetTeamAsync/GetTeamsAsync read-model methods. Follow-up passes should consolidate member/name/option getters down onto those methods.</item>
+///   <item>70→71 — issue-682 global search: added SearchAsync(query, max). Authorized exception (Peter, 2026-05-09): queries against teams must live in the owning section per design-rules §6; the ratchet's "remove one to add one" rule doesn't apply when the addition is a moved-in query rather than a new feature surface.</item>
+///   <item>70→70 — issue-634: added GetActiveTeamMembershipsForUserAsync (name + role-in-team for the agent snapshot) and removed GetActiveTeamNamesForUserAsync, since the new method is strictly more capable; the one production caller (ProfileController popover) projects to names via .Select(m =&gt; m.TeamName).</item>
+///   <item>71→70 — account-merge fold redesign: removed ReassignToUserAsync from ITeamService (moved to IUserMerge.ReassignAsync, implemented by TeamService and dispatched by AccountMergeService via IEnumerable&lt;IUserMerge&gt; fan-out).</item>
+/// </list>
+/// </remarks>
+[SurfaceBudget(70)]
 public interface ITeamService : IApplicationService
 {
     /// <summary>
@@ -594,7 +608,7 @@ public interface ITeamService : IApplicationService
     /// <summary>
     /// Adds a team member with an explicit <paramref name="role"/> and <paramref name="joinedAt"/>
     /// timestamp, without emitting audit entries, outbox events, or user-facing emails. This is
-    /// a narrow seed/migration-only path; production membership changes must go through
+    /// a restricted seed/migration-only path; production membership changes must go through
     /// <see cref="AddMemberToTeamAsync"/>, <see cref="ApproveJoinRequestAsync"/>, or the role
     /// assignment APIs. Throws if the user is already an active member of the team.
     /// </summary>
@@ -606,15 +620,14 @@ public interface ITeamService : IApplicationService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Hard-deletes every team whose <see cref="Team.Name"/> ends with
-    /// <paramref name="nameSuffix"/>, along with its <see cref="TeamMember"/> rows and
-    /// <see cref="TeamJoinRequest"/> rows. Narrow seed/test-only cleanup path that
-    /// bypasses <see cref="DeleteTeamAsync"/>'s soft-delete semantics so a subsequent
-    /// reseed can reuse the same slugs without collisions. Returns the number of teams
-    /// deleted.
+    /// Permanently deletes a team and its Teams-owned child rows. Requires the
+    /// current authenticated user to hold the full Admin role. The team must
+    /// have no linked Google resources — <c>GoogleResource → Team</c> is
+    /// configured with <c>OnDelete(Restrict)</c>, so the caller must unlink
+    /// resources via <see cref="ITeamResourceService"/> first.
     /// </summary>
-    Task<int> HardDeleteSeededTeamsAsync(
-        string nameSuffix,
+    Task<bool> PermanentlyDeleteTeamAsync(
+        Guid teamId,
         CancellationToken cancellationToken = default);
 
     // ==========================================================================
@@ -695,18 +708,6 @@ public interface ITeamService : IApplicationService
     /// </summary>
     Task<IReadOnlyList<TeamMember>> GetActiveMembersForTeamsAsync(
         IReadOnlyCollection<Guid> teamIds,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Returns every active (<see cref="TeamMember.LeftAt"/> is null) team member
-    /// whose team has a parent team id in <paramref name="parentTeamIds"/>.
-    /// The child team is hydrated on <see cref="TeamMember.Team"/>; the
-    /// <see cref="TeamMember.User"/> nav is stitched in-memory. Used by the
-    /// subteam rollup path in Google Workspace reconciliation — department
-    /// resources must grant access to every member of every child team.
-    /// </summary>
-    Task<IReadOnlyList<TeamMember>> GetActiveChildMembersByParentIdsAsync(
-        IReadOnlyCollection<Guid> parentTeamIds,
         CancellationToken cancellationToken = default);
 
     // ==========================================================================

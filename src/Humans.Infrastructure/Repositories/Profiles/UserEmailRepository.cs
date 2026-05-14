@@ -333,6 +333,20 @@ public sealed class UserEmailRepository : IUserEmailRepository
             .FirstOrDefaultAsync(ct);
     }
 
+    public async Task<IReadOnlyList<Guid>> GetUserIdsByEmailPrefixAndSuffixAsync(
+        string prefix,
+        string suffix,
+        CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.UserEmails
+            .AsNoTracking()
+            .Where(ue => ue.Email.StartsWith(prefix) && ue.Email.EndsWith(suffix))
+            .Select(ue => ue.UserId)
+            .Distinct()
+            .ToListAsync(ct);
+    }
+
     public async Task<IReadOnlyList<Guid>> GetDistinctUserIdsByVerifiedEmailAsync(
         string email, CancellationToken ct = default)
     {
@@ -344,6 +358,20 @@ public sealed class UserEmailRepository : IUserEmailRepository
             .Select(ue => ue.UserId)
             .Distinct()
             .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<Guid>> GetDistinctVerifiedUserIdsAsync(
+        string normalizedEmail, string? alternateEmail, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var query = ctx.UserEmails.AsNoTracking().Where(ue => ue.IsVerified);
+
+        query = alternateEmail is null
+            ? query.Where(ue => EF.Functions.ILike(ue.Email, normalizedEmail))
+            : query.Where(ue => EF.Functions.ILike(ue.Email, normalizedEmail)
+                             || EF.Functions.ILike(ue.Email, alternateEmail));
+
+        return await query.Select(ue => ue.UserId).Distinct().ToListAsync(ct);
     }
 
     public async Task<Guid?> GetOtherUserIdHavingEmailAsync(

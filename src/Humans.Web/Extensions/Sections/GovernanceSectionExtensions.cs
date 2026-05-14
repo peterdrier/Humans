@@ -12,6 +12,8 @@ using Humans.Infrastructure.Repositories.Governance;
 using Humans.Infrastructure.Services;
 using Humans.Web.Services.Onboarding;
 using GovernanceApplicationDecisionService = Humans.Application.Services.Governance.ApplicationDecisionService;
+using GovernanceMembershipCalculator = Humans.Application.Services.Governance.MembershipCalculator;
+using GovernanceMembershipQuery = Humans.Application.Services.Governance.MembershipQuery;
 using OnboardingOrchestratorService = Humans.Application.Services.Onboarding.OnboardingService;
 using OnboardingWidgetStateService = Humans.Application.Services.Onboarding.OnboardingWidgetState;
 
@@ -25,7 +27,7 @@ internal static class GovernanceSectionExtensions
         // Governance is low-traffic enough that DB reads per request are fine;
         // the service invalidates nav/notification/voting badge caches inline
         // after successful writes.
-        services.AddScoped<IApplicationRepository, ApplicationRepository>();
+        services.AddSingleton<IApplicationRepository, ApplicationRepository>();
 
         services.AddScoped<INavBadgeCacheInvalidator, NavBadgeCacheInvalidator>();
         services.AddScoped<INotificationMeterCacheInvalidator, NotificationMeterCacheInvalidator>();
@@ -35,6 +37,13 @@ internal static class GovernanceSectionExtensions
         services.AddScoped<IApplicationDecisionService>(sp => sp.GetRequiredService<GovernanceApplicationDecisionService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<GovernanceApplicationDecisionService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<GovernanceApplicationDecisionService>());
+
+        // Query adapter breaks the circular DI graph between IMembershipCalculator
+        // and ITeamService / IRoleAssignmentService (both of which inject
+        // ISystemTeamSync, whose implementation injects IMembershipCalculator back).
+        // Only MembershipCalculator depends on the query adapter.
+        services.AddScoped<IMembershipQuery, GovernanceMembershipQuery>();
+        services.AddScoped<IMembershipCalculator, GovernanceMembershipCalculator>();
 
         // Onboarding — orchestrator only (owns no tables). Lives in Humans.Application
         // per design-rules §2b; routes all reads/writes through owning-section

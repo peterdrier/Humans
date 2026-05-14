@@ -1,4 +1,14 @@
+using Humans.Application.DTOs;
+using Humans.Application.Interfaces.Tickets;
+
 namespace Humans.Web.Models;
+
+public sealed record TicketTransferIndexViewModel(
+    string ActiveTab,
+    int PendingCount,
+    int NeedsAttentionCount,
+    IReadOnlyList<TicketTransferRowDto> Rows,
+    IReadOnlyList<OrderDriftRow> Drift);
 
 public sealed class TicketTransferRequestPageViewModel
 {

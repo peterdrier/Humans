@@ -2,7 +2,7 @@
   src/Humans.Application/Services/Governance/**
   src/Humans.Application/Services/Profile/ProfileService.cs
   src/Humans.Application/Services/Teams/TeamService.cs
-  src/Humans.Web/Controllers/ApplicationController.cs
+  src/Humans.Web/Controllers/GovernanceApplicationsController.cs
   src/Humans.Web/Controllers/GovernanceController.cs
   src/Humans.Web/Controllers/ProfileController.cs
   src/Humans.Domain/Entities/Application.cs
@@ -21,7 +21,7 @@
 
 Nobodies Collective has four effective membership tiers, though only three are managed within this system. **All humans start as Volunteers** — the default tier with immediate access after consent check clearance. Humans who want deeper involvement can apply for **Colaborador** status (active contributor) or **Asociado** status (voting member per Spanish nonprofit statutes). **Board** membership is a fourth tier managed through an external process — the system only tracks their role assignments.
 
-Tier is tracked on the `Profile` entity (`MembershipTier` field), not as a role. Tier applications use the existing `Application` entity (extended with a `MembershipTier` field). During initial signup, the application form is embedded inline alongside the profile setup for a streamlined one-shot experience. After initial onboarding, tier applications go through the dedicated Application route.
+Tier is tracked on the `Profile` entity (`MembershipTier` field), not as a role. Tier applications use the existing `Application` entity (extended with a `MembershipTier` field). During initial signup, the application form is embedded inline alongside the profile setup for a streamlined one-shot experience. After initial onboarding, tier applications go through the dedicated Governance Applications route.
 
 ### Three Managed Tiers
 
@@ -174,7 +174,7 @@ Both proceed through their respective pipelines:
 
 ### After Onboarding (Dedicated Application Route)
 ```
-Active Volunteer/Colaborador → /Application → Fill form → Submit
+Active Volunteer/Colaborador → /Governance/Applications → Fill form → Submit
     │
     ▼
 Application created → Board Voting → Approve/Reject

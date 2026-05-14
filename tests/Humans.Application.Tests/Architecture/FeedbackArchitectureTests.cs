@@ -80,6 +80,8 @@ public class FeedbackArchitectureTests
 
         paramTypes.Should().Contain(typeof(IUserService),
             because: "Feedback resolves reporter / assignee / resolver display names via IUserService instead of cross-domain .Include() chains");
+        paramTypes.Should().Contain(typeof(IProfileService),
+            because: "Feedback resolves BurnerName-first display names via IProfileService.GetByUserIdsAsync per memory/architecture/burnername-is-the-display-name.md");
         paramTypes.Should().Contain(typeof(IUserEmailService),
             because: "Feedback resolves the reporter's effective notification email via IUserEmailService.GetNotificationTargetEmailsAsync — no User.UserEmails navigation");
         paramTypes.Should().Contain(typeof(ITeamService),

@@ -46,6 +46,8 @@ public class DependencyCycleResolutionTests
 
         services.AddScoped<IUserRepository>(_ => Substitute.For<IUserRepository>());
         services.AddScoped<IUserEmailRepository>(_ => Substitute.For<IUserEmailRepository>());
+        services.AddScoped<IProfileRepository>(_ => Substitute.For<IProfileRepository>());
+        services.AddScoped<IContactFieldRepository>(_ => Substitute.For<IContactFieldRepository>());
         services.AddScoped<IFullProfileInvalidator>(_ => Substitute.For<IFullProfileInvalidator>());
         services.AddScoped<IRoleAssignmentRepository>(_ => Substitute.For<IRoleAssignmentRepository>());
         services.AddScoped<IShiftManagementRepository>(_ => Substitute.For<IShiftManagementRepository>());
@@ -58,6 +60,7 @@ public class DependencyCycleResolutionTests
         services.AddScoped<ITeamRepository>(_ => Substitute.For<ITeamRepository>());
         services.AddScoped<INotificationMeterCacheInvalidator>(_ => Substitute.For<INotificationMeterCacheInvalidator>());
         services.AddScoped<IShiftAuthorizationInvalidator>(_ => Substitute.For<IShiftAuthorizationInvalidator>());
+        services.AddScoped<IAdminAuthorizationService>(_ => Substitute.For<IAdminAuthorizationService>());
         services.AddScoped<NodaTime.IClock>(_ => Substitute.For<NodaTime.IClock>());
 
         services.AddScoped<UserService>();
@@ -102,6 +105,8 @@ public class DependencyCycleResolutionTests
 
         services.AddScoped<IUserRepository>(_ => Substitute.For<IUserRepository>());
         services.AddScoped<IUserEmailRepository>(_ => Substitute.For<IUserEmailRepository>());
+        services.AddScoped<IProfileRepository>(_ => Substitute.For<IProfileRepository>());
+        services.AddScoped<IContactFieldRepository>(_ => Substitute.For<IContactFieldRepository>());
         services.AddScoped<IFullProfileInvalidator>(_ => Substitute.For<IFullProfileInvalidator>());
         services.AddScoped<IRoleAssignmentRepository>(_ => Substitute.For<IRoleAssignmentRepository>());
         services.AddScoped<IShiftManagementRepository>(_ => Substitute.For<IShiftManagementRepository>());
@@ -113,6 +118,7 @@ public class DependencyCycleResolutionTests
         services.AddScoped<ITeamRepository>(_ => Substitute.For<ITeamRepository>());
         services.AddScoped<INotificationMeterCacheInvalidator>(_ => Substitute.For<INotificationMeterCacheInvalidator>());
         services.AddScoped<IShiftAuthorizationInvalidator>(_ => Substitute.For<IShiftAuthorizationInvalidator>());
+        services.AddScoped<IAdminAuthorizationService>(_ => Substitute.For<IAdminAuthorizationService>());
         services.AddScoped<IEmailOutboxRepository>(_ => Substitute.For<IEmailOutboxRepository>());
         services.AddScoped<IEmailRenderer>(_ => Substitute.For<IEmailRenderer>());
         services.AddScoped<IEmailBodyComposer>(_ => Substitute.For<IEmailBodyComposer>());

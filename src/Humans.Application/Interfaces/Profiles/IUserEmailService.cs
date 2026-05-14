@@ -156,6 +156,14 @@ public interface IUserEmailService : IApplicationService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Returns (userId, userEmailId) for any UserEmail row matching the address,
+    /// or null if no row matches. Used by Mailer import to identify the specific
+    /// unverified row to delete before creating a contact.
+    /// </summary>
+    Task<(Guid UserId, Guid EmailId)?> FindAnyEmailRowByAddressAsync(
+        string email, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Legacy backfill that wrote the verified @nobodies.team email into the
     /// <c>User.GoogleEmail</c> shadow column. With the column deprecated and
     /// the new <c>EnsureGoogleInvariantAsync</c> running on every UserEmail
@@ -201,6 +209,18 @@ public interface IUserEmailService : IApplicationService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Returns the distinct UserIds whose verified UserEmail matches the given
+    /// address (including gmail/googlemail alternate). Same matching semantics
+    /// as <see cref="FindVerifiedEmailWithUserAsync"/> but exposes the full
+    /// set. Callers that mutate user state (e.g. the Mailer import classifier)
+    /// must treat count &gt; 1 as ambiguous and skip — service-enforced
+    /// verified-email uniqueness can drift.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetDistinctVerifiedUserIdsAsync(
+        string email,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Gets @nobodies.team email status for all users who have one.
     /// Returns a dictionary of userId → isNotificationTarget (i.e., is it their primary email).
     /// Used for admin listing pages.
@@ -238,6 +258,16 @@ public interface IUserEmailService : IApplicationService
     /// </summary>
     Task<Guid?> GetUserIdByVerifiedEmailAsync(
         string email,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns distinct user ids whose email rows match the supplied prefix
+    /// and suffix. Used by Admin-only maintenance flows that resolve marked
+    /// account sets through the Profile-owned email table.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetUserIdsByEmailPrefixAndSuffixAsync(
+        string prefix,
+        string suffix,
         CancellationToken cancellationToken = default);
 
     /// <summary>Resolve a user by exact, case-insensitive email match against UserEmails. Returns null if zero or ambiguous matches.</summary>

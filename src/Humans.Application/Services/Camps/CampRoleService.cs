@@ -38,11 +38,17 @@ public sealed class CampRoleService : ICampRoleService
         _logger = logger;
     }
 
-    public Task<IReadOnlyList<CampRoleDefinition>> ListDefinitionsAsync(bool includeDeactivated, CancellationToken ct = default)
-        => _repo.ListDefinitionsAsync(includeDeactivated, ct);
+    public async Task<IReadOnlyList<CampRoleDefinitionInfo>> ListDefinitionsAsync(bool includeDeactivated, CancellationToken ct = default)
+    {
+        var definitions = await _repo.ListDefinitionsAsync(includeDeactivated, ct);
+        return definitions.Select(CreateCampRoleDefinitionInfo).ToList();
+    }
 
-    public Task<CampRoleDefinition?> GetDefinitionByIdAsync(Guid id, CancellationToken ct = default)
-        => _repo.GetDefinitionByIdAsync(id, ct);
+    public async Task<CampRoleDefinitionInfo?> GetDefinitionByIdAsync(Guid id, CancellationToken ct = default)
+    {
+        var definition = await _repo.GetDefinitionByIdAsync(id, ct);
+        return definition is null ? null : CreateCampRoleDefinitionInfo(definition);
+    }
 
     public async Task<CampRoleDefinition> CreateDefinitionAsync(CreateCampRoleDefinitionInput input, Guid actorUserId, CancellationToken ct = default)
     {
@@ -82,6 +88,25 @@ public sealed class CampRoleService : ICampRoleService
                 $"MinimumRequired must satisfy 0 ≤ MinimumRequired ≤ SlotCount (got SlotCount={slotCount}, MinimumRequired={minimumRequired}).",
                 nameof(minimumRequired));
     }
+
+    private static CampRoleDefinitionInfo CreateCampRoleDefinitionInfo(CampRoleDefinition definition) =>
+        new(
+            definition.Id,
+            definition.Name,
+            definition.Description,
+            definition.SlotCount,
+            definition.MinimumRequired,
+            definition.SortOrder,
+            definition.CreatedAt,
+            definition.UpdatedAt,
+            definition.DeactivatedAt);
+
+    private static CampRoleAssignmentInfo CreateCampRoleAssignmentInfo(CampRoleAssignment assignment) =>
+        new(
+            assignment.Id,
+            assignment.CampSeasonId,
+            assignment.CampRoleDefinitionId,
+            assignment.CampMemberId);
 
     public async Task<bool> UpdateDefinitionAsync(Guid id, UpdateCampRoleDefinitionInput input, Guid actorUserId, CancellationToken ct = default)
     {
@@ -246,8 +271,11 @@ public sealed class CampRoleService : ICampRoleService
         return AssignCampRoleOutcome.Assigned;
     }
 
-    public Task<CampRoleAssignment?> GetAssignmentByIdAsync(Guid assignmentId, CancellationToken ct = default)
-        => _repo.GetAssignmentByIdAsync(assignmentId, ct);
+    public async Task<CampRoleAssignmentInfo?> GetAssignmentByIdAsync(Guid assignmentId, CancellationToken ct = default)
+    {
+        var assignment = await _repo.GetAssignmentByIdAsync(assignmentId, ct);
+        return assignment is null ? null : CreateCampRoleAssignmentInfo(assignment);
+    }
 
     public async Task<bool> UnassignAsync(Guid assignmentId, Guid actorUserId, CancellationToken ct = default)
     {

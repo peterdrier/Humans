@@ -1,6 +1,7 @@
 using Humans.Application.Interfaces;
 using Humans.Application.DTOs;
 using Humans.Application.DTOs.Governance;
+using Humans.Application.Architecture;
 using Humans.Domain.Enums;
 using NodaTime;
 using MemberApplication = Humans.Domain.Entities.Application;
@@ -19,6 +20,7 @@ namespace Humans.Application.Interfaces.Governance;
 /// resolved via <c>IUserService</c>, because the entity no longer carries
 /// cross-domain navigation properties (design-rules §6).
 /// </remarks>
+[SurfaceBudget(28)]
 public interface IApplicationDecisionService : IApplicationService
 {
     Task<ApplicationDecisionResult> ApproveAsync(

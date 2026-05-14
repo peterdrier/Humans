@@ -32,6 +32,7 @@ public class FeedbackServiceTests : IDisposable
     private readonly IUserService _userService;
     private readonly IUserEmailService _userEmailService;
     private readonly ITeamService _teamService;
+    private readonly IProfileService _profileService;
     private readonly INotificationService _notificationService;
     private readonly INavBadgeCacheInvalidator _navBadge;
     private readonly IFeedbackRepository _repository;
@@ -95,13 +96,26 @@ public class FeedbackServiceTests : IDisposable
                 return Task.FromResult(dict);
             });
 
+        _profileService = Substitute.For<IProfileService>();
+        _profileService
+            .GetByUserIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                var ids = (IReadOnlyCollection<Guid>)call[0]!;
+                IReadOnlyDictionary<Guid, Profile> dict = _dbContext.Profiles
+                    .AsNoTracking()
+                    .Where(p => ids.Contains(p.UserId))
+                    .ToDictionary(p => p.UserId);
+                return Task.FromResult(dict);
+            });
+
         _notificationService = Substitute.For<INotificationService>();
         _navBadge = Substitute.For<INavBadgeCacheInvalidator>();
 
         _repository = new FeedbackRepository(new TestDbContextFactory(options));
 
         _service = new FeedbackApplicationService(
-            _repository, _userService, _userEmailService, _teamService,
+            _repository, _userService, _userEmailService, _teamService, _profileService,
             _emailService, _notificationService, _auditLog, _navBadge, _clock, env,
             NullLogger<FeedbackApplicationService>.Instance);
     }
@@ -188,7 +202,7 @@ public class FeedbackServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task GetFeedbackListAsync_StitchesReporterNav()
+    public async Task GetFeedbackListAsync_ReturnsReporterInfo()
     {
         var userId = Guid.NewGuid();
         _dbContext.Users.Add(new User { Id = userId, DisplayName = "Alice", Email = "a@a.com" });
@@ -200,10 +214,27 @@ public class FeedbackServiceTests : IDisposable
         var results = await _service.GetFeedbackListAsync();
 
         results.Should().ContainSingle();
-#pragma warning disable CS0618
-        results[0].User.Should().NotBeNull();
-        results[0].User.DisplayName.Should().Be("Alice");
-#pragma warning restore CS0618
+        results[0].ReporterName.Should().Be("Alice");
+        results[0].ReporterEmail.Should().Be("a@a.com");
+    }
+
+    [HumansFact]
+    public async Task GetFeedbackListAsync_ReporterName_PrefersBurnerName()
+    {
+        // BurnerName-is-the-display-name rule: when a Profile exists,
+        // ReporterName must render the BurnerName, not the legacy User.DisplayName.
+        var userId = Guid.NewGuid();
+        _dbContext.Users.Add(new User { Id = userId, DisplayName = "Legal Name", Email = "a@a.com" });
+        _dbContext.Profiles.Add(new Profile { Id = Guid.NewGuid(), UserId = userId, BurnerName = "Sparkle" });
+        await _dbContext.SaveChangesAsync();
+
+        await _service.SubmitFeedbackAsync(
+            userId, FeedbackCategory.Bug, "a", "/a", null, null, null);
+
+        var results = await _service.GetFeedbackListAsync();
+
+        results.Should().ContainSingle();
+        results[0].ReporterName.Should().Be("Sparkle");
     }
 
     [HumansFact]

@@ -16,10 +16,7 @@ namespace Humans.Infrastructure.Repositories.AuditLog;
 /// <remarks>
 /// <c>audit_log</c> is append-only per design-rules §12 — only
 /// <see cref="AddAsync"/> is exposed; there are no <c>UpdateAsync</c> or
-/// <c>DeleteAsync</c>. The cross-table display lookups for user and team
-/// names also use <see cref="IDbContextFactory{TContext}"/>; they are used
-/// by the audit log UI to resolve actor/subject display data without
-/// pulling controllers into the DbContext.
+/// <c>DeleteAsync</c>.
 /// </remarks>
 public sealed class AuditLogRepository : IAuditLogRepository
 {
@@ -61,7 +58,6 @@ public sealed class AuditLogRepository : IAuditLogRepository
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.AuditLogEntries
             .AsNoTracking()
-            .Include(e => e.Resource)
             .Where(e => e.ResourceId != null && e.RelatedEntityId == userId)
             .OrderByDescending(e => e.OccurredAt)
             .Take(200)
@@ -77,7 +73,6 @@ public sealed class AuditLogRepository : IAuditLogRepository
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.AuditLogEntries
             .AsNoTracking()
-            .Include(e => e.Resource)
             .Where(e => e.ResourceId != null
                 && e.RelatedEntityId.HasValue
                 && userIds.Contains(e.RelatedEntityId.Value))
@@ -212,36 +207,6 @@ public sealed class AuditLogRepository : IAuditLogRepository
                 (a.ActorUserId.HasValue && userIds.Contains(a.ActorUserId.Value)))
             .OrderByDescending(a => a.OccurredAt)
             .ToListAsync(ct);
-    }
-
-    // ==========================================================================
-    // Cross-table display lookups
-    // ==========================================================================
-
-    public async Task<Dictionary<Guid, string>> GetUserDisplayNamesAsync(
-        IReadOnlyList<Guid> userIds, CancellationToken ct = default)
-    {
-        if (userIds.Count == 0)
-            return new Dictionary<Guid, string>();
-
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.Users
-            .AsNoTracking()
-            .Where(u => userIds.Contains(u.Id))
-            .ToDictionaryAsync(u => u.Id, u => u.DisplayName, ct);
-    }
-
-    public async Task<Dictionary<Guid, (string Name, string Slug)>> GetTeamNamesAsync(
-        IReadOnlyList<Guid> teamIds, CancellationToken ct = default)
-    {
-        if (teamIds.Count == 0)
-            return new Dictionary<Guid, (string Name, string Slug)>();
-
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.Teams
-            .AsNoTracking()
-            .Where(t => teamIds.Contains(t.Id))
-            .ToDictionaryAsync(t => t.Id, t => (t.Name, t.Slug), ct);
     }
 
     public async Task<IReadOnlyList<Guid>> GetEntityIdsForActionInWindowAsync(

@@ -30,6 +30,7 @@ internal static class TeamsSectionExtensions
         services.AddKeyedScoped<IUserMerge, TeamsTeamService>(CachingTeamService.InnerServiceKey);
         services.AddScoped<TeamsTeamService>(sp =>
             (TeamsTeamService)sp.GetRequiredKeyedService<ITeamService>(CachingTeamService.InnerServiceKey));
+        services.AddScoped<IGoogleGroupMembershipSource>(sp => sp.GetRequiredService<TeamsTeamService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<TeamsTeamService>());
 
         // CachingTeamService: Singleton transparent decorator. The decorator

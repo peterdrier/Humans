@@ -1,3 +1,4 @@
+using Humans.Application.Architecture;
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -8,6 +9,7 @@ namespace Humans.Application.Interfaces.Shifts;
 /// <summary>
 /// Manages the shift signup state machine with invariant enforcement.
 /// </summary>
+[SurfaceBudget(25)]
 public interface IShiftSignupService : IApplicationService
 {
     /// <summary>
@@ -126,6 +128,14 @@ public interface IShiftSignupService : IApplicationService
         Guid userId, string reason, CancellationToken ct = default);
 
     /// <summary>
+    /// Deletes every shift signup owned by the supplied users. Requires the
+    /// current authenticated user to hold the full Admin role.
+    /// </summary>
+    Task<int> DeleteAllForUsersAsync(
+        IReadOnlyCollection<Guid> userIds,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Returns every <see cref="ShiftSignup"/> in the system, with
     /// <c>Shift.Rota.EventSettings</c> included, for use by the
     /// orphan-signup reconciliation screen. Admin-only diagnostic.
@@ -153,6 +163,14 @@ public interface IShiftSignupService : IApplicationService
     /// </summary>
     Task<IReadOnlyList<ShiftSignup>> FilterToIncompleteOnboardingAsync(
         IReadOnlyList<ShiftSignup> signups, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns user-ids with at least one ShiftSignup for the given event whose
+    /// Status is Pending or Confirmed. Used by audience computations to identify
+    /// "users who have a shift". Refused/Bailed/Cancelled/NoShow signups do not count.
+    /// </summary>
+    Task<IReadOnlySet<Guid>> GetActiveCommittedUserIdsForEventAsync(
+        Guid eventSettingsId, CancellationToken ct = default);
 }
 
 /// <summary>

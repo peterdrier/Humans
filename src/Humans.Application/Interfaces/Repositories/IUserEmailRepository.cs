@@ -194,6 +194,15 @@ public interface IUserEmailRepository : IRepository
         string email, CancellationToken ct = default);
 
     /// <summary>
+    /// Returns distinct user ids whose email starts with <paramref name="prefix"/>
+    /// and ends with <paramref name="suffix"/>.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetUserIdsByEmailPrefixAndSuffixAsync(
+        string prefix,
+        string suffix,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Returns all distinct <c>UserId</c> values whose verified email rows
     /// contain an address that matches <paramref name="email"/> exactly
     /// (case-sensitive, no gmail/googlemail aliasing). The caller uses this
@@ -204,6 +213,17 @@ public interface IUserEmailRepository : IRepository
     /// </summary>
     Task<IReadOnlyList<Guid>> GetDistinctUserIdsByVerifiedEmailAsync(
         string email, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the distinct UserIds whose verified UserEmail matches the given
+    /// normalized address (or its gmail/googlemail alternate). Same matching
+    /// semantics as <see cref="FindVerifiedWithUserAsync"/>, but returns the
+    /// full set rather than picking one arbitrary owner — so classifiers can
+    /// detect service-level uniqueness drift instead of silently attaching to
+    /// the wrong account.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetDistinctVerifiedUserIdsAsync(
+        string normalizedEmail, string? alternateEmail, CancellationToken ct = default);
 
     /// <summary>
     /// Returns the id of any user, other than <paramref name="excludeUserId"/>,

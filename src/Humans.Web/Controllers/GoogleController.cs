@@ -9,6 +9,7 @@ using Humans.Domain.Enums;
 using Humans.Web.Authorization;
 using Humans.Web.Constants;
 using Humans.Web.Models;
+using Humans.Web.Models.Google;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Profiles;
@@ -21,6 +22,7 @@ namespace Humans.Web.Controllers;
 public class GoogleController : HumansControllerBase
 {
     private readonly IGoogleSyncService _googleSyncService;
+    private readonly IGoogleGroupSync _googleGroupSync;
     private readonly IAuditViewerService _auditViewer;
     private readonly ITeamResourceService _teamResourceService;
     private readonly IEmailProvisioningService _emailProvisioningService;
@@ -31,6 +33,7 @@ public class GoogleController : HumansControllerBase
     public GoogleController(
         UserManager<User> userManager,
         IGoogleSyncService googleSyncService,
+        IGoogleGroupSync googleGroupSync,
         IAuditViewerService auditViewer,
         ITeamResourceService teamResourceService,
         IEmailProvisioningService emailProvisioningService,
@@ -40,6 +43,7 @@ public class GoogleController : HumansControllerBase
         : base(userManager)
     {
         _googleSyncService = googleSyncService;
+        _googleGroupSync = googleGroupSync;
         _auditViewer = auditViewer;
         _teamResourceService = teamResourceService;
         _emailProvisioningService = emailProvisioningService;
@@ -321,7 +325,9 @@ public class GoogleController : HumansControllerBase
     [Authorize(Policy = PolicyNames.TeamsAdminBoardOrAdmin)]
     public async Task<IActionResult> SyncPreview(GoogleResourceType resourceType)
     {
-        var result = await _googleSyncService.SyncResourcesByTypeAsync(resourceType, SyncAction.Preview);
+        var result = resourceType == GoogleResourceType.Group
+            ? await _googleGroupSync.ReconcileAllAsync(SyncAction.Preview, HttpContext.RequestAborted)
+            : await _googleSyncService.SyncResourcesByTypeAsync(resourceType, SyncAction.Preview, HttpContext.RequestAborted);
 
         // Sort resources alphabetically
         result.Diffs.Sort((a, b) =>
@@ -357,7 +363,10 @@ public class GoogleController : HumansControllerBase
     {
         try
         {
-            var result = await _googleSyncService.SyncSingleResourceAsync(resourceId, SyncAction.Execute);
+            var result = await _googleSyncService.SyncSingleResourceAsync(
+                resourceId,
+                SyncAction.Execute,
+                HttpContext.RequestAborted);
             return Json(result);
         }
         catch (Exception ex)
@@ -374,7 +383,9 @@ public class GoogleController : HumansControllerBase
     {
         try
         {
-            var result = await _googleSyncService.SyncResourcesByTypeAsync(resourceType, SyncAction.Execute);
+            var result = resourceType == GoogleResourceType.Group
+                ? await _googleGroupSync.ReconcileAllAsync(SyncAction.Execute, HttpContext.RequestAborted)
+                : await _googleSyncService.SyncResourcesByTypeAsync(resourceType, SyncAction.Execute, HttpContext.RequestAborted);
             return Json(result);
         }
         catch (Exception ex)
@@ -382,75 +393,6 @@ public class GoogleController : HumansControllerBase
             _logger.LogError(ex, "Failed to execute sync for resource type {ResourceType}", resourceType);
             return Json(new { ErrorMessage = ex.Message });
         }
-    }
-
-    // --- Drive Activity (from BoardController) ---
-
-    [HttpPost("AuditLog/CheckDriveActivity")]
-    [Authorize(Policy = PolicyNames.BoardOrAdmin)]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> CheckDriveActivity(
-        [FromServices] IDriveActivityMonitorService monitorService)
-    {
-        var currentUser = await GetCurrentUserAsync();
-
-        try
-        {
-            var count = await monitorService.CheckForAnomalousActivityAsync();
-            _logger.LogInformation("Board {UserId} triggered manual Drive activity check: {Count} anomalies",
-                currentUser?.Id, count);
-
-            SetSuccess(count > 0
-                ? $"Drive activity check completed: {count} anomalous change(s) detected."
-                : "Drive activity check completed: no anomalies detected.");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Manual Drive activity check failed");
-            SetError("Drive activity check failed. Check logs for details.");
-        }
-
-        return RedirectToAction(nameof(BoardController.AuditLog), "Board", new { filter = nameof(AuditAction.AnomalousPermissionDetected) });
-    }
-
-    // --- Sync Audit Views (from BoardController and HumanController) ---
-
-    [HttpGet("Sync/Resource/{id:guid}/Audit")]
-    [Authorize(Policy = PolicyNames.BoardOrAdmin)]
-    public async Task<IActionResult> GoogleSyncResourceAudit(Guid id)
-    {
-        var resource = await _teamResourceService.GetResourceByIdAsync(id);
-
-        if (resource is null)
-        {
-            return NotFound();
-        }
-
-        var events = await _auditViewer.GetForResourceAsync(id);
-        return GoogleSyncAuditView(
-            $"Sync Audit: {resource.Name}",
-            Url.Action(nameof(Sync)),
-            "Back to Sync Status",
-            events);
-    }
-
-    [HttpGet("Human/{id:guid}/SyncAudit")]
-    [Authorize(Policy = PolicyNames.HumanAdminBoardOrAdmin)]
-    public async Task<IActionResult> HumanGoogleSyncAudit(Guid id)
-    {
-        var user = await FindUserByIdAsync(id);
-
-        if (user is null)
-        {
-            return NotFound();
-        }
-
-        var events = await _auditViewer.GetGoogleSyncForUserAsync(id);
-        return GoogleSyncAuditView(
-            $"Google Sync Audit: {user.DisplayName}",
-            Url.Action("AdminDetail", "Profile", new { id }),
-            "Back to Human Detail",
-            events);
     }
 
     // --- Human Email Provisioning (from HumanController) ---

@@ -1,10 +1,11 @@
+using Humans.Application.Helpers;
+using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
-using Humans.Application.Services.Shifts;
+using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 
@@ -26,15 +27,13 @@ public sealed record DashboardResetResult(
 /// Seeds deterministic-ish demo data for the volunteer coordinator dashboard.
 /// Gated to IsDevelopment() only by the calling controller. Not safe to run in QA/prod.
 ///
-/// Cross-domain writes (Users, Teams, TeamMembers) go through the owning services:
-/// <see cref="UserManager{TUser}"/> for Users and <see cref="ITeamService"/> for
-/// Teams/TeamMembers. Shifts-owned tables (EventSettings, Rotas, Shifts, ShiftSignups)
-/// are written directly via <see cref="HumansDbContext"/> because this seeder IS the
-/// Shifts-test-data setup — the same ownership the <see cref="ShiftManagementService"/>
-/// holds in production.
+/// All writes go through the owning section services. The controller keeps destructive
+/// reset behind full Admin authorization.
 /// </summary>
 public sealed class DevelopmentDashboardSeeder
 {
+    private static readonly Guid SeededEventId = Guid.Parse("2f38bf0c-46fd-4f7d-a05b-7ec9e26d8e6b");
+
     private const string SeededEventName = "Seeded Elsewhere 2026 (dev)";
     private const string DevTeamNameSuffix = " (dev)";
     private const string DevUserEmailSuffix = "@seed.local";
@@ -67,21 +66,30 @@ public sealed class DevelopmentDashboardSeeder
     // A deterministic RNG so reruns on a clean DB produce the same-ish shape.
     private readonly Random _rng = new(42);
 
-    private readonly HumansDbContext _dbContext;
+    private readonly IShiftManagementService _shiftManagementService;
+    private readonly IShiftSignupService _shiftSignupService;
     private readonly ITeamService _teamService;
+    private readonly IUserEmailService _userEmailService;
+    private readonly IUserService _userService;
     private readonly UserManager<User> _userManager;
     private readonly IClock _clock;
     private readonly ILogger<DevelopmentDashboardSeeder> _logger;
 
     public DevelopmentDashboardSeeder(
-        HumansDbContext dbContext,
+        IShiftManagementService shiftManagementService,
+        IShiftSignupService shiftSignupService,
         ITeamService teamService,
+        IUserEmailService userEmailService,
+        IUserService userService,
         UserManager<User> userManager,
         IClock clock,
         ILogger<DevelopmentDashboardSeeder> logger)
     {
-        _dbContext = dbContext;
+        _shiftManagementService = shiftManagementService;
+        _shiftSignupService = shiftSignupService;
         _teamService = teamService;
+        _userEmailService = userEmailService;
+        _userService = userService;
         _userManager = userManager;
         _clock = clock;
         _logger = logger;
@@ -89,8 +97,7 @@ public sealed class DevelopmentDashboardSeeder
 
     public async Task<DashboardSeedResult> SeedAsync(CancellationToken cancellationToken)
     {
-        var existing = await _dbContext.EventSettings
-            .FirstOrDefaultAsync(e => e.EventName == SeededEventName, cancellationToken);
+        var existing = await _shiftManagementService.GetByIdAsync(SeededEventId);
         if (existing is not null)
         {
             _logger.LogInformation("Dashboard seed already applied (event '{EventName}' exists).", SeededEventName);
@@ -101,19 +108,16 @@ public sealed class DevelopmentDashboardSeeder
         var todayUtc = now.InUtc().Date;
 
         // Deactivate any existing active event so ours becomes the one resolved by GetActiveAsync.
-        // EventSettings is Shifts-owned — the service's direct-write path.
-        var existingActive = await _dbContext.EventSettings
-            .Where(e => e.IsActive)
-            .ToListAsync(cancellationToken);
-        foreach (var e in existingActive)
+        var existingActive = await _shiftManagementService.GetActiveAsync();
+        if (existingActive is not null)
         {
-            e.IsActive = false;
-            e.UpdatedAt = now;
+            existingActive.IsActive = false;
+            await _shiftManagementService.UpdateAsync(existingActive);
         }
 
         var es = new EventSettings
         {
-            Id = Guid.NewGuid(),
+            Id = SeededEventId,
             EventName = SeededEventName,
             Year = todayUtc.Year,
             TimeZoneId = "Europe/Madrid",
@@ -128,8 +132,7 @@ public sealed class DevelopmentDashboardSeeder
             CreatedAt = now.Minus(Duration.FromDays(30)),
             UpdatedAt = now,
         };
-        _dbContext.EventSettings.Add(es);
-        await _dbContext.SaveChangesAsync(cancellationToken);
+        await _shiftManagementService.CreateAsync(es);
 
         // Teams: create parents, then subteams. Goes through ITeamService so slug
         // generation, validation, and cache seeding match production.
@@ -200,7 +203,7 @@ public sealed class DevelopmentDashboardSeeder
                 Name = $"{team.Name} - {label}",
                 Priority = ShiftPriority.Normal,
                 // Public so the volunteer-facing /Shifts/ page lists them for any
-                // logged-in user — otherwise the browse view hides approval-only
+                // logged-in user - otherwise the browse view hides approval-only
                 // rotas and QA can't compare across the three surfaces.
                 Policy = SignupPolicy.Public,
                 Period = period,
@@ -208,12 +211,12 @@ public sealed class DevelopmentDashboardSeeder
                 CreatedAt = now,
                 UpdatedAt = now,
             };
-            _dbContext.Rotas.Add(rota);
+            await _shiftManagementService.CreateRotaAsync(rota);
             allRotas.Add((rota, confirmedRate));
         }
 
-        // Shifts: 8–12 per rota with varied min/max/duration and day offsets by period.
-        // All-day rotas (Build/Strike) get distinct offsets — duplicate same-date all-day
+        // Shifts: 8-12 per rota with varied min/max/duration and day offsets by period.
+        // All-day rotas (Build/Strike) get distinct offsets - duplicate same-date all-day
         // shifts surface as duplicate dropdown options in the range-signup form and
         // confuse the confirmation modal's overlap math.
         var shifts = new List<(Shift Shift, double ConfirmedRate)>();
@@ -255,17 +258,15 @@ public sealed class DevelopmentDashboardSeeder
                     CreatedAt = now,
                     UpdatedAt = now,
                 };
-                _dbContext.Shifts.Add(shift);
+                await _shiftManagementService.CreateShiftAsync(shift);
                 shifts.Add((shift, rate));
             }
         }
 
-        await _dbContext.SaveChangesAsync(cancellationToken);
-
-        // Users: keep the cohort small (~120) — large enough to show activity, small enough to keep the dev seed fast.
+        // Users: keep the cohort small (~120) - large enough to show activity, small enough to keep the dev seed fast.
         // Users are an Identity-framework concern; we create them via UserManager, the
         // standard pattern for framework-owned types. Passwords are intentionally omitted
-        // — these accounts are never logged into; they exist purely as dashboard data.
+        // - these accounts are never logged into; they exist purely as dashboard data.
         var totalUsers = 120;
 
         var users = new List<User>();
@@ -295,30 +296,9 @@ public sealed class DevelopmentDashboardSeeder
                     $"Failed to create seeded dev user '{email}': {string.Join(", ", createResult.Errors.Select(e => e.Description))}");
             }
 
-            _dbContext.UserEmails.Add(new UserEmail
-            {
-                Id = Guid.NewGuid(),
-                UserId = user.Id,
-                Email = email,
-                IsVerified = true,
-                IsPrimary = true,
-                Visibility = ContactFieldVisibility.BoardOnly,
-                CreatedAt = createdAt,
-                UpdatedAt = createdAt,
-            });
+            await _userEmailService.AddVerifiedEmailAsync(user.Id, email, cancellationToken);
 
             users.Add(user);
-        }
-        try
-        {
-            await _dbContext.SaveChangesAsync(cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex,
-                "Failed to save seeded UserEmail rows ({UserCount} users); aborting dev seed",
-                users.Count);
-            throw;
         }
 
         // Coordinators: 2 per parent team, routed via ITeamService.AddSeededMemberAsync so
@@ -367,16 +347,9 @@ public sealed class DevelopmentDashboardSeeder
                 var user = users[_rng.Next(users.Count)];
                 var key = (shift.Id, user.Id);
                 if (!pickedSignups.Add(key)) continue;
-                _dbContext.ShiftSignups.Add(new ShiftSignup
-                {
-                    Id = Guid.NewGuid(),
-                    ShiftId = shift.Id,
-                    UserId = user.Id,
-                    Status = SignupStatus.Confirmed,
-                    CreatedAt = now.Minus(Duration.FromDays(_rng.Next(0, 85))),
-                    UpdatedAt = now,
-                });
-                signupsCreated++;
+                var signup = await _shiftSignupService.VoluntellAsync(user.Id, shift.Id, users[0].Id);
+                if (signup.Success)
+                    signupsCreated++;
             }
 
             // A couple of pending per shift to create visible pending load.
@@ -385,18 +358,9 @@ public sealed class DevelopmentDashboardSeeder
                 var user = users[_rng.Next(users.Count)];
                 var key = (shift.Id, user.Id);
                 if (!pickedSignups.Add(key)) continue;
-                // Some of these are stale (>3 days old).
-                var createdDaysAgo = _rng.Next(0, 8);
-                _dbContext.ShiftSignups.Add(new ShiftSignup
-                {
-                    Id = Guid.NewGuid(),
-                    ShiftId = shift.Id,
-                    UserId = user.Id,
-                    Status = SignupStatus.Pending,
-                    CreatedAt = now.Minus(Duration.FromDays(createdDaysAgo)),
-                    UpdatedAt = now,
-                });
-                signupsCreated++;
+                var signup = await _shiftSignupService.SignUpAsync(user.Id, shift.Id);
+                if (signup.Success)
+                    signupsCreated++;
             }
         }
 
@@ -407,22 +371,18 @@ public sealed class DevelopmentDashboardSeeder
             var user = users[_rng.Next(users.Count)];
             var key = (shift.Id, user.Id);
             if (!pickedSignups.Add(key)) continue;
-            _dbContext.ShiftSignups.Add(new ShiftSignup
-            {
-                Id = Guid.NewGuid(),
-                ShiftId = shift.Id,
-                UserId = user.Id,
-                Status = i % 2 == 0 ? SignupStatus.Bailed : SignupStatus.Refused,
-                CreatedAt = now.Minus(Duration.FromDays(_rng.Next(1, 10))),
-                UpdatedAt = now,
-                ReviewedAt = now,
-                ReviewedByUserId = users[0].Id,
-                StatusReason = "Seeded for demo",
-            });
-            signupsCreated++;
-        }
+            var signup = i % 2 == 0
+                ? await _shiftSignupService.VoluntellAsync(user.Id, shift.Id, users[0].Id)
+                : await _shiftSignupService.SignUpAsync(user.Id, shift.Id);
+            if (!signup.Success || signup.Signup is null)
+                continue;
 
-        await _dbContext.SaveChangesAsync(cancellationToken);
+            var final = i % 2 == 0
+                ? await _shiftSignupService.BailAsync(signup.Signup.Id, user.Id, "Seeded for demo")
+                : await _shiftSignupService.RefuseAsync(signup.Signup.Id, users[0].Id, "Seeded for demo");
+            if (final.Success)
+                signupsCreated++;
+        }
 
         _logger.LogInformation(
             "Dashboard seed complete: {Teams} teams, {Users} users, {Shifts} shifts, {Signups} signups.",
@@ -438,114 +398,61 @@ public sealed class DevelopmentDashboardSeeder
 
     /// <summary>
     /// Deletes all data previously created by <see cref="SeedAsync"/>: the seeded
-    /// event (with its rotas/shifts/signups), dev teams (name suffix "<c> (dev)</c>"),
-    /// and dev users (email pattern <c>dev-human-*@seed.local</c>). Safe to call on
+    /// event (with its rotas/shifts/signups), known seeded dev teams, and dev
+    /// users (email pattern <c>dev-human-*@seed.local</c>). Safe to call on
     /// a DB where no seed has ever run.
     ///
-    /// Users go through <see cref="UserManager{TUser}"/>; Teams go through
-    /// <see cref="ITeamService.HardDeleteSeededTeamsAsync"/>. Shifts-owned tables
-    /// are emptied directly — this seeder IS the owning test fixture.
+    /// Deletion goes through the owning section services. The caller is responsible
+    /// for full Admin authorization before invoking reset.
     /// </summary>
     public async Task<DashboardResetResult> ResetAsync(CancellationToken cancellationToken)
     {
-        // Order matters: clear Shifts-owned dependents that reference Users/Teams/Events
-        // first so downstream deletions don't trip FK constraints.
-        var seededEventIds = await _dbContext.EventSettings
-            .Where(e => e.EventName == SeededEventName)
-            .Select(e => e.Id)
-            .ToListAsync(cancellationToken);
+        var eventsDeleted = await _shiftManagementService.DeleteEventAsync(SeededEventId, cancellationToken);
 
-        // Dev users — match the seed marker on UserEmails (post-PR-2 the User
-        // table no longer has an Email column; the seeder creates a verified
-        // UserEmail row for each dev human and we filter on that here).
-        var devUserIds = await _dbContext.UserEmails
-            .Where(ue => ue.Email.EndsWith(DevUserEmailSuffix)
-                      && ue.Email.StartsWith(DevUserEmailPrefix))
-            .Select(ue => ue.UserId)
-            .Distinct()
-            .ToListAsync(cancellationToken);
+        // Dev users - match the seed marker on UserEmails.
+        var devUserIds = await _userEmailService.GetUserIdsByEmailPrefixAndSuffixAsync(
+            DevUserEmailPrefix, DevUserEmailSuffix, cancellationToken);
 
-        // Rotas created by the seeder live under the seeded event IDs; remove their
-        // shifts + signups first. All three tables are Shifts-owned, so direct
-        // ExecuteDeleteAsync is fine here.
-        if (seededEventIds.Count > 0)
-        {
-            var rotaIds = await _dbContext.Rotas
-                .Where(r => seededEventIds.Contains(r.EventSettingsId))
-                .Select(r => r.Id)
-                .ToListAsync(cancellationToken);
-
-            if (rotaIds.Count > 0)
-            {
-                var shiftIds = await _dbContext.Shifts
-                    .Where(s => rotaIds.Contains(s.RotaId))
-                    .Select(s => s.Id)
-                    .ToListAsync(cancellationToken);
-
-                if (shiftIds.Count > 0)
-                {
-                    await _dbContext.ShiftSignups
-                        .Where(s => shiftIds.Contains(s.ShiftId))
-                        .ExecuteDeleteAsync(cancellationToken);
-
-                    await _dbContext.Shifts
-                        .Where(s => shiftIds.Contains(s.Id))
-                        .ExecuteDeleteAsync(cancellationToken);
-                }
-
-                await _dbContext.Rotas
-                    .Where(r => rotaIds.Contains(r.Id))
-                    .ExecuteDeleteAsync(cancellationToken);
-            }
-        }
-
-        // Also clear any remaining signups that reference dev users — they might belong to
-        // non-seeded rotas (e.g., after a partially replayed seed). Shifts-owned, direct OK.
         if (devUserIds.Count > 0)
         {
-            await _dbContext.ShiftSignups
-                .Where(s => devUserIds.Contains(s.UserId))
-                .ExecuteDeleteAsync(cancellationToken);
+            await _shiftSignupService.DeleteAllForUsersAsync(devUserIds, cancellationToken);
         }
 
-        // Teams (and their TeamMembers + TeamJoinRequests): routed via ITeamService.
-        var teamsDeleted = await _teamService.HardDeleteSeededTeamsAsync(DevTeamNameSuffix, cancellationToken);
-
-        // Users: routed via UserManager.
-        var usersDeleted = 0;
-        if (devUserIds.Count > 0)
+        var teamsDeleted = 0;
+        foreach (var slug in SeededTeamSlugsForDelete())
         {
-            // Load each user and delete — UserManager takes entity references, not IDs.
-            // At ~120 users this is fine; it's dev-only teardown.
-            foreach (var userId in devUserIds)
-            {
-                var user = await _userManager.FindByIdAsync(userId.ToString());
-                if (user is null) continue;
-                var deleteResult = await _userManager.DeleteAsync(user);
-                if (!deleteResult.Succeeded)
-                {
-                    _logger.LogWarning(
-                        "Failed to delete seeded dev user {UserId} during reset: {Errors}",
-                        userId, string.Join(", ", deleteResult.Errors.Select(e => e.Description)));
-                    continue;
-                }
-                usersDeleted++;
-            }
+            var team = await _teamService.GetTeamBySlugAsync(slug, cancellationToken);
+            if (team is null)
+                continue;
+
+            if (await _teamService.PermanentlyDeleteTeamAsync(team.Id, cancellationToken))
+                teamsDeleted++;
         }
 
-        // Events last: Shifts-owned, direct OK.
-        var eventsDeleted = 0;
-        if (seededEventIds.Count > 0)
-        {
-            eventsDeleted = await _dbContext.EventSettings
-                .Where(e => seededEventIds.Contains(e.Id))
-                .ExecuteDeleteAsync(cancellationToken);
-        }
+        var usersDeleted = devUserIds.Count == 0
+            ? 0
+            : await _userService.DeleteUsersAsync(devUserIds, cancellationToken);
 
         _logger.LogInformation(
             "Dashboard seed reset complete: {Events} events, {Teams} teams, {Users} users deleted.",
             eventsDeleted, teamsDeleted, usersDeleted);
 
         return new DashboardResetResult(eventsDeleted, teamsDeleted, usersDeleted);
+    }
+
+    private static IEnumerable<string> SeededTeamSlugsForDelete()
+    {
+        foreach (var (_, subteams) in Subteams)
+        {
+            foreach (var subteam in subteams)
+            {
+                yield return SlugHelper.GenerateSlug($"{subteam}{DevTeamNameSuffix}");
+            }
+        }
+
+        foreach (var parentTeam in ParentTeamNames)
+        {
+            yield return SlugHelper.GenerateSlug($"{parentTeam}{DevTeamNameSuffix}");
+        }
     }
 }

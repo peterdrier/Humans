@@ -1,3 +1,4 @@
+using Humans.Application.Architecture;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
@@ -21,6 +22,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// <c>IUserService.GetByIdsAsync</c> and stitch them in memory.
 /// </para>
 /// </remarks>
+[SurfaceBudget(18)]
 public interface INotificationRepository : IRepository
 {
     // ==========================================================================

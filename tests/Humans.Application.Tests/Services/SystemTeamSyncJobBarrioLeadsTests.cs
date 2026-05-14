@@ -43,6 +43,7 @@ public class SystemTeamSyncJobBarrioLeadsTests
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly ICampRepository _campRepository = Substitute.For<ICampRepository>();
     private readonly IGoogleSyncService _googleSyncService = Substitute.For<IGoogleSyncService>();
+    private readonly IGoogleGroupSync _googleGroupSync = Substitute.For<IGoogleGroupSync>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly IRoleAssignmentClaimsCacheInvalidator _roleAssignmentClaimsInvalidator = Substitute.For<IRoleAssignmentClaimsCacheInvalidator>();
@@ -61,6 +62,7 @@ public class SystemTeamSyncJobBarrioLeadsTests
             _campRepository,
             provider,
             _googleSyncService,
+            _googleGroupSync,
             _auditLogService,
             _emailService,
             _roleAssignmentClaimsInvalidator,

@@ -49,6 +49,11 @@ public sealed class TicketTransferRequestConfiguration : IEntityTypeConfiguratio
         builder.Property(x => x.NewVendorTicketId).HasMaxLength(64);
         builder.Property(x => x.AdminNotes).HasMaxLength(1000);
 
+        builder.Property(x => x.VendorStepsJson)
+            .IsRequired()
+            .HasDefaultValue("[]")
+            .HasColumnType("text");
+
         builder.Property(x => x.RequestedAt).IsRequired();
 
         // Indexes for the homepage card lookup and the admin queue.

@@ -34,6 +34,7 @@ public class ServiceBoundaryArchitectureTests
             [typeof(IContainerRepository)] = "Containers",
             [typeof(IDriveActivityMonitorRepository)] = "GoogleIntegration",
             [typeof(IEmailOutboxRepository)] = "Email",
+            [typeof(IExpenseRepository)] = "Expenses",
             [typeof(IFeedbackRepository)] = "Feedback",
             [typeof(IGeneralAvailabilityRepository)] = "Shifts",
             [typeof(IGoogleResourceRepository)] = "Teams",

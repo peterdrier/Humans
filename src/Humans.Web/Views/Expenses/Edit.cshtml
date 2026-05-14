@@ -1,0 +1,211 @@
+@model Humans.Web.Models.ExpenseEditViewModel
+@using Humans.Domain.Enums
+@{
+    ViewData["Title"] = "Edit Expense Report";
+    var r = Model.Report!;
+}
+
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-action="Index">My Expense Reports</a></li>
+        <li class="breadcrumb-item"><a asp-action="Detail" asp-route-id="@r.Id">Report</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Edit</li>
+    </ol>
+</nav>
+
+<h1 class="mb-4">Edit Expense Report</h1>
+
+<vc:temp-data-alerts />
+
+@* ── Header edit ── *@
+<div class="card mb-4">
+    <div class="card-header"><strong>Report header</strong></div>
+    <div class="card-body">
+        <form asp-action="Edit" asp-route-id="@r.Id" method="post">
+            @Html.AntiForgeryToken()
+
+            <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
+
+            <div class="mb-3">
+                <label asp-for="BudgetCategoryId" class="form-label">Budget Category <span class="text-danger">*</span></label>
+                @if (Model.CanEditLines)
+                {
+                    <select asp-for="BudgetCategoryId" class="form-select" required>
+                        @foreach (var c in Model.Categories)
+                        {
+                            if (c.Id == Model.BudgetCategoryId)
+                            {
+                                <option value="@c.Id" selected>@c.DisplayName</option>
+                            }
+                            else
+                            {
+                                <option value="@c.Id">@c.DisplayName</option>
+                            }
+                        }
+                    </select>
+                    <div class="form-text">Changing the category after submission requires a withdraw and re-file.</div>
+                }
+                else
+                {
+                    @* Category locked after submission *@
+                    var selectedCategory = Model.Categories.FirstOrDefault(c => c.Id == Model.BudgetCategoryId);
+                    <input type="hidden" asp-for="BudgetCategoryId" />
+                    <p class="form-control-plaintext">@(selectedCategory?.DisplayName ?? "(unknown)")</p>
+                    <div class="form-text text-muted">Category cannot be changed after submission. Withdraw and re-file to change it.</div>
+                }
+                <span asp-validation-for="BudgetCategoryId" class="text-danger small"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Note" class="form-label">Note <small class="text-muted">(optional)</small></label>
+                <textarea asp-for="Note" class="form-control" rows="3" maxlength="500"></textarea>
+                <span asp-validation-for="Note" class="text-danger small"></span>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Save Header</button>
+        </form>
+    </div>
+</div>
+
+@* ── Lines ── *@
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <strong>Expense lines</strong>
+        <span class="badge bg-secondary">@r.Lines.Count line(s) — &euro;@r.Total.ToString("N2")</span>
+    </div>
+    <div class="card-body p-0">
+        @foreach (var line in r.Lines.OrderBy(l => l.SortOrder))
+        {
+            <div class="border-bottom p-3">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                        <strong>@line.Description</strong>
+                        <span class="ms-2 text-muted">&euro;@line.Amount.ToString("N2")</span>
+                    </div>
+                    <div class="d-flex gap-2 flex-wrap justify-content-end">
+                        @if (Model.CanEditLines)
+                        {
+                            <form asp-action="RemoveLine" asp-route-id="@r.Id" asp-route-lineId="@line.Id"
+                                  method="post" class="d-inline">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-sm btn-outline-danger"
+                                        data-confirm="Remove this line and its attachment?">Remove line</button>
+                            </form>
+                        }
+                    </div>
+                </div>
+
+                @* Attachment *@
+                @if (line.Attachment is not null)
+                {
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <a asp-action="Attachment" asp-route-attachmentId="@line.Attachment.Id"
+                           class="text-decoration-none small" target="_blank">
+                            <i class="fa-solid fa-paperclip me-1"></i>@line.Attachment.OriginalFileName
+                            <span class="text-muted">(@(line.Attachment.SizeBytes / 1024) KB)</span>
+                        </a>
+                        @if (Model.CanEditLines)
+                        {
+                            <form asp-action="RemoveAttachment" asp-route-id="@r.Id" asp-route-lineId="@line.Id"
+                                  method="post" class="d-inline">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-sm btn-outline-secondary">Remove attachment</button>
+                            </form>
+                        }
+                    </div>
+                }
+                else if (Model.CanEditLines)
+                {
+                    <form asp-action="AttachFile" asp-route-id="@r.Id" asp-route-lineId="@line.Id"
+                          method="post" enctype="multipart/form-data" class="d-flex gap-2 align-items-center flex-wrap">
+                        @Html.AntiForgeryToken()
+                        <input type="file" name="file" class="form-control form-control-sm" style="max-width:260px;"
+                               accept=".pdf,.jpg,.jpeg,.png,.heic" />
+                        <button type="submit" class="btn btn-sm btn-outline-primary">Upload receipt</button>
+                    </form>
+                    <div class="form-text text-warning mt-1">
+                        <i class="fa-solid fa-triangle-exclamation me-1"></i>No attachment — required before submit.
+                    </div>
+                }
+                else
+                {
+                    <span class="text-warning small"><i class="fa-solid fa-triangle-exclamation me-1"></i>No attachment</span>
+                }
+
+                @* Inline line edit (only in Draft) *@
+                @if (Model.CanEditLines)
+                {
+                    <details class="mt-2">
+                        <summary class="text-muted small" style="cursor:pointer;">Edit description / amount</summary>
+                        <form asp-action="UpdateLine" asp-route-id="@r.Id" method="post" class="mt-2">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="LineId" value="@line.Id" />
+                            <div class="row g-2">
+                                <div class="col-md-7">
+                                    <input type="text" name="Description" value="@line.Description"
+                                           class="form-control form-control-sm" maxlength="500" required />
+                                </div>
+                                <div class="col-md-3">
+                                    <input type="number" name="Amount" value="@line.Amount.ToString("F2")"
+                                           class="form-control form-control-sm" step="0.01" min="0.01" required />
+                                </div>
+                                <div class="col-md-2">
+                                    <button type="submit" class="btn btn-sm btn-primary w-100">Save</button>
+                                </div>
+                            </div>
+                        </form>
+                    </details>
+                }
+            </div>
+        }
+    </div>
+
+    @* Add line (only in Draft) *@
+    @if (Model.CanEditLines)
+    {
+        <div class="card-footer">
+            <form asp-action="AddLine" asp-route-id="@r.Id" method="post">
+                @Html.AntiForgeryToken()
+                <div class="row g-2 align-items-end">
+                    <div class="col-md-6">
+                        <label class="form-label form-label-sm">Description</label>
+                        <input type="text" name="Description" class="form-control form-control-sm"
+                               maxlength="500" placeholder="What was bought / paid for?" required />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label form-label-sm">Amount (EUR)</label>
+                        <input type="number" name="Amount" class="form-control form-control-sm"
+                               step="0.01" min="0.01" placeholder="0.00" required />
+                    </div>
+                    <div class="col-md-3">
+                        <button type="submit" class="btn btn-sm btn-outline-primary w-100">
+                            <i class="fa-solid fa-plus me-1"></i>Add line
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    }
+    else if (r.Status != ExpenseReportStatus.Draft)
+    {
+        <div class="card-footer text-muted small">
+            Lines and attachments are locked while the report is @r.Status. Header edits are still allowed.
+        </div>
+    }
+</div>
+
+<div class="d-flex gap-2">
+    <a asp-action="Detail" asp-route-id="@r.Id" class="btn btn-outline-secondary">Back to report</a>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('[data-confirm]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            if (!confirm(this.getAttribute('data-confirm'))) {
+                e.preventDefault();
+            }
+        });
+    });
+});
+</script>

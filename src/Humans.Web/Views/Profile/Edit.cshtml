@@ -376,6 +376,26 @@
                         <span asp-validation-for="ContributionInterests" class="text-danger"></span>
                         <div class="form-text">@Localizer["ProfileEdit_ContributionInterestsHelp"]</div>
                     </div>
+
+                    @if (Model.AllShiftTags.Count > 0)
+                    {
+                        <hr />
+                        <div class="mb-3">
+                            <h6>@Localizer["Shifts_EditPreferences"]</h6>
+                            <p class="text-muted small mb-2">@Localizer["Shifts_PreferencesHelp"] <i class="fa-solid fa-star text-warning"></i></p>
+                            <div class="d-flex flex-wrap gap-3">
+                                @foreach (var tag in Model.AllShiftTags)
+                                {
+                                    var isPreferred = Model.EditableShiftTagIds.Contains(tag.Id);
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="EditableShiftTagIds" value="@tag.Id" id="prof-shift-tag-@tag.Id.ToString("N")"
+                                               @if (isPreferred) { <text>checked</text> } />
+                                        <label class="form-check-label" for="prof-shift-tag-@tag.Id.ToString("N")">@tag.Name</label>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
                 </div>
             </div>
 

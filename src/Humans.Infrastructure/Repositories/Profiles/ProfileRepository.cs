@@ -64,6 +64,7 @@ public sealed class ProfileRepository : IProfileRepository
         return await ctx.Profiles
             .AsNoTracking()
             .Include(p => p.VolunteerHistory)
+            .Include(p => p.Languages)
             .ToListAsync(ct);
     }
 
@@ -118,6 +119,21 @@ public sealed class ProfileRepository : IProfileRepository
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<(Guid ProfileId, Guid UserId, string BurnerName, string ContentType, Instant UpdatedAt)>>
+        GetCustomPictureRowsAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var rows = await ctx.Profiles
+            .AsNoTracking()
+            .Where(p => p.ProfilePictureContentType != null)
+            .Select(p => new { p.Id, p.UserId, p.BurnerName, p.ProfilePictureContentType, p.UpdatedAt })
+            .ToListAsync(ct);
+
+        return rows
+            .Select(r => (r.Id, r.UserId, r.BurnerName, r.ProfilePictureContentType!, r.UpdatedAt))
+            .ToList();
+    }
+
     public async Task<(int ColaboradorCount, int AsociadoCount)> GetTierCountsAsync(
         CancellationToken ct = default)
     {
@@ -132,10 +148,21 @@ public sealed class ProfileRepository : IProfileRepository
 
     public async Task<IReadOnlyList<Profile>> GetReviewableAsync(CancellationToken ct = default)
     {
+        // Exclude Stub profiles (null legal name) from the Consent Coordinator's
+        // queue. Profile.State is nullable during the §15i rollout (legacy rows
+        // are backfilled lazily), so we also include null-state rows whose
+        // identity fields are complete — those are Active-equivalent and would
+        // otherwise disappear from the queue until backfill runs.
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.Profiles
             .AsNoTracking()
-            .Where(p => !p.IsApproved && p.RejectedAt == null)
+            .Where(p => !p.IsApproved
+                && p.RejectedAt == null
+                && (p.State == ProfileState.Active
+                    || (p.State == null
+                        && !string.IsNullOrWhiteSpace(p.BurnerName)
+                        && !string.IsNullOrWhiteSpace(p.FirstName)
+                        && !string.IsNullOrWhiteSpace(p.LastName))))
             .OrderBy(p => p.CreatedAt)
             .ToListAsync(ct);
     }
@@ -144,7 +171,13 @@ public sealed class ProfileRepository : IProfileRepository
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.Profiles
-            .CountAsync(p => !p.IsApproved && p.RejectedAt == null, ct);
+            .CountAsync(p => !p.IsApproved
+                && p.RejectedAt == null
+                && (p.State == ProfileState.Active
+                    || (p.State == null
+                        && !string.IsNullOrWhiteSpace(p.BurnerName)
+                        && !string.IsNullOrWhiteSpace(p.FirstName)
+                        && !string.IsNullOrWhiteSpace(p.LastName))), ct);
     }
 
     public async Task<IReadOnlyList<Guid>> GetApprovedUserIdsAsync(CancellationToken ct = default)

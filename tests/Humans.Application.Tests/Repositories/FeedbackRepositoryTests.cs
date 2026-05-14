@@ -316,38 +316,6 @@ public sealed class FeedbackRepositoryTests : IDisposable
     }
 
     // ==========================================================================
-    // GetMessagesAsync
-    // ==========================================================================
-
-    [HumansFact]
-    public async Task GetMessagesAsync_ReturnsMessagesOrderedByCreatedAtAscending()
-    {
-        var reportId = Guid.NewGuid();
-        var now = _clock.GetCurrentInstant();
-        _dbContext.FeedbackReports.Add(new FeedbackReport
-        {
-            Id = reportId,
-            UserId = Guid.NewGuid(),
-            Category = FeedbackCategory.Bug,
-            Description = "d",
-            PageUrl = "/",
-            Status = FeedbackStatus.Open,
-            CreatedAt = now,
-            UpdatedAt = now
-        });
-        await _dbContext.FeedbackMessages.AddRangeAsync(
-            new FeedbackMessage { Id = Guid.NewGuid(), FeedbackReportId = reportId, Content = "second", CreatedAt = now + Duration.FromMinutes(2) },
-            new FeedbackMessage { Id = Guid.NewGuid(), FeedbackReportId = reportId, Content = "first", CreatedAt = now + Duration.FromMinutes(1) });
-        await _dbContext.SaveChangesAsync();
-
-        var result = await _repo.GetMessagesAsync(reportId);
-
-        result.Should().HaveCount(2);
-        result[0].Content.Should().Be("first");
-        result[1].Content.Should().Be("second");
-    }
-
-    // ==========================================================================
     // GetForUserExportAsync
     // ==========================================================================
 

@@ -9,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 using ApplicationDecisionService = Humans.Application.Services.Governance.ApplicationDecisionService;
 using BudgetService = Humans.Application.Services.Budget.BudgetService;
+using ExpenseReportService = Humans.Application.Services.Expenses.ExpenseReportService;
 using CampaignService = Humans.Application.Services.Campaigns.CampaignService;
 using ProfilesProfileService = Humans.Application.Services.Profile.ProfileService;
 using ProfilesAccountMergeService = Humans.Application.Services.Profile.AccountMergeService;
@@ -88,7 +89,8 @@ public class GdprExportDependencyInjectionTests
         typeof(CampService),
         typeof(AuditLogService),
         typeof(BudgetService),
-        typeof(Humans.Application.Services.Agent.AgentService)
+        typeof(Humans.Application.Services.Agent.AgentService),
+        typeof(ExpenseReportService)
     ];
 
     [HumansFact]

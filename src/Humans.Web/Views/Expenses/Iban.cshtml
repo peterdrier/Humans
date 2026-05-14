@@ -1,0 +1,61 @@
+@model Humans.Web.Models.ExpenseIbanViewModel
+@{
+    ViewData["Title"] = "Payment IBAN";
+}
+
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-action="Index">My Expense Reports</a></li>
+        <li class="breadcrumb-item"><a asp-action="Detail" asp-route-id="@Model.ReportId">Report</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Payment IBAN</li>
+    </ol>
+</nav>
+
+<div class="row">
+    <div class="col-md-6">
+        <h1 class="mb-1">Payment IBAN</h1>
+        <p class="text-muted mb-4">Your IBAN is used to process reimbursement transfers via SEPA. It is never shown to other humans.</p>
+
+        <vc:temp-data-alerts />
+
+        <div class="card">
+            <div class="card-body">
+                @if (Model.HasIban)
+                {
+                    <p class="mb-3">
+                        Current IBAN: <span class="font-monospace fw-semibold">@Model.MaskedIban</span>
+                    </p>
+                }
+
+                <form asp-action="Iban" asp-route-id="@Model.ReportId" method="post">
+                    @Html.AntiForgeryToken()
+
+                    <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
+
+                    <div class="mb-3">
+                        <label asp-for="Iban" class="form-label">
+                            @(Model.HasIban ? "New IBAN (or leave empty to remove)" : "IBAN")
+                        </label>
+                        <input asp-for="Iban" class="form-control font-monospace"
+                               placeholder="e.g. ES7921000813610123456789"
+                               maxlength="34"
+                               autocomplete="off"
+                               autofocus />
+                        <div class="form-text">Enter your full IBAN without spaces. Leave empty to remove.</div>
+                        <span asp-validation-for="Iban" class="text-danger small"></span>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">Save</button>
+                        <a asp-action="Detail" asp-route-id="@Model.ReportId" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="mt-3 text-muted small">
+            <i class="fa-solid fa-lock me-1"></i>
+            Your IBAN is stored securely and only accessible to FinanceAdmin in the context of your expense reports.
+        </div>
+    </div>
+</div>

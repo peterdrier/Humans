@@ -17,7 +17,7 @@ public class MembershipRequiredFilter : IAsyncActionFilter
     {
         "Home",        // Public landing + dashboard (shows onboarding status)
         "Account",     // Login/logout/OAuth
-        "Application", // Submit membership application
+        "GovernanceApplications", // Submit membership application
         "Consent",     // Sign required legal documents
         "Profile",     // Set up profile during onboarding
         "Admin",       // Has its own Roles = "Admin" gate
@@ -31,7 +31,7 @@ public class MembershipRequiredFilter : IAsyncActionFilter
         "FeedbackApi",      // API key auth, no membership required
         "Guest",            // Profileless account dashboard
         "Legal",            // Public legal documents ([AllowAnonymous])
-        "Notification",     // Notification inbox — accessible to all authenticated users
+        "Notifications",    // Notification inbox — accessible to all authenticated users
         "OnboardingWidget", // Guided onboarding flow (Names → Shifts → Consents) — used by mid-onboarding users
     };
 

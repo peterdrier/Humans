@@ -79,6 +79,7 @@ public class TeamServiceTests : IDisposable
         var shiftManagementService = new ShiftManagementService(
             shiftRepo,
             Substitute.For<IAuditLogService>(),
+            Substitute.For<IAdminAuthorizationService>(),
             serviceProvider,
             _cache,
             _clock,
@@ -139,6 +140,7 @@ public class TeamServiceTests : IDisposable
             shiftManagementService,
             Substitute.For<INotificationMeterCacheInvalidator>(),
             _shiftAuthInvalidator,
+            Substitute.For<IAdminAuthorizationService>(),
             serviceProvider,
             _clock,
             NullLogger<TeamService>.Instance);
@@ -1628,6 +1630,24 @@ public class TeamServiceTests : IDisposable
 
         await _teamResourceService.DidNotReceive().DeactivateResourcesForTeamAsync(
             Arg.Any<Guid>(), Arg.Any<GoogleResourceType?>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task GetExpectedAsync_DuplicateGoogleGroupEmail_SkipsClaim()
+    {
+        var alice = SeedUser(displayName: "Alice");
+        var bob = SeedUser(displayName: "Bob");
+        var first = SeedTeam("First");
+        var second = SeedTeam("Second");
+        first.GoogleGroupPrefix = "shared";
+        second.GoogleGroupPrefix = "shared";
+        SeedTeamMember(first.Id, alice.Id);
+        SeedTeamMember(second.Id, bob.Id);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.GetExpectedAsync();
+
+        result.Should().NotContainKey($"shared@{DomainConstants.GoogleGroupDomain}");
     }
 
     // --- Helpers ---

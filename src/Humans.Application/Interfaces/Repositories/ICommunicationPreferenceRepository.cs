@@ -47,6 +47,13 @@ public interface ICommunicationPreferenceRepository : IRepository
     Task<IReadOnlyList<CommunicationPreference>> GetByUserIdReadOnlyAsync(
         Guid userId, CancellationToken ct = default);
 
+    /// <summary>
+    /// Returns the count of preferences matching the given category and opt-out state.
+    /// Used for dashboard metrics.
+    /// </summary>
+    Task<int> GetCountByCategoryAndStateAsync(
+        MessageCategory category, bool optedOut, CancellationToken ct = default);
+
     Task AddAsync(CommunicationPreference preference, CancellationToken ct = default);
     Task AddRangeAsync(IReadOnlyList<CommunicationPreference> preferences, CancellationToken ct = default);
 

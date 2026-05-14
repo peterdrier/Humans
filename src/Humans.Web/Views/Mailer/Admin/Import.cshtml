@@ -1,0 +1,209 @@
+@using Humans.Application.Interfaces.Mailer.Dtos
+@using Humans.Web.Models.Mailer
+@model MailerImportPreviewViewModel
+@{
+    ViewData["Title"] = "Import Preview";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="mb-0">Import Preview</h1>
+    <a href="/Mailer/Admin" class="btn btn-outline-secondary">
+        <i class="fa-solid fa-arrow-left me-1"></i>Back to Dashboard
+    </a>
+</div>
+
+@* ── Counts summary ───────────────────────────────────────────────────────── *@
+<div class="card mb-4">
+    <div class="card-header"><strong>Plan Summary</strong></div>
+    <div class="card-body p-0">
+        <table class="table table-sm mb-0">
+            <thead>
+                <tr>
+                    <th>Category</th>
+                    <th class="text-end">Count</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Create new human</td>
+                    <td class="text-end">@Model.Plan.Counts.CreateNewHuman.ToString("N0")</td>
+                </tr>
+                <tr>
+                    <td>Human exists with unverified email — replace</td>
+                    <td class="text-end">@Model.Plan.Counts.ReplaceUnverifiedEmail.ToString("N0")</td>
+                </tr>
+                <tr>
+                    <td>Human exists — Marketing prefs already match (no-op)</td>
+                    <td class="text-end">@Model.Plan.Counts.VerifiedPrefsAlreadyMatch.ToString("N0")</td>
+                </tr>
+                <tr>
+                    <td>Human exists — flip Marketing to opt-in (ML wins)</td>
+                    <td class="text-end">@Model.Plan.Counts.VerifiedFlipToOptIn.ToString("N0")</td>
+                </tr>
+                <tr>
+                    <td>Human exists — flip Marketing to opt-out (ML wins)</td>
+                    <td class="text-end">@Model.Plan.Counts.VerifiedFlipToOptOut.ToString("N0")</td>
+                </tr>
+                <tr>
+                    <td>Human exists — keep Humans' pref (user touched recently)</td>
+                    <td class="text-end">@Model.Plan.Counts.VerifiedKeepHumansPref.ToString("N0")</td>
+                </tr>
+                <tr class="text-muted">
+                    <td>Skipped — same email on multiple humans</td>
+                    <td class="text-end">@Model.Plan.Counts.AmbiguousMultipleVerified.ToString("N0")</td>
+                </tr>
+                <tr class="text-muted">
+                    <td>Skipped — unconfirmed in ML</td>
+                    <td class="text-end">@Model.Plan.Counts.UnconfirmedSkipped.ToString("N0")</td>
+                </tr>
+                <tr class="table-light fw-semibold">
+                    <td>Total pulled from MailerLite</td>
+                    <td class="text-end">@Model.Plan.TotalPulled.ToString("N0")</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@* ── Per-category collapsible detail tables ───────────────────────────────── *@
+@{
+    var categories = new[]
+    {
+        (Outcome: SubscriberOutcome.CreateNewHuman,            Label: "Create New Human"),
+        (Outcome: SubscriberOutcome.ReplaceUnverifiedEmail,    Label: "Human Exists With Unverified Email — Replace"),
+        (Outcome: SubscriberOutcome.VerifiedPrefsAlreadyMatch, Label: "Human Exists — Prefs Already Match (No-op)"),
+        (Outcome: SubscriberOutcome.VerifiedFlipToOptIn,       Label: "Human Exists — Flip Marketing to Opt-In"),
+        (Outcome: SubscriberOutcome.VerifiedFlipToOptOut,      Label: "Human Exists — Flip Marketing to Opt-Out"),
+        (Outcome: SubscriberOutcome.VerifiedKeepHumansPref,    Label: "Human Exists — Keep Humans' Pref"),
+        (Outcome: SubscriberOutcome.AmbiguousMultipleVerified, Label: "Skipped — Same Email on Multiple Humans"),
+        (Outcome: SubscriberOutcome.UnconfirmedSkipped,        Label: "Skipped — Unconfirmed in ML"),
+    };
+}
+
+@foreach (var cat in categories)
+{
+    var catRows = Model.Rows.Where(r => r.Outcome == cat.Outcome).ToList();
+    if (catRows.Count == 0) continue;
+
+    var collapseId = $"collapse-{cat.Outcome}";
+    <div class="card mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <button class="btn btn-link p-0 text-start text-decoration-none fw-semibold"
+                    type="button"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#@collapseId"
+                    aria-expanded="false">
+                @cat.Label
+                <span class="badge bg-secondary ms-2">@catRows.Count.ToString("N0")</span>
+            </button>
+        </div>
+        <div class="collapse" id="@collapseId">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Email</th>
+                                <th>ML Status</th>
+                                @if (cat.Outcome == SubscriberOutcome.AmbiguousMultipleVerified)
+                                {
+                                    <th>Ambiguous User Ids</th>
+                                }
+                                else if (cat.Outcome != SubscriberOutcome.CreateNewHuman
+                                      && cat.Outcome != SubscriberOutcome.UnconfirmedSkipped)
+                                {
+                                    <th>Matched Human</th>
+                                }
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var row in catRows)
+                            {
+                                <tr>
+                                    <td class="font-monospace">@row.Email</td>
+                                    <td>@row.MlStatus</td>
+                                    @if (cat.Outcome == SubscriberOutcome.AmbiguousMultipleVerified)
+                                    {
+                                        var ambiguous = Model.Plan.Decisions
+                                            .FirstOrDefault(d => d.Email == row.Email)
+                                            ?.AmbiguousUserIds ?? [];
+                                        <td>
+                                            @foreach (var uid in ambiguous)
+                                            {
+                                                <span class="me-2"><vc:human user-id="@uid" link="Admin" /></span>
+                                            }
+                                        </td>
+                                    }
+                                    else if (cat.Outcome != SubscriberOutcome.CreateNewHuman
+                                          && cat.Outcome != SubscriberOutcome.UnconfirmedSkipped)
+                                    {
+                                        <td>
+                                            @if (row.MatchedUserId is Guid uid)
+                                            {
+                                                <vc:human user-id="@uid" link="Admin" />
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">—</span>
+                                            }
+                                        </td>
+                                    }
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@* ── Commit form ─────────────────────────────────────────────────────────── *@
+<div class="mt-4">
+    <form method="post" action="/Mailer/Admin/Import/Commit" id="commitForm">
+        @Html.AntiForgeryToken()
+
+        <div class="card mb-3">
+            <div class="card-body">
+                <label for="maxPerOutcome" class="form-label fw-semibold">
+                    Process at most N per category
+                </label>
+                <div class="d-flex align-items-center">
+                    <input type="number"
+                           class="form-control"
+                           style="max-width: 8rem;"
+                           id="maxPerOutcome"
+                           name="maxPerOutcome"
+                           min="1"
+                           value="1" />
+                    <small class="text-muted ms-3">
+                        Defaults to <strong>1 per category</strong> for safety. Clear the field to commit the entire plan.
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-danger" id="commitButton">
+            <span class="commit-idle">
+                <i class="fa-solid fa-bolt me-1"></i>Commit Import
+            </span>
+            <span class="commit-busy d-none">
+                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                Applying — re-pulling MailerLite and writing decisions. This can take several minutes; don't close this tab.
+            </span>
+        </button>
+        <span class="ms-3 text-muted small commit-idle">This will apply the selected decisions above to Humans.</span>
+    </form>
+</div>
+
+<script>
+    (function () {
+        const form = document.getElementById('commitForm');
+        const button = document.getElementById('commitButton');
+        form.addEventListener('submit', function () {
+            button.disabled = true;
+            form.querySelectorAll('.commit-idle').forEach(el => el.classList.add('d-none'));
+            form.querySelectorAll('.commit-busy').forEach(el => el.classList.remove('d-none'));
+        });
+    })();
+</script>

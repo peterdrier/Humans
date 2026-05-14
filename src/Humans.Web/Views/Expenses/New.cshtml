@@ -1,0 +1,66 @@
+@model Humans.Web.Models.ExpenseNewViewModel
+@{
+    ViewData["Title"] = "New Expense Report";
+}
+
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-action="Index">My Expense Reports</a></li>
+        <li class="breadcrumb-item active" aria-current="page">New Report</li>
+    </ol>
+</nav>
+
+<h1 class="mb-4">New Expense Report</h1>
+
+<vc:temp-data-alerts />
+
+<div class="row">
+    <div class="col-md-7">
+        <div class="card">
+            <div class="card-body">
+                <form asp-action="New" method="post">
+                    @Html.AntiForgeryToken()
+
+                    <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
+
+                    <div class="mb-3">
+                        <label asp-for="BudgetCategoryId" class="form-label">Budget Category <span class="text-danger">*</span></label>
+                        <select asp-for="BudgetCategoryId" class="form-select" required>
+                            <option value="">— Select a category —</option>
+                            @foreach (var c in Model.Categories)
+                            {
+                                <option value="@c.Id">@c.DisplayName</option>
+                            }
+                        </select>
+                        <span asp-validation-for="BudgetCategoryId" class="text-danger small"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Note" class="form-label">Note <small class="text-muted">(optional, max 500 chars)</small></label>
+                        <textarea asp-for="Note" class="form-control" rows="3" maxlength="500" placeholder="Describe the expense…"></textarea>
+                        <span asp-validation-for="Note" class="text-danger small"></span>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">Create Draft</button>
+                        <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-5">
+        <div class="card bg-light">
+            <div class="card-body">
+                <h6 class="card-title">How it works</h6>
+                <ol class="small text-muted mb-0">
+                    <li>Create a draft and add expense lines with amounts.</li>
+                    <li>Attach a receipt or invoice to each line.</li>
+                    <li>Set your payment IBAN if you haven't already.</li>
+                    <li>Submit for coordinator / FinanceAdmin review.</li>
+                    <li>On approval you receive a SEPA bank transfer.</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>

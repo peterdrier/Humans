@@ -382,6 +382,32 @@ public sealed class UserRepository : IUserRepository
         return true;
     }
 
+    public async Task<int> DeleteUsersAsync(
+        IReadOnlyCollection<Guid> userIds,
+        CancellationToken ct = default)
+    {
+        if (userIds.Count == 0)
+            return 0;
+
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        await using var tx = await ctx.Database.BeginTransactionAsync(ct);
+
+        await ctx.UserEmails
+            .Where(e => userIds.Contains(e.UserId))
+            .ExecuteDeleteAsync(ct);
+
+        await ctx.Set<IdentityUserLogin<Guid>>()
+            .Where(l => userIds.Contains(l.UserId))
+            .ExecuteDeleteAsync(ct);
+
+        var deleted = await ctx.Users
+            .Where(u => userIds.Contains(u.Id))
+            .ExecuteDeleteAsync(ct);
+
+        await tx.CommitAsync(ct);
+        return deleted;
+    }
+
     public async Task<int> DeleteAllExternalLoginsForUserAsync(Guid userId, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
@@ -568,6 +594,13 @@ public sealed class UserRepository : IUserRepository
         return await ctx.Users.CountAsync(u => u.GoogleEmailStatus == GoogleEmailStatus.Rejected, ct);
     }
 
+    public async Task<int> GetCountByContactSourceAsync(ContactSource source, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.Users.AsNoTracking()
+            .CountAsync(u => u.ContactSource == source, ct);
+    }
+
     public async Task<IReadOnlyList<Guid>> GetAccountsDueForAnonymizationAsync(
         Instant now, CancellationToken ct = default)
     {
@@ -666,6 +699,25 @@ public sealed class UserRepository : IUserRepository
             .AsNoTracking()
             .Where(ep => ep.UserId == userId)
             .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyDictionary<Guid, IReadOnlyList<EventParticipation>>>
+        GetEventParticipationsByUserIdsAsync(
+            IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
+    {
+        if (userIds.Count == 0)
+            return new Dictionary<Guid, IReadOnlyList<EventParticipation>>();
+
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var idList = userIds is IList<Guid> list ? list : userIds.ToList();
+        var rows = await ctx.EventParticipations
+            .AsNoTracking()
+            .Where(ep => idList.Contains(ep.UserId))
+            .ToListAsync(ct);
+
+        return rows
+            .GroupBy(ep => ep.UserId)
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<EventParticipation>)g.ToList());
     }
 
     // ==========================================================================

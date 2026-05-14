@@ -5,6 +5,7 @@ using Microsoft.Extensions.Localization;
 using Humans.Domain.Entities;
 using Humans.Web.Models;
 using Humans.Application.Interfaces.Consent;
+using Humans.Application.Interfaces.Profiles;
 
 namespace Humans.Web.Controllers;
 
@@ -12,17 +13,20 @@ namespace Humans.Web.Controllers;
 public class ConsentController : HumansControllerBase
 {
     private readonly IConsentService _consentService;
+    private readonly IProfileService _profileService;
     private readonly IStringLocalizer<SharedResource> _localizer;
     private readonly ILogger<ConsentController> _logger;
 
     public ConsentController(
         UserManager<User> userManager,
         IConsentService consentService,
+        IProfileService profileService,
         IStringLocalizer<SharedResource> localizer,
         ILogger<ConsentController> logger)
         : base(userManager)
     {
         _consentService = consentService;
+        _profileService = profileService;
         _localizer = localizer;
         _logger = logger;
     }
@@ -87,6 +91,12 @@ public class ConsentController : HumansControllerBase
         if (user is null)
             return NotFound();
 
+        // A Stub profile (null legal name) cannot legally attest to a consent
+        // document. Bounce to /Profile/Edit so the user can add the required
+        // identity fields before signing.
+        if (await IsStubProfileAsync(user.Id))
+            return RedirectToProfileEditForStub();
+
         var viewModel = await BuildConsentReviewViewModelAsync(id, user.Id);
         if (viewModel is null)
             return NotFound();
@@ -101,6 +111,9 @@ public class ConsentController : HumansControllerBase
         var user = await GetCurrentUserAsync();
         if (user is null)
             return NotFound();
+
+        if (await IsStubProfileAsync(user.Id))
+            return RedirectToProfileEditForStub();
 
         if (!model.ExplicitConsent)
         {
@@ -138,6 +151,21 @@ public class ConsentController : HumansControllerBase
             SetError(_localizer["Consent_SubmitError"].Value);
         }
         return RedirectToAction(nameof(Index));
+    }
+
+    private async Task<bool> IsStubProfileAsync(Guid userId)
+    {
+        var profile = await _profileService.GetProfileAsync(userId);
+        // Treat a missing profile as non-Stub (NotFound semantics flow through
+        // the existing service path); only block when the profile exists and
+        // is missing required identity fields.
+        return profile is not null && !profile.HasRequiredIdentityFields();
+    }
+
+    private IActionResult RedirectToProfileEditForStub()
+    {
+        SetInfo(_localizer["Consent_StubProfile_AddName"].Value);
+        return RedirectToAction(nameof(ProfileController.Edit), "Profile");
     }
 
     private async Task<ConsentDetailViewModel?> BuildConsentReviewViewModelAsync(Guid documentVersionId, Guid userId)

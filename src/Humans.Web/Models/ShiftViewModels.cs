@@ -263,7 +263,7 @@ public class RotaShiftGroup
     public int TotalSlots { get; set; }
 }
 
-public record ShiftSignupInfo(Guid UserId, string DisplayName, SignupStatus Status, string? ProfilePictureUrl);
+public record ShiftSignupInfo(Guid UserId, string DisplayName, SignupStatus Status);
 
 public class ShiftDisplayItem
 {

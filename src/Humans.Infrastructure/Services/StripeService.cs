@@ -11,7 +11,7 @@ public class StripeSettings
     // Convention: one key per Stripe account. Production keys must be Restricted API Keys (rk_*) with
     // the minimum scopes the integration uses; refunds/payouts/chargebacks stay 100% dashboard-manual.
 
-    /// <summary>Tickets-account key. Populated from STRIPE_TICKETS_KEY (with STRIPE_API_KEY as a deprecated fallback). Scopes used: PaymentIntent + BalanceTransaction reads for fee enrichment.</summary>
+    /// <summary>Tickets-account key. Populated from STRIPE_TICKETS_KEY. Scopes used: PaymentIntent + BalanceTransaction reads for fee enrichment.</summary>
     public string TicketsKey { get; set; } = string.Empty;
 
     /// <summary>Store-account key. Populated from STRIPE_STORE_KEY. Scopes used: checkout_session:write (and incidental reads needed by Stripe.NET).</summary>
@@ -45,14 +45,10 @@ public class StripeSettings
     public bool IsWebhookCleanupConfigured =>
         !string.IsNullOrEmpty(WebhookCleanupGitHubOwner) && !string.IsNullOrEmpty(WebhookCleanupGitHubRepository);
 
-    /// <summary>True when TicketsKey was loaded from the deprecated STRIPE_API_KEY fallback rather than STRIPE_TICKETS_KEY. Triggers a one-shot startup warning.</summary>
-    public bool TicketsKeyFromDeprecatedFallback { get; set; }
 }
 
 public class StripeService : IStripeService
 {
-    private static int _deprecationWarningEmitted;
-
     private readonly StripeSettings _settings;
     private readonly ILogger<StripeService> _logger;
 
@@ -60,13 +56,6 @@ public class StripeService : IStripeService
     {
         _settings = settings.Value;
         _logger = logger;
-
-        if (_settings.TicketsKeyFromDeprecatedFallback &&
-            Interlocked.Exchange(ref _deprecationWarningEmitted, 1) == 0)
-        {
-            _logger.LogWarning(
-                "STRIPE_API_KEY is deprecated — rename the environment variable to STRIPE_TICKETS_KEY. The fallback will be removed in a future release.");
-        }
     }
 
     public bool IsConfigured => _settings.IsConfigured;

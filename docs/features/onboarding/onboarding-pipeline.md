@@ -9,7 +9,7 @@
   src/Humans.Web/Controllers/ConsentController.cs
   src/Humans.Web/Controllers/OnboardingReviewController.cs
   src/Humans.Web/Controllers/OnboardingWidgetController.cs
-  src/Humans.Web/Controllers/ApplicationController.cs
+  src/Humans.Web/Controllers/GovernanceApplicationsController.cs
   src/Humans.Web/Views/Home/**
   src/Humans.Web/Views/OnboardingReview/**
   src/Humans.Web/Views/OnboardingWidget/**

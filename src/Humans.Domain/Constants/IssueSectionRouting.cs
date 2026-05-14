@@ -24,6 +24,7 @@ public static class IssueSectionRouting
     public const string Governance = "Governance";
     public const string Legal = "Legal";
     public const string CityPlanning = "CityPlanning";
+    public const string Scanner = "Scanner";
 
     /// <summary>
     /// Roles (besides Admin) that own each section. A user holding any of the
@@ -42,6 +43,7 @@ public static class IssueSectionRouting
         Governance => [RoleNames.Board],
         Legal => [RoleNames.ConsentCoordinator],
         CityPlanning => [RoleNames.CampAdmin],
+        Scanner => [RoleNames.TicketAdmin, RoleNames.Board],
         _ => []
     };
 
@@ -64,6 +66,6 @@ public static class IssueSectionRouting
     public static readonly IReadOnlyList<string> AllKnownSections =
     [
         Tickets, Camps, Teams, Shifts, Onboarding, Profiles,
-        Budget, Governance, Legal, CityPlanning
+        Budget, Governance, Legal, CityPlanning, Scanner
     ];
 }

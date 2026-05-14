@@ -221,6 +221,7 @@ public static class AreaLabelMap
             [IssueSectionRouting.Legal] = "Legal & consent",
             [IssueSectionRouting.Onboarding] = "Onboarding",
             [IssueSectionRouting.Profiles] = "Profile & onboarding",
+            [IssueSectionRouting.Scanner] = "Scanner",
             [IssueSectionRouting.Shifts] = "Shifts & volunteering",
             [IssueSectionRouting.Teams] = "Teams",
             [IssueSectionRouting.Tickets] = "Tickets",

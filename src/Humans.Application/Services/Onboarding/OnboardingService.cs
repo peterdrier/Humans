@@ -156,7 +156,7 @@ public sealed class OnboardingService : IOnboardingService
         var data = await GetReviewQueueAsync(ct);
         var eligibleUserIds = data.Pending
             .Concat(data.Flagged)
-            .Where(p => selected.Contains(p.UserId) && !string.IsNullOrWhiteSpace(p.FullName))
+            .Where(p => selected.Contains(p.UserId))
             .Select(p => p.UserId)
             .ToList();
 

@@ -17,6 +17,7 @@ namespace Humans.Infrastructure.Jobs;
 public class GoogleResourceReconciliationJob : IRecurringJob
 {
     private readonly IGoogleSyncService _googleSyncService;
+    private readonly IGoogleGroupSync _googleGroupSync;
     private readonly INotificationService _notificationService;
     private readonly IHumansMetrics _metrics;
     private readonly ILogger<GoogleResourceReconciliationJob> _logger;
@@ -24,12 +25,14 @@ public class GoogleResourceReconciliationJob : IRecurringJob
 
     public GoogleResourceReconciliationJob(
         IGoogleSyncService googleSyncService,
+        IGoogleGroupSync googleGroupSync,
         INotificationService notificationService,
         IHumansMetrics metrics,
         ILogger<GoogleResourceReconciliationJob> logger,
         IClock clock)
     {
         _googleSyncService = googleSyncService;
+        _googleGroupSync = googleGroupSync;
         _notificationService = notificationService;
         _metrics = metrics;
         _logger = logger;
@@ -48,7 +51,7 @@ public class GoogleResourceReconciliationJob : IRecurringJob
             // reconciliation pass ever touched them.
             await _googleSyncService.SyncResourcesByTypeAsync(GoogleResourceType.DriveFolder, SyncAction.Execute, cancellationToken);
             await _googleSyncService.SyncResourcesByTypeAsync(GoogleResourceType.DriveFile, SyncAction.Execute, cancellationToken);
-            await _googleSyncService.SyncResourcesByTypeAsync(GoogleResourceType.Group, SyncAction.Execute, cancellationToken);
+            await _googleGroupSync.ReconcileAllAsync(SyncAction.Execute, cancellationToken);
 
             // Update Drive folder paths (detects renames and moves)
             var pathUpdates = await _googleSyncService.UpdateDriveFolderPathsAsync(cancellationToken);

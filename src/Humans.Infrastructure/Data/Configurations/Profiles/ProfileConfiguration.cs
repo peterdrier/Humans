@@ -81,6 +81,9 @@ public class ProfileConfiguration : IEntityTypeConfiguration<Profile>
         builder.Property(p => p.NoPriorBurnExperience)
             .IsRequired();
 
+        builder.Property(p => p.Iban)
+            .HasMaxLength(34);
+
         builder.Property(p => p.ProfilePictureContentType)
             .HasMaxLength(100);
 

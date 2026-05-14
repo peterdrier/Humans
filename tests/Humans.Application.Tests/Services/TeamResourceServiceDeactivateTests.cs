@@ -48,9 +48,9 @@ public class TeamResourceServiceDeactivateTests : IDisposable
         _service = new TeamResourceService(
             repository,
             googleClient: Substitute.For<ITeamResourceGoogleClient>(),
-            googleSyncService: Substitute.For<IGoogleSyncService>(),
+            drivePermissions: Substitute.For<IGoogleDrivePermissionsClient>(),
             teamService: Substitute.For<ITeamService>(),
-            roleAssignmentService: Substitute.For<IRoleAssignmentService>(),
+            serviceProvider: Substitute.For<IServiceProvider>(),
             auditLogService: _auditLogService,
             resourceOptions: new TeamResourceManagementOptions(),
             clock: _clock,
@@ -125,6 +125,58 @@ public class TeamResourceServiceDeactivateTests : IDisposable
         rows.Should().HaveCount(2);
         rows.Single(r => r.ResourceType == GoogleResourceType.DriveFolder).IsActive.Should().BeFalse();
         rows.Single(r => r.ResourceType == GoogleResourceType.Group).IsActive.Should().BeTrue();
+    }
+
+    // ==========================================================================
+    // GetResourceNamesByIdsAsync
+    // ==========================================================================
+
+    [HumansFact]
+    public async Task GetResourceNamesByIdsAsync_EmptyInput_ReturnsEmptyDict()
+    {
+        var result = await _service.GetResourceNamesByIdsAsync(Array.Empty<Guid>());
+        result.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task GetResourceNamesByIdsAsync_MixedKnownAndUnknownIds_ReturnsOnlyKnown()
+    {
+        var teamId = Guid.NewGuid();
+        SeedTeam(teamId, "Alpha");
+
+        var knownId1 = Guid.NewGuid();
+        var knownId2 = Guid.NewGuid();
+        var unknownId = Guid.NewGuid();
+
+        _dbContext.GoogleResources.Add(new GoogleResource
+        {
+            Id = knownId1,
+            TeamId = teamId,
+            Name = "Folder One",
+            GoogleId = "google-1",
+            ResourceType = GoogleResourceType.DriveFolder,
+            IsActive = true,
+            ProvisionedAt = _clock.GetCurrentInstant()
+        });
+        _dbContext.GoogleResources.Add(new GoogleResource
+        {
+            Id = knownId2,
+            TeamId = teamId,
+            Name = "Group Two",
+            GoogleId = "google-2",
+            ResourceType = GoogleResourceType.Group,
+            IsActive = true,
+            ProvisionedAt = _clock.GetCurrentInstant()
+        });
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.GetResourceNamesByIdsAsync(
+            new[] { knownId1, knownId2, unknownId });
+
+        result.Should().HaveCount(2);
+        result[knownId1].Should().Be("Folder One");
+        result[knownId2].Should().Be("Group Two");
+        result.ContainsKey(unknownId).Should().BeFalse();
     }
 
     [HumansFact]

@@ -158,6 +158,12 @@ public interface ITeamRepository : IRepository
     Task<int> DeactivateTeamAsync(Guid teamId, Instant now, CancellationToken ct = default);
 
     /// <summary>
+    /// Permanently deletes a team and its Teams-owned child rows. Returns
+    /// false when the team does not exist.
+    /// </summary>
+    Task<bool> PermanentlyDeleteTeamAsync(Guid teamId, CancellationToken ct = default);
+
+    /// <summary>
     /// In a single transaction: set <c>GoogleGroupPrefix</c> on the team and
     /// commit. Returns the previous value and whether the row was found.
     /// </summary>
@@ -335,18 +341,6 @@ public interface ITeamRepository : IRepository
     /// </summary>
     Task<IReadOnlyList<TeamMember>> GetActiveMembersForTeamsAsync(
         IReadOnlyCollection<Guid> teamIds, CancellationToken ct = default);
-
-    /// <summary>
-    /// Loads active (<see cref="TeamMember.LeftAt"/> is null) team members
-    /// for every team whose <see cref="Team.ParentTeamId"/> is in
-    /// <paramref name="parentTeamIds"/>, limited to active parent-side teams.
-    /// Returned rows have <see cref="TeamMember.Team"/> hydrated (so callers
-    /// can read slug/name); the cross-domain <see cref="TeamMember.User"/>
-    /// nav is left unset for sibling stitching via
-    /// <see cref="Users.IUserService"/>. Detached.
-    /// </summary>
-    Task<IReadOnlyList<TeamMember>> GetActiveChildMembersByParentIdsAsync(
-        IReadOnlyCollection<Guid> parentTeamIds, CancellationToken ct = default);
 
     // ==========================================================================
     // TeamJoinRequest reads
@@ -549,13 +543,6 @@ public interface ITeamRepository : IRepository
     /// </summary>
     Task<int> EnqueueResyncEventsForUserAsync(
         Guid userId, Instant now, CancellationToken ct = default);
-
-    /// <summary>
-    /// Hard-deletes every team whose <c>Name.EndsWith</c> marker matches,
-    /// plus its members and join requests. Returns the count of teams
-    /// removed. Used only by test seeding.
-    /// </summary>
-    Task<int> HardDeleteBySuffixAsync(string nameSuffix, CancellationToken ct = default);
 
     /// <summary>
     /// Is the user's Google email status flagged as <see cref="GoogleEmailStatus.Rejected"/>?

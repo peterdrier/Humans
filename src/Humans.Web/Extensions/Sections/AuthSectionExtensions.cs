@@ -7,6 +7,7 @@ using Humans.Application.Services.Auth;
 using Humans.Infrastructure.Caching;
 using Humans.Infrastructure.Repositories.Auth;
 using Humans.Infrastructure.Services.Auth;
+using Humans.Web.Authorization;
 
 namespace Humans.Web.Extensions.Sections;
 
@@ -19,6 +20,8 @@ internal static class AuthSectionExtensions
         // pattern (§15b) so the repository owns context lifetime.
         services.AddSingleton<IRoleAssignmentRepository, RoleAssignmentRepository>();
         services.AddScoped<IRoleAssignmentClaimsCacheInvalidator, RoleAssignmentClaimsCacheInvalidator>();
+        services.AddScoped<ICurrentUserContext, HttpCurrentUserContext>();
+        services.AddScoped<IAdminAuthorizationService, AdminAuthorizationService>();
 
         services.AddScoped<RoleAssignmentService>();
         services.AddScoped<IRoleAssignmentService>(sp => sp.GetRequiredService<RoleAssignmentService>());

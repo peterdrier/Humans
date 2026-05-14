@@ -41,12 +41,6 @@ public class StubGoogleSyncService : IGoogleSyncService
         return Task.FromResult(resource);
     }
 
-    public Task<GoogleResource?> GetResourceStatusAsync(Guid resourceId, CancellationToken cancellationToken = default)
-    {
-        _logger.LogInformation("[STUB] Would get status for resource {ResourceId}", resourceId);
-        return Task.FromResult<GoogleResource?>(null);
-    }
-
     public Task AddUserToTeamResourcesAsync(Guid teamId, Guid userId, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("[STUB] Would add user {UserId} to team {TeamId} Google resources", userId, teamId);
@@ -56,53 +50,6 @@ public class StubGoogleSyncService : IGoogleSyncService
     public Task RemoveUserFromTeamResourcesAsync(Guid teamId, Guid userId, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("[STUB] Would remove user {UserId} from team {TeamId} Google resources", userId, teamId);
-        return Task.CompletedTask;
-    }
-
-    public Task<GoogleResource> ProvisionTeamGroupAsync(
-        Guid teamId,
-        string groupEmail,
-        string groupName,
-        CancellationToken cancellationToken = default)
-    {
-        _logger.LogInformation("[STUB] Would provision Google Group '{GroupEmail}' ({GroupName}) for team {TeamId}", groupEmail, groupName, teamId);
-
-        var resource = new GoogleResource
-        {
-            Id = Guid.NewGuid(),
-            TeamId = teamId,
-            ResourceType = Domain.Enums.GoogleResourceType.Group,
-            GoogleId = groupEmail,
-            Name = groupName,
-            Url = $"https://groups.google.com/a/nobodies.team/g/{groupEmail.Split('@')[0]}",
-            ProvisionedAt = NodaTime.SystemClock.Instance.GetCurrentInstant(),
-            IsActive = true
-        };
-
-        return Task.FromResult(resource);
-    }
-
-    public Task AddUserToGroupAsync(Guid groupResourceId, string userEmail, CancellationToken cancellationToken = default)
-    {
-        _logger.LogInformation("[STUB] Would add {UserEmail} to group {GroupResourceId}", userEmail, groupResourceId);
-        return Task.CompletedTask;
-    }
-
-    public Task RemoveUserFromGroupAsync(Guid groupResourceId, string userEmail, CancellationToken cancellationToken = default)
-    {
-        _logger.LogInformation("[STUB] Would remove {UserEmail} from group {GroupResourceId}", userEmail, groupResourceId);
-        return Task.CompletedTask;
-    }
-
-    public Task SyncTeamGroupMembersAsync(Guid teamId, CancellationToken cancellationToken = default)
-    {
-        _logger.LogInformation("[STUB] Would sync all members for team {TeamId} Google Group", teamId);
-        return Task.CompletedTask;
-    }
-
-    public Task RestoreUserToAllTeamsAsync(Guid userId, CancellationToken cancellationToken = default)
-    {
-        _logger.LogInformation("[STUB] Would restore user {UserId} to all team Google resources", userId);
         return Task.CompletedTask;
     }
 

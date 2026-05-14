@@ -4,12 +4,6 @@ using Humans.Web.Filters;
 using Humans.Web.Models;
 using Humans.Application.Interfaces.Feedback;
 
-// FeedbackReport / FeedbackMessage cross-domain nav properties (User, ResolvedByUser,
-// AssignedToUser, AssignedToTeam, SenderUser) are [Obsolete] — FeedbackService stitches
-// them in memory from IUserService / ITeamService so controllers can continue to read
-// them for response shaping. Nav-strip follow-up tracked in design-rules §15i.
-#pragma warning disable CS0618
-
 namespace Humans.Web.Controllers;
 
 [ApiController]
@@ -45,10 +39,10 @@ public class FeedbackApiController : ControllerBase
             r.PageUrl,
             r.UserAgent,
             r.AdditionalContext,
-            ReporterName = r.User.DisplayName,
-            ReporterEmail = r.User.Email,
+            ReporterName = r.ReporterName,
+            ReporterEmail = r.ReporterEmail,
             ReporterUserId = r.UserId,
-            ReporterLanguage = r.User.PreferredLanguage,
+            ReporterLanguage = r.ReporterLanguage,
             r.GitHubIssueNumber,
             ScreenshotUrl = r.ScreenshotStoragePath is not null ? $"/{r.ScreenshotStoragePath}" : null,
             CreatedAt = r.CreatedAt.ToDateTimeUtc(),
@@ -56,12 +50,12 @@ public class FeedbackApiController : ControllerBase
             LastReporterMessageAt = r.LastReporterMessageAt?.ToDateTimeUtc(),
             LastAdminMessageAt = r.LastAdminMessageAt?.ToDateTimeUtc(),
             ResolvedAt = r.ResolvedAt?.ToDateTimeUtc(),
-            ResolvedByName = r.ResolvedByUser?.DisplayName,
+            ResolvedByName = r.ResolvedByName,
             MessageCount = r.Messages.Count,
             AssignedToUserId = r.AssignedToUserId,
-            AssignedToName = r.AssignedToUser?.DisplayName,
+            AssignedToName = r.AssignedToName,
             AssignedToTeamId = r.AssignedToTeamId,
-            AssignedToTeamName = r.AssignedToTeam?.Name
+            AssignedToTeamName = r.AssignedToTeamName
         });
 
         return Ok(result);
@@ -82,10 +76,10 @@ public class FeedbackApiController : ControllerBase
             r.PageUrl,
             r.UserAgent,
             r.AdditionalContext,
-            ReporterName = r.User.DisplayName,
-            ReporterEmail = r.User.Email,
+            ReporterName = r.ReporterName,
+            ReporterEmail = r.ReporterEmail,
             ReporterUserId = r.UserId,
-            ReporterLanguage = r.User.PreferredLanguage,
+            ReporterLanguage = r.ReporterLanguage,
             r.GitHubIssueNumber,
             ScreenshotUrl = r.ScreenshotStoragePath is not null ? $"/{r.ScreenshotStoragePath}" : null,
             CreatedAt = r.CreatedAt.ToDateTimeUtc(),
@@ -93,15 +87,15 @@ public class FeedbackApiController : ControllerBase
             LastReporterMessageAt = r.LastReporterMessageAt?.ToDateTimeUtc(),
             LastAdminMessageAt = r.LastAdminMessageAt?.ToDateTimeUtc(),
             ResolvedAt = r.ResolvedAt?.ToDateTimeUtc(),
-            ResolvedByName = r.ResolvedByUser?.DisplayName,
+            ResolvedByName = r.ResolvedByName,
             AssignedToUserId = r.AssignedToUserId,
-            AssignedToName = r.AssignedToUser?.DisplayName,
+            AssignedToName = r.AssignedToName,
             AssignedToTeamId = r.AssignedToTeamId,
-            AssignedToTeamName = r.AssignedToTeam?.Name,
+            AssignedToTeamName = r.AssignedToTeamName,
             Messages = r.Messages.Select(m => new
             {
                 m.Id,
-                SenderName = m.SenderUser?.DisplayName ?? "Unknown",
+                SenderName = m.SenderName ?? "Unknown",
                 m.SenderUserId,
                 m.Content,
                 CreatedAt = m.CreatedAt.ToDateTimeUtc(),
@@ -116,12 +110,10 @@ public class FeedbackApiController : ControllerBase
         var report = await _feedbackService.GetFeedbackByIdAsync(id);
         if (report is null) return NotFound();
 
-        var messages = await _feedbackService.GetMessagesAsync(id);
-
-        return Ok(messages.Select(m => new
+        return Ok(report.Messages.Select(m => new
         {
             m.Id,
-            SenderName = m.SenderUser?.DisplayName ?? "Unknown",
+            SenderName = m.SenderName ?? "Unknown",
             m.SenderUserId,
             m.Content,
             CreatedAt = m.CreatedAt.ToDateTimeUtc(),

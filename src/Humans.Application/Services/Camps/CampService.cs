@@ -177,10 +177,25 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
     // Queries
     // ==========================================================================
 
-    public Task<Camp?> GetCampBySlugAsync(string slug, CancellationToken cancellationToken = default) =>
-        _repo.GetBySlugAsync(slug, cancellationToken);
+    public async Task<CampLookup?> GetCampBySlugAsync(string slug, CancellationToken cancellationToken = default)
+    {
+        var camp = await _repo.GetBySlugAsync(slug, cancellationToken);
+        return camp is null ? null : CreateCampLookup(camp);
+    }
 
-    public async Task<CampDetailData?> BuildCampDetailDataAsync(
+    public async Task<CampDetailData?> BuildCampDetailDataBySlugAsync(
+        string slug,
+        int? preferredYear = null,
+        bool fallbackToLatestSeason = true,
+        CancellationToken cancellationToken = default)
+    {
+        var camp = await _repo.GetBySlugAsync(slug, cancellationToken);
+        return camp is null
+            ? null
+            : await BuildCampDetailDataAsync(camp, preferredYear, fallbackToLatestSeason, cancellationToken);
+    }
+
+    private async Task<CampDetailData?> BuildCampDetailDataAsync(
         Camp camp,
         int? preferredYear = null,
         bool fallbackToLatestSeason = true,
@@ -375,14 +390,15 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         return camps.Select(camp => CreateCampInfo(camp, includeLeads: true)).ToList();
     }
 
-    public async Task<CampSettings> GetSettingsAsync(CancellationToken cancellationToken = default)
+    public async Task<CampSettingsInfo> GetSettingsAsync(CancellationToken cancellationToken = default)
     {
         var cached = await _cache.GetOrCreateAsync(
             CacheKeys.CampSettings,
             async entry =>
             {
                 entry.AbsoluteExpirationRelativeToNow = CampSettingsCacheTtl;
-                return await _repo.GetSettingsReadOnlyAsync(cancellationToken);
+                var settings = await _repo.GetSettingsReadOnlyAsync(cancellationToken);
+                return settings is null ? null : CreateCampSettingsInfo(settings);
             });
 
         return cached ?? throw new InvalidOperationException("Camp settings not found.");
@@ -483,6 +499,14 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
                 : null);
     }
 
+    private static CampLookup CreateCampLookup(Camp camp) =>
+        new(
+            camp.Id,
+            camp.Slug,
+            camp.ContactEmail,
+            camp.Seasons.Select(s => CreateCampSeasonInfo(s, camp.Slug, includeEarlyEntryGrantCount: false)).ToList(),
+            camp.Leads.Select(l => new CampLeadInfo(l.Id, l.UserId)).ToList());
+
     private static CampSeasonInfo CreateCampSeasonInfo(
         CampSeason season,
         string campSlug,
@@ -493,6 +517,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             season.CampId,
             campSlug,
             season.Year,
+            season.NameLockDate,
             season.Name,
             season.BlurbShort,
             season.Languages,
@@ -510,6 +535,29 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
                 ? season.Members.Count(m => m.Status == CampMemberStatus.Active && m.HasEarlyEntry)
                 : null);
     }
+
+    private static CampSettingsInfo CreateCampSettingsInfo(CampSettings settings) =>
+        new(
+            settings.PublicYear,
+            settings.OpenSeasons.ToList(),
+            settings.EeStartDate);
+
+    private static CampSeasonLookup CreateCampSeasonLookup(CampSeason season) =>
+        new(
+            season.Id,
+            season.CampId,
+            season.Year,
+            season.Name,
+            season.SoundZone);
+
+    private static CampSeasonMemberInfo CreateCampSeasonMemberInfo(CampMember member) =>
+        new(
+            member.Id,
+            member.UserId,
+            member.Status,
+            member.RequestedAt,
+            member.ConfirmedAt,
+            member.HasEarlyEntry);
 
     private static IReadOnlyList<CampLink> CreateCampLinks(Camp camp)
     {
@@ -1123,9 +1171,12 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
     // Cross-service queries (used by CityPlanningService)
     // ==========================================================================
 
-    public Task<CampSeason?> GetCampSeasonByIdAsync(
-        Guid campSeasonId, CancellationToken cancellationToken = default) =>
-        _repo.GetSeasonByIdAsync(campSeasonId, cancellationToken);
+    public async Task<CampSeasonLookup?> GetCampSeasonByIdAsync(
+        Guid campSeasonId, CancellationToken cancellationToken = default)
+    {
+        var season = await _repo.GetSeasonByIdAsync(campSeasonId, cancellationToken);
+        return season is null ? null : CreateCampSeasonLookup(season);
+    }
 
     public async Task<IReadOnlyDictionary<Guid, CampSeasonDisplayData>> GetCampSeasonDisplayDataForYearAsync(
         int year, CancellationToken cancellationToken = default)
@@ -1733,7 +1784,8 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             .Select(m => new CampMemberRow(
                 m.Id, m.UserId, DisplayName(m.UserId, userMap), m.RequestedAt, m.ConfirmedAt,
                 IsLead: leadUserIds.Contains(m.UserId),
-                HasEarlyEntry: false))
+                HasEarlyEntry: false,
+                Status: m.Status))
             .ToList();
 
         var activeMemberUserIds = members
@@ -1746,7 +1798,8 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             .Select(m => new CampMemberRow(
                 m.Id, m.UserId, DisplayName(m.UserId, userMap), m.RequestedAt, m.ConfirmedAt,
                 IsLead: leadUserIds.Contains(m.UserId),
-                HasEarlyEntry: m.HasEarlyEntry));
+                HasEarlyEntry: m.HasEarlyEntry,
+                Status: m.Status));
 
         var activeFromLeads = activeLeads
             .Where(l => !activeMemberUserIds.Contains(l.UserId))
@@ -1757,7 +1810,8 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
                 RequestedAt: l.JoinedAt,
                 ConfirmedAt: l.JoinedAt,
                 IsLead: true,
-                HasEarlyEntry: false));
+                HasEarlyEntry: false,
+                Status: CampMemberStatus.Active));
 
         var active = activeFromMembers
             .Concat(activeFromLeads)
@@ -1768,9 +1822,12 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         return new CampMemberListData(campSeasonId, season.Year, season.EeSlotCount, pending, active);
     }
 
-    public Task<IReadOnlyList<CampMember>> GetSeasonMembersAsync(
-        Guid campSeasonId, CancellationToken cancellationToken = default) =>
-        _repo.GetSeasonMembersAsync(campSeasonId, cancellationToken);
+    public async Task<IReadOnlyList<CampSeasonMemberInfo>> GetSeasonMembersAsync(
+        Guid campSeasonId, CancellationToken cancellationToken = default)
+    {
+        var members = await _repo.GetSeasonMembersAsync(campSeasonId, cancellationToken);
+        return members.Select(CreateCampSeasonMemberInfo).ToList();
+    }
 
     public Task<int> GetPendingMembershipCountForLeadAsync(
         Guid userId, CancellationToken cancellationToken = default) =>

@@ -5,6 +5,7 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Repositories;
@@ -110,6 +111,7 @@ public class TeamServiceSlugRaceTests
             Substitute.For<IShiftManagementService>(),
             Substitute.For<INotificationMeterCacheInvalidator>(),
             Substitute.For<IShiftAuthorizationInvalidator>(),
+            Substitute.For<IAdminAuthorizationService>(),
             Substitute.For<IServiceProvider>(),
             clock,
             NullLogger<TeamService>.Instance);

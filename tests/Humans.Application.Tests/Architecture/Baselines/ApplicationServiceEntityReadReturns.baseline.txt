@@ -1,6 +1,5 @@
 # Baseline for application service read methods that still expose EF/domain entities.
 # New read methods on IApplicationService must return read models/snapshots instead of entities.
-Humans.Application.Interfaces.AuditLog.IAuditLogService.GetAuditLogPageAsync:Humans.Domain.Entities.AuditLogEntry
 Humans.Application.Interfaces.AuditLog.IAuditLogService.GetByResourceAsync:Humans.Domain.Entities.AuditLogEntry
 Humans.Application.Interfaces.AuditLog.IAuditLogService.GetByUserAsync:Humans.Domain.Entities.AuditLogEntry
 Humans.Application.Interfaces.AuditLog.IAuditLogService.GetFilteredAsync:Humans.Domain.Entities.AuditLogEntry
@@ -25,13 +24,6 @@ Humans.Application.Interfaces.Campaigns.ICampaignService.GetAllGrantsForUserAsyn
 Humans.Application.Interfaces.Campaigns.ICampaignService.GetByIdAsync:Humans.Domain.Entities.Campaign
 Humans.Application.Interfaces.Campaigns.ICampaignService.GetDetailPageAsync:Humans.Domain.Entities.Campaign
 Humans.Application.Interfaces.Campaigns.ICampaignService.GetSendWavePageAsync:Humans.Domain.Entities.Campaign
-Humans.Application.Interfaces.Camps.ICampRoleService.GetAssignmentByIdAsync:Humans.Domain.Entities.CampRoleAssignment
-Humans.Application.Interfaces.Camps.ICampRoleService.GetDefinitionByIdAsync:Humans.Domain.Entities.CampRoleDefinition
-Humans.Application.Interfaces.Camps.ICampRoleService.ListDefinitionsAsync:Humans.Domain.Entities.CampRoleDefinition
-Humans.Application.Interfaces.Camps.ICampService.GetCampBySlugAsync:Humans.Domain.Entities.Camp
-Humans.Application.Interfaces.Camps.ICampService.GetCampSeasonByIdAsync:Humans.Domain.Entities.CampSeason
-Humans.Application.Interfaces.Camps.ICampService.GetSeasonMembersAsync:Humans.Domain.Entities.CampMember
-Humans.Application.Interfaces.Camps.ICampService.GetSettingsAsync:Humans.Domain.Entities.CampSettings
 Humans.Application.Interfaces.Consent.IConsentService.GetConsentDashboardAsync:Humans.Domain.Entities.ConsentRecord
 Humans.Application.Interfaces.Consent.IConsentService.GetConsentDashboardAsync:Humans.Domain.Entities.DocumentVersion
 Humans.Application.Interfaces.Consent.IConsentService.GetConsentDashboardAsync:Humans.Domain.Entities.Team
@@ -43,11 +35,7 @@ Humans.Application.Interfaces.Dashboard.IDashboardService.GetMemberDashboardAsyn
 Humans.Application.Interfaces.Dashboard.IDashboardService.GetMemberDashboardAsync:Humans.Domain.Entities.Profile
 Humans.Application.Interfaces.Dashboard.IDashboardService.GetMemberDashboardAsync:Humans.Domain.Entities.Shift
 Humans.Application.Interfaces.Dashboard.IDashboardService.GetMemberDashboardAsync:Humans.Domain.Entities.ShiftSignup
-Humans.Application.Interfaces.Feedback.IFeedbackService.GetFeedbackByIdAsync:Humans.Domain.Entities.FeedbackReport
-Humans.Application.Interfaces.Feedback.IFeedbackService.GetFeedbackListAsync:Humans.Domain.Entities.FeedbackReport
-Humans.Application.Interfaces.Feedback.IFeedbackService.GetMessagesAsync:Humans.Domain.Entities.FeedbackMessage
 Humans.Application.Interfaces.GoogleIntegration.IGoogleSyncService.GetRecentOutboxEventsAsync:Humans.Domain.Entities.GoogleSyncOutboxEvent
-Humans.Application.Interfaces.GoogleIntegration.IGoogleSyncService.GetResourceStatusAsync:Humans.Domain.Entities.GoogleResource
 Humans.Application.Interfaces.Governance.IApplicationDecisionService.GetApprovedInWindowAsync:Humans.Domain.Entities.Application
 Humans.Application.Interfaces.Governance.IApplicationDecisionService.GetExpiringApplicationsNeedingReminderAsync:Humans.Domain.Entities.Application
 Humans.Application.Interfaces.Governance.IApplicationDecisionService.GetSubmittedApplicationForUserAsync:Humans.Domain.Entities.Application
@@ -72,7 +60,9 @@ Humans.Application.Interfaces.Onboarding.IOnboardingService.GetReviewDetailAsync
 Humans.Application.Interfaces.Onboarding.IOnboardingService.GetReviewQueueAsync:Humans.Domain.Entities.Profile
 Humans.Application.Interfaces.Profiles.IAccountMergeService.GetByIdAsync:Humans.Domain.Entities.AccountMergeRequest
 Humans.Application.Interfaces.Profiles.IAccountMergeService.GetPendingRequestsAsync:Humans.Domain.Entities.AccountMergeRequest
+Humans.Application.Interfaces.Profiles.ICommunicationPreferenceService.GetPreferenceOrNullAsync:Humans.Domain.Entities.CommunicationPreference
 Humans.Application.Interfaces.Profiles.ICommunicationPreferenceService.GetPreferencesAsync:Humans.Domain.Entities.CommunicationPreference
+Humans.Application.Interfaces.Profiles.ICommunicationPreferenceService.GetPreferencesReadOnlyAsync:Humans.Domain.Entities.CommunicationPreference
 Humans.Application.Interfaces.Profiles.IProfileService.GetByUserIdsAsync:Humans.Domain.Entities.Profile
 Humans.Application.Interfaces.Profiles.IProfileService.GetProfileAsync:Humans.Domain.Entities.Profile
 Humans.Application.Interfaces.Profiles.IProfileService.GetProfileLanguagesAsync:Humans.Domain.Entities.ProfileLanguage
@@ -108,7 +98,6 @@ Humans.Application.Interfaces.Teams.ITeamResourceService.GetActiveDriveFoldersAs
 Humans.Application.Interfaces.Teams.ITeamResourceService.GetResourceByIdAsync:Humans.Domain.Entities.GoogleResource
 Humans.Application.Interfaces.Teams.ITeamResourceService.GetResourcesByTeamIdsAsync:Humans.Domain.Entities.GoogleResource
 Humans.Application.Interfaces.Teams.ITeamResourceService.GetTeamResourcesAsync:Humans.Domain.Entities.GoogleResource
-Humans.Application.Interfaces.Teams.ITeamService.GetActiveChildMembersByParentIdsAsync:Humans.Domain.Entities.TeamMember
 Humans.Application.Interfaces.Teams.ITeamService.GetActiveMembersForTeamsAsync:Humans.Domain.Entities.TeamMember
 Humans.Application.Interfaces.Teams.ITeamService.GetActiveMembershipsForRoleReconciliationAsync:Humans.Domain.Entities.TeamMember
 Humans.Application.Interfaces.Teams.ITeamService.GetAllRoleDefinitionsAsync:Humans.Domain.Entities.TeamRoleDefinition

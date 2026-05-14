@@ -169,6 +169,7 @@ public class CampMemberRowViewModel
     public NodaTime.Instant? ConfirmedAt { get; set; }
     public bool IsLead { get; set; }
     public bool HasEarlyEntry { get; set; }
+    public CampMemberStatus Status { get; set; }
 }
 
 public class CampImageViewModel

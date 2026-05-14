@@ -8,7 +8,7 @@
   src/Humans.Domain/Entities/CampHistoricalName.cs
   src/Humans.Domain/Entities/CampSettings.cs
   src/Humans.Infrastructure/Data/Configurations/Camps/**
-  src/Humans.Infrastructure/Data/Configurations/CampMemberConfiguration.cs
+  src/Humans.Infrastructure/Data/Configurations/Camps/CampMemberConfiguration.cs
   src/Humans.Infrastructure/Repositories/Camps/CampRepository.cs
   src/Humans.Infrastructure/Repositories/Camps/CampRoleRepository.cs
   src/Humans.Web/Controllers/CampController.cs
@@ -229,7 +229,7 @@ Admin pages live under `/Camps/Admin/*` — never `/Admin/Camps/*` (per `docs/ar
 - Anonymous visitors **cannot** register camps or edit any camp data.
 - Anonymous visitors **cannot** see role assignments — the public Camp Details page does not render the roles section.
 - Camp leads **cannot** manage the role-definition catalogue (create, edit, deactivate). Only CampAdmin or Admin can.
-- A camp lead **cannot** assign or unassign roles on a camp other than their own (controller verifies `assignment.CampSeason.CampId == camp.Id` before delegating to the service).
+- A camp lead **cannot** assign or unassign roles on a camp other than their own (controller verifies `assignment.CampSeasonId` is in the set of season IDs on the resolved `CampLookup` before delegating to the service).
 - Anyone **cannot** assign a role to a human who is not an Active CampMember of the same season — service rejects with `MemberNotActive` / `MemberSeasonMismatch`.
 - Camp leads **cannot** edit `EeSlotCount` (CampAdmin/Admin only).
 - Anyone **cannot** grant EE to a non-Active member (service rejects with `MemberNotActive`).
@@ -284,4 +284,5 @@ Admin pages live under `/Camps/Admin/*` — never `/Admin/Camps/*` (per `docs/ar
 
 - `Camp.CreatedByUser` and `CampSeason.ReviewedByUser` are declared but never read. Safe targets for the cross-cutting User nav strip when the wider effort lands.
 - `IsLead` on `CampMemberRow` / `CampMemberRowViewModel` and the synthesis union in `CampService.GetCampMembersAsync` (~line 1654) are temporary — pending a follow-up issue that subsumes `CampLead` into `CampRoleDefinition` (Team-style). When that lands: remove the union block, drop `IsLead` from `CampMemberRow` and its view model, and drop the `camp_leads` table after migrating existing lead rows to role assignments.
-- `CampMemberConfiguration.cs` lives in `src/Humans.Infrastructure/Data/Configurations/` (root level), not in the `Camps/` subdirectory. Relocate when touching that file.
+- `CampMemberConfiguration.cs` is now located in
+  `src/Humans.Infrastructure/Data/Configurations/Camps/` with other Camps entity configuration.

@@ -254,6 +254,18 @@ public sealed class ShiftSignupRepository : IShiftSignupRepository
         return cancelled;
     }
 
+    public Task<int> DeleteAllForUsersAsync(
+        IReadOnlyCollection<Guid> userIds,
+        CancellationToken ct = default)
+    {
+        if (userIds.Count == 0)
+            return Task.FromResult(0);
+
+        return _dbContext.ShiftSignups
+            .Where(s => userIds.Contains(s.UserId))
+            .ExecuteDeleteAsync(ct);
+    }
+
     // ============================================================
     // Account-merge fold
     // ============================================================
@@ -301,5 +313,18 @@ public sealed class ShiftSignupRepository : IShiftSignupRepository
                     .ThenInclude(r => r.EventSettings)
             .OrderBy(s => s.CreatedAt)
             .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlySet<Guid>> GetActiveCommittedUserIdsForEventAsync(
+        Guid eventSettingsId, CancellationToken ct = default)
+    {
+        var userIds = await _dbContext.ShiftSignups
+            .AsNoTracking()
+            .Where(s => s.Shift.Rota.EventSettingsId == eventSettingsId
+                     && (s.Status == SignupStatus.Pending || s.Status == SignupStatus.Confirmed))
+            .Select(s => s.UserId)
+            .Distinct()
+            .ToListAsync(ct);
+        return userIds.ToHashSet();
     }
 }

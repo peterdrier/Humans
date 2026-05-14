@@ -1,0 +1,139 @@
+@using Humans.Application.Interfaces.Tickets.Dtos
+@model Humans.Web.Models.Tickets.ContactImportPreviewViewModel
+@{
+    ViewData["Title"] = "Import Attendee Contacts";
+    var c = Model.Plan.Counts;
+}
+
+<h1>Import Attendee Contacts</h1>
+
+<p class="text-muted">
+    Found @Model.Plan.TotalUnmatched unmatched attendee@(Model.Plan.TotalUnmatched == 1 ? "" : "s")
+    for the active event. Each one below has no <code>MatchedUserId</code> yet.
+    Select rows and click Apply.
+</p>
+
+<div class="mb-3">
+    <span class="badge text-bg-success me-1">Attach existing: @c.AttachVerified</span>
+    <span class="badge text-bg-primary me-1">Create new user: @c.CreateNewUser</span>
+    <span class="badge text-bg-warning me-1">Delete unverified + create: @c.DeleteUnverifiedThenCreate</span>
+    @if (c.AmbiguousMultipleVerified > 0)
+    {
+        <span class="badge text-bg-danger me-1">Ambiguous (skipped): @c.AmbiguousMultipleVerified</span>
+    }
+    @if (c.SkipNoEmail > 0)
+    {
+        <span class="badge text-bg-secondary me-1">No email (skipped): @c.SkipNoEmail</span>
+    }
+</div>
+
+<form asp-controller="TicketsContactsAdmin" asp-action="Apply" method="post" id="contacts-apply">
+    @Html.AntiForgeryToken()
+
+    <div class="mb-2">
+        <button type="button" class="btn btn-outline-secondary btn-sm" id="select-all">Select all</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" id="select-first">Select first 1</button>
+        <button type="submit" class="btn btn-primary btn-sm" id="apply-btn">
+            Apply selected (<span id="selected-count">0</span>)
+        </button>
+    </div>
+
+    <table class="table table-sm table-hover">
+        <thead>
+            <tr>
+                <th style="width:2rem"></th>
+                <th>Email</th>
+                <th>Name</th>
+                <th>Decision</th>
+                <th>Target / Notes</th>
+                <th>Vendor Ticket Id</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var row in Model.Rows)
+        {
+            <tr>
+                <td>
+                    @if (row.Outcome is AttendeeImportOutcome.AmbiguousMultipleVerified
+                                      or AttendeeImportOutcome.SkipNoEmail
+                                      or AttendeeImportOutcome.SkipVoided)
+                    {
+                        @* Non-actionable rows: no checkbox *@
+                    }
+                    else
+                    {
+                        <input type="checkbox" name="selected" value="@row.AttendeeId"
+                               class="form-check-input row-check" />
+                    }
+                </td>
+                <td>@(row.Email ?? "—")</td>
+                <td>@(row.AttendeeName ?? "—")</td>
+                <td>
+                    @switch (row.Outcome)
+                    {
+                        case AttendeeImportOutcome.AttachVerified:
+                            <span class="badge text-bg-success">Attach existing</span>
+                            break;
+                        case AttendeeImportOutcome.CreateNewUser:
+                            <span class="badge text-bg-primary">Create new user</span>
+                            break;
+                        case AttendeeImportOutcome.DeleteUnverifiedThenCreate:
+                            <span class="badge text-bg-warning">Delete unverified + create</span>
+                            break;
+                        case AttendeeImportOutcome.AmbiguousMultipleVerified:
+                            <span class="badge text-bg-danger">Ambiguous</span>
+                            break;
+                        case AttendeeImportOutcome.SkipNoEmail:
+                            <span class="badge text-bg-secondary">No email</span>
+                            break;
+                        case AttendeeImportOutcome.SkipVoided:
+                            <span class="badge text-bg-secondary">Voided</span>
+                            break;
+                    }
+                </td>
+                <td>
+                    @if (row.Outcome == AttendeeImportOutcome.AttachVerified && row.TargetUserId is Guid uid)
+                    {
+                        <a asp-controller="Profile" asp-action="AdminDetail" asp-route-id="@uid">
+                            View user</a>
+                    }
+                    else if (row.Outcome == AttendeeImportOutcome.DeleteUnverifiedThenCreate
+                             && row.UnverifiedRowUserId is Guid squatterId)
+                    {
+                        <text>Will delete unverified email row owned by </text>
+                        <a asp-controller="Profile" asp-action="AdminDetail" asp-route-id="@squatterId">user</a>
+                    }
+                    else if (row.Outcome == AttendeeImportOutcome.AmbiguousMultipleVerified
+                             && row.AmbiguousUserIds is { Count: > 0 } ids)
+                    {
+                        <text>Multiple verified owners: @string.Join(", ", ids)</text>
+                    }
+                </td>
+                <td><code>@row.VendorTicketId</code></td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</form>
+
+<script nonce="@Context.Items["CspNonce"]">
+(function () {
+    const checks = document.querySelectorAll('.row-check');
+    const count = document.getElementById('selected-count');
+    function refresh() {
+        const n = Array.from(checks).filter(c => c.checked).length;
+        count.textContent = n;
+        document.getElementById('apply-btn').disabled = n === 0;
+    }
+    checks.forEach(c => c.addEventListener('change', refresh));
+    document.getElementById('select-all').addEventListener('click', () => {
+        checks.forEach(c => c.checked = true);
+        refresh();
+    });
+    document.getElementById('select-first').addEventListener('click', () => {
+        checks.forEach((c, i) => c.checked = (i === 0));
+        refresh();
+    });
+    refresh();
+})();
+</script>

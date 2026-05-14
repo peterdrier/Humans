@@ -7,6 +7,7 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 
@@ -24,20 +25,26 @@ public sealed partial class TeamResourceService : ITeamResourceService
 {
     private readonly IGoogleResourceRepository _repository;
     private readonly ITeamResourceGoogleClient _googleClient;
-    private readonly IGoogleSyncService _googleSyncService;
+    private readonly IGoogleDrivePermissionsClient _drivePermissions;
     private readonly ITeamService _teamService;
-    private readonly IRoleAssignmentService _roleAssignmentService;
+    private readonly IServiceProvider _serviceProvider;
     private readonly IAuditLogService _auditLogService;
     private readonly TeamResourceManagementOptions _resourceOptions;
     private readonly IClock _clock;
     private readonly ILogger<TeamResourceService> _logger;
 
+    // Lazy resolution: eagerly injecting IRoleAssignmentService creates a
+    // ctor cycle TeamResourceService → IRoleAssignmentService → ISystemTeamSync
+    // → IGoogleGroupSync → ITeamResourceService. Only one method uses it.
+    private IRoleAssignmentService RoleAssignmentService
+        => _serviceProvider.GetRequiredService<IRoleAssignmentService>();
+
     public TeamResourceService(
         IGoogleResourceRepository repository,
         ITeamResourceGoogleClient googleClient,
-        IGoogleSyncService googleSyncService,
+        IGoogleDrivePermissionsClient drivePermissions,
         ITeamService teamService,
-        IRoleAssignmentService roleAssignmentService,
+        IServiceProvider serviceProvider,
         IAuditLogService auditLogService,
         TeamResourceManagementOptions resourceOptions,
         IClock clock,
@@ -45,9 +52,9 @@ public sealed partial class TeamResourceService : ITeamResourceService
     {
         _repository = repository;
         _googleClient = googleClient;
-        _googleSyncService = googleSyncService;
+        _drivePermissions = drivePermissions;
         _teamService = teamService;
-        _roleAssignmentService = roleAssignmentService;
+        _serviceProvider = serviceProvider;
         _auditLogService = auditLogService;
         _resourceOptions = resourceOptions;
         _clock = clock;
@@ -95,6 +102,12 @@ public sealed partial class TeamResourceService : ITeamResourceService
 
     public Task<IReadOnlyDictionary<Guid, int>> GetActiveResourceCountsByTeamAsync(CancellationToken ct = default)
         => _repository.GetActiveResourceCountsByTeamAsync(ct);
+
+    public Task MarkResourceSyncedAsync(Guid resourceId, Instant now, CancellationToken ct = default)
+        => _repository.MarkSyncedAsync(resourceId, now, ct);
+
+    public Task RecordResourceErrorAsync(Guid resourceId, string errorMessage, CancellationToken ct = default)
+        => _repository.SetErrorMessageManyAsync([resourceId], errorMessage, ct);
 
     public async Task<IReadOnlyList<UserTeamGoogleResource>> GetUserTeamResourcesAsync(
         Guid userId,
@@ -147,6 +160,11 @@ public sealed partial class TeamResourceService : ITeamResourceService
 
     public Task<int> GetResourceCountAsync(CancellationToken ct = default)
         => _repository.GetCountAsync(ct);
+
+    public Task<IReadOnlyDictionary<Guid, string>> GetResourceNamesByIdsAsync(
+        IReadOnlyCollection<Guid> resourceIds,
+        CancellationToken ct = default)
+        => _repository.GetNamesByIdsAsync(resourceIds, ct);
 
     public Task<GoogleResource?> GetResourceByIdAsync(Guid resourceId, CancellationToken ct = default)
         => _repository.GetByIdAsync(resourceId, ct);
@@ -481,7 +499,12 @@ public sealed partial class TeamResourceService : ITeamResourceService
 
         try
         {
-            await _googleSyncService.SetInheritedPermissionsDisabledAsync(mutated.GoogleId, restrict, ct);
+            var error = await _drivePermissions.SetInheritedPermissionsDisabledAsync(mutated.GoogleId, restrict, ct);
+            if (error is not null)
+            {
+                throw new InvalidOperationException(
+                    $"Google Drive inheritedPermissionsDisabled update failed for {mutated.GoogleId}: HTTP {error.StatusCode} — {error.RawMessage}");
+            }
             _logger.LogInformation("Set RestrictInheritedAccess={Restrict} for resource {ResourceId} ({GoogleId})",
                 restrict, resourceId, mutated.GoogleId);
         }
@@ -499,12 +522,12 @@ public sealed partial class TeamResourceService : ITeamResourceService
 
     public async Task<bool> CanManageTeamResourcesAsync(Guid teamId, Guid userId, CancellationToken ct = default)
     {
-        if (await _roleAssignmentService.IsUserBoardMemberAsync(userId, ct))
+        if (await RoleAssignmentService.IsUserBoardMemberAsync(userId, ct))
         {
             return true;
         }
 
-        if (await _roleAssignmentService.IsUserTeamsAdminAsync(userId, ct))
+        if (await RoleAssignmentService.IsUserTeamsAdminAsync(userId, ct))
         {
             return true;
         }

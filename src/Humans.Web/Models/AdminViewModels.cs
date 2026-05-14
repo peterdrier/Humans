@@ -4,42 +4,6 @@ using Humans.Application.Interfaces.Email;
 
 namespace Humans.Web.Models;
 
-public class BoardDashboardViewModel
-{
-    public int TotalMembers { get; set; }
-    public int IncompleteSignup { get; set; }
-    public int PendingApproval { get; set; }
-    public int ActiveMembers { get; set; }
-    public int MissingConsents { get; set; }
-    public int Suspended { get; set; }
-    public int PendingDeletion { get; set; }
-    public int PendingApplications { get; set; }
-    public List<RecentActivityViewModel> RecentActivity { get; set; } = [];
-
-    // Application statistics
-    public int TotalApplications { get; set; }
-    public int ApprovedApplications { get; set; }
-    public int RejectedApplications { get; set; }
-    public int ColaboradorApplied { get; set; }
-    public int AsociadoApplied { get; set; }
-
-    // Language distribution
-    public List<LanguageCountViewModel> LanguageDistribution { get; set; } = [];
-}
-
-public class LanguageCountViewModel
-{
-    public string Language { get; set; } = string.Empty;
-    public int Count { get; set; }
-}
-
-public class RecentActivityViewModel
-{
-    public string Description { get; set; } = string.Empty;
-    public DateTime Timestamp { get; set; }
-    public AuditAction Type { get; set; }
-}
-
 public class AdminHumanListViewModel : PagedListViewModel
 {
     public AdminHumanListViewModel() : base()
@@ -107,6 +71,13 @@ public class AdminHumanDetailViewModel
     public List<AdminHumanApplicationViewModel> Applications { get; set; } = [];
     public List<AdminRoleAssignmentViewModel> RoleAssignments { get; set; } = [];
     public IReadOnlyList<ProfileLanguageDisplayViewModel> Languages { get; set; } = [];
+
+    // Payment details
+    public string? MaskedIban { get; set; }
+    /// <summary>
+    /// Set by the RevealIban action via TempData. Survives exactly one page load after reveal.
+    /// </summary>
+    public string? RevealedIban { get; set; }
 }
 
 public class AdminUserEmailViewModel
@@ -209,40 +180,6 @@ public class EndRoleAssignmentViewModel
     public string? Notes { get; set; }
 }
 
-public class AuditLogListViewModel : PagedListViewModel
-{
-    public AuditLogListViewModel() : base(50)
-    {
-    }
-
-    public IReadOnlyList<Humans.Application.Services.AuditLog.AuditEvent> Events { get; set; } = [];
-    public string? ActionFilter { get; set; }
-    public int AnomalyCount { get; set; }
-}
-
-public class GoogleSyncAuditEntryViewModel
-{
-    public AuditAction Action { get; set; }
-    public string Description { get; set; } = string.Empty;
-    public string? UserEmail { get; set; }
-    public string? Role { get; set; }
-    public GoogleSyncSource? SyncSource { get; set; }
-    public DateTime OccurredAt { get; set; }
-    public bool? Success { get; set; }
-    public string? ErrorMessage { get; set; }
-    public string? ResourceName { get; set; }
-    public Guid? ResourceId { get; set; }
-    public Guid? RelatedEntityId { get; set; }
-}
-
-public class GoogleSyncAuditListViewModel
-{
-    public List<GoogleSyncAuditEntryViewModel> Entries { get; set; } = [];
-    public string Title { get; set; } = string.Empty;
-    public string? BackUrl { get; set; }
-    public string? BackLabel { get; set; }
-}
-
 public class ConfigurationItemViewModel
 {
     public string Section { get; set; } = string.Empty;
@@ -322,6 +259,15 @@ public class ProfileSummaryViewModel
     public string? CountryCode { get; set; }
     public bool IsSuspended { get; set; }
     public List<string> Teams { get; set; } = [];
+
+    /// <summary>
+    /// Teams the subject belongs to that are flagged <c>IsHidden</c>. Only populated
+    /// in the popover render path when the viewer is TeamsAdmin/Board/Admin — kept
+    /// separate from <see cref="Teams"/> so the popover can render an admin-only
+    /// section below a separator.
+    /// </summary>
+    public List<string> HiddenTeams { get; set; } = [];
+
     public IReadOnlyList<ProfileLanguageDisplayViewModel> Languages { get; set; } = [];
 
     /// <summary>

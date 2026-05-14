@@ -1,18 +1,15 @@
 using Humans.Application.Configuration;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Services.Teams;
 using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Services;
 using Humans.Infrastructure.Services.GoogleWorkspace;
 using GoogleWorkspaceUserService = Humans.Application.Services.GoogleIntegration.GoogleWorkspaceUserService;
-using GoogleDriveActivityMonitorService = Humans.Application.Services.GoogleIntegration.DriveActivityMonitorService;
-using GoogleAdminService = Humans.Application.Services.GoogleIntegration.GoogleAdminService;
 using GoogleWorkspaceSyncService = Humans.Application.Services.GoogleIntegration.GoogleWorkspaceSyncService;
-using GoogleRemovalNotificationService = Humans.Application.Services.GoogleIntegration.GoogleRemovalNotificationService;
+using GoogleGroupSyncService = Humans.Application.Services.GoogleIntegration.GoogleGroupSyncService;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Teams;
-using Humans.Infrastructure.Repositories.GoogleIntegration;
+using Humans.Infrastructure.GoogleIntegration;
 
 namespace Humans.Web.Extensions.Infrastructure;
 
@@ -40,27 +37,10 @@ internal static class GoogleWorkspaceInfrastructureExtensions
         var hasGoogleCredentials = !string.IsNullOrEmpty(googleWorkspaceConfig["ServiceAccountKeyPath"]) ||
                                    !string.IsNullOrEmpty(googleWorkspaceConfig["ServiceAccountKeyJson"]);
 
-        // Team-resource repository is Singleton (IDbContextFactory-based per §15b).
-        services.AddSingleton<IGoogleResourceRepository, GoogleResourceRepository>();
-
-        // Google sync outbox repository (issue #554 Part 1) — exposes narrow
-        // count queries so Notifications / Metrics / Admin-digest consumers
-        // don't read google_sync_outbox_events directly. Singleton via
-        // IDbContextFactory per §15b.
-        services.AddSingleton<IGoogleSyncOutboxRepository, GoogleSyncOutboxRepository>();
-
-        // Application-layer service uses the same repo + one of the two Google
+        // Application-layer service uses the repo + one of the two Google
         // connector implementations below. Stub connector is used when no
         // service-account credentials are configured (dev only).
         services.AddScoped<ITeamResourceService, TeamResourceService>();
-
-        // Google Integration §15 migration (issue #554) — Drive activity monitor.
-        // Repository is Singleton (IDbContextFactory-based); the service lives in
-        // Humans.Application and depends only on IGoogleDriveActivityClient and
-        // the repository, so it stays free of Google SDK / EF imports. The
-        // connector client has real and stub implementations.
-        services.AddSingleton<IDriveActivityMonitorRepository, DriveActivityMonitorRepository>();
-        services.AddScoped<IDriveActivityMonitorService, GoogleDriveActivityMonitorService>();
 
         if (hasGoogleCredentials)
         {
@@ -112,14 +92,9 @@ internal static class GoogleWorkspaceInfrastructureExtensions
             services.AddSingleton<IGoogleDirectoryClient, StubGoogleDirectoryClient>();
         }
 
-        services.AddScoped<IGoogleAdminService, GoogleAdminService>();
+        services.AddScoped<IGoogleGroupSyncScheduler, HangfireGoogleGroupSyncScheduler>();
+        services.AddScoped<IGoogleGroupSync, GoogleGroupSyncService>();
 
-        // Issue peterdrier/Humans#639 — emit user-facing emails when Google
-        // sync removes a Group membership or Drive permission. Application-
-        // layer service; depends only on IUserService / IUserEmailService /
-        // IEmailService. Registered unconditionally because the no-op stub
-        // sync service does not call it.
-        services.AddScoped<IGoogleRemovalNotificationService, GoogleRemovalNotificationService>();
 
         services.AddScoped<GoogleResourceReconciliationJob>();
         services.AddScoped<DriveActivityMonitorJob>();

@@ -59,13 +59,6 @@ public interface IFeedbackRepository : IRepository
         CancellationToken ct = default);
 
     /// <summary>
-    /// Returns all messages for a report, ordered by CreatedAt ascending.
-    /// Read-only (AsNoTracking). Cross-domain navs are NOT populated.
-    /// </summary>
-    Task<IReadOnlyList<FeedbackMessage>> GetMessagesAsync(
-        Guid reportId, CancellationToken ct = default);
-
-    /// <summary>
     /// Counts reports that are "actionable" — open with no admin reply, or
     /// with a reporter message more recent than the last admin message —
     /// excluding Resolved and WontFix.

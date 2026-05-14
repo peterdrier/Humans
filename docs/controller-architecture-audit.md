@@ -1,11 +1,11 @@
 # Controller Architecture Audit
 
-Living document. Last updated: 2026-04-25 (freshness sweep).
+Living document. Last updated: 2026-05-12 (Scanner refresh).
 
 ## Part 1: Action Name Audit
 
 ### Summary
-- Controllers audited: 45 (excludes 3 abstract base classes: `HumansControllerBase`, `HumansTeamControllerBase`, `HumansCampControllerBase`)
+- Controllers audited: 46 (excludes 3 abstract base classes: `HumansControllerBase`, `HumansTeamControllerBase`, `HumansCampControllerBase`)
 - Renames suggested: 6
 - Already OK: rest
 
@@ -81,24 +81,24 @@ Living document. Last updated: 2026-04-25 (freshness sweep).
 | Accept | /Admin/MergeRequests/{id}/Accept | POST | Accept a merge request | OK |
 | Reject | /Admin/MergeRequests/{id}/Reject | POST | Reject a merge request | OK |
 
-## ApplicationController
+## GovernanceApplicationsController
 
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|
-| Index | /Application | GET | User's own applications list | OK |
-| Create | /Application/Create | GET | New tier application form | OK |
-| Create | /Application/Create | POST | Submit tier application | OK |
-| Details | /Application/Details | GET | View own application detail | OK |
-| Withdraw | /Application/Withdraw | POST | Withdraw own application | OK |
-| Applications | /Application/Admin | GET | Admin: filtered applications list | → `AdminList` ? ("Applications" on `ApplicationController` reads as a duplicate of `Index`; this is the admin list view) |
-| ApplicationDetail | /Application/Admin/{id} | GET | Admin: application detail with voting | OK |
+| Index | /Governance/Applications | GET | User's own applications list | OK |
+| Create | /Governance/Applications/Create | GET | New tier application form | OK |
+| Create | /Governance/Applications/Create | POST | Submit tier application | OK |
+| Details | /Governance/Applications/Details/{id} | GET | View own application detail | OK |
+| Withdraw | /Governance/Applications/Withdraw/{id} | POST | Withdraw own application | OK |
+| Admin | /Governance/Applications/Admin | GET | Admin: filtered applications list | OK |
+| AdminDetail | /Governance/Applications/Admin/{id} | GET | Admin: application detail with voting | OK |
 
 ## BoardController
 
 | Method | Route | Verb | Purpose | Suggestion |
 |--------|-------|------|---------|------------|
 | Index | /Board | GET | Board dashboard with onboarding stats | OK |
-| AuditLog | /Board/AuditLog | GET | Board audit log | OK |
+| AuditLog | /Board/AuditLog | GET | Board audit log — *(moved to AuditLogController.Index — see PR #499)* | OK |
 
 ## BudgetController
 
@@ -342,9 +342,9 @@ Living document. Last updated: 2026-04-25 (freshness sweep).
 | SyncPreview | /Google/Sync/Preview/{resourceType} | GET | Preview sync (JSON) | OK |
 | SyncExecute | /Google/Sync/Execute/{resourceId} | POST | Execute sync for a resource (JSON) | OK |
 | SyncExecuteAll | /Google/Sync/ExecuteAll/{resourceType} | POST | Execute sync for all resources of type (JSON) | OK |
-| CheckDriveActivity | /Google/AuditLog/CheckDriveActivity | POST | Trigger manual Drive activity check | OK |
-| GoogleSyncResourceAudit | /Google/Sync/Resource/{id}/Audit | GET | Audit log for a Google resource | → `ResourceAudit` (the `Google` prefix is redundant on `GoogleController`) |
-| HumanGoogleSyncAudit | /Google/Human/{id}/SyncAudit | GET | Google sync audit for a human | → `HumanSyncAudit` (the `Google` prefix is redundant on `GoogleController`) |
+| CheckDriveActivity | /Google/AuditLog/CheckDriveActivity | POST | Trigger manual Drive activity check — *(moved to AuditLogController.CheckDriveActivity — see PR #499)* | OK |
+| GoogleSyncResourceAudit | /Google/Sync/Resource/{id}/Audit | GET | Audit log for a Google resource — *(moved to AuditLogController.Resource — see PR #499)* | DONE |
+| HumanGoogleSyncAudit | /Google/Human/{id}/SyncAudit | GET | Google sync audit for a human — *(moved to AuditLogController.Human — see PR #499)* | DONE |
 | ProvisionEmail | /Google/Human/{id}/ProvisionEmail | POST | Provision @nobodies.team email for a human | OK |
 | Accounts | /Google/Accounts | GET | List @nobodies.team workspace accounts | OK |
 | ProvisionAccount | /Google/Accounts/Provision | POST | Provision new workspace account | OK |
@@ -434,10 +434,15 @@ Living document. Last updated: 2026-04-25 (freshness sweep).
 | Clear | /OnboardingReview/{userId}/Clear | POST | Clear consent check | OK |
 | Flag | /OnboardingReview/{userId}/Flag | POST | Flag consent check | OK |
 | Reject | /OnboardingReview/{userId}/Reject | POST | Reject a signup | OK |
-| BoardVoting | /OnboardingReview/BoardVoting | GET | Board voting dashboard | OK |
-| BoardVotingDetail | /OnboardingReview/BoardVoting/{applicationId} | GET | Board voting detail | OK |
-| Vote | /OnboardingReview/BoardVoting/Vote | POST | Cast a board vote | OK |
-| Finalize | /OnboardingReview/BoardVoting/Finalize | POST | Finalize application decision | OK |
+
+## GovernanceBoardVotingController
+
+| Method | Route | Verb | Purpose | Suggestion |
+|--------|-------|------|---------|------------|
+| BoardVoting | /Governance/BoardVoting | GET | Board voting dashboard | OK |
+| BoardVotingDetail | /Governance/BoardVoting/{applicationId} | GET | Board voting detail | OK |
+| Vote | /Governance/BoardVoting/Vote | POST | Cast a board vote | OK |
+| Finalize | /Governance/BoardVoting/Finalize | POST | Finalize application decision | OK |
 
 ## ProfileApiController
 
@@ -486,6 +491,13 @@ Living document. Last updated: 2026-04-25 (freshness sweep).
 | AddRole | /Profile/{id}/Admin/Roles/Add | GET | Add role form | OK |
 | AddRole | /Profile/{id}/Admin/Roles/Add | POST | Submit role assignment | OK |
 | EndRole | /Profile/{id}/Admin/Roles/{roleId}/End | POST | End a role assignment | OK |
+
+## ScannerController
+
+| Method | Route | Verb | Purpose | Suggestion |
+|--------|-------|------|---------|------------|
+| Index | /Scanner | GET | Scanner section landing page | OK |
+| Barcode | /Scanner/Barcode | GET | Browser-only barcode decode tool | OK |
 
 ## ShiftAdminController
 
@@ -642,7 +654,6 @@ ViewComponents don't have routes — they are invoked from views via `@await Com
 
 | Controller | Current | Suggested | Reason |
 |------------|---------|-----------|--------|
-| ApplicationController | `Applications` | `AdminList` ? | On `ApplicationController`, "Applications" reads as a duplicate of `Index` — this is the admin filtered list |
 | EmailController | `EmailOutbox` / `RetryEmailOutboxMessage` / `DiscardEmailOutboxMessage` / `EmailPreview` | `Outbox` / `RetryOutboxMessage` / `DiscardOutboxMessage` / `Preview` | The `Email` prefix duplicates the controller name |
 | GoogleController | `GoogleSyncResourceAudit` | `ResourceAudit` | The `Google` prefix duplicates the controller name |
 | GoogleController | `HumanGoogleSyncAudit` | `HumanSyncAudit` | The `Google` prefix duplicates the controller name |
@@ -652,8 +663,8 @@ ViewComponents don't have routes — they are invoked from views via `@await Com
 **Note:** Items marked with `?` are suggestions where the rename benefit is marginal — worth discussing but not critical.
 
 **High-confidence renames (no `?`):**
-1. `GoogleController.GoogleSyncResourceAudit` → `ResourceAudit` — redundant prefix
-2. `GoogleController.HumanGoogleSyncAudit` → `HumanSyncAudit` — redundant prefix
+1. `GoogleController.GoogleSyncResourceAudit` → `ResourceAudit` — redundant prefix — *(resolved: moved to AuditLogController.Resource — see PR #499)*
+2. `GoogleController.HumanGoogleSyncAudit` → `HumanSyncAudit` — redundant prefix — *(resolved: moved to AuditLogController.Human — see PR #499)*
 3. `EmailController.EmailOutbox` → `Outbox` (and matching peers) — redundant prefix
 
 All other actions have names that adequately describe what the user sees or what the action does, given their route context.
@@ -685,19 +696,11 @@ Several of the splits proposed in the original audit have since shipped:
 | `Roster` | TeamController | Shift roster — belongs with shift domain | **ShiftsController** |
 | `Summary`, `CreateTeam`, `EditTeam`, `DeleteTeam` | TeamController | Admin team CRUD | **TeamAdminController** already exists — move these there (route: `/Teams/Admin/...`) |
 
-#### ApplicationController — user + admin on one controller
-
-| Action Group | Current Location | Problem | Better Home |
-|-------------|-----------------|---------|------------|
-| `Index`, `Create`, `Details`, `Withdraw` | ApplicationController | User-facing — fine here | Stay |
-| `Applications`, `ApplicationDetail` | ApplicationController | Admin filtered list + admin detail — different audience, different auth | **ApplicationAdminController** or fold into **OnboardingReviewController** (which already handles the board voting side of the same workflow) |
-
-#### OnboardingReviewController — two workflows in one (9 actions)
+#### OnboardingReviewController
 
 | Action Group | Current Location | Problem | Better Home |
 |-------------|-----------------|---------|------------|
 | `Index`, `Detail`, `Clear`, `Flag`, `Reject` | OnboardingReviewController | Consent review queue | Stay |
-| `BoardVoting`, `BoardVotingDetail`, `Vote`, `Finalize` | OnboardingReviewController | Board voting on tier applications — conceptually distinct from consent review | **BoardVotingController** (`/Board/Voting/...`) |
 
 #### ProfileController — five concerns in one (~37 actions)
 
@@ -732,7 +735,5 @@ If tackling this incrementally, ordered by impact:
 1. **ProfileController → HumanAdminController** — highest impact, ~10 admin actions on a user-profile controller; clear `[Authorize]`-policy boundary makes the split mechanical.
 2. **ProfileController → ProfileEmailController + ProfilePrivacyController** — ~12 actions across two clear sub-domains.
 3. **TeamController → TeamManagementController + CommunityController** — community features (`Birthdays`, `Map`, `Roster`) hiding on a team controller; admin team CRUD belongs on `TeamAdminController`.
-4. **OnboardingReviewController → BoardVotingController** — clean conceptual split, two distinct workflows.
-5. **ApplicationController → ApplicationAdminController** — small but clean split.
-6. **ShiftsController → EventSettingsController** — minor, just 2 actions.
-7. **GovernanceController → RoleAdminController** — minor, just 1 action.
+4. **ShiftsController → EventSettingsController** — minor, just 2 actions.
+5. **GovernanceController → RoleAdminController** — minor, just 1 action.

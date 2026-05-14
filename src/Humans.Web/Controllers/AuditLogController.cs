@@ -1,0 +1,160 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.GoogleIntegration;
+using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Teams;
+using Humans.Application.Services.AuditLog;
+using Humans.Domain.Entities;
+using Humans.Domain.Enums;
+using Humans.Web.Authorization;
+using Humans.Web.Models;
+
+namespace Humans.Web.Controllers;
+
+[Route("AuditLog")]
+public class AuditLogController : HumansControllerBase
+{
+    private readonly IAuditViewerService _auditViewer;
+    private readonly IProfileService _profileService;
+    private readonly ILogger<AuditLogController> _logger;
+
+    public AuditLogController(
+        UserManager<User> userManager,
+        IAuditViewerService auditViewer,
+        IProfileService profileService,
+        ILogger<AuditLogController> logger)
+        : base(userManager)
+    {
+        _auditViewer = auditViewer;
+        _profileService = profileService;
+        _logger = logger;
+    }
+
+    [HttpGet("")]
+    [Authorize(Policy = PolicyNames.BoardOrAdmin)]
+    public async Task<IActionResult> Index(string? filter, int page = 1)
+    {
+        var pageSize = 50;
+        var result = await _auditViewer.GetPageAsync(filter, page, pageSize);
+
+        var viewModel = new AuditLogListViewModel
+        {
+            Events = result.Items,
+            ActionFilter = filter,
+            AnomalyCount = result.AnomalyCount,
+            TotalCount = result.TotalCount,
+            PageNumber = page,
+            PageSize = pageSize
+        };
+
+        return View(viewModel);
+    }
+
+    [HttpPost("CheckDriveActivity")]
+    [Authorize(Policy = PolicyNames.BoardOrAdmin)]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CheckDriveActivity(
+        [FromServices] IDriveActivityMonitorService monitorService)
+    {
+        var currentUser = await GetCurrentUserAsync();
+
+        try
+        {
+            var count = await monitorService.CheckForAnomalousActivityAsync();
+            _logger.LogInformation("Board {UserId} triggered manual Drive activity check: {Count} anomalies",
+                currentUser?.Id, count);
+
+            SetSuccess(count > 0
+                ? $"Drive activity check completed: {count} anomalous change(s) detected."
+                : "Drive activity check completed: no anomalies detected.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Manual Drive activity check failed");
+            SetError("Drive activity check failed. Check logs for details.");
+        }
+
+        return RedirectToAction(nameof(Index), new { filter = nameof(AuditAction.AnomalousPermissionDetected) });
+    }
+
+    [HttpGet("Resource/{id:guid}")]
+    [Authorize(Policy = PolicyNames.BoardOrAdmin)]
+    public async Task<IActionResult> Resource(
+        Guid id,
+        [FromServices] ITeamResourceService teamResourceService)
+    {
+        var resource = await teamResourceService.GetResourceByIdAsync(id);
+
+        if (resource is null)
+        {
+            return NotFound();
+        }
+
+        var events = await _auditViewer.GetForResourceAsync(id);
+        return GoogleSyncAuditView(
+            $"Sync Audit: {resource.Name}",
+            Url.Action(nameof(GoogleController.Sync), "Google"),
+            "Back to Sync Status",
+            events);
+    }
+
+    [HttpGet("Human/{id:guid}")]
+    [Authorize(Policy = PolicyNames.HumanAdminBoardOrAdmin)]
+    public async Task<IActionResult> Human(Guid id)
+    {
+        var user = await FindUserByIdAsync(id);
+
+        if (user is null)
+        {
+            return NotFound();
+        }
+
+        var events = await _auditViewer.GetGoogleSyncForUserAsync(id);
+        var profile = await _profileService.GetFullProfileAsync(id);
+        var displayName = profile?.DisplayName ?? user.DisplayName;
+        return GoogleSyncAuditView(
+            $"Google Sync Audit: {displayName}",
+            Url.Action(nameof(ProfileController.AdminDetail), "Profile", new { id }),
+            "Back to Human Detail",
+            events);
+    }
+
+    private IActionResult GoogleSyncAuditView(
+        string title,
+        string? backUrl,
+        string? backLabel,
+        IEnumerable<AuditEvent> events)
+    {
+        return View("GoogleSync", BuildGoogleSyncAuditViewModel(title, backUrl, backLabel, events));
+    }
+
+    private static GoogleSyncAuditListViewModel BuildGoogleSyncAuditViewModel(
+        string title,
+        string? backUrl,
+        string? backLabel,
+        IEnumerable<AuditEvent> events)
+    {
+        return new GoogleSyncAuditListViewModel
+        {
+            Title = title,
+            BackUrl = backUrl,
+            BackLabel = backLabel,
+            Entries = events.Select(static ev => new GoogleSyncAuditEntryViewModel
+            {
+                Action = ev.Action,
+                Description = ev.Description,
+                UserEmail = ev.UserEmail,
+                Role = ev.Role,
+                SyncSource = ev.SyncSource,
+                OccurredAt = ev.OccurredAt.ToDateTimeUtc(),
+                Success = ev.Success,
+                ErrorMessage = ev.ErrorMessage,
+                ResourceName = ev.ResourceName,
+                ResourceId = ev.ResourceId,
+                RelatedEntityId = ev.RelatedEntityId
+            }).ToList()
+        };
+    }
+}

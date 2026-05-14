@@ -37,6 +37,7 @@ graph LR
 
     %% ── Cross-cutting services (hub) ──
     Audit[AuditLogService]:::crosscut
+    AuditViewer[AuditViewerService]:::crosscut
     Email[IEmailService]:::crosscut
     Notif[NotificationService]:::crosscut
     Role[RoleAssignmentService]:::auth
@@ -63,6 +64,7 @@ graph LR
     ShiftMgmt[ShiftManagementService]:::shifts
     ShiftSign[ShiftSignupService]:::shifts
     GenAvail[GeneralAvailabilityService]:::shifts
+    VolTrack[VolunteerTrackingService]:::shifts
 
     AppDec[ApplicationDecisionService]:::governance
     MembershipCalc[MembershipCalculator]:::governance
@@ -168,6 +170,7 @@ graph LR
     ShiftSign --> ShiftMgmt
     ShiftSign --> Notif
     ShiftSign --> Audit
+    VolTrack --> User
 
     %% Governance section
     AppDec --> User
@@ -238,6 +241,16 @@ graph LR
     EmailProv --> Notif
     EmailProv --> Audit
     DriveMon --> TRes
+
+    %% AuditLog read+render side
+    %% AuditViewerService composes resolved audit pages; calls cross-section services
+    %% for display-name stitching (lifted out of AuditLogRepository in 2026-05 alignment).
+    AuditViewer --> Audit
+    AuditViewer --> User
+    AuditViewer --> Team
+    %% DriveActivityMonitorRepository writes ctx.AuditLogEntries directly — tracked §6 violation,
+    %% pending GoogleIntegration /section-align to route through IAuditLogService.LogAsync.
+    DriveMon -. "pending: writes ctx.AuditLogEntries directly (see OnlyAuditLogRepositoryWritesAuditLogEntries.baseline.txt)" .-> Audit
 
     %% Onboarding section
     Onboard --> Prof
@@ -343,7 +356,7 @@ graph LR
     %% below covers every "-. lazy .->" edge in this graph; recompute when
     %% adding/removing edges. Eager count is currently the number of "-->"
     %% lines above this block.
-    linkStyle 166,167,168,169,170,171,172,173,174,175,176,177,178 stroke:#f97316,stroke-width:2.5px
+    linkStyle 170,171,172,173,174,175,176,177,178,179,180,181,182 stroke:#f97316,stroke-width:2.5px
 ```
 
 ## Cycles broken by lazy-resolution
@@ -372,7 +385,7 @@ Threshold: services with >= 3 incoming edges (eager + lazy combined).
 |---------|-----------------:|----------------:|-------|
 | `TeamService` | 21 | 2 | Largest fan-in. Expose efficient batch methods (`GetByIdsAsync`) to avoid N+1 at call sites. |
 | `UserService` | 20 | 2 | Second-largest fan-in. Same batch-method guidance. **No outbound edges** as of peterdrier/Humans PR #314 — User is purely foundational; the four pre-existing User↔* cycles were resolved by extracting deletion-cascade orchestration into `AccountDeletionService`. |
-| `AuditLogService` | 19 | 0 | Cross-cutting — every write-path service logs audit events. No-op alternative: audit decorator (rejected; audit is in-service per §7a). |
+| `AuditLogService` | 20 | 0 | Cross-cutting — every write-path service logs audit events. No-op alternative: audit decorator (rejected; audit is in-service per §7a). Inbound count includes `AuditViewerService` (read+render layer). |
 | `ProfileService` | 13 | 0 | Biggest Profile consumer is ProfileService itself (full-profile stitching). Outbound-edge count dropped from 9 to 5 in nobodies-collective/Humans#685 — `ITicketQueryService`, `IApplicationDecisionService`, `ICampaignService`, and `IAccountDeletionService` were removed from the ctor; remaining outbound edges are foundational (`User`, `MembershipCalc`, `Consent`, `Role`, `Audit`). |
 | `RoleAssignmentService` | 8 | 3 | Auth hub. |
 | `UserEmailService` | 9 | 1 | Email-identity lookups across the system. |
@@ -397,3 +410,4 @@ Threshold: services with >= 3 incoming edges (eager + lazy combined).
 - **#581** — `NotificationMeterProvider` push-model inversion: same pattern as #580 for the navbar-badge meter counts. Post-inversion, `NotifMeter` has zero outgoing edges.
 - **#570** — final slice (Google-writing jobs through service interfaces) doesn't change service→service edges; it affects Job → Service edges, which aren't part of this graph.
 - The Profile section owns `FullProfile` and `IFullProfileInvalidator` as its canonical stitched-DTO implementation of §15. Other sections apply §15's caching decorator and `Full<X>` DTO layers selectively (not universally), as stitching demand warrants.
+- **GoogleIntegration — pending consumer-side gaps (PR #500, 2026-05-12):** Three cross-domain drift items must be resolved on other sections' align runs. These are EF-layer or controller-layer issues, not service→service edges, so the graph above is correct. (1) **AuditLog** reads `GoogleResource` via a `AuditLogEntry.Resource` nav + `.Include` — must switch to `ITeamResourceService.GetResourceNamesByIdsAsync` (added PR #500). (2) **Teams** owns the `GoogleResource.Team` cross-domain nav on our entity — must strip the nav and convert to typed-FK. (3) **Users/Profiles** owns the `InvalidateNobodiesTeamEmails` cache projection — must expose `IUserEmailService.InvalidateNobodiesTeamEmailsAsync()` so `GoogleController` and `ProfileController` can drop their `IMemoryCache` injection.

@@ -2,6 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using Humans.Application.DTOs;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Tickets;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
@@ -174,6 +175,17 @@ public sealed class TicketRepository : ITicketRepository
             .FirstOrDefaultAsync(a => a.Id == attendeeId, ct);
     }
 
+    public async Task<IReadOnlyList<string>> GetVendorTicketIdsForOrderAsync(
+        Guid orderId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.TicketAttendees
+            .AsNoTracking()
+            .Where(a => a.TicketOrderId == orderId)
+            .Select(a => a.VendorTicketId)
+            .ToListAsync(ct);
+    }
+
     public async Task<IReadOnlyList<MatchedAttendeeRow>> GetMatchedAttendeesForEventAsync(
         string vendorEventId,
         CancellationToken ct = default)
@@ -262,6 +274,22 @@ public sealed class TicketRepository : ITicketRepository
         }
 
         await ctx.SaveChangesAsync(ct);
+    }
+
+    private static readonly TicketAttendeeStatus[] ActiveAttendeeStatuses =
+        [TicketAttendeeStatus.Valid, TicketAttendeeStatus.CheckedIn];
+
+    public async Task<IReadOnlyList<TicketAttendee>> GetUnmatchedActiveAttendeesAsync(
+        string vendorEventId, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.TicketAttendees
+            .Where(a =>
+                a.VendorEventId == vendorEventId &&
+                a.MatchedUserId == null &&
+                !string.IsNullOrEmpty(a.AttendeeEmail) &&
+                ActiveAttendeeStatuses.Contains(a.Status))
+            .ToListAsync(ct);
     }
 
     public async Task UpsertAttendeeAsync(TicketAttendee attendee, CancellationToken ct = default)
@@ -940,6 +968,35 @@ public sealed class TicketRepository : ITicketRepository
 
         ctx.Entry(state).State = EntityState.Detached;
         return state;
+    }
+
+    // ==========================================================================
+    // Admin diagnostics
+    // ==========================================================================
+
+    public async Task<IReadOnlyList<OrderDriftRow>> GetOrderDriftAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        // Filter must run against the source entity, not the projected record:
+        // EF can't translate a Where over a Select-projected DTO's properties
+        // (it tries to re-evaluate the constructor inside SQL and fails). Push
+        // the IssuedCount > ValidCount predicate upstream as a subquery on the
+        // attendee collection. Sort is the controller's job — see TicketTransferAdminController.
+        return await ctx.TicketOrders
+            .AsNoTracking()
+            .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid)
+            .Where(o => o.Attendees.Count(a => a.Status == TicketAttendeeStatus.Valid
+                                               || a.Status == TicketAttendeeStatus.CheckedIn)
+                        < o.Attendees.Count())
+            .Select(o => new OrderDriftRow(
+                o.Id,
+                o.VendorOrderId,
+                o.BuyerName,
+                o.Attendees.Count(),
+                o.Attendees.Count(a => a.Status == TicketAttendeeStatus.Valid
+                                       || a.Status == TicketAttendeeStatus.CheckedIn),
+                o.VendorDashboardUrl))
+            .ToListAsync(ct);
     }
 
     // ==========================================================================

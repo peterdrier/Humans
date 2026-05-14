@@ -1,3 +1,4 @@
+using Humans.Application.Architecture;
 using Humans.Application.Interfaces.Admin;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Tickets;
@@ -7,6 +8,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Humans.Infrastructure.Services;
 
+[Grandfathered(
+    ruleId: "HUM0009",
+    justification: "Admin diagnostics queries currently bypass the repository layer; should be migrated to a dedicated diagnostics repository or split across existing repositories.",
+    since: "2026-05-12",
+    issueRef: "nobodies-collective/Humans#701")]
 public sealed class AdminDatabaseDiagnosticsService : IAdminDatabaseDiagnosticsService
 {
     private readonly IDbContextFactory<HumansDbContext> _factory;

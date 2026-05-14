@@ -46,15 +46,19 @@ public class FeedbackReportConfiguration : IEntityTypeConfiguration<FeedbackRepo
             .HasMaxLength(50)
             .IsRequired();
 
-        // HasDefaultValueSql (raw SQL) instead of HasDefaultValue: the latter
-        // trips EF's sentinel detection because FeedbackSource.UserReport == 0
-        // is the CLR default and EF would silently overwrite explicit assignments
-        // with the DB default. We still need a DB-level default so the migration
-        // can backfill existing rows when this NOT-NULL column is added.
+        // Sentinel = (FeedbackSource)(-1) — not a real enum member — so EF can
+        // distinguish "explicitly assigned" from "unset". Without it the CLR
+        // default (UserReport == 0) tripped EF's sentinel detection: explicit
+        // `Source = FeedbackSource.UserReport` assignments were silently
+        // dropped in favor of the DB default. Behavior was accidentally
+        // correct only because the DB default and CLR default both produce
+        // 'UserReport' today. Keeps the DB default for migration backfill of
+        // existing rows.
         builder.Property(f => f.Source)
             .HasConversion<string>()
             .HasMaxLength(32)
             .HasDefaultValueSql("'UserReport'")
+            .HasSentinel((FeedbackSource)(-1))
             .IsRequired();
 
         builder.HasIndex(f => f.Source);

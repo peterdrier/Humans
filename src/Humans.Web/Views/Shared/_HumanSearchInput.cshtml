@@ -134,9 +134,37 @@
         }
         results.forEach(function (r) {
             var li = document.createElement('li');
-            li.className = 'list-group-item list-group-item-action py-2 px-3';
+            li.className = 'list-group-item list-group-item-action py-2 px-3 d-flex align-items-center gap-2';
             li.style.cursor = 'pointer';
-            li.innerHTML = escapeHtml(r.displayName);
+
+            if (r.profilePictureUrl) {
+                var img = document.createElement('img');
+                img.src = r.profilePictureUrl;
+                img.alt = '';
+                img.className = 'rounded-circle flex-shrink-0';
+                img.style.width = '32px';
+                img.style.height = '32px';
+                img.style.objectFit = 'cover';
+                img.onerror = function () { img.remove(); };
+                li.appendChild(img);
+            }
+
+            var textWrap = document.createElement('div');
+            textWrap.style.minWidth = '0';
+
+            var nameLine = document.createElement('div');
+            nameLine.className = 'fw-semibold text-truncate';
+            nameLine.textContent = r.displayName;
+            textWrap.appendChild(nameLine);
+
+            if (r.detail) {
+                var detailLine = document.createElement('div');
+                detailLine.className = 'small text-muted text-truncate';
+                detailLine.textContent = r.detail;
+                textWrap.appendChild(detailLine);
+            }
+
+            li.appendChild(textWrap);
             li.addEventListener('mousedown', function (e) {
                 e.preventDefault();
                 hiddenInput.value = r.userId;
@@ -147,7 +175,5 @@
         });
         showDropdown();
     }
-
-    @await Html.PartialAsync("~/Views/Shared/_EscapeHtmlScript.cshtml")
 })();
 </script>

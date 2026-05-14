@@ -22,6 +22,7 @@ Shared-Drive-only Google resource sync: Drive folders, Groups, Workspace account
 - **Google Resources** are Shared Drive folders, Shared Drives, Drive files, and Google Groups linked to a team. When a human joins or leaves a team, their access to the team's linked Google resources is automatically managed. Resource rows live in `google_resources` and are owned by Team Resources (sub-aggregate of Teams) per design-rules §8.
 - **Sync Mode** controls how the system interacts with Google APIs for each service type. Modes are: None (disabled), AddOnly (grant access but never revoke), or AddAndRemove (full bidirectional sync).
 - **Reconciliation** compares the expected Google resource state (based on team membership) against the actual Google resource state, detecting drift.
+- **Google Group membership sources** implement `IGoogleGroupMembershipSource`. Each source claims group keys and returns expected user IDs only; `IGoogleGroupSync` owns email hydration, user/profile filtering, Google API diffing, collision handling, and mutation.
 - The **sync outbox** queues resource-level sync events for processing by a background job.
 
 ## Data Model
@@ -62,8 +63,6 @@ All Google integration management is consolidated in `GoogleController` (`[Route
 | `/Google/Sync/Execute/{resourceId}` | POST | Admin | Execute sync for one resource |
 | `/Google/Sync/ExecuteAll/{resourceType}` | POST | Admin | Execute sync for all resources of a type |
 | `/Google/SyncOutbox` | GET | Admin | Recent outbox events with user/team/resource display |
-| `/Google/Sync/Resource/{id}/Audit` | GET | Board, Admin | Per-resource sync audit |
-| `/Google/Human/{id}/SyncAudit` | GET | HumanAdmin, Board, Admin | Per-human sync audit |
 | `/Google/Human/{id}/ProvisionEmail` | POST | HumanAdmin, Admin | Provision @nobodies.team email for a human |
 | `/Google/AllGroups` | GET | Admin | Domain-wide group listing with drift status |
 | `/Google/CheckGroupSettings` | POST | Admin | Trigger group settings drift check |
@@ -71,9 +70,6 @@ All Google integration management is consolidated in `GoogleController` (`[Route
 | `/Google/RemediateGroupSettings` | POST | Admin | Remediate settings drift for one group |
 | `/Google/RemediateAllGroupSettings` | POST | Admin | Batch remediate all drifted groups |
 | `/Google/LinkGroupToTeam` | POST | Admin | Link an unlinked domain group to a team |
-| `/Google/CheckEmailMismatches` | POST | Admin | Trigger email mismatch check |
-| `/Google/EmailBackfillReview` | GET | Admin | PRG landing for email mismatch results |
-| `/Google/ApplyEmailBackfill` | POST | Admin | Apply selected email corrections |
 | `/Google/CheckEmailRenames` | POST | Admin | Detect OAuth email renames |
 | `/Google/EmailRenames` | GET | Admin | PRG landing for email rename results |
 | `/Google/FixEmailRename` | POST | Admin | Apply one email rename fix |
@@ -85,7 +81,6 @@ All Google integration management is consolidated in `GoogleController` (`[Route
 | `/Google/Accounts/ResetPassword` | POST | Admin | Reset password (shown once in modal) |
 | `/Google/Accounts/ResetPasswordAndGenerate2Fa` | POST | Admin | Reset password + issue one backup 2FA code |
 | `/Google/Accounts/Link` | POST | Admin | Link existing Workspace account to a human |
-| `/Google/AuditLog/CheckDriveActivity` | POST | Board, Admin | Manual Drive activity anomaly check |
 
 ## Actors & Roles
 
@@ -108,7 +103,11 @@ All Google integration management is consolidated in `GoogleController` (`[Route
 - Each human has a `GoogleEmailStatus` (`Unknown`, `Valid`, `Rejected`). When Google permanently rejects an email (HTTP 400/403/404), the status is set to `Rejected` and new outbox events are not enqueued for that human. When a human changes their Google email, the status resets to `Unknown` and fresh sync events are enqueued.
 - Permanent Google API errors (HTTP 400, 403, 404) mark outbox events as `FailedPermanently` and stop retrying immediately. Transient errors (5xx, 429, etc.) continue retrying up to the configured limit.
 - The system authenticates to Google APIs as a service account — no domain-wide delegation or user impersonation.
-- There are exactly four gateway operations that can modify Google access, and all enforce the current sync mode before executing.
+- Drive permissions are modified only by the Drive paths in `IGoogleSyncService`. Google Group membership is modified only by `IGoogleGroupSync`; `IGoogleSyncService` still provisions groups and remediates group settings.
+- `IGoogleGroupSync.ReconcileAllAsync` loads all registered group claims, hydrates expected users once for the pass, records per-group errors, and schedules capped scoped retries for groups that fail during Execute; it is the daily, hourly system-team-sync, and bulk reconcile path.
+- `IGoogleGroupSync.ReconcileOneAsync` reconciles one group key and, on Google API failure during Execute, schedules delayed scoped Hangfire retries for the same group key, capped at five retry attempts.
+- If more than one `IGoogleGroupMembershipSource` claims the same group key, the orchestrator logs/audits a collision and skips mutation for that group. First-wins is forbidden because it would silently revoke access claimed by another owner.
+- `TeamService` directly implements `IGoogleGroupMembershipSource` for team Google Groups. `ITeamService` does not inherit that interface; Google Integration registers the concrete `TeamService` as a source.
 
 ## Negative Access Rules
 
@@ -118,11 +117,12 @@ All Google integration management is consolidated in `GoogleController` (`[Route
 
 ## Triggers
 
-- When team membership changes, sync outbox events are queued for Google Group and Drive updates.
-- When a human's Google email changes, `GoogleEmailStatus` resets to `Unknown` and fresh sync events are enqueued for all current team memberships.
+- When team membership changes, Drive sync outbox events are queued and scoped Google Group membership sync requests are enqueued after the team write commits.
+- When a human's Google email changes, `GoogleEmailStatus` resets to `Unknown`; fresh Drive sync events and scoped Google Group sync requests are enqueued for current team memberships.
 - When a Google resource is linked to a team, current team members are synced to that resource.
 - When a Google resource is unlinked, managed permissions are removed (if sync mode allows).
 - The system team sync job runs hourly, reconciling system team membership.
+- After the hourly system team sync completes, all Google Group memberships are reconciled through `IGoogleGroupSync.ReconcileAllAsync` so membership changes are reflected in Google Groups.
 - The reconciliation job runs daily at 03:00, detecting drift between expected and actual Google resource state.
 
 ## Cross-Section Dependencies
@@ -131,13 +131,21 @@ All Google integration management is consolidated in `GoogleController` (`[Route
 - **Profiles:** `IUserEmailService` / `FullProfile.GoogleEmail` — a human's Google service email determines the email address used for Google Groups and Drive access. `IGoogleServiceEmailResolver` does not exist; resolution is done via `FullProfile.GoogleEmail` (§15i, 2026-05-04) and `IUserEmailService.MatchByEmailsAsync`.
 - **Admin:** Sync settings management is Admin-only.
 - **Onboarding:** Volunteer activation triggers system team sync, which cascades to Google Group membership.
-- **Email:** `IGoogleRemovalNotificationService` (Application-layer, Google Integration-owned) calls `IEmailService.SendGoogle*Async` after every confirmed Google API delete in `RemoveUserFromGroupAsync` / `RemoveUserFromDriveAsync` (issue peterdrier/Humans#639). Variant 1 (loss-of-access) vs Variant 2 (secondary-email cleanup) is chosen by inspecting the recipient's `UserEmail` rows; messages are `MessageCategory.System` (no unsubscribe footer) and localized to `User.PreferredLanguage`. `SyncRemovalReason.EmailRotation` is plumbed through for audit/telemetry but does not suppress the notification — Workspace identity rotation produces a Variant 2 email so the user can confirm which address was tidied up. Suppression is limited to the orphan-address case (no matching `UserEmail` row, e.g. deleted user, anonymized human, or OAuth-rename-in-place).
+- **Email:** `IGoogleRemovalNotificationService` (Application-layer, Google Integration-owned) calls `IEmailService.SendGoogle*Async` after every confirmed Google API delete in `IGoogleGroupSync` / `RemoveUserFromDriveAsync` (issue peterdrier/Humans#639). Variant 1 (loss-of-access) vs Variant 2 (secondary-email cleanup) is chosen by inspecting the recipient's `UserEmail` rows; messages are `MessageCategory.System` (no unsubscribe footer) and localized to `User.PreferredLanguage`. `SyncRemovalReason.EmailRotation` is plumbed through for audit/telemetry but does not suppress the notification — Workspace identity rotation produces a Variant 2 email so the user can confirm which address was tidied up. Suppression is limited to the orphan-address case (no matching `UserEmail` row, e.g. deleted user, anonymized human, or OAuth-rename-in-place).
+
+### Pending consumer-side `/section-align` targets
+
+Three sections have cross-domain drift that must be resolved on their side (not ours). Each is flagged as a follow-up `/section-align` target:
+
+- **AuditLog** — `AuditLogEntry.Resource` is a cross-domain nav into `GoogleResource`. It is actively read via `.Include(e => e.Resource)` in `AuditLogRepository.cs:64,80`, violating §6c. The AuditLog align run must drop the nav and the two `.Include` calls, and switch to `ITeamResourceService.GetResourceNamesByIdsAsync` (added in this PR — PR #500) for resource label resolution.
+- **Teams** — `GoogleResource.Team` (`GoogleResource.cs:44`) is a live cross-domain nav owned by the Teams section per §8. The Teams align run must remove the nav from the entity and convert `GoogleResourceConfiguration.cs` to the typed-FK form (`HasOne<Team>().WithMany().HasForeignKey(r => r.TeamId)`), matching the Shifts pattern.
+- **Users/Profiles** — `IMemoryCache.InvalidateNobodiesTeamEmails()` is called directly from `GoogleController` (×2), `ProfileController` (×14), and `TeamAdminController` (×1), bypassing §15's rule that caching belongs in the service layer. The Users/Profiles align run must expose `IUserEmailService.InvalidateNobodiesTeamEmailsAsync()` (or fold invalidation into the mutating service methods) so controllers no longer inject `IMemoryCache` for this purpose.
 
 ## Architecture
 
-**Owning services:** `GoogleWorkspaceSyncService` (implements `IGoogleSyncService`), `GoogleAdminService`, `GoogleWorkspaceUserService`, `DriveActivityMonitorService`, `SyncSettingsService`, `EmailProvisioningService`
+**Owning services:** `GoogleWorkspaceSyncService` (implements `IGoogleSyncService`), `GoogleGroupSyncService` (implements `IGoogleGroupSync`), `GoogleAdminService`, `GoogleWorkspaceUserService`, `DriveActivityMonitorService`, `SyncSettingsService`, `EmailProvisioningService`
 **Owned tables:** `sync_service_settings`, `google_sync_outbox`
-**Status:** (A) Fully migrated. All Google Integration business services live in `Humans.Application.Services.GoogleIntegration`. Migration completed under umbrella issue nobodies-collective/Humans#554 across multiple parts: `GoogleAdminService`, `GoogleWorkspaceUserService`, `DriveActivityMonitorService`, `SyncSettingsService`, `EmailProvisioningService` in peterdrier/Humans PR #267 (issue nobodies-collective/Humans#289); `IGoogleSyncOutboxRepository` extracted in Part 1 (2026-04-23); SDK bridge interfaces (`IGoogleDirectoryClient`, `IGoogleDrivePermissionsClient`, `IGoogleGroupMembershipClient`, `IGoogleGroupProvisioningClient`) extracted in Part 2a (issue nobodies-collective/Humans#574, PR #302); `GoogleWorkspaceSyncService` moved to Application in Part 2b (issue nobodies-collective/Humans#575, 2026-04-23); and the last direct-DbContext consumers (`ProcessGoogleSyncOutboxJob`, `GoogleController.SyncOutbox`) flipped onto the repository surface in Part 2c (issue nobodies-collective/Humans#576, 2026-04-23). The section now has zero non-repository direct `DbSet<GoogleSyncOutboxEvent>` / `DbSet<GoogleResource>` / `DbSet<SyncServiceSettings>` reads or writes across Application + Web layers.
+**Status:** (A) Fully migrated. Three consumer-side cross-domain gaps remain on other sections (AuditLog, Teams, Users/Profiles) — see [Pending consumer-side `/section-align` targets](#pending-consumer-side-section-align-targets) above. All Google Integration business services live in `Humans.Application.Services.GoogleIntegration`. Migration completed under umbrella issue nobodies-collective/Humans#554 across multiple parts: `GoogleAdminService`, `GoogleWorkspaceUserService`, `DriveActivityMonitorService`, `SyncSettingsService`, `EmailProvisioningService` in peterdrier/Humans PR #267 (issue nobodies-collective/Humans#289); `IGoogleSyncOutboxRepository` extracted in Part 1 (2026-04-23); SDK bridge interfaces (`IGoogleDirectoryClient`, `IGoogleDrivePermissionsClient`, `IGoogleGroupMembershipClient`, `IGoogleGroupProvisioningClient`) extracted in Part 2a (issue nobodies-collective/Humans#574, PR #302); `GoogleWorkspaceSyncService` moved to Application in Part 2b (issue nobodies-collective/Humans#575, 2026-04-23); and the last direct-DbContext consumers (`ProcessGoogleSyncOutboxJob`, `GoogleController.SyncOutbox`) flipped onto the repository surface in Part 2c (issue nobodies-collective/Humans#576, 2026-04-23). The section now has zero non-repository direct `DbSet<GoogleSyncOutboxEvent>` / `DbSet<GoogleResource>` / `DbSet<SyncServiceSettings>` reads or writes across Application + Web layers. Surface alignment completed in PR #500 (2026-05-12): DI registrations consolidated into `GoogleIntegrationSectionExtensions`; `GoogleSyncAuditView` / `BuildGoogleSyncAuditViewModel` helpers moved from `HumansControllerBase` into `GoogleController`; Google-owned ViewModels regrouped under `Models/Google/`; service and repository tests relocated to `tests/Humans.Application.Tests/GoogleIntegration/`.
 
 - Service(s) live in `Humans.Application.Services.GoogleIntegration/` and never import `Microsoft.EntityFrameworkCore`.
 - `ISyncSettingsRepository`, `IGoogleSyncOutboxRepository`, `IGoogleResourceRepository`, `IDriveActivityMonitorRepository` (all in `Humans.Application/Interfaces/Repositories/`) are the only code paths that touch this section's tables via `DbContext`.
@@ -159,5 +167,4 @@ Application-layer services depend only on shape-neutral connector interfaces in 
 
 ### Touch-and-clean guidance
 
-- `GoogleResource.cs:44` — `public Team Team { get; set; } = null!;` is a live cross-domain nav. Should be removed and the EF configuration in `GoogleResourceConfiguration.cs` converted to the typed-FK form (`HasOne<Team>().WithMany().HasForeignKey(r => r.TeamId)`) — same pattern as Shifts. Low risk: the nav is owned by TeamResourceService and no Google Integration service reads it directly.
-- `design-rules.md §8` lists the table as `google_sync_outbox_events`; the actual table (`GoogleSyncOutboxEventConfiguration.cs:12`) is `google_sync_outbox`. Update §8 in the same PR that does any migration touching that table.
+- `GoogleResource.cs:44` — `public Team Team { get; set; } = null!;` is a live cross-domain nav. Tracked as a Teams-section follow-up (see above). Should be removed and `GoogleResourceConfiguration.cs` converted to typed-FK form — low risk since no Google Integration service reads it directly.

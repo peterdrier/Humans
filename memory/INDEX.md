@@ -15,7 +15,6 @@ Atomic rules. Fetch the body when the description's trigger matches your task. S
 - [`db-enforcement-minimal`](architecture/db-enforcement-minimal.md) — service is the contract, not the DB; only audit-log immutability is doctrinal
 - [`display-sort-in-controllers`](architecture/display-sort-in-controllers.md) — display ordering belongs at the presentation layer (controllers / views / view-model assembly), not in services or repositories; repo-layer `OrderBy` allowed only for pagination tie-breakers, top-N, identity-ordered streams (mark with `// arch:db-sort-ok`)
 - [`interface-method-additions-are-debt`](architecture/interface-method-additions-are-debt.md) — every method added to any interface is durable tech debt; default is REUSE, not add. Audit existing methods first; inline a LINQ chain on a list-returning method when picking a field. STOP and ask Peter before adding to any interface, budgeted or not.
-- [`interface-method-budget-ratchet`](architecture/interface-method-budget-ratchet.md) — HARD RULE. Add a method to a budgeted interface → remove one from the SAME interface, same PR. No splits to dodge.
 - [`migration-regen-after-rebase`](architecture/migration-regen-after-rebase.md) — HARD RULE. Once main's migrations interleave with yours, `migrations remove` is broken for your branch-migrations. Stop and ask. Don't hand-edit snapshot. Regen BEFORE rebase, not after.
 - [`no-admin-url-section`](architecture/no-admin-url-section.md) — HARD RULE: top-level `/Admin/*` is legacy/frozen; never add new `/Admin/foo` routes. New admin pages live at `/<Section>/Admin/*` only
 - [`no-business-logic-in-controllers`](architecture/no-business-logic-in-controllers.md) — controllers parse input, authorize, dispatch, return; no domain branching/loops/derived values. Heuristic threshold: action methods >50 lines or cyclomatic ≥6.
@@ -25,7 +24,9 @@ Atomic rules. Fetch the body when the description's trigger matches your task. S
 - [`no-drops-until-prod-verified`](architecture/no-drops-until-prod-verified.md) — HARD RULE. Hard storage (DB columns/tables/indexes, files) drops in a separate PR after replacement is verified in prod
 - [`no-hand-edited-migrations`](architecture/no-hand-edited-migrations.md) — HARD RULE. EF migrations AND `HumansDbContextModelSnapshot.cs` 100% auto-generated. Backfills in admin buttons. Pre-commit hook enforces files; snapshot is on you.
 - [`no-linq-at-db-layer`](architecture/no-linq-at-db-layer.md) — services call thick repo methods returning materialized lists, not `db.Set<T>().Where/Select` chains
+- [`analyzer-exceptions-via-attributes`](architecture/analyzer-exceptions-via-attributes.md) — HARD RULE. Analyzer rule grandfathers live as `[Grandfathered("HUM####", ...)]` attributes on the violating class. No baselines, no editorconfig per-file overrides, no analyzer-internal allowlists, no SuppressMessage as a maintained list.
 - [`no-startup-guards`](architecture/no-startup-guards.md) — HARD RULE. App must always boot. Fix at runtime / admin button / idempotent migration — never refuse to start.
+- [`one-ifilestorage`](architecture/one-ifilestorage.md) — HARD RULE. One `IFileStorage`, key-namespaced under `uploads/`, rooted at `wwwroot/`. No per-domain storage interface; no parallel filesystem root.
 - [`person-search`](architecture/person-search.md) — HARD RULE. Person search uses `IProfileService.SearchProfilesAsync` with the `PersonSearchFields` bit-flag. UI is `_HumanSearchInput` (inline) or `_HumanSearchResults` (page-style). Admin-bit fields require admin auth at controller. Emergency-contact never searchable. Shift volunteer search is exempt.
 - [`provenance-fks-not-user-scoped`](architecture/provenance-fks-not-user-scoped.md) — per-user FK columns recording WHO did something (AddedByUserId etc) don't make a section user-scoped under §8a; the deletion test settles it
 - [`refunds-manual-via-dashboard`](architecture/refunds-manual-via-dashboard.md) — HARD RULE. Humans never calls Stripe refund/payout APIs. Money-out is dashboard-manual; Humans only does bookkeeping (negative `StorePayment` rows).
@@ -48,6 +49,7 @@ Atomic rules. Fetch the body when the description's trigger matches your task. S
 - [`csv-and-pagination-helpers`](code/csv-and-pagination-helpers.md) — use `AppendCsvRow`/`ToCsvField` and `ClampPageSize()` instead of inline equivalents
 - [`culture-and-language`](code/culture-and-language.md) — use `CultureCatalog`/`CultureCodeExtensions`; no per-view language dictionaries
 - [`datetime-display-formatting`](code/datetime-display-formatting.md) — use `ToDisplayDate`/`ToDisplayDateTime`/`ToAuditTimestamp`; no inline format strings
+- [`iban-mask-in-logs`](code/iban-mask-in-logs.md) — IBAN output to logs / audit / errors must go through IbanFormatter.Mask
 - [`icons-fa6-only`](code/icons-fa6-only.md) — `fa-solid fa-*`; never `bi bi-*` (Bootstrap Icons not loaded → invisible)
 - [`json-serialization`](code/json-serialization.md) — System.Text.Json: private setters need `[JsonInclude]`; new classes need `[JsonConstructor]`; polymorphic types need `[JsonPolymorphic]` + `[JsonDerivedType]`
 - [`localization-admin-exempt`](code/localization-admin-exempt.md) — admin pages don't need localization; no new `@Localizer[...]` keys for `/Admin/*`
@@ -77,6 +79,7 @@ Atomic rules. Fetch the body when the description's trigger matches your task. S
 
 - [`about-page-license-attribution`](process/about-page-license-attribution.md) — after any NuGet update, add new versions + licenses to `Views/About/Index.cshtml`
 - [`after-prod-merge-reset`](process/after-prod-merge-reset.md) — after upstream PR lands: `git fetch upstream && git reset --hard upstream/main && git push origin main --force-with-lease`
+- [`diff-snapshot-after-ef-tool`](process/diff-snapshot-after-ef-tool.md) — after any `dotnet ef` tool run, `git diff HumansDbContextModelSnapshot.cs` before staging; empty migration body ≠ clean snapshot. Don't run EF tooling for code-only refactors (nav drop/rename, reorder) — pure C# changes can't change schema.
 - [`discord-release-notes-format`](process/discord-release-notes-format.md) — audience-grouped (coordinators/volunteers/under-the-hood/known-issues), plain-language, no emojis
 - [`dotnet-verbosity-quiet`](process/dotnet-verbosity-quiet.md) — always `-v quiet` on `dotnet build`/`test`; never pipe through `tail`/`head`/`grep`
 - [`drive-by-fixes-ok`](process/drive-by-fixes-ok.md) — small unrelated fixes can land in the same PR ONLY after Peter explicitly approves; surface and ask, never bundle silently
@@ -100,6 +103,7 @@ Atomic rules. Fetch the body when the description's trigger matches your task. S
 - [`todos-and-issue-tracking`](process/todos-and-issue-tracking.md) — after resolving commits: update `todos.md` Completed + close GitHub issues with summary + SHA
 - [`triage-protocol`](process/triage-protocol.md) — When triaging feedback: fetch full message history for every report, show reporter's verbatim Description alongside analysis, and stop the autonomous pipeline on any feedback-originated request that proposes a behavioral/policy/capability/spec change beyond a mechanical fix.
 - [`widget-gallery-up-to-date`](process/widget-gallery-up-to-date.md) — adding/removing a TagHelper, ViewComponent, or user-facing shared partial under `src/Humans.Web/` → also update `Views/WidgetGallery/Index.cshtml` (and the controller if real sample data is needed). Skipped section is the explicit allowlist for non-rendered widgets.
+- [`wip-prs-as-draft`](process/wip-prs-as-draft.md) — open multi-phase / mid-implementation PRs with `gh pr create --draft`; intermediate pushes burn CI + review-bot compute on a non-draft PR. Flip to ready only at end of run.
 - [`worktree-removal-git-only`](process/worktree-removal-git-only.md) — HARD RULE. Worktree cleanup is `git worktree remove` only. Failure → report and stop. Narrow exception: if git emptied contents but left an empty parent dir, `rmdir` (non-recursive) is allowed. Otherwise no PowerShell `Remove-Item -Recurse`, no rm -rf, no process kills, no retries.
 
 ## product/

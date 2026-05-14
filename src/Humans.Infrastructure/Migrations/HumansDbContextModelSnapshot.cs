@@ -1508,6 +1508,10 @@ namespace Humans.Infrastructure.Migrations
                     b.Property<bool>("OptedOut")
                         .HasColumnType("boolean");
 
+                    b.Property<Instant?>("SubscribedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("SubscribedAt");
+
                     b.Property<string>("UpdateSource")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -1962,6 +1966,164 @@ namespace Humans.Infrastructure.Migrations
                     b.ToTable("event_settings", (string)null);
                 });
 
+            modelBuilder.Entity("Humans.Domain.Entities.ExpenseAttachment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("Extension")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
+
+                    b.Property<string>("OriginalFileName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<long>("SizeBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<Instant>("UploadedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UploadedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("expense_attachments", (string)null);
+                });
+
+            modelBuilder.Entity("Humans.Domain.Entities.ExpenseLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(12,2)");
+
+                    b.Property<Guid?>("AttachmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid>("ExpenseReportId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AttachmentId");
+
+                    b.HasIndex("ExpenseReportId");
+
+                    b.ToTable("expense_lines", (string)null);
+                });
+
+            modelBuilder.Entity("Humans.Domain.Entities.ExpenseReport", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Instant?>("ApprovedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ApprovedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BudgetCategoryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BudgetYearId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Instant?>("CoordinatorEndorsedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CoordinatorEndorsedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Instant>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("HoldedDocId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Instant?>("LastRejectedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("LastRejectedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("LastRejectionReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Instant?>("PaidAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("PayeeIban")
+                        .IsRequired()
+                        .HasMaxLength(34)
+                        .HasColumnType("character varying(34)");
+
+                    b.Property<string>("PayeeName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Instant?>("SepaSentAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<Instant?>("SubmittedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("SubmitterUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Total")
+                        .HasColumnType("decimal(12,2)");
+
+                    b.Property<Instant>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BudgetCategoryId");
+
+                    b.HasIndex("HoldedDocId");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("SubmitterUserId", "Status");
+
+                    b.ToTable("expense_reports", (string)null);
+                });
+
             modelBuilder.Entity("Humans.Domain.Entities.FeedbackMessage", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2245,6 +2407,45 @@ namespace Humans.Infrastructure.Migrations
                     b.HasIndex("TeamId", "UserId", "ProcessedAt");
 
                     b.ToTable("google_sync_outbox", (string)null);
+                });
+
+            modelBuilder.Entity("Humans.Domain.Entities.HoldedExpenseOutboxEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<Guid>("ExpenseReportId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("FailedPermanently")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<Instant>("OccurredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Instant?>("ProcessedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("RetryCount")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExpenseReportId");
+
+                    b.HasIndex("ProcessedAt", "FailedPermanently");
+
+                    b.ToTable("holded_expense_outbox_events", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.Issue", b =>
@@ -2571,6 +2772,10 @@ namespace Humans.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
+
+                    b.Property<string>("Iban")
+                        .HasMaxLength(34)
+                        .HasColumnType("character varying(34)");
 
                     b.Property<bool>("IsApproved")
                         .HasColumnType("boolean");
@@ -3979,6 +4184,12 @@ namespace Humans.Infrastructure.Migrations
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)");
 
+                    b.Property<string>("VendorStepsJson")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text")
+                        .HasDefaultValue("[]");
+
                     b.HasKey("Id");
 
                     b.HasIndex("OriginalTicketAttendeeId");
@@ -5043,6 +5254,22 @@ namespace Humans.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Humans.Domain.Entities.ExpenseLine", b =>
+                {
+                    b.HasOne("Humans.Domain.Entities.ExpenseAttachment", "Attachment")
+                        .WithMany()
+                        .HasForeignKey("AttachmentId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Humans.Domain.Entities.ExpenseReport", null)
+                        .WithMany("Lines")
+                        .HasForeignKey("ExpenseReportId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Attachment");
+                });
+
             modelBuilder.Entity("Humans.Domain.Entities.FeedbackMessage", b =>
                 {
                     b.HasOne("Humans.Domain.Entities.FeedbackReport", "FeedbackReport")
@@ -5733,6 +5960,11 @@ namespace Humans.Infrastructure.Migrations
             modelBuilder.Entity("Humans.Domain.Entities.EventSettings", b =>
                 {
                     b.Navigation("Rotas");
+                });
+
+            modelBuilder.Entity("Humans.Domain.Entities.ExpenseReport", b =>
+                {
+                    b.Navigation("Lines");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.FeedbackReport", b =>

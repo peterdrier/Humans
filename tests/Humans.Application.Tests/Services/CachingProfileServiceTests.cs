@@ -43,9 +43,10 @@ public class CachingProfileServiceTests
         services.AddScoped(_ => _userService);
         services.AddScoped(_ => _navBadge);
         services.AddScoped(_ => _notificationMeter);
-        var scopeFactory = services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>();
+        var rootProvider = services.BuildServiceProvider();
+        var scopeFactory = rootProvider.GetRequiredService<IServiceScopeFactory>();
         var logger = Substitute.For<Microsoft.Extensions.Logging.ILogger<CachingProfileService>>();
-        return new CachingProfileService(_profileRepository, _userEmailRepository, _contactFieldRepository, scopeFactory, logger);
+        return new CachingProfileService(_profileRepository, _userEmailRepository, _contactFieldRepository, scopeFactory, rootProvider, logger);
     }
 
     [HumansFact]

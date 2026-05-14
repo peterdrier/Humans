@@ -677,6 +677,9 @@ public class TeamAdminController : HumansTeamControllerBase
     [HttpPost("Resources/{resourceId}/Sync")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SyncResource(string slug, Guid resourceId)
+        => await SyncResourceCoreAsync(slug, resourceId);
+
+    private async Task<IActionResult> SyncResourceCoreAsync(string slug, Guid resourceId)
     {
         var (currentUserNotFound, user) = await RequireCurrentUserAsync();
         if (currentUserNotFound is not null)
@@ -697,8 +700,11 @@ public class TeamAdminController : HumansTeamControllerBase
 
         try
         {
-            await _googleSyncService.SyncSingleResourceAsync(resourceId, SyncAction.Execute);
-            SetSuccess(_localizer["TeamAdmin_ResourceSynced"].Value);
+            var diff = await _googleSyncService.SyncSingleResourceAsync(
+                resourceId,
+                SyncAction.Execute,
+                HttpContext.RequestAborted);
+            SetResourceSyncResult(diff.ErrorMessage);
         }
         catch (Exception ex)
         {
@@ -707,6 +713,14 @@ public class TeamAdminController : HumansTeamControllerBase
         }
 
         return RedirectToAction(nameof(Resources), new { slug });
+    }
+
+    private void SetResourceSyncResult(string? syncError)
+    {
+        if (syncError is not null)
+            SetError(string.Format(_localizer["TeamAdmin_ResourceSyncFailed"].Value, syncError));
+        else
+            SetSuccess(_localizer["TeamAdmin_ResourceSynced"].Value);
     }
 
     [HttpGet("Roles")]
