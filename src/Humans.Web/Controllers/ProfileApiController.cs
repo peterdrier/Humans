@@ -1,5 +1,4 @@
 using Humans.Application.DTOs;
-using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Services.Profiles;
 using Humans.Domain.Entities;
@@ -23,20 +22,17 @@ public class ProfileApiController : ControllerBase
     private readonly IProfileService _profileService;
     private readonly IContactFieldService _contactFieldService;
     private readonly IUserEmailService _userEmailService;
-    private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly UserManager<User> _userManager;
 
     public ProfileApiController(
         IProfileService profileService,
         IContactFieldService contactFieldService,
         IUserEmailService userEmailService,
-        IRoleAssignmentService roleAssignmentService,
         UserManager<User> userManager)
     {
         _profileService = profileService;
         _contactFieldService = contactFieldService;
         _userEmailService = userEmailService;
-        _roleAssignmentService = roleAssignmentService;
         _userManager = userManager;
     }
 
@@ -60,7 +56,6 @@ public class ProfileApiController : ControllerBase
 
         var results = await _profileService.SearchProfilesAsync(q, fields, MaxResults, ct);
         var userIds = results.Select(r => r.UserId).ToList();
-        var profilesByUserId = await _profileService.GetByUserIdsAsync(userIds, ct);
         var pictureUrls = await ProfilePictureUrlHelper.BuildEffectiveUrlsAsync(
             _profileService,
             Url,
@@ -69,17 +64,14 @@ public class ProfileApiController : ControllerBase
 
         var viewer = await _userManager.GetUserAsync(User);
         var viewerUserId = viewer?.Id;
-        var viewerIsBoard = viewerUserId.HasValue
-            && await _roleAssignmentService.IsUserBoardMemberAsync(viewerUserId.Value, ct);
 
         var response = new List<HumanLookupSearchResult>(results.Count);
         foreach (var result in results.OrderBy(r => r.BurnerName, StringComparer.OrdinalIgnoreCase))
         {
             var detail = await GetSharedDetailAsync(
                 result.UserId,
-                profilesByUserId.GetValueOrDefault(result.UserId),
+                result.ProfileId,
                 viewerUserId,
-                viewerIsBoard,
                 ct);
 
             response.Add(new HumanLookupSearchResult(
@@ -94,22 +86,64 @@ public class ProfileApiController : ControllerBase
         return Ok(response);
     }
 
+    /// <summary>
+    /// Single-person lookup by userId. Returns the same picker row shape as
+    /// <see cref="Search"/>, so callers that already know the userId (URL
+    /// param, integration, pre-fill) can render the row without typing a name
+    /// and choosing from a dropdown. Cache-backed via
+    /// <see cref="IProfileService.GetFullProfileAsync"/>.
+    /// </summary>
+    [HttpGet("by-userid/{userId:guid}")]
+    public async Task<IActionResult> GetByUserId(Guid userId, CancellationToken ct = default)
+    {
+        var fullProfile = await _profileService.GetFullProfileAsync(userId, ct);
+        if (fullProfile is null || fullProfile.IsRejected)
+            return NotFound();
+
+        var pictureUrls = await ProfilePictureUrlHelper.BuildEffectiveUrlsAsync(
+            _profileService,
+            Url,
+            new[] { userId },
+            ct);
+
+        var viewer = await _userManager.GetUserAsync(User);
+        var viewerUserId = viewer?.Id;
+
+        var detail = await GetSharedDetailAsync(
+            userId,
+            fullProfile.ProfileId,
+            viewerUserId,
+            ct);
+
+        var displayName = string.IsNullOrWhiteSpace(fullProfile.BurnerName)
+            ? fullProfile.DisplayName
+            : fullProfile.BurnerName!;
+
+        return Ok(new HumanLookupSearchResult(
+            userId,
+            displayName,
+            detail,
+            pictureUrls.GetValueOrDefault(userId)));
+    }
+
+    /// <summary>
+    /// Returns the disambiguation detail to render under the human's name in
+    /// the shared picker row. Priority: viewer-visible primary email →
+    /// highest-priority visible contact field (Phone → Signal → Telegram →
+    /// WhatsApp → Discord → Other) → <c>null</c>. Legal name is deliberately
+    /// not surfaced here even for board viewers: at ~500 users with mostly
+    /// non-board callers it would be a distraction that almost no one
+    /// benefits from, and board members can still see legal name via the
+    /// profile card on click-through.
+    /// </summary>
     private async Task<string?> GetSharedDetailAsync(
         Guid userId,
-        Profile? profile,
+        Guid profileId,
         Guid? viewerUserId,
-        bool viewerIsBoard,
         CancellationToken ct)
     {
         if (viewerUserId is null)
             return null;
-
-        if (profile is not null && (viewerUserId.Value == userId || viewerIsBoard))
-        {
-            var legalName = profile.FullName;
-            if (!string.IsNullOrWhiteSpace(legalName))
-                return legalName;
-        }
 
         var accessLevel = await _contactFieldService.GetViewerAccessLevelAsync(
             userId,
@@ -125,11 +159,8 @@ public class ProfileApiController : ControllerBase
         if (!string.IsNullOrWhiteSpace(visibleEmail))
             return visibleEmail;
 
-        if (profile is null)
-            return null;
-
         var visibleContactFields = await _contactFieldService.GetVisibleContactFieldsAsync(
-            profile.Id,
+            profileId,
             viewerUserId.Value,
             ct);
 
