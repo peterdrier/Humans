@@ -9,7 +9,7 @@
 <div class="card" style="max-width: 600px;">
     <div class="card-body">
         <form method="post"
-              asp-controller="GuideAdmin"
+              asp-controller="EventsAdmin"
               asp-action="@(isEdit ? "EditCategory" : "CreateCategory")"
               asp-route-id="@Model.Id">
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
@@ -48,7 +48,7 @@
             <button type="submit" class="btn btn-primary">
                 <i class="fa-solid fa-floppy-disk me-1"></i>@(isEdit ? "Save Changes" : "Create Category")
             </button>
-            <a asp-controller="GuideAdmin" asp-action="GuideCategories" class="btn btn-outline-secondary ms-2">Cancel</a>
+            <a asp-controller="EventsAdmin" asp-action="GuideCategories" class="btn btn-outline-secondary ms-2">Cancel</a>
         </form>
     </div>
 </div>

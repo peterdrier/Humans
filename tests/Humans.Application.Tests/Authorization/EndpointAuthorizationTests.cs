@@ -105,7 +105,7 @@ public class EndpointAuthorizationTests
     [HumansFact]
     public void GuideAdminController_RequiresGuideModeratorOrAdminRoles()
     {
-        AssertHasRoles(typeof(GuideAdminController), null, RoleGroups.GuideModeratorOrAdmin);
+        AssertHasRoles(typeof(EventsAdminController), null, RoleGroups.GuideModeratorOrAdmin);
     }
 
     // --- Shift dashboard endpoints ---

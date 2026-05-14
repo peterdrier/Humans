@@ -15,11 +15,11 @@ namespace Humans.Web.Controllers;
 [Authorize(Roles = RoleGroups.GuideModeratorOrAdmin)]
 [Route("Events/Dashboard")]
 [ServiceFilter(typeof(EventGuideFeatureFilter))]
-public class EventGuideDashboardController : HumansControllerBase
+public class EventsDashboardController : HumansControllerBase
 {
     private readonly IEventService _guide;
 
-    public EventGuideDashboardController(IEventService guide, UserManager<User> userManager)
+    public EventsDashboardController(IEventService guide, UserManager<User> userManager)
         : base(userManager)
     {
         _guide = guide;

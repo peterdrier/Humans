@@ -74,12 +74,12 @@ public class EventGuideArchitectureTests
     [HumansFact]
     public void EventGuideRoutes_UseEventsAndBarriosSlugs()
     {
-        RouteFor<EventGuideController>().Should().Be("Events");
-        RouteFor<EventGuideDashboardController>().Should().Be("Events/Dashboard");
-        RouteFor<EventGuideExportController>().Should().Be("Events/Export");
-        RouteFor<ModerationController>().Should().Be("Events/Moderate");
-        RouteFor<CampEventsController>().Should().Be("Barrios/{slug}/Events");
-        RouteFor<GuideApiController>().Should().Be("api/events");
+        RouteFor<EventsController>().Should().Be("Events");
+        RouteFor<EventsDashboardController>().Should().Be("Events/Dashboard");
+        RouteFor<EventsExportController>().Should().Be("Events/Export");
+        RouteFor<EventsModerationController>().Should().Be("Events/Moderate");
+        RouteFor<BarrioEventsController>().Should().Be("Barrios/{slug}/Events");
+        RouteFor<EventsApiController>().Should().Be("api/events");
     }
 
     [HumansFact]
@@ -87,12 +87,12 @@ public class EventGuideArchitectureTests
     {
         var routeTemplates = new[]
         {
-            RouteFor<EventGuideController>(),
-            RouteFor<EventGuideDashboardController>(),
-            RouteFor<EventGuideExportController>(),
-            RouteFor<ModerationController>(),
-            RouteFor<CampEventsController>(),
-            RouteFor<GuideApiController>()
+            RouteFor<EventsController>(),
+            RouteFor<EventsDashboardController>(),
+            RouteFor<EventsExportController>(),
+            RouteFor<EventsModerationController>(),
+            RouteFor<BarrioEventsController>(),
+            RouteFor<EventsApiController>()
         };
 
         routeTemplates.Should().NotContain(template =>

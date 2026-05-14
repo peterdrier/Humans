@@ -16,21 +16,21 @@ namespace Humans.Web.Controllers;
 [Authorize]
 [Route("Barrios/{slug}/Events")]
 [ServiceFilter(typeof(EventGuideFeatureFilter))]
-public class CampEventsController : HumansCampControllerBase
+public class BarrioEventsController : HumansCampControllerBase
 {
     private readonly IEventService _guide;
     private readonly IClock _clock;
     private readonly IEmailService _emailService;
-    private readonly ILogger<CampEventsController> _logger;
+    private readonly ILogger<BarrioEventsController> _logger;
 
-    public CampEventsController(
+    public BarrioEventsController(
         UserManager<User> userManager,
         ICampService campService,
         IAuthorizationService authorizationService,
         IEventService guide,
         IClock clock,
         IEmailService emailService,
-        ILogger<CampEventsController> logger)
+        ILogger<BarrioEventsController> logger)
         : base(userManager, campService, authorizationService)
     {
         _guide = guide;
@@ -145,7 +145,7 @@ public class CampEventsController : HumansCampControllerBase
         var userEmail = user.Email;
         if (userEmail != null)
         {
-            var viewUrl = Url.Action(nameof(Index), "CampEvents", new { slug }, Request.Scheme)!;
+            var viewUrl = Url.Action(nameof(Index), "BarrioEvents", new { slug }, Request.Scheme)!;
             await _emailService.SendEventSubmittedAsync(userEmail, user.UserName ?? userEmail, model.Title, viewUrl);
         }
 

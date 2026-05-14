@@ -12,16 +12,16 @@ using NodaTime;
 namespace Humans.Web.Controllers;
 
 [Authorize(Roles = RoleGroups.GuideModeratorOrAdmin)]
-[Route("Admin")]
+[Route("Events/Admin")]
 [ServiceFilter(typeof(EventGuideFeatureFilter))]
-public class GuideAdminController : HumansControllerBase
+public class EventsAdminController : HumansControllerBase
 {
     private readonly IEventService _guide;
-    private readonly ILogger<GuideAdminController> _logger;
+    private readonly ILogger<EventsAdminController> _logger;
 
-    public GuideAdminController(
+    public EventsAdminController(
         IEventService guide,
-        ILogger<GuideAdminController> logger,
+        ILogger<EventsAdminController> logger,
         UserManager<User> userManager)
         : base(userManager)
     {
@@ -31,7 +31,7 @@ public class GuideAdminController : HumansControllerBase
 
     // ─── EventGuideSettings ────────────────────────────────────────────
 
-    [HttpGet("EventGuideSettings")]
+    [HttpGet("Settings")]
     public async Task<IActionResult> EventGuideSettings()
     {
         var existing = await _guide.GetGuideSettingsAsync();
@@ -60,7 +60,7 @@ public class GuideAdminController : HumansControllerBase
         });
     }
 
-    [HttpPost("EventGuideSettings")]
+    [HttpPost("Settings")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SaveGuideSettings(GuideSettingsViewModel model)
     {
@@ -102,7 +102,7 @@ public class GuideAdminController : HumansControllerBase
 
     // ─── Event Categories ─────────────────────────────────────────
 
-    [HttpGet("GuideCategories")]
+    [HttpGet("Categories")]
     public async Task<IActionResult> GuideCategories()
     {
         var categories = await _guide.GetAllCategoriesAsync();
@@ -120,7 +120,7 @@ public class GuideAdminController : HumansControllerBase
         return View(new EventCategoryListViewModel { Categories = rows });
     }
 
-    [HttpGet("GuideCategories/Create")]
+    [HttpGet("Categories/Create")]
     public async Task<IActionResult> CreateCategory()
     {
         return View("GuideCategoryForm", new EventCategoryFormViewModel
@@ -129,7 +129,7 @@ public class GuideAdminController : HumansControllerBase
         });
     }
 
-    [HttpPost("GuideCategories/Create")]
+    [HttpPost("Categories/Create")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CreateCategory(EventCategoryFormViewModel model)
     {
@@ -158,7 +158,7 @@ public class GuideAdminController : HumansControllerBase
         return RedirectToAction(nameof(GuideCategories));
     }
 
-    [HttpGet("GuideCategories/{id:guid}/Edit")]
+    [HttpGet("Categories/{id:guid}/Edit")]
     public async Task<IActionResult> EditCategory(Guid id)
     {
         var category = await _guide.GetCategoryAsync(id);
@@ -175,7 +175,7 @@ public class GuideAdminController : HumansControllerBase
         });
     }
 
-    [HttpPost("GuideCategories/{id:guid}/Edit")]
+    [HttpPost("Categories/{id:guid}/Edit")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> EditCategory(Guid id, EventCategoryFormViewModel model)
     {
@@ -207,7 +207,7 @@ public class GuideAdminController : HumansControllerBase
         return RedirectToAction(nameof(GuideCategories));
     }
 
-    [HttpPost("GuideCategories/{id:guid}/Delete")]
+    [HttpPost("Categories/{id:guid}/Delete")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteCategory(Guid id)
     {
@@ -224,7 +224,7 @@ public class GuideAdminController : HumansControllerBase
         return RedirectToAction(nameof(GuideCategories));
     }
 
-    [HttpPost("GuideCategories/{id:guid}/MoveUp")]
+    [HttpPost("Categories/{id:guid}/MoveUp")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> MoveCategoryUp(Guid id)
     {
@@ -232,7 +232,7 @@ public class GuideAdminController : HumansControllerBase
         return RedirectToAction(nameof(GuideCategories));
     }
 
-    [HttpPost("GuideCategories/{id:guid}/MoveDown")]
+    [HttpPost("Categories/{id:guid}/MoveDown")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> MoveCategoryDown(Guid id)
     {
@@ -242,7 +242,7 @@ public class GuideAdminController : HumansControllerBase
 
     // ─── Guide Shared Venues ──────────────────────────────────────
 
-    [HttpGet("GuideVenues")]
+    [HttpGet("Venues")]
     public async Task<IActionResult> GuideVenues()
     {
         var venues = await _guide.GetAllVenuesAsync();
@@ -259,7 +259,7 @@ public class GuideAdminController : HumansControllerBase
         return View(new GuideVenueListViewModel { Venues = rows });
     }
 
-    [HttpGet("GuideVenues/Create")]
+    [HttpGet("Venues/Create")]
     public async Task<IActionResult> CreateVenue()
     {
         return View("GuideVenueForm", new GuideVenueFormViewModel
@@ -268,7 +268,7 @@ public class GuideAdminController : HumansControllerBase
         });
     }
 
-    [HttpPost("GuideVenues/Create")]
+    [HttpPost("Venues/Create")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CreateVenue(GuideVenueFormViewModel model)
     {
@@ -291,7 +291,7 @@ public class GuideAdminController : HumansControllerBase
         return RedirectToAction(nameof(GuideVenues));
     }
 
-    [HttpGet("GuideVenues/{id:guid}/Edit")]
+    [HttpGet("Venues/{id:guid}/Edit")]
     public async Task<IActionResult> EditVenue(Guid id)
     {
         var venue = await _guide.GetVenueAsync(id);
@@ -308,7 +308,7 @@ public class GuideAdminController : HumansControllerBase
         });
     }
 
-    [HttpPost("GuideVenues/{id:guid}/Edit")]
+    [HttpPost("Venues/{id:guid}/Edit")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> EditVenue(Guid id, GuideVenueFormViewModel model)
     {
@@ -333,7 +333,7 @@ public class GuideAdminController : HumansControllerBase
         return RedirectToAction(nameof(GuideVenues));
     }
 
-    [HttpPost("GuideVenues/{id:guid}/Delete")]
+    [HttpPost("Venues/{id:guid}/Delete")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteVenue(Guid id)
     {
@@ -350,7 +350,7 @@ public class GuideAdminController : HumansControllerBase
         return RedirectToAction(nameof(GuideVenues));
     }
 
-    [HttpPost("GuideVenues/{id:guid}/MoveUp")]
+    [HttpPost("Venues/{id:guid}/MoveUp")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> MoveVenueUp(Guid id)
     {
@@ -358,7 +358,7 @@ public class GuideAdminController : HumansControllerBase
         return RedirectToAction(nameof(GuideVenues));
     }
 
-    [HttpPost("GuideVenues/{id:guid}/MoveDown")]
+    [HttpPost("Venues/{id:guid}/MoveDown")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> MoveVenueDown(Guid id)
     {

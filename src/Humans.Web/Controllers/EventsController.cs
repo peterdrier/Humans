@@ -15,19 +15,19 @@ namespace Humans.Web.Controllers;
 [Authorize]
 [Route("Events")]
 [ServiceFilter(typeof(EventGuideFeatureFilter))]
-public class EventGuideController : HumansControllerBase
+public class EventsController : HumansControllerBase
 {
     private readonly IEventService _guide;
     private readonly IClock _clock;
     private readonly IEmailService _emailService;
-    private readonly ILogger<EventGuideController> _logger;
+    private readonly ILogger<EventsController> _logger;
 
-    public EventGuideController(
+    public EventsController(
         IEventService guide,
         UserManager<User> userManager,
         IClock clock,
         IEmailService emailService,
-        ILogger<EventGuideController> logger)
+        ILogger<EventsController> logger)
         : base(userManager)
     {
         _guide = guide;
@@ -143,7 +143,7 @@ public class EventGuideController : HumansControllerBase
         var userEmail = user.Email;
         if (userEmail != null)
         {
-            var viewUrl = Url.Action(nameof(MySubmissions), "EventGuide", null, Request.Scheme)!;
+            var viewUrl = Url.Action(nameof(MySubmissions), "Events", null, Request.Scheme)!;
             await _emailService.SendEventSubmittedAsync(userEmail, user.UserName ?? userEmail, model.Title, viewUrl);
         }
 

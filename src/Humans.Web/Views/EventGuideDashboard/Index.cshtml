@@ -63,7 +63,7 @@
                 <i class="fa-solid fa-gavel me-1"></i>Moderation Queue
             </div>
             <div class="card-body text-center">
-                <a asp-controller="Moderation" asp-action="Index" class="btn btn-warning btn-lg">
+                <a asp-controller="EventsModeration" asp-action="Index" class="btn btn-warning btn-lg">
                     Moderate Events
                     @if (Model.PendingCount > 0)
                     {
@@ -79,10 +79,10 @@
                 <i class="fa-solid fa-file-export me-1"></i>Exports
             </div>
             <div class="card-body d-flex gap-2 justify-content-center">
-                <a asp-controller="EventGuideExport" asp-action="PrintGuide" class="btn btn-outline-danger" target="_blank">
+                <a asp-controller="EventsExport" asp-action="PrintGuide" class="btn btn-outline-danger" target="_blank">
                     <i class="fa-solid fa-print me-1"></i>Print Guide
                 </a>
-                <a asp-controller="EventGuideExport" asp-action="DownloadCsv" class="btn btn-outline-success">
+                <a asp-controller="EventsExport" asp-action="DownloadCsv" class="btn btn-outline-success">
                     <i class="fa-solid fa-download me-1"></i>Download CSV
                 </a>
             </div>

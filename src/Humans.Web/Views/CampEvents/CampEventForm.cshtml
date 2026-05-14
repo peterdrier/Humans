@@ -8,7 +8,7 @@
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a asp-controller="Camp" asp-action="Index">@Localizer["Camp_Plural"]</a></li>
         <li class="breadcrumb-item"><a asp-controller="Camp" asp-action="Details" asp-route-slug="@Model.CampSlug">@Model.CampName</a></li>
-        <li class="breadcrumb-item"><a asp-controller="CampEvents" asp-action="Index" asp-route-slug="@Model.CampSlug">Events</a></li>
+        <li class="breadcrumb-item"><a asp-controller="BarrioEvents" asp-action="Index" asp-route-slug="@Model.CampSlug">Events</a></li>
         <li class="breadcrumb-item active" aria-current="page">@(isEdit ? "Edit" : "New")</li>
     </ol>
 </nav>
@@ -32,7 +32,7 @@
 <div class="card" style="max-width: 700px;">
     <div class="card-body">
         <form method="post"
-              asp-controller="CampEvents"
+              asp-controller="BarrioEvents"
               asp-action="@(isEdit ? "Update" : "Create")"
               asp-route-slug="@Model.CampSlug"
               asp-route-eventId="@Model.Id">
@@ -138,7 +138,7 @@
             <button type="submit" class="btn btn-primary">
                 <i class="fa-solid fa-paper-plane me-1"></i>@(isEdit ? "Resubmit" : "Submit for Review")
             </button>
-            <a asp-controller="CampEvents" asp-action="Index" asp-route-slug="@Model.CampSlug" class="btn btn-outline-secondary ms-2">Cancel</a>
+            <a asp-controller="BarrioEvents" asp-action="Index" asp-route-slug="@Model.CampSlug" class="btn btn-outline-secondary ms-2">Cancel</a>
         </form>
     </div>
 </div>

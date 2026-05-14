@@ -17,12 +17,12 @@ namespace Humans.Web.Controllers.Api;
 [Route("api/events")]
 [EnableCors("GuideApi")]
 [ServiceFilter(typeof(EventGuideFeatureFilter))]
-public class GuideApiController : ControllerBase
+public class EventsApiController : ControllerBase
 {
     private readonly IEventService _guide;
     private readonly UserManager<User> _userManager;
 
-    public GuideApiController(IEventService guide, UserManager<User> userManager)
+    public EventsApiController(IEventService guide, UserManager<User> userManager)
     {
         _guide = guide;
         _userManager = userManager;

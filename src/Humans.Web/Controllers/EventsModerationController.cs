@@ -17,19 +17,19 @@ namespace Humans.Web.Controllers;
 [Authorize(Roles = RoleGroups.GuideModeratorOrAdmin)]
 [Route("Events/Moderate")]
 [ServiceFilter(typeof(EventGuideFeatureFilter))]
-public class ModerationController : HumansControllerBase
+public class EventsModerationController : HumansControllerBase
 {
     private readonly IEventService _guide;
     private readonly IEmailService _emailService;
     private readonly IUserService _users;
-    private readonly ILogger<ModerationController> _logger;
+    private readonly ILogger<EventsModerationController> _logger;
 
-    public ModerationController(
+    public EventsModerationController(
         IEventService guide,
         UserManager<User> userManager,
         IEmailService emailService,
         IUserService users,
-        ILogger<ModerationController> logger)
+        ILogger<EventsModerationController> logger)
         : base(userManager)
     {
         _guide = guide;
@@ -163,8 +163,8 @@ public class ModerationController : HumansControllerBase
         if (submitterEmail != null)
         {
             var editUrl = guideEvent.CampId.HasValue
-                ? Url.Action("Edit", "CampEvents", new { slug = guideEvent.Camp?.Slug, eventId }, Request.Scheme)!
-                : Url.Action("Edit", "EventGuide", new { eventId }, Request.Scheme)!;
+                ? Url.Action("Edit", "BarrioEvents", new { slug = guideEvent.Camp?.Slug, eventId }, Request.Scheme)!
+                : Url.Action("Edit", "Events", new { eventId }, Request.Scheme)!;
 
             switch (actionType)
             {
