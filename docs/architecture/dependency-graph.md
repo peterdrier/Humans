@@ -162,7 +162,6 @@ graph LR
     %% CityPlanning section
     CityPlan --> Camp
     CityPlan --> Team
-    CityPlan --> Prof
     CityPlan --> User
 
     %% Shifts section
@@ -195,7 +194,7 @@ graph LR
     Consent --> Onboard
     Consent --> LegalSync
     Consent --> NotifInbox
-    Consent --> Prof
+    Consent --> User
     Consent --> Metrics
 
     %% Tickets section
@@ -233,7 +232,6 @@ graph LR
     GAdmin --> UEmail
     GAdmin --> Audit
     EmailProv --> User
-    EmailProv --> Prof
     EmailProv --> GUser
     EmailProv --> UEmail
     EmailProv --> Team
