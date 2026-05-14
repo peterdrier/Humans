@@ -1,4 +1,3 @@
-using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
@@ -11,16 +10,13 @@ public enum HumanLink { None, Public, Admin }
 
 public class HumanViewComponent : ViewComponent
 {
-    private readonly IProfileService _profileService;
     private readonly IUserService _userService;
     private readonly IUrlHelperFactory _urlHelperFactory;
 
     public HumanViewComponent(
-        IProfileService profileService,
         IUserService userService,
         IUrlHelperFactory urlHelperFactory)
     {
-        _profileService = profileService;
         _userService = userService;
         _urlHelperFactory = urlHelperFactory;
     }
@@ -39,23 +35,18 @@ public class HumanViewComponent : ViewComponent
 
         if (userId != Guid.Empty)
         {
-            var fullProfile = await _profileService.GetFullProfileAsync(userId);
-            if (fullProfile is not null)
+            var info = await _userService.GetUserInfoAsync(userId);
+            if (info is not null)
             {
-                displayName = fullProfile.DisplayName;
-                if (fullProfile.HasCustomPicture && fullProfile.ProfileId != Guid.Empty)
+                displayName = info.DisplayName;
+                if (info.Profile is { HasCustomPicture: true } profile)
                 {
                     var urlHelper = _urlHelperFactory.GetUrlHelper(ViewContext);
                     profilePictureUrl = urlHelper.Action(
                         action: "Picture",
                         controller: "Profile",
-                        values: new { id = fullProfile.ProfileId, v = fullProfile.UpdatedAtTicks });
+                        values: new { id = profile.Id, v = profile.UpdatedAt.ToUnixTimeTicks() });
                 }
-            }
-            else
-            {
-                var user = await _userService.GetByIdAsync(userId);
-                displayName = user?.DisplayName;
             }
         }
 
