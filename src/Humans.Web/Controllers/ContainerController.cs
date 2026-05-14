@@ -117,6 +117,9 @@ public class ContainerController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(string slug, ContainerFormModel model, CancellationToken ct)
     {
+        var (userError, user) = await RequireCurrentUserAsync();
+        if (userError is not null) return userError;
+
         var camp = await _campService.GetCampBySlugAsync(slug, ct);
         if (camp is null) return NotFound();
 
@@ -131,7 +134,7 @@ public class ContainerController : HumansControllerBase
         }
 
         return await TryRunContainerWriteAsync(
-            () => _containerService.CreateAsync(model.ToContainerData(camp.Id), ct),
+            () => _containerService.CreateAsync(model.ToContainerData(camp.Id), user.Id, ct),
             slug,
             "Container added.");
     }
@@ -140,6 +143,9 @@ public class ContainerController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit(string slug, Guid id, ContainerFormModel model, CancellationToken ct)
     {
+        var (userError, user) = await RequireCurrentUserAsync();
+        if (userError is not null) return userError;
+
         var (notFound, container) = await ResolveAndAuthorizeAsync(id, ContainerOperationRequirement.Place, ct);
         if (notFound is not null) return notFound;
 
@@ -150,7 +156,7 @@ public class ContainerController : HumansControllerBase
         }
 
         return await TryRunContainerWriteAsync(
-            () => _containerService.UpdateAsync(id, model.ToContainerData(container!.CampId), ct),
+            () => _containerService.UpdateAsync(id, model.ToContainerData(container!.CampId), user.Id, ct),
             slug,
             "Container updated.");
     }
@@ -159,10 +165,13 @@ public class ContainerController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Delete(string slug, Guid id, CancellationToken ct)
     {
+        var (userError, user) = await RequireCurrentUserAsync();
+        if (userError is not null) return userError;
+
         var (notFound, _) = await ResolveAndAuthorizeAsync(id, ContainerOperationRequirement.Place, ct);
         if (notFound is not null) return notFound;
 
-        await _containerService.DeleteAsync(id, ct);
+        await _containerService.DeleteAsync(id, user.Id, ct);
         SetSuccess("Container deleted.");
         return RedirectToAction(nameof(Index), new { slug });
     }

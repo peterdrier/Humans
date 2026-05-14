@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Services.Containers;
 using Humans.Application.Tests.Infrastructure;
@@ -18,6 +19,7 @@ public class ContainerPlacementServiceTests : IDisposable
 {
     private const int Year = 2026;
     private static readonly Guid CampId = Guid.Parse("00000000-0000-0000-0099-000000000002");
+    private static readonly Guid ActorUserId = Guid.Parse("00000000-0000-0000-0099-000000000003");
 
     private readonly DbContextOptions<HumansDbContext> _dbOptions;
     private readonly FakeClock _clock;
@@ -35,6 +37,7 @@ public class ContainerPlacementServiceTests : IDisposable
             repo,
             Substitute.For<IFileStorage>(),
             Substitute.For<ICampService>(),
+            Substitute.For<IAuditLogService>(),
             _clock);
     }
 
@@ -66,7 +69,7 @@ public class ContainerPlacementServiceTests : IDisposable
         var geoJson = """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[]]},"properties":{"center_lng":-0.137,"center_lat":41.699,"rotation_degrees":0}}""";
         _clock.AdvanceSeconds(60);
 
-        var result = await _sut.SavePlacementAsync(container.Id, Year, geoJson);
+        var result = await _sut.SavePlacementAsync(container.Id, Year, geoJson, ActorUserId);
 
         result.LocationGeoJson.Should().Be(geoJson);
         result.UpdatedAt.Should().Be(_clock.GetCurrentInstant());
@@ -76,7 +79,7 @@ public class ContainerPlacementServiceTests : IDisposable
     [HumansFact]
     public async Task SavePlacementAsync_ThrowsWhenContainerNotFound()
     {
-        var act = async () => await _sut.SavePlacementAsync(Guid.NewGuid(), Year, "{}");
+        var act = async () => await _sut.SavePlacementAsync(Guid.NewGuid(), Year, "{}", ActorUserId);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("Container not found.");
@@ -87,9 +90,9 @@ public class ContainerPlacementServiceTests : IDisposable
     {
         var container = await SeedContainerAsync();
         var geoJson = """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[]]},"properties":{"center_lng":0,"center_lat":0,"rotation_degrees":0}}""";
-        await _sut.SavePlacementAsync(container.Id, Year, geoJson);
+        await _sut.SavePlacementAsync(container.Id, Year, geoJson, ActorUserId);
 
-        await _sut.ClearPlacementAsync(container.Id, Year);
+        await _sut.ClearPlacementAsync(container.Id, Year, ActorUserId);
 
         var placement = await _sut.GetPlacementAsync(container.Id, Year);
         placement.Should().BeNull();
@@ -100,7 +103,7 @@ public class ContainerPlacementServiceTests : IDisposable
     {
         var container = await SeedContainerAsync();
 
-        var act = async () => await _sut.ClearPlacementAsync(container.Id, Year);
+        var act = async () => await _sut.ClearPlacementAsync(container.Id, Year, ActorUserId);
 
         await act.Should().NotThrowAsync();
     }
@@ -110,10 +113,10 @@ public class ContainerPlacementServiceTests : IDisposable
     {
         var container = await SeedContainerAsync();
         var geoJson = """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[]]},"properties":{"center_lng":0,"center_lat":0,"rotation_degrees":0}}""";
-        await _sut.SavePlacementAsync(container.Id, Year, geoJson);
-        await _sut.SavePlacementAsync(container.Id, Year + 1, geoJson);
+        await _sut.SavePlacementAsync(container.Id, Year, geoJson, ActorUserId);
+        await _sut.SavePlacementAsync(container.Id, Year + 1, geoJson, ActorUserId);
 
-        await _sut.DeleteAsync(container.Id);
+        await _sut.DeleteAsync(container.Id, ActorUserId);
 
         (await _sut.GetPlacementAsync(container.Id, Year)).Should().BeNull();
         (await _sut.GetPlacementAsync(container.Id, Year + 1)).Should().BeNull();

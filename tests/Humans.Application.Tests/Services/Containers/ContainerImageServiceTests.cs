@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Containers;
 using Humans.Application.Services.Containers;
@@ -36,6 +37,7 @@ public class ContainerImageServiceTests : IDisposable
             repo,
             _fileStorage,
             Substitute.For<ICampService>(),
+            Substitute.For<IAuditLogService>(),
             _clock);
     }
 
@@ -69,7 +71,7 @@ public class ContainerImageServiceTests : IDisposable
     [HumansFact]
     public async Task CreateAsync_WithMainImage_SavesUnderContainersPrefix()
     {
-        var result = await _sut.CreateAsync(new ContainerData(
+        var result = await _sut.CreateAsync(actorUserId: Guid.NewGuid(), data: new ContainerData(
             CampId: CampId,
             Name: "Test",
             Description: null,
@@ -93,7 +95,7 @@ public class ContainerImageServiceTests : IDisposable
             CampId: container.CampId,
             Name: container.Name,
             Description: null,
-            RemoveMainImage: true));
+            RemoveMainImage: true), actorUserId: Guid.NewGuid());
 
         await _fileStorage.Received(1).DeleteAsync("uploads/containers/id/main-guid.jpg", Arg.Any<CancellationToken>());
 
@@ -110,7 +112,7 @@ public class ContainerImageServiceTests : IDisposable
             CampId: container.CampId,
             Name: container.Name,
             Description: null,
-            MainImage: FakeImage("main")));
+            MainImage: FakeImage("main")), actorUserId: Guid.NewGuid());
 
         await _fileStorage.Received(1).DeleteAsync("uploads/containers/id/main-old.jpg", Arg.Any<CancellationToken>());
 
@@ -124,7 +126,7 @@ public class ContainerImageServiceTests : IDisposable
     {
         var container = await SeedContainerAsync(imagePath: "uploads/containers/id/main.jpg");
 
-        await _sut.DeleteAsync(container.Id);
+        await _sut.DeleteAsync(container.Id, actorUserId: Guid.NewGuid());
 
         await _fileStorage.Received(1).DeleteAsync("uploads/containers/id/main.jpg", Arg.Any<CancellationToken>());
     }
@@ -132,7 +134,7 @@ public class ContainerImageServiceTests : IDisposable
     [HumansFact]
     public async Task CreateAsync_RejectsImageWithUnsupportedExtension()
     {
-        var act = async () => await _sut.CreateAsync(new ContainerData(
+        var act = async () => await _sut.CreateAsync(actorUserId: Guid.NewGuid(), data: new ContainerData(
             CampId: CampId,
             Name: "Bad",
             Description: null,

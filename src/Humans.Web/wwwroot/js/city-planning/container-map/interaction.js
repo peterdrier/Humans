@@ -118,18 +118,41 @@ function onContainerClick(e) {
     _onSelect?.(featureId);
 }
 
+// rAF coalescer for drag/rotate mousemove. Mousemove fires at 60-120Hz; the
+// active-source setData + handle reposition only need to run once per frame.
+let _pendingDrag   = null;   // { lng, lat } from last drag mousemove
+let _pendingRotate = null;   // bearing degrees from last rotate mousemove
+let _rafScheduled  = false;
+function scheduleRender() {
+    if (_rafScheduled) return;
+    _rafScheduled = true;
+    requestAnimationFrame(() => {
+        _rafScheduled = false;
+        if (_pendingDrag && _activeContainer) {
+            _currentCenter = _pendingDrag;
+            _pendingDrag = null;
+        }
+        if (_pendingRotate !== null && _activeContainer) {
+            _currentRotation = rotationFromBearing(_pendingRotate);
+            _pendingRotate = null;
+        }
+        if (!_activeContainer) return;
+        _activeFeature = buildContainerPolygon(_currentCenter.lng, _currentCenter.lat, _currentRotation);
+        _activeFeature.properties.name = _activeContainer.name;
+        updateActiveSource(_map, _activeFeature);
+        repositionHandle();
+    });
+}
+
 function onMapMouseMove(e) {
     if (!_isDragging) return;
     const dLng = e.lngLat.lng - _dragStartLngLat.lng;
     const dLat = e.lngLat.lat - _dragStartLngLat.lat;
-    _currentCenter = {
+    _pendingDrag = {
         lng: _dragStartCenter.lng + dLng,
         lat: _dragStartCenter.lat + dLat,
     };
-    _activeFeature = buildContainerPolygon(_currentCenter.lng, _currentCenter.lat, _currentRotation);
-    _activeFeature.properties.name = _activeContainer.name;
-    updateActiveSource(_map, _activeFeature);
-    repositionHandle();
+    scheduleRender();
 }
 
 async function onMapMouseUp() {
@@ -157,16 +180,11 @@ function onDocumentMouseMove(e) {
     const point = { x: e.clientX - rect.left, y: e.clientY - rect.top };
     const lngLat = _map.unproject(point);
 
-    const bearing = turf.bearing(
+    _pendingRotate = turf.bearing(
         turf.point([_currentCenter.lng, _currentCenter.lat]),
         turf.point([lngLat.lng, lngLat.lat]),
     );
-
-    _currentRotation = rotationFromBearing(bearing);
-    _activeFeature   = buildContainerPolygon(_currentCenter.lng, _currentCenter.lat, _currentRotation);
-    _activeFeature.properties.name = _activeContainer.name;
-    updateActiveSource(_map, _activeFeature);
-    repositionHandle();
+    scheduleRender();
 }
 
 async function onDocumentMouseUp() {

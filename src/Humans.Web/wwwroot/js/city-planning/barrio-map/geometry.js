@@ -1,6 +1,7 @@
 // Pure spatial helpers. Depend on turf (global) and shared state for context.
 import { appState } from './state.js';
 import { CONFIG } from './config.js';
+import { SOUND_ZONE_NAMES } from '../shared/sound-zone-colors.js';
 
 export const SIZE_RATIO_UPPER = 1.5;
 export const SIZE_RATIO_LOWER = 0.5;
@@ -9,9 +10,6 @@ export function isOutsideZone(feature) {
   if (!appState.limitZoneGeom) return false;
   try { return !!turf.difference(turf.featureCollection([feature, appState.limitZoneGeom])); } catch { return false; }
 }
-
-const SOUND_ZONE_NAMES = { 0: 'blue', 1: 'green', 2: 'yellow', 3: 'orange', 4: 'red' };
-// 5 means "surprise", which is OK for all sound zones
 
 export function getSoundZoneOutOfRange(feature, campSoundZone) {
     if (campSoundZone === undefined || campSoundZone === null || campSoundZone === -1 || campSoundZone === 5) return false;

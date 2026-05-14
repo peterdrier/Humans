@@ -7,15 +7,15 @@ public interface IContainerService : IApplicationService
     Task<IReadOnlyList<ContainerDto>> GetByCampAsync(Guid campId, CancellationToken ct = default);
     Task<IReadOnlyList<ContainerDto>> GetAllAsync(CancellationToken ct = default);
     Task<ContainerDto?> GetByIdAsync(Guid id, CancellationToken ct = default);
-    Task<ContainerDto> CreateAsync(ContainerData data, CancellationToken ct = default);
-    Task<ContainerDto> UpdateAsync(Guid id, ContainerData data, CancellationToken ct = default);
-    Task DeleteAsync(Guid id, CancellationToken ct = default);
+    Task<ContainerDto> CreateAsync(ContainerData data, Guid actorUserId, CancellationToken ct = default);
+    Task<ContainerDto> UpdateAsync(Guid id, ContainerData data, Guid actorUserId, CancellationToken ct = default);
+    Task DeleteAsync(Guid id, Guid actorUserId, CancellationToken ct = default);
 
     // Placement
     Task<ContainerPlacementDto?> GetPlacementAsync(Guid containerId, int year, CancellationToken ct = default);
     Task<IReadOnlyList<ContainerPlacementDto>> GetPlacementsByYearAsync(int year, CancellationToken ct = default);
-    Task<ContainerPlacementDto> SavePlacementAsync(Guid containerId, int year, string geoJson, CancellationToken ct = default);
-    Task ClearPlacementAsync(Guid containerId, int year, CancellationToken ct = default);
+    Task<ContainerPlacementDto> SavePlacementAsync(Guid containerId, int year, string geoJson, Guid actorUserId, CancellationToken ct = default);
+    Task ClearPlacementAsync(Guid containerId, int year, Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>
     /// Org-wide admin overview of containers for a year, grouped by camp.

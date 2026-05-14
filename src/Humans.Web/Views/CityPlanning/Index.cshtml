@@ -1,12 +1,9 @@
+@model Humans.Web.Models.CityPlanningIndexViewModel
 @{
     ViewData["Title"] = "City Planning";
-    var year = (int)ViewBag.Year;
-    var isMapAdmin = ViewBag.IsMapAdmin == true;
-    var isBarrioLead = ViewBag.IsBarrioLead == true;
-    var isPlacementOpen = ViewBag.IsPlacementOpen == true;
-    var isContainerPlacementOpen = ViewBag.IsContainerPlacementOpen == true;
-    var showBarrioMapLink = isMapAdmin || (isBarrioLead && isPlacementOpen);
-    var showContainerMapLink = isMapAdmin || (isBarrioLead && isContainerPlacementOpen);
+    var year = Model.Year;
+    var showBarrioMapLink = Model.IsMapAdmin || (Model.IsBarrioLead && Model.IsPlacementOpen);
+    var showContainerMapLink = Model.IsMapAdmin || (Model.IsBarrioLead && Model.IsContainerPlacementOpen);
     var clearMeasurementsLabel = Localizer["CityPlanning_ClearMeasurementsButton"];
 }
 

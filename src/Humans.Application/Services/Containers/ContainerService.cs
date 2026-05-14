@@ -1,8 +1,10 @@
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Containers;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
+using Humans.Domain.Enums;
 using NodaTime;
 
 namespace Humans.Application.Services.Containers;
@@ -18,17 +20,20 @@ public sealed class ContainerService : IContainerService
     private readonly IContainerRepository _repo;
     private readonly IFileStorage _fileStorage;
     private readonly ICampService _campService;
+    private readonly IAuditLogService _auditLog;
     private readonly IClock _clock;
 
     public ContainerService(
         IContainerRepository repo,
         IFileStorage fileStorage,
         ICampService campService,
+        IAuditLogService auditLog,
         IClock clock)
     {
         _repo = repo;
         _fileStorage = fileStorage;
         _campService = campService;
+        _auditLog = auditLog;
         _clock = clock;
     }
 
@@ -50,7 +55,7 @@ public sealed class ContainerService : IContainerService
         return container is null ? null : ToDto(container);
     }
 
-    public async Task<ContainerDto> CreateAsync(ContainerData data, CancellationToken ct = default)
+    public async Task<ContainerDto> CreateAsync(ContainerData data, Guid actorUserId, CancellationToken ct = default)
     {
         ValidateImage(data.MainImage);
 
@@ -74,10 +79,15 @@ public sealed class ContainerService : IContainerService
         }
 
         var created = await _repo.AddAsync(container, ct);
+        await _auditLog.LogAsync(
+            AuditAction.ContainerCreated, nameof(Container), created.Id,
+            $"Created container '{created.Name}'",
+            actorUserId,
+            relatedEntityId: created.CampId, relatedEntityType: nameof(Camp));
         return ToDto(created);
     }
 
-    public async Task<ContainerDto> UpdateAsync(Guid id, ContainerData data, CancellationToken ct = default)
+    public async Task<ContainerDto> UpdateAsync(Guid id, ContainerData data, Guid actorUserId, CancellationToken ct = default)
     {
         ValidateImage(data.MainImage);
 
@@ -107,10 +117,15 @@ public sealed class ContainerService : IContainerService
         }
 
         var updated = await _repo.UpdateAsync(container, ct);
+        await _auditLog.LogAsync(
+            AuditAction.ContainerUpdated, nameof(Container), updated.Id,
+            $"Updated container '{updated.Name}'",
+            actorUserId,
+            relatedEntityId: updated.CampId, relatedEntityType: nameof(Camp));
         return ToDto(updated);
     }
 
-    public async Task DeleteAsync(Guid id, CancellationToken ct = default)
+    public async Task DeleteAsync(Guid id, Guid actorUserId, CancellationToken ct = default)
     {
         var container = await _repo.GetByIdAsync(id, ct)
             ?? throw new InvalidOperationException("Container not found.");
@@ -125,6 +140,12 @@ public sealed class ContainerService : IContainerService
         // are removed by the repo's cascade; orphaned files on disk are
         // tolerated at this scale — see docs/sections/Containers.md.
         await _repo.DeleteAsync(id, ct);
+
+        await _auditLog.LogAsync(
+            AuditAction.ContainerDeleted, nameof(Container), container.Id,
+            $"Deleted container '{container.Name}'",
+            actorUserId,
+            relatedEntityId: container.CampId, relatedEntityType: nameof(Camp));
     }
 
     public async Task<ContainerPlacementDto?> GetPlacementAsync(Guid containerId, int year, CancellationToken ct = default)
@@ -139,7 +160,7 @@ public sealed class ContainerService : IContainerService
         return placements.Select(ToPlacementDto).ToList();
     }
 
-    public async Task<ContainerPlacementDto> SavePlacementAsync(Guid containerId, int year, string geoJson, CancellationToken ct = default)
+    public async Task<ContainerPlacementDto> SavePlacementAsync(Guid containerId, int year, string geoJson, Guid actorUserId, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(geoJson))
         {
@@ -148,10 +169,15 @@ public sealed class ContainerService : IContainerService
 
         var placement = await _repo.SavePlacementGeometryAsync(
             containerId, year, geoJson, _clock.GetCurrentInstant(), ct);
+        await _auditLog.LogAsync(
+            AuditAction.ContainerPlacementSaved, nameof(ContainerPlacement), containerId,
+            $"Placed container on map for {year}",
+            actorUserId,
+            relatedEntityId: containerId, relatedEntityType: nameof(Container));
         return ToPlacementDto(placement);
     }
 
-    public async Task ClearPlacementAsync(Guid containerId, int year, CancellationToken ct = default)
+    public async Task ClearPlacementAsync(Guid containerId, int year, Guid actorUserId, CancellationToken ct = default)
     {
         var existing = await _repo.GetPlacementAsync(containerId, year, ct);
         if (existing is null) return;
@@ -162,12 +188,19 @@ public sealed class ContainerService : IContainerService
         if (!hasMetadata)
         {
             await _repo.DeletePlacementAsync(containerId, year, ct);
-            return;
+        }
+        else
+        {
+            existing.LocationGeoJson = null;
+            existing.UpdatedAt = _clock.GetCurrentInstant();
+            await _repo.UpsertPlacementAsync(existing, ct);
         }
 
-        existing.LocationGeoJson = null;
-        existing.UpdatedAt = _clock.GetCurrentInstant();
-        await _repo.UpsertPlacementAsync(existing, ct);
+        await _auditLog.LogAsync(
+            AuditAction.ContainerPlacementCleared, nameof(ContainerPlacement), containerId,
+            $"Cleared container placement for {year}",
+            actorUserId,
+            relatedEntityId: containerId, relatedEntityType: nameof(Container));
     }
 
     public async Task<ContainerAdminOverview> GetAdminOverviewAsync(int year, CancellationToken ct = default)

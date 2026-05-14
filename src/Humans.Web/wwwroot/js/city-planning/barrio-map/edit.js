@@ -93,8 +93,7 @@ export function exitEditMode() {
     setActivePolygonDim(null);
     appState.activeCampSeasonId = null;
     document.getElementById('save-btn').disabled = true;
-    const cancelBtn = document.getElementById('cancel-btn');
-    if (cancelBtn) cancelBtn.style.display = 'none';
+    document.getElementById('cancel-btn')?.classList.add('d-none');
     clearDrawLabel();
     setEditingControlsVisible(false);
 }
@@ -124,8 +123,7 @@ export function onDrawDelete() {
     setActivePolygonDim(null);
     appState.activeCampSeasonId = null;
     document.getElementById('save-btn').disabled = true;
-    const cancelBtn = document.getElementById('cancel-btn');
-    if (cancelBtn) cancelBtn.style.display = 'none';
+    document.getElementById('cancel-btn')?.classList.add('d-none');
     clearDrawLabel();
     setEditingControlsVisible(false);
 }
@@ -137,17 +135,16 @@ export function setEditingControlsVisible(visible) {
     if (!toolbar) return;
     const saveBtn = document.getElementById('save-btn');
     if (visible) {
-        toolbar.style.display = '';
-        const addMyBarrioBtn = document.getElementById('add-my-barrio-btn');
-        if (addMyBarrioBtn) addMyBarrioBtn.style.display = 'none';
-        if (saveBtn) saveBtn.style.display = '';
+        toolbar.classList.remove('d-none');
+        document.getElementById('add-my-barrio-btn')?.classList.add('d-none');
+        saveBtn?.classList.remove('d-none');
         return;
     }
-    if (saveBtn) saveBtn.style.display = 'none';
+    saveBtn?.classList.add('d-none');
     updateAddMyBarrioVisibility();
-    const addMyBarrioVisible = document.getElementById('add-my-barrio-btn')?.style.display !== 'none';
+    const addMyBarrioVisible = document.getElementById('add-my-barrio-btn')?.classList.contains('d-none') === false;
     const addBarrioPresent   = !!document.getElementById('add-barrio-container');
-    if (!addMyBarrioVisible && !addBarrioPresent) toolbar.style.display = 'none';
+    if (!addMyBarrioVisible && !addBarrioPresent) toolbar.classList.add('d-none');
 }
 
 export function updateAddMyBarrioVisibility() {
@@ -155,10 +152,9 @@ export function updateAddMyBarrioVisibility() {
     if (!btn) return;
     const hasPolygon = appState.campMap.campPolygons.some(p => p.campSeasonId === CONFIG.USER_CAMP_SEASON_ID);
     const show = CONFIG.IS_PLACEMENT_OPEN && CONFIG.USER_CAMP_SEASON_ID && !hasPolygon;
-    btn.style.display = show ? '' : 'none';
+    btn.classList.toggle('d-none', !show);
     if (show) {
-        const toolbar = document.getElementById('main-toolbar');
-        if (toolbar) toolbar.style.display = '';
+        document.getElementById('main-toolbar')?.classList.remove('d-none');
     }
 }
 
@@ -179,8 +175,7 @@ export function updateSaveButton() {
         f.geometry.type === 'Polygon' && (f.geometry.coordinates[0]?.length ?? 0) >= 4);
     const editing = hasValidPolygon && appState.activeCampSeasonId;
     document.getElementById('save-btn').disabled = !editing;
-    const cancelBtn = document.getElementById('cancel-btn');
-    if (cancelBtn) cancelBtn.style.display = appState.activeCampSeasonId ? '' : 'none';
+    document.getElementById('cancel-btn')?.classList.toggle('d-none', !appState.activeCampSeasonId);
 
     if (hasValidPolygon) {
         const poly     = features[0];

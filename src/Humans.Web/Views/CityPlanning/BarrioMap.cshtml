@@ -1,12 +1,13 @@
+@model Humans.Web.Models.CityPlanningBarrioMapViewModel
 @{
     ViewData["Title"] = Localizer["CityPlanning_BarrioMapTitle"].Value;
-    var isPlacementOpen = (bool)ViewBag.IsPlacementOpen;
-    var isMapAdmin = (bool)ViewBag.IsMapAdmin;
-    var userCampSeasonId = (string)ViewBag.UserCampSeasonId;
-    var seasonsWithout = (List<Humans.Application.Interfaces.CitiPlanning.CampSeasonSummaryDto>)ViewBag.SeasonsWithoutCampPolygon;
+    var isPlacementOpen = Model.IsPlacementOpen;
+    var isMapAdmin = Model.IsMapAdmin;
+    var userCampSeasonId = Model.UserCampSeasonId;
+    var seasonsWithout = Model.SeasonsWithoutCampPolygon;
     var showMainToolbar = isMapAdmin && seasonsWithout.Any();
-    var placementOpensAt = ViewBag.PlacementOpensAt as NodaTime.LocalDateTime?;
-    var placementClosesAt = ViewBag.PlacementClosesAt as NodaTime.LocalDateTime?;
+    var placementOpensAt = Model.PlacementOpensAt;
+    var placementClosesAt = Model.PlacementClosesAt;
     var clearMeasurementsLabel = Localizer["CityPlanning_ClearMeasurementsButton"];
 }
 
@@ -95,11 +96,11 @@
     <div class="position-absolute bottom-0 start-50 translate-middle-x mb-3 d-flex flex-row gap-2">
         @if (isPlacementOpen || isMapAdmin)
         {
-        <div id="main-toolbar" class="card" style="@(showMainToolbar ? "" : "display:none")">
+        <div id="main-toolbar" class="card @(showMainToolbar ? "" : "d-none")">
             <div class="card-body d-flex flex-row gap-2 align-items-center">
             @if (isPlacementOpen && !string.IsNullOrEmpty(userCampSeasonId))
             {
-                <button id="add-my-barrio-btn" class="btn btn-primary btn-sm shadow" style="display:none">
+                <button id="add-my-barrio-btn" class="btn btn-primary btn-sm shadow d-none">
                     <i class="fa-solid fa-plus me-1"></i> @Localizer["CityPlanning_AddMyBarrioButton"]
                 </button>
             }
@@ -115,13 +116,13 @@
                     </select>
                 </div>
             }
-            <button id="save-btn" class="btn btn-success btn-sm" style="display:none" disabled>
+            <button id="save-btn" class="btn btn-success btn-sm d-none" disabled>
                 <i class="fa-solid fa-save me-1"></i> @Localizer["CityPlanning_SaveButton"]
             </button>
-            <button id="cancel-btn" class="btn btn-outline-secondary btn-sm" style="display:none">
+            <button id="cancel-btn" class="btn btn-outline-secondary btn-sm d-none">
                 <i class="fa-solid fa-times me-1"></i> @Localizer["Common_Cancel"]
             </button>
-            <button id="history-btn" class="btn btn-outline-primary btn-sm" style="display:none" disabled>
+            <button id="history-btn" class="btn btn-outline-primary btn-sm d-none" disabled>
                 <i class="fa-solid fa-history me-1"></i> @Localizer["CityPlanning_HistoryButton"]
             </button>
             </div>
@@ -130,7 +131,7 @@
     </div>
 </div>
 
-@await Html.PartialAsync("_PlacementHelpModal")
+@await Html.PartialAsync("_PlacementHelpModal", (placementOpensAt, placementClosesAt))
 
 @await Html.PartialAsync("_HistoryOffcanvas")
 

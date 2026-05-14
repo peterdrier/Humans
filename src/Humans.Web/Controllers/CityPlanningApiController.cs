@@ -290,7 +290,7 @@ public class CityPlanningApiController : ControllerBase
             return UnprocessableEntity("Invalid container placement GeoJSON.");
         }
 
-        var updated = await _containerService.SavePlacementAsync(id, year, request.GeoJson, cancellationToken);
+        var updated = await _containerService.SavePlacementAsync(id, year, request.GeoJson, CurrentUserId(), cancellationToken);
         return Ok(new { id = updated.ContainerId, year = updated.Year, locationGeoJson = updated.LocationGeoJson });
     }
 
@@ -306,7 +306,7 @@ public class CityPlanningApiController : ControllerBase
             User, ContainerAuthorizationTarget.For(container), ContainerOperationRequirement.Place);
         if (!authResult.Succeeded) return Forbid();
 
-        await _containerService.ClearPlacementAsync(id, year, cancellationToken);
+        await _containerService.ClearPlacementAsync(id, year, CurrentUserId(), cancellationToken);
         return NoContent();
     }
 

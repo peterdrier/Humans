@@ -91,3 +91,24 @@ public class ContainerMapViewModel
     public string CampSlug { get; set; } = string.Empty; // empty for admins
     public string CampName { get; set; } = string.Empty; // empty for admins
 }
+
+public class CityPlanningIndexViewModel
+{
+    public int Year { get; set; }
+    public bool IsMapAdmin { get; set; }
+    public bool IsBarrioLead { get; set; }
+    public bool IsPlacementOpen { get; set; }
+    public bool IsContainerPlacementOpen { get; set; }
+}
+
+public class CityPlanningBarrioMapViewModel
+{
+    public int Year { get; set; }
+    public bool IsPlacementOpen { get; set; }
+    public bool IsMapAdmin { get; set; }
+    public string UserCampSeasonId { get; set; } = string.Empty;
+    public Guid CurrentUserId { get; set; }
+    public List<Humans.Application.Interfaces.CitiPlanning.CampSeasonSummaryDto> SeasonsWithoutCampPolygon { get; set; } = new();
+    public NodaTime.LocalDateTime? PlacementOpensAt { get; set; }
+    public NodaTime.LocalDateTime? PlacementClosesAt { get; set; }
+}
