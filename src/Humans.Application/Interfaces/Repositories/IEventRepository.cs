@@ -8,7 +8,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// Data-access interface for the EventGuide section. The only file that may
 /// touch the guide_* and event_categories tables after the §15 migration.
 /// </summary>
-public interface IEventGuideRepository : IRepository
+public interface IEventRepository : IRepository
 {
     // ── Settings ─────────────────────────────────────────────────────────
     Task<EventGuideSettings?> GetGuideSettingsAsync(CancellationToken ct = default);

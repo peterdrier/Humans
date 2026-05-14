@@ -1,7 +1,7 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.EventGuide;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Infrastructure.Repositories.EventGuide;
+using Humans.Infrastructure.Repositories.Events;
 using Humans.Web.Controllers;
 using Humans.Web.Controllers.Api;
 using Microsoft.AspNetCore.Mvc;
@@ -34,7 +34,7 @@ public class EventGuideArchitectureTests
         ctor.GetParameters()
             .Should().NotContain(
                 p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
-                because: "Application services must use IEventGuideRepository instead of taking DbContext directly");
+                because: "Application services must use IEventRepository instead of taking DbContext directly");
     }
 
     [HumansFact]
@@ -43,7 +43,7 @@ public class EventGuideArchitectureTests
         var ctor = typeof(EventGuideService).GetConstructors().Single();
         var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
 
-        paramTypes.Should().Contain(typeof(IEventGuideRepository));
+        paramTypes.Should().Contain(typeof(IEventRepository));
     }
 
     [HumansFact]
@@ -56,7 +56,7 @@ public class EventGuideArchitectureTests
     [HumansFact]
     public void IEventGuideRepository_LivesInApplicationInterfacesRepositoriesNamespace()
     {
-        typeof(IEventGuideRepository).Namespace
+        typeof(IEventRepository).Namespace
             .Should().Be("Humans.Application.Interfaces.Repositories",
                 because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
     }
@@ -64,10 +64,10 @@ public class EventGuideArchitectureTests
     [HumansFact]
     public void EventGuideRepository_IsSealedAndImplementsRepositoryInterface()
     {
-        typeof(EventGuideRepository).IsSealed.Should().BeTrue(
+        typeof(EventRepository).IsSealed.Should().BeTrue(
             because: "repository implementations are sealed; new behavior belongs on the interface");
 
-        typeof(IEventGuideRepository).IsAssignableFrom(typeof(EventGuideRepository))
+        typeof(IEventRepository).IsAssignableFrom(typeof(EventRepository))
             .Should().BeTrue();
     }
 

@@ -6,13 +6,13 @@ using Humans.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 
-namespace Humans.Infrastructure.Repositories.EventGuide;
+namespace Humans.Infrastructure.Repositories.Events;
 
-public sealed class EventGuideRepository : IEventGuideRepository
+public sealed class EventRepository : IEventRepository
 {
     private readonly HumansDbContext _db;
 
-    public EventGuideRepository(HumansDbContext db) => _db = db;
+    public EventRepository(HumansDbContext db) => _db = db;
 
     // ── Settings ─────────────────────────────────────────────────────────
 

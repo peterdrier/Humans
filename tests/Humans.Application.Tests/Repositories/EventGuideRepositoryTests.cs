@@ -2,7 +2,7 @@ using AwesomeAssertions;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Repositories.EventGuide;
+using Humans.Infrastructure.Repositories.Events;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using NodaTime.Testing;
@@ -13,7 +13,7 @@ namespace Humans.Application.Tests.Repositories;
 public sealed class EventGuideRepositoryTests : IDisposable
 {
     private readonly HumansDbContext _db;
-    private readonly EventGuideRepository _repo;
+    private readonly EventRepository _repo;
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 5, 5, 12, 0));
 
     public EventGuideRepositoryTests()
@@ -23,7 +23,7 @@ public sealed class EventGuideRepositoryTests : IDisposable
             .Options;
 
         _db = new HumansDbContext(options);
-        _repo = new EventGuideRepository(_db);
+        _repo = new EventRepository(_db);
     }
 
     public void Dispose()

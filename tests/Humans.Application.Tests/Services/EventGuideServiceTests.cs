@@ -212,7 +212,7 @@ public sealed class EventGuideServiceTests
         _repo.SaveChangesCount.Should().Be(1);
     }
 
-    private sealed class FakeEventGuideRepository : IEventGuideRepository
+    private sealed class FakeEventGuideRepository : IEventRepository
     {
         public EventGuideSettings? Settings { get; set; }
         public Dictionary<Guid, EventSettings> EventSettings { get; } = [];

@@ -10,10 +10,10 @@ namespace Humans.Application.Services.EventGuide;
 
 public sealed class EventGuideService : IEventGuideService
 {
-    private readonly IEventGuideRepository _repo;
+    private readonly IEventRepository _repo;
     private readonly IClock _clock;
 
-    public EventGuideService(IEventGuideRepository repo, IClock clock)
+    public EventGuideService(IEventRepository repo, IClock clock)
     {
         _repo = repo;
         _clock = clock;
