@@ -7,7 +7,6 @@ using System.Text.Json.Serialization;
 using Humans.Application.Interfaces.Mailer;
 using Humans.Application.Interfaces.Mailer.Dtos;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using NodaTime;
 
 namespace Humans.Infrastructure.Services.Mailer;
@@ -33,7 +32,6 @@ public sealed class MailerLiteClient : IMailerLiteService
     private static readonly JsonSerializerOptions Json = BuildJson();
     private readonly IHttpClientFactory _httpFactory;
     private readonly IClock _clock;
-    private readonly MailerLiteOptions _options;
     private readonly ILogger<MailerLiteClient> _logger;
     private readonly SemaphoreSlim _gate = new(1, 1);
 
@@ -45,12 +43,10 @@ public sealed class MailerLiteClient : IMailerLiteService
     public MailerLiteClient(
         IHttpClientFactory httpFactory,
         IClock clock,
-        IOptions<MailerLiteOptions> options,
         ILogger<MailerLiteClient> logger)
     {
         _httpFactory = httpFactory;
         _clock = clock;
-        _options = options.Value;
         _logger = logger;
     }
 
@@ -154,37 +150,35 @@ public sealed class MailerLiteClient : IMailerLiteService
         if (emails.Count == 0)
             return new BulkImportResult(0, 0, 0, 0);
 
-        int created = 0, updated = 0, duplicates = 0, errors = 0;
-        var chunkSize = Math.Max(1, _options.BulkImportChunkSize);
+        // MailerLite's documented bulk-import endpoint
+        // (POST /api/groups/{id}/import-subscribers) is asynchronous: it returns
+        // an import_progress_url and we'd have to poll. Per-email upsert via
+        // POST /api/subscribers with the groups array is synchronous, returns
+        // the subscriber object directly, and is fine at our ~500-user scale.
+        // ML treats it as upsert-or-update keyed on email.
+        int created = 0, errors = 0;
 
-        foreach (var chunk in emails.Chunk(chunkSize))
+        foreach (var email in emails)
         {
             var payload = new
             {
-                subscribers = chunk.Select(e => new { email = e }).ToArray(),
-                resubscribe = false,
-                autoresponders = false,
+                email,
+                groups = new[] { groupId },
             };
             using var body = JsonContent.Create(payload, options: Json);
-            using var resp = await SendAsync(
-                HttpMethod.Post,
-                $"/api/groups/{Uri.EscapeDataString(groupId)}/subscribers/import",
-                body, ct);
+            using var resp = await SendAsync(HttpMethod.Post, "/api/subscribers", body, ct);
             if (!resp.IsSuccessStatusCode)
             {
-                errors += chunk.Length;
+                errors++;
                 _logger.LogWarning(
-                    "BulkImport chunk failed for group {GroupId}: {StatusCode}",
-                    groupId, (int)resp.StatusCode);
+                    "Subscriber upsert failed for {Email} into group {GroupId}: {StatusCode}",
+                    email, groupId, (int)resp.StatusCode);
                 continue;
             }
-            var parsed = await resp.Content.ReadFromJsonAsync<BulkImportEnvelope>(Json, ct);
-            created += parsed?.Imported ?? 0;
-            updated += parsed?.Updated ?? 0;
-            duplicates += parsed?.Duplicates ?? 0;
+            created++;
         }
 
-        return new BulkImportResult(created, updated, duplicates, errors);
+        return new BulkImportResult(Created: created, Updated: 0, Duplicates: 0, Errors: errors);
     }
 
     private async Task<MailerLiteGroup> RequireHumansGroupAsync(string groupId, CancellationToken ct)
@@ -369,9 +363,4 @@ public sealed class MailerLiteClient : IMailerLiteService
 
     private sealed record GroupSingleEnvelope(
         [property: JsonPropertyName("data")] MailerLiteGroup Data);
-
-    private sealed record BulkImportEnvelope(
-        [property: JsonPropertyName("imported")] int Imported,
-        [property: JsonPropertyName("updated")] int Updated,
-        [property: JsonPropertyName("duplicates")] int Duplicates);
 }

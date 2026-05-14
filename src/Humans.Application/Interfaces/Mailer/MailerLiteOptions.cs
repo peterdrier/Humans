@@ -19,11 +19,4 @@ public sealed class MailerLiteOptions
     /// to enable a daily 06:00 UTC run.
     /// </summary>
     public string AudienceSyncCron { get; set; } = string.Empty;
-
-    /// <summary>
-    /// Max subscribers per call to <c>POST /api/groups/{id}/subscribers/import</c>.
-    /// Implementer to verify ML v2 current ceiling; 50 is the documented safe value
-    /// observed in 2026-05.
-    /// </summary>
-    public int BulkImportChunkSize { get; set; } = 50;
 }

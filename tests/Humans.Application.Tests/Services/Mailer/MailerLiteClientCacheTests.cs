@@ -50,7 +50,6 @@ public class MailerLiteClientCacheTests
 
     private static MailerLiteClient BuildClient(HttpMessageHandler handler) =>
         new(new StubHttpClientFactory(handler), NodaTime.SystemClock.Instance,
-            Microsoft.Extensions.Options.Options.Create(new Humans.Application.Interfaces.Mailer.MailerLiteOptions()),
             Microsoft.Extensions.Logging.Abstractions.NullLogger<MailerLiteClient>.Instance);
 
     // Returns one empty subscriber page and one empty groups page. The client

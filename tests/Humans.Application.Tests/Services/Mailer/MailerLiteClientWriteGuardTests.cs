@@ -1,10 +1,8 @@
 using System.Net;
 using System.Net.Http;
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Mailer;
 using Humans.Infrastructure.Services.Mailer;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 
 namespace Humans.Application.Tests.Services.Mailer;
 
@@ -69,7 +67,6 @@ public class MailerLiteClientWriteGuardTests
     private static MailerLiteClient NewClient(HttpMessageHandler handler) =>
         new(new StubHttpClientFactory(handler),
             NodaTime.SystemClock.Instance,
-            Options.Create(new MailerLiteOptions()),
             NullLogger<MailerLiteClient>.Instance);
 
     private sealed class ScriptedHandler : HttpMessageHandler
