@@ -51,15 +51,12 @@ public class GuideApiController : ControllerBase
 
             var campSeason = e.Camp?.Seasons.OrderByDescending(s => s.Year).FirstOrDefault();
             var campName = campSeason?.Name ?? e.Camp?.Slug;
-            var submitterName = e.CampId == null
-                ? e.SubmitterUser?.Email
-                : null;
 
             foreach (var occurrenceStart in e.GetOccurrenceInstants())
             {
                 var eventDayOffset = ComputeDayOffset(occurrenceStart, gateOpeningDate, tz);
                 if (day.HasValue && eventDayOffset != day.Value) continue;
-                results.Add(BuildEventDto(e, occurrenceStart, eventDayOffset, campName, submitterName));
+                results.Add(BuildEventDto(e, occurrenceStart, eventDayOffset, campName));
             }
         }
 
@@ -80,11 +77,8 @@ public class GuideApiController : ControllerBase
         var gateOpeningDate = guideSettings?.EventSettings?.GateOpeningDate;
         var campSeason = e.Camp?.Seasons.OrderByDescending(s => s.Year).FirstOrDefault();
         var campName = campSeason?.Name ?? e.Camp?.Slug;
-        var submitterName = e.CampId == null
-            ? e.SubmitterUser?.Email
-            : null;
 
-        return Ok(BuildEventDto(e, e.StartAt, ComputeDayOffset(e.StartAt, gateOpeningDate, tz), campName, submitterName));
+        return Ok(BuildEventDto(e, e.StartAt, ComputeDayOffset(e.StartAt, gateOpeningDate, tz), campName));
     }
 
     [HttpGet("barrios")]
@@ -131,7 +125,7 @@ public class GuideApiController : ControllerBase
             events.Select(e =>
             {
                 var dayOffset = ComputeDayOffset(e.StartAt, gateOpeningDate, tz);
-                return BuildEventDto(e, e.StartAt, dayOffset, campName, null);
+                return BuildEventDto(e, e.StartAt, dayOffset, campName);
             }).ToList()));
     }
 
@@ -209,10 +203,7 @@ public class GuideApiController : ControllerBase
             var e = f.GuideEvent;
             var campSeason = e.Camp?.Seasons.OrderByDescending(s => s.Year).FirstOrDefault();
             var campName = campSeason?.Name ?? e.Camp?.Slug;
-            var submitterName = e.CampId == null
-                ? e.SubmitterUser?.Email
-                : null;
-            return BuildEventDto(e, e.StartAt, ComputeDayOffset(e.StartAt, gateOpeningDate, tz), campName, submitterName);
+            return BuildEventDto(e, e.StartAt, ComputeDayOffset(e.StartAt, gateOpeningDate, tz), campName);
         }).ToList();
 
         return Ok(results);
@@ -255,7 +246,7 @@ public class GuideApiController : ControllerBase
     }
 
     private static GuideEventApiDto BuildEventDto(
-        GuideEvent e, Instant startAt, int dayOffset, string? campName, string? submitterName)
+        GuideEvent e, Instant startAt, int dayOffset, string? campName)
     {
         return new GuideEventApiDto(
             e.Id,
@@ -274,7 +265,6 @@ public class GuideApiController : ControllerBase
             e.GuideSharedVenueId.HasValue && e.GuideSharedVenue != null
                 ? new GuideEventVenueApiDto(e.GuideSharedVenueId.Value, e.GuideSharedVenue.Name)
                 : null,
-            submitterName,
             e.LocationNote,
             e.PriorityRank);
     }

@@ -1,5 +1,6 @@
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.EventGuide;
+using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -19,17 +20,20 @@ public class ModerationController : HumansControllerBase
 {
     private readonly IEventGuideService _guide;
     private readonly IEmailService _emailService;
+    private readonly IUserService _users;
     private readonly ILogger<ModerationController> _logger;
 
     public ModerationController(
         IEventGuideService guide,
         UserManager<User> userManager,
         IEmailService emailService,
+        IUserService users,
         ILogger<ModerationController> logger)
         : base(userManager)
     {
         _guide = guide;
         _emailService = emailService;
+        _users = users;
         _logger = logger;
     }
 
@@ -152,8 +156,8 @@ public class ModerationController : HumansControllerBase
             moderator.Id, actionLabel, guideEvent.Title, eventId);
 
         var submitterEmail = guideEvent.SubmitterUser.Email;
-        var submitterName = guideEvent.SubmitterUser.Email
-            ?? "Unknown";
+        var submitterInfo = await _users.GetUserInfoAsync(guideEvent.SubmitterUserId);
+        var submitterName = submitterInfo?.DisplayName ?? "Unknown";
 
         if (submitterEmail != null)
         {

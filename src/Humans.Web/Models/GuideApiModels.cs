@@ -11,7 +11,6 @@ public sealed record GuideEventApiDto(
     bool IsRecurring,
     GuideEventCampApiDto? Camp,
     GuideEventVenueApiDto? Venue,
-    string? SubmitterName,
     string? LocationNote,
     int PriorityRank);
 

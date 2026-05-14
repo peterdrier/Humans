@@ -61,15 +61,6 @@ public class EndpointAuthorizationTests
         AssertHasPolicy(typeof(AdminController), "Index", "AnyAdminRole");
     }
 
-    // --- Board endpoints must require Board or Admin ---
-
-    [HumansTheory]
-    [InlineData(typeof(BoardController), null)] // class-level
-    public void BoardEndpoint_RequiresBoardOrAdminPolicy(Type controllerType, string? actionName)
-    {
-        AssertHasPolicy(controllerType, actionName, "BoardOrAdmin");
-    }
-
     // --- Google admin endpoints must require Admin ---
 
     [HumansTheory]

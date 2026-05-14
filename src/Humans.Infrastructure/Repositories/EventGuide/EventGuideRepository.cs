@@ -170,11 +170,16 @@ public sealed class EventGuideRepository : IEventGuideRepository
 
     public async Task<Dictionary<GuideEventStatus, int>> GetModerationStatusCountsAsync(CancellationToken ct = default)
     {
+        var moderationStatuses = new[]
+        {
+            GuideEventStatus.Pending,
+            GuideEventStatus.Approved,
+            GuideEventStatus.Rejected,
+            GuideEventStatus.ResubmitRequested,
+        };
+
         var groups = await _db.GuideEvents
-            .Where(e => e.Status == GuideEventStatus.Pending
-                     || e.Status == GuideEventStatus.Approved
-                     || e.Status == GuideEventStatus.Rejected
-                     || e.Status == GuideEventStatus.ResubmitRequested)
+            .Where(e => moderationStatuses.Contains(e.Status))
             .GroupBy(e => e.Status)
             .Select(g => new { Status = g.Key, Count = g.Count() })
             .ToListAsync(ct);
