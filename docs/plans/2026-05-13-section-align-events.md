@@ -74,9 +74,9 @@ For each cross-section read we currently do via `.Include` or direct DbSet acces
 | `.Include(Camp).ThenInclude(Seasons)` (camp + season context for event listings) | Camps | 🟡 **Probably sufficient** — `ICampService.GetCampsForYearAsync(int year, CT)` returns `CampInfo[]`; `BuildCampDetailDataBySlugAsync` returns season-laden detail. Need to verify the shape matches what the event-listing views actually need before Stage 3. | **Verify in Stage 3.** If gap, follow-up `/section-align` on Camps. |
 | `_db.EventSettings.…` (gate opening date, timezone, event name) + `.Include(g => g.EventSettings)` | Shifts/Calendar | ❌ **No supplier service.** `EventSettings` is currently only read via `IShiftSignupRepository` (Shifts' own repo) and the new `IEventGuideRepository.GetActiveEventSettingsAsync` (cross-section violation). No section-level service exposes EventSettings reads. | **CONFIRMED GAP.** Follow-up `/section-align` on Shifts/Calendar required: add `IEventSettingsService.GetActiveAsync()` / `GetByIdAsync(Guid)`. Open as a GitHub issue. Stage 3 documents the gap and leaves Events' cross-section read in place until the supplier ships. |
 
-### Follow-up `/section-align` issues to open before Stage 1
+### Follow-up `/section-align` issues
 
-- **Shifts/Calendar** — expose `IEventSettingsService` so Events can drop its `_db.EventSettings` reads. Concrete need: `GetActiveAsync(CT)`, `GetByIdAsync(Guid id, CT)`. Label `section:shifts`, `refactoring`, `pace:1`.
+- **Shifts/Calendar — [#719](https://github.com/nobodies-collective/Humans/issues/719)** — expose `IEventSettingsService` so Events can drop its `_db.EventSettings` reads. Opened 2026-05-14.
 - **Camps** (conditional) — if Stage 3 finds `GetCampsForYearAsync` insufficient for the event-listing camp+season projection, open a Camps follow-up. Defer creation until confirmed.
 
 ---
@@ -586,7 +586,361 @@ Bot WARN finding: 8 methods total added across two interfaces. `interface-method
 
 ---
 
-## Phase plan
+## Stage detail (post-Stage-0)
+
+### Tooling discipline (every stage)
+
+- **`reforge` first, grep second.** For any C# symbol rename / move / interface change, run reforge to enumerate callers, references, implementations. Reforge sees what grep can't (interface dispatch, `nameof()`, attributes, LINQ expression trees). Only after the reforge edits land do you run the **inbound-link sweep** (the 7-bucket grep in the section-align skill's Phase 1 doc) for string-typed references reforge can't see (Razor `asp-controller=`, `Url.Action`, allow-lists, config keys, doc references).
+- **Build green between commits.** `dotnet build Humans.slnx -v quiet` after each rename group. If a rename group fails build mid-way, fix forward — don't roll back the group.
+- **One rename group per commit.** Reviewers (Codex + Claude) re-review each push; smaller commits = better signal.
+
+### Stage 1 — Bot blockers, rename-independent
+
+4 fixes, can land in 1–2 commits:
+
+1. **Razor `selected="@(bool)"` bug** — `Views/CampEvents/CampEventForm.cshtml:61, 74, 94`. Change `selected="@(x == y)"` → `selected="@(x == y ? "selected" : null)"`. (The other 7 sites in this section already use the safe form.)
+2. **Display-name HARD RULE + PII leak** — `ModerationController.cs:155`, `GuideApiController.cs:55`. Switch `submitterUser.Email` (used both as display name and shipped in anonymous DTO) to `IUserService.GetUserInfoAsync(userId)` → `userInfo.DisplayName`. Strip `Email` from the public-API DTO entirely (no replacement; submitters aren't named publicly).
+3. **Enum `||`-chain** — `EventGuideRepository.cs:175`. Switch chained equality to `new[] { … }.Contains(e.Status)`.
+
+Thread-reply bot findings 1, 5, 6, 8 on push.
+
+### Stage 2 — The big rename (collision-safe order)
+
+Each numbered group is one commit. Build green at every step. Reforge commands inline.
+
+**2.1 — Domain entities + enums (leaves first).** Nothing in the section depends on these renames except the rest of the section.
+
+```
+reforge references GuideEvent
+reforge references GuideSettings
+reforge references GuideSharedVenue
+reforge references ModerationAction
+reforge references UserEventFavourite
+reforge references UserGuidePreference
+reforge references GuideEventStatus
+reforge references ModerationActionType
+```
+
+Renames per the locked entity map:
+- `GuideEvent` → `Event`
+- `GuideSettings` → `EventGuideSettings`
+- `GuideSharedVenue` → `EventVenue`
+- `ModerationAction` → `EventModerationAction`
+- `UserEventFavourite` → `EventFavourite`
+- `UserGuidePreference` → `EventPreference`
+- `GuideEventStatus` → `EventStatus`
+- `ModerationActionType` → `EventModerationActionType`
+- `EventCategory` — unchanged
+
+Includes file renames (`Domain/Entities/GuideEvent.cs` → `Event.cs`) via `git mv` and matching `using`-statement updates.
+
+**2.2 — DbSet properties + `ToTable` / `[Table]` attributes.**
+
+Edit `HumansDbContext.cs:70–76`:
+```csharp
+public DbSet<Event> Events => Set<Event>();
+public DbSet<EventGuideSettings> EventGuideSettings => Set<EventGuideSettings>();
+public DbSet<EventCategory> EventCategories => Set<EventCategory>();
+public DbSet<EventVenue> EventVenues => Set<EventVenue>();
+public DbSet<EventModerationAction> EventModerationActions => Set<EventModerationAction>();
+public DbSet<EventFavourite> EventFavourites => Set<EventFavourite>();
+public DbSet<EventPreference> EventPreferences => Set<EventPreference>();
+```
+
+Update `ToTable(...)` in all 7 entity configurations to match the locked DB table map.
+
+**Do NOT regenerate the migration yet** — that happens in Stage 4 after cross-section navs are stripped (Stage 3) so the regen captures everything in one file.
+
+**2.3 — Repository (interface + impl + namespace + folder).**
+
+```
+reforge references IEventGuideRepository
+reforge references EventGuideRepository
+```
+
+- `IEventGuideRepository` → `IEventRepository`
+- `EventGuideRepository` → `EventRepository`
+- `git mv` `src/Humans.Application/Interfaces/Repositories/IEventGuideRepository.cs` → `IEventRepository.cs`
+- `git mv` `src/Humans.Infrastructure/Repositories/EventGuide/` → `Events/`
+- Namespace `Humans.Infrastructure.Repositories.EventGuide` → `Humans.Infrastructure.Repositories.Events`
+
+**2.4 — Service (interface + impl + namespace + folder).**
+
+```
+reforge references IEventGuideService
+reforge references EventGuideService
+```
+
+- `IEventGuideService` → `IEventService`
+- `EventGuideService` → `EventService`
+- `git mv` `src/Humans.Application/Interfaces/EventGuide/` → `Events/`
+- `git mv` `src/Humans.Application/Services/EventGuide/` → `Events/`
+- Namespaces follow
+
+**2.5 — ViewModels.**
+
+Consolidate the 6 grab-bag files under `Models/Events/`:
+- `Models/CampEventViewModels.cs` → `Models/Events/BarrioEventViewModels.cs`
+- `Models/DashboardViewModel.cs` → `Models/Events/EventsDashboardViewModel.cs`
+- `Models/GuideAdminViewModels.cs` → `Models/Events/EventsAdminViewModels.cs`
+- `Models/GuideApiModels.cs` → `Models/Events/EventsApiModels.cs`
+- `Models/IndividualEventViewModels.cs` → `Models/Events/IndividualEventViewModels.cs`
+- `Models/ModerationViewModels.cs` → `Models/Events/EventsModerationViewModels.cs`
+
+```
+reforge references DashboardViewModel    # confirm this is only used by the events dashboard before rename
+```
+
+(Don't rename `DashboardViewModel` if it's actually shared — but per the file's existing scope it's events-only.)
+
+**2.6 — Controllers (class names + Route attributes).**
+
+```
+reforge references EventGuideController
+reforge references EventGuideDashboardController
+reforge references EventGuideExportController
+reforge references ModerationController
+reforge references GuideAdminController
+reforge references CampEventsController
+reforge references GuideApiController
+```
+
+| Old class | New class | Old route | New route |
+|-----------|-----------|-----------|-----------|
+| `EventGuideController` | `EventsController` | `/Events` | `/Events` (unchanged) |
+| `EventGuideDashboardController` | `EventsDashboardController` | `/Events/Dashboard` | unchanged |
+| `EventGuideExportController` | `EventsExportController` | `/Events/Export` | unchanged |
+| `ModerationController` | `EventsModerationController` | `/Events/Moderate` | unchanged |
+| `GuideAdminController` | `EventsAdminController` | `/Admin` ⚠ | **`/Events/Admin`** (fixes A1.3) |
+| `CampEventsController` | `BarrioEventsController` | `/Barrios/{slug}/Events` | unchanged |
+| `GuideApiController` | `EventsApiController` | `/api/events` | unchanged |
+
+**`GuideAdminController` is the special case** — also rewrite its action-level templates from `[HttpGet("GuideSettings")]`, `[HttpGet("GuideCategories")]`, `[HttpGet("GuideVenues")]` etc. to `Settings`, `Categories`, `Venues`. 18 action templates to update.
+
+**After this commit: run the inbound-link sweep** (7 buckets per skill Phase 1 doc) for all 7 old controller names. Critical targets:
+- `_Layout.cshtml` lines 111, 112, 113, 118, 119, 120, 126, 127, 128 (`asp-controller="EventGuide*"`, `asp-controller="GuideAdmin"`, `asp-controller="Moderation"`).
+- `AdminNavTree.cs:44` (`"GuideAdmin"`, `"GuideSettings"` strings).
+- Razor URL helpers in section's own views (`asp-controller="CampEvents"`, etc.).
+- Test fixtures pinning routes.
+
+**2.7 — Views folders.**
+
+`git mv` each:
+- `Views/EventGuide/` → `Views/Events/`
+- `Views/EventGuideDashboard/` → `Views/EventsDashboard/`
+- `Views/EventGuideExport/` → `Views/EventsExport/`
+- `Views/Moderation/` → `Views/EventsModeration/`
+- `Views/GuideAdmin/` → `Views/EventsAdmin/`
+- `Views/CampEvents/` → `Views/BarrioEvents/`
+
+Rename view files inside each folder where they're named after old concepts (`GuideSettings.cshtml` → `Settings.cshtml`, `GuideCategoryForm.cshtml` → `CategoryForm.cshtml`, etc. — keep the *action* name match).
+
+**2.8 — Tests folder.**
+
+`git mv` to canonical layout:
+- `tests/Humans.Application.Tests/Services/EventGuideServiceTests.cs` → `tests/Humans.Application.Tests/Events/EventServiceTests.cs`
+- `tests/Humans.Application.Tests/Repositories/EventGuideRepositoryTests.cs` → `tests/Humans.Application.Tests/Events/EventRepositoryTests.cs`
+- `tests/Humans.Application.Tests/Architecture/EventGuideArchitectureTests.cs` → `tests/Humans.Application.Tests/Architecture/EventsArchitectureTests.cs` (stays in Architecture/, just rename)
+- `tests/Humans.Domain.Tests/Entities/GuideEventTests.cs` → `EventTests.cs` (stays in Domain.Tests/Entities/)
+
+**2.9 — Role + policy.**
+
+```
+reforge references RoleNames.GuideModerator
+reforge references RoleGroups.GuideModeratorOrAdmin
+reforge references PolicyNames.GuideModeratorOrAdmin
+```
+
+- `RoleNames.GuideModerator = "GuideModerator"` → `RoleNames.EventsAdmin = "EventsAdmin"`
+- `RoleGroups.GuideModeratorOrAdmin` → `RoleGroups.EventsAdminOrAdmin`
+- `PolicyNames.GuideModeratorOrAdmin` → `PolicyNames.EventsAdminOrAdmin`
+- `AuthorizationPolicyExtensions.cs` policy registration + `RoleChecks.cs:65` and `RoleNames.cs:95` allowlist entry.
+
+**Inbound-link sweep target:** any string literal `"GuideModerator"` in views, tests, AdminNavTree.cs:44. Plus AspNetRoles DB row — see Stage 4 for the data migration.
+
+**2.10 — Feature flag + CORS policy + DI extraction.**
+
+- `appsettings.json` + `appsettings.*.json`: `Features:EventGuide` → `Features:Events`.
+- `EventGuideFeatureFilter.cs` → `EventsFeatureFilter.cs` + namespace + config key inside (`configuration.GetValue<bool>("Features:Events")`).
+- `Program.cs:482` CORS policy name `GuideApi` → `EventsApi` (also update `[EnableCors("GuideApi")]` attribute on the API controller).
+- Create `src/Humans.Web/Extensions/Sections/EventsSectionExtensions.cs` with `AddEventsSection(this IServiceCollection)` containing the 3 registrations.
+- Delete the 3 inline `AddScoped` lines from `Program.cs:512–514`; call `builder.Services.AddEventsSection()` instead.
+
+**Build verification:** at the end of Stage 2, full `dotnet build Humans.slnx -v quiet` + `dotnet test Humans.slnx -v quiet` must pass with the old table names still on disk (we haven't regenerated the migration yet). Most existing tests will pass; route arch tests in `EventsArchitectureTests.cs` will need their type references updated as part of 2.6.
+
+Thread-reply bot finding 2 (admin URL).
+
+### Stage 3 — Cross-section strip (boundary-fix protocol)
+
+Order matters: strip the EF nav properties BEFORE regenerating the migration in Stage 4, so the regen captures the cross-section FK removal in the same file as the table renames.
+
+**3.1 — Remove cross-section `HasOne(...)` from entity configs.**
+
+Edit:
+- `Configurations/EventConfiguration.cs` — drop `HasOne(e => e.Camp)`, `HasOne(e => e.SubmitterUser)`. Keep `HasOne(e => e.Category)` and `HasOne(e => e.GuideSharedVenue)` (both in-section).
+- `Configurations/EventModerationActionConfiguration.cs` — drop `HasOne(m => m.ActorUser)`. Keep `HasOne(m => m.Event)`.
+- `Configurations/EventFavouriteConfiguration.cs` — drop `HasOne(f => f.User)`. Keep `HasOne(f => f.Event)`.
+- `Configurations/EventPreferenceConfiguration.cs` — drop `HasOne(p => p.User)`.
+- `Configurations/EventGuideSettingsConfiguration.cs` — drop `HasOne(g => g.EventSettings)`.
+
+**3.2 — Remove cross-section navigation properties from entities.**
+
+- `Domain/Entities/Event.cs`: remove `public Camp? Camp { get; set; }` and `public User SubmitterUser { get; set; }`. Keep `CampId` and `SubmitterUserId` as bare FK columns.
+- `Domain/Entities/EventModerationAction.cs`: remove `User ActorUser`.
+- `Domain/Entities/EventFavourite.cs`: remove `User User`.
+- `Domain/Entities/EventPreference.cs`: remove `User User`.
+- `Domain/Entities/EventGuideSettings.cs`: remove `EventSettings EventSettings`.
+
+Plus the reverse navs (other-section entities pointing back at ours): grep `Domain/Entities/` for any `ICollection<Event*>` or `Event*` properties — none expected since this is a new section, but verify.
+
+**3.3 — Replace `.Include` chains with supplier service calls.**
+
+In `EventRepository.cs`:
+- Drop `.Include(e => e.Camp!).ThenInclude(c => c.Seasons)` (lines 135, 159, 166, 188).
+- Drop `.Include(e => e.SubmitterUser).ThenInclude(u => u.UserEmails)` (lines 137, 160, 189).
+- Drop `.Include(g => g.EventSettings)` on `GetEventGuideSettingsAsync` (line 20).
+- Drop `_db.EventSettings.…` repo methods (`GetActiveEventSettingsAsync`, `GetEventSettingsByIdAsync`) — Stage 0 audit found NO supplier service for EventSettings.
+
+**3.4 — Refactor call-sites in `EventService` and controllers to load Camp / User / EventSettings separately via supplier services.**
+
+- `IUserService.GetUserInfoAsync(userId)` for submitter display names and emails — supplier API exists per Stage 0 audit. ✓
+- `ICampService.GetCampsForYearAsync(year)` or per-call equivalent for camp + season — supplier API probably sufficient; verify in Stage 3.
+- **EventSettings: NO supplier service exists.** Stage 0 confirmed this gap.
+
+**3.5 — Handle the EventSettings gap.**
+
+Per `feedback_no_god_class_splitting` and the section-align boundary-fix protocol: leave the cross-section read in place and document it. Concretely:
+
+- Keep `EventRepository.GetEventGuideSettingsAsync` *without* the `.Include(g => g.EventSettings)`. Callers now get a settings row with a bare `EventSettingsId` (Guid).
+- Where callers need the actual `EventSettings` content (gate-opening date, timezone, event name), the **controller / service** does a second read. Since there's no `IEventSettingsService`, the temporary shape is a documented `_db.EventSettings.FindAsync(id)` in `EventRepository` with a `// TODO: switch to IEventSettingsService once #719 ships` comment.
+- Follow-up issue [#719](https://github.com/nobodies-collective/Humans/issues/719) tracks the supplier. `docs/sections/Events.md` records the pending supplier dependency.
+
+Thread-reply bot finding 3.
+
+### Stage 4 — DB + EF migration regen
+
+Single fresh migration that captures: table renames, cross-section FK removal, seed data via `HasData`. After Stages 2 + 3 the C# model is in its final shape; EF will compute the right diff.
+
+**4.1 — Repository ctor: `HumansDbContext` → `IDbContextFactory<HumansDbContext>`.**
+
+Edit `EventRepository.cs`:
+```csharp
+private readonly IDbContextFactory<HumansDbContext> _factory;
+public EventRepository(IDbContextFactory<HumansDbContext> factory) => _factory = factory;
+```
+
+Then every method opens its own context: `await using var ctx = await _factory.CreateDbContextAsync(ct);`. ~30 method bodies to refactor.
+
+Update `EventsSectionExtensions.cs` to `AddSingleton<IEventRepository, EventRepository>()` (not `AddScoped`).
+
+**4.2 — Remove the old migration.**
+
+```
+dotnet ef migrations remove --project src/Humans.Infrastructure --startup-project src/Humans.Web
+```
+
+Removes `20260513151029_AddEventGuide.cs` + Designer + reverts the snapshot.
+
+**4.3 — Generate the new migration.**
+
+```
+dotnet ef migrations add AddEventsSection --project src/Humans.Infrastructure --startup-project src/Humans.Web
+```
+
+Verify the resulting `*_AddEventsSection.cs` body:
+- Creates 7 tables with final names (`events`, `event_categories`, `event_guide_settings`, `event_venues`, `event_moderation_actions`, `event_favourites`, `event_preferences`).
+- No cross-section FK constraints (the only FK from `events.SubmitterUserId` is a bare column; same for `events.CampId`, `event_moderation_actions.ActorUserId`, `event_favourites.UserId`, `event_preferences.UserId`, `event_guide_settings.EventSettingsId`).
+- Indexes auto-renamed (`IX_events_CategoryId`, etc.).
+- Seed data via `HasData` on `EventCategory` configuration.
+
+**4.4 — NoOp sanity check.**
+
+```
+dotnet ef migrations add NoOpVerify --project src/Humans.Infrastructure --startup-project src/Humans.Web
+```
+
+The generated file's `Up` + `Down` bodies must be empty. Then immediately:
+
+```
+dotnet ef migrations remove --project src/Humans.Infrastructure --startup-project src/Humans.Web
+```
+
+**4.5 — Role-row data migration.**
+
+ASP.NET Identity stores roles as rows in `AspNetRoles`. The constant rename (Stage 2.9) doesn't move the row. Two options:
+
+- **Option A (preferred):** add a small `AddEventsAdminRole` data migration that does `INSERT INTO ... DELETE FROM ... UPDATE AspNetUserRoles` to rename the existing role + remap assignments. Per `architecture_no_hand_edited_migrations`, schema migrations can't be hand-edited but data-only migrations using `migrationBuilder.Sql(...)` are the documented pattern for this case (see Camps' historical role migrations).
+- **Option B:** rely on a startup seeder if one exists — check `Program.cs` for `RoleManager` seeding code. If present, just bumping the constant + deleting the old row in a data migration is sufficient.
+
+Inspection needed at execution time; the orchestrator picks A or B based on what's actually in `Program.cs`.
+
+**4.6 — Test the migration round-trip.**
+
+- Drop a local test DB, apply migrations, verify schema.
+- Run `dotnet test Humans.slnx -v quiet` — integration tests against the renamed schema.
+- Smoke-test on preview: `https://539.n.burn.camp` after push deploys.
+
+### Stage 5 — Arch tests + GDPR + interface budget
+
+**5.1 — IUserDataContributor (closes bot finding 4).**
+
+- Add `GdprExportSections.Events = "Events"` constant in `src/Humans.Application/Interfaces/Gdpr/GdprExportSections.cs`.
+- `EventService : IEventService, IUserDataContributor`. Implement:
+  - `ContributeForUserAsync(Guid userId, CT)` returning `UserDataSlice[]` for the user's `event_favourites` + `event_preferences` rows.
+  - Deletion contract (whichever method `IUserDataContributor` declares for sweep-on-delete — match the existing `UserService` / `ConsentService` pattern).
+- DI in `EventsSectionExtensions.cs`:
+  ```csharp
+  services.AddSingleton<EventService>();
+  services.AddSingleton<IEventService>(sp => sp.GetRequiredService<EventService>());
+  services.AddSingleton<IUserDataContributor>(sp => sp.GetRequiredService<EventService>());
+  ```
+- Tests: `tests/Humans.Application.Tests/Events/EventServiceTests.cs` adds contribution + deletion cases.
+
+Thread-reply bot finding 4.
+
+**5.2 — Section-specific arch tests to add** (in `EventsArchitectureTests.cs`).
+
+- `OnlyEventRepository_References_EventsDbSet` (and same for each of 7 DbSets) — single-writer rule. Use Roslyn or reflection scan over `IHumansDbContext` property access.
+- `EventModerationActionRepository_HasNoUpdateOrDeleteMethods` — append-only rule.
+- `EventsAdminController_LivesUnderEventsAdminRoute` — `RouteFor<EventsAdminController>().Should().Be("Events/Admin")`.
+- `EventService_ImplementsIUserDataContributor` — pins §8a after 5.1 lands.
+- `EventsFeatureFilter_RegistersAsScoped` — pin DI lifetime.
+- Update the existing route tests to reflect renamed types (already covered in Stage 2.6 fallout).
+
+**5.3 — Interface budget.**
+
+```
+reforge members IEventService
+reforge members IEventRepository
+```
+
+Final method counts after Stage 3 (some methods removed when cross-section navs stripped). Capture both:
+- If `tests/Humans.Application.Tests/Architecture/InterfaceMethodBudgetTests.cs` exists, add `[typeof(IEventService)] = N` and `[typeof(IEventRepository)] = M`.
+- If it doesn't exist, create it with current Camps/Teams budgets pinned as a baseline + the two new entries. (One-time addition.)
+
+Stage 7 (simplify pass, optional) trims the interfaces and lowers the numbers.
+
+**5.4 — Email interface trim** (closes bot finding 7).
+
+Per Stage 0 decision #4: trim the 8 new methods to 2.
+
+- `IEmailRenderer`: replace the 4 `RenderEvent*` methods with one `RenderEventLifecycleAsync(EventLifecycleNotification request, string? culture = null)`.
+- `IEmailService`: replace the 4 `SendEvent*Async` methods with one `SendEventLifecycleNotificationAsync(EventLifecycleNotification request, string userEmail, CancellationToken ct = default)`.
+- `EventLifecycleNotification` is a record DTO carrying `EventStatus newStatus`, `userName`, `eventTitle`, `reason?`, `actionUrl?`.
+- Update `EmailRenderer`, `SmtpEmailService`, `StubEmailService`, `OutboxEmailService` implementations.
+- Update 3 controller call sites.
+
+Net interface bump on `IEmailService` + `IEmailRenderer`: was 8, now 2.
+
+Thread-reply bot finding 7 with the trim + reference to #712.
+
+### Stage 6 — `/pr-review` + closing audits + docs
+
+Already-brief plan covers this; nothing to expand. Closing audit re-runs `/section-align Events`; expected output "clean except for `<pending supplier: Shifts/Calendar IEventSettingsService>`".
+
+---
+
+## Phase plan (original — superseded by Stage detail above)
 
 (After Stop conditions resolved.)
 
