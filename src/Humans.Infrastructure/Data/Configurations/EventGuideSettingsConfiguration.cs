@@ -12,10 +12,5 @@ public class EventGuideSettingsConfiguration : IEntityTypeConfiguration<EventGui
         builder.HasKey(g => g.Id);
 
         builder.HasIndex(g => g.EventSettingsId).IsUnique();
-
-        builder.HasOne(g => g.EventSettings)
-            .WithOne()
-            .HasForeignKey<EventGuideSettings>(g => g.EventSettingsId)
-            .OnDelete(DeleteBehavior.Restrict);
     }
 }

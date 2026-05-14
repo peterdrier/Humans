@@ -13,11 +13,6 @@ public class EventFavouriteConfiguration : IEntityTypeConfiguration<EventFavouri
 
         builder.HasIndex(f => new { f.UserId, f.GuideEventId }).IsUnique();
 
-        builder.HasOne<User>()
-            .WithMany()
-            .HasForeignKey(f => f.UserId)
-            .OnDelete(DeleteBehavior.Cascade);
-
         builder.HasOne(f => f.Event)
             .WithMany(e => e.EventFavourites)
             .HasForeignKey(f => f.GuideEventId)

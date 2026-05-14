@@ -14,10 +14,5 @@ public class EventPreferenceConfiguration : IEntityTypeConfiguration<EventPrefer
         builder.Property(p => p.ExcludedCategorySlugs).HasMaxLength(1000).IsRequired();
 
         builder.HasIndex(p => p.UserId).IsUnique();
-
-        builder.HasOne<User>()
-            .WithOne()
-            .HasForeignKey<EventPreference>(p => p.UserId)
-            .OnDelete(DeleteBehavior.Cascade);
     }
 }

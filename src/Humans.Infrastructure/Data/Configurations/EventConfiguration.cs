@@ -27,19 +27,9 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
         builder.HasIndex(e => e.GuideSharedVenueId);
         builder.HasIndex(e => e.SubmitterUserId);
 
-        builder.HasOne(e => e.Camp)
-            .WithMany()
-            .HasForeignKey(e => e.CampId)
-            .OnDelete(DeleteBehavior.Restrict);
-
         builder.HasOne(e => e.EventVenue)
             .WithMany(v => v.Events)
             .HasForeignKey(e => e.GuideSharedVenueId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        builder.HasOne(e => e.SubmitterUser)
-            .WithMany()
-            .HasForeignKey(e => e.SubmitterUserId)
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(e => e.Category)

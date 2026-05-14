@@ -24,10 +24,5 @@ public class EventModerationActionConfiguration : IEntityTypeConfiguration<Event
             .WithMany(e => e.EventModerationActions)
             .HasForeignKey(m => m.GuideEventId)
             .OnDelete(DeleteBehavior.Restrict);
-
-        builder.HasOne<User>()
-            .WithMany()
-            .HasForeignKey(m => m.ActorUserId)
-            .OnDelete(DeleteBehavior.Restrict);
     }
 }
