@@ -17,14 +17,18 @@ public sealed class EventRepository : IEventRepository
     // ── Settings ─────────────────────────────────────────────────────────
 
     public Task<EventGuideSettings?> GetGuideSettingsAsync(CancellationToken ct = default)
-        => _db.EventGuideSettings.Include(g => g.EventSettings).FirstOrDefaultAsync(ct);
+        => _db.EventGuideSettings.FirstOrDefaultAsync(ct);
 
+    // TODO: switch to IEventSettingsService once https://github.com/nobodies-collective/Humans/issues/719 ships.
+    // EventSettings is owned by the Shifts/Calendar section; we read it directly
+    // as a stop-gap until that section exposes a supplier service.
     public async Task<IReadOnlyList<EventSettings>> GetActiveEventSettingsAsync(CancellationToken ct = default)
         => await _db.EventSettings
             .Where(e => e.IsActive)
             .OrderByDescending(e => e.GateOpeningDate)
             .ToListAsync(ct);
 
+    // TODO: switch to IEventSettingsService once https://github.com/nobodies-collective/Humans/issues/719 ships.
     public Task<EventSettings?> GetEventSettingsByIdAsync(Guid id, CancellationToken ct = default)
         => _db.EventSettings.FindAsync([id], ct).AsTask();
 
@@ -132,9 +136,7 @@ public sealed class EventRepository : IEventRepository
     {
         var query = _db.Events
             .Include(e => e.Category)
-            .Include(e => e.Camp!).ThenInclude(c => c.Seasons)
             .Include(e => e.EventVenue)
-            .Include(e => e.SubmitterUser).ThenInclude(u => u.UserEmails)
             .Where(e => e.Status == EventStatus.Approved);
 
         if (excludedSlugs.Count > 0)
@@ -155,15 +157,12 @@ public sealed class EventRepository : IEventRepository
     public Task<Event?> GetApprovedEventByIdAsync(Guid id, CancellationToken ct = default)
         => _db.Events
             .Include(e => e.Category)
-            .Include(e => e.Camp!).ThenInclude(c => c.Seasons)
             .Include(e => e.EventVenue)
-            .Include(e => e.SubmitterUser).ThenInclude(u => u.UserEmails)
             .FirstOrDefaultAsync(e => e.Id == id && e.Status == EventStatus.Approved, ct);
 
     public async Task<IReadOnlyList<Event>> GetAllEventsForDashboardAsync(CancellationToken ct = default)
         => await _db.Events
             .Include(e => e.Category)
-            .Include(e => e.Camp!).ThenInclude(c => c.Seasons)
             .ToListAsync(ct);
 
     // ── Events (moderation) ───────────────────────────────────────────────
@@ -191,8 +190,6 @@ public sealed class EventRepository : IEventRepository
     {
         var query = _db.Events
             .Include(e => e.Category)
-            .Include(e => e.SubmitterUser).ThenInclude(u => u.UserEmails)
-            .Include(e => e.Camp!).ThenInclude(c => c.Seasons)
             .Include(e => e.EventVenue)
             .Include(e => e.EventModerationActions)
             .Where(e => e.Status == status);
@@ -205,10 +202,7 @@ public sealed class EventRepository : IEventRepository
     }
 
     public Task<Event?> GetEventForModerationAsync(Guid eventId, CancellationToken ct = default)
-        => _db.Events
-            .Include(e => e.SubmitterUser).ThenInclude(u => u.UserEmails)
-            .Include(e => e.Camp)
-            .FirstOrDefaultAsync(e => e.Id == eventId, ct);
+        => _db.Events.FirstOrDefaultAsync(e => e.Id == eventId, ct);
 
     public async Task<IReadOnlyList<CampEventOverlap>> GetActiveCampEventsAsync(CancellationToken ct = default)
     {
@@ -238,7 +232,6 @@ public sealed class EventRepository : IEventRepository
     public async Task<IReadOnlyList<EventFavourite>> GetFavouritesWithEventsAsync(Guid userId, CancellationToken ct = default)
         => await _db.EventFavourites
             .Include(f => f.Event).ThenInclude(e => e.Category)
-            .Include(f => f.Event).ThenInclude(e => e.Camp!).ThenInclude(c => c.Seasons)
             .Include(f => f.Event).ThenInclude(e => e.EventVenue)
             .Where(f => f.UserId == userId && f.Event.Status == EventStatus.Approved)
             .OrderBy(f => f.Event.StartAt)

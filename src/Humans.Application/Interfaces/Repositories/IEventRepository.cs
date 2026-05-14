@@ -5,15 +5,25 @@ using Humans.Domain.Enums;
 namespace Humans.Application.Interfaces.Repositories;
 
 /// <summary>
-/// Data-access interface for the EventGuide section. The only file that may
-/// touch the guide_* and event_categories tables after the §15 migration.
+/// Data-access interface for the Events section. Owns the event_* tables.
+/// <para>
+/// EventSettings is owned by the Shifts/Calendar section; the two
+/// <c>*EventSettings*</c> methods below are a documented stop-gap — they read
+/// the foreign table directly because no supplier service exists yet. Tracked
+/// in <see href="https://github.com/nobodies-collective/Humans/issues/719"/>.
+/// </para>
 /// </summary>
 public interface IEventRepository : IRepository
 {
     // ── Settings ─────────────────────────────────────────────────────────
     Task<EventGuideSettings?> GetGuideSettingsAsync(CancellationToken ct = default);
+
+    // TODO: switch to IEventSettingsService once #719 ships.
     Task<IReadOnlyList<EventSettings>> GetActiveEventSettingsAsync(CancellationToken ct = default);
+
+    // TODO: switch to IEventSettingsService once #719 ships.
     Task<EventSettings?> GetEventSettingsByIdAsync(Guid id, CancellationToken ct = default);
+
     void Add(EventGuideSettings settings);
 
     // ── Categories ────────────────────────────────────────────────────────
