@@ -2,7 +2,6 @@ using System.Text.RegularExpressions;
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Tests.Architecture.Ratchet;
-using Microsoft.EntityFrameworkCore;
 using Xunit;
 using NotificationService = Humans.Application.Services.Notifications.NotificationService;
 using NotificationInboxService = Humans.Application.Services.Notifications.NotificationInboxService;
@@ -36,15 +35,8 @@ public class NotificationsArchitectureTests
                 because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
     }
 
-    [HumansFact]
-    public void NotificationService_HasNoDbContextConstructorParameter()
-    {
-        var ctor = typeof(NotificationService).GetConstructors().Single();
-        ctor.GetParameters()
-            .Should().NotContain(
-                p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
-                because: "services in Humans.Application must never take DbContext — use INotificationRepository instead (design-rules §3)");
-    }
+    // The DbContext-constructor-parameter check is covered by the generic
+    // ApplicationServicesTakeNoDbContextRule for every Application service.
 
     [HumansFact]
     public void NotificationService_TakesRepository()
@@ -82,16 +74,6 @@ public class NotificationsArchitectureTests
     }
 
     [HumansFact]
-    public void NotificationInboxService_HasNoDbContextConstructorParameter()
-    {
-        var ctor = typeof(NotificationInboxService).GetConstructors().Single();
-        ctor.GetParameters()
-            .Should().NotContain(
-                p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
-                because: "services in Humans.Application must never take DbContext — use INotificationRepository instead");
-    }
-
-    [HumansFact]
     public void NotificationInboxService_TakesRepositoryAndUserService()
     {
         // Display-name stitching runs through IUserService.GetByIdsAsync rather
@@ -113,22 +95,12 @@ public class NotificationsArchitectureTests
     }
 
     [HumansFact]
-    public void NotificationMeterProvider_HasNoDbContextConstructorParameter()
-    {
-        var ctor = typeof(NotificationMeterProvider).GetConstructors().Single();
-        ctor.GetParameters()
-            .Should().NotContain(
-                p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
-                because: "the meter provider must reach every non-owned table via its owning section service (design-rules §2c)");
-    }
-
-    [HumansFact]
     public void NotificationMeterProvider_TakesCrossSectionInterfaces()
     {
         // The meter provider computes badge counts by calling into each owning
-        // section service — IProfileService, IUserService, IGoogleSyncService,
-        // ITeamService, ITicketSyncService, IApplicationDecisionService — never
-        // reading the underlying tables directly.
+        // section service (IProfileService, IUserService, IGoogleSyncService,
+        // ITeamService, ITicketSyncService, IApplicationDecisionService,
+        // ICampService) — never reading the underlying tables directly.
         var ctor = typeof(NotificationMeterProvider).GetConstructors().Single();
         var paramTypeNames = ctor.GetParameters().Select(p => p.ParameterType.Name).ToList();
 
@@ -138,6 +110,7 @@ public class NotificationsArchitectureTests
         paramTypeNames.Should().Contain("ITeamService");
         paramTypeNames.Should().Contain("ITicketSyncService");
         paramTypeNames.Should().Contain("IApplicationDecisionService");
+        paramTypeNames.Should().Contain("ICampService");
     }
 
     [HumansFact]
@@ -165,14 +138,8 @@ public class NotificationsArchitectureTests
                 because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
     }
 
-    [HumansFact]
-    public void NotificationRepository_IsSealed()
-    {
-        var repoType = typeof(NotificationRepository);
-
-        repoType.IsSealed.Should().BeTrue(
-            because: "repository implementations are sealed to prevent ad-hoc extension; any new behavior belongs on the interface");
-    }
+    // Sealed-repository check is covered by the generic
+    // IRepositoryImplementationsAreSealedRule across every repository.
 
     // ── Sole-writer DbSet rule ───────────────────────────────────────────────
 
