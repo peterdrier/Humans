@@ -73,7 +73,10 @@ public class AdminController : HumansControllerBase
         var snapshot = userService.GetAllUserInfos();
         var totalUsers = snapshot.Count;
         var activeProfileUsers = snapshot.Count(u => u.Profile is not null);
-        var ticketHolders = snapshot.Count(u => u.HasTicket);
+        var activeEvent = await shifts.GetActiveAsync();
+        var ticketHolders = activeEvent is { Year: > 0 }
+            ? snapshot.Count(u => u.HasTicketForYear(activeEvent.Year))
+            : 0;
         var (filled, total, ratio) = await shifts.GetOverallCoverageAsync(ct);
         var openFeedback = await feedback.GetActionableCountAsync(ct);
         var recent = (await auditViewer.GetRecentAsync(8, ct))

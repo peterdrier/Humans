@@ -126,8 +126,12 @@ public class TicketController : HumansControllerBase
         };
 
         // Set membership across the UserInfo cache — drives the Venn + UpSet.
+        // Ticket-holder is scoped to the active event year so post-rollover
+        // users with only prior-year participations don't count.
         // TODO: extend to (HasProfile, HasTicket, HasShift) when IShiftManager caching lands.
         var snapshot = _userService.GetAllUserInfos();
+        var activeEvent = await _shiftMgmt.GetActiveAsync();
+        var activeYear = activeEvent?.Year ?? 0;
         var usersOnly = 0;
         var profileOnly = 0;
         var ticketOnly = 0;
@@ -135,7 +139,7 @@ public class TicketController : HumansControllerBase
         foreach (var u in snapshot)
         {
             var hasProfile = u.Profile is not null;
-            var hasTicket = u.HasTicket;
+            var hasTicket = activeYear > 0 && u.HasTicketForYear(activeYear);
             if (hasProfile && hasTicket) both++;
             else if (hasProfile) profileOnly++;
             else if (hasTicket) ticketOnly++;

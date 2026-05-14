@@ -263,16 +263,30 @@ public sealed record UserInfo(
         .FirstOrDefault();
 
     /// <summary>
-    /// True when the user has at least one event participation in the
+    /// True when the user has <em>any</em> event participation in the
     /// <see cref="ParticipationStatus.Ticketed"/> or
-    /// <see cref="ParticipationStatus.Attended"/> state — i.e., currently
-    /// holds a ticket or has been checked in. Matches the predicate used by
-    /// the Tickets dashboard so the admin stats and the Venn agree on
-    /// "ticket holder".
+    /// <see cref="ParticipationStatus.Attended"/> state, across every year.
+    /// Year-agnostic — for diagnostic surfaces where "this user is on a
+    /// ticket somewhere in the cache" is the useful signal. For year-scoped
+    /// counts (dashboard tiles, the Tickets Venn) use
+    /// <see cref="HasTicketForYear"/> against the active event year so
+    /// counts don't carry stale post-rollover data.
     /// </summary>
     public bool HasTicket => EventParticipations.Any(p =>
         p.Status == ParticipationStatus.Ticketed ||
         p.Status == ParticipationStatus.Attended);
+
+    /// <summary>
+    /// True when the user has a <see cref="ParticipationStatus.Ticketed"/>
+    /// or <see cref="ParticipationStatus.Attended"/> participation in the
+    /// given <paramref name="year"/>. The right predicate for "current ticket
+    /// holder" stats — pass the active event year so post-rollover users
+    /// stop counting against the new year's totals.
+    /// </summary>
+    public bool HasTicketForYear(int year) => EventParticipations.Any(p =>
+        p.Year == year &&
+        (p.Status == ParticipationStatus.Ticketed ||
+         p.Status == ParticipationStatus.Attended));
 
     /// <summary>
     /// Builds a <see cref="UserInfo"/> from the 8 contributing tables. Each

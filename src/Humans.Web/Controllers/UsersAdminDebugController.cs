@@ -1,8 +1,10 @@
 using Humans.Application;
 using Humans.Application.Interfaces.Users;
+using Humans.Domain.Entities;
 using Humans.Web.Authorization;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Web.Controllers;
@@ -16,7 +18,7 @@ namespace Humans.Web.Controllers;
 /// </summary>
 [Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("Users/Admin/Debug")]
-public sealed class UsersAdminDebugController : Controller
+public sealed class UsersAdminDebugController : HumansControllerBase
 {
     private const int MinPageSize = 10;
     private const int MaxPageSize = 200;
@@ -24,7 +26,8 @@ public sealed class UsersAdminDebugController : Controller
 
     private readonly IUserService _userService;
 
-    public UsersAdminDebugController(IUserService userService)
+    public UsersAdminDebugController(IUserService userService, UserManager<User> userManager)
+        : base(userManager)
     {
         _userService = userService;
     }

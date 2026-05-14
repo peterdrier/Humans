@@ -6,6 +6,7 @@ using Humans.Domain.Enums;
 using Humans.Web.Controllers;
 using Humans.Web.Models;
 using Humans.Testing;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using NSubstitute;
@@ -15,6 +16,11 @@ namespace Humans.Web.Tests.Controllers;
 
 public class UsersAdminDebugControllerTests
 {
+    private static UserManager<User> StubUserManager() =>
+        Substitute.For<UserManager<User>>(
+            Substitute.For<IUserStore<User>>(),
+            null, null, null, null, null, null, null, null);
+
     private static UserInfo MakeUserInfo(
         Guid id, string displayName, bool hasProfile, bool hasTicket)
     {
@@ -74,7 +80,7 @@ public class UsersAdminDebugControllerTests
         var userService = Substitute.For<IUserService>();
         userService.GetAllUserInfos().Returns(users);
 
-        var controller = new UsersAdminDebugController(userService);
+        var controller = new UsersAdminDebugController(userService, StubUserManager());
 
         var result = controller.Index(page: 1, pageSize: 50, sort: "displayName", dir: "asc") as ViewResult;
 
@@ -98,7 +104,7 @@ public class UsersAdminDebugControllerTests
         var userService = Substitute.For<IUserService>();
         userService.GetAllUserInfos().Returns(users);
 
-        var controller = new UsersAdminDebugController(userService);
+        var controller = new UsersAdminDebugController(userService, StubUserManager());
 
         var result = controller.Index(page: 1, pageSize: 50, sort: "displayName", dir: "desc") as ViewResult;
 
@@ -115,7 +121,7 @@ public class UsersAdminDebugControllerTests
         var userService = Substitute.For<IUserService>();
         userService.GetAllUserInfos().Returns(users);
 
-        var controller = new UsersAdminDebugController(userService);
+        var controller = new UsersAdminDebugController(userService, StubUserManager());
 
         var tooSmall = (UsersDebugViewModel)((ViewResult)controller.Index(1, 1, "displayName", "asc")).Model!;
         tooSmall.PageSize.Should().Be(10);

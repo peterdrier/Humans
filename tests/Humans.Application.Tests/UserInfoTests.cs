@@ -146,6 +146,38 @@ public class UserInfoTests
     }
 
     [HumansFact]
+    public void HasTicketForYear_only_matches_the_requested_year()
+    {
+        var participations = new[]
+        {
+            new EventParticipation
+            {
+                Id = Guid.NewGuid(),
+                UserId = Guid.NewGuid(),
+                Year = 2025,
+                Status = ParticipationStatus.Attended,
+                Source = ParticipationSource.TicketSync,
+            }
+        };
+
+        var info = UserInfo.Create(
+            MinimalUser(),
+            Array.Empty<UserEmail>(),
+            participations,
+            Array.Empty<(string, string)>(),
+            profile: null,
+            Array.Empty<ContactField>(),
+            Array.Empty<ProfileLanguage>(),
+            Array.Empty<VolunteerHistoryEntry>(),
+            Array.Empty<CommunicationPreference>());
+
+        info.HasTicketForYear(2025).Should().BeTrue();
+        info.HasTicketForYear(2026).Should().BeFalse();
+        // Year-agnostic accessor still sees the prior-year ticket.
+        info.HasTicket.Should().BeTrue();
+    }
+
+    [HumansFact]
     public void HasTicket_false_when_only_NotAttending_or_no_participations()
     {
         var participations = new[]
