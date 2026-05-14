@@ -4,7 +4,7 @@ import { CONFIG } from './config.js';
 import { parseLimitZoneGeom } from './geometry.js';
 import { DRAW_STYLES, generateRainbowPattern, generateCrosshatchPattern, generateDashedHorizontalPattern, renderMap } from './layers.js';
 import {
-    onCampPolygonClick, exitEditMode, onDrawChange, onDrawDelete,
+    onCampPolygonClick, exitEditMode, onDrawChange, onDrawRender, onDrawDelete,
     setEditingControlsVisible, updateAddMyBarrioVisibility,
 } from './edit.js';
 import { initSignalR } from './signalr.js';
@@ -31,7 +31,10 @@ async function init() {
 
     appState.map.on('draw.create', onDrawChange);
     appState.map.on('draw.update', onDrawChange);
-    appState.map.on('draw.render', onDrawChange);
+    // draw.render fires every animation frame in draw modes — wire it to a
+    // change-detecting wrapper so the heavy turf+setData pipeline only runs
+    // when the polygon's geometry actually moves (vertex drag).
+    appState.map.on('draw.render', onDrawRender);
     appState.map.on('draw.delete', onDrawDelete);
 
     await new Promise(resolve => appState.map.on('load', resolve));

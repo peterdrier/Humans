@@ -142,27 +142,8 @@ public sealed class ContainerService : IContainerService
             throw new ArgumentException("GeoJson must not be empty.", nameof(geoJson));
         }
 
-        if (await _repo.GetByIdAsync(containerId, ct) is null)
-        {
-            throw new InvalidOperationException("Container not found.");
-        }
-
-        var now = _clock.GetCurrentInstant();
-        var existing = await _repo.GetPlacementAsync(containerId, year, ct);
-        var placement = new ContainerPlacement
-        {
-            ContainerId = containerId,
-            Year = year,
-            LocationGeoJson = geoJson,
-            PlacementNotes = existing?.PlacementNotes,
-            PlacementImageStoragePath = existing?.PlacementImageStoragePath,
-            PlacementImageContentType = existing?.PlacementImageContentType,
-            PlacementImageFileName = existing?.PlacementImageFileName,
-            CreatedAt = existing?.CreatedAt ?? now,
-            UpdatedAt = now,
-        };
-
-        await _repo.UpsertPlacementAsync(placement, ct);
+        var placement = await _repo.SavePlacementGeometryAsync(
+            containerId, year, geoJson, _clock.GetCurrentInstant(), ct);
         return ToPlacementDto(placement);
     }
 

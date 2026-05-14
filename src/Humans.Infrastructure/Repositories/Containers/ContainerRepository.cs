@@ -2,6 +2,7 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using NodaTime;
 
 namespace Humans.Infrastructure.Repositories.Containers;
 
@@ -113,6 +114,42 @@ public sealed class ContainerRepository : IContainerRepository
             existing.UpdatedAt = placement.UpdatedAt;
         }
         await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task<ContainerPlacement> SavePlacementGeometryAsync(
+        Guid containerId, int year, string geoJson, Instant now, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+
+        var containerExists = await ctx.Containers
+            .AsNoTracking()
+            .AnyAsync(c => c.Id == containerId, ct);
+        if (!containerExists)
+        {
+            throw new InvalidOperationException("Container not found.");
+        }
+
+        var placement = await ctx.ContainerPlacements
+            .FirstOrDefaultAsync(p => p.ContainerId == containerId && p.Year == year, ct);
+        if (placement is null)
+        {
+            placement = new ContainerPlacement
+            {
+                ContainerId = containerId,
+                Year = year,
+                LocationGeoJson = geoJson,
+                CreatedAt = now,
+                UpdatedAt = now,
+            };
+            ctx.ContainerPlacements.Add(placement);
+        }
+        else
+        {
+            placement.LocationGeoJson = geoJson;
+            placement.UpdatedAt = now;
+        }
+        await ctx.SaveChangesAsync(ct);
+        return placement;
     }
 
     public async Task DeletePlacementAsync(Guid containerId, int year, CancellationToken ct = default)

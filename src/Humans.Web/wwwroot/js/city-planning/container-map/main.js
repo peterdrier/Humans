@@ -34,8 +34,11 @@ async function init() {
 
     await new Promise(resolve => map.on('load', resolve));
 
-    // Load background state (camp polygons, official zones)
-    const stateData = await fetch('/api/city-planning/state').then(r => r.json());
+    // State + containers are independent — fetch in parallel.
+    const [stateData, loadedContainers] = await Promise.all([
+        fetch('/api/city-planning/state').then(r => r.json()),
+        loadContainers(CONFIG.YEAR),
+    ]);
     addBackgroundLayers(map, stateData);
     addContainerLayers(map);
     initMeasure(map);
@@ -48,8 +51,7 @@ async function init() {
     );
     setCampNames(campNames);
 
-    // Load containers
-    containers = await loadContainers(CONFIG.YEAR);
+    containers = loadedContainers;
     updateContainerSource(map, containers, null);
 
     // Zoom to barrio lead's camp if not admin

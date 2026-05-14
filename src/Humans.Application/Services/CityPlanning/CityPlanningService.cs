@@ -67,22 +67,14 @@ public sealed class CityPlanningService : ICityPlanningService
 
         var polygons = await _repo.GetPolygonsByCampSeasonIdsAsync(seasonIds, cancellationToken);
 
-        // Resolve season → camp id for each polygon (containers reference CampId, not CampSeasonId).
-        var seasonToCampId = new Dictionary<Guid, Guid>();
-        foreach (var seasonId in polygons.Select(p => p.CampSeasonId).Distinct())
-        {
-            var season = await _campService.GetCampSeasonByIdAsync(seasonId, cancellationToken);
-            if (season is not null) seasonToCampId[seasonId] = season.CampId;
-        }
-
         return polygons
-            .Where(p => seasonToCampId.ContainsKey(p.CampSeasonId))
+            .Where(p => displayData.ContainsKey(p.CampSeasonId))
             .Select(p =>
             {
                 var data = displayData[p.CampSeasonId];
                 return new CampPolygonDto(
                     p.CampSeasonId,
-                    seasonToCampId[p.CampSeasonId],
+                    data.CampId,
                     data.Name,
                     data.CampSlug,
                     p.GeoJson,

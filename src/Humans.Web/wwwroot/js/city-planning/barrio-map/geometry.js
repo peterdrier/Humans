@@ -85,12 +85,28 @@ export function buildCampPolygonFeatures(campPolygons) {
     return features;
 }
 
+function getCachedFeature(p) {
+    // Lazily cache the parsed feature on the polygon entry. SignalR handlers
+    // null this out when they overwrite geoJson so the cache stays in sync.
+    if (!p._parsedFeature) {
+        try { p._parsedFeature = JSON.parse(p.geoJson); }
+        catch { p._parsedFeature = null; }
+    }
+    return p._parsedFeature;
+}
+
+export function invalidateParsedFeature(p) {
+    if (p) p._parsedFeature = null;
+}
+
 export function overlapsOtherCamps(feature) {
     const excludeId = appState.activeCampSeasonId ?? appState.previewCampSeasonId;
     return appState.campMap.campPolygons
         .filter(p => p.campSeasonId !== excludeId)
         .some(p => {
-            try { return !!turf.intersect(turf.featureCollection([feature, JSON.parse(p.geoJson)])); }
+            const other = getCachedFeature(p);
+            if (!other) return false;
+            try { return !!turf.intersect(turf.featureCollection([feature, other])); }
             catch { return false; }
         });
 }

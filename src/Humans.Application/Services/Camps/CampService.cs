@@ -1188,7 +1188,8 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
                 kv.Value.Name,
                 kv.Value.CampSlug,
                 kv.Value.SoundZone,
-                kv.Value.SpaceRequirement));
+                kv.Value.SpaceRequirement,
+                kv.Value.CampId));
     }
 
     public Task<Guid?> GetCampLeadSeasonIdForYearAsync(

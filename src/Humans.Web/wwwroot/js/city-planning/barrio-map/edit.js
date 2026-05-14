@@ -101,7 +101,24 @@ export function exitEditMode() {
 
 // --- Draw event handlers ---
 
-export function onDrawChange() { updateSaveButton(); }
+export function onDrawChange() {
+    lastRenderedPolyKey = null; // force the next render-pass to run
+    updateSaveButton();
+}
+
+// draw.render fires every animation frame while in any draw mode. We only need
+// to recompute labels/warnings when the active polygon's coordinates actually
+// changed (i.e., during vertex drag) — every other render-tick is a no-op.
+let lastRenderedPolyKey = null;
+export function onDrawRender() {
+    const features = appState.draw.getAll().features;
+    const poly = features.find(f =>
+        f.geometry.type === 'Polygon' && (f.geometry.coordinates[0]?.length ?? 0) >= 4);
+    const key = poly ? JSON.stringify(poly.geometry.coordinates) : '';
+    if (key === lastRenderedPolyKey) return;
+    lastRenderedPolyKey = key;
+    updateSaveButton();
+}
 
 export function onDrawDelete() {
     setActivePolygonDim(null);
