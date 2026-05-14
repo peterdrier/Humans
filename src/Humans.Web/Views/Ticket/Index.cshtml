@@ -100,71 +100,46 @@
         </div>
     </div>
 
-    <!-- Volunteer Ticket Coverage -->
-    @if (Model.TotalActiveVolunteers > 0)
+    <!-- User set membership — Venn (Profiles ∩ Tickets within Users) + UpSet -->
+    @if (Model.SetMembership is { TotalUsers: > 0 } sm)
     {
         <div class="card mb-4">
             <div class="card-header">
-                <i class="fa-solid fa-users"></i> Volunteer Ticket Coverage
+                <i class="fa-solid fa-chart-pie"></i> User set membership
+                <small class="text-muted">
+                    @sm.TotalUsers total users · @sm.ProfilesCount with profile · @sm.TicketsCount with ticket
+                </small>
             </div>
             <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <span>
-                        <strong>@Model.VolunteersWithTickets</strong> / @Model.TotalActiveVolunteers humans have tickets
-                    </span>
-                    <span class="fs-4 fw-bold @(Model.VolunteerCoveragePercent >= 75 ? "text-success" : Model.VolunteerCoveragePercent >= 50 ? "text-warning" : "text-danger")">
-                        @Model.VolunteerCoveragePercent%
-                    </span>
-                </div>
-                <div class="progress" style="height: 20px;">
-                    <div class="progress-bar @(Model.VolunteerCoveragePercent >= 75 ? "bg-success" : Model.VolunteerCoveragePercent >= 50 ? "bg-warning" : "bg-danger")"
-                         style="width: @(Model.VolunteerCoveragePercent.ToString(System.Globalization.CultureInfo.InvariantCulture))%">
-                    </div>
-                </div>
-                <div class="mt-2">
-                    <a asp-action="WhoHasntBought" class="text-muted"><i class="fa-solid fa-arrow-right"></i> View details</a>
-                </div>
-            </div>
-        </div>
-    }
-
-    <!-- Participation Breakdown -->
-    @{
-        var participationTotal = Model.ParticipationNotAttending + Model.ParticipationNoTicket + Model.ParticipationHasTicket;
-    }
-    @if (participationTotal > 0)
-    {
-        <div class="card mb-4">
-            <div class="card-header">
-                <i class="fa-solid fa-chart-pie"></i> Participation Breakdown
-            </div>
-            <div class="card-body">
-                <div class="row align-items-center">
+                <div class="row">
                     <div class="col-md-6">
-                        <canvas id="participationChart" height="200"></canvas>
+                        <h6 class="text-center">Proportional Venn</h6>
+                        <div id="userVenn"
+                             data-users="@sm.TotalUsers"
+                             data-profiles="@sm.ProfilesCount"
+                             data-tickets="@sm.TicketsCount"
+                             data-users-profiles="@sm.ProfilesCount"
+                             data-users-tickets="@sm.TicketsCount"
+                             data-profiles-tickets="@sm.AllThree"
+                             data-all-three="@sm.AllThree"
+                             style="max-height: 420px; width: 100%;"></div>
                     </div>
                     <div class="col-md-6">
-                        <ul class="list-unstyled">
-                            <li class="mb-2">
-                                <span class="badge bg-success">&nbsp;&nbsp;</span>
-                                <strong>Has Ticket:</strong> @Model.ParticipationHasTicket
-                                (@(participationTotal > 0 ? Math.Round((decimal)Model.ParticipationHasTicket / participationTotal * 100) : 0)%)
-                            </li>
-                            <li class="mb-2">
-                                <span class="badge bg-warning">&nbsp;&nbsp;</span>
-                                <strong>No Ticket:</strong> @Model.ParticipationNoTicket
-                                (@(participationTotal > 0 ? Math.Round((decimal)Model.ParticipationNoTicket / participationTotal * 100) : 0)%)
-                            </li>
-                            <li class="mb-2">
-                                <span class="badge bg-secondary">&nbsp;&nbsp;</span>
-                                <strong>Not Coming:</strong> @Model.ParticipationNotAttending
-                                (@(participationTotal > 0 ? Math.Round((decimal)Model.ParticipationNotAttending / participationTotal * 100) : 0)%)
-                            </li>
-                        </ul>
+                        <h6 class="text-center">UpSet plot</h6>
+                        <div id="userUpset"
+                             data-users-only="@sm.UsersOnly"
+                             data-profile-only="@sm.UsersAndProfileOnly"
+                             data-ticket-only="@sm.UsersAndTicketOnly"
+                             data-all-three="@sm.AllThree"
+                             style="max-height: 420px; width: 100%;"></div>
                     </div>
                 </div>
+                <p class="text-muted small mt-2 mb-0">
+                    Users is the universe — every cached user is in it. Profiles ⊆ Users, Tickets ⊆ Users.
+                </p>
             </div>
         </div>
+        @* TODO: extend to Shifts set when IShiftManager caching lands. *@
     }
 
     <!-- Daily Sales Chart -->
@@ -369,73 +344,95 @@
     </div>
 </div>
 
-@if (Model.DailySales.Count > 0 || participationTotal > 0)
+@if (Model.DailySales.Count > 0)
 {
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"
             integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ"
             crossorigin="anonymous"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            @if (Model.DailySales.Count > 0)
-            {
-                <text>
-                var salesData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.DailySales, new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }));
-                var salesCtx = document.getElementById('dailySalesChart').getContext('2d');
-                new Chart(salesCtx, {
-                    type: 'bar',
-                    data: {
-                        labels: salesData.map(d => d.date),
-                        datasets: [
-                            {
-                                label: 'Tickets Sold',
-                                data: salesData.map(d => d.ticketsSold),
-                                backgroundColor: 'rgba(54, 162, 235, 0.6)',
-                                order: 2
-                            },
-                            {
-                                label: '7-day Avg',
-                                data: salesData.map(d => d.rollingAverage),
-                                type: 'line',
-                                borderColor: 'rgba(255, 99, 132, 1)',
-                                borderWidth: 2,
-                                fill: false,
-                                pointRadius: 0,
-                                order: 1
-                            }
-                        ]
-                    },
-                    options: {
-                        responsive: true,
-                        scales: {
-                            x: { display: true },
-                            y: { beginAtZero: true, title: { display: true, text: 'Tickets' } }
+            var salesData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.DailySales, new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }));
+            var salesCtx = document.getElementById('dailySalesChart').getContext('2d');
+            new Chart(salesCtx, {
+                type: 'bar',
+                data: {
+                    labels: salesData.map(d => d.date),
+                    datasets: [
+                        {
+                            label: 'Tickets Sold',
+                            data: salesData.map(d => d.ticketsSold),
+                            backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                            order: 2
+                        },
+                        {
+                            label: '7-day Avg',
+                            data: salesData.map(d => d.rollingAverage),
+                            type: 'line',
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            borderWidth: 2,
+                            fill: false,
+                            pointRadius: 0,
+                            order: 1
                         }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: { display: true },
+                        y: { beginAtZero: true, title: { display: true, text: 'Tickets' } }
                     }
-                });
-                </text>
+                }
+            });
+        });
+    </script>
+}
+
+@if (Model.SetMembership is not null && Model.SetMembership.TotalUsers > 0)
+{
+    <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@@upsetjs/venn.js@1.4.4/build/venn.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@@upsetjs/bundle@1.13.1/build/index.umd.min.js" crossorigin="anonymous"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // ---- Venn: 3 sets (Users / Profiles / Tickets) ----
+            var venn = document.getElementById('userVenn');
+            if (venn && window.venn && window.d3) {
+                var d = venn.dataset;
+                var sets = [
+                    { sets: ['Users'], size: +d.users, label: 'Users (' + d.users + ')' },
+                    { sets: ['Profiles'], size: +d.profiles, label: 'Profiles (' + d.profiles + ')' },
+                    { sets: ['Tickets'], size: +d.tickets, label: 'Tickets (' + d.tickets + ')' },
+                    { sets: ['Users', 'Profiles'], size: +d.usersProfiles },
+                    { sets: ['Users', 'Tickets'], size: +d.usersTickets },
+                    { sets: ['Profiles', 'Tickets'], size: +d.profilesTickets },
+                    { sets: ['Users', 'Profiles', 'Tickets'], size: +d.allThree }
+                ];
+                var chart = window.venn.VennDiagram().width(400).height(360);
+                window.d3.select('#userVenn').datum(sets).call(chart);
             }
 
-            @if (participationTotal > 0)
-            {
-                <text>
-                var partCtx = document.getElementById('participationChart').getContext('2d');
-                new Chart(partCtx, {
-                    type: 'doughnut',
-                    data: {
-                        labels: ['Has Ticket', 'No Ticket', 'Not Coming'],
-                        datasets: [{
-                            data: [@Model.ParticipationHasTicket, @Model.ParticipationNoTicket, @Model.ParticipationNotAttending],
-                            backgroundColor: ['#198754', '#ffc107', '#6c757d']
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        plugins: {
-                            legend: { position: 'bottom' }
-                        }
-                    }
+            // ---- UpSet: same 3 sets, intersection bar chart ----
+            var upset = document.getElementById('userUpset');
+            if (upset && window.UpSetJS) {
+                var u = upset.dataset;
+                var usersOnly = +u.usersOnly;
+                var profileOnly = +u.profileOnly;
+                var ticketOnly = +u.ticketOnly;
+                var allThree = +u.allThree;
+                var elems = [];
+                for (var i = 0; i < usersOnly; i++)    elems.push({ name: 'u' + i, sets: ['Users'] });
+                for (var i = 0; i < profileOnly; i++)  elems.push({ name: 'p' + i, sets: ['Users', 'Profiles'] });
+                for (var i = 0; i < ticketOnly; i++)   elems.push({ name: 't' + i, sets: ['Users', 'Tickets'] });
+                for (var i = 0; i < allThree; i++)     elems.push({ name: 'a' + i, sets: ['Users', 'Profiles', 'Tickets'] });
+                var sets = window.UpSetJS.extractSets(elems);
+                var combinations = window.UpSetJS.generateCombinations(sets);
+                window.UpSetJS.render(upset, {
+                    sets: sets,
+                    combinations: combinations,
+                    width: 400,
+                    height: 360
                 });
-                </text>
             }
         });
     </script>

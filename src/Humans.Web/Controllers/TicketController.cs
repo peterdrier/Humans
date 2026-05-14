@@ -123,35 +123,25 @@ public class TicketController : HumansControllerBase
                 PaymentStatus = o.PaymentStatus,
             }).ToList(),
             IsConfigured = true,
-            TotalActiveVolunteers = stats.TotalActiveVolunteers,
-            VolunteersWithTickets = stats.VolunteersWithTickets,
-            VolunteerCoveragePercent = stats.VolunteerCoveragePercent,
         };
 
-        // Participation breakdown for donut chart
-        try
+        // Set membership across the UserInfo cache — drives the Venn + UpSet.
+        // TODO: extend to (HasProfile, HasTicket, HasShift) when IShiftManager caching lands.
+        var snapshot = _userService.GetAllUserInfos();
+        var usersOnly = 0;
+        var profileOnly = 0;
+        var ticketOnly = 0;
+        var both = 0;
+        foreach (var u in snapshot)
         {
-            var activeEvent = await _shiftMgmt.GetActiveAsync();
-            if (activeEvent is not null && activeEvent.Year > 0)
-            {
-                var participations = await _userService.GetAllParticipationsForYearAsync(activeEvent.Year);
-                var notAttendingCount = participations.Count(p => p.Status == ParticipationStatus.NotAttending);
-                var hasTicketCount = participations.Count(p =>
-                    p.Status == ParticipationStatus.Ticketed ||
-                    p.Status == ParticipationStatus.Attended);
-
-                // "No Ticket" = total active volunteers minus those with tickets minus those who declared not attending
-                var noTicketCount = Math.Max(0, stats.TotalActiveVolunteers - hasTicketCount - notAttendingCount);
-
-                model.ParticipationNotAttending = notAttendingCount;
-                model.ParticipationHasTicket = hasTicketCount;
-                model.ParticipationNoTicket = noTicketCount;
-            }
+            var hasProfile = u.Profile is not null;
+            var hasTicket = u.HasTicket;
+            if (hasProfile && hasTicket) both++;
+            else if (hasProfile) profileOnly++;
+            else if (hasTicket) ticketOnly++;
+            else usersOnly++;
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to load participation breakdown for ticket dashboard");
-        }
+        model.SetMembership = new UserSetMembership(usersOnly, profileOnly, ticketOnly, both);
 
         return View(model);
     }

@@ -39,15 +39,26 @@ public class TicketDashboardViewModel
     // Who hasn't bought count (for dashboard link)
     public int WhoHasntBoughtCount { get; set; }
 
-    // Volunteer ticket coverage
-    public int TotalActiveVolunteers { get; set; }
-    public int VolunteersWithTickets { get; set; }
-    public decimal VolunteerCoveragePercent { get; set; }
+    // Set membership across UserInfo cache (Users, Profiles, Tickets).
+    // Used by the Venn + UpSet diagrams. Each user is bucketed into one of
+    // the four (HasProfile, HasTicket) combinations.
+    public UserSetMembership? SetMembership { get; set; }
+}
 
-    // Participation breakdown
-    public int ParticipationNotAttending { get; set; }
-    public int ParticipationNoTicket { get; set; }
-    public int ParticipationHasTicket { get; set; }
+/// <summary>
+/// User-set bucketing for the Tickets dashboard Venn + UpSet diagrams.
+/// Users is the universe (every UserInfo); Profiles and Tickets are subsets.
+/// Each user falls into exactly one of the four buckets defined here.
+/// </summary>
+public sealed record UserSetMembership(
+    int UsersOnly,              // !HasProfile && !HasTicket
+    int UsersAndProfileOnly,    //  HasProfile && !HasTicket
+    int UsersAndTicketOnly,     // !HasProfile &&  HasTicket
+    int AllThree)               //  HasProfile &&  HasTicket
+{
+    public int TotalUsers => UsersOnly + UsersAndProfileOnly + UsersAndTicketOnly + AllThree;
+    public int ProfilesCount => UsersAndProfileOnly + AllThree;
+    public int TicketsCount => UsersAndTicketOnly + AllThree;
 }
 
 public class PaymentMethodFeeBreakdown
