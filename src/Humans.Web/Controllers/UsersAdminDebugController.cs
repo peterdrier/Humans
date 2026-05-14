@@ -55,14 +55,14 @@ public sealed class UsersAdminDebugController : Controller
 
         IEnumerable<UserDebugRow> sorted = sort switch
         {
-            "userId"      => rows.OrderBy(r => r.UserId),
-            "hasProfile"  => rows.OrderBy(r => r.HasProfile),
-            "hasTicket"   => rows.OrderBy(r => r.HasTicket),
-            "marketing"   => rows.OrderBy(r => NullableBool(r.MarketingOptedOut)),
-            "burnerName"  => rows.OrderBy(r => r.BurnerName, StringComparer.OrdinalIgnoreCase),
-            "legalName"   => rows.OrderBy(r => r.LegalName, StringComparer.OrdinalIgnoreCase),
-            "hasConsent"  => rows.OrderBy(r => NullableBool(r.HasConsent)),
-            _             => rows.OrderBy(r => r.DisplayName, StringComparer.OrdinalIgnoreCase),
+            "userId" => rows.OrderBy(r => r.UserId),
+            "hasProfile" => rows.OrderBy(r => r.HasProfile),
+            "hasTicket" => rows.OrderBy(r => r.HasTicket),
+            "marketing" => rows.OrderBy(r => NullableBool(r.MarketingOptedOut)),
+            "burnerName" => rows.OrderBy(r => r.BurnerName, StringComparer.OrdinalIgnoreCase),
+            "legalName" => rows.OrderBy(r => r.LegalName, StringComparer.OrdinalIgnoreCase),
+            "hasConsent" => rows.OrderBy(r => NullableBool(r.HasConsent)),
+            _ => rows.OrderBy(r => r.DisplayName, StringComparer.OrdinalIgnoreCase),
         };
 
         return asc ? sorted.ToList() : sorted.Reverse().ToList();
