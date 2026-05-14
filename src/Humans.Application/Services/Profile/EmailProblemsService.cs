@@ -1,7 +1,6 @@
 using Humans.Application.DTOs.EmailProblems;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
-using Humans.Domain.Entities;
 using Humans.Domain.Helpers;
 using NodaTime;
 
@@ -9,18 +8,15 @@ namespace Humans.Application.Services.Profile;
 
 public sealed class EmailProblemsService : IEmailProblemsService
 {
-    private readonly IProfileService _profileService;
     private readonly IUserEmailService _userEmailService;
     private readonly IUserService _userService;
     private readonly IClock _clock;
 
     public EmailProblemsService(
-        IProfileService profileService,
         IUserEmailService userEmailService,
         IUserService userService,
         IClock clock)
     {
-        _profileService = profileService;
         _userEmailService = userEmailService;
         _userService = userService;
         _clock = clock;
@@ -30,47 +26,42 @@ public sealed class EmailProblemsService : IEmailProblemsService
     {
         var problems = new List<EmailProblem>();
 
-        var users = await _userService.GetAllUsersAsync(ct);
-        var profiles = new List<FullProfile>(users.Count);
-        foreach (var u in users)
-        {
-            var fp = await _profileService.GetFullProfileAsync(u.Id, ct);
-            if (fp is not null) profiles.Add(fp);
-        }
+        var allInfos = _userService.GetAllUserInfos();
+        var profiled = allInfos.Where(i => i.Profile is not null).ToList();
 
-        foreach (var p in profiles)
+        foreach (var p in profiled)
         {
-            var emails = p.AllUserEmails;
+            var emails = p.UserEmails;
 
             if (emails.Count(e => e.IsPrimary) > 1)
                 problems.Add(new EmailProblem(
-                    EmailProblemKind.MultipleIsPrimary, p.UserId, null, null, null, null));
+                    EmailProblemKind.MultipleIsPrimary, p.Id, null, null, null, null));
 
             if (emails.Count(e => e.IsGoogle) > 1)
                 problems.Add(new EmailProblem(
-                    EmailProblemKind.MultipleIsGoogle, p.UserId, null, null, null, null));
+                    EmailProblemKind.MultipleIsGoogle, p.Id, null, null, null, null));
 
             if (emails.Any(e => e.IsVerified) && !emails.Any(e => e.IsPrimary))
                 problems.Add(new EmailProblem(
-                    EmailProblemKind.ZeroIsPrimary, p.UserId, null, null, null, null));
+                    EmailProblemKind.ZeroIsPrimary, p.Id, null, null, null, null));
 
             if (!emails.Any(e => e.IsGoogle))
                 problems.Add(new EmailProblem(
-                    EmailProblemKind.ZeroIsGoogle, p.UserId, null, null, null, null));
+                    EmailProblemKind.ZeroIsGoogle, p.Id, null, null, null, null));
 
             foreach (var unverified in emails.Where(e => !e.IsVerified))
             {
                 problems.Add(new EmailProblem(
-                    EmailProblemKind.Unverified, p.UserId, null,
+                    EmailProblemKind.Unverified, p.Id, null,
                     unverified.Id, unverified.Email, null));
             }
         }
 
         // Cross-user duplicates: build normalized-email -> userIds map, flag pairs.
         var normToUsers = new Dictionary<string, List<(Guid UserId, string Raw)>>(StringComparer.Ordinal);
-        foreach (var p in profiles)
+        foreach (var p in profiled)
         {
-            foreach (var email in p.AllUserEmails)
+            foreach (var email in p.UserEmails)
             {
                 var norm = EmailNormalization.NormalizeForComparison(email.Email);
                 if (!normToUsers.TryGetValue(norm, out var list))
@@ -78,7 +69,7 @@ public sealed class EmailProblemsService : IEmailProblemsService
                     list = new List<(Guid, string)>();
                     normToUsers[norm] = list;
                 }
-                list.Add((p.UserId, email.Email));
+                list.Add((p.Id, email.Email));
             }
         }
 
@@ -115,28 +106,23 @@ public sealed class EmailProblemsService : IEmailProblemsService
         }
 
         // Case 9: legacy AspNetIdentity Email column populated but no matching
-        // verified UserEmail row exists. Read user_emails directly by UserId —
-        // Profile-less users (mailing-list / ticketing imports) have a valid
-        // UserEmail row but no Profile aggregate, so the FullProfile path
-        // would false-positive them.
-        var emailsByUser = await _userEmailService.GetEntitiesByUserIdsAsync(
-            users.Select(u => u.Id).ToList(), ct);
-
-        foreach (var u in users)
+        // verified UserEmail row exists. UserInfo carries both the legacy
+        // column (IdentityEmailColumn) and the loaded UserEmail rows —
+        // Profile-less users (mailing-list / ticketing imports) are
+        // surfaced too because we iterate every UserInfo, not just the
+        // profile-having subset.
+        foreach (var info in allInfos)
         {
-            var legacy = u.IdentityEmailColumn;
+            var legacy = info.IdentityEmailColumn;
             if (string.IsNullOrEmpty(legacy)) continue;
 
-            var userEmails = emailsByUser.TryGetValue(u.Id, out var list)
-                ? list
-                : (IReadOnlyList<UserEmail>)Array.Empty<UserEmail>();
-            var hasMatchingVerifiedRow = userEmails.Any(e =>
+            var hasMatchingVerifiedRow = info.UserEmails.Any(e =>
                 e.IsVerified && string.Equals(e.Email, legacy, StringComparison.OrdinalIgnoreCase));
             if (hasMatchingVerifiedRow) continue;
 
             problems.Add(new EmailProblem(
                 EmailProblemKind.LegacyIdentityEmailNotInUserEmails,
-                u.Id, null, null, legacy, null));
+                info.Id, null, null, legacy, null));
         }
 
         return new EmailProblemsReport(_clock.GetCurrentInstant(), problems);
@@ -146,14 +132,14 @@ public sealed class EmailProblemsService : IEmailProblemsService
     {
         if (user1Id == user2Id) return false;
 
-        var p1 = await _profileService.GetFullProfileAsync(user1Id, ct);
-        var p2 = await _profileService.GetFullProfileAsync(user2Id, ct);
-        if (p1 is null || p2 is null) return false;
+        var info1 = await _userService.GetUserInfoAsync(user1Id, ct);
+        var info2 = await _userService.GetUserInfoAsync(user2Id, ct);
+        if (info1 is null || info2 is null) return false;
 
-        var norms1 = p1.AllUserEmails
+        var norms1 = info1.UserEmails
             .Select(e => EmailNormalization.NormalizeForComparison(e.Email))
             .ToHashSet(StringComparer.Ordinal);
-        return p2.AllUserEmails
+        return info2.UserEmails
             .Any(e => norms1.Contains(EmailNormalization.NormalizeForComparison(e.Email)));
     }
 
@@ -170,21 +156,15 @@ public sealed class EmailProblemsService : IEmailProblemsService
         // admin-invoked and the per-row audit lives at the controller level.
         _ = actorUserId;
 
-        var users = await _userService.GetAllUsersAsync(ct);
-        var userIds = users.Select(u => u.Id).ToList();
-        var emailsByUser = await _userEmailService.GetEntitiesByUserIdsAsync(userIds, ct);
-
+        var allInfos = _userService.GetAllUserInfos();
         var backfilled = new List<(Guid, string)>();
 
-        foreach (var u in users)
+        foreach (var info in allInfos)
         {
-            var legacy = u.IdentityEmailColumn;
+            var legacy = info.IdentityEmailColumn;
             if (string.IsNullOrEmpty(legacy)) continue;
 
-            var userEmails = emailsByUser.TryGetValue(u.Id, out var list)
-                ? list
-                : (IReadOnlyList<UserEmail>)Array.Empty<UserEmail>();
-            if (userEmails.Any(e => e.IsVerified
+            if (info.UserEmails.Any(e => e.IsVerified
                 && string.Equals(e.Email, legacy, StringComparison.OrdinalIgnoreCase)))
                 continue;
 
@@ -193,8 +173,8 @@ public sealed class EmailProblemsService : IEmailProblemsService
             // longer authoritative for OAuth identity (AspNetUserLogins is) —
             // the next OAuth sign-in's reconcile finds the matching row by
             // address and attaches the tag via TagMoved.
-            await _userEmailService.AddVerifiedEmailAsync(u.Id, legacy, ct);
-            backfilled.Add((u.Id, legacy));
+            await _userEmailService.AddVerifiedEmailAsync(info.Id, legacy, ct);
+            backfilled.Add((info.Id, legacy));
         }
 
         return backfilled;

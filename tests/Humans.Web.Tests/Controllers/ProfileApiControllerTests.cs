@@ -3,11 +3,13 @@ using AwesomeAssertions;
 using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Profiles;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Testing;
 using Humans.Web.Controllers;
+using NodaTime;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
@@ -46,6 +48,7 @@ namespace Humans.Web.Tests.Controllers;
 public class ProfileApiControllerTests
 {
     private readonly IProfileService _profileService = Substitute.For<IProfileService>();
+    private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IContactFieldService _contactFieldService = Substitute.For<IContactFieldService>();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly UserManager<User> _userManager;
@@ -71,7 +74,7 @@ public class ProfileApiControllerTests
         }
 
         var ctrl = new ProfileApiController(
-            _profileService, _contactFieldService, _userEmailService, _userManager);
+            _profileService, _userService, _contactFieldService, _userEmailService, _userManager);
 
         var http = new DefaultHttpContext();
         if (currentUser is not null)
@@ -113,6 +116,44 @@ public class ProfileApiControllerTests
 
     private static User MakeUser(Guid id) =>
         new() { Id = id, Email = $"viewer-{id:N}@example.com", DisplayName = "Viewer" };
+
+    private static UserInfo MakeUserInfo(
+        Guid userId,
+        Guid profileId,
+        string burnerName = "Target Burner",
+        bool isRejected = false)
+    {
+        var profile = new Profile
+        {
+            Id = profileId,
+            UserId = userId,
+            BurnerName = burnerName,
+            FirstName = "Target",
+            LastName = "Display",
+            IsApproved = true,
+            CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+            UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+            RejectedAt = isRejected ? Instant.FromUtc(2026, 2, 1, 0, 0) : (Instant?)null,
+        };
+        var user = new User
+        {
+            Id = userId,
+            DisplayName = "Target Display",
+            PreferredLanguage = "en",
+            CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+            GoogleEmailStatus = GoogleEmailStatus.Unknown,
+        };
+        return UserInfo.Create(
+            user: user,
+            userEmails: Array.Empty<UserEmail>(),
+            eventParticipations: Array.Empty<EventParticipation>(),
+            externalLogins: Array.Empty<(string, string)>(),
+            profile: profile,
+            contactFields: Array.Empty<ContactField>(),
+            profileLanguages: Array.Empty<ProfileLanguage>(),
+            volunteerHistory: Array.Empty<VolunteerHistoryEntry>(),
+            communicationPreferences: Array.Empty<CommunicationPreference>());
+    }
 
     private static FullProfile MakeFullProfile(
         Guid userId,
@@ -309,8 +350,8 @@ public class ProfileApiControllerTests
     public async Task GetByUserId_returns_404_when_full_profile_not_in_cache()
     {
         var viewer = MakeUser(Guid.NewGuid());
-        _profileService.GetFullProfileAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns((FullProfile?)null);
+        _userService.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>((UserInfo?)null));
 
         var sut = BuildSut(viewer);
 
@@ -326,8 +367,8 @@ public class ProfileApiControllerTests
         var targetUserId = Guid.NewGuid();
         var targetProfileId = Guid.NewGuid();
 
-        _profileService.GetFullProfileAsync(targetUserId, Arg.Any<CancellationToken>())
-            .Returns(MakeFullProfile(targetUserId, targetProfileId, isRejected: true));
+        _userService.GetUserInfoAsync(targetUserId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(MakeUserInfo(targetUserId, targetProfileId, isRejected: true)));
 
         var sut = BuildSut(viewer);
 
@@ -343,8 +384,8 @@ public class ProfileApiControllerTests
         var targetUserId = Guid.NewGuid();
         var targetProfileId = Guid.NewGuid();
 
-        _profileService.GetFullProfileAsync(targetUserId, Arg.Any<CancellationToken>())
-            .Returns(MakeFullProfile(targetUserId, targetProfileId, burnerName: "Davey"));
+        _userService.GetUserInfoAsync(targetUserId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(MakeUserInfo(targetUserId, targetProfileId, burnerName: "Davey")));
         _contactFieldService.GetViewerAccessLevelAsync(targetUserId, viewer.Id, Arg.Any<CancellationToken>())
             .Returns(ContactFieldVisibility.AllActiveProfiles);
         _userEmailService.GetVisibleEmailsAsync(targetUserId, Arg.Any<ContactFieldVisibility>(), Arg.Any<CancellationToken>())

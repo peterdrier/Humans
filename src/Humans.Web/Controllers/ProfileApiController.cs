@@ -1,5 +1,6 @@
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Profiles;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -20,17 +21,20 @@ public class ProfileApiController : ApiControllerBase
     private const int MaxResults = 10;
 
     private readonly IProfileService _profileService;
+    private readonly IUserService _userService;
     private readonly IContactFieldService _contactFieldService;
     private readonly IUserEmailService _userEmailService;
 
     public ProfileApiController(
         IProfileService profileService,
+        IUserService userService,
         IContactFieldService contactFieldService,
         IUserEmailService userEmailService,
         UserManager<User> userManager)
         : base(userManager)
     {
         _profileService = profileService;
+        _userService = userService;
         _contactFieldService = contactFieldService;
         _userEmailService = userEmailService;
     }
@@ -105,8 +109,8 @@ public class ProfileApiController : ApiControllerBase
             return authError;
         var viewerUserId = viewer.Id;
 
-        var fullProfile = await _profileService.GetFullProfileAsync(userId, ct);
-        if (fullProfile is null || fullProfile.IsRejected)
+        var info = await _userService.GetUserInfoAsync(userId, ct);
+        if (info?.Profile is null || info.Profile.RejectedAt is not null)
             return NotFound();
 
         var pictureUrls = await ProfilePictureUrlHelper.BuildEffectiveUrlsAsync(
@@ -117,17 +121,13 @@ public class ProfileApiController : ApiControllerBase
 
         var detail = await GetSharedDetailAsync(
             userId,
-            fullProfile.ProfileId,
+            info.Profile.Id,
             viewerUserId,
             ct);
 
-        var displayName = string.IsNullOrWhiteSpace(fullProfile.BurnerName)
-            ? fullProfile.DisplayName
-            : fullProfile.BurnerName!;
-
         return Ok(new HumanLookupSearchResult(
             userId,
-            displayName,
+            info.BurnerName,
             detail,
             pictureUrls.GetValueOrDefault(userId)));
     }

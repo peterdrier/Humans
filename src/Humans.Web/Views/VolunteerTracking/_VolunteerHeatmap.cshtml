@@ -1,11 +1,9 @@
 @model Humans.Web.Models.HeatmapPartialModel
 @using Humans.Application.DTOs
-@using Humans.Application.Interfaces.Profiles
 @using Humans.Web.Authorization
 @using Microsoft.AspNetCore.Authorization
 @using NodaTime
 @inject IAuthorizationService AuthService
-@inject IProfileService ProfileService
 
 @{
     var canWrite = (await AuthService.AuthorizeAsync(User, PolicyNames.VolunteerTrackingWrite)).Succeeded;
@@ -74,12 +72,17 @@
             <tbody>
                 @foreach (var row in Model.Rows)
                 {
-                    // BurnerName-resolved name for tooltips/aria — never read user.DisplayName
-                    // for rendering when a Profile exists (memory/architecture/burnername-is-the-display-name.md).
-                    // The <vc:human> below resolves and renders the displayed name itself; this is just
-                    // a string we need for cell tooltip text and the search-row data attribute.
-                    var fullProfile = await ProfileService.GetFullProfileAsync(row.UserId);
-                    var displayName = fullProfile?.DisplayName ?? Localizer["VolTrack_UnknownUser"].Value;
+                    // BurnerName-resolved name for tooltips/aria — resolved
+                    // by the controller in a single batch (see
+                    // VolunteerTrackingController.Index); the partial never
+                    // makes per-row service calls. The <vc:human> below
+                    // renders the avatar+name itself; this string is only
+                    // for the row search/tooltip data attribute.
+                    var displayName = Model.DisplayNameByUserId.GetValueOrDefault(row.UserId, "");
+                    if (string.IsNullOrEmpty(displayName))
+                    {
+                        displayName = Localizer["VolTrack_UnknownUser"].Value;
+                    }
 
                     // Build the day-off tooltip ("Wed 24 Jun — doctor; Fri 26 Jun") for the row badge.
                     var dayOffTooltip = string.Join("; ", row.DayOffs

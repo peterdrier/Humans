@@ -681,28 +681,26 @@ public class GoogleController : HumansControllerBase
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> SyncOutbox(
         [FromServices] IUserService userService,
-        [FromServices] ITeamService teamService,
-        [FromServices] IProfileService profileService)
+        [FromServices] ITeamService teamService)
     {
         var events = (await _googleSyncService.GetRecentOutboxEventsAsync(200)).ToList();
 
-        // Resolve display info for events via section-owned services (§15 Part 2c,
-        // design-rules §2a — controllers go through service interfaces, not repos).
-        // Issue #635 (§15i): GoogleEmail derives from FullProfile.GoogleEmail
-        // (which reads the IsGoogle UserEmail row); fall back to user.Email
-        // (the canonical primary, computed via the override) when no
-        // IsGoogle row is set.
+        // Resolve display info for events via the UserInfo cache (one
+        // sync-on-hit lookup per user, no per-event DB round-trip).
+        // GoogleEmail derives from the IsGoogle UserEmail row carried inside
+        // UserInfo; fall back to the canonical primary email when no
+        // IsGoogle row is set. BurnerName-resolved name per
+        // memory/architecture/burnername-is-the-display-name.md.
         var userIds = events.Select(e => e.UserId).Distinct().ToList();
         var teamIds = events.Select(e => e.TeamId).Distinct().ToList();
-        var users = await userService.GetByIdsWithEmailsAsync(userIds);
-        var googleEmailLookup = new Dictionary<Guid, string>();
-        foreach (var (userId, user) in users)
+        var googleEmailLookup = new Dictionary<Guid, string>(userIds.Count);
+        var displayNameLookup = new Dictionary<Guid, string>(userIds.Count);
+        foreach (var userId in userIds)
         {
-            var fullProfile = await profileService.GetFullProfileAsync(userId);
-            googleEmailLookup[userId] = fullProfile?.GoogleEmail ?? user.Email ?? "unknown";
+            var info = await userService.GetUserInfoAsync(userId);
+            googleEmailLookup[userId] = info?.GoogleEmail ?? info?.Email ?? "unknown";
+            displayNameLookup[userId] = info?.BurnerName ?? "(unknown)";
         }
-        var displayNameLookup = users.ToDictionary(
-            kvp => kvp.Key, kvp => kvp.Value.DisplayName);
         var teamLookup = (await teamService.GetTeamNamesByIdsAsync(teamIds))
             .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
         var resourcesByTeam = await _teamResourceService.GetResourcesByTeamIdsAsync(teamIds);
