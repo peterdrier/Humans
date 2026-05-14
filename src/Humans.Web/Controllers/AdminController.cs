@@ -9,7 +9,6 @@ using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Dashboard;
 using Humans.Application.Interfaces.Feedback;
 using Humans.Application.Interfaces.Onboarding;
-using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
@@ -65,7 +64,6 @@ public class AdminController : HumansControllerBase
     [HttpGet("")]
     [Authorize(Policy = PolicyNames.AnyAdminRole)]
     public async Task<IActionResult> Index(
-        [FromServices] IProfileService profileService,
         [FromServices] IShiftManagementService shifts,
         [FromServices] IFeedbackService feedback,
         [FromServices] IAuditViewerService auditViewer,
