@@ -49,32 +49,19 @@ public sealed class EventService : IEventService
         var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId);
         var now = _clock.GetCurrentInstant();
 
-        var existing = await _repo.GetGuideSettingsAsync(ct);
-        if (existing == null)
+        var settings = new EventGuideSettings
         {
-            _repo.Add(new EventGuideSettings
-            {
-                Id = Guid.NewGuid(),
-                EventSettingsId = eventSettingsId,
-                SubmissionOpenAt = ToInstant(submissionOpenAt, tz),
-                SubmissionCloseAt = ToInstant(submissionCloseAt, tz),
-                GuidePublishAt = ToInstant(guidePublishAt, tz),
-                MaxPrintSlots = maxPrintSlots,
-                CreatedAt = now,
-                UpdatedAt = now
-            });
-        }
-        else
-        {
-            existing.EventSettingsId = eventSettingsId;
-            existing.SubmissionOpenAt = ToInstant(submissionOpenAt, tz);
-            existing.SubmissionCloseAt = ToInstant(submissionCloseAt, tz);
-            existing.GuidePublishAt = ToInstant(guidePublishAt, tz);
-            existing.MaxPrintSlots = maxPrintSlots;
-            existing.UpdatedAt = now;
-        }
+            Id = existingId ?? Guid.NewGuid(),
+            EventSettingsId = eventSettingsId,
+            SubmissionOpenAt = ToInstant(submissionOpenAt, tz),
+            SubmissionCloseAt = ToInstant(submissionCloseAt, tz),
+            GuidePublishAt = ToInstant(guidePublishAt, tz),
+            MaxPrintSlots = maxPrintSlots,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
 
-        await _repo.SaveChangesAsync(ct);
+        await _repo.UpsertGuideSettingsAsync(settings, ct);
     }
 
     // ── Categories ────────────────────────────────────────────────────────
@@ -94,37 +81,17 @@ public sealed class EventService : IEventService
     public async Task<int> GetNextCategoryOrderAsync(CancellationToken ct = default)
         => await _repo.GetMaxCategoryOrderAsync(ct) + 1;
 
-    public async Task CreateCategoryAsync(EventCategory category, CancellationToken ct = default)
-    {
-        _repo.Add(category);
-        await _repo.SaveChangesAsync(ct);
-    }
+    public Task CreateCategoryAsync(EventCategory category, CancellationToken ct = default)
+        => _repo.AddCategoryAsync(category, ct);
 
-    public async Task UpdateCategoryAsync(EventCategory category, CancellationToken ct = default)
-        => await _repo.SaveChangesAsync(ct);
+    public Task UpdateCategoryAsync(EventCategory category, CancellationToken ct = default)
+        => _repo.SaveCategoryAsync(category, ct);
 
-    public async Task<(bool deleted, int linkedCount)> DeleteCategoryAsync(Guid id, CancellationToken ct = default)
-    {
-        var category = await _repo.GetCategoryWithEventsAsync(id, ct);
-        if (category == null) return (false, -1);
-        if (category.Events.Count > 0) return (false, category.Events.Count);
+    public Task<(bool deleted, int linkedCount)> DeleteCategoryAsync(Guid id, CancellationToken ct = default)
+        => _repo.DeleteCategoryAsync(id, ct);
 
-        _repo.Remove(category);
-        await _repo.SaveChangesAsync(ct);
-        return (true, 0);
-    }
-
-    public async Task MoveCategoryAsync(Guid id, int direction, CancellationToken ct = default)
-    {
-        var categories = await _repo.GetAllCategoriesOrderedForSwapAsync(ct);
-        var index = categories.FindIndex(c => c.Id == id);
-        if (index < 0) return;
-        var targetIndex = index + direction;
-        if (targetIndex < 0 || targetIndex >= categories.Count) return;
-        (categories[index].DisplayOrder, categories[targetIndex].DisplayOrder) =
-            (categories[targetIndex].DisplayOrder, categories[index].DisplayOrder);
-        await _repo.SaveChangesAsync(ct);
-    }
+    public Task MoveCategoryAsync(Guid id, int direction, CancellationToken ct = default)
+        => _repo.SwapCategoryOrderAsync(id, direction, ct);
 
     // ── Venues ────────────────────────────────────────────────────────────
 
@@ -140,36 +107,17 @@ public sealed class EventService : IEventService
     public async Task<int> GetNextVenueOrderAsync(CancellationToken ct = default)
         => await _repo.GetMaxVenueOrderAsync(ct) + 1;
 
-    public async Task CreateVenueAsync(EventVenue venue, CancellationToken ct = default)
-    {
-        _repo.Add(venue);
-        await _repo.SaveChangesAsync(ct);
-    }
+    public Task CreateVenueAsync(EventVenue venue, CancellationToken ct = default)
+        => _repo.AddVenueAsync(venue, ct);
 
-    public async Task UpdateVenueAsync(EventVenue venue, CancellationToken ct = default)
-        => await _repo.SaveChangesAsync(ct);
+    public Task UpdateVenueAsync(EventVenue venue, CancellationToken ct = default)
+        => _repo.SaveVenueAsync(venue, ct);
 
-    public async Task<(bool deleted, int linkedCount)> DeleteVenueAsync(Guid id, CancellationToken ct = default)
-    {
-        var venue = await _repo.GetVenueWithEventsAsync(id, ct);
-        if (venue == null) return (false, -1);
-        if (venue.Events.Count > 0) return (false, venue.Events.Count);
-        _repo.Remove(venue);
-        await _repo.SaveChangesAsync(ct);
-        return (true, 0);
-    }
+    public Task<(bool deleted, int linkedCount)> DeleteVenueAsync(Guid id, CancellationToken ct = default)
+        => _repo.DeleteVenueAsync(id, ct);
 
-    public async Task MoveVenueAsync(Guid id, int direction, CancellationToken ct = default)
-    {
-        var venues = await _repo.GetAllVenuesOrderedForSwapAsync(ct);
-        var index = venues.FindIndex(v => v.Id == id);
-        if (index < 0) return;
-        var targetIndex = index + direction;
-        if (targetIndex < 0 || targetIndex >= venues.Count) return;
-        (venues[index].DisplayOrder, venues[targetIndex].DisplayOrder) =
-            (venues[targetIndex].DisplayOrder, venues[index].DisplayOrder);
-        await _repo.SaveChangesAsync(ct);
-    }
+    public Task MoveVenueAsync(Guid id, int direction, CancellationToken ct = default)
+        => _repo.SwapVenueOrderAsync(id, direction, ct);
 
     // ── Submissions ───────────────────────────────────────────────────────
 
@@ -185,22 +133,19 @@ public sealed class EventService : IEventService
     public Task<Event?> GetCampEventAsync(Guid eventId, Guid campId, CancellationToken ct = default)
         => _repo.GetCampEventAsync(eventId, campId, ct);
 
-    public async Task SubmitEventAsync(Event guideEvent, CancellationToken ct = default)
-    {
-        _repo.Add(guideEvent);
-        await _repo.SaveChangesAsync(ct);
-    }
+    public Task SubmitEventAsync(Event guideEvent, CancellationToken ct = default)
+        => _repo.AddEventAsync(guideEvent, ct);
 
-    public async Task UpdateAndResubmitAsync(Event guideEvent, CancellationToken ct = default)
+    public Task UpdateAndResubmitAsync(Event guideEvent, CancellationToken ct = default)
     {
         guideEvent.Submit(_clock);
-        await _repo.SaveChangesAsync(ct);
+        return _repo.SaveEventAsync(guideEvent, ct);
     }
 
-    public async Task WithdrawEventAsync(Event guideEvent, CancellationToken ct = default)
+    public Task WithdrawEventAsync(Event guideEvent, CancellationToken ct = default)
     {
         guideEvent.Withdraw(_clock);
-        await _repo.SaveChangesAsync(ct);
+        return _repo.SaveEventAsync(guideEvent, ct);
     }
 
     // ── Browse / API ──────────────────────────────────────────────────────
@@ -221,48 +166,14 @@ public sealed class EventService : IEventService
     public Task<IReadOnlyList<EventFavourite>> GetFavouritesWithEventsAsync(Guid userId, CancellationToken ct = default)
         => _repo.GetFavouritesWithEventsAsync(userId, ct);
 
-    public async Task ToggleFavouriteAsync(Guid userId, Guid eventId, CancellationToken ct = default)
-    {
-        var existing = await _repo.GetFavouriteAsync(userId, eventId, ct);
-        if (existing != null)
-        {
-            _repo.Remove(existing);
-        }
-        else
-        {
-            _repo.Add(new EventFavourite
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                GuideEventId = eventId,
-                CreatedAt = _clock.GetCurrentInstant()
-            });
-        }
-        await _repo.SaveChangesAsync(ct);
-    }
+    public Task ToggleFavouriteAsync(Guid userId, Guid eventId, CancellationToken ct = default)
+        => _repo.ToggleFavouriteAsync(userId, eventId, BuildFavourite(userId, eventId), ct);
 
-    public async Task<bool> AddFavouriteAsync(Guid userId, Guid eventId, CancellationToken ct = default)
-    {
-        if (await _repo.FavouriteExistsAsync(userId, eventId, ct)) return false;
-        _repo.Add(new EventFavourite
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            GuideEventId = eventId,
-            CreatedAt = _clock.GetCurrentInstant()
-        });
-        await _repo.SaveChangesAsync(ct);
-        return true;
-    }
+    public Task<bool> AddFavouriteAsync(Guid userId, Guid eventId, CancellationToken ct = default)
+        => _repo.AddFavouriteIfAbsentAsync(BuildFavourite(userId, eventId), ct);
 
-    public async Task<bool> RemoveFavouriteAsync(Guid userId, Guid eventId, CancellationToken ct = default)
-    {
-        var fav = await _repo.GetFavouriteAsync(userId, eventId, ct);
-        if (fav == null) return false;
-        _repo.Remove(fav);
-        await _repo.SaveChangesAsync(ct);
-        return true;
-    }
+    public Task<bool> RemoveFavouriteAsync(Guid userId, Guid eventId, CancellationToken ct = default)
+        => _repo.RemoveFavouriteAsync(userId, eventId, ct);
 
     // ── Preferences ───────────────────────────────────────────────────────
 
@@ -276,27 +187,8 @@ public sealed class EventService : IEventService
     public Task<EventPreference?> GetPreferenceAsync(Guid userId, CancellationToken ct = default)
         => _repo.GetPreferenceAsync(userId, ct);
 
-    public async Task SavePreferenceAsync(Guid userId, List<string> slugs, CancellationToken ct = default)
-    {
-        var pref = await _repo.GetPreferenceAsync(userId, ct);
-        var json = JsonSerializer.Serialize(slugs);
-        if (pref == null)
-        {
-            _repo.Add(new EventPreference
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                ExcludedCategorySlugs = json,
-                UpdatedAt = _clock.GetCurrentInstant()
-            });
-        }
-        else
-        {
-            pref.ExcludedCategorySlugs = json;
-            pref.UpdatedAt = _clock.GetCurrentInstant();
-        }
-        await _repo.SaveChangesAsync(ct);
-    }
+    public Task SavePreferenceAsync(Guid userId, List<string> slugs, CancellationToken ct = default)
+        => _repo.UpsertPreferenceAsync(userId, JsonSerializer.Serialize(slugs), _clock.GetCurrentInstant(), ct);
 
     // ── Moderation ────────────────────────────────────────────────────────
 
@@ -320,7 +212,7 @@ public sealed class EventService : IEventService
 
         guideEvent.ApplyModerationAction(actionType, _clock);
 
-        _repo.Add(new EventModerationAction
+        var action = new EventModerationAction
         {
             Id = Guid.NewGuid(),
             GuideEventId = eventId,
@@ -328,9 +220,9 @@ public sealed class EventService : IEventService
             Action = actionType,
             Reason = reason,
             CreatedAt = _clock.GetCurrentInstant()
-        });
+        };
 
-        await _repo.SaveChangesAsync(ct);
+        await _repo.SaveEventAndModerationActionAsync(guideEvent, action, ct);
     }
 
     // ── Dashboard / Export ────────────────────────────────────────────────
@@ -346,6 +238,14 @@ public sealed class EventService : IEventService
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────
+
+    private EventFavourite BuildFavourite(Guid userId, Guid eventId) => new()
+    {
+        Id = Guid.NewGuid(),
+        UserId = userId,
+        GuideEventId = eventId,
+        CreatedAt = _clock.GetCurrentInstant()
+    };
 
     private static Instant ToInstant(LocalDateTime localDateTime, DateTimeZone? tz)
     {

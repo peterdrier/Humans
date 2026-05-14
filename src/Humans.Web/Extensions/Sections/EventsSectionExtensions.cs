@@ -11,7 +11,8 @@ internal static class EventsSectionExtensions
     internal static IServiceCollection AddEventsSection(this IServiceCollection services)
     {
         services.AddScoped<EventsFeatureFilter>();
-        services.AddScoped<IEventRepository, EventRepository>();
+        // Singleton + IDbContextFactory pattern (§15b): repo owns context lifetime.
+        services.AddSingleton<IEventRepository, EventRepository>();
         services.AddScoped<IEventService, EventService>();
         return services;
     }

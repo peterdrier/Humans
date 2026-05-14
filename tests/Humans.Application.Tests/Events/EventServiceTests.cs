@@ -234,7 +234,12 @@ public sealed class EventServiceTests
         public Task<EventSettings?> GetEventSettingsByIdAsync(Guid id, CancellationToken ct = default)
             => Task.FromResult(EventSettings.GetValueOrDefault(id));
 
-        public void Add(EventGuideSettings settings) => Settings = settings;
+        public Task UpsertGuideSettingsAsync(EventGuideSettings settings, CancellationToken ct = default)
+        {
+            Settings = settings;
+            SaveChangesCount++;
+            return Task.CompletedTask;
+        }
 
         public Task<IReadOnlyList<EventCategory>> GetActiveCategoriesAsync(CancellationToken ct = default)
             => Task.FromResult<IReadOnlyList<EventCategory>>(Categories.Where(c => c.IsActive).ToList());
@@ -245,20 +250,47 @@ public sealed class EventServiceTests
         public Task<EventCategory?> GetCategoryAsync(Guid id, CancellationToken ct = default)
             => Task.FromResult(Categories.FirstOrDefault(c => c.Id == id));
 
-        public Task<EventCategory?> GetCategoryWithEventsAsync(Guid id, CancellationToken ct = default)
-            => Task.FromResult(Categories.FirstOrDefault(c => c.Id == id));
-
         public Task<bool> CategorySlugExistsAsync(string slug, Guid? excludeId, CancellationToken ct = default)
             => Task.FromResult(Categories.Any(c => string.Equals(c.Slug, slug, StringComparison.Ordinal) && c.Id != excludeId));
 
         public Task<int> GetMaxCategoryOrderAsync(CancellationToken ct = default)
             => Task.FromResult(Categories.Count == 0 ? 0 : Categories.Max(c => c.DisplayOrder));
 
-        public Task<List<EventCategory>> GetAllCategoriesOrderedForSwapAsync(CancellationToken ct = default)
-            => Task.FromResult(Categories.OrderBy(c => c.DisplayOrder).ThenBy(c => c.Name, StringComparer.Ordinal).ToList());
+        public Task AddCategoryAsync(EventCategory category, CancellationToken ct = default)
+        {
+            Categories.Add(category);
+            SaveChangesCount++;
+            return Task.CompletedTask;
+        }
 
-        public void Add(EventCategory category) => Categories.Add(category);
-        public void Remove(EventCategory category) => Categories.Remove(category);
+        public Task SaveCategoryAsync(EventCategory category, CancellationToken ct = default)
+        {
+            SaveChangesCount++;
+            return Task.CompletedTask;
+        }
+
+        public Task<(bool deleted, int linkedCount)> DeleteCategoryAsync(Guid id, CancellationToken ct = default)
+        {
+            var category = Categories.FirstOrDefault(c => c.Id == id);
+            if (category == null) return Task.FromResult((false, -1));
+            if (category.Events.Count > 0) return Task.FromResult((false, category.Events.Count));
+            Categories.Remove(category);
+            SaveChangesCount++;
+            return Task.FromResult((true, 0));
+        }
+
+        public Task SwapCategoryOrderAsync(Guid id, int direction, CancellationToken ct = default)
+        {
+            var ordered = Categories.OrderBy(c => c.DisplayOrder).ThenBy(c => c.Name, StringComparer.Ordinal).ToList();
+            var index = ordered.FindIndex(c => c.Id == id);
+            if (index < 0) return Task.CompletedTask;
+            var targetIndex = index + direction;
+            if (targetIndex < 0 || targetIndex >= ordered.Count) return Task.CompletedTask;
+            (ordered[index].DisplayOrder, ordered[targetIndex].DisplayOrder) =
+                (ordered[targetIndex].DisplayOrder, ordered[index].DisplayOrder);
+            SaveChangesCount++;
+            return Task.CompletedTask;
+        }
 
         public Task<IReadOnlyList<EventVenue>> GetActiveVenuesAsync(CancellationToken ct = default)
             => Task.FromResult<IReadOnlyList<EventVenue>>(Venues.Where(v => v.IsActive).ToList());
@@ -269,21 +301,44 @@ public sealed class EventServiceTests
         public Task<EventVenue?> GetVenueAsync(Guid id, CancellationToken ct = default)
             => Task.FromResult(Venues.FirstOrDefault(v => v.Id == id));
 
-        public Task<EventVenue?> GetVenueWithEventsAsync(Guid id, CancellationToken ct = default)
-            => Task.FromResult(Venues.FirstOrDefault(v => v.Id == id));
-
         public Task<int> GetMaxVenueOrderAsync(CancellationToken ct = default)
             => Task.FromResult(Venues.Count == 0 ? 0 : Venues.Max(v => v.DisplayOrder));
 
-        public Task<List<EventVenue>> GetAllVenuesOrderedForSwapAsync(CancellationToken ct = default)
-            => Task.FromResult(Venues.OrderBy(v => v.DisplayOrder).ThenBy(v => v.Name, StringComparer.Ordinal).ToList());
-
-        public void Add(EventVenue venue) => Venues.Add(venue);
-
-        public void Remove(EventVenue venue)
+        public Task AddVenueAsync(EventVenue venue, CancellationToken ct = default)
         {
+            Venues.Add(venue);
+            SaveChangesCount++;
+            return Task.CompletedTask;
+        }
+
+        public Task SaveVenueAsync(EventVenue venue, CancellationToken ct = default)
+        {
+            SaveChangesCount++;
+            return Task.CompletedTask;
+        }
+
+        public Task<(bool deleted, int linkedCount)> DeleteVenueAsync(Guid id, CancellationToken ct = default)
+        {
+            var venue = Venues.FirstOrDefault(v => v.Id == id);
+            if (venue == null) return Task.FromResult((false, -1));
+            if (venue.Events.Count > 0) return Task.FromResult((false, venue.Events.Count));
             RemovedVenues.Add(venue);
             Venues.Remove(venue);
+            SaveChangesCount++;
+            return Task.FromResult((true, 0));
+        }
+
+        public Task SwapVenueOrderAsync(Guid id, int direction, CancellationToken ct = default)
+        {
+            var ordered = Venues.OrderBy(v => v.DisplayOrder).ThenBy(v => v.Name, StringComparer.Ordinal).ToList();
+            var index = ordered.FindIndex(v => v.Id == id);
+            if (index < 0) return Task.CompletedTask;
+            var targetIndex = index + direction;
+            if (targetIndex < 0 || targetIndex >= ordered.Count) return Task.CompletedTask;
+            (ordered[index].DisplayOrder, ordered[targetIndex].DisplayOrder) =
+                (ordered[targetIndex].DisplayOrder, ordered[index].DisplayOrder);
+            SaveChangesCount++;
+            return Task.CompletedTask;
         }
 
         public Task<IReadOnlyList<Event>> GetUserSubmissionsAsync(Guid userId, CancellationToken ct = default)
@@ -298,7 +353,18 @@ public sealed class EventServiceTests
         public Task<Event?> GetCampEventAsync(Guid eventId, Guid campId, CancellationToken ct = default)
             => Task.FromResult(Events.FirstOrDefault(e => e.Id == eventId && e.CampId == campId));
 
-        public void Add(Event guideEvent) => Events.Add(guideEvent);
+        public Task AddEventAsync(Event guideEvent, CancellationToken ct = default)
+        {
+            Events.Add(guideEvent);
+            SaveChangesCount++;
+            return Task.CompletedTask;
+        }
+
+        public Task SaveEventAsync(Event guideEvent, CancellationToken ct = default)
+        {
+            SaveChangesCount++;
+            return Task.CompletedTask;
+        }
 
         public Task<IReadOnlyList<Event>> GetApprovedEventsAsync(Guid? campId, Guid? venueId, Guid? categoryId, string? q, IReadOnlyList<string> excludedSlugs, CancellationToken ct = default)
             => Task.FromResult<IReadOnlyList<Event>>(Events.Where(e => e.Status == EventStatus.Approved).ToList());
@@ -321,7 +387,12 @@ public sealed class EventServiceTests
         public Task<IReadOnlyList<CampEventOverlap>> GetActiveCampEventsAsync(CancellationToken ct = default)
             => Task.FromResult<IReadOnlyList<CampEventOverlap>>([]);
 
-        public void Add(EventModerationAction action) => EventModerationActions.Add(action);
+        public Task SaveEventAndModerationActionAsync(Event guideEvent, EventModerationAction action, CancellationToken ct = default)
+        {
+            EventModerationActions.Add(action);
+            SaveChangesCount++;
+            return Task.CompletedTask;
+        }
 
         public Task<HashSet<Guid>> GetFavouriteEventIdsAsync(Guid userId, CancellationToken ct = default)
             => Task.FromResult(Favourites.Where(f => f.UserId == userId).Select(f => f.GuideEventId).ToHashSet());
@@ -329,22 +400,61 @@ public sealed class EventServiceTests
         public Task<IReadOnlyList<EventFavourite>> GetFavouritesWithEventsAsync(Guid userId, CancellationToken ct = default)
             => Task.FromResult<IReadOnlyList<EventFavourite>>(Favourites.Where(f => f.UserId == userId).ToList());
 
-        public Task<EventFavourite?> GetFavouriteAsync(Guid userId, Guid eventId, CancellationToken ct = default)
-            => Task.FromResult(Favourites.FirstOrDefault(f => f.UserId == userId && f.GuideEventId == eventId));
-
         public Task<bool> FavouriteExistsAsync(Guid userId, Guid eventId, CancellationToken ct = default)
             => Task.FromResult(Favourites.Any(f => f.UserId == userId && f.GuideEventId == eventId));
 
-        public void Add(EventFavourite fav) => Favourites.Add(fav);
-        public void Remove(EventFavourite fav) => Favourites.Remove(fav);
+        public Task<bool> ToggleFavouriteAsync(Guid userId, Guid eventId, EventFavourite newFavourite, CancellationToken ct = default)
+        {
+            var existing = Favourites.FirstOrDefault(f => f.UserId == userId && f.GuideEventId == eventId);
+            if (existing != null)
+            {
+                Favourites.Remove(existing);
+                SaveChangesCount++;
+                return Task.FromResult(false);
+            }
+            Favourites.Add(newFavourite);
+            SaveChangesCount++;
+            return Task.FromResult(true);
+        }
+
+        public Task<bool> AddFavouriteIfAbsentAsync(EventFavourite favourite, CancellationToken ct = default)
+        {
+            if (Favourites.Any(f => f.UserId == favourite.UserId && f.GuideEventId == favourite.GuideEventId))
+                return Task.FromResult(false);
+            Favourites.Add(favourite);
+            SaveChangesCount++;
+            return Task.FromResult(true);
+        }
+
+        public Task<bool> RemoveFavouriteAsync(Guid userId, Guid eventId, CancellationToken ct = default)
+        {
+            var existing = Favourites.FirstOrDefault(f => f.UserId == userId && f.GuideEventId == eventId);
+            if (existing == null) return Task.FromResult(false);
+            Favourites.Remove(existing);
+            SaveChangesCount++;
+            return Task.FromResult(true);
+        }
 
         public Task<EventPreference?> GetPreferenceAsync(Guid userId, CancellationToken ct = default)
             => Task.FromResult(Preference?.UserId == userId ? Preference : null);
 
-        public void Add(EventPreference pref) => Preference = pref;
-
-        public Task SaveChangesAsync(CancellationToken ct = default)
+        public Task UpsertPreferenceAsync(Guid userId, string excludedCategorySlugsJson, Instant updatedAt, CancellationToken ct = default)
         {
+            if (Preference?.UserId == userId)
+            {
+                Preference.ExcludedCategorySlugs = excludedCategorySlugsJson;
+                Preference.UpdatedAt = updatedAt;
+            }
+            else
+            {
+                Preference = new EventPreference
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = userId,
+                    ExcludedCategorySlugs = excludedCategorySlugsJson,
+                    UpdatedAt = updatedAt
+                };
+            }
             SaveChangesCount++;
             return Task.CompletedTask;
         }

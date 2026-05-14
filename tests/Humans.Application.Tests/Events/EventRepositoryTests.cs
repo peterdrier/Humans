@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
@@ -23,7 +24,7 @@ public sealed class EventRepositoryTests : IDisposable
             .Options;
 
         _db = new HumansDbContext(options);
-        _repo = new EventRepository(_db);
+        _repo = new EventRepository(new TestDbContextFactory(options));
     }
 
     public void Dispose()
