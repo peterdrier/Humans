@@ -25,6 +25,7 @@ public class CachingUserServiceTests
     private readonly IUserEmailRepository _userEmailRepo = Substitute.For<IUserEmailRepository>();
     private readonly IProfileRepository _profileRepo = Substitute.For<IProfileRepository>();
     private readonly IContactFieldRepository _contactFieldRepo = Substitute.For<IContactFieldRepository>();
+    private readonly ICommunicationPreferenceRepository _communicationPreferenceRepo = Substitute.For<ICommunicationPreferenceRepository>();
 
     private CachingUserService CreateSut()
     {
@@ -33,6 +34,7 @@ public class CachingUserServiceTests
         var scopeFactory = services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>();
         return new CachingUserService(
             _userRepo, _userEmailRepo, _profileRepo, _contactFieldRepo,
+            _communicationPreferenceRepo,
             scopeFactory, NullLogger<CachingUserService>.Instance);
     }
 
