@@ -14,7 +14,7 @@ using NodaTime;
 
 namespace Humans.Web.Controllers;
 
-[Authorize(Roles = RoleGroups.GuideModeratorOrAdmin)]
+[Authorize(Roles = RoleGroups.EventsAdminOrAdmin)]
 [Route("Events/Moderate")]
 [ServiceFilter(typeof(EventGuideFeatureFilter))]
 public class EventsModerationController : HumansControllerBase

@@ -36,7 +36,7 @@
                         || User.IsInRole(Humans.Domain.Constants.RoleNames.TeamsAdmin)
                         || User.IsInRole(Humans.Domain.Constants.RoleNames.CampAdmin)
                         || User.IsInRole(Humans.Domain.Constants.RoleNames.TicketAdmin)
-                        || User.IsInRole(Humans.Domain.Constants.RoleNames.GuideModerator)
+                        || User.IsInRole(Humans.Domain.Constants.RoleNames.EventsAdmin)
                         || User.IsInRole(Humans.Domain.Constants.RoleNames.FeedbackAdmin)
                         || User.IsInRole(Humans.Domain.Constants.RoleNames.FinanceAdmin)
                         || User.IsInRole(Humans.Domain.Constants.RoleNames.NoInfoAdmin))
@@ -111,7 +111,7 @@
                                     <li><a class="dropdown-item" asp-area="" asp-controller="Events" asp-action="Browse">Browse Events</a></li>
                                     <li><a class="dropdown-item" asp-area="" asp-controller="Events" asp-action="MySubmissions">My Submissions</a></li>
                                     <li><a class="dropdown-item" asp-area="" asp-controller="Events" asp-action="Schedule">My Schedule</a></li>
-                                    @if (User.IsInRole(Humans.Domain.Constants.RoleNames.GuideModerator)
+                                    @if (User.IsInRole(Humans.Domain.Constants.RoleNames.EventsAdmin)
                                          || User.IsInRole(Humans.Domain.Constants.RoleNames.Admin))
                                     {
                                         <li><hr class="dropdown-divider" /></li>
@@ -119,7 +119,7 @@
                                         <li><a class="dropdown-item" asp-area="" asp-controller="EventsModeration" asp-action="Index">Moderate Events</a></li>
                                         <li><a class="dropdown-item" asp-area="" asp-controller="EventsExport" asp-action="Index">Export Guide</a></li>
                                     }
-                                    @if (User.IsInRole(Humans.Domain.Constants.RoleNames.GuideModerator)
+                                    @if (User.IsInRole(Humans.Domain.Constants.RoleNames.EventsAdmin)
                                          || User.IsInRole(Humans.Domain.Constants.RoleNames.Admin))
                                     {
                                         <li><hr class="dropdown-divider" /></li>

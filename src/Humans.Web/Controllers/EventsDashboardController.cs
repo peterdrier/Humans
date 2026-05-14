@@ -12,7 +12,7 @@ using NodaTime;
 
 namespace Humans.Web.Controllers;
 
-[Authorize(Roles = RoleGroups.GuideModeratorOrAdmin)]
+[Authorize(Roles = RoleGroups.EventsAdminOrAdmin)]
 [Route("Events/Dashboard")]
 [ServiceFilter(typeof(EventGuideFeatureFilter))]
 public class EventsDashboardController : HumansControllerBase

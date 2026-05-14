@@ -56,7 +56,7 @@ public static class AuthorizationPolicyExtensions
                     RoleNames.TeamsAdmin,
                     RoleNames.CampAdmin,
                     RoleNames.TicketAdmin,
-                    RoleNames.GuideModerator,
+                    RoleNames.EventsAdmin,
                     RoleNames.FeedbackAdmin,
                     RoleNames.FinanceAdmin,
                     RoleNames.StoreAdmin,
@@ -94,8 +94,8 @@ public static class AuthorizationPolicyExtensions
             options.AddPolicy(PolicyNames.FinanceAdminOrAdmin, policy =>
                 policy.RequireRole(RoleNames.FinanceAdmin, RoleNames.Admin));
 
-            options.AddPolicy(PolicyNames.GuideModeratorOrAdmin, policy =>
-                policy.RequireRole(RoleNames.GuideModerator, RoleNames.Admin));
+            options.AddPolicy(PolicyNames.EventsAdminOrAdmin, policy =>
+                policy.RequireRole(RoleNames.EventsAdmin, RoleNames.Admin));
 
             options.AddPolicy(PolicyNames.StoreCatalogAdmin, policy =>
                 policy.RequireRole(RoleNames.StoreAdmin, RoleNames.FinanceAdmin, RoleNames.Admin));

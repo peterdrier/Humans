@@ -18,7 +18,7 @@ public static class PolicyNames
     public const string TicketAdminOrAdmin = nameof(TicketAdminOrAdmin);
     public const string FeedbackAdminOrAdmin = nameof(FeedbackAdminOrAdmin);
     public const string FinanceAdminOrAdmin = nameof(FinanceAdminOrAdmin);
-    public const string GuideModeratorOrAdmin = nameof(GuideModeratorOrAdmin);
+    public const string EventsAdminOrAdmin = nameof(EventsAdminOrAdmin);
     public const string StoreCatalogAdmin = nameof(StoreCatalogAdmin);
     public const string ReviewQueueAccess = nameof(ReviewQueueAccess);
     public const string ConsentCoordinatorBoardOrAdmin = nameof(ConsentCoordinatorBoardOrAdmin);
@@ -55,7 +55,7 @@ public static class PolicyNames
 
     /// <summary>
     /// Any admin-shaped role: Admin, Board, HumanAdmin, TeamsAdmin, CampAdmin,
-    /// TicketAdmin, GuideModerator, FeedbackAdmin, FinanceAdmin, NoInfoAdmin,
+    /// TicketAdmin, EventsAdmin, FeedbackAdmin, FinanceAdmin, NoInfoAdmin,
     /// VolunteerCoordinator, or ConsentCoordinator. Gates the admin-shell entry
     /// point (/Admin) so domain admins (e.g. FinanceAdmin) can reach the dashboard
     /// and see only the sidebar items their per-item authorization permits. The
