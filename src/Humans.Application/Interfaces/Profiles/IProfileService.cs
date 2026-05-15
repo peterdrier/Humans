@@ -38,7 +38,7 @@ public interface IProfileService : IApplicationService, IUserMerge
     /// (<c>AccountController.ExternalLoginCallback</c>, <c>AccountController.CompleteSignup</c>,
     /// <c>AccountProvisioningService.FindOrCreateUserByEmailAsync</c>) so cross-
     /// section reads can rely on a non-null Profile pointer. No-op if a profile
-    /// already exists. The caching decorator refreshes the FullProfile entry
+    /// already exists. The caching decorator refreshes the UserInfo entry
     /// after the write so downstream reads see the new Stub immediately.
     /// </summary>
     Task EnsureStubProfileAsync(Guid userId, CancellationToken ct = default);
@@ -82,7 +82,7 @@ public interface IProfileService : IApplicationService, IUserMerge
 
     /// <summary>
     /// Persists a new custom profile picture for the user's profile. No-op (logs a
-    /// warning) if the user has no profile yet. Invalidates the FullProfile cache
+    /// warning) if the user has no profile yet. Invalidates the UserInfo cache
     /// entry via the caching decorator. Callers are responsible for validating and
     /// resizing the image before calling.
     /// </summary>
@@ -115,7 +115,7 @@ public interface IProfileService : IApplicationService, IUserMerge
     // Onboarding-section support methods — exposed so OnboardingService can
     // coordinate profile mutations without touching the Profile section's
     // DbSet directly (design-rules §2c). Each method owns its own cache
-    // invalidation (FullProfile refresh, nav-badge, notification meter) so the
+    // invalidation (UserInfo refresh, nav-badge, notification meter) so the
     // Onboarding orchestrator has no cache responsibilities (§15i goal).
     // ==========================================================================
 

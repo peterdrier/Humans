@@ -21,7 +21,7 @@ namespace Humans.Application.Services.Profiles;
 
 /// <summary>
 /// Core profile service. Business logic only — no DbContext, no IMemoryCache.
-/// Cache management is handled by the <c>CachingProfileService</c> decorator.
+/// Cache management is handled by the <c>CachingUserService</c> decorator.
 /// Cross-domain reads use owning-section service interfaces.
 /// </summary>
 public sealed class ProfileService : IProfileService, IUserDataContributor, IUserMerge
@@ -102,7 +102,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         profile.UpdatedAt = _clock.GetCurrentInstant();
         await _profileRepository.UpdateAsync(profile, ct);
 
-        // Store update handled by CachingProfileService decorator
+        // Store update handled by CachingUserService decorator
     }
 
     public async Task EnsureStubProfileAsync(Guid userId, CancellationToken ct = default)
@@ -177,7 +177,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
                 profile.Id);
         }
 
-        // FullProfile cache invalidation handled by CachingProfileService decorator.
+        // UserInfo cache invalidation handled by CachingUserService decorator.
     }
 
     public async Task<(byte[] Data, string ContentType)?> GetProfilePictureAsync(
@@ -394,7 +394,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         // identity fields are populated and the profile is not Suspended,
         // promote the lifecycle marker. Predicate lives on the Profile
         // entity so the same rule serves the lazy-compute path in
-        // CachingProfileService.ComputeProfileState.
+        // CachingUserService.ComputeProfileState.
         if (profile.State != ProfileState.Suspended)
         {
             profile.State = profile.HasRequiredIdentityFields()
@@ -407,7 +407,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         // Update display name on user (cross-section → IUserService)
         await _userService.UpdateDisplayNameAsync(userId, displayName, ct);
 
-        // Cache invalidation and store update handled by CachingProfileService decorator
+        // Cache invalidation and store update handled by CachingUserService decorator
 
         // Check consent eligibility
         await _onboardingEligibilityQuery.SetConsentCheckPendingIfEligibleAsync(userId, ct);
@@ -588,8 +588,8 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
     // ==========================================================================
     // Onboarding-section support methods — profile mutations that OnboardingService
     // delegates here so each section owns its DbSet writes (design-rules §2c).
-    // Cache invalidation (FullProfile refresh, nav-badge, notification meter) is
-    // handled by the CachingProfileService decorator's wrappers for these methods.
+    // Cache invalidation (UserInfo refresh, nav-badge, notification meter) is
+    // handled by the CachingUserService decorator's wrappers for these methods.
     // ==========================================================================
 
     public async Task<OnboardingResult> RecordConsentCheckAsync(
@@ -825,8 +825,8 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         _profileRepository.DowngradeTierForExpiredAsync(
             currentTier, userIdsToKeep, fallbackTierByUser, now, ct);
 
-    // Cache invalidation (FullProfile refresh for both source and target) is
-    // handled by the CachingProfileService decorator's wrapper for this
+    // Cache invalidation (UserInfo refresh for both source and target) is
+    // handled by the CachingUserService decorator's wrapper for this
     // method — ProfileService is the inner / non-cached implementation.
     public Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
         CancellationToken ct) =>

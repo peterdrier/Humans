@@ -58,10 +58,10 @@ internal static class ProfileSectionExtensions
         services.AddScoped<IAccountProvisioningService, UsersAccountProvisioningService>();
         services.AddScoped<IUserEmailProviderBackfillService, UsersUserEmailProviderBackfillService>();
 
-        // ProfileService: Scoped — owns Profile-table writes. Now registered directly
-        // (no caching decorator) since the FullProfile cache was retired in favour of
-        // the unified UserInfo cache on CachingUserService. Profile reads that need a
-        // denormalized "everything-about-a-person" projection go through
+        // ProfileService: Scoped — owns Profile-table writes. Registered directly
+        // (no caching decorator) since the FullProfile cache was retired in favour
+        // of the unified UserInfo cache on CachingUserService. Profile reads that
+        // need a denormalized "everything-about-a-person" projection go through
         // IUserService.GetUserInfoAsync instead.
         services.AddScoped<ProfilesProfileService>();
         services.AddScoped<IProfileService>(sp => sp.GetRequiredService<ProfilesProfileService>());

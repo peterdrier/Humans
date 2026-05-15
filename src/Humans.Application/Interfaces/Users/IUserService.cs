@@ -139,7 +139,7 @@ public interface IUserService : IApplicationService, IUserMerge
     /// Purges a human at the User aggregate — removes all UserEmail rows for
     /// the user, anonymizes the email/display name, and permanently locks out
     /// the account. Returns the prior display name on success, or <c>null</c>
-    /// if the user did not exist. Invalidates the FullProfile cache on
+    /// if the user did not exist. Invalidates the UserInfo cache on
     /// success so downstream consumers see the purged view. Cross-section
     /// invalidation (ActiveTeams cache, etc.) is owned by the caller —
     /// <see cref="IAccountDeletionService.PurgeAsync"/> is the orchestrator
@@ -154,7 +154,7 @@ public interface IUserService : IApplicationService, IUserMerge
     /// clears phone/picture/iCal/deletion fields, sets the security stamp,
     /// and permanently locks out the account. Returns the pre-write identity
     /// slice or <c>null</c> if the user does not exist. Invalidates the
-    /// FullProfile cache on success. Cross-section cascade (team
+    /// UserInfo cache on success. Cross-section cascade (team
     /// memberships, role assignments, profile anonymization, shift cleanup)
     /// is owned by <see cref="IAccountDeletionService.AnonymizeExpiredAccountAsync"/>.
     /// </summary>
@@ -246,7 +246,7 @@ public interface IUserService : IApplicationService, IUserMerge
     /// (<c>LockoutEnd</c> far future), and applies the existing per-user
     /// anonymization fields (display name, picture, phone, security stamp,
     /// iCal token). Returns true if the source row existed; false if it
-    /// was missing. Invalidates the FullProfile cache for the source on
+    /// was missing. Invalidates the UserInfo cache for the source on
     /// success. Used by <c>AccountMergeService.AcceptAsync</c> as the
     /// final step of the fold-into-target flow.
     /// </summary>

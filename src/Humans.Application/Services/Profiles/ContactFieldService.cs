@@ -145,7 +145,7 @@ public sealed class ContactFieldService : IContactFieldService, IUserMerge
 
         // Issue #703: contact_fields contributes to UserInfo, and writes here
         // bypass both UserInfoSaveChangesInterceptor (which intentionally skips
-        // Profile-section tables) and CachingProfileService (this service writes
+        // Profile-section tables) and CachingUserService (this service writes
         // the repo directly). Invalidate the affected UserInfo entry so the next
         // read reloads from the 8 contributing tables. Failure is logged but not
         // propagated — the write has committed; the next cache miss self-heals.

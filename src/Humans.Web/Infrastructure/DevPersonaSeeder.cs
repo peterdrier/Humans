@@ -170,7 +170,7 @@ public sealed class DevPersonaSeeder
 
         // Mark approved + cleared so the dev persona skips the consent gate
         // and lands on the dashboard. Routes through ProfileService so the
-        // CachingProfileService decorator handles the FullProfile cache
+        // CachingUserService decorator handles the UserInfo cache
         // refresh atomically with the DB write (issue #474 â€” Profiles is the
         // single writer to the profile state fields).
         var consentCheckResult = await _profileService.RecordConsentCheckAsync(
@@ -464,7 +464,7 @@ public sealed class DevPersonaSeeder
         {
             _teamService.InvalidateActiveTeamsCache();
             _cache.InvalidateUserAccess(coordinatorUserId);
-            // Team membership changes ripple into FullProfile (active-teams shape)
+            // Team membership changes ripple into UserInfo (active-teams shape)
             await _userInfoInvalidator.InvalidateAsync(coordinatorUserId);
             _logger.LogInformation(
                 "DEV: ensured coordinator teams — department {DeptId}, sub-team {SubTeamId}",
@@ -531,7 +531,7 @@ public sealed class DevPersonaSeeder
         {
             _teamService.InvalidateActiveTeamsCache();
             _cache.InvalidateUserAccess(userId);
-            // Team membership changes ripple into FullProfile (active-teams shape)
+            // Team membership changes ripple into UserInfo (active-teams shape)
             await _userInfoInvalidator.InvalidateAsync(userId);
         }
     }

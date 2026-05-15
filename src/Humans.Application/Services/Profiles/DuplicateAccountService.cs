@@ -281,7 +281,7 @@ public sealed class DuplicateAccountService : IDuplicateAccountService
 
                 // 6. Anonymize the source account (set MergedToUserId/MergedAt
                 //    + identity tombstone fields). Routed through IUserService
-                //    so the FullProfile cache for the source is invalidated.
+                //    so the UserInfo cache for the source is invalidated.
                 //
                 // NOTE: this path does NOT migrate VolunteerHistory/Languages
                 // from source to target. AccountMergeService.AcceptAsync (the

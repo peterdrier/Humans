@@ -99,7 +99,7 @@ public class ProfileApiController : ApiControllerBase
     /// <see cref="Search"/>, so callers that already know the userId (URL
     /// param, integration, pre-fill) can render the row without typing a name
     /// and choosing from a dropdown. Cache-backed via
-    /// <see cref="IProfileService.GetFullProfileAsync"/>.
+    /// <see cref="IUserService.GetUserInfoAsync"/>.
     /// </summary>
     [HttpGet("by-userid/{userId:guid}")]
     public async Task<IActionResult> GetByUserId(Guid userId, CancellationToken ct = default)

@@ -481,7 +481,7 @@ public class ProfileController : HumansControllerBase
 
         // Cancel any pending deletion request when creating a profile.
         // Routes through IAccountDeletionService so the deletion-fields
-        // write + FullProfile invalidation goes through the orchestrator,
+        // write + UserInfo invalidation goes through the orchestrator,
         // not raw UserManager.UpdateAsync.
         if (isInitialSetup && user.IsDeletionPending)
         {

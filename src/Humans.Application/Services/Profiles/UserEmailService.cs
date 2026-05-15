@@ -150,7 +150,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
 
         // Issue nobodies-collective/Humans#687: every UserEmail-add path goes
         // through AddRowWithInvariantsAsync — adds the row, runs the Primary +
-        // Google invariants, and invalidates FullProfile.
+        // Google invariants, and invalidates UserInfo.
         await AddRowWithInvariantsAsync(userEmail, cancellationToken);
 
         // Generate verification token via Identity
@@ -321,7 +321,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
 
         await _repository.UpdateBatchAsync(changed, cancellationToken);
 
-        // FullProfile.NotificationEmail derives from the row with IsPrimary=true.
+        // UserInfo.PrimaryEmail derives from the row with IsPrimary=true.
         await _userInfoInvalidator.InvalidateAsync(userId, cancellationToken);
     }
 
@@ -383,7 +383,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         // zero-IsGoogle state.
         await EnsureGoogleInvariantAsync(userId, cancellationToken);
 
-        // FullProfile.NotificationEmail derives from user_emails; drop the stale entry so
+        // UserInfo.PrimaryEmail derives from user_emails; drop the stale entry so
         // admin/search/profile surfaces stop showing the removed address.
         await _userInfoInvalidator.InvalidateAsync(userId, cancellationToken);
 
@@ -824,7 +824,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
     /// <summary>
     /// Issue nobodies-collective/Humans#687: single orchestrator for every
     /// UserEmail-add path. Adds the row, then runs the Primary and Google
-    /// invariants and invalidates the FullProfile cache. The four call sites
+    /// invariants and invalidates the UserInfo cache. The four call sites
     /// (<see cref="AddEmailAsync"/>, <see cref="AddVerifiedEmailAsync"/>,
     /// <see cref="LinkAsync"/>, <see cref="AddProvisionedEmailAsync"/>) all
     /// route through here so no path can silently skip an invariant.

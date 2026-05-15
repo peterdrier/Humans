@@ -224,8 +224,8 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
 
             // Cache invalidation runs AFTER the transaction commits so
             // cache-aside readers don't repopulate from rows that might
-            // still roll back. FullProfile eviction for both users is
-            // handled by the CachingProfileService decorator inside the
+            // still roll back. UserInfo eviction for both users is
+            // handled by the CachingUserService decorator inside the
             // fan-out (covers Profile / UserEmail / ContactField /
             // CommunicationPreference, all Profile-section). Claims +
             // nav-badge cover RoleAssignment. Notification badge counts
@@ -293,7 +293,7 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
             scope.Complete();
         }
 
-        // Invalidate the target's FullProfile so the removed pending email
+        // Invalidate the target's UserInfo so the removed pending email
         // disappears from the cached view. Runs after commit so cache-aside
         // reads don't repopulate from an uncommitted state.
         await _userInfoInvalidator.InvalidateAsync(request.TargetUserId, ct);

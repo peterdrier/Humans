@@ -74,7 +74,7 @@ public sealed class ProfileBackfillAdminController : HumansControllerBase
             // EnsureStubProfileAsync is idempotent — ProfileService takes a
             // per-userId lock around the GetByUserId/Add pair, so a parallel
             // signup creating the profile between count and run is handled
-            // cleanly. The caching decorator refreshes the FullProfile entry
+            // cleanly. The caching decorator refreshes the UserInfo entry
             // after the write so downstream reads see the new Stub immediately
             // (design-rules §2a/§2c).
             await _profileService.EnsureStubProfileAsync(row.UserId, ct);

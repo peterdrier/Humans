@@ -45,7 +45,7 @@ public class User : IdentityUser<Guid>
     /// compute their values from the loaded UserEmails collection. External
     /// readers do not traverse this nav — they go through
     /// <c>IUserEmailRepository</c> / <c>IUserEmailService</c> /
-    /// <c>FullProfile.PrimaryEmail</c> instead. The other six User-side navs
+    /// <c>UserInfo.PrimaryEmail</c> instead. The other six User-side navs
     /// (<c>Profile</c>, <c>RoleAssignments</c>, <c>ConsentRecords</c>,
     /// <c>Applications</c>, <c>TeamMemberships</c>,
     /// <c>CommunicationPreferences</c>) and the <c>GetEffectiveEmail()</c>

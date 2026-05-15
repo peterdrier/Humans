@@ -22,7 +22,7 @@ namespace Humans.Infrastructure.Services.Users;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Pattern mirrors <c>CachingProfileService</c>: dict hits served
+/// Pattern mirrors <c>CachingUserService</c>: dict hits served
 /// synchronously, cache miss refills via the inner Scoped
 /// <see cref="IUserService"/>, every write through this surface delegates and
 /// then refreshes the affected entry. Identity-machinery write paths
@@ -561,7 +561,7 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
     public async Task<string?> PurgeOwnDataAsync(Guid userId, CancellationToken ct = default)
     {
         var result = await WithInnerAsync(inner => inner.PurgeOwnDataAsync(userId, ct));
-        // Inner already invoked IFullProfileInvalidator on success; we refresh
+        // Inner already invoked IUserInfoInvalidator on success; we refresh
         // our own dict whether or not the row existed (RefreshEntryAsync removes
         // the entry when the user is gone).
         await RefreshEntryAsync(userId, ct);

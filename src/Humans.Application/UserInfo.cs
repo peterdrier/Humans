@@ -162,10 +162,6 @@ public sealed record ProfileInfo(
 /// <see cref="ProfileInfo.EmergencyContactRelationship"/>) ride along on the
 /// cached god-object; visibility filtering is a view-layer concern.
 /// </para>
-/// <para>
-/// <see cref="FullProfile"/> continues to coexist for the Profile-cache read
-/// path until follow-up migrations retire it (see issue #703 out-of-scope items).
-/// </para>
 /// </remarks>
 public sealed record UserInfo(
     Guid Id,
@@ -313,7 +309,7 @@ public sealed record UserInfo(
     /// True when this user should be treated as a Stub profile — no profile row,
     /// explicit <see cref="ProfileState.Stub"/>, or a legacy <c>null</c> State
     /// row that has not yet been backfilled by
-    /// <c>CachingProfileService.PopulateStateIfNullAsync</c>. Paranoid /
+    /// <c>CachingUserService.PopulateStateIfNullAsync</c>. Paranoid /
     /// defense-in-depth predicate: callers writing consent records or
     /// admitting the user to flows that require a verified legal name MUST
     /// block on this.

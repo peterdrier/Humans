@@ -139,7 +139,7 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
         if (displayName is null)
             return null;
 
-        // The purge renames the user + removes UserEmail rows. The FullProfile
+        // The purge renames the user + removes UserEmail rows. The UserInfo
         // cache entry must refresh so downstream consumers see the purged view.
         // Cross-section invalidations (ActiveTeams cache, etc.) belong to the
         // orchestrator — see IAccountDeletionService.PurgeAsync.
@@ -157,7 +157,7 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
         // Cross-section cascade (team memberships, role assignments, profile
         // anonymization, shift cleanup) and cross-section cache invalidation
         // are owned by IAccountDeletionService — this method only handles the
-        // User-aggregate write and the FullProfile cache (the one cache keyed
+        // User-aggregate write and the UserInfo cache (the one cache keyed
         // directly on fields owned here).
         var result = await _repo.ApplyExpiredDeletionAnonymizationAsync(userId, ct);
         if (result is not null)
