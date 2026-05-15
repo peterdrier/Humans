@@ -71,7 +71,7 @@ public sealed class ExpensesController : HumansControllerBase
 
             var reports = await _service.GetForSubmitterAsync(user.Id);
             var activeYear = await _budgetService.GetActiveYearAsync();
-            var profile = await _profileService.GetProfileAsync(user.Id);
+            var info = await _userService.GetUserInfoAsync(user.Id);
 
             var categoryNames = activeYear?.Groups
                 .SelectMany(g => g.Categories.Select(c => (c.Id, Display: $"{g.Name} / {c.Name}")))
@@ -82,7 +82,7 @@ public sealed class ExpensesController : HumansControllerBase
             {
                 Reports = reports,
                 HasActiveYear = activeYear is not null,
-                HasIban = !string.IsNullOrEmpty(profile?.Iban),
+                HasIban = !string.IsNullOrEmpty(info?.Profile?.Iban),
                 CategoryNames = categoryNames,
             };
             return View(model);
