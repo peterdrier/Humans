@@ -10,6 +10,9 @@ src/Humans.Web/Controllers/AccountController.cs:ExternalLoginCallback/2
 src/Humans.Web/Controllers/AdminController.cs:Index/6
 src/Humans.Web/Controllers/AdminLegalDocumentsController.cs:CreateLegalDocument/1
 src/Humans.Web/Controllers/AgentController.cs:Ask/2
+src/Humans.Web/Controllers/Api/EventsApiController.cs:GetEvents/4
+src/Humans.Web/Controllers/BarrioEventsController.cs:Create/2
+src/Humans.Web/Controllers/BarrioEventsController.cs:Update/3
 src/Humans.Web/Controllers/BudgetController.cs:CreateLineItem/7
 src/Humans.Web/Controllers/BudgetController.cs:UpdateLineItem/8
 src/Humans.Web/Controllers/CalendarController.cs:Create/2
@@ -35,6 +38,16 @@ src/Humans.Web/Controllers/ContainerController.cs:Create/3
 src/Humans.Web/Controllers/DevSeedController.cs:SeedBudget/1
 src/Humans.Web/Controllers/DevSeedController.cs:SeedCampRoles/1
 src/Humans.Web/Controllers/EmailController.cs:EmailPreview/2
+src/Humans.Web/Controllers/EventsAdminController.cs:SaveSettings/1
+src/Humans.Web/Controllers/EventsController.cs:Browse/5
+src/Humans.Web/Controllers/EventsController.cs:Create/1
+src/Humans.Web/Controllers/EventsController.cs:Schedule/0
+src/Humans.Web/Controllers/EventsController.cs:Update/2
+src/Humans.Web/Controllers/EventsDashboardController.cs:Index/0
+src/Humans.Web/Controllers/EventsExportController.cs:DownloadCsv/0
+src/Humans.Web/Controllers/EventsExportController.cs:Index/0
+src/Humans.Web/Controllers/EventsExportController.cs:PrintGuide/0
+src/Humans.Web/Controllers/EventsModerationController.cs:Index/1
 src/Humans.Web/Controllers/ExpensesController.cs:AddLine/2
 src/Humans.Web/Controllers/ExpensesController.cs:AttachFile/3
 src/Humans.Web/Controllers/ExpensesController.cs:Attachment/1
@@ -62,6 +75,7 @@ src/Humans.Web/Controllers/IssuesController.cs:Submit/1
 src/Humans.Web/Controllers/IssuesController.cs:UpdateAssignee/2
 src/Humans.Web/Controllers/IssuesController.cs:UpdateStatus/2
 src/Humans.Web/Controllers/Mailer/MailerAdminController.cs:SyncAudience/2
+src/Humans.Web/Controllers/OnboardingWidgetController.cs:SignConsent/3
 src/Humans.Web/Controllers/ProfileApiController.cs:Search/3
 src/Humans.Web/Controllers/ProfileController.cs:AddEmail/1
 src/Humans.Web/Controllers/ProfileController.cs:AddRole/2
