@@ -96,6 +96,25 @@ public sealed class TeamRepository : ITeamRepository
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyDictionary<Guid, IReadOnlySet<Guid>>> GetActiveManagementRoleHolderUserIdsByTeamAsync(
+        CancellationToken ct = default)
+    {
+        await using var db = await _factory.CreateDbContextAsync(ct);
+        var rows = await db.TeamRoleAssignments
+            .AsNoTracking()
+            .Where(tra =>
+                tra.TeamMember.LeftAt == null &&
+                tra.TeamRoleDefinition.IsManagement)
+            .Select(tra => new { TeamId = tra.TeamMember.TeamId, UserId = tra.TeamMember.UserId })
+            .ToListAsync(ct);
+
+        return rows
+            .GroupBy(r => r.TeamId)
+            .ToDictionary(
+                g => g.Key,
+                g => (IReadOnlySet<Guid>)new HashSet<Guid>(g.Select(r => r.UserId)));
+    }
+
     private static string EscapeLikePattern(string value)
         => value
             .Replace("\\", "\\\\")

@@ -222,8 +222,7 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
         CancellationToken cancellationToken = default)
     {
         var teamsById = await GetTeamsByIdAsync(cancellationToken);
-        var coordinatorTeamIds = await _teamRepository.GetUserCoordinatorTeamIdsAsync(userId, cancellationToken);
-        return IsUserCoordinatorOfActiveTeam(teamsById, coordinatorTeamIds, teamId, userId);
+        return IsUserCoordinatorOfActiveTeam(teamsById, teamId, userId);
     }
 
     public async Task<bool> RemoveMemberAsync(
@@ -407,10 +406,31 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
         InvalidateTeamsCache();
     }
 
-    public Task<IReadOnlyList<Guid>> GetUserCoordinatedTeamIdsAsync(
+    public async Task<IReadOnlyList<Guid>> GetUserCoordinatedTeamIdsAsync(
         Guid userId,
-        CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetUserCoordinatedTeamIdsAsync(userId, cancellationToken));
+        CancellationToken cancellationToken = default)
+    {
+        // Mirrors TeamRepository.GetUserCoordinatorTeamIdsAsync: non-system teams
+        // where the user is either an active Coordinator member or holds an
+        // active management role assignment.
+        var teamsById = await GetTeamsByIdAsync(cancellationToken);
+        var result = new HashSet<Guid>();
+        foreach (var team in teamsById.Values)
+        {
+            if (team.SystemTeamType != SystemTeamType.None)
+                continue;
+
+            if (team.Members.Any(m => m.UserId == userId && m.Role == TeamMemberRole.Coordinator))
+            {
+                result.Add(team.Id);
+                continue;
+            }
+
+            if (team.ManagementRoleHolderUserIds?.Contains(userId) == true)
+                result.Add(team.Id);
+        }
+        return result.ToList();
+    }
 
     public async Task<IReadOnlyList<Humans.Application.Models.TeamMembership>> GetActiveTeamMembershipsForUserAsync(
         Guid userId,
@@ -468,10 +488,45 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
         return result;
     }
 
-    public Task<IReadOnlyCollection<Guid>> GetEffectiveBudgetCoordinatorTeamIdsAsync(
+    public async Task<IReadOnlyCollection<Guid>> GetEffectiveBudgetCoordinatorTeamIdsAsync(
         Guid userId,
-        CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetEffectiveBudgetCoordinatorTeamIdsAsync(userId, cancellationToken));
+        CancellationToken cancellationToken = default)
+    {
+        // Mirrors TeamService.GetEffectiveBudgetCoordinatorTeamIdsAsync ⇒
+        // TeamRepository.GetUserDepartmentCoordinatorTeamIdsAsync +
+        // GetActiveChildIdsByParentsAsync. Departments are teams with no parent
+        // where the user is either Coordinator or holds a management role
+        // assignment (no system-team filter on this path). Children are added
+        // when they are active and parented to one of those departments.
+        var teamsById = await GetTeamsByIdAsync(cancellationToken);
+        var departments = new HashSet<Guid>();
+        foreach (var team in teamsById.Values)
+        {
+            if (team.ParentTeamId.HasValue)
+                continue;
+
+            if (team.Members.Any(m => m.UserId == userId && m.Role == TeamMemberRole.Coordinator)
+                || team.ManagementRoleHolderUserIds?.Contains(userId) == true)
+            {
+                departments.Add(team.Id);
+            }
+        }
+
+        if (departments.Count == 0)
+            return departments;
+
+        var result = new HashSet<Guid>(departments);
+        foreach (var team in teamsById.Values)
+        {
+            if (team.IsActive
+                && team.ParentTeamId.HasValue
+                && departments.Contains(team.ParentTeamId.Value))
+            {
+                result.Add(team.Id);
+            }
+        }
+        return result;
+    }
 
     public void RemoveMemberFromAllTeamsCache(Guid userId)
     {
@@ -581,12 +636,13 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
             var users = allUserIds.Count == 0
                 ? new Dictionary<Guid, Humans.Application.UserInfo>()
                 : await userService.GetUserInfosAsync(allUserIds, ct);
+            var managementHolders = await _teamRepository.GetActiveManagementRoleHolderUserIdsByTeamAsync(ct);
 
             // No defensive Clear() — InvalidateTeamsCache already emptied the cache
             // before flipping _isLoaded to false (or the cache is empty on first
             // startup). Set is upsert, so any rare leftover entry is overwritten.
             foreach (var team in teams)
-                Set(team.Id, BuildTeamInfo(team, users));
+                Set(team.Id, BuildTeamInfo(team, users, managementHolders));
 
             _isLoaded = true;
         }
@@ -598,7 +654,6 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
 
     private bool IsUserCoordinatorOfActiveTeam(
         IReadOnlyDictionary<Guid, TeamInfo> teams,
-        IReadOnlyCollection<Guid> coordinatorTeamIds,
         Guid teamId,
         Guid userId)
     {
@@ -611,14 +666,19 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
         if (team.Members.Any(m => m.UserId == userId && m.Role == TeamMemberRole.Coordinator))
             return true;
 
-        if (coordinatorTeamIds.Contains(teamId))
+        // Mirror GetUserCoordinatorTeamIdsAsync: the "by management role assignment"
+        // path was filtered to non-system teams.
+        if (!team.IsSystemTeam && team.ManagementRoleHolderUserIds?.Contains(userId) == true)
             return true;
 
         return team.ParentTeamId.HasValue
-            && IsUserCoordinatorOfActiveTeam(teams, coordinatorTeamIds, team.ParentTeamId.Value, userId);
+            && IsUserCoordinatorOfActiveTeam(teams, team.ParentTeamId.Value, userId);
     }
 
-    private static TeamInfo BuildTeamInfo(Team team, IReadOnlyDictionary<Guid, Humans.Application.UserInfo> users) => new(
+    private static TeamInfo BuildTeamInfo(
+        Team team,
+        IReadOnlyDictionary<Guid, Humans.Application.UserInfo> users,
+        IReadOnlyDictionary<Guid, IReadOnlySet<Guid>> managementHolders) => new(
         Id: team.Id,
         Name: team.Name,
         Description: team.Description,
@@ -652,7 +712,8 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
         HasBudget: team.HasBudget,
         IsSensitive: team.IsSensitive,
         UpdatedAt: team.UpdatedAt,
-        CustomSlug: team.CustomSlug);
+        CustomSlug: team.CustomSlug,
+        ManagementRoleHolderUserIds: managementHolders.TryGetValue(team.Id, out var holders) ? holders : null);
 
     private async Task<TResult> WithInner<TResult>(Func<ITeamService, Task<TResult>> action)
     {

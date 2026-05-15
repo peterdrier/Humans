@@ -67,6 +67,17 @@ public interface ITeamRepository : IRepository
     Task<IReadOnlyList<Team>> GetAllWithMembersAsync(CancellationToken ct = default);
 
     /// <summary>
+    /// Map of <c>TeamId → user ids who hold an active management
+    /// (<c>TeamRoleDefinition.IsManagement</c>) role assignment on that team</c>.
+    /// Detached, no navs. Loaded once per team-cache warm to populate
+    /// <see cref="Humans.Application.Interfaces.Teams.TeamInfo.ManagementRoleHolderUserIds"/>
+    /// so coordinator/budget readers can decide membership without round-tripping the DB.
+    /// Teams with no management holders are omitted.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, IReadOnlySet<Guid>>> GetActiveManagementRoleHolderUserIdsByTeamAsync(
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Page of all teams (active/inactive) with active members, pending join
     /// requests, and role definitions eagerly loaded. Admin paging stays
     /// DB-side because the include graph is too expensive to load wholesale.
