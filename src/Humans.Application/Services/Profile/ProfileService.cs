@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using NodaTime;
+using Humans.Application.Architecture;
 using Humans.Application.DTOs;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Gdpr;
@@ -24,6 +25,7 @@ namespace Humans.Application.Services.Profile;
 /// Cache management is handled by the <c>CachingProfileService</c> decorator.
 /// Cross-domain reads use owning-section service interfaces.
 /// </summary>
+[Grandfathered("HUM0012", "Profile services live in Services.Profile but their interfaces live in Interfaces.Profiles. Plural/singular drift; folder rename deferred to a follow-up PR.", "2026-05-15", "peterdrier/Humans#557")]
 public sealed class ProfileService : IProfileService, IUserDataContributor, IUserMerge
 {
     private readonly IProfileRepository _profileRepository;

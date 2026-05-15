@@ -112,6 +112,40 @@ public class WebRepositoryInjectionAnalyzerTests
     }
 
     [HumansFact]
+    public async Task Grandfathered_violator_downgrades_to_warning()
+    {
+        var source = Stubs + """
+
+            namespace Humans.Application.Architecture
+            {
+                [System.AttributeUsage(System.AttributeTargets.Class, AllowMultiple = true)]
+                public sealed class GrandfatheredAttribute : System.Attribute
+                {
+                    public GrandfatheredAttribute(string ruleId, string justification, string since, string issueRef) { }
+                }
+            }
+
+            namespace Humans.Web.Controllers
+            {
+                [Humans.Application.Architecture.Grandfathered("HUM0014", "test", "2026-05-15", "test")]
+                public sealed class CampsController
+                {
+                    public CampsController(Humans.Application.Interfaces.Repositories.ICampRepository repo) { }
+                }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new WebRepositoryInjectionAnalyzer(),
+            "Humans.Web",
+            source);
+
+        var hum0014 = diagnostics.Where(d => IsHum0014(d)).ToList();
+        hum0014.Should().ContainSingle();
+        hum0014[0].Severity.Should().Be(Microsoft.CodeAnalysis.DiagnosticSeverity.Warning);
+    }
+
+    [HumansFact]
     public async Task Fires_on_indirect_repository_extension()
     {
         var source = """

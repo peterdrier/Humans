@@ -1,6 +1,7 @@
 using System.Transactions;
 using Microsoft.Extensions.Logging;
 using NodaTime;
+using Humans.Application.Architecture;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Repositories;
@@ -37,6 +38,7 @@ namespace Humans.Application.Services.Profile;
 /// <c>MergedToUserId</c> and <c>MergedAt</c> and locking out login.
 /// </para>
 /// </remarks>
+[Grandfathered("HUM0012", "Profile services live in Services.Profile but their interfaces live in Interfaces.Profiles. Plural/singular drift; folder rename deferred to a follow-up PR.", "2026-05-15", "peterdrier/Humans#557")]
 public sealed class AccountMergeService : IAccountMergeService, IUserDataContributor
 {
     private readonly IAccountMergeRepository _mergeRepository;

@@ -1,6 +1,7 @@
 using System.Transactions;
 using Microsoft.Extensions.Logging;
 using NodaTime;
+using Humans.Application.Architecture;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -24,6 +25,7 @@ namespace Humans.Application.Services.Profile;
 /// flows through repository and service interfaces; this type never injects
 /// <c>HumansDbContext</c>.
 /// </remarks>
+[Grandfathered("HUM0012", "Profile services live in Services.Profile but their interfaces live in Interfaces.Profiles. Plural/singular drift; folder rename deferred to a follow-up PR.", "2026-05-15", "peterdrier/Humans#557")]
 public sealed class DuplicateAccountService : IDuplicateAccountService
 {
     private readonly IUserRepository _userRepository;

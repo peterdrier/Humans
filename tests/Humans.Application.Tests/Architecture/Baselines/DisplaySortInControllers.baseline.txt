@@ -39,7 +39,7 @@ src/Humans.Infrastructure/Repositories/Camps/CampRoleRepository.cs:OrderBy#2
 src/Humans.Infrastructure/Repositories/Camps/CampRoleRepository.cs:OrderByDescending#1
 src/Humans.Infrastructure/Repositories/Camps/CampRoleRepository.cs:ThenBy#1
 src/Humans.Infrastructure/Repositories/Camps/CampRoleRepository.cs:ThenBy#2
-src/Humans.Infrastructure/Repositories/CitiPlanning/CityPlanningRepository.cs:OrderByDescending#1
+src/Humans.Infrastructure/Repositories/CityPlanning/CityPlanningRepository.cs:OrderByDescending#1
 src/Humans.Infrastructure/Repositories/Consent/ConsentRepository.cs:OrderByDescending#1
 src/Humans.Infrastructure/Repositories/Consent/ConsentRepository.cs:OrderByDescending#2
 src/Humans.Infrastructure/Repositories/Consent/ConsentRepository.cs:OrderByDescending#3

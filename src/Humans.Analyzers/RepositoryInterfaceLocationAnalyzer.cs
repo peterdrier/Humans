@@ -63,12 +63,17 @@ public sealed class RepositoryInterfaceLocationAnalyzer : DiagnosticAnalyzer
         if (marker is null)
             return;
 
+        var grandfatheredAttr = GrandfatheredCheck.Resolve(context.Compilation);
+
         context.RegisterSymbolAction(
-            ctx => AnalyzeNamedType(ctx, marker),
+            ctx => AnalyzeNamedType(ctx, marker, grandfatheredAttr),
             SymbolKind.NamedType);
     }
 
-    private static void AnalyzeNamedType(SymbolAnalysisContext context, INamedTypeSymbol marker)
+    private static void AnalyzeNamedType(
+        SymbolAnalysisContext context,
+        INamedTypeSymbol marker,
+        INamedTypeSymbol? grandfatheredAttr)
     {
         var type = (INamedTypeSymbol)context.Symbol;
         if (type.TypeKind != TypeKind.Interface)
@@ -86,7 +91,14 @@ public sealed class RepositoryInterfaceLocationAnalyzer : DiagnosticAnalyzer
             return;
 
         var location = type.Locations.Length > 0 ? type.Locations[0] : Location.None;
-        context.ReportDiagnostic(Diagnostic.Create(Rule, location, type.Name, ns, ExpectedNamespace));
+        var severity = GrandfatheredCheck.EffectiveSeverity(type, grandfatheredAttr, DiagnosticId);
+        context.ReportDiagnostic(Diagnostic.Create(
+            descriptor: Rule,
+            location: location,
+            effectiveSeverity: severity,
+            additionalLocations: null,
+            properties: null,
+            messageArgs: new object[] { type.Name, ns, ExpectedNamespace }));
     }
 
     private static bool ExtendsMarker(INamedTypeSymbol type, INamedTypeSymbol marker)

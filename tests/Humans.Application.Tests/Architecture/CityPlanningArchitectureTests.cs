@@ -1,6 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Infrastructure.Repositories.CitiPlanning;
+using Humans.Infrastructure.Repositories.CityPlanning;
 using Xunit;
 using CityPlanningService = Humans.Application.Services.CityPlanning.CityPlanningService;
 

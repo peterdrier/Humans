@@ -4,7 +4,7 @@ using Humans.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 
-namespace Humans.Infrastructure.Repositories.CitiPlanning;
+namespace Humans.Infrastructure.Repositories.CityPlanning;
 
 /// <summary>
 /// EF-backed implementation of <see cref="ICityPlanningRepository"/>. The only

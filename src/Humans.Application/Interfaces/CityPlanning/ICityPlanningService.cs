@@ -5,7 +5,7 @@ using Humans.Domain.Enums;
 using Microsoft.AspNetCore.Http;
 using NodaTime;
 
-namespace Humans.Application.Interfaces.CitiPlanning;
+namespace Humans.Application.Interfaces.CityPlanning;
 
 public interface ICityPlanningService : IApplicationService
 {

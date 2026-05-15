@@ -3,7 +3,7 @@ using AwesomeAssertions;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Camps;
-using Humans.Application.Interfaces.CitiPlanning;
+using Humans.Application.Interfaces.CityPlanning;
 using Humans.Application.Interfaces.Expenses;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Stores;

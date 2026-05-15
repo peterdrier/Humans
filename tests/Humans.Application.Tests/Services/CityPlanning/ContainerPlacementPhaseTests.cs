@@ -7,7 +7,7 @@ using Humans.Application.Services.CityPlanning;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Repositories.CitiPlanning;
+using Humans.Infrastructure.Repositories.CityPlanning;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using NodaTime;

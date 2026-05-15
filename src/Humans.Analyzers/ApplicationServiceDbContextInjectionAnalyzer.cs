@@ -51,7 +51,6 @@ public sealed class ApplicationServiceDbContextInjectionAnalyzer : DiagnosticAna
 
     private const string HumansDbContextFullName = "Humans.Infrastructure.Data.HumansDbContext";
     private const string IRepositoryFullName = "Humans.Application.Interfaces.Repositories.IRepository";
-    private const string GrandfatheredAttributeFullName = "Humans.Application.Architecture.GrandfatheredAttribute";
 
     public override void Initialize(AnalysisContext context)
     {
@@ -73,7 +72,7 @@ public sealed class ApplicationServiceDbContextInjectionAnalyzer : DiagnosticAna
         if (repositoryMarker is null)
             return;
 
-        var grandfatheredAttr = context.Compilation.GetTypeByMetadataName(GrandfatheredAttributeFullName);
+        var grandfatheredAttr = GrandfatheredCheck.Resolve(context.Compilation);
 
         context.RegisterSymbolAction(
             ctx => AnalyzeNamedType(ctx, dbContextType, repositoryMarker, grandfatheredAttr),
@@ -104,9 +103,7 @@ public sealed class ApplicationServiceDbContextInjectionAnalyzer : DiagnosticAna
         if (location is null)
             return;
 
-        var severity = HasGrandfatherForHum0009(type, grandfatheredAttr)
-            ? DiagnosticSeverity.Warning
-            : DiagnosticSeverity.Error;
+        var severity = GrandfatheredCheck.EffectiveSeverity(type, grandfatheredAttr, DiagnosticId);
 
         context.ReportDiagnostic(Diagnostic.Create(
             descriptor: Rule,
@@ -204,28 +201,4 @@ public sealed class ApplicationServiceDbContextInjectionAnalyzer : DiagnosticAna
 
     private static Location? PreferFirst(ImmutableArray<Location> locations) =>
         locations.Length > 0 ? locations[0] : null;
-
-    private static bool HasGrandfatherForHum0009(INamedTypeSymbol type, INamedTypeSymbol? grandfatheredAttr)
-    {
-        if (grandfatheredAttr is null)
-            return false;
-
-        foreach (var attr in type.GetAttributes())
-        {
-            if (!SymbolEqualityComparer.Default.Equals(attr.AttributeClass, grandfatheredAttr))
-                continue;
-
-            if (attr.ConstructorArguments.Length == 0)
-                continue;
-
-            var ruleIdArg = attr.ConstructorArguments[0];
-            if (ruleIdArg.Value is string ruleId &&
-                string.Equals(ruleId, DiagnosticId, System.StringComparison.Ordinal))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
 }

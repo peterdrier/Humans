@@ -59,14 +59,25 @@ public sealed class WebRepositoryInjectionAnalyzer : DiagnosticAnalyzer
         if (repositoryMarker is null)
             return;
 
-        context.RegisterSymbolAction(c => AnalyzeNamedType(c, repositoryMarker), SymbolKind.NamedType);
+        var grandfatheredAttr = GrandfatheredCheck.Resolve(context.Compilation);
+
+        context.RegisterSymbolAction(
+            c => AnalyzeNamedType(c, repositoryMarker, grandfatheredAttr),
+            SymbolKind.NamedType);
     }
 
-    private static void AnalyzeNamedType(SymbolAnalysisContext context, INamedTypeSymbol repositoryMarker)
+    private static void AnalyzeNamedType(
+        SymbolAnalysisContext context,
+        INamedTypeSymbol repositoryMarker,
+        INamedTypeSymbol? grandfatheredAttr)
     {
         var type = (INamedTypeSymbol)context.Symbol;
         if (type.TypeKind != TypeKind.Class || type.IsAbstract)
             return;
+
+        // The grandfather decision is made on the containing class, not the
+        // parameter — the [Grandfathered] attribute can only target a type.
+        var severity = GrandfatheredCheck.EffectiveSeverity(type, grandfatheredAttr, DiagnosticId);
 
         foreach (var ctor in type.InstanceConstructors)
         {
@@ -76,10 +87,12 @@ public sealed class WebRepositoryInjectionAnalyzer : DiagnosticAnalyzer
                     continue;
 
                 context.ReportDiagnostic(Diagnostic.Create(
-                    Rule,
-                    parameter.Locations.Length > 0 ? parameter.Locations[0] : ctor.Locations[0],
-                    type.Name,
-                    parameter.Type.Name));
+                    descriptor: Rule,
+                    location: parameter.Locations.Length > 0 ? parameter.Locations[0] : ctor.Locations[0],
+                    effectiveSeverity: severity,
+                    additionalLocations: null,
+                    properties: null,
+                    messageArgs: new object[] { type.Name, parameter.Type.Name }));
             }
         }
     }

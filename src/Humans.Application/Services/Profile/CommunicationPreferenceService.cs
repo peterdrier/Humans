@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using NodaTime;
+using Humans.Application.Architecture;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -14,6 +15,7 @@ namespace Humans.Application.Services.Profile;
 /// Token generation and URL building are delegated to
 /// <see cref="IUnsubscribeTokenProvider"/> (Infrastructure concern).
 /// </summary>
+[Grandfathered("HUM0012", "Profile services live in Services.Profile but their interfaces live in Interfaces.Profiles. Plural/singular drift; folder rename deferred to a follow-up PR.", "2026-05-15", "peterdrier/Humans#557")]
 public sealed class CommunicationPreferenceService : ICommunicationPreferenceService, IUserMerge
 {
     private static readonly Dictionary<MessageCategory, bool> DefaultOptedOut = new()
