@@ -125,7 +125,7 @@ public class ContainerController : HumansControllerBase
 
         // Place includes the phase-gate for leads — write actions need it.
         var target = ContainerAuthorizationTarget.ForCamp(camp.Id);
-        if (!await AuthorizeAsync(target, ContainerOperationRequirement.Place)) return Forbid();
+        if (!await AuthorizeAsync(target, ContainerOperationRequirement.Manage)) return Forbid();
 
         if (!ModelState.IsValid)
         {
@@ -146,7 +146,7 @@ public class ContainerController : HumansControllerBase
         var (userError, user) = await RequireCurrentUserAsync();
         if (userError is not null) return userError;
 
-        var (notFound, container) = await ResolveAndAuthorizeAsync(id, ContainerOperationRequirement.Place, ct);
+        var (notFound, container) = await ResolveAndAuthorizeAsync(id, ContainerOperationRequirement.Manage, ct);
         if (notFound is not null) return notFound;
 
         if (!ModelState.IsValid)
@@ -168,7 +168,7 @@ public class ContainerController : HumansControllerBase
         var (userError, user) = await RequireCurrentUserAsync();
         if (userError is not null) return userError;
 
-        var (notFound, _) = await ResolveAndAuthorizeAsync(id, ContainerOperationRequirement.Place, ct);
+        var (notFound, _) = await ResolveAndAuthorizeAsync(id, ContainerOperationRequirement.Manage, ct);
         if (notFound is not null) return notFound;
 
         await _containerService.DeleteAsync(id, user.Id, ct);
