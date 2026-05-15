@@ -311,11 +311,26 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
         return new ApplicationDecisionResult(true);
     }
 
-    public async Task<IReadOnlyList<MemberApplication>> GetUserApplicationsAsync(
+    public async Task<IReadOnlyList<UserApplicationSnapshot>> GetUserApplicationsAsync(
         Guid userId, CancellationToken ct = default)
     {
-        return await _repository.GetByUserIdAsync(userId, ct);
+        var applications = await _repository.GetByUserIdAsync(userId, ct);
+        return applications.Select(ToUserApplicationSnapshot).ToList();
     }
+
+    private static UserApplicationSnapshot ToUserApplicationSnapshot(MemberApplication application) =>
+        new(
+            application.Id,
+            application.UserId,
+            application.Status,
+            application.MembershipTier,
+            application.SubmittedAt,
+            application.ResolvedAt,
+            application.TermExpiresAt,
+            application.Motivation,
+            application.AdditionalInfo,
+            application.SignificantContribution,
+            application.RoleUnderstanding);
 
     public async Task<ApplicationUserDetailDto?> GetUserApplicationDetailAsync(
         Guid applicationId, Guid userId, CancellationToken ct = default)
@@ -348,6 +363,15 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
         string? additionalInfo, string? significantContribution, string? roleUnderstanding,
         string language, CancellationToken ct = default)
     {
+        if (tier == MembershipTier.Volunteer)
+            return new ApplicationDecisionResult(false, "InvalidTier");
+
+        if (tier == MembershipTier.Asociado && string.IsNullOrWhiteSpace(significantContribution))
+            return new ApplicationDecisionResult(false, "SignificantContributionRequired");
+
+        if (tier == MembershipTier.Asociado && string.IsNullOrWhiteSpace(roleUnderstanding))
+            return new ApplicationDecisionResult(false, "RoleUnderstandingRequired");
+
         var hasPending = await _repository.AnySubmittedForUserAsync(userId, ct);
         if (hasPending)
             return new ApplicationDecisionResult(false, "AlreadyPending");
@@ -531,9 +555,17 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
         _repository.GetUserIdsWithSubmittedAsync(userIds, ct);
 
-    public Task<MemberApplication?> GetSubmittedApplicationForUserAsync(
-        Guid userId, CancellationToken ct = default) =>
-        _repository.GetSubmittedForUserAsync(userId, ct);
+    public async Task<SubmittedApplicationSnapshot?> GetSubmittedApplicationForUserAsync(
+        Guid userId, CancellationToken ct = default)
+    {
+        var application = await _repository.GetSubmittedForUserAsync(userId, ct);
+        return application is null
+            ? null
+            : new SubmittedApplicationSnapshot(
+                application.Id,
+                application.MembershipTier,
+                application.Motivation);
+    }
 
     public Task<IReadOnlyList<MembershipTier>> GetApprovedTiersForUserAsync(
         Guid userId, CancellationToken ct = default) =>
@@ -665,9 +697,21 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
     public Task<int> GetPendingApplicationCountAsync(CancellationToken ct = default) =>
         _repository.CountByStatusAsync(ApplicationStatus.Submitted, ct);
 
-    public Task<IReadOnlyList<MemberApplication>> GetExpiringApplicationsNeedingReminderAsync(
-        LocalDate today, LocalDate reminderThreshold, CancellationToken ct = default) =>
-        _repository.GetExpiringApplicationsNeedingReminderAsync(today, reminderThreshold, ct);
+    public async Task<IReadOnlyList<ApplicationRenewalReminderCandidate>> GetExpiringApplicationsNeedingReminderAsync(
+        LocalDate today, LocalDate reminderThreshold, CancellationToken ct = default)
+    {
+        var applications = await _repository.GetExpiringApplicationsNeedingReminderAsync(
+            today, reminderThreshold, ct);
+        return applications.Select(ToRenewalReminderCandidate).ToList();
+    }
+
+    private static ApplicationRenewalReminderCandidate ToRenewalReminderCandidate(MemberApplication application) =>
+        new(
+            application.Id,
+            application.UserId,
+            application.MembershipTier,
+            application.SubmittedAt,
+            application.TermExpiresAt);
 
     public Task<IReadOnlySet<(Guid UserId, MembershipTier Tier)>> GetPendingApplicationUserTiersAsync(
         CancellationToken ct = default) =>
@@ -677,9 +721,14 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
         Guid applicationId, Instant sentAt, CancellationToken ct = default) =>
         _repository.MarkRenewalReminderSentAsync(applicationId, sentAt, ct);
 
-    public Task<IReadOnlyList<MemberApplication>> GetApprovedInWindowAsync(
-        Instant windowStart, Instant windowEnd, CancellationToken ct = default) =>
-        _repository.GetApprovedInWindowAsync(windowStart, windowEnd, ct);
+    public async Task<IReadOnlyList<ApprovedApplicationDigestEntry>> GetApprovedInWindowAsync(
+        Instant windowStart, Instant windowEnd, CancellationToken ct = default)
+    {
+        var applications = await _repository.GetApprovedInWindowAsync(windowStart, windowEnd, ct);
+        return applications
+            .Select(a => new ApprovedApplicationDigestEntry(a.UserId, a.MembershipTier))
+            .ToList();
+    }
 
     public Task<IReadOnlyList<Guid>> GetSubmittedApplicationIdsAsync(
         CancellationToken ct = default) =>

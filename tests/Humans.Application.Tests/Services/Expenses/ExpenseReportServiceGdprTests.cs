@@ -6,6 +6,7 @@ using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Expenses;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Holded;
+using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
@@ -56,6 +57,7 @@ public class ExpenseReportServiceGdprTests
             Substitute.For<IBudgetService>(),
             Substitute.For<ITeamService>(),
             _userService,
+            Substitute.For<IProfileService>(),
             _auditLogService,
             Substitute.For<IHoldedClient>(),
             new FakeClock(FakeNow),
@@ -173,15 +175,22 @@ public class ExpenseReportServiceGdprTests
         _userService.GetUserInfoAsync(UserId, Arg.Any<CancellationToken>())
             .Returns((UserInfo?)null);
 
-        var entry = new AuditLogEntry
-        {
-            Id = Guid.NewGuid(),
-            Action = AuditAction.ExpenseSubmit,
-            EntityType = "ExpenseReport",
-            EntityId = Guid.NewGuid(),
-            Description = "Submitted",
-            OccurredAt = FakeNow,
-        };
+        var entry = new AuditLogEntrySnapshot(
+            Guid.NewGuid(),
+            AuditAction.ExpenseSubmit,
+            "ExpenseReport",
+            Guid.NewGuid(),
+            "Submitted",
+            FakeNow,
+            ActorUserId: null,
+            RelatedEntityId: null,
+            RelatedEntityType: null,
+            ResourceId: null,
+            Success: null,
+            ErrorMessage: null,
+            Role: null,
+            SyncSource: null,
+            UserEmail: null);
 
         _auditLogService.GetFilteredEntriesAsync(
                 entityType: Arg.Any<string>(),

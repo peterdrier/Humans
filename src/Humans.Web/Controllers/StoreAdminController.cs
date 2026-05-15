@@ -95,50 +95,27 @@ public class StoreAdminController : HumansControllerBase
         if (!ModelState.IsValid)
             return View("CatalogEdit", input);
 
-        var parseResult = LocalDatePattern.Iso.Parse(input.OrderableUntil);
-        if (!parseResult.Success)
+        var result = await _storeService.SaveProductWithResultAsync(
+            new StoreProductSaveRequest(
+                input.Id,
+                input.Year,
+                input.Name,
+                input.Description,
+                input.UnitPriceEur,
+                input.VatRatePercent,
+                input.DepositAmountEur,
+                input.OrderableUntil,
+                input.IsActive),
+            user.Id,
+            ct);
+
+        if (!result.Succeeded)
         {
-            ModelState.AddModelError(nameof(input.OrderableUntil), "Invalid date — use YYYY-MM-DD.");
+            ModelState.AddModelError(result.ErrorField ?? string.Empty, result.ErrorMessage ?? "Could not save product.");
             return View("CatalogEdit", input);
         }
 
-        var dto = new ProductDto(
-            input.Id ?? Guid.Empty,
-            input.Year,
-            input.Name ?? string.Empty,
-            input.Description,
-            input.UnitPriceEur,
-            input.VatRatePercent,
-            input.DepositAmountEur,
-            parseResult.Value,
-            input.IsActive);
-
-        try
-        {
-            if (input.Id is null)
-            {
-                await _storeService.CreateProductAsync(dto, user.Id, ct);
-                SetSuccess("Product created.");
-            }
-            else
-            {
-                await _storeService.UpdateProductAsync(dto, user.Id, ct);
-                SetSuccess("Product updated.");
-            }
-        }
-        catch (ArgumentException ex)
-        {
-            _logger.LogWarning("Store catalog Save validation failed: {Reason}", ex.Message);
-            ModelState.AddModelError(string.Empty, ex.Message);
-            return View("CatalogEdit", input);
-        }
-        catch (InvalidOperationException ex)
-        {
-            _logger.LogWarning("Store catalog Save rejected: {Reason}", ex.Message);
-            ModelState.AddModelError(string.Empty, ex.Message);
-            return View("CatalogEdit", input);
-        }
-
+        SetSuccess(result.Created ? "Product created." : "Product updated.");
         return RedirectToAction(nameof(Catalog));
     }
 

@@ -27,6 +27,20 @@ public record UserTeamGoogleResource(
     GoogleResourceType ResourceType,
     string? Url);
 
+public record GoogleResourceSnapshot(
+    Guid Id,
+    Guid TeamId,
+    string GoogleId,
+    string Name,
+    GoogleResourceType ResourceType,
+    string? Url,
+    Instant ProvisionedAt = default,
+    Instant? LastSyncedAt = null,
+    bool IsActive = true,
+    string? ErrorMessage = null,
+    DrivePermissionLevel DrivePermissionLevel = DrivePermissionLevel.None,
+    bool RestrictInheritedAccess = false);
+
 /// <summary>
 /// Service for linking and managing pre-shared Google resources for teams.
 /// Unlike IGoogleSyncService (which provisions new resources), this service
@@ -41,13 +55,13 @@ public interface ITeamResourceService : IApplicationService
     /// <summary>
     /// Gets all active Google resources linked to a single team, ordered by provision time.
     /// </summary>
-    Task<IReadOnlyList<GoogleResource>> GetTeamResourcesAsync(Guid teamId, CancellationToken ct = default);
+    Task<IReadOnlyList<GoogleResourceSnapshot>> GetTeamResourcesAsync(Guid teamId, CancellationToken ct = default);
 
     /// <summary>
     /// Gets all active Google resources for a set of teams, grouped by team id.
     /// Missing team ids map to an empty list in the returned dictionary.
     /// </summary>
-    Task<IReadOnlyDictionary<Guid, IReadOnlyList<GoogleResource>>> GetResourcesByTeamIdsAsync(
+    Task<IReadOnlyDictionary<Guid, IReadOnlyList<GoogleResourceSnapshot>>> GetResourcesByTeamIdsAsync(
         IReadOnlyCollection<Guid> teamIds,
         CancellationToken ct = default);
 
@@ -86,7 +100,7 @@ public interface ITeamResourceService : IApplicationService
     /// Gets every active Drive folder resource across all teams.
     /// Used by Drive activity anomaly detection.
     /// </summary>
-    Task<IReadOnlyList<GoogleResource>> GetActiveDriveFoldersAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<GoogleResourceSnapshot>> GetActiveDriveFoldersAsync(CancellationToken ct = default);
 
     /// <summary>
     /// Returns the total number of Google resource rows (including inactive).
@@ -161,9 +175,9 @@ public interface ITeamResourceService : IApplicationService
         CancellationToken ct = default);
 
     /// <summary>
-    /// Gets a single Google resource by ID, including its team.
+    /// Gets a single Google resource by ID for display callers.
     /// </summary>
-    Task<GoogleResource?> GetResourceByIdAsync(Guid resourceId, CancellationToken ct = default);
+    Task<GoogleResourceSnapshot?> GetResourceByIdAsync(Guid resourceId, CancellationToken ct = default);
 
     /// <summary>
     /// Updates the Drive permission level for a resource.
@@ -175,4 +189,13 @@ public interface ITeamResourceService : IApplicationService
     /// enforces the corresponding inheritedPermissionsDisabled setting on Google Drive.
     /// </summary>
     Task SetRestrictInheritedAccessAsync(Guid resourceId, bool restrict, CancellationToken ct = default);
+
+    Task<TeamResourceMutationResult> SetRestrictInheritedAccessWithResultAsync(Guid resourceId, bool restrict, CancellationToken ct = default);
+}
+
+public sealed record TeamResourceMutationResult(bool Succeeded, string? ErrorMessage)
+{
+    public static TeamResourceMutationResult Success() => new(true, null);
+
+    public static TeamResourceMutationResult Failed(string message) => new(false, message);
 }

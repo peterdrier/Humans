@@ -7,7 +7,6 @@ using Humans.Domain.Enums;
 using Humans.Web.Authorization;
 using Humans.Web.Models;
 using Humans.Application.Interfaces.Campaigns;
-using Humans.Application.Interfaces.Tickets;
 
 namespace Humans.Web.Controllers;
 
@@ -16,16 +15,13 @@ namespace Humans.Web.Controllers;
 public class CampaignController : HumansControllerBase
 {
     private readonly ICampaignService _campaignService;
-    private readonly ITicketVendorService _vendorService;
 
     public CampaignController(
         ICampaignService campaignService,
-        ITicketVendorService vendorService,
         UserManager<User> userManager)
         : base(userManager)
     {
         _campaignService = campaignService;
-        _vendorService = vendorService;
     }
 
     [HttpGet("")]
@@ -48,15 +44,20 @@ public class CampaignController : HumansControllerBase
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> Create(string title, string? description, string emailSubject, string emailBodyTemplate, string? replyToAddress)
     {
-        if (string.IsNullOrWhiteSpace(title))
-            ModelState.AddModelError(nameof(title), "Title is required.");
-        if (string.IsNullOrWhiteSpace(emailSubject))
-            ModelState.AddModelError(nameof(emailSubject), "Email subject is required.");
-        if (string.IsNullOrWhiteSpace(emailBodyTemplate))
-            ModelState.AddModelError(nameof(emailBodyTemplate), "Email body template is required.");
+        var currentUser = await GetCurrentUserAsync();
+        if (currentUser is null) return Unauthorized();
 
-        if (!ModelState.IsValid)
+        var result = await _campaignService.CreateAsync(
+            title, description, emailSubject, emailBodyTemplate, replyToAddress, currentUser.Id);
+        if (!result.Success)
         {
+            if (string.Equals(result.ErrorKey, "TitleRequired", StringComparison.Ordinal))
+                ModelState.AddModelError(nameof(title), "Title is required.");
+            else if (string.Equals(result.ErrorKey, "EmailSubjectRequired", StringComparison.Ordinal))
+                ModelState.AddModelError(nameof(emailSubject), "Email subject is required.");
+            else if (string.Equals(result.ErrorKey, "EmailBodyTemplateRequired", StringComparison.Ordinal))
+                ModelState.AddModelError(nameof(emailBodyTemplate), "Email body template is required.");
+
             ViewBag.Title2 = title;
             ViewBag.Description = description;
             ViewBag.EmailSubject = emailSubject;
@@ -65,12 +66,8 @@ public class CampaignController : HumansControllerBase
             return View();
         }
 
-        var currentUser = await GetCurrentUserAsync();
-        if (currentUser is null) return Unauthorized();
-
-        var campaign = await _campaignService.CreateAsync(title, description, emailSubject, emailBodyTemplate, replyToAddress, currentUser.Id);
         SetSuccess("Campaign created.");
-        return RedirectToAction(nameof(Detail), new { id = campaign.Id });
+        return RedirectToAction(nameof(Detail), new { id = result.Campaign!.Id });
     }
 
     [HttpGet("Edit/{id:guid}")]
@@ -87,15 +84,25 @@ public class CampaignController : HumansControllerBase
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> Edit(Guid id, string title, string? description, string emailSubject, string emailBodyTemplate, string? replyToAddress)
     {
-        if (string.IsNullOrWhiteSpace(title))
-            ModelState.AddModelError(nameof(title), "Title is required.");
-        if (string.IsNullOrWhiteSpace(emailSubject))
-            ModelState.AddModelError(nameof(emailSubject), "Email subject is required.");
-        if (string.IsNullOrWhiteSpace(emailBodyTemplate))
-            ModelState.AddModelError(nameof(emailBodyTemplate), "Email body template is required.");
+        var updated = await _campaignService.UpdateAsync(
+            id,
+            title,
+            description,
+            emailSubject,
+            emailBodyTemplate,
+            replyToAddress);
+        if (string.Equals(updated.ErrorKey, "NotFound", StringComparison.Ordinal))
+            return NotFound();
 
-        if (!ModelState.IsValid)
+        if (!updated.Success)
         {
+            if (string.Equals(updated.ErrorKey, "TitleRequired", StringComparison.Ordinal))
+                ModelState.AddModelError(nameof(title), "Title is required.");
+            else if (string.Equals(updated.ErrorKey, "EmailSubjectRequired", StringComparison.Ordinal))
+                ModelState.AddModelError(nameof(emailSubject), "Email subject is required.");
+            else if (string.Equals(updated.ErrorKey, "EmailBodyTemplateRequired", StringComparison.Ordinal))
+                ModelState.AddModelError(nameof(emailBodyTemplate), "Email body template is required.");
+
             var campaign = await _campaignService.GetByIdAsync(id);
             if (campaign is null)
             {
@@ -109,18 +116,6 @@ public class CampaignController : HumansControllerBase
             ViewBag.EmailBodyTemplate = emailBodyTemplate;
             ViewBag.ReplyToAddress = replyToAddress;
             return View(campaign);
-        }
-
-        var updated = await _campaignService.UpdateAsync(
-            id,
-            title,
-            description,
-            emailSubject,
-            emailBodyTemplate,
-            replyToAddress);
-        if (!updated)
-        {
-            return NotFound();
         }
 
         SetSuccess("Campaign updated.");
@@ -176,32 +171,20 @@ public class CampaignController : HumansControllerBase
     [Authorize(Policy = PolicyNames.TicketAdminOrAdmin)]
     public async Task<IActionResult> GenerateCodes(Guid id, int count, string discountType, decimal discountValue)
     {
-        var campaign = await _campaignService.GetByIdAsync(id);
-        if (campaign is null) return NotFound();
+        var result = await _campaignService.GenerateAndImportDiscountCodesAsync(
+            id, count, discountType, discountValue);
+        if (string.Equals(result.ErrorKey, "NotFound", StringComparison.Ordinal))
+            return NotFound();
 
-        if (campaign.Status != CampaignStatus.Draft)
-        {
+        if (string.Equals(result.ErrorKey, "NotDraft", StringComparison.Ordinal))
             SetError("Codes can only be generated for Draft campaigns.");
-            return RedirectToAction(nameof(Detail), new { id });
-        }
-
-        if (count <= 0)
-        {
+        else if (string.Equals(result.ErrorKey, "InvalidCount", StringComparison.Ordinal))
             SetError("Count must be greater than zero.");
-            return RedirectToAction(nameof(Detail), new { id });
-        }
-
-        if (!Enum.TryParse<DiscountType>(discountType, ignoreCase: true, out var parsedType))
-        {
+        else if (string.Equals(result.ErrorKey, "InvalidDiscountType", StringComparison.Ordinal))
             SetError("Invalid discount type.");
-            return RedirectToAction(nameof(Detail), new { id });
-        }
+        else
+            SetSuccess($"Generated and imported {result.GeneratedCount} discount codes.");
 
-        var spec = new DiscountCodeSpec(count, parsedType, discountValue, ExpiresAt: null);
-        var codes = await _vendorService.GenerateDiscountCodesAsync(spec);
-        await _campaignService.ImportGeneratedCodesAsync(id, codes);
-
-        SetSuccess($"Generated and imported {codes.Count} discount codes.");
         return RedirectToAction(nameof(Detail), new { id });
     }
 

@@ -130,8 +130,8 @@
                             @foreach (var grant in Model.CampaignGrants)
                             {
                                 <tr>
-                                    <td>@grant.Campaign.Title</td>
-                                    <td><code>@grant.Code.Code</code></td>
+                                    <td>@grant.CampaignTitle</td>
+                                    <td><code>@grant.Code</code></td>
                                     <td>@grant.AssignedAt.ToDisplayDate()</td>
                                     <td>
                                         @if (grant.RedeemedAt.HasValue)

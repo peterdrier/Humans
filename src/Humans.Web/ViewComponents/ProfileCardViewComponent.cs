@@ -107,7 +107,7 @@ public class ProfileCardViewComponent : ViewComponent
         // Get profile languages (service returns sorted by proficiency desc, then language code)
         var profileLanguages = profile is not null
             ? await _profileService.GetProfileLanguagesAsync(profile.Id)
-            : (IReadOnlyList<ProfileLanguage>)[];
+            : (IReadOnlyList<ProfileLanguageSnapshot>)[];
 
         // Get user's teams (excluding Volunteers system team)
         var userTeams = await _teamService.GetUserTeamsAsync(userId);

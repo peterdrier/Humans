@@ -2,6 +2,7 @@ using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Testing;
@@ -72,6 +73,7 @@ public class AccountControllerOAuthReconcileTests
             NullLogger<AccountController>.Instance,
             _userEmailService,
             _magicLinkService,
+            Substitute.For<IAccountProvisioningService>(),
             Substitute.For<IProfileService>(),
             _localizer);
         _controller.Url = Substitute.For<IUrlHelper>();

@@ -110,10 +110,38 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
         string? additionalContext,
         IFormFile? screenshot,
         LocalDate? dueDate = null,
+        CancellationToken ct = default) =>
+        await SubmitIssueAsync(
+            reporterUserId,
+            category,
+            title,
+            description,
+            section,
+            pageUrl,
+            userAgent,
+            additionalContext,
+            screenshot,
+            dueDate,
+            reporterRoles: null,
+            ct);
+
+    public async Task<Issue> SubmitIssueAsync(
+        Guid reporterUserId,
+        IssueCategory category,
+        string title,
+        string description,
+        string? section,
+        string? pageUrl,
+        string? userAgent,
+        string? additionalContext,
+        IFormFile? screenshot,
+        LocalDate? dueDate,
+        IReadOnlyList<string>? reporterRoles,
         CancellationToken ct = default)
     {
         var now = _clock.GetCurrentInstant();
         var issueId = Guid.NewGuid();
+        var storedAdditionalContext = BuildAdditionalContext(additionalContext, reporterRoles);
 
         var issue = new Issue
         {
@@ -125,7 +153,7 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
             Description = description,
             PageUrl = pageUrl,
             UserAgent = userAgent,
-            AdditionalContext = additionalContext,
+            AdditionalContext = storedAdditionalContext,
             Status = IssueStatus.Triage,
             DueDate = dueDate,
             CreatedAt = now,
@@ -175,6 +203,21 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
         return issue;
     }
 
+    private static string? BuildAdditionalContext(string? userContext, IReadOnlyList<string>? reporterRoles)
+    {
+        var parts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(userContext))
+            parts.Add(userContext);
+        if (reporterRoles is { Count: > 0 })
+            parts.Add($"roles: {string.Join(", ", reporterRoles.Order(StringComparer.Ordinal))}");
+
+        if (parts.Count == 0)
+            return null;
+
+        var result = string.Join(" | ", parts);
+        return result.Length > 2000 ? result[..2000] : result;
+    }
+
     // ==========================================================================
     // Reads
     // ==========================================================================
@@ -187,7 +230,7 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
         return issue;
     }
 
-    public async Task<IReadOnlyList<Issue>> GetIssueListAsync(
+    public async Task<IReadOnlyList<IssueListSnapshot>> GetIssueListAsync(
         IssueListFilter filter,
         Guid viewerUserId,
         IReadOnlyList<string> viewerRoles,
@@ -204,8 +247,48 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
         }
 
         var issues = await _repo.GetListAsync(filter, sectionFilter, reporterFallback, ct);
-        await StitchCrossDomainNavsAsync(issues, ct);
-        return issues;
+        return await BuildListSnapshotsAsync(issues, ct);
+    }
+
+    private async Task<IReadOnlyList<IssueListSnapshot>> BuildListSnapshotsAsync(
+        IReadOnlyList<Issue> issues, CancellationToken ct)
+    {
+        if (issues.Count == 0) return [];
+
+        var userIds = new HashSet<Guid>();
+        foreach (var issue in issues)
+        {
+            userIds.Add(issue.ReporterUserId);
+            if (issue.AssigneeUserId.HasValue)
+                userIds.Add(issue.AssigneeUserId.Value);
+        }
+
+        var users = await _users.GetByIdsAsync(userIds.ToList(), ct);
+        return issues.Select(issue => new IssueListSnapshot(
+            issue.Id,
+            issue.Status,
+            issue.Category,
+            issue.Section,
+            issue.Title,
+            issue.Description,
+            issue.PageUrl,
+            issue.UserAgent,
+            issue.AdditionalContext,
+            issue.ReporterUserId,
+            users.TryGetValue(issue.ReporterUserId, out var reporter) ? reporter.DisplayName : null,
+            reporter?.Email,
+            reporter?.PreferredLanguage,
+            issue.CreatedAt,
+            issue.UpdatedAt,
+            issue.ResolvedAt,
+            issue.DueDate,
+            issue.ScreenshotStoragePath,
+            issue.Comments.Count,
+            issue.AssigneeUserId,
+            issue.AssigneeUserId.HasValue && users.TryGetValue(issue.AssigneeUserId.Value, out var assignee)
+                ? assignee.DisplayName
+                : null,
+            issue.GitHubIssueNumber)).ToList();
     }
 
     public async Task<IReadOnlyList<IssueThreadEvent>> GetThreadAsync(
@@ -276,6 +359,15 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
         Guid? senderUserId,
         string content,
         bool senderIsReporter,
+        CancellationToken ct = default) =>
+        await PostCommentAsync(issueId, senderUserId, content, senderIsReporter, resolveOnPost: false, ct);
+
+    public async Task<IssueComment> PostCommentAsync(
+        Guid issueId,
+        Guid? senderUserId,
+        string content,
+        bool senderIsReporter,
+        bool resolveOnPost,
         CancellationToken ct = default)
     {
         var issue = await _repo.FindForMutationAsync(issueId, ct)
@@ -323,6 +415,12 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
         _logger.LogInformation(
             "Comment posted on issue {IssueId} by {UserId} (reporter: {Reporter})",
             issueId, senderUserId, senderIsReporter);
+
+        if (resolveOnPost && !issue.Status.IsTerminal())
+        {
+            await UpdateStatusAsync(issueId, IssueStatus.Resolved, senderUserId, ct);
+        }
+
         return comment;
     }
 
@@ -359,6 +457,29 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
         _navBadge.Invalidate();
         _issuesBadge.InvalidateMany(
             await ResolveBadgeUserIdsAsync(issue.ReporterUserId, issue.Section, null, ct));
+    }
+
+    public async Task<IssueMutationResult> UpdateStatusWithResultAsync(
+        Guid issueId,
+        IssueStatus newStatus,
+        Guid? actorUserId,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            await UpdateStatusAsync(issueId, newStatus, actorUserId, ct);
+            return IssueMutationResult.Success();
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Issue {IssueId} not found during UpdateStatus", issueId);
+            return IssueMutationResult.Missing("Issue not found.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update issue {IssueId} status", issueId);
+            return IssueMutationResult.Failed("Failed to update status.");
+        }
     }
 
     public async Task UpdateAssigneeAsync(
@@ -400,6 +521,29 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
         }
     }
 
+    public async Task<IssueMutationResult> UpdateAssigneeWithResultAsync(
+        Guid issueId,
+        Guid? newAssigneeUserId,
+        Guid? actorUserId,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            await UpdateAssigneeAsync(issueId, newAssigneeUserId, actorUserId, ct);
+            return IssueMutationResult.Success();
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Issue {IssueId} not found during UpdateAssignee", issueId);
+            return IssueMutationResult.Missing("Issue not found.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update assignee on issue {IssueId}", issueId);
+            return IssueMutationResult.Failed("Failed to update assignee.");
+        }
+    }
+
     public async Task UpdateSectionAsync(
         Guid issueId, string? newSection, Guid? actorUserId,
         CancellationToken ct = default)
@@ -431,6 +575,29 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
             await ResolveBadgeUserIdsAsync(issue.ReporterUserId, newSection, previousSection, ct));
     }
 
+    public async Task<IssueMutationResult> UpdateSectionWithResultAsync(
+        Guid issueId,
+        string? newSection,
+        Guid? actorUserId,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            await UpdateSectionAsync(issueId, newSection, actorUserId, ct);
+            return IssueMutationResult.Success();
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Issue {IssueId} UpdateSection rejected: {Reason}", issueId, ex.Message);
+            return IssueMutationResult.Failed(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update section on issue {IssueId}", issueId);
+            return IssueMutationResult.Failed("Failed to update section.");
+        }
+    }
+
     public async Task SetGitHubIssueNumberAsync(
         Guid issueId, int? githubIssueNumber, Guid? actorUserId,
         CancellationToken ct = default)
@@ -447,6 +614,29 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
         await LogAuditAsync(
             AuditAction.IssueGitHubLinked, issueId, actorUserId,
             $"GitHub link: {(githubIssueNumber.HasValue ? githubIssueNumber.Value.ToString(System.Globalization.CultureInfo.InvariantCulture) : "(cleared)")}");
+    }
+
+    public async Task<IssueMutationResult> SetGitHubIssueNumberWithResultAsync(
+        Guid issueId,
+        int? githubIssueNumber,
+        Guid? actorUserId,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            await SetGitHubIssueNumberAsync(issueId, githubIssueNumber, actorUserId, ct);
+            return IssueMutationResult.Success();
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Issue {IssueId} not found during SetGitHubIssue", issueId);
+            return IssueMutationResult.Missing("Issue not found.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to set GitHub issue for issue {IssueId}", issueId);
+            return IssueMutationResult.Failed("Failed to link GitHub issue.");
+        }
     }
 
     // ==========================================================================

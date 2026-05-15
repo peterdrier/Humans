@@ -184,7 +184,7 @@ public sealed class GoogleGroupSyncService : IGoogleGroupSync
     private async Task<ResourceSyncDiff> ReconcileClaimAsync(
         GroupClaim claim,
         SyncAction action,
-        GoogleResource? resource,
+        GoogleResourceSnapshot? resource,
         bool scheduleRetryOnFailure,
         int nextRetryAttempt,
         IReadOnlyDictionary<Guid, ExpectedMember>? expectedMembersByUserId,
@@ -401,11 +401,11 @@ public sealed class GoogleGroupSyncService : IGoogleGroupSync
 
     private static string? TryGetGoogleEmail(
         Guid userId,
-        IReadOnlyDictionary<Guid, IReadOnlyList<UserEmail>> emailsByUserId)
+        IReadOnlyDictionary<Guid, IReadOnlyList<UserEmailRowSnapshot>> emailsByUserId)
     {
         var emails = emailsByUserId.TryGetValue(userId, out var list)
             ? list
-            : Array.Empty<UserEmail>();
+            : Array.Empty<UserEmailRowSnapshot>();
 
         return emails
             .Where(e => e.IsVerified && e.IsGoogle)
@@ -430,7 +430,7 @@ public sealed class GoogleGroupSyncService : IGoogleGroupSync
 
     private async Task<ResourceSyncDiff> BuildCollisionDiffAsync(
         GroupClaim claim,
-        IReadOnlyDictionary<string, GoogleResource> resourcesByGroup,
+        IReadOnlyDictionary<string, GoogleResourceSnapshot> resourcesByGroup,
         CancellationToken ct)
     {
         var error = $"Google group membership source collision for {claim.GroupKey}: {string.Join(", ", claim.SourceNames)}";
@@ -446,11 +446,11 @@ public sealed class GoogleGroupSyncService : IGoogleGroupSync
         return BuildErrorDiff(claim.GroupKey, resourcesByGroup.GetValueOrDefault(claim.GroupKey), error);
     }
 
-    private async Task<IReadOnlyDictionary<string, GoogleResource>> LoadActiveGroupResourcesByEmailAsync(CancellationToken ct)
+    private async Task<IReadOnlyDictionary<string, GoogleResourceSnapshot>> LoadActiveGroupResourcesByEmailAsync(CancellationToken ct)
     {
         var counts = await _teamResourceService.GetActiveResourceCountsByTeamAsync(ct);
         if (counts.Count == 0)
-            return new Dictionary<string, GoogleResource>(StringComparer.OrdinalIgnoreCase);
+            return new Dictionary<string, GoogleResourceSnapshot>(StringComparer.OrdinalIgnoreCase);
 
         var byTeam = await _teamResourceService.GetResourcesByTeamIdsAsync(counts.Keys.ToList(), ct);
         var teamIds = byTeam.Keys.ToList();
@@ -486,7 +486,7 @@ public sealed class GoogleGroupSyncService : IGoogleGroupSync
         return resourcesByEmail.ToDictionary(g => g.Key, g => g.First().Resource, StringComparer.OrdinalIgnoreCase);
     }
 
-    private Task RecordGroupErrorAsync(GoogleResource? resource, string error, CancellationToken ct)
+    private Task RecordGroupErrorAsync(GoogleResourceSnapshot? resource, string error, CancellationToken ct)
     {
         if (resource is null)
             return Task.CompletedTask;
@@ -495,7 +495,7 @@ public sealed class GoogleGroupSyncService : IGoogleGroupSync
     }
 
     private async Task RecordMemberErrorAsync(
-        GoogleResource? resource,
+        GoogleResourceSnapshot? resource,
         string email,
         string error,
         AuditAction action,
@@ -518,7 +518,7 @@ public sealed class GoogleGroupSyncService : IGoogleGroupSync
     }
 
     private async Task<string> HandleGroupAddFailureAsync(
-        GoogleResource? resource,
+        GoogleResourceSnapshot? resource,
         string groupKey,
         string email,
         GoogleClientError? error,
@@ -601,7 +601,7 @@ public sealed class GoogleGroupSyncService : IGoogleGroupSync
 
     private async Task NotifyRemovalAsync(
         string email,
-        GoogleResource? resource,
+        GoogleResourceSnapshot? resource,
         string groupKey,
         CancellationToken ct)
     {
@@ -627,7 +627,7 @@ public sealed class GoogleGroupSyncService : IGoogleGroupSync
 
     private static ResourceSyncDiff BuildErrorDiff(
         string groupKey,
-        GoogleResource? resource,
+        GoogleResourceSnapshot? resource,
         string error,
         List<MemberSyncStatus>? members = null) => new()
         {
@@ -650,3 +650,4 @@ public sealed class GoogleGroupSyncService : IGoogleGroupSync
 
     private sealed record ExpectedMember(Guid UserId, string Email, string DisplayName, string? ProfilePictureUrl);
 }
+

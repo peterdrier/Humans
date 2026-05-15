@@ -284,6 +284,32 @@ public class IssuesApiController : ControllerBase
         CommentCount = i.Comments.Count
     };
 
+    private static object MapList(IssueListSnapshot i) => new
+    {
+        i.Id,
+        Status = i.Status.ToString(),
+        Category = i.Category.ToString(),
+        i.Section,
+        i.Title,
+        i.Description,
+        i.PageUrl,
+        i.UserAgent,
+        i.AdditionalContext,
+        ReporterName = i.ReporterDisplayName,
+        ReporterEmail = i.ReporterEmail,
+        ReporterUserId = i.ReporterUserId,
+        ReporterLanguage = i.ReporterPreferredLanguage,
+        AssigneeUserId = i.AssigneeUserId,
+        AssigneeName = i.AssigneeDisplayName,
+        i.GitHubIssueNumber,
+        i.DueDate,
+        ScreenshotUrl = i.ScreenshotStoragePath is not null ? $"/{i.ScreenshotStoragePath}" : null,
+        CreatedAt = i.CreatedAt.ToDateTimeUtc(),
+        UpdatedAt = i.UpdatedAt.ToDateTimeUtc(),
+        ResolvedAt = i.ResolvedAt?.ToDateTimeUtc(),
+        i.CommentCount
+    };
+
     private static object MapDetail(Issue i, IReadOnlyList<IssueThreadEvent> thread) => new
     {
         issue = MapList(i),

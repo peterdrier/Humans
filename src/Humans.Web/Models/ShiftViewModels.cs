@@ -203,7 +203,7 @@ public class ShiftBrowseViewModel
     /// <summary>
     /// All available tags for the filter UI.
     /// </summary>
-    public List<ShiftTag> AllTags { get; set; } = [];
+    public List<ShiftTagSummary> AllTags { get; set; } = [];
 
     /// <summary>
     /// Currently selected tag IDs for filtering.
@@ -292,6 +292,7 @@ public class MyShiftsViewModel
 public class MySignupItem
 {
     public ShiftSignup Signup { get; set; } = null!;
+    public string? RotaName { get; set; }
     public string DepartmentName { get; set; } = string.Empty;
     public Instant AbsoluteStart { get; set; }
     public Instant AbsoluteEnd { get; set; }
@@ -328,7 +329,7 @@ public class ShiftAdminViewModel
     /// <summary>
     /// All available tags for the tag picker UI.
     /// </summary>
-    public List<ShiftTag> AllTags { get; set; } = [];
+    public List<ShiftTagSummary> AllTags { get; set; } = [];
 
     /// <summary>
     /// True when the coordinator has activated the "Incomplete onboarding" filter
@@ -350,6 +351,7 @@ public class ShiftCardsViewModel
 public class UrgentShiftItem
 {
     public Shift Shift { get; set; } = null!;
+    public string? RotaName { get; set; }
     public string DepartmentName { get; set; } = string.Empty;
     public Instant AbsoluteStart { get; set; }
     public int RemainingSlots { get; set; }
@@ -422,6 +424,30 @@ public class ShiftInfoViewModel
         ["All Day"] = "Flexible, morning through evening",
         ["No Preference"] = "I'll take whatever's needed"
     };
+
+    public static ShiftInfoViewModel FromProfile(VolunteerEventProfile? profile)
+    {
+        var quirks = profile?.Quirks ?? [];
+        var skills = profile?.Skills ?? [];
+        var languages = profile?.Languages ?? [];
+
+        var viewModel = new ShiftInfoViewModel
+        {
+            SelectedSkills = skills.Where(s => !s.StartsWith("Other:", StringComparison.Ordinal)).ToList(),
+            SkillOtherText = skills.FirstOrDefault(s => s.StartsWith("Other:", StringComparison.Ordinal))?.Substring(6).Trim(),
+            SelectedQuirks = ExtractToggleQuirks(quirks),
+            TimePreference = ExtractTimePreference(quirks),
+            SelectedLanguages = languages.Where(l => !l.StartsWith("Other:", StringComparison.Ordinal)).ToList(),
+            LanguageOtherText = languages.FirstOrDefault(l => l.StartsWith("Other:", StringComparison.Ordinal))?.Substring(6).Trim(),
+        };
+
+        if (viewModel.SkillOtherText is not null && !viewModel.SelectedSkills.Contains("Other", StringComparer.Ordinal))
+            viewModel.SelectedSkills.Add("Other");
+        if (viewModel.LanguageOtherText is not null && !viewModel.SelectedLanguages.Contains("Other", StringComparer.Ordinal))
+            viewModel.SelectedLanguages.Add("Other");
+
+        return viewModel;
+    }
 
     /// <summary>Extract the time preference value from a flat quirks array.</summary>
     public static string? ExtractTimePreference(List<string> quirks)

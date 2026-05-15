@@ -1,6 +1,7 @@
 using Humans.Application.Interfaces;
 using Humans.Application.DTOs;
 using Humans.Domain.Entities;
+using NodaTime;
 
 namespace Humans.Application.Interfaces.Legal;
 
@@ -21,7 +22,7 @@ public interface IAdminLegalDocumentService : IApplicationService
     /// <summary>
     /// Gets a single legal document with versions for edit/detail screens.
     /// </summary>
-    Task<LegalDocument?> GetLegalDocumentWithVersionsAsync(
+    Task<AdminLegalDocumentEditDetail?> GetLegalDocumentWithVersionsAsync(
         Guid documentId,
         CancellationToken cancellationToken = default);
 
@@ -34,6 +35,14 @@ public interface IAdminLegalDocumentService : IApplicationService
     /// Creates a legal document.
     /// </summary>
     Task<LegalDocument> CreateLegalDocumentAsync(
+        AdminLegalDocumentUpsertRequest request,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Creates a legal document and runs the initial content sync when a
+    /// GitHub folder path was supplied.
+    /// </summary>
+    Task<AdminLegalDocumentCreateResult> CreateLegalDocumentWithInitialSyncAsync(
         AdminLegalDocumentUpsertRequest request,
         CancellationToken cancellationToken = default);
 
@@ -63,4 +72,40 @@ public interface IAdminLegalDocumentService : IApplicationService
         Guid versionId,
         string? changesSummary,
         CancellationToken cancellationToken = default);
+}
+
+public sealed record AdminLegalDocumentEditDetail(
+    Guid Id,
+    string Name,
+    Guid TeamId,
+    bool IsRequired,
+    bool IsActive,
+    int GracePeriodDays,
+    string? GitHubFolderPath,
+    Instant LastSyncedAt,
+    IReadOnlyList<AdminLegalDocumentVersionDetail> Versions);
+
+public sealed record AdminLegalDocumentVersionDetail(
+    Guid Id,
+    string VersionNumber,
+    string CommitSha,
+    Instant EffectiveFrom,
+    Instant CreatedAt,
+    string? ChangesSummary,
+    bool RequiresReConsent,
+    int LanguageCount,
+    IReadOnlyList<string> Languages);
+
+public sealed record AdminLegalDocumentCreateResult(
+    LegalDocument Document,
+    AdminLegalDocumentInitialSyncStatus InitialSyncStatus,
+    string? SyncMessage = null,
+    string? SyncError = null);
+
+public enum AdminLegalDocumentInitialSyncStatus
+{
+    NoGitHubFolderPath,
+    AlreadyCurrent,
+    Synced,
+    Failed
 }

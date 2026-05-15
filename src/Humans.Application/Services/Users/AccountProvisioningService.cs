@@ -146,4 +146,93 @@ public sealed class AccountProvisioningService : IAccountProvisioningService
 
         return new AccountProvisioningResult(newUser, Created: true);
     }
+
+    public async Task<MagicLinkSignupCompletionResult> CompleteMagicLinkSignupAsync(
+        string email,
+        string? displayName,
+        CancellationToken ct = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(email);
+
+        var existingEmail = await _userEmailService.FindVerifiedEmailWithUserAsync(email, ct);
+        if (existingEmail is not null)
+        {
+            var existingUser = await _userRepository.GetByIdAsync(existingEmail.UserId, ct);
+            if (existingUser is null)
+            {
+                _logger.LogWarning(
+                    "Verified UserEmail references missing user {UserId} during magic-link signup for {Email}",
+                    existingEmail.UserId, email);
+                return new MagicLinkSignupCompletionResult(
+                    MagicLinkSignupCompletionOutcome.Failed,
+                    User: null);
+            }
+
+            existingUser.LastLoginAt = _clock.GetCurrentInstant();
+            await _userManager.UpdateAsync(existingUser);
+            return new MagicLinkSignupCompletionResult(
+                MagicLinkSignupCompletionOutcome.ExistingUser,
+                existingUser);
+        }
+
+        var now = _clock.GetCurrentInstant();
+        var user = new User
+        {
+            Id = Guid.NewGuid(),
+            DisplayName = string.IsNullOrWhiteSpace(displayName) ? email : displayName.Trim(),
+            CreatedAt = now,
+            LastLoginAt = now
+        };
+
+        var createResult = await _userManager.CreateAsync(user);
+        if (!createResult.Succeeded)
+        {
+            _logger.LogError(
+                "Failed to create user via magic link signup for {Email}: {Errors}",
+                email,
+                string.Join(", ", createResult.Errors.Select(e => e.Description)));
+            return new MagicLinkSignupCompletionResult(
+                MagicLinkSignupCompletionOutcome.Failed,
+                User: null);
+        }
+
+        try
+        {
+            await _userEmailService.AddVerifiedEmailAsync(user.Id, email, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Failed to create UserEmail for magic-link signup {UserId} ({Email}); rolling back user",
+                user.Id, email);
+            await TryDeleteOrphanUserAsync(user);
+            return new MagicLinkSignupCompletionResult(
+                MagicLinkSignupCompletionOutcome.Failed,
+                User: null);
+        }
+
+        await _profileService.EnsureStubProfileAsync(user.Id, ct);
+
+        _logger.LogInformation(
+            "Magic link signup: user {UserId} created account for {Email}",
+            user.Id, email);
+
+        return new MagicLinkSignupCompletionResult(
+            MagicLinkSignupCompletionOutcome.Created,
+            user);
+    }
+
+    private async Task TryDeleteOrphanUserAsync(User user)
+    {
+        try
+        {
+            await _userManager.DeleteAsync(user);
+        }
+        catch (Exception deleteEx)
+        {
+            _logger.LogError(deleteEx,
+                "Failed to clean up orphan user {UserId} after AddVerifiedEmailAsync failure",
+                user.Id);
+        }
+    }
 }

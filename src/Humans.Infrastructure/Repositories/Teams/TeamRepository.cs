@@ -347,7 +347,6 @@ public sealed class TeamRepository : ITeamRepository
             .Where(tm => tm.UserId == userId && tm.LeftAt == null)
             .Include(tm => tm.Team)
                 .ThenInclude(t => t.ParentTeam)
-            .OrderBy(tm => tm.Team.Name)
             .ToListAsync(ct);
     }
 
@@ -362,6 +361,16 @@ public sealed class TeamRepository : ITeamRepository
                 && tm.Role == TeamMemberRole.Coordinator)
             .Select(tm => tm.UserId)
             .ToListAsync(ct);
+    }
+
+    public async Task<bool> IsAnyActiveCoordinatorAsync(Guid userId, CancellationToken ct = default)
+    {
+        await using var db = await _factory.CreateDbContextAsync(ct);
+        return await db.TeamMembers
+            .AsNoTracking()
+            .AnyAsync(tm => tm.UserId == userId
+                && tm.Role == TeamMemberRole.Coordinator
+                && tm.LeftAt == null, ct);
     }
 
     public async Task<IReadOnlyList<TeamCoordinatorRef>> GetActiveCoordinatorsForTeamsAsync(

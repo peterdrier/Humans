@@ -9,12 +9,6 @@ public sealed class StoreIndexViewModel
     public IReadOnlyList<StoreCampSeasonOrders> CampSeasons { get; init; } = [];
 }
 
-public sealed record StoreCampSeasonOrders(
-    Guid CampSeasonId,
-    string CampName,
-    int Year,
-    IReadOnlyList<OrderDto> Orders);
-
 public sealed class StoreOrderViewModel
 {
     public OrderDto Order { get; init; } = null!;
@@ -25,4 +19,14 @@ public sealed class StoreOrderViewModel
     public bool CanPay { get; init; }
     /// <summary>False when STRIPE_STORE_KEY is unset; suppresses the Pay button + shows a disabled tooltip.</summary>
     public bool IsStripeConfigured { get; init; }
+
+    public static StoreOrderViewModel FromPageData(StoreOrderPageData pageData) => new()
+    {
+        Order = pageData.Order,
+        Catalog = pageData.Catalog,
+        CampName = pageData.CampName,
+        CanEdit = pageData.CanEdit,
+        CanPay = pageData.CanPay,
+        IsStripeConfigured = pageData.IsStripeConfigured
+    };
 }

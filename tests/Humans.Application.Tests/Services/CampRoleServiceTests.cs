@@ -162,9 +162,10 @@ public class CampRoleServiceTests : IDisposable
             Name: "New Name", Description: "Updated description",
             SlotCount: 2, MinimumRequired: 0, SortOrder: 99);
 
-        var ok = await _service.UpdateDefinitionAsync(def.Id, input, _actorUserId);
+        var result = await _service.UpdateDefinitionAsync(def.Id, input, _actorUserId);
 
-        ok.Should().BeTrue();
+        result.Status.Should().Be(UpdateCampRoleDefinitionStatus.Updated);
+        result.SuccessMessage.Should().Be("Updated camp role 'New Name'.");
         var updated = await _service.GetDefinitionByIdAsync(def.Id);
         updated!.Name.Should().Be("New Name");
         updated.SlotCount.Should().Be(2);
@@ -202,9 +203,9 @@ public class CampRoleServiceTests : IDisposable
             Name: "Anything", Description: null,
             SlotCount: 1, MinimumRequired: 0, SortOrder: 0);
 
-        var ok = await _service.UpdateDefinitionAsync(Guid.NewGuid(), input, _actorUserId);
+        var result = await _service.UpdateDefinitionAsync(Guid.NewGuid(), input, _actorUserId);
 
-        ok.Should().BeFalse();
+        result.Status.Should().Be(UpdateCampRoleDefinitionStatus.NotFound);
     }
 
     [HumansFact]

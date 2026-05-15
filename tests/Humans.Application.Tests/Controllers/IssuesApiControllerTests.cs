@@ -68,6 +68,30 @@ public class IssuesApiControllerTests
         };
     }
 
+    private static IssueListSnapshot MakeIssueSnapshot(Issue issue) => new(
+        issue.Id,
+        issue.Status,
+        issue.Category,
+        issue.Section,
+        issue.Title,
+        issue.Description,
+        issue.PageUrl,
+        issue.UserAgent,
+        issue.AdditionalContext,
+        issue.ReporterUserId,
+        issue.Reporter?.DisplayName,
+        issue.Reporter?.Email,
+        issue.Reporter?.PreferredLanguage,
+        issue.CreatedAt,
+        issue.UpdatedAt,
+        issue.ResolvedAt,
+        issue.DueDate,
+        issue.ScreenshotStoragePath,
+        issue.Comments.Count,
+        issue.AssigneeUserId,
+        issue.Assignee?.DisplayName,
+        issue.GitHubIssueNumber);
+
     // ==========================================================================
     // List
     // ==========================================================================
@@ -75,11 +99,13 @@ public class IssuesApiControllerTests
     [HumansFact]
     public async Task List_returns_all_issues()
     {
-        var issues = new[] { MakeIssue(), MakeIssue(), MakeIssue() };
+        var issues = new[] { MakeIssue(), MakeIssue(), MakeIssue() }
+            .Select(MakeIssueSnapshot)
+            .ToArray();
         _issues
             .GetIssueListAsync(Arg.Any<IssueListFilter>(), Arg.Any<Guid>(),
                 Arg.Any<IReadOnlyList<string>>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<Issue>>(issues));
+            .Returns(Task.FromResult<IReadOnlyList<IssueListSnapshot>>(issues));
 
         var result = await _sut.List(status: null, category: null, section: null, assignee: null);
 
@@ -97,7 +123,7 @@ public class IssuesApiControllerTests
                 Arg.Do<IssueListFilter>(f => captured = f),
                 Arg.Any<Guid>(), Arg.Any<IReadOnlyList<string>>(),
                 Arg.Any<bool>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<Issue>>(Array.Empty<Issue>()));
+            .Returns(Task.FromResult<IReadOnlyList<IssueListSnapshot>>(Array.Empty<IssueListSnapshot>()));
 
         await _sut.List(status: IssueStatus.Open, category: null, section: null, assignee: null);
 
@@ -114,7 +140,7 @@ public class IssuesApiControllerTests
                 Arg.Do<IssueListFilter>(f => captured = f),
                 Arg.Any<Guid>(), Arg.Any<IReadOnlyList<string>>(),
                 Arg.Any<bool>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<Issue>>(Array.Empty<Issue>()));
+            .Returns(Task.FromResult<IReadOnlyList<IssueListSnapshot>>(Array.Empty<IssueListSnapshot>()));
 
         await _sut.List(status: null, category: null, section: "Tickets", assignee: null);
 
@@ -131,7 +157,7 @@ public class IssuesApiControllerTests
                 Arg.Do<IssueListFilter>(f => captured = f),
                 Arg.Any<Guid>(), Arg.Any<IReadOnlyList<string>>(),
                 Arg.Any<bool>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<Issue>>(Array.Empty<Issue>()));
+            .Returns(Task.FromResult<IReadOnlyList<IssueListSnapshot>>(Array.Empty<IssueListSnapshot>()));
 
         var reporterId = Guid.NewGuid();
         await _sut.List(
@@ -151,7 +177,7 @@ public class IssuesApiControllerTests
                 Arg.Do<IssueListFilter>(f => captured = f),
                 Arg.Any<Guid>(), Arg.Any<IReadOnlyList<string>>(),
                 Arg.Any<bool>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<Issue>>(Array.Empty<Issue>()));
+            .Returns(Task.FromResult<IReadOnlyList<IssueListSnapshot>>(Array.Empty<IssueListSnapshot>()));
 
         await _sut.List(
             status: null, category: null, section: null, assignee: null,
@@ -170,7 +196,7 @@ public class IssuesApiControllerTests
                 Arg.Do<IssueListFilter>(f => captured = f),
                 Arg.Any<Guid>(), Arg.Any<IReadOnlyList<string>>(),
                 Arg.Any<bool>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<Issue>>(Array.Empty<Issue>()));
+            .Returns(Task.FromResult<IReadOnlyList<IssueListSnapshot>>(Array.Empty<IssueListSnapshot>()));
 
         await _sut.List(
             status: null, category: null, section: null, assignee: null,

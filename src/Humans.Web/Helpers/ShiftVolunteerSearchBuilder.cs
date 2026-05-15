@@ -1,14 +1,69 @@
 using Humans.Application.Interfaces.Shifts;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Web.Extensions;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 namespace Humans.Web.Helpers;
 
+public enum VolunteerSearchBuildStatus
+{
+    Success,
+    EmptyQuery,
+    NotFound,
+}
+
+public sealed record VolunteerSearchBuildResult(
+    VolunteerSearchBuildStatus Status,
+    IReadOnlyList<VolunteerSearchResult> Results)
+{
+    public static VolunteerSearchBuildResult EmptyQuery { get; } =
+        new(VolunteerSearchBuildStatus.EmptyQuery, []);
+
+    public static VolunteerSearchBuildResult NotFound { get; } =
+        new(VolunteerSearchBuildStatus.NotFound, []);
+
+    public static VolunteerSearchBuildResult Success(IReadOnlyList<VolunteerSearchResult> results) =>
+        new(VolunteerSearchBuildStatus.Success, results);
+}
+
 public static class ShiftVolunteerSearchBuilder
 {
+    public static async Task<VolunteerSearchBuildResult> BuildForShiftAsync(
+        Shift? shift,
+        string? query,
+        Func<Task<EventSettings?>> getActiveEventSettings,
+        bool canViewMedical,
+        UserManager<User> userManager,
+        IShiftManagementService shiftManagementService,
+        IShiftSignupService signupService,
+        IGeneralAvailabilityService availabilityService)
+    {
+        if (!query.HasSearchTerm())
+            return VolunteerSearchBuildResult.EmptyQuery;
+
+        if (shift is null)
+            return VolunteerSearchBuildResult.NotFound;
+
+        var eventSettings = shift.Rota.EventSettings ?? await getActiveEventSettings();
+        if (eventSettings is null)
+            return VolunteerSearchBuildResult.NotFound;
+
+        var results = await BuildAsync(
+            shift,
+            query.Trim(),
+            eventSettings,
+            canViewMedical,
+            userManager,
+            shiftManagementService,
+            signupService,
+            availabilityService);
+
+        return VolunteerSearchBuildResult.Success(results);
+    }
+
     public static async Task<List<VolunteerSearchResult>> BuildAsync(
         Shift shift,
         string query,

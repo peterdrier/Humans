@@ -31,7 +31,7 @@ public interface ICommunicationPreferenceService : IApplicationService
     /// <summary>
     /// Returns all preferences for a user, creating defaults for any missing categories.
     /// </summary>
-    Task<IReadOnlyList<CommunicationPreference>> GetPreferencesAsync(
+    Task<IReadOnlyList<CommunicationPreferenceSnapshot>> GetPreferencesAsync(
         Guid userId, CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -40,7 +40,7 @@ public interface ICommunicationPreferenceService : IApplicationService
     /// needs to know whether a row exists (e.g. the mailer importer's plan
     /// phase, which must not mutate state during preview).
     /// </summary>
-    Task<CommunicationPreference?> GetPreferenceOrNullAsync(
+    Task<CommunicationPreferenceSnapshot?> GetPreferenceOrNullAsync(
         Guid userId, MessageCategory category, CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -51,7 +51,7 @@ public interface ICommunicationPreferenceService : IApplicationService
     /// <c>UpdateSource = "Default"</c>. Callers that need a value for a
     /// missing category should fall back to the category's natural default.
     /// </summary>
-    Task<IReadOnlyList<CommunicationPreference>> GetPreferencesReadOnlyAsync(
+    Task<IReadOnlyList<CommunicationPreferenceSnapshot>> GetPreferencesReadOnlyAsync(
         Guid userId, CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -135,3 +135,11 @@ public interface ICommunicationPreferenceService : IApplicationService
     Task<int> GetCountByCategoryAndStateAsync(
         MessageCategory category, bool optedOut, CancellationToken cancellationToken = default);
 }
+
+public sealed record CommunicationPreferenceSnapshot(
+    MessageCategory Category,
+    bool OptedOut,
+    bool InboxEnabled,
+    string UpdateSource,
+    Instant UpdatedAt,
+    Instant? SubscribedAt = null);

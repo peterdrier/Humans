@@ -4,6 +4,7 @@
 // is cleared when view models are built exclusively from service-layer DTOs.
 #pragma warning disable CS0618
 using System.ComponentModel.DataAnnotations;
+using Humans.Application.Interfaces.Teams;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Domain.ValueObjects;
@@ -54,8 +55,8 @@ public class TeamDetailViewModel
     public SystemTeamType? SystemTeamType { get; set; }
     public DateTime CreatedAt { get; set; }
 
-    public Team? ParentTeam { get; init; }
-    public IReadOnlyList<Team> ChildTeams { get; init; } = [];
+    public TeamPageTeamLink? ParentTeam { get; init; }
+    public IReadOnlyList<TeamPageTeamLink> ChildTeams { get; init; } = [];
 
     public List<TeamMemberViewModel> Members { get; set; } = [];
     public List<TeamResourceLinkViewModel> Resources { get; set; } = [];
@@ -413,6 +414,59 @@ public class TeamRoleDefinitionViewModel
 
             if (assignment?.TeamMember?.UserId is not null)
                 assignedUserIds.Add(assignment.TeamMember.UserId);
+        }
+
+        return new TeamRoleDefinitionViewModel
+        {
+            Id = d.Id,
+            Name = d.Name,
+            Description = d.Description,
+            SlotCount = d.SlotCount,
+            Slots = slots,
+            SortOrder = d.SortOrder,
+            IsPublic = d.IsPublic,
+            IsManagement = d.IsManagement,
+            Period = d.Period,
+            AssignedUserIds = assignedUserIds
+        };
+    }
+
+    public static TeamRoleDefinitionViewModel FromSnapshot(
+        TeamRoleDefinitionSnapshot d,
+        IReadOnlyCollection<TeamMemberViewModel> teamMembers)
+    {
+        var slots = new List<TeamRoleSlotViewModel>();
+        var assignedUserIds = new HashSet<Guid>();
+        var membersByUserId = teamMembers.ToDictionary(m => m.UserId);
+
+        for (var i = 0; i < d.SlotCount; i++)
+        {
+            var assignment = d.Assignments.FirstOrDefault(a => a.SlotIndex == i);
+            var priority = i < d.Priorities.Count ? d.Priorities[i] : SlotPriority.None;
+            TeamMemberViewModel? assignedMember = null;
+            if (assignment?.AssignedUserId is Guid assignedUserId)
+            {
+                membersByUserId.TryGetValue(assignedUserId, out assignedMember);
+                assignedUserIds.Add(assignedUserId);
+            }
+
+            slots.Add(new TeamRoleSlotViewModel
+            {
+                SlotIndex = i,
+                Priority = priority,
+                PriorityBadgeClass = priority switch
+                {
+                    SlotPriority.Critical => "bg-danger",
+                    SlotPriority.Important => "bg-warning text-dark",
+                    SlotPriority.NiceToHave => "bg-secondary",
+                    _ => "bg-light text-dark"
+                },
+                IsFilled = assignment is not null,
+                AssignedUserId = assignment?.AssignedUserId,
+                AssignedUserName = assignedMember?.DisplayName,
+                AssignedUserProfilePictureUrl = assignedMember?.EffectiveProfilePictureUrl,
+                TeamMemberId = assignment?.TeamMemberId
+            });
         }
 
         return new TeamRoleDefinitionViewModel

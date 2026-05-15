@@ -1,4 +1,4 @@
-using Humans.Domain.Entities;
+using Humans.Application.Interfaces;
 
 namespace Humans.Web.Models.Agent;
 
@@ -12,5 +12,5 @@ namespace Humans.Web.Models.Agent;
 /// surfaces that caveat.
 /// </summary>
 public sealed record AgentMyConversationViewModel(
-    AgentConversation Conversation,
+    AgentConversationTranscriptSnapshot Conversation,
     string CurrentUserContextTail);

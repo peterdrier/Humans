@@ -1,4 +1,5 @@
 using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Budget;
 using Humans.Domain.Entities;
 using NodaTime;
 
@@ -7,7 +8,7 @@ namespace Humans.Web.Models;
 public class FinanceOverviewViewModel
 {
     public required BudgetYear Year { get; init; }
-    public required IReadOnlyList<BudgetYear> AllYears { get; init; }
+    public required IReadOnlyList<BudgetYearSummarySnapshot> AllYears { get; init; }
 
     // Summary data (same logic as public summary, but includes restricted groups)
     public decimal TotalIncome { get; init; }
@@ -15,6 +16,20 @@ public class FinanceOverviewViewModel
     public decimal NetBalance { get; init; }
     public required IReadOnlyList<BudgetSlice> IncomeSlices { get; init; }
     public required IReadOnlyList<BudgetSlice> ExpenseSlices { get; init; }
+}
+
+public class TicketingProjectionUpdateForm
+{
+    public DateTime? StartDate { get; init; }
+    public DateTime? EventDate { get; init; }
+    public int InitialSalesCount { get; init; }
+    public decimal DailySalesRate { get; init; }
+    public decimal AverageTicketPrice { get; init; }
+    public int VatRate { get; init; }
+    public decimal StripeFeePercent { get; init; }
+    public decimal StripeFeeFixed { get; init; }
+    public decimal TicketTailorFeePercent { get; init; }
+    public Guid BudgetYearId { get; init; }
 }
 
 public class CoordinatorBudgetViewModel
@@ -26,7 +41,7 @@ public class CoordinatorBudgetViewModel
 
 public class CoordinatorCategoryDetailViewModel
 {
-    public required BudgetCategory Category { get; init; }
+    public required BudgetCategorySnapshot Category { get; init; }
     public bool CanEdit { get; init; }
     public bool IsFinanceAdmin { get; init; }
     public required IReadOnlyList<TeamOptionDto> Teams { get; init; }

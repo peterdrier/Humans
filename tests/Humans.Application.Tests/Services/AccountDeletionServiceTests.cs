@@ -251,6 +251,7 @@ public class AccountDeletionServiceTests
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("NotFound");
         _teamService.DidNotReceive().InvalidateActiveTeamsCache();
+        await _userService.DidNotReceiveWithAnyArgs().DeleteAllExternalLoginsForUserAsync(default, default);
     }
 
     [HumansFact]
@@ -263,6 +264,7 @@ public class AccountDeletionServiceTests
 
         result.Success.Should().BeTrue();
         await _userService.Received(1).PurgeOwnDataAsync(userId, Arg.Any<CancellationToken>());
+        await _userService.Received(1).DeleteAllExternalLoginsForUserAsync(userId, Arg.Any<CancellationToken>());
         _teamService.Received(1).InvalidateActiveTeamsCache();
         // Parity with AnonymizeExpiredAccountAsync: per-user caches that key
         // off identity must also drop on admin purge.

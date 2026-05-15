@@ -156,7 +156,7 @@
                                     <span class="text-muted">0%</span>
                                 }
                             </td>
-                            <td>@(item.ResponsibleTeam?.Name ?? "\u2014")</td>
+                            <td>@(item.ResponsibleTeamName ?? "\u2014")</td>
                             <td class="text-muted">@(item.Notes ?? "")</td>
                             <td>@item.ExpectedDate?.ToString("d MMM yyyy", System.Globalization.CultureInfo.InvariantCulture)</td>
                             @if (Model.CanEdit)

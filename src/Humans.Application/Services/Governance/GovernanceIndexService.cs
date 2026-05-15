@@ -1,0 +1,49 @@
+using Humans.Application.Interfaces.Governance;
+using Humans.Application.Interfaces.Legal;
+using Humans.Application.Interfaces.Users;
+using Humans.Domain.Enums;
+
+namespace Humans.Application.Services.Governance;
+
+public sealed class GovernanceIndexService : IGovernanceIndexService
+{
+    private readonly IApplicationDecisionService _applicationDecisionService;
+    private readonly ILegalDocumentService _legalDocService;
+    private readonly IUserService _userService;
+
+    public GovernanceIndexService(
+        IApplicationDecisionService applicationDecisionService,
+        ILegalDocumentService legalDocService,
+        IUserService userService)
+    {
+        _applicationDecisionService = applicationDecisionService;
+        _legalDocService = legalDocService;
+        _userService = userService;
+    }
+
+    public async Task<GovernanceIndexData> GetIndexDataAsync(Guid userId, CancellationToken ct = default)
+    {
+        var applications = await _applicationDecisionService.GetUserApplicationsAsync(userId, ct);
+        var latestApplication = applications.Count > 0 ? applications[0] : null;
+        var statutesContent = await _legalDocService.GetDocumentContentAsync("statutes");
+
+        var snapshot = _userService.GetAllUserInfos();
+        var colaboradorCount = snapshot.Count(u => u.Profile?.MembershipTier == MembershipTier.Colaborador);
+        var asociadoCount = snapshot.Count(u => u.Profile?.MembershipTier == MembershipTier.Asociado);
+
+        var isApprovedColaborador = applications.Any(a =>
+            a.Status == ApplicationStatus.Approved && a.MembershipTier == MembershipTier.Colaborador);
+
+        return new GovernanceIndexData(
+            statutesContent,
+            latestApplication is not null,
+            latestApplication?.Status,
+            latestApplication?.MembershipTier,
+            latestApplication?.SubmittedAt.ToDateTimeUtc(),
+            latestApplication?.ResolvedAt?.ToDateTimeUtc(),
+            latestApplication is null || latestApplication.Status != ApplicationStatus.Submitted,
+            isApprovedColaborador,
+            colaboradorCount,
+            asociadoCount);
+    }
+}

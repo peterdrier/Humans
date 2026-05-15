@@ -172,20 +172,18 @@ public sealed class GoogleSyncRemovalNotificationIntegrationTests
         _teamResourceService.GetResourcesByTeamIdsAsync(
                 Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(TestTeamId)),
                 Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, IReadOnlyList<GoogleResource>>
+            .Returns(new Dictionary<Guid, IReadOnlyList<GoogleResourceSnapshot>>
             {
                 [TestTeamId] =
                 [
-                    new GoogleResource
-                    {
-                        Id = TestGroupResourceId,
-                        TeamId = TestTeamId,
-                        ResourceType = GoogleResourceType.Group,
-                        GoogleId = TestGoogleId,
-                        Name = TestGroupName,
-                        Url = TestGroupUrl,
-                        IsActive = true
-                    }
+                    new GoogleResourceSnapshot(
+                        TestGroupResourceId,
+                        TestTeamId,
+                        TestGoogleId,
+                        TestGroupName,
+                        GoogleResourceType.Group,
+                        TestGroupUrl,
+                        IsActive: true)
                 ]
             });
         _teamService.GetTeamByIdAsync(TestTeamId, Arg.Any<CancellationToken>())

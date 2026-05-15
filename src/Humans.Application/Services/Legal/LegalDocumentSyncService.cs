@@ -114,11 +114,14 @@ public sealed class LegalDocumentSyncService : ILegalDocumentSyncService
         return documentsWithUpdates;
     }
 
-    public Task<IReadOnlyList<LegalDocument>> GetActiveDocumentsAsync(
-        CancellationToken cancellationToken = default) =>
-        _repository.GetActiveDocumentsAsync(cancellationToken);
+    public async Task<IReadOnlyList<LegalDocumentSnapshot>> GetActiveDocumentsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var documents = await _repository.GetActiveDocumentsAsync(cancellationToken);
+        return documents.Select(ToDocumentSnapshot).ToList();
+    }
 
-    public async Task<IReadOnlyList<DocumentVersion>> GetRequiredVersionsAsync(
+    public async Task<IReadOnlyList<RequiredDocumentVersionSnapshot>> GetRequiredVersionsAsync(
         CancellationToken cancellationToken = default)
     {
         var now = _clock.GetCurrentInstant();
@@ -132,22 +135,21 @@ public sealed class LegalDocumentSyncService : ILegalDocumentSyncService
                     .MaxBy(v => v.EffectiveFrom);
                 if (latest is null) return null;
 
-                // Populate the aggregate-local parent nav so callers (e.g.
-                // SendReConsentReminderJob.ExecuteAsync) can read
-                // version.LegalDocument.Name without re-querying.
-                latest.LegalDocument = d;
-                return latest;
+                return ToRequiredVersionSnapshot(latest, d);
             })
             .Where(v => v is not null)
-            .Cast<DocumentVersion>()
+            .Cast<RequiredDocumentVersionSnapshot>()
             .ToList();
     }
 
-    public Task<DocumentVersion?> GetVersionByIdAsync(
-        Guid versionId, CancellationToken cancellationToken = default) =>
-        _repository.GetVersionByIdAsync(versionId, cancellationToken);
+    public async Task<LegalDocumentVersionSnapshot?> GetVersionByIdAsync(
+        Guid versionId, CancellationToken cancellationToken = default)
+    {
+        var version = await _repository.GetVersionByIdAsync(versionId, cancellationToken);
+        return version is null ? null : ToVersionSnapshot(version);
+    }
 
-    public async Task<IReadOnlyList<DocumentVersion>> GetRequiredDocumentVersionsForTeamAsync(
+    public async Task<IReadOnlyList<RequiredDocumentVersionSnapshot>> GetRequiredDocumentVersionsForTeamAsync(
         Guid teamId, CancellationToken cancellationToken = default)
     {
         var now = _clock.GetCurrentInstant();
@@ -160,17 +162,66 @@ public sealed class LegalDocumentSyncService : ILegalDocumentSyncService
                     .Where(v => v.EffectiveFrom <= now)
                     .MaxBy(v => v.EffectiveFrom);
                 if (latest is null) return null;
-                latest.LegalDocument = d;
-                return latest;
+                return ToRequiredVersionSnapshot(latest, d);
             })
             .Where(v => v is not null)
-            .Cast<DocumentVersion>()
+            .Cast<RequiredDocumentVersionSnapshot>()
             .ToList();
     }
 
-    public Task<IReadOnlyList<LegalDocument>> GetActiveRequiredDocumentsForTeamsAsync(
-        IReadOnlyCollection<Guid> teamIds, CancellationToken cancellationToken = default) =>
-        _repository.GetActiveRequiredDocumentsForTeamsAsync(teamIds, cancellationToken);
+    private static RequiredDocumentVersionSnapshot ToRequiredVersionSnapshot(DocumentVersion version, LegalDocument document) =>
+        new(
+            version.Id,
+            version.LegalDocumentId,
+            document.Name,
+            document.GracePeriodDays,
+            version.VersionNumber,
+            version.EffectiveFrom,
+            version.RequiresReConsent,
+            version.ChangesSummary);
+
+    private static LegalDocumentVersionSnapshot ToVersionSnapshot(DocumentVersion version) =>
+        new(
+            version.Id,
+            version.LegalDocumentId,
+            version.LegalDocument.Name,
+            version.LegalDocument.GracePeriodDays,
+            version.VersionNumber,
+            new Dictionary<string, string>(version.Content, StringComparer.Ordinal),
+            version.EffectiveFrom,
+            version.RequiresReConsent,
+            version.CreatedAt,
+            version.ChangesSummary);
+
+    public async Task<IReadOnlyList<ActiveRequiredLegalDocumentSnapshot>> GetActiveRequiredDocumentsForTeamsAsync(
+        IReadOnlyCollection<Guid> teamIds, CancellationToken cancellationToken = default)
+    {
+        var documents = await _repository.GetActiveRequiredDocumentsForTeamsAsync(teamIds, cancellationToken);
+        return documents.Select(ToActiveRequiredDocumentSnapshot).ToList();
+    }
+
+    private static ActiveRequiredLegalDocumentSnapshot ToActiveRequiredDocumentSnapshot(LegalDocument document) =>
+        new(
+            document.Id,
+            document.Name,
+            document.TeamId,
+            document.Team.Name,
+            document.LastSyncedAt,
+            document.Versions.Select(ToVersionSnapshot).ToList());
+
+    private static LegalDocumentSnapshot ToDocumentSnapshot(LegalDocument document) =>
+        new(
+            document.Id,
+            document.Name,
+            document.TeamId,
+            document.GracePeriodDays,
+            document.GitHubFolderPath,
+            document.CurrentCommitSha,
+            document.IsRequired,
+            document.IsActive,
+            document.CreatedAt,
+            document.LastSyncedAt,
+            document.Versions.Select(ToVersionSnapshot).ToList());
 
     private async Task<string?> SyncSingleDocumentAsync(
         LegalDocument document,
@@ -287,7 +338,7 @@ public sealed class LegalDocumentSyncService : ILegalDocumentSyncService
             document.Name, versionNumber, commitSha, languages);
 
         // Fan-out notifications — route cross-section reads through IProfileService
-        // rather than hitting _dbContext.Profiles directly.
+        // rather than hitting profile storage directly.
         if (isNew && document.IsRequired)
         {
             await TryFanoutAsync(
@@ -353,3 +404,4 @@ public sealed class LegalDocumentSyncService : ILegalDocumentSyncService
         return files.GetValueOrDefault("es");
     }
 }
+

@@ -87,7 +87,7 @@ public class EmailProblemsServiceTests
             .Returns(new ValueTask<UserInfo?>(info));
     }
 
-    private void SetOrphans(params UserEmail[] orphans) =>
+    private void SetOrphans(params UserEmailOrphan[] orphans) =>
         _userEmailService.GetOrphanUserEmailsAsync(Arg.Any<CancellationToken>())
             .Returns(orphans);
 
@@ -251,13 +251,7 @@ public class EmailProblemsServiceTests
     {
         var deadUserId = Guid.NewGuid();
         var emailId = Guid.NewGuid();
-        SetOrphans(new UserEmail
-        {
-            Id = emailId,
-            UserId = deadUserId,
-            Email = "ghost@x.com",
-            IsVerified = true
-        });
+        SetOrphans(new UserEmailOrphan(deadUserId, emailId, "ghost@x.com"));
         SetGhosts();
 
         var report = await Sut.ScanAsync();

@@ -80,10 +80,6 @@ public class HomeController : HumansControllerBase
         var isPrivileged = User.IsInRole("Admin");
         var data = await _dashboardService.GetMemberDashboardAsync(user.Id, isPrivileged, cancellationToken);
 
-        // Shift-tag preferences live on a separate table; load the count so the
-        // profile-completion bar can credit users who picked any preferences.
-        var shiftTagPrefs = await _shiftMgmt.GetVolunteerTagPreferencesAsync(user.Id);
-
         var viewModel = new DashboardViewModel
         {
             UserId = user.Id,
@@ -91,14 +87,14 @@ public class HomeController : HumansControllerBase
             ProfilePictureUrl = user.ProfilePictureUrl,
             MembershipStatus = data.MembershipSnapshot.Status,
             HasProfile = data.Profile is not null,
-            ProfileComplete = data.Profile is not null && !string.IsNullOrEmpty(data.Profile.FirstName),
-            ProfileCompletionPercent = ProfileCompletion.ComputePercent(data.Profile, shiftTagPrefs.Count > 0),
+            ProfileComplete = data.Profile?.ProfileComplete ?? false,
+            ProfileCompletionPercent = data.Profile?.CompletionPercent ?? 0,
             PendingConsents = data.MembershipSnapshot.PendingConsentCount,
             TotalRequiredConsents = data.MembershipSnapshot.RequiredConsentCount,
             IsVolunteerMember = data.MembershipSnapshot.IsVolunteerMember,
             MembershipTier = data.CurrentTier,
             ConsentCheckStatus = data.Profile?.ConsentCheckStatus,
-            IsRejected = data.Profile?.RejectedAt is not null,
+            IsRejected = data.Profile?.IsRejected ?? false,
             RejectionReason = data.Profile?.RejectionReason,
             HasPendingApplication = data.HasPendingApplication,
             LatestApplicationStatus = data.LatestApplication?.Status,
@@ -125,7 +121,7 @@ public class HomeController : HumansControllerBase
             UrgentShifts = data.UrgentShifts
                 .Select(u => new UrgentShiftItem
                 {
-                    Shift = u.Shift,
+                    RotaName = u.RotaName,
                     DepartmentName = u.DepartmentName,
                     AbsoluteStart = u.AbsoluteStart,
                     RemainingSlots = u.RemainingSlots,
@@ -135,7 +131,7 @@ public class HomeController : HumansControllerBase
             NextShifts = data.NextShifts
                 .Select(s => new MySignupItem
                 {
-                    Signup = s.Signup,
+                    RotaName = s.RotaName,
                     DepartmentName = s.DepartmentName,
                     AbsoluteStart = s.AbsoluteStart,
                     AbsoluteEnd = s.AbsoluteEnd,
@@ -171,14 +167,13 @@ public class HomeController : HumansControllerBase
 
         try
         {
-            var activeEvent = await _shiftMgmt.GetActiveAsync();
-            if (activeEvent is null || activeEvent.Year <= 0)
+            var eventYear = await GetActiveEventYearOrSetErrorAsync();
+            if (eventYear is null)
             {
-                SetError("No active event configured.");
                 return RedirectToAction(nameof(Index));
             }
 
-            await _userService.DeclareNotAttendingAsync(user.Id, activeEvent.Year);
+            await _userService.DeclareNotAttendingAsync(user.Id, eventYear.Value);
             SetSuccess("You've been marked as not attending this year.");
         }
         catch (Exception ex)
@@ -200,22 +195,14 @@ public class HomeController : HumansControllerBase
 
         try
         {
-            var activeEvent = await _shiftMgmt.GetActiveAsync();
-            if (activeEvent is null || activeEvent.Year <= 0)
+            var eventYear = await GetActiveEventYearOrSetErrorAsync();
+            if (eventYear is null)
             {
-                SetError("No active event configured.");
                 return RedirectToAction(nameof(Index));
             }
 
-            var undone = await _userService.UndoNotAttendingAsync(user.Id, activeEvent.Year);
-            if (undone)
-            {
-                SetSuccess("Your declaration has been removed.");
-            }
-            else
-            {
-                SetError("Could not undo â€” your status may have been updated by ticket sync.");
-            }
+            var undone = await _userService.UndoNotAttendingAsync(user.Id, eventYear.Value);
+            SetUndoNotAttendingResult(undone);
         }
         catch (Exception ex)
         {
@@ -226,6 +213,28 @@ public class HomeController : HumansControllerBase
         return RedirectToAction(nameof(Index));
     }
 
+    private async Task<int?> GetActiveEventYearOrSetErrorAsync()
+    {
+        var activeEvent = await _shiftMgmt.GetActiveAsync();
+        if (activeEvent is not null && activeEvent.Year > 0)
+        {
+            return activeEvent.Year;
+        }
+
+        SetError("No active event configured.");
+        return null;
+    }
+
+    private void SetUndoNotAttendingResult(bool undone)
+    {
+        if (undone)
+        {
+            SetSuccess("Your declaration has been removed.");
+            return;
+        }
+
+        SetError("Could not undo — your status may have been updated by ticket sync.");
+    }
     public IActionResult Privacy()
     {
         ViewData["DpoEmail"] = _configuration.GetOptionalSetting(
@@ -245,3 +254,4 @@ public class HomeController : HumansControllerBase
         return View();
     }
 }
+

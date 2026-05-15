@@ -60,77 +60,11 @@ public class StoreStripeWebhookController : ControllerBase
             return BadRequest();
         }
 
-        switch (parsed.Kind)
-        {
-            case StoreCheckoutEventKind.CheckoutSessionCompleted:
-                await HandleCheckoutSessionCompletedAsync(parsed, ct);
-                break;
-
-            case StoreCheckoutEventKind.CheckoutSessionAsyncPaymentSucceeded:
-            case StoreCheckoutEventKind.CheckoutSessionAsyncPaymentFailed:
-            case StoreCheckoutEventKind.CheckoutSessionExpired:
-                // Subscribed to but not yet handled — async-payment state machine pending
-                // (nobodies-collective/Humans#638). Surface at Warning so prod ops notice
-                // if/when SEPA/Bizum activity starts arriving before the handler ships.
-                _logger.LogWarning(
-                    "Stripe webhook event {Kind} (id={EventId}) received but not yet handled — async-payment state machine pending (nobodies-collective/Humans#638).",
-                    parsed.Kind, parsed.EventId);
-                break;
-
-            default:
-                _logger.LogDebug("Ignoring Stripe webhook event {EventId} of unhandled kind {Kind}", parsed.EventId, parsed.Kind);
-                break;
-        }
+        await _storeService.HandleStripeCheckoutWebhookEventAsync(parsed, ct);
 
         return Ok();
     }
 
-    private async Task HandleCheckoutSessionCompletedAsync(StoreCheckoutWebhookEvent evt, CancellationToken ct)
-    {
-        if (evt.Session is not { } session)
-        {
-            _logger.LogWarning("checkout.session.completed event {EventId} did not contain a Session payload", evt.EventId);
-            return;
-        }
-
-        if (session.OrderId is not { } orderId)
-        {
-            _logger.LogWarning(
-                "Stripe Checkout Session {SessionId} has no humans_store_order_id metadata; skipping.",
-                session.SessionId);
-            return;
-        }
-
-        if (session.PaymentIntentId is not { } paymentIntentId)
-        {
-            _logger.LogWarning(
-                "Stripe Checkout Session {SessionId} has no PaymentIntentId; skipping.",
-                session.SessionId);
-            return;
-        }
-
-        if (session.AmountEur is not { } amountEur || amountEur <= 0)
-        {
-            _logger.LogWarning(
-                "Stripe Checkout Session {SessionId} has non-positive AmountTotal; skipping.",
-                session.SessionId);
-            return;
-        }
-
-        try
-        {
-            await _storeService.RecordStripePaymentAsync(orderId, paymentIntentId, amountEur, ct);
-            _logger.LogInformation(
-                "Recorded Stripe payment for order {OrderId} (session {SessionId}, PI {PaymentIntentId}, EUR {Amount})",
-                orderId, session.SessionId, paymentIntentId, amountEur);
-        }
-        catch (Exception ex)
-        {
-            // Surface but don't 500 — Stripe retries on 5xx, and a misbehaving service shouldn't
-            // cause endless retry storms. The dedup guard in RecordStripePaymentAsync handles double-deliveries.
-            _logger.LogError(ex,
-                "Failed to record Stripe payment for order {OrderId} (session {SessionId})",
-                orderId, session.SessionId);
-        }
-    }
 }
+
+

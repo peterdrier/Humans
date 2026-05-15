@@ -79,10 +79,36 @@ public sealed partial class AdminLegalDocumentService : IAdminLegalDocumentServi
             .ToList();
     }
 
-    public Task<LegalDocument?> GetLegalDocumentWithVersionsAsync(
+    public async Task<AdminLegalDocumentEditDetail?> GetLegalDocumentWithVersionsAsync(
         Guid documentId,
-        CancellationToken cancellationToken = default) =>
-        _repository.GetByIdAsync(documentId, cancellationToken);
+        CancellationToken cancellationToken = default)
+    {
+        var document = await _repository.GetByIdAsync(documentId, cancellationToken);
+        if (document is null)
+            return null;
+
+        return new AdminLegalDocumentEditDetail(
+            document.Id,
+            document.Name,
+            document.TeamId,
+            document.IsRequired,
+            document.IsActive,
+            document.GracePeriodDays,
+            document.GitHubFolderPath,
+            document.LastSyncedAt,
+            document.Versions
+                .Select(v => new AdminLegalDocumentVersionDetail(
+                    v.Id,
+                    v.VersionNumber,
+                    v.CommitSha,
+                    v.EffectiveFrom,
+                    v.CreatedAt,
+                    v.ChangesSummary,
+                    v.RequiresReConsent,
+                    v.Content.Count,
+                    v.Content.Keys.Order(StringComparer.Ordinal).ToList()))
+                .ToList());
+    }
 
     public GitHubFolderPathNormalizationResult NormalizeGitHubFolderPath(string? input)
     {
@@ -142,6 +168,38 @@ public sealed partial class AdminLegalDocumentService : IAdminLegalDocumentServi
         };
 
         return await _repository.AddAsync(document, cancellationToken);
+    }
+
+    public async Task<AdminLegalDocumentCreateResult> CreateLegalDocumentWithInitialSyncAsync(
+        AdminLegalDocumentUpsertRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var document = await CreateLegalDocumentAsync(request, cancellationToken);
+
+        if (string.IsNullOrWhiteSpace(document.GitHubFolderPath))
+        {
+            return new AdminLegalDocumentCreateResult(
+                document,
+                AdminLegalDocumentInitialSyncStatus.NoGitHubFolderPath);
+        }
+
+        try
+        {
+            var syncMessage = await SyncLegalDocumentAsync(document.Id, cancellationToken);
+            return new AdminLegalDocumentCreateResult(
+                document,
+                syncMessage is null
+                    ? AdminLegalDocumentInitialSyncStatus.AlreadyCurrent
+                    : AdminLegalDocumentInitialSyncStatus.Synced,
+                syncMessage);
+        }
+        catch (Exception ex)
+        {
+            return new AdminLegalDocumentCreateResult(
+                document,
+                AdminLegalDocumentInitialSyncStatus.Failed,
+                SyncError: ex.Message);
+        }
     }
 
     public async Task<LegalDocument?> UpdateLegalDocumentAsync(

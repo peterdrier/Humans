@@ -56,7 +56,19 @@ public class ConsentServiceTests : IDisposable
             .GetVersionByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(callInfo => _dbContext.DocumentVersions
                 .Include(v => v.LegalDocument)
-                .FirstOrDefaultAsync(v => v.Id == callInfo.ArgAt<Guid>(0)));
+                .Where(v => v.Id == callInfo.ArgAt<Guid>(0))
+                .Select(v => new LegalDocumentVersionSnapshot(
+                    v.Id,
+                    v.LegalDocumentId,
+                    v.LegalDocument.Name,
+                    v.LegalDocument.GracePeriodDays,
+                    v.VersionNumber,
+                    v.Content,
+                    v.EffectiveFrom,
+                    v.RequiresReConsent,
+                    v.CreatedAt,
+                    v.ChangesSummary))
+                .FirstOrDefaultAsync());
 
         _legalDocumentSyncService
             .GetActiveRequiredDocumentsForTeamsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
@@ -64,14 +76,16 @@ public class ConsentServiceTests : IDisposable
             {
                 var teamIds = callInfo.ArgAt<IReadOnlyCollection<Guid>>(0);
                 if (teamIds.Count == 0)
-                    return (IReadOnlyList<LegalDocument>)Array.Empty<LegalDocument>();
+                    return (IReadOnlyList<ActiveRequiredLegalDocumentSnapshot>)Array.Empty<ActiveRequiredLegalDocumentSnapshot>();
 
-                return await _dbContext.LegalDocuments
+                var documents = await _dbContext.LegalDocuments
                     .AsNoTracking()
                     .Where(d => d.IsActive && d.IsRequired && teamIds.Contains(d.TeamId))
                     .Include(d => d.Team)
                     .Include(d => d.Versions)
                     .ToListAsync();
+
+                return documents.Select(ToActiveRequiredDocumentSnapshot).ToList();
             });
 
         var factory = new TestDbContextFactory(options);
@@ -264,8 +278,27 @@ public class ConsentServiceTests : IDisposable
             _ = _syncJob.SyncMembershipForUserAsync(userId, SystemTeamType.Volunteers, Arg.Any<CancellationToken>());
             _ = _shiftSignupService.PromoteWidgetPendingSignupsAfterAdmissionAsync(userId, Arg.Any<CancellationToken>());
             _ = _syncJob.SyncMembershipForUserAsync(userId, SystemTeamType.Coordinators, Arg.Any<CancellationToken>());
-        });
+            });
     }
+
+    private static ActiveRequiredLegalDocumentSnapshot ToActiveRequiredDocumentSnapshot(LegalDocument document) =>
+        new(
+            document.Id,
+            document.Name,
+            document.TeamId,
+            document.Team.Name,
+            document.LastSyncedAt,
+            document.Versions.Select(v => new LegalDocumentVersionSnapshot(
+                v.Id,
+                v.LegalDocumentId,
+                document.Name,
+                document.GracePeriodDays,
+                v.VersionNumber,
+                v.Content,
+                v.EffectiveFrom,
+                v.RequiresReConsent,
+                v.CreatedAt,
+                v.ChangesSummary)).ToList());
 
     [HumansFact]
     public async Task SubmitConsentAsync_RecordsMetric()
@@ -438,7 +471,7 @@ public class ConsentServiceTests : IDisposable
 
         groups.Should().HaveCount(1);
         groups[0].Documents.Should().HaveCount(1);
-        groups[0].Documents[0].Version.Id.Should().Be(newerVersionId);
+        groups[0].Documents[0].DocumentVersionId.Should().Be(newerVersionId);
     }
 
     [HumansFact]
@@ -457,7 +490,7 @@ public class ConsentServiceTests : IDisposable
         var (groups, _) = await _service.GetConsentDashboardAsync(userId);
 
         groups.Should().HaveCount(1);
-        groups[0].Documents[0].Consent.Should().NotBeNull();
+        groups[0].Documents[0].HasConsented.Should().BeTrue();
     }
 
     [HumansFact]
@@ -475,7 +508,7 @@ public class ConsentServiceTests : IDisposable
         var (groups, _) = await _service.GetConsentDashboardAsync(userId);
 
         groups.Should().HaveCount(1);
-        groups[0].Documents[0].Consent.Should().BeNull();
+        groups[0].Documents[0].HasConsented.Should().BeFalse();
     }
 
     [HumansFact]
@@ -555,12 +588,12 @@ public class ConsentServiceTests : IDisposable
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(WrapInUserInfo(profile));
         await _dbContext.SaveChangesAsync();
 
-        var (version, consent, fullName) = await _service.GetConsentReviewDetailAsync(versionId, userId);
+        var detail = await _service.GetConsentReviewDetailAsync(versionId, userId);
 
-        version.Should().NotBeNull();
-        version!.LegalDocument.Should().NotBeNull();
-        consent.Should().NotBeNull();
-        fullName.Should().Be("Jane Doe");
+        detail.Should().NotBeNull();
+        detail!.DocumentName.Should().Be("Test Doc");
+        detail.HasAlreadyConsented.Should().BeTrue();
+        detail.UserFullName.Should().Be("Jane Doe");
     }
 
     [HumansFact]
@@ -582,21 +615,19 @@ public class ConsentServiceTests : IDisposable
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(WrapInUserInfo(profile));
         await _dbContext.SaveChangesAsync();
 
-        var (version, consent, fullName) = await _service.GetConsentReviewDetailAsync(versionId, userId);
+        var detail = await _service.GetConsentReviewDetailAsync(versionId, userId);
 
-        version.Should().NotBeNull();
-        consent.Should().BeNull();
-        fullName.Should().Be("Jane Doe");
+        detail.Should().NotBeNull();
+        detail!.HasAlreadyConsented.Should().BeFalse();
+        detail.UserFullName.Should().Be("Jane Doe");
     }
 
     [HumansFact]
     public async Task GetConsentReviewDetailAsync_VersionNotFound_ReturnsAllNulls()
     {
-        var (version, consent, fullName) = await _service.GetConsentReviewDetailAsync(Guid.NewGuid(), Guid.NewGuid());
+        var detail = await _service.GetConsentReviewDetailAsync(Guid.NewGuid(), Guid.NewGuid());
 
-        version.Should().BeNull();
-        consent.Should().BeNull();
-        fullName.Should().BeNull();
+        detail.Should().BeNull();
     }
 
     [HumansFact]
@@ -607,11 +638,11 @@ public class ConsentServiceTests : IDisposable
         SeedDocumentVersion(versionId, "Test Doc", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "text" });
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns((UserInfo?)null);
 
-        var (version, consent, fullName) = await _service.GetConsentReviewDetailAsync(versionId, userId);
+        var detail = await _service.GetConsentReviewDetailAsync(versionId, userId);
 
-        version.Should().NotBeNull();
-        consent.Should().BeNull();
-        fullName.Should().BeNull();
+        detail.Should().NotBeNull();
+        detail!.HasAlreadyConsented.Should().BeFalse();
+        detail.UserFullName.Should().BeNull();
     }
 
     [HumansFact]

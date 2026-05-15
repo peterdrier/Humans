@@ -197,6 +197,10 @@ public sealed class AccountDeletionService : IAccountDeletionService
         if (displayName is null)
             return new OnboardingResult(false, "NotFound");
 
+        // Sever external Identity logins so the next OAuth sign-in creates a
+        // fresh user instead of reattaching to the purged shell account.
+        await _userService.DeleteAllExternalLoginsForUserAsync(userId, ct);
+
         // Team summaries cache member DisplayName/ProfilePictureUrl; drop the
         // ActiveTeams cache so consumers don't keep exposing the pre-purge
         // identity until the 10-minute TTL expires. Deletion-specific

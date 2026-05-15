@@ -50,18 +50,32 @@ public sealed class GeneralAvailabilityService : IGeneralAvailabilityService, IU
         _viewInvalidator.InvalidateUser(userId);
     }
 
-    public Task<GeneralAvailability?> GetByUserAsync(Guid userId, Guid eventSettingsId) =>
-        _repo.GetByUserAndEventAsync(userId, eventSettingsId);
+    public async Task<GeneralAvailabilitySnapshot?> GetByUserAsync(Guid userId, Guid eventSettingsId)
+    {
+        var availability = await _repo.GetByUserAndEventAsync(userId, eventSettingsId);
+        return availability is null
+            ? null
+            : ToSnapshot(availability);
+    }
 
-    public async Task<List<GeneralAvailability>> GetAvailableForDayAsync(
+    public async Task<IReadOnlyList<GeneralAvailabilitySnapshot>> GetAvailableForDayAsync(
         Guid eventSettingsId, int dayOffset)
     {
         // EF Core can't translate List<int>.Contains inside a LINQ query for
         // jsonb, so we load all records for the event and filter in memory.
         // At ~500 users max this is fine.
         var all = await _repo.GetByEventAsync(eventSettingsId);
-        return all.Where(g => g.AvailableDayOffsets.Contains(dayOffset)).ToList();
+        return all
+            .Where(g => g.AvailableDayOffsets.Contains(dayOffset))
+            .Select(ToSnapshot)
+            .ToList();
     }
+
+    private static GeneralAvailabilitySnapshot ToSnapshot(GeneralAvailability availability) =>
+        new(
+            availability.UserId,
+            availability.EventSettingsId,
+            availability.AvailableDayOffsets);
 
     public async Task DeleteAsync(Guid userId, Guid eventSettingsId)
     {

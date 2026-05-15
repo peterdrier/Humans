@@ -95,7 +95,7 @@ public sealed class EmailProblemsService : IEmailProblemsService
         foreach (var o in orphans)
         {
             problems.Add(new EmailProblem(
-                EmailProblemKind.OrphanUserEmail, o.UserId, null, o.Id, o.Email, null));
+                EmailProblemKind.OrphanUserEmail, o.UserId, null, o.EmailId, o.Email, null));
         }
 
         var ghosts = await _userService.GetUsersWithLoginsButNoEmailsAsync(ct);

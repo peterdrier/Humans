@@ -50,8 +50,6 @@ src/Humans.Application/Services/Agent/AgentService.cs:User#2
 src/Humans.Application/Services/Agent/AgentService.cs:User#3
 src/Humans.Application/Services/Agent/AgentService.cs:User#4
 src/Humans.Application/Services/Agent/AgentService.cs:User#5
-src/Humans.Application/Services/Auth/RoleAssignmentService.cs:CreatedByUser#1
-src/Humans.Application/Services/Auth/RoleAssignmentService.cs:User#1
 src/Humans.Application/Services/Calendar/CalendarService.cs:OwningTeam#1
 src/Humans.Application/Services/Calendar/CalendarService.cs:OwningTeam#2
 src/Humans.Application/Services/Camps/CampService.cs:User#1
@@ -165,7 +163,6 @@ src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:Team#25
 src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:Team#26
 src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:Team#27
 src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:Team#28
-src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:Team#29
 src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:Team#3
 src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:Team#4
 src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:Team#5

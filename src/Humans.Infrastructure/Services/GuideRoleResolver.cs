@@ -1,19 +1,11 @@
 using System.Security.Claims;
-using Microsoft.EntityFrameworkCore;
-using Humans.Application.Architecture;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Models;
 using Humans.Domain.Constants;
-using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 
 namespace Humans.Infrastructure.Services;
 
-[Grandfathered(
-    ruleId: "HUM0009",
-    justification: "Reads role-defining tables directly via DbContext; should route through team/role services or a dedicated repository.",
-    since: "2026-05-12",
-    issueRef: "nobodies-collective/Humans#701")]
 public sealed class GuideRoleResolver : IGuideRoleResolver
 {
     private static readonly IReadOnlyList<string> KnownRoles =
@@ -31,11 +23,11 @@ public sealed class GuideRoleResolver : IGuideRoleResolver
         RoleNames.VolunteerCoordinator
     ];
 
-    private readonly HumansDbContext _db;
+    private readonly ITeamRepository _teamRepository;
 
-    public GuideRoleResolver(HumansDbContext db)
+    public GuideRoleResolver(ITeamRepository teamRepository)
     {
-        _db = db;
+        _teamRepository = teamRepository;
     }
 
     public async Task<GuideRoleContext> ResolveAsync(ClaimsPrincipal user, CancellationToken cancellationToken = default)
@@ -60,13 +52,7 @@ public sealed class GuideRoleResolver : IGuideRoleResolver
         var isCoordinator = false;
         if (Guid.TryParse(userIdClaim, out var userId))
         {
-            isCoordinator = await _db.TeamMembers
-                .AsNoTracking()
-                .AnyAsync(
-                    tm => tm.UserId == userId
-                          && tm.Role == TeamMemberRole.Coordinator
-                          && tm.LeftAt == null,
-                    cancellationToken);
+            isCoordinator = await _teamRepository.IsAnyActiveCoordinatorAsync(userId, cancellationToken);
         }
 
         return new GuideRoleContext(

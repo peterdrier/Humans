@@ -164,7 +164,7 @@ public class MailerAdminControllerTests
                 actions: Arg.Any<IReadOnlyList<AuditAction>?>(),
                 limit: Arg.Any<int>(),
                 ct: Arg.Any<CancellationToken>())
-            .Returns((IReadOnlyList<AuditLogEntry>)Array.Empty<AuditLogEntry>());
+            .Returns((IReadOnlyList<AuditLogEntrySnapshot>)Array.Empty<AuditLogEntrySnapshot>());
 
         var ctrl = BuildSut();
 
@@ -208,7 +208,7 @@ public class MailerAdminControllerTests
                 actions: Arg.Any<IReadOnlyList<AuditAction>?>(),
                 limit: Arg.Any<int>(),
                 ct: Arg.Any<CancellationToken>())
-            .Returns((IReadOnlyList<AuditLogEntry>)Array.Empty<AuditLogEntry>());
+            .Returns((IReadOnlyList<AuditLogEntrySnapshot>)Array.Empty<AuditLogEntrySnapshot>());
 
         var ctrl = BuildSut();
 

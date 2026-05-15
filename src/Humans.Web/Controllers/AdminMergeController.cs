@@ -48,10 +48,10 @@ public class AdminMergeController : HumansControllerBase
                 Email = r.Email,
                 PrimaryUserDisplayName = r.TargetUser.DisplayName,
                 PrimaryUserEmail = r.TargetUser.Email,
-                PrimaryUserId = r.TargetUserId,
+                PrimaryUserId = r.TargetUser.Id,
                 DuplicateUserDisplayName = r.SourceUser.DisplayName,
                 DuplicateUserEmail = r.SourceUser.Email,
-                DuplicateUserId = r.SourceUserId,
+                DuplicateUserId = r.SourceUser.Id,
                 CreatedAt = r.CreatedAt.ToDateTimeUtc()
             }).ToList()
         };
@@ -78,14 +78,14 @@ public class AdminMergeController : HumansControllerBase
             Status = request.Status.ToString(),
             CreatedAt = request.CreatedAt.ToDateTimeUtc(),
             ResolvedAt = request.ResolvedAt?.ToDateTimeUtc(),
-            ResolvedByName = request.ResolvedByUser?.DisplayName,
+            ResolvedByName = request.ResolvedByDisplayName,
             AdminNotes = request.AdminNotes
         };
 
         return View(viewModel);
     }
 
-    private async Task<ProfileSummaryViewModel> BuildProfileCardAsync(User user)
+    private async Task<ProfileSummaryViewModel> BuildProfileCardAsync(AccountMergeUserSnapshot user)
     {
         var profile = (await _userService.GetUserInfoAsync(user.Id))?.Profile;
         var teams = await _teamService.GetUserTeamsAsync(user.Id);

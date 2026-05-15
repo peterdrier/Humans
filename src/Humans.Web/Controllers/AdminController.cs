@@ -21,7 +21,6 @@ namespace Humans.Web.Controllers;
 [Route("Admin")]
 public class AdminController : HumansControllerBase
 {
-    private readonly UserManager<User> _userManager;
     private readonly ILogger<AdminController> _logger;
     private readonly IWebHostEnvironment _environment;
     private readonly IAccountDeletionService _accountDeletionService;
@@ -45,7 +44,6 @@ public class AdminController : HumansControllerBase
         IAdminDatabaseDiagnosticsService databaseDiagnostics)
         : base(userManager)
     {
-        _userManager = userManager;
         _logger = logger;
         _environment = environment;
         _accountDeletionService = accountDeletionService;
@@ -142,13 +140,6 @@ public class AdminController : HumansControllerBase
         _logger.LogWarning(
             "Admin {AdminId} purging human {HumanId} ({DisplayName}) in {Environment}",
             currentUser?.Id, id, displayName, _environment.EnvironmentName);
-
-        // Sever OAuth link so next Google login creates a fresh user
-        var logins = await _userManager.GetLoginsAsync(user);
-        foreach (var login in logins)
-        {
-            await _userManager.RemoveLoginAsync(user, login.LoginProvider, login.ProviderKey);
-        }
 
         var result = await _accountDeletionService.PurgeAsync(id, currentUser?.Id);
         if (!result.Success)

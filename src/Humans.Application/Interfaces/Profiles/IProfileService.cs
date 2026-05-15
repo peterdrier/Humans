@@ -138,7 +138,7 @@ public interface IProfileService : IApplicationService, IUserMerge
     /// Gets the languages associated with a profile, ordered by proficiency (descending) then language code.
     /// Returns an empty list if the profile does not exist.
     /// </summary>
-    Task<IReadOnlyList<ProfileLanguage>> GetProfileLanguagesAsync(Guid profileId, CancellationToken ct = default);
+    Task<IReadOnlyList<ProfileLanguageSnapshot>> GetProfileLanguagesAsync(Guid profileId, CancellationToken ct = default);
 
     /// <summary>
     /// Replaces all languages for the given profile with the new set.
@@ -268,3 +268,9 @@ public interface IProfileService : IApplicationService, IUserMerge
     /// </summary>
     Task<bool> SetIbanAsync(Guid userId, string? iban, CancellationToken ct = default);
 }
+
+public sealed record ProfileLanguageSnapshot(
+    Guid Id,
+    Guid ProfileId,
+    string LanguageCode,
+    LanguageProficiency Proficiency);

@@ -200,23 +200,21 @@ public class CalendarController : HumansControllerBase
             return View(form);
         }
 
-        try
-        {
-            var ev = await _calendar.CreateEventAsync(new CreateCalendarEventDto(
-                form.Title, form.Description, form.Location, form.LocationUrl,
-                form.OwningTeamId, start, end, form.IsAllDay,
-                form.IsRecurring ? form.RecurrenceRule : null,
-                form.IsRecurring ? form.RecurrenceTimezone : null),
-                createdByUserId: GetCurrentUserId(), ct);
+        var result = await _calendar.CreateEventWithResultAsync(new CreateCalendarEventDto(
+            form.Title, form.Description, form.Location, form.LocationUrl,
+            form.OwningTeamId, start, end, form.IsAllDay,
+            form.IsRecurring ? form.RecurrenceRule : null,
+            form.IsRecurring ? form.RecurrenceTimezone : null),
+            createdByUserId: GetCurrentUserId(), ct);
 
-            return RedirectToAction(nameof(Event), new { id = ev.Id });
-        }
-        catch (ValidationException ex)
+        if (result.Succeeded && result.Event is not null)
         {
-            ModelState.AddModelError(nameof(form.RecurrenceRule), ex.Message);
-            form.TeamOptions = await GetSelectableTeamsAsync(ct);
-            return View(form);
+            return RedirectToAction(nameof(Event), new { id = result.Event.Id });
         }
+
+        AddCalendarEventMutationError(form, result);
+        form.TeamOptions = await GetSelectableTeamsAsync(ct);
+        return View(form);
     }
 
     [HttpGet("Event/{id:guid}/Edit")]
@@ -270,23 +268,19 @@ public class CalendarController : HumansControllerBase
             return View(form);
         }
 
-        try
-        {
-            await _calendar.UpdateEventAsync(id, new UpdateCalendarEventDto(
-                form.Title, form.Description, form.Location, form.LocationUrl,
-                form.OwningTeamId, start, end, form.IsAllDay,
-                form.IsRecurring ? form.RecurrenceRule : null,
-                form.IsRecurring ? form.RecurrenceTimezone : null),
-                updatedByUserId: GetCurrentUserId(), ct);
+        var result = await _calendar.UpdateEventWithResultAsync(id, new UpdateCalendarEventDto(
+            form.Title, form.Description, form.Location, form.LocationUrl,
+            form.OwningTeamId, start, end, form.IsAllDay,
+            form.IsRecurring ? form.RecurrenceRule : null,
+            form.IsRecurring ? form.RecurrenceTimezone : null),
+            updatedByUserId: GetCurrentUserId(), ct);
 
-            return RedirectToAction(nameof(Event), new { id });
-        }
-        catch (ValidationException ex)
-        {
-            ModelState.AddModelError(nameof(form.RecurrenceRule), ex.Message);
-            form.TeamOptions = await GetSelectableTeamsAsync(ct);
-            return View(form);
-        }
+        if (result.NotFound) return NotFound();
+        if (result.Succeeded) return RedirectToAction(nameof(Event), new { id });
+
+        AddCalendarEventMutationError(form, result);
+        form.TeamOptions = await GetSelectableTeamsAsync(ct);
+        return View(form);
     }
 
     // All-day events store half-open [Start 00:00, EndDate+1 00:00) so the display
@@ -421,6 +415,19 @@ public class CalendarController : HumansControllerBase
         if (!Guid.TryParse(id, out var userId))
             throw new InvalidOperationException("Current user has no valid ID claim.");
         return userId;
+    }
+
+    private void AddCalendarEventMutationError(
+        CalendarEventFormViewModel form,
+        CalendarEventMutationResult result)
+    {
+        var memberName = string.Equals(
+                result.ValidationMemberName,
+                nameof(CreateCalendarEventDto.RecurrenceTimezone),
+                StringComparison.Ordinal)
+            ? nameof(form.RecurrenceTimezone)
+            : nameof(form.RecurrenceRule);
+        ModelState.AddModelError(memberName, result.ErrorMessage ?? "Failed to save calendar event.");
     }
 
     // Org default for v1. Every volunteer is in Spain; showing server-UTC ("Etc/UTC") is unhelpful.

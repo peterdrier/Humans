@@ -56,7 +56,7 @@ public class IssuesServiceTests : IDisposable
             .GetFilteredEntriesAsync(
                 Arg.Any<string?>(), Arg.Any<Guid?>(), Arg.Any<Guid?>(),
                 Arg.Any<IReadOnlyList<AuditAction>?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<AuditLogEntry>>([]));
+            .Returns(Task.FromResult<IReadOnlyList<AuditLogEntrySnapshot>>([]));
 
         var env = Substitute.For<IHostEnvironment>();
         env.ContentRootPath.Returns(Path.GetTempPath());
@@ -217,6 +217,24 @@ public class IssuesServiceTests : IDisposable
             .WithMessage("*JPEG, PNG, or WebP*");
     }
 
+    [HumansFact]
+    public async Task SubmitIssueAsync_appends_reporter_roles_to_additional_context()
+    {
+        var userId = Guid.NewGuid();
+
+        var issue = await _service.SubmitIssueAsync(
+            userId, IssueCategory.Bug, "Title", "Desc",
+            section: null,
+            pageUrl: null,
+            userAgent: null,
+            additionalContext: "browser details",
+            screenshot: null,
+            dueDate: null,
+            reporterRoles: [RoleNames.TeamsAdmin, RoleNames.Admin]);
+
+        issue.AdditionalContext.Should().Be("browser details | roles: Admin, TeamsAdmin");
+    }
+
     // ==========================================================================
     // PostCommentAsync
     // ==========================================================================
@@ -306,6 +324,24 @@ public class IssuesServiceTests : IDisposable
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
             Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task PostCommentAsync_resolve_on_post_marks_issue_resolved()
+    {
+        var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
+        var actorId = Guid.NewGuid();
+
+        await _service.PostCommentAsync(
+            issueId,
+            actorId,
+            "Fixed this",
+            senderIsReporter: false,
+            resolveOnPost: true);
+
+        var stored = await _dbContext.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId);
+        stored.Status.Should().Be(IssueStatus.Resolved);
+        stored.ResolvedByUserId.Should().Be(actorId);
     }
 
     // ==========================================================================
@@ -408,6 +444,32 @@ public class IssuesServiceTests : IDisposable
             Arg.Any<CancellationToken>());
     }
 
+    [HumansFact]
+    public async Task UpdateStatusWithResultAsync_returns_success_when_status_updates()
+    {
+        var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
+        var actorId = Guid.NewGuid();
+
+        var result = await _service.UpdateStatusWithResultAsync(issueId, IssueStatus.Resolved, actorId);
+
+        result.Succeeded.Should().BeTrue();
+        result.NotFound.Should().BeFalse();
+
+        var stored = await _dbContext.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId);
+        stored.Status.Should().Be(IssueStatus.Resolved);
+        stored.ResolvedByUserId.Should().Be(actorId);
+    }
+
+    [HumansFact]
+    public async Task UpdateStatusWithResultAsync_returns_not_found_when_issue_is_missing()
+    {
+        var result = await _service.UpdateStatusWithResultAsync(Guid.NewGuid(), IssueStatus.Resolved, Guid.NewGuid());
+
+        result.Succeeded.Should().BeFalse();
+        result.NotFound.Should().BeTrue();
+        result.ErrorMessage.Should().NotBeNullOrWhiteSpace();
+    }
+
     // ==========================================================================
     // UpdateAssigneeAsync
     // ==========================================================================
@@ -483,6 +545,33 @@ public class IssuesServiceTests : IDisposable
             Arg.Any<CancellationToken>());
     }
 
+    [HumansFact]
+    public async Task UpdateAssigneeWithResultAsync_returns_success_when_assignee_updates()
+    {
+        var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
+        var assigneeId = Guid.NewGuid();
+        _dbContext.Users.Add(new User { Id = assigneeId, Email = "assignee@x.com", DisplayName = "Assignee" });
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.UpdateAssigneeWithResultAsync(issueId, assigneeId, Guid.NewGuid());
+
+        result.Succeeded.Should().BeTrue();
+        result.NotFound.Should().BeFalse();
+
+        var stored = await _dbContext.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId);
+        stored.AssigneeUserId.Should().Be(assigneeId);
+    }
+
+    [HumansFact]
+    public async Task UpdateAssigneeWithResultAsync_returns_not_found_when_issue_is_missing()
+    {
+        var result = await _service.UpdateAssigneeWithResultAsync(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
+
+        result.Succeeded.Should().BeFalse();
+        result.NotFound.Should().BeTrue();
+        result.ErrorMessage.Should().NotBeNullOrWhiteSpace();
+    }
+
     // ==========================================================================
     // UpdateSectionAsync
     // ==========================================================================
@@ -510,6 +599,56 @@ public class IssuesServiceTests : IDisposable
             actorId,
             Arg.Any<Guid?>(),
             Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task UpdateSectionWithResultAsync_returns_success_when_section_updates()
+    {
+        var (_, issueId) = await SeedIssueAsync(IssueStatus.Open, section: IssueSectionRouting.Tickets);
+
+        var result = await _service.UpdateSectionWithResultAsync(issueId, IssueSectionRouting.Teams, Guid.NewGuid());
+
+        result.Succeeded.Should().BeTrue();
+        result.NotFound.Should().BeFalse();
+
+        var stored = await _dbContext.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId);
+        stored.Section.Should().Be(IssueSectionRouting.Teams);
+    }
+
+    [HumansFact]
+    public async Task UpdateSectionWithResultAsync_returns_failure_message_for_terminal_issue()
+    {
+        var (_, issueId) = await SeedIssueAsync(IssueStatus.Resolved, section: IssueSectionRouting.Tickets);
+
+        var result = await _service.UpdateSectionWithResultAsync(issueId, IssueSectionRouting.Teams, Guid.NewGuid());
+
+        result.Succeeded.Should().BeFalse();
+        result.NotFound.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("Cannot change section");
+    }
+
+    [HumansFact]
+    public async Task SetGitHubIssueNumberWithResultAsync_returns_success_when_link_updates()
+    {
+        var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
+
+        var result = await _service.SetGitHubIssueNumberWithResultAsync(issueId, 1234, Guid.NewGuid());
+
+        result.Succeeded.Should().BeTrue();
+        result.NotFound.Should().BeFalse();
+
+        var stored = await _dbContext.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId);
+        stored.GitHubIssueNumber.Should().Be(1234);
+    }
+
+    [HumansFact]
+    public async Task SetGitHubIssueNumberWithResultAsync_returns_not_found_when_issue_is_missing()
+    {
+        var result = await _service.SetGitHubIssueNumberWithResultAsync(Guid.NewGuid(), 1234, Guid.NewGuid());
+
+        result.Succeeded.Should().BeFalse();
+        result.NotFound.Should().BeTrue();
+        result.ErrorMessage.Should().NotBeNullOrWhiteSpace();
     }
 
     // ==========================================================================

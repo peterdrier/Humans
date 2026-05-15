@@ -239,27 +239,39 @@ public sealed class DevelopmentDashboardSeeder
             {
                 var min = _rng.Next(2, 6);
                 var max = min + _rng.Next(1, 4);
-                var shift = new Shift
+                var startTime = isAllDay
+                    ? LocalTime.Midnight
+                    : new LocalTime(_rng.Next(8, 20), 0);
+                var duration = isAllDay
+                    ? Duration.FromHours(24)
+                    : Duration.FromHours(_rng.Next(2, 9));
+                var result = await _shiftManagementService.CreateShiftAsync(new CreateShiftInput(
+                    rota.Id,
+                    rota.TeamId,
+                    null,
+                    dayOffset,
+                    startTime,
+                    duration.TotalHours,
+                    min,
+                    max,
+                    AdminOnly: false,
+                    IsAllDay: isAllDay));
+                if (!result.Succeeded || result.ShiftId is null)
+                    throw new InvalidOperationException(result.Message);
+
+                shifts.Add((new Shift
                 {
-                    Id = Guid.NewGuid(),
+                    Id = result.ShiftId.Value,
                     RotaId = rota.Id,
                     DayOffset = dayOffset,
-                    // All-day rows: StartTime/Duration are don't-care; GetAbsoluteStart/End
-                    // compute bounds from Shift.AllDayWindowStart/End. Store midnight/24h sentinel.
-                    StartTime = isAllDay
-                        ? LocalTime.Midnight
-                        : new LocalTime(_rng.Next(8, 20), 0),
-                    Duration = isAllDay
-                        ? Duration.FromHours(24)
-                        : Duration.FromHours(_rng.Next(2, 9)),
+                    StartTime = startTime,
+                    Duration = duration,
                     MinVolunteers = min,
                     MaxVolunteers = max,
                     IsAllDay = isAllDay,
                     CreatedAt = now,
                     UpdatedAt = now,
-                };
-                await _shiftManagementService.CreateShiftAsync(shift);
-                shifts.Add((shift, rate));
+                }, rate));
             }
         }
 

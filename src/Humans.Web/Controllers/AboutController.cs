@@ -73,7 +73,7 @@ public class AboutController : HumansControllerBase
                     .Select(ra => new StaffRoleHolderViewModel
                     {
                         UserId = ra.UserId,
-                        DisplayName = ra.User.DisplayName,
+                        DisplayName = ra.UserDisplayName,
                         ProfilePictureUrl = effectiveUrls.GetValueOrDefault(ra.UserId)
                     })
                     .OrderBy(h => h.DisplayName, StringComparer.OrdinalIgnoreCase)

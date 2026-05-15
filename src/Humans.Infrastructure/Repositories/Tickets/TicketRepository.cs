@@ -531,6 +531,7 @@ public sealed class TicketRepository : ITicketRepository
             .AsNoTracking()
             .Include(o => o.Attendees)
             .Where(o => o.MatchedUserId == userId)
+            // arch:db-sort-ok user ticket history chronology over unbounded orders
             .OrderByDescending(o => o.PurchasedAt)
             .ToListAsync(ct);
     }
@@ -653,6 +654,7 @@ public sealed class TicketRepository : ITicketRepository
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.TicketOrders
             .AsNoTracking()
+            // arch:db-sort-ok top-N dashboard selector over unbounded orders
             .OrderByDescending(o => o.PurchasedAt)
             .Take(count)
             .Select(o => new RecentOrder
@@ -889,6 +891,7 @@ public sealed class TicketRepository : ITicketRepository
         return await ctx.TicketAttendees
             .AsNoTracking()
             .Include(a => a.TicketOrder)
+            // arch:db-sort-ok export stable order over unbounded attendees
             .OrderBy(a => a.AttendeeName)
             .Select(a => new AttendeeExportRow
             {
@@ -909,6 +912,7 @@ public sealed class TicketRepository : ITicketRepository
         var orders = await ctx.TicketOrders
             .AsNoTracking()
             .Include(o => o.Attendees)
+            // arch:db-sort-ok export stable order over unbounded orders
             .OrderByDescending(o => o.PurchasedAt)
             .ToListAsync(ct);
 
@@ -1049,6 +1053,7 @@ public sealed class TicketRepository : ITicketRepository
     private static IQueryable<TicketOrder> ApplyOrderSorting(
         IQueryable<TicketOrder> query, string? sortBy, bool sortDesc)
     {
+        // arch:db-sort-ok admin page window over unbounded ticket orders
         if (string.Equals(sortBy, "amount", StringComparison.OrdinalIgnoreCase))
             return sortDesc ? query.OrderByDescending(o => o.TotalAmount) : query.OrderBy(o => o.TotalAmount);
 
@@ -1064,6 +1069,7 @@ public sealed class TicketRepository : ITicketRepository
     private static IQueryable<TicketAttendee> ApplyAttendeeSorting(
         IQueryable<TicketAttendee> query, string? sortBy, bool sortDesc)
     {
+        // arch:db-sort-ok admin page window over unbounded ticket attendees
         if (string.Equals(sortBy, "type", StringComparison.OrdinalIgnoreCase))
             return sortDesc ? query.OrderByDescending(a => a.TicketTypeName) : query.OrderBy(a => a.TicketTypeName);
 

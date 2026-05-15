@@ -15,7 +15,7 @@ public interface ICampRoleService : IApplicationService
 
     Task<CampRoleDefinition> CreateDefinitionAsync(CreateCampRoleDefinitionInput input, Guid actorUserId, CancellationToken ct = default);
 
-    Task<bool> UpdateDefinitionAsync(Guid id, UpdateCampRoleDefinitionInput input, Guid actorUserId, CancellationToken ct = default);
+    Task<UpdateCampRoleDefinitionResult> UpdateDefinitionAsync(Guid id, UpdateCampRoleDefinitionInput input, Guid actorUserId, CancellationToken ct = default);
 
     Task<bool> DeactivateDefinitionAsync(Guid id, Guid actorUserId, CancellationToken ct = default);
 
@@ -61,6 +61,21 @@ public sealed record UpdateCampRoleDefinitionInput(
     int SlotCount,
     int MinimumRequired,
     int SortOrder);
+
+public enum UpdateCampRoleDefinitionStatus
+{
+    Updated,
+    NotFound,
+}
+
+public sealed record UpdateCampRoleDefinitionResult(UpdateCampRoleDefinitionStatus Status, string SuccessMessage)
+{
+    public static UpdateCampRoleDefinitionResult Updated(string name) =>
+        new(UpdateCampRoleDefinitionStatus.Updated, $"Updated camp role '{name}'.");
+
+    public static UpdateCampRoleDefinitionResult NotFound { get; } =
+        new(UpdateCampRoleDefinitionStatus.NotFound, string.Empty);
+}
 
 public sealed record CampRoleDefinitionInfo(
     Guid Id,

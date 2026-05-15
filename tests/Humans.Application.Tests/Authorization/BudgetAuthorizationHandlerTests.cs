@@ -2,7 +2,6 @@ using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Budget;
 using Humans.Domain.Constants;
-using Humans.Domain.Entities;
 using Humans.Web.Authorization.Requirements;
 using Microsoft.AspNetCore.Authorization;
 using NSubstitute;
@@ -69,7 +68,7 @@ public sealed class BudgetAuthorizationHandlerTests
         result.Should().Be(expected);
     }
 
-    private async Task<bool> EvaluateAsync(ClaimsPrincipal user, BudgetCategory resource)
+    private async Task<bool> EvaluateAsync(ClaimsPrincipal user, BudgetCategorySnapshot resource)
     {
         var requirement = BudgetOperationRequirement.Edit;
         var context = new AuthorizationHandlerContext([requirement], user, resource);
@@ -78,7 +77,7 @@ public sealed class BudgetAuthorizationHandlerTests
         return context.HasSucceeded;
     }
 
-    private static BudgetCategory CreateCategory(
+    private static BudgetCategorySnapshot CreateCategory(
         string teamKind,
         bool isRestricted = false,
         bool isDeleted = false,
@@ -92,23 +91,27 @@ public sealed class BudgetAuthorizationHandlerTests
             _ => throw new ArgumentOutOfRangeException(nameof(teamKind), teamKind, null)
         };
 
-        return new BudgetCategory
-        {
-            Id = Guid.NewGuid(),
-            TeamId = teamId,
-            BudgetGroup = hasBudgetGroup
-                ? new BudgetGroup
-                {
-                    Id = Guid.NewGuid(),
-                    IsRestricted = isRestricted,
-                    BudgetYear = new BudgetYear
-                    {
-                        Id = Guid.NewGuid(),
-                        IsDeleted = isDeleted
-                    }
-                }
-                : null
-        };
+        var groupId = Guid.NewGuid();
+        var yearId = Guid.NewGuid();
+
+        return new BudgetCategorySnapshot(
+            Guid.NewGuid(),
+            groupId,
+            "Category",
+            0m,
+            default,
+            teamId,
+            0,
+            hasBudgetGroup
+                ? new BudgetCategoryGroupSnapshot(
+                    groupId,
+                    yearId,
+                    "Group",
+                    isRestricted,
+                    false,
+                    new BudgetCategoryYearSnapshot(yearId, "2026", "Budget 2026", isDeleted))
+                : null,
+            []);
     }
 
     private static ClaimsPrincipal CreateUser(string kind) =>

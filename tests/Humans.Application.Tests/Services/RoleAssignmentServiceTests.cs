@@ -183,7 +183,7 @@ public class RoleAssignmentServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task GetByUserIdAsync_StitchesUserAndCreatedByUserNavs()
+    public async Task GetByUserIdAsync_ReturnsSummarySnapshots()
     {
         var userId = Guid.NewGuid();
         var creatorId = Guid.NewGuid();
@@ -199,16 +199,14 @@ public class RoleAssignmentServiceTests : IDisposable
         var result = await _service.GetByUserIdAsync(userId);
 
         result.Should().ContainSingle();
-#pragma warning disable CS0618
-        result[0].User.Should().NotBeNull();
-        result[0].User.DisplayName.Should().Be("Target User");
-        result[0].CreatedByUser.Should().NotBeNull();
-        result[0].CreatedByUser!.DisplayName.Should().Be("Creator User");
-#pragma warning restore CS0618
+        result[0].Id.Should().Be(assignment.Id);
+        result[0].UserId.Should().Be(userId);
+        result[0].RoleName.Should().Be(RoleNames.Board);
+        result[0].CreatedByUserId.Should().Be(creatorId);
     }
 
     [HumansFact]
-    public async Task GetFilteredAsync_StitchesNavsForAllReturnedAssignments()
+    public async Task GetFilteredAsync_ReturnsSummarySnapshotsForAllReturnedAssignments()
     {
         var user1 = Guid.NewGuid();
         var user2 = Guid.NewGuid();
@@ -224,10 +222,8 @@ public class RoleAssignmentServiceTests : IDisposable
 
         items.Should().HaveCount(2);
         total.Should().Be(2);
-#pragma warning disable CS0618
-        items.All(ra => ra.User is not null).Should().BeTrue();
-        items.All(ra => ra.CreatedByUser is not null).Should().BeTrue();
-#pragma warning restore CS0618
+        items.Select(ra => ra.UserDisplayName).Should().BeEquivalentTo(["Alice", "Bob"]);
+        items.All(ra => string.Equals(ra.CreatedByDisplayName, "Creator", StringComparison.Ordinal)).Should().BeTrue();
     }
 
     [HumansFact]

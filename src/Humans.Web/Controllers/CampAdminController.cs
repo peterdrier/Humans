@@ -1,7 +1,6 @@
 using System.Text;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.CitiPlanning;
-using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Camps;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
@@ -25,14 +24,16 @@ public class CampAdminController : HumansControllerBase
     private readonly ICampService _campService;
     private readonly ICampRoleService _campRoleService;
     private readonly ICityPlanningService _cityPlanningService;
-    private readonly IUserService _userService;
+    private readonly CampAdminPageBuilder _campAdminPageBuilder;
+    private readonly CampCsvExportBuilder _campCsvExportBuilder;
     private readonly ILogger<CampAdminController> _logger;
 
     public CampAdminController(
         ICampService campService,
         ICampRoleService campRoleService,
         ICityPlanningService cityPlanningService,
-        IUserService userService,
+        CampAdminPageBuilder campAdminPageBuilder,
+        CampCsvExportBuilder campCsvExportBuilder,
         UserManager<User> userManager,
         ILogger<CampAdminController> logger)
         : base(userManager)
@@ -40,7 +41,8 @@ public class CampAdminController : HumansControllerBase
         _campService = campService;
         _campRoleService = campRoleService;
         _cityPlanningService = cityPlanningService;
-        _userService = userService;
+        _campAdminPageBuilder = campAdminPageBuilder;
+        _campCsvExportBuilder = campCsvExportBuilder;
         _logger = logger;
     }
 
@@ -49,90 +51,7 @@ public class CampAdminController : HumansControllerBase
     {
         try
         {
-            var settings = await _campService.GetSettingsAsync();
-            var registrationInfo = await _cityPlanningService.GetRegistrationInfoAsync();
-            var allCamps = await _campService.GetCampsForYearAsync(settings.PublicYear);
-            var pendingSeasons = await _campService.GetPendingSeasonsAsync();
-
-            var openSeasons = settings.OpenSeasons.ToList();
-            var nameLockDates = openSeasons.Count > 0
-                ? await _campService.GetNameLockDatesAsync(openSeasons)
-                : new Dictionary<int, NodaTime.LocalDate?>();
-
-            var withdrawnSeasons = allCamps
-                .SelectMany(c => c.Seasons
-                    .Where(s => s.Year == settings.PublicYear && s.Status == CampSeasonStatus.Withdrawn)
-                    .Select(s => new CampCardViewModel
-                    {
-                        Id = c.Id,
-                        SeasonId = s.Id,
-                        Slug = c.Slug,
-                        Name = s.Name,
-                        BlurbShort = s.BlurbShort,
-                        Status = s.Status
-                    }))
-                .ToList();
-
-            // Load camps with leads for the summary table
-            var activeStatuses = new[] { CampSeasonStatus.Active, CampSeasonStatus.Full };
-            var campsWithLeads = await _campService.GetCampsWithLeadsForYearAsync(settings.PublicYear, activeStatuses);
-
-            // Resolve lead display names via IUserService — CampLead.User nav is forbidden cross-domain.
-            var leadUserIds = campsWithLeads
-                .SelectMany(c => (c.Leads ?? []).Select(l => l.UserId))
-                .Distinct()
-                .ToList();
-            var leadUsers = await _userService.GetByIdsAsync(leadUserIds);
-
-            var summaries = campsWithLeads.Select(c =>
-            {
-                var season = c.Seasons.FirstOrDefault();
-                return new CampSummaryRowViewModel
-                {
-                    Name = season?.Name ?? c.Slug,
-                    Slug = c.Slug,
-                    SeasonId = season?.Id,
-                    AcceptingMembers = season?.AcceptingMembers.ToString() ?? "—",
-                    MemberCount = season?.MemberCount ?? 0,
-                    Zone = season?.SoundZone?.ToString() ?? "—",
-                    SpaceRequirement = season?.SpaceRequirement?.ToString() ?? "—",
-                    YearsParticipating = c.TimesAtNowhere,
-                    EeSlotCount = season?.EeSlotCount ?? 0,
-                    EeGrantedCount = season?.EeGrantedCount ?? 0,
-                    Leads = (c.Leads ?? [])
-                        .Select(l => new CampLeadViewModel
-                        {
-                            LeadId = l.Id,
-                            UserId = l.UserId,
-                            DisplayName = leadUsers.TryGetValue(l.UserId, out var u) ? u.DisplayName : string.Empty
-                        }).ToList()
-                };
-            }).ToList();
-
-            var vm = new CampAdminViewModel
-            {
-                PublicYear = settings.PublicYear,
-                OpenSeasons = openSeasons,
-                TotalCamps = allCamps.Count,
-                ActiveCamps = allCamps.Count(b => b.Seasons.Any(s =>
-                    s.Year == settings.PublicYear && (s.Status == CampSeasonStatus.Active || s.Status == CampSeasonStatus.Full))),
-                WithdrawnCamps = withdrawnSeasons,
-                NameLockDates = nameLockDates,
-                AllCampSummaries = summaries,
-                RegistrationInfo = registrationInfo,
-                EeStartDate = settings.EeStartDate,
-                PendingCamps = pendingSeasons.Select(s => new CampCardViewModel
-                {
-                    Id = s.CampId,
-                    SeasonId = s.Id,
-                    Slug = s.CampSlug,
-                    Name = s.Name,
-                    BlurbShort = s.BlurbShort,
-                    Status = s.Status
-                }).ToList()
-            };
-
-            return View(vm);
+            return View(await _campAdminPageBuilder.BuildAsync());
         }
         catch (Exception ex)
         {
@@ -362,64 +281,8 @@ public class CampAdminController : HumansControllerBase
     {
         try
         {
-            var settings = await _campService.GetSettingsAsync();
-            var year = settings.PublicYear;
-
-            var camps = await _campService.GetCampsWithLeadsForYearAsync(year);
-
-            // Resolve lead display names + emails via IUserService.
-            var leadUserIds = camps
-                .SelectMany(c => (c.Leads ?? []).Select(l => l.UserId))
-                .Distinct()
-                .ToList();
-            var leadUsers = await _userService.GetByIdsAsync(leadUserIds);
-
-            var csv = new StringBuilder();
-            csv.AppendCsvRow(
-                "Name", "Slug", "Status", "Contact Email", "Contact Phone",
-                "Leads", "Languages", "Member Count",
-                "Space Requirement", "Sound Zone", "Containers", "Electrical Grid",
-                "Accepting Members", "Kids Welcome", "Adult Playspace",
-                "Vibes", "Swiss Camp", "Times Participating");
-
-            foreach (var camp in camps)
-            {
-                var season = camp.Seasons.FirstOrDefault();
-                if (season is null) continue;
-
-                var leads = string.Join("; ", (camp.Leads ?? [])
-                    .Select(l =>
-                    {
-                        var user = leadUsers.TryGetValue(l.UserId, out var u) ? u : null;
-                        return $"{user?.DisplayName ?? string.Empty} <{user?.Email ?? string.Empty}>";
-                    }));
-
-                var vibes = season.Vibes.Count > 0
-                    ? string.Join(", ", season.Vibes)
-                    : "";
-
-                csv.AppendCsvRow(
-                    season.Name,
-                    camp.Slug,
-                    season.Status,
-                    camp.ContactEmail,
-                    camp.ContactPhone,
-                    leads,
-                    season.Languages,
-                    season.MemberCount,
-                    season.SpaceRequirement?.ToString() ?? "",
-                    season.SoundZone?.ToString() ?? "",
-                    season.ElectricalGrid?.ToString() ?? "",
-                    season.AcceptingMembers,
-                    season.KidsWelcome,
-                    season.AdultPlayspace,
-                    vibes,
-                    camp.IsSwissCamp ? "Yes" : "No",
-                    camp.TimesAtNowhere);
-            }
-
-            return File(Encoding.UTF8.GetBytes(csv.ToString()),
-                "text/csv", $"barrios-{year}.csv");
+            var export = await _campCsvExportBuilder.BuildAsync();
+            return File(export.Content, export.ContentType, export.FileName);
         }
         catch (Exception ex)
         {
@@ -476,6 +339,12 @@ public class CampAdminController : HumansControllerBase
 
     private static CampRoleDefinitionListRowViewModel MapRow(CampRoleDefinitionInfo d) =>
         new(d.Id, d.Name, d.Description, d.SlotCount, d.MinimumRequired, d.SortOrder, d.IsActive);
+
+    private IActionResult RedirectToRolesWithSuccess(string message)
+    {
+        SetSuccess(message);
+        return RedirectToAction(nameof(Roles));
+    }
 
     [HttpGet("Roles/Create")]
     public IActionResult CreateRole() => View("RoleForm", new CampRoleDefinitionFormViewModel());
@@ -542,10 +411,13 @@ public class CampAdminController : HumansControllerBase
         {
             var input = new UpdateCampRoleDefinitionInput(
                 form.Name, form.Description, form.SlotCount, form.MinimumRequired, form.SortOrder);
-            var ok = await _campRoleService.UpdateDefinitionAsync(id, input, user.Id, ct);
-            if (!ok) return NotFound();
-            SetSuccess($"Updated camp role '{form.Name}'.");
-            return RedirectToAction(nameof(Roles));
+            var result = await _campRoleService.UpdateDefinitionAsync(id, input, user.Id, ct);
+            return result.Status switch
+            {
+                UpdateCampRoleDefinitionStatus.Updated => RedirectToRolesWithSuccess(result.SuccessMessage),
+                UpdateCampRoleDefinitionStatus.NotFound => NotFound(),
+                _ => throw new InvalidOperationException($"Unexpected camp role update status '{result.Status}'.")
+            };
         }
         catch (InvalidOperationException ex)
         {

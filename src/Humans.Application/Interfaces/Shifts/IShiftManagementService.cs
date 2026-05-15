@@ -8,6 +8,9 @@ using NodaTime;
 
 namespace Humans.Application.Interfaces.Shifts;
 
+public record ShiftTagSummary(Guid Id, string Name);
+public record ShiftTagPreferenceSummary(Guid Id, string Name);
+
 /// <summary>
 /// Consolidated service for shift management: authorization, event settings,
 /// rotas, shifts, and urgency scoring.
@@ -91,7 +94,7 @@ public interface IShiftManagementService : IApplicationService
     /// Moves a rota to a different department (parent team).
     /// Preserves all shifts and signups. Records an audit log entry.
     /// </summary>
-    Task MoveRotaToTeamAsync(Guid rotaId, Guid targetTeamId, Guid actorUserId);
+    Task<RotaMoveResult> MoveRotaToTeamAsync(MoveRotaInput input);
 
     /// <summary>
     /// Deletes a rota. Throws if child shifts have confirmed signups.
@@ -129,26 +132,27 @@ public interface IShiftManagementService : IApplicationService
     /// Creates one all-day shift per day for a Build or Strike rota.
     /// Throws if the rota has Period=Event.
     /// </summary>
-    Task CreateBuildStrikeShiftsAsync(Guid rotaId, Dictionary<int, (int Min, int Max)> dailyStaffing);
+    Task<ShiftGenerationResult> CreateBuildStrikeShiftsAsync(ConfigureBuildStrikeStaffingInput input);
 
     /// <summary>
     /// Generates shifts for an Event rota as Cartesian product of days × time slots.
     /// Throws if the rota has Period != Event.
     /// </summary>
-    Task GenerateEventShiftsAsync(Guid rotaId, int startDayOffset, int endDayOffset,
-        List<(LocalTime StartTime, double DurationHours)> timeSlots, int minVolunteers = 2, int maxVolunteers = 5);
+    Task<ShiftGenerationResult> GenerateEventShiftsAsync(GenerateEventShiftsInput input);
 
     // === Shift ===
 
     /// <summary>
-    /// Creates a new shift. Validates DayOffset range and volunteer counts.
+    /// Creates a new shift for a department rota. Validates rota ownership,
+    /// period DayOffset range, and volunteer counts.
     /// </summary>
-    Task CreateShiftAsync(Shift shift);
+    Task<ShiftMutationResult> CreateShiftAsync(CreateShiftInput input);
 
     /// <summary>
-    /// Updates an existing shift.
+    /// Updates an existing shift for a department rota. Validates shift
+    /// ownership, period DayOffset range, and volunteer counts.
     /// </summary>
-    Task UpdateShiftAsync(Shift shift);
+    Task<ShiftMutationResult> UpdateShiftAsync(UpdateShiftInput input);
 
     /// <summary>
     /// Deletes a shift. Throws if confirmed signups exist; cancels pending signups.
@@ -306,12 +310,12 @@ public interface IShiftManagementService : IApplicationService
     /// <summary>
     /// Gets shift tags, optionally filtered by name (case-insensitive contains).
     /// </summary>
-    Task<IReadOnlyList<ShiftTag>> GetTagsAsync(string? query = null);
+    Task<IReadOnlyList<ShiftTagSummary>> GetTagsAsync(string? query = null);
 
     /// <summary>
     /// Gets or creates a tag by name. Returns existing if name already exists (case-insensitive).
     /// </summary>
-    Task<ShiftTag> GetOrCreateTagAsync(string name);
+    Task<ShiftTagSummary> GetOrCreateTagAsync(string name);
 
     /// <summary>
     /// Sets the tags for a rota, replacing any existing tags.
@@ -321,7 +325,7 @@ public interface IShiftManagementService : IApplicationService
     /// <summary>
     /// Gets a volunteer's tag preferences.
     /// </summary>
-    Task<IReadOnlyList<ShiftTag>> GetVolunteerTagPreferencesAsync(Guid userId);
+    Task<IReadOnlyList<ShiftTagPreferenceSummary>> GetVolunteerTagPreferencesAsync(Guid userId);
 
     /// <summary>
     /// Sets a volunteer's tag preferences, replacing any existing ones.
@@ -404,3 +408,68 @@ public record DailyStaffingHours(
     double EssentialHours,
     double ImportantHours,
     double NormalHours);
+
+public sealed record CreateShiftInput(
+    Guid RotaId,
+    Guid TeamId,
+    string? Description,
+    int DayOffset,
+    LocalTime StartTime,
+    double DurationHours,
+    int MinVolunteers,
+    int MaxVolunteers,
+    bool AdminOnly,
+    bool IsAllDay);
+
+public sealed record UpdateShiftInput(
+    Guid ShiftId,
+    Guid TeamId,
+    string? Description,
+    int DayOffset,
+    LocalTime StartTime,
+    double DurationHours,
+    int MinVolunteers,
+    int MaxVolunteers,
+    bool AdminOnly);
+
+public sealed record GenerateEventShiftsInput(
+    Guid RotaId,
+    Guid TeamId,
+    int StartDayOffset,
+    int EndDayOffset,
+    IReadOnlyList<ShiftTimeSlotInput> TimeSlots,
+    int MinVolunteers,
+    int MaxVolunteers);
+
+public sealed record ShiftTimeSlotInput(LocalTime StartTime, double DurationHours);
+
+public sealed record ConfigureBuildStrikeStaffingInput(
+    Guid RotaId,
+    Guid TeamId,
+    IReadOnlyList<DayStaffingInput> Days);
+
+public sealed record DayStaffingInput(int DayOffset, int MinVolunteers, int MaxVolunteers);
+
+public sealed record MoveRotaInput(
+    Guid RotaId,
+    Guid SourceTeamId,
+    Guid TargetTeamId,
+    Guid ActorUserId);
+
+public sealed record ShiftMutationResult(bool Succeeded, string Message, Guid? ShiftId = null)
+{
+    public static ShiftMutationResult Success(string message, Guid shiftId) => new(true, message, shiftId);
+    public static ShiftMutationResult Failure(string message) => new(false, message);
+}
+
+public sealed record ShiftGenerationResult(bool Succeeded, string Message, int CreatedCount = 0)
+{
+    public static ShiftGenerationResult Success(string message, int createdCount) => new(true, message, createdCount);
+    public static ShiftGenerationResult Failure(string message) => new(false, message);
+}
+
+public sealed record RotaMoveResult(bool Succeeded, string Message, string? RedirectSlug = null)
+{
+    public static RotaMoveResult Success(string message, string redirectSlug) => new(true, message, redirectSlug);
+    public static RotaMoveResult Failure(string message) => new(false, message);
+}

@@ -45,21 +45,20 @@ public class ConsentController : HumansControllerBase
             {
                 var docViewModels = g.Documents.Select(d => new ConsentDocumentViewModel
                 {
-                    DocumentVersionId = d.Version.Id,
-                    DocumentName = d.Version.LegalDocument.Name,
-                    VersionNumber = d.Version.VersionNumber,
-                    EffectiveFrom = d.Version.EffectiveFrom.ToDateTimeUtc(),
-                    HasConsented = d.Consent is not null,
-                    ConsentedAt = d.Consent?.ConsentedAt.ToDateTimeUtc(),
-                    ChangesSummary = d.Version.ChangesSummary,
-                    LastUpdated = d.Version.LegalDocument.LastSyncedAt != default
-                        ? d.Version.LegalDocument.LastSyncedAt.ToDateTimeUtc() : null
+                    DocumentVersionId = d.DocumentVersionId,
+                    DocumentName = d.DocumentName,
+                    VersionNumber = d.VersionNumber,
+                    EffectiveFrom = d.EffectiveFrom.ToDateTimeUtc(),
+                    HasConsented = d.HasConsented,
+                    ConsentedAt = d.ConsentedAt?.ToDateTimeUtc(),
+                    ChangesSummary = d.ChangesSummary,
+                    LastUpdated = d.LastUpdated?.ToDateTimeUtc()
                 }).ToList();
 
                 return new ConsentTeamGroupViewModel
                 {
-                    TeamId = g.Team.Id,
-                    TeamName = g.Team.Name,
+                    TeamId = g.TeamId,
+                    TeamName = g.TeamName,
                     Documents = docViewModels
                         .OrderBy(d => d.HasConsented)
                         .ThenBy(d => d.DocumentName, StringComparer.Ordinal)
@@ -76,8 +75,8 @@ public class ConsentController : HumansControllerBase
             ConsentHistory = history.Take(10).Select(c => new ConsentHistoryViewModel
             {
                 DocumentVersionId = c.DocumentVersionId,
-                DocumentName = c.DocumentVersion.LegalDocument.Name,
-                VersionNumber = c.DocumentVersion.VersionNumber,
+                DocumentName = c.DocumentName,
+                VersionNumber = c.VersionNumber,
                 ConsentedAt = c.ConsentedAt.ToDateTimeUtc()
             }).ToList()
         };
@@ -118,13 +117,7 @@ public class ConsentController : HumansControllerBase
 
         if (!model.ExplicitConsent)
         {
-            ModelState.AddModelError(string.Empty, _localizer["Consent_MustCheck"].Value);
-
-            var viewModel = await BuildConsentReviewViewModelAsync(model.DocumentVersionId, user.Id);
-            if (viewModel is null)
-                return NotFound();
-
-            return View(nameof(Review), viewModel);
+            return await RedisplayUncheckedConsentAsync(model.DocumentVersionId, user.Id);
         }
 
         var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
@@ -138,12 +131,11 @@ public class ConsentController : HumansControllerBase
 
             if (!result.Success)
             {
-                if (string.Equals(result.ErrorKey, "AlreadyConsented", StringComparison.Ordinal))
-                    SetInfo(_localizer["Consent_AlreadyConsented"].Value);
+                SetConsentSubmitFailureFlash(result);
                 return RedirectToAction(nameof(Index));
             }
 
-            SetSuccess(string.Format(_localizer["Consent_ThankYou"].Value, result.DocumentName));
+            SetConsentSubmitSuccessFlash(result);
         }
         catch (Exception ex)
         {
@@ -153,6 +145,28 @@ public class ConsentController : HumansControllerBase
         }
         return RedirectToAction(nameof(Index));
     }
+
+    private async Task<IActionResult> RedisplayUncheckedConsentAsync(Guid documentVersionId, Guid userId)
+    {
+        ModelState.AddModelError(string.Empty, _localizer["Consent_MustCheck"].Value);
+
+        var viewModel = await BuildConsentReviewViewModelAsync(documentVersionId, userId);
+        if (viewModel is null)
+            return NotFound();
+
+        return View(nameof(Review), viewModel);
+    }
+
+    private void SetConsentSubmitFailureFlash(ConsentSubmitResult result)
+    {
+        if (string.Equals(result.ErrorKey, "AlreadyConsented", StringComparison.Ordinal))
+        {
+            SetInfo(_localizer["Consent_AlreadyConsented"].Value);
+        }
+    }
+
+    private void SetConsentSubmitSuccessFlash(ConsentSubmitResult result) =>
+        SetSuccess(string.Format(_localizer["Consent_ThankYou"].Value, result.DocumentName));
 
     private async Task<bool> IsStubProfileAsync(Guid userId)
     {
@@ -168,25 +182,24 @@ public class ConsentController : HumansControllerBase
 
     private async Task<ConsentDetailViewModel?> BuildConsentReviewViewModelAsync(Guid documentVersionId, Guid userId)
     {
-        var (version, consentRecord, fullName) =
-            await _consentService.GetConsentReviewDetailAsync(documentVersionId, userId);
+        var detail = await _consentService.GetConsentReviewDetailAsync(documentVersionId, userId);
 
-        if (version is null)
+        if (detail is null)
         {
             return null;
         }
 
         return new ConsentDetailViewModel
         {
-            DocumentVersionId = version.Id,
-            DocumentName = version.LegalDocument.Name,
-            VersionNumber = version.VersionNumber,
-            Content = new Dictionary<string, string>(version.Content, StringComparer.Ordinal),
-            EffectiveFrom = version.EffectiveFrom.ToDateTimeUtc(),
-            ChangesSummary = version.ChangesSummary,
-            HasAlreadyConsented = consentRecord is not null,
-            ConsentedByFullName = fullName,
-            ConsentedAt = consentRecord?.ConsentedAt.ToDateTimeUtc()
+            DocumentVersionId = detail.DocumentVersionId,
+            DocumentName = detail.DocumentName,
+            VersionNumber = detail.VersionNumber,
+            Content = new Dictionary<string, string>(detail.Content, StringComparer.Ordinal),
+            EffectiveFrom = detail.EffectiveFrom.ToDateTimeUtc(),
+            ChangesSummary = detail.ChangesSummary,
+            HasAlreadyConsented = detail.HasAlreadyConsented,
+            ConsentedByFullName = detail.UserFullName,
+            ConsentedAt = detail.ConsentedAt?.ToDateTimeUtc()
         };
     }
 }

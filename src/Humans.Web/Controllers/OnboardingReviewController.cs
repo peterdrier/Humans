@@ -59,8 +59,8 @@ public class OnboardingReviewController : HumansControllerBase
     public async Task<IActionResult> Detail(Guid userId, CancellationToken ct)
     {
         var detail = await _onboardingService.GetReviewDetailAsync(userId, ct);
-        var (profile, consentCount, requiredConsentCount, pendingApp) =
-            (detail.Profile, detail.ConsentCount, detail.RequiredConsentCount, detail.PendingApplication);
+        var (profile, consentCount, requiredConsentCount, pendingApplicationMotivation) =
+            (detail.Profile, detail.ConsentCount, detail.RequiredConsentCount, detail.PendingApplicationMotivation);
 
         if (profile is null)
             return NotFound();
@@ -83,8 +83,8 @@ public class OnboardingReviewController : HumansControllerBase
             ProfileCreatedAt = profile.CreatedAt.ToDateTimeUtc(),
             ConsentCount = consentCount,
             RequiredConsentCount = requiredConsentCount,
-            HasPendingApplication = pendingApp is not null,
-            ApplicationMotivation = pendingApp?.Motivation
+            HasPendingApplication = pendingApplicationMotivation is not null,
+            ApplicationMotivation = pendingApplicationMotivation
         };
 
         return View(viewModel);
@@ -212,15 +212,7 @@ public class OnboardingReviewController : HumansControllerBase
             var result = await _onboardingService.RejectSignupAsync(
                 userId, currentUser.Id, reason);
 
-            if (!result.Success)
-            {
-                SetError(string.Equals(result.ErrorKey, "AlreadyRejected", StringComparison.Ordinal)
-                    ? _localizer["OnboardingReview_AlreadyRejected"].Value
-                    : _localizer["Common_Error"].Value);
-                return RedirectToAction(nameof(Index));
-            }
-
-            SetSuccess(_localizer["OnboardingReview_Rejected"].Value);
+            SetRejectSignupResultMessage(result);
         }
         catch (Exception ex)
         {
@@ -228,6 +220,19 @@ public class OnboardingReviewController : HumansControllerBase
             SetError(_localizer["Common_Error"].Value);
         }
         return RedirectToAction(nameof(Index));
+    }
+
+    private void SetRejectSignupResultMessage(OnboardingResult result)
+    {
+        if (result.Success)
+        {
+            SetSuccess(_localizer["OnboardingReview_Rejected"].Value);
+            return;
+        }
+
+        SetError(string.Equals(result.ErrorKey, "AlreadyRejected", StringComparison.Ordinal)
+            ? _localizer["OnboardingReview_AlreadyRejected"].Value
+            : _localizer["Common_Error"].Value);
     }
 
     private static OnboardingReviewItemViewModel MapToItem(

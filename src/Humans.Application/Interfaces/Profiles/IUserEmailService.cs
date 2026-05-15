@@ -302,7 +302,7 @@ public interface IUserEmailService : IApplicationService
     /// entity rather than a DTO because the callers genuinely need the
     /// per-row flags — projecting to a DTO would just rename them.
     /// </summary>
-    Task<IReadOnlyList<UserEmail>> GetEntitiesByUserIdAsync(
+    Task<IReadOnlyList<UserEmailRowSnapshot>> GetEntitiesByUserIdAsync(
         Guid userId,
         CancellationToken cancellationToken = default);
 
@@ -313,7 +313,7 @@ public interface IUserEmailService : IApplicationService
     /// this once per reconcile). Users with no emails are absent from the
     /// returned dictionary.
     /// </summary>
-    Task<IReadOnlyDictionary<Guid, IReadOnlyList<UserEmail>>> GetEntitiesByUserIdsAsync(
+    Task<IReadOnlyDictionary<Guid, IReadOnlyList<UserEmailRowSnapshot>>> GetEntitiesByUserIdsAsync(
         IReadOnlyCollection<Guid> userIds,
         CancellationToken cancellationToken = default);
 
@@ -432,7 +432,7 @@ public interface IUserEmailService : IApplicationService
     /// User (User row absent OR <c>MergedToUserId</c> set). Used by the EmailProblems
     /// admin scan. At ~500 users, full-table scan is trivial.
     /// </summary>
-    Task<IReadOnlyList<UserEmail>> GetOrphanUserEmailsAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<UserEmailOrphan>> GetOrphanUserEmailsAsync(CancellationToken ct = default);
 
     /// <summary>
     /// Deletes a single UserEmail row by id. Used by EmailProblems orphan cleanup.
@@ -614,3 +614,22 @@ public record UserEmailFlagViolation(
     bool HasMultipleGoogle,
     bool HasZeroGoogle,
     bool HasPrimaryProblem);
+
+public record UserEmailOrphan(
+    Guid UserId,
+    Guid EmailId,
+    string Email);
+
+public sealed record UserEmailRowSnapshot(
+    Guid Id,
+    Guid UserId,
+    string Email,
+    bool IsVerified,
+    string? Provider,
+    string? ProviderKey,
+    bool IsGoogle,
+    bool IsPrimary,
+    ContactFieldVisibility? Visibility,
+    Instant? VerificationSentAt,
+    Instant CreatedAt,
+    Instant UpdatedAt);

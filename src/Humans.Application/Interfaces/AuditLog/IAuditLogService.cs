@@ -1,6 +1,7 @@
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using NodaTime;
 
 namespace Humans.Application.Interfaces.AuditLog;
 
@@ -42,34 +43,34 @@ public interface IAuditLogService : IApplicationService
     /// <summary>
     /// Gets audit entries for a specific Google resource.
     /// </summary>
-    Task<IReadOnlyList<AuditLogEntry>> GetByResourceAsync(Guid resourceId);
+    Task<IReadOnlyList<AuditLogEntrySnapshot>> GetByResourceAsync(Guid resourceId);
 
     /// <summary>
     /// Gets Google sync audit entries for a specific user.
     /// </summary>
-    Task<IReadOnlyList<AuditLogEntry>> GetGoogleSyncByUserAsync(Guid userId);
+    Task<IReadOnlyList<AuditLogEntrySnapshot>> GetGoogleSyncByUserAsync(Guid userId);
 
     /// <summary>
     /// Gets the most recent audit log entries.
     /// </summary>
-    Task<IReadOnlyList<AuditLogEntry>> GetRecentAsync(int count, CancellationToken ct = default);
+    Task<IReadOnlyList<AuditLogEntrySnapshot>> GetRecentAsync(int count, CancellationToken ct = default);
 
     /// <summary>
     /// Gets filtered audit log entries with pagination.
     /// </summary>
-    Task<(IReadOnlyList<AuditLogEntry> Items, int TotalCount, int AnomalyCount)> GetFilteredAsync(
+    Task<(IReadOnlyList<AuditLogEntrySnapshot> Items, int TotalCount, int AnomalyCount)> GetFilteredAsync(
         string? actionFilter, int page, int pageSize, CancellationToken ct = default);
 
     /// <summary>
     /// Gets audit entries where the user is either the primary or related entity.
     /// </summary>
-    Task<IReadOnlyList<AuditLogEntry>> GetByUserAsync(Guid userId, int count, CancellationToken ct = default);
+    Task<IReadOnlyList<AuditLogEntrySnapshot>> GetByUserAsync(Guid userId, int count, CancellationToken ct = default);
 
     /// <summary>
     /// Gets audit entries matching flexible filter criteria.
     /// Used by the shared AuditLog ViewComponent for rendering audit history on any page.
     /// </summary>
-    Task<IReadOnlyList<AuditLogEntry>> GetFilteredEntriesAsync(
+    Task<IReadOnlyList<AuditLogEntrySnapshot>> GetFilteredEntriesAsync(
         string? entityType = null,
         Guid? entityId = null,
         Guid? userId = null,
@@ -105,3 +106,20 @@ public interface IAuditLogService : IApplicationService
         IReadOnlyList<AuditAction> actions,
         CancellationToken ct = default);
 }
+
+public sealed record AuditLogEntrySnapshot(
+    Guid Id,
+    AuditAction Action,
+    string EntityType,
+    Guid EntityId,
+    string Description,
+    Instant OccurredAt,
+    Guid? ActorUserId,
+    Guid? RelatedEntityId,
+    string? RelatedEntityType,
+    Guid? ResourceId,
+    bool? Success,
+    string? ErrorMessage,
+    string? Role,
+    GoogleSyncSource? SyncSource,
+    string? UserEmail);

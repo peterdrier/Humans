@@ -246,6 +246,23 @@ public class TeamRoleServiceTests : IDisposable
         result.IsManagement.Should().BeTrue();
     }
 
+    [HumansFact]
+    public async Task UpdateRoleDefinitionAsync_WhenCallerCannotToggleManagement_PreservesExistingValue()
+    {
+        var admin = SeedUser("Admin");
+        SeedAdminRole(admin);
+        var team = SeedTeam("Test Team");
+        var role = SeedRoleDefinition(team, "Lead", slotCount: 1, sortOrder: 0, isManagement: true);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.UpdateRoleDefinitionAsync(
+            role.Id, "Lead", null, 1,
+            [SlotPriority.Critical], 0, false, RolePeriod.YearRound, admin.Id,
+            canToggleManagement: false);
+
+        result.IsManagement.Should().BeTrue();
+    }
+
     /// <summary>
     /// Regression: Codex PR#300 P1 — when <c>IsManagement</c> flips on a role
     /// with existing assignments, the service must invalidate shift
@@ -281,11 +298,11 @@ public class TeamRoleServiceTests : IDisposable
     }
 
     // ==========================================================================
-    // SetRoleIsManagementAsync
+    // ToggleRoleIsManagementAsync
     // ==========================================================================
 
     [HumansFact]
-    public async Task SetRoleIsManagementAsync_ClearWithAssignedMembers_DemotesCoordinators()
+    public async Task ToggleRoleIsManagementAsync_ClearWithAssignedMembers_DemotesCoordinators()
     {
         var admin = SeedUser("Admin");
         SeedAdminRole(admin);
@@ -296,7 +313,9 @@ public class TeamRoleServiceTests : IDisposable
         SeedRoleAssignment(mgmtRole, member, slotIndex: 0);
         await _dbContext.SaveChangesAsync();
 
-        await _service.SetRoleIsManagementAsync(mgmtRole.Id, false, admin.Id);
+        var result = await _service.ToggleRoleIsManagementAsync(mgmtRole.Id, admin.Id);
+
+        result.IsManagement.Should().BeFalse();
 
         _dbContext.ChangeTracker.Clear();
 
@@ -308,7 +327,7 @@ public class TeamRoleServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task SetRoleIsManagementAsync_SetWithAssignedMembers_Throws()
+    public async Task ToggleRoleIsManagementAsync_SetWithAssignedMembers_Throws()
     {
         var admin = SeedUser("Admin");
         SeedAdminRole(admin);
@@ -319,7 +338,7 @@ public class TeamRoleServiceTests : IDisposable
         SeedRoleAssignment(role, member, slotIndex: 0);
         await _dbContext.SaveChangesAsync();
 
-        var act = () => _service.SetRoleIsManagementAsync(role.Id, true, admin.Id);
+        var act = () => _service.ToggleRoleIsManagementAsync(role.Id, admin.Id);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*Cannot set IsManagement*");

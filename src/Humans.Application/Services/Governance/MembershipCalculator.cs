@@ -181,7 +181,7 @@ public sealed class MembershipCalculator : IMembershipCalculator
             .Where(v => !consentedVersionIds.Contains(v.Id))
             .Any(v =>
             {
-                var gracePeriod = Duration.FromDays(v.LegalDocument.GracePeriodDays);
+                var gracePeriod = Duration.FromDays(v.LegalDocumentGracePeriodDays);
                 return v.EffectiveFrom + gracePeriod <= now;
             });
     }
@@ -281,7 +281,7 @@ public sealed class MembershipCalculator : IMembershipCalculator
         var expiredVersions = requiredVersions
             .Where(v =>
             {
-                var gracePeriod = Duration.FromDays(v.LegalDocument.GracePeriodDays);
+                var gracePeriod = Duration.FromDays(v.LegalDocumentGracePeriodDays);
                 return v.EffectiveFrom + gracePeriod <= now;
             })
             .ToList();
@@ -321,10 +321,9 @@ public sealed class MembershipCalculator : IMembershipCalculator
         Guid userId,
         CancellationToken cancellationToken = default)
     {
-        // Start with current team memberships. GetUserTeamsAsync loads
-        // TeamMember rows with Team navigation pre-populated so we can
-        // inspect SystemTeamType for the Coordinator-of-user-team check
-        // below without a second query.
+        // Start with current team memberships. The membership query returns
+        // the small team snapshot needed for the Coordinator-of-user-team
+        // check below without exposing TeamMember entities.
         var memberships = await _membershipQuery.GetUserTeamsAsync(userId, cancellationToken);
         var teamIds = memberships.Select(m => m.TeamId).ToList();
 
@@ -339,7 +338,7 @@ public sealed class MembershipCalculator : IMembershipCalculator
         {
             var isCoordinatorAnywhere = memberships.Any(m =>
                 m.Role == TeamMemberRole.Coordinator &&
-                m.Team.SystemTeamType == SystemTeamType.None);
+                m.TeamSystemTeamType == SystemTeamType.None);
 
             if (isCoordinatorAnywhere)
             {

@@ -1,4 +1,5 @@
 using Humans.Application.Configuration;
+using Humans.Application.Helpers;
 using Humans.Application.Interfaces.Dashboard;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Profiles;
@@ -69,11 +70,26 @@ public class DashboardService : IDashboardService
         _ = isPrivileged; // Retained for future privileged-only fields; no current effect.
 
         var profile = await _profileService.GetProfileAsync(userId, cancellationToken);
+        var shiftTagPreferences = await _shiftMgmt.GetVolunteerTagPreferencesAsync(userId);
+        var dashboardProfile = profile is null
+            ? null
+            : new DashboardProfile(
+                ProfileComplete: !string.IsNullOrEmpty(profile.FirstName),
+                CompletionPercent: ProfileCompletion.ComputePercent(profile, shiftTagPreferences.Count > 0),
+                ConsentCheckStatus: profile.ConsentCheckStatus,
+                IsRejected: profile.RejectedAt is not null,
+                RejectionReason: profile.RejectionReason);
         var membershipSnapshot = await _membershipCalculator.GetMembershipSnapshotAsync(userId, cancellationToken);
 
         // Applications + term expiry state
         var applications = await _applicationDecisionService.GetUserApplicationsAsync(userId, cancellationToken);
         var latestApplication = applications.Count > 0 ? applications[0] : null;
+        var latestApplicationSnapshot = latestApplication is null
+            ? null
+            : new DashboardApplication(
+                latestApplication.Status,
+                latestApplication.SubmittedAt,
+                latestApplication.MembershipTier);
         var hasPendingApp = latestApplication is not null &&
             latestApplication.Status == ApplicationStatus.Submitted;
 
@@ -113,7 +129,7 @@ public class DashboardService : IDashboardService
                     try
                     {
                         urgentItems.Add(new DashboardUrgentShift(
-                            Shift: u.Shift,
+                            RotaName: u.Shift.Rota?.Name ?? "Unknown",
                             DepartmentName: u.DepartmentName ?? "Unknown",
                             AbsoluteStart: u.Shift.GetAbsoluteStart(activeEvent),
                             RemainingSlots: u.RemainingSlots,
@@ -170,8 +186,14 @@ public class DashboardService : IDashboardService
                             continue;
                         }
 
+                        if (s.Shift.Rota is null)
+                        {
+                            _logger.LogWarning("Skipping signup {SignupId} on dashboard because rota data was missing", s.Id);
+                            continue;
+                        }
+
                         var item = new DashboardSignup(
-                            Signup: s,
+                            RotaName: s.Shift.Rota.Name,
                             DepartmentName: teamNames.GetValueOrDefault(s.Shift.Rota.TeamId, "Unknown"),
                             AbsoluteStart: s.Shift.GetAbsoluteStart(activeEvent),
                             AbsoluteEnd: s.Shift.GetAbsoluteEnd(activeEvent));
@@ -231,15 +253,17 @@ public class DashboardService : IDashboardService
         }
 
         return new MemberDashboardData(
-            Profile: profile,
+            Profile: dashboardProfile,
             MembershipSnapshot: membershipSnapshot,
-            LatestApplication: latestApplication,
+            LatestApplication: latestApplicationSnapshot,
             HasPendingApplication: hasPendingApp,
             CurrentTier: currentTier,
             TermExpiresAt: termExpiresAt,
             TermExpiresSoon: termExpiresSoon,
             TermExpired: termExpired,
-            ActiveEvent: activeEvent,
+            ActiveEvent: activeEvent is null
+                ? null
+                : new DashboardEvent(activeEvent.EventName, activeEvent.IsShiftBrowsingOpen, activeEvent.Year),
             UrgentShifts: urgentItems,
             NextShifts: nextShifts,
             PendingSignupCount: pendingCount,
@@ -251,7 +275,7 @@ public class DashboardService : IDashboardService
     }
 
     private (LocalDate? ExpiresAt, bool ExpiresSoon, bool Expired) ComputeTermState(
-        IReadOnlyList<MemberApplication> applications,
+        IReadOnlyList<UserApplicationSnapshot> applications,
         MembershipTier currentTier)
     {
         if (currentTier == MembershipTier.Volunteer)

@@ -150,6 +150,30 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
     }
 
     [HumansFact]
+    public async Task SubmitAsync_VolunteerTier_ReturnsInvalidTier()
+    {
+        var result = await _service.SubmitAsync(
+            Guid.NewGuid(), MembershipTier.Volunteer, "Motivation",
+            null, null, null, "en");
+
+        result.Success.Should().BeFalse();
+        result.ErrorKey.Should().Be("InvalidTier");
+        (await _dbContext.Applications.CountAsync()).Should().Be(0);
+    }
+
+    [HumansFact]
+    public async Task SubmitAsync_AsociadoMissingRequiredFields_ReturnsFieldError()
+    {
+        var result = await _service.SubmitAsync(
+            Guid.NewGuid(), MembershipTier.Asociado, "Motivation",
+            null, "   ", null, "en");
+
+        result.Success.Should().BeFalse();
+        result.ErrorKey.Should().Be("SignificantContributionRequired");
+        (await _dbContext.Applications.CountAsync()).Should().Be(0);
+    }
+
+    [HumansFact]
     public async Task SubmitAsync_InvalidatesNavBadgeAndNotificationMeter()
     {
         var userId = Guid.NewGuid();

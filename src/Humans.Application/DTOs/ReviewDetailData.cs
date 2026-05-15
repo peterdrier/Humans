@@ -1,10 +1,20 @@
-using Humans.Domain.Entities;
-using MemberApplication = Humans.Domain.Entities.Application;
+using Humans.Domain.Enums;
+using NodaTime;
 
 namespace Humans.Application.DTOs;
 
 public record ReviewDetailData(
-    Profile? Profile,
+    ReviewProfileDetail? Profile,
     int ConsentCount,
     int RequiredConsentCount,
-    MemberApplication? PendingApplication);
+    string? PendingApplicationMotivation);
+
+public record ReviewProfileDetail(
+    string FirstName,
+    string LastName,
+    string? City,
+    string? CountryCode,
+    MembershipTier MembershipTier,
+    ConsentCheckStatus? ConsentCheckStatus,
+    string? ConsentCheckNotes,
+    Instant CreatedAt);

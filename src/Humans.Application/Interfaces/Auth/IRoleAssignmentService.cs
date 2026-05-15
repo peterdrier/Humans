@@ -14,13 +14,13 @@ public interface IRoleAssignmentService : IApplicationService
         Instant? validTo = null,
         CancellationToken cancellationToken = default);
 
-    Task<(IReadOnlyList<RoleAssignment> Items, int TotalCount)> GetFilteredAsync(
+    Task<(IReadOnlyList<RoleAssignmentSummarySnapshot> Items, int TotalCount)> GetFilteredAsync(
         string? roleFilter, bool activeOnly, int page, int pageSize, Instant now,
         CancellationToken ct = default);
 
-    Task<RoleAssignment?> GetByIdAsync(Guid assignmentId, CancellationToken ct = default);
+    Task<RoleAssignmentDetailSnapshot?> GetByIdAsync(Guid assignmentId, CancellationToken ct = default);
 
-    Task<IReadOnlyList<RoleAssignment>> GetByUserIdAsync(Guid userId, CancellationToken ct = default);
+    Task<IReadOnlyList<RoleAssignmentSummarySnapshot>> GetByUserIdAsync(Guid userId, CancellationToken ct = default);
 
     Task<OnboardingResult> AssignRoleAsync(
         Guid userId, string roleName, Guid assignerId,
@@ -106,5 +106,31 @@ public interface IRoleAssignmentService : IApplicationService
     /// (ValidFrom &lt;= now and ValidTo is null or in the future).
     /// Used by the agent snapshot provider.
     /// </summary>
-    Task<IReadOnlyList<RoleAssignment>> GetActiveForUserAsync(Guid userId, CancellationToken ct = default);
+    Task<IReadOnlyList<RoleAssignmentSnapshot>> GetActiveForUserAsync(Guid userId, CancellationToken ct = default);
+}
+
+public sealed record RoleAssignmentSnapshot(
+    string RoleName,
+    Instant? ValidTo);
+
+public sealed record RoleAssignmentDetailSnapshot(
+    Guid UserId,
+    string RoleName,
+    string UserDisplayName);
+
+public sealed record RoleAssignmentSummarySnapshot(
+    Guid Id,
+    Guid UserId,
+    string? UserEmail,
+    string UserDisplayName,
+    string RoleName,
+    Instant ValidFrom,
+    Instant? ValidTo,
+    string? Notes,
+    Guid CreatedByUserId,
+    string? CreatedByDisplayName,
+    Instant CreatedAt)
+{
+    public bool IsActive(Instant now) =>
+        ValidFrom <= now && (ValidTo is null || ValidTo > now);
 }

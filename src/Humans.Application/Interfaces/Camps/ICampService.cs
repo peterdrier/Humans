@@ -106,10 +106,7 @@ public interface ICampService : IApplicationService
     Task WithdrawSeasonAsync(Guid seasonId, CancellationToken cancellationToken = default);
     Task ReactivateSeasonAsync(Guid seasonId, CancellationToken cancellationToken = default);
     // Camp updates
-    Task UpdateCampAsync(Guid campId, string contactEmail, string contactPhone,
-        string? webOrSocialUrl, List<CampLink>? links, bool isSwissCamp, int timesAtNowhere,
-        bool hideHistoricalNames,
-        CancellationToken cancellationToken = default);
+    Task<CampUpdateResult> UpdateCampAsync(CampUpdateInput input, CancellationToken cancellationToken = default);
     Task DeleteCampAsync(Guid campId, CancellationToken cancellationToken = default);
 
     // Lead management
@@ -130,7 +127,7 @@ public interface ICampService : IApplicationService
     Task<bool> IsUserCampLeadAsync(Guid userId, Guid campId, CancellationToken cancellationToken = default);
 
     // Images
-    Task<CampImage> UploadImageAsync(Guid campId, Stream fileStream, string fileName, string contentType, long length, CancellationToken cancellationToken = default);
+    Task<CampImageUploadResult> UploadImageAsync(Guid campId, Stream fileStream, string fileName, string contentType, long length, CancellationToken cancellationToken = default);
     Task DeleteImageAsync(Guid imageId, CancellationToken cancellationToken = default);
     Task ReorderImagesAsync(Guid campId, List<Guid> imageIdsInOrder, CancellationToken cancellationToken = default);
 
@@ -167,8 +164,10 @@ public interface ICampService : IApplicationService
         Guid scopedCampId, Guid campMemberId, Guid removedByUserId,
         CancellationToken cancellationToken = default);
 
-    /// <summary>Bypasses the request/approve flow. Idempotent. Caller authorizes.</summary>
-    Task<Guid> AddCampMemberAsLeadAsync(Guid campSeasonId, Guid userId, Guid actorUserId, CancellationToken cancellationToken = default);
+    /// <summary>Bypasses the request/approve flow for the camp's active season. Idempotent. Caller authorizes.</summary>
+    Task<AddCampMemberAsLeadResult> AddCampMemberToActiveSeasonAsLeadAsync(
+        Guid campId, Guid userId, Guid actorUserId,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Adds the human as an active member of the season (idempotent — no-op if
@@ -176,16 +175,16 @@ public interface ICampService : IApplicationService
     /// operation. Used by the camp-edit role picker so callers don't have to
     /// orchestrate the two sub-mutations themselves. Caller authorizes.
     /// </summary>
-    Task<AssignCampRoleOutcome> AddMemberAndAssignRoleAsync(
-        Guid campSeasonId, Guid roleDefinitionId, Guid userId, Guid actorUserId,
+    Task<AssignCampRoleOutcome> AddMemberAndAssignRoleInActiveSeasonAsync(
+        Guid campId, Guid roleDefinitionId, Guid userId, Guid actorUserId,
         CancellationToken cancellationToken = default);
 
     /// <summary>Throws if <paramref name="userId"/> is not the row's owner.</summary>
     Task WithdrawCampMembershipRequestAsync(
         Guid campMemberId, Guid userId, CancellationToken cancellationToken = default);
 
-    /// <summary>Throws if <paramref name="userId"/> is not the row's owner.</summary>
-    Task LeaveCampAsync(
+    /// <summary>Returns failure if <paramref name="userId"/> is not the row's owner or the row cannot be left.</summary>
+    Task<CampMembershipMutationResult> LeaveCampAsync(
         Guid campMemberId, Guid userId, CancellationToken cancellationToken = default);
 
     /// <summary>Returns <c>NoOpenSeason</c> if no Active/Full season exists for the public year.</summary>
@@ -323,7 +322,35 @@ public sealed record CampSeasonMemberInfo(
 public record CampMemberRequestResult(
     Guid CampMemberId,
     CampMemberRequestOutcome Outcome,
-    string? Message = null);
+    string Message,
+    CampMemberRequestNoticeLevel NoticeLevel);
+
+public sealed record CampMembershipMutationResult(bool Succeeded, string? ErrorMessage)
+{
+    public static CampMembershipMutationResult Success() => new(true, null);
+
+    public static CampMembershipMutationResult Failure(string errorMessage) => new(false, errorMessage);
+}
+
+public sealed record CampUpdateInput(
+    Guid CampId,
+    string ContactEmail,
+    string ContactPhone,
+    string? WebOrSocialUrl,
+    List<CampLink>? Links,
+    bool IsSwissCamp,
+    int TimesAtNowhere,
+    bool HideHistoricalNames,
+    Guid SeasonId,
+    string SeasonName,
+    CampSeasonData SeasonData);
+
+public sealed record CampUpdateResult(bool Succeeded, string? ErrorMessage)
+{
+    public static CampUpdateResult Success() => new(true, null);
+
+    public static CampUpdateResult Failure(string errorMessage) => new(false, errorMessage);
+}
 
 public enum CampMemberRequestOutcome
 {
@@ -335,6 +362,24 @@ public enum CampMemberRequestOutcome
     AlreadyActive,
     /// <summary>No open season for the camp — the request was not created.</summary>
     NoOpenSeason
+}
+
+public enum CampMemberRequestNoticeLevel
+{
+    Success,
+    Info,
+    Error
+}
+
+public record AddCampMemberAsLeadResult(
+    AddCampMemberAsLeadOutcome Outcome,
+    Guid? CampMemberId = null);
+
+public enum AddCampMemberAsLeadOutcome
+{
+    Added,
+    InvalidUser,
+    NoActiveSeason
 }
 
 /// <summary>
@@ -488,6 +533,13 @@ public record CampImageSummary(
     Guid Id,
     string Url,
     int SortOrder);
+
+public sealed record CampImageUploadResult(bool Succeeded, CampImage? Image, string? ErrorMessage)
+{
+    public static CampImageUploadResult Success(CampImage image) => new(true, image, null);
+
+    public static CampImageUploadResult Failure(string errorMessage) => new(false, null, errorMessage);
+}
 
 public record CampHistoricalNameSummary(
     Guid Id,

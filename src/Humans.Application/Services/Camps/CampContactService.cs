@@ -4,6 +4,7 @@ using Humans.Application.Extensions;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Email;
+using Humans.Application.Interfaces.Notifications;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Caching.Memory;
@@ -15,17 +16,20 @@ public class CampContactService : ICampContactService
 {
     private readonly IEmailService _emailService;
     private readonly IAuditLogService _auditLogService;
+    private readonly INotificationEmitter _notificationEmitter;
     private readonly IMemoryCache _cache;
     private readonly ILogger<CampContactService> _logger;
 
     public CampContactService(
         IEmailService emailService,
         IAuditLogService auditLogService,
+        INotificationEmitter notificationEmitter,
         IMemoryCache cache,
         ILogger<CampContactService> logger)
     {
         _emailService = emailService;
         _auditLogService = auditLogService;
+        _notificationEmitter = notificationEmitter;
         _cache = cache;
         _logger = logger;
     }
@@ -38,7 +42,9 @@ public class CampContactService : ICampContactService
         string senderDisplayName,
         string senderEmail,
         string message,
-        bool includeContactInfo)
+        bool includeContactInfo,
+        IReadOnlyList<Guid> leadUserIds,
+        string campDetailsUrl)
     {
         // Rate limit: one message per camp per user per 10 minutes
         var rateLimitKey = CacheKeys.CampContactRateLimit(senderUserId, campId);
@@ -66,6 +72,8 @@ public class CampContactService : ICampContactService
                 $"Message sent to camp '{campDisplayName}' (contact info shared: {(includeContactInfo ? "yes" : "no")})",
                 senderUserId);
 
+            await SendLeadNotificationAsync(campId, campDisplayName, leadUserIds, campDetailsUrl);
+
             return new CampContactResult(Success: true, RateLimited: false);
         }
         catch (Exception ex)
@@ -73,6 +81,34 @@ public class CampContactService : ICampContactService
             _cache.InvalidateCampContactRateLimit(senderUserId, campId);
             _logger.LogError(ex, "Failed to send facilitated message to camp {CampId}", campId);
             throw;
+        }
+    }
+
+    private async Task SendLeadNotificationAsync(
+        Guid campId,
+        string campDisplayName,
+        IReadOnlyList<Guid> leadUserIds,
+        string campDetailsUrl)
+    {
+        if (leadUserIds.Count == 0)
+        {
+            return;
+        }
+
+        try
+        {
+            await _notificationEmitter.SendAsync(
+                NotificationSource.FacilitatedMessageReceived,
+                NotificationClass.Informational,
+                NotificationPriority.Normal,
+                $"New message for {campDisplayName} - check your email",
+                leadUserIds,
+                actionUrl: campDetailsUrl,
+                actionLabel: "View camp");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to dispatch FacilitatedMessageReceived notification for camp {CampId}", campId);
         }
     }
 }

@@ -4,14 +4,10 @@ using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using Humans.Application.Interfaces.Governance;
 using Humans.Domain.Constants;
-using Humans.Domain.Enums;
 using Humans.Web.Authorization;
 using Humans.Web.Extensions;
 using Humans.Web.Models;
-using Humans.Application.Interfaces.Legal;
 using Humans.Application.Interfaces.Auth;
-using Humans.Application.Interfaces.Profiles;
-using Humans.Application.Interfaces.Users;
 
 // RoleAssignment cross-domain nav properties (User, CreatedByUser) are [Obsolete] —
 // RoleAssignmentService stitches them in memory from IUserService so controllers can
@@ -25,27 +21,18 @@ namespace Humans.Web.Controllers;
 [Route("[controller]")]
 public class GovernanceController : HumansControllerBase
 {
-    private readonly ILegalDocumentService _legalDocService;
-    private readonly IProfileService _profileService;
-    private readonly IUserService _userService;
-    private readonly IApplicationDecisionService _applicationDecisionService;
+    private readonly IGovernanceIndexService _governanceIndexService;
     private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly IClock _clock;
 
     public GovernanceController(
         UserManager<Domain.Entities.User> userManager,
-        ILegalDocumentService legalDocService,
-        IProfileService profileService,
-        IUserService userService,
-        IApplicationDecisionService applicationDecisionService,
+        IGovernanceIndexService governanceIndexService,
         IRoleAssignmentService roleAssignmentService,
         IClock clock)
         : base(userManager)
     {
-        _legalDocService = legalDocService;
-        _profileService = profileService;
-        _userService = userService;
-        _applicationDecisionService = applicationDecisionService;
+        _governanceIndexService = governanceIndexService;
         _roleAssignmentService = roleAssignmentService;
         _clock = clock;
     }
@@ -56,33 +43,21 @@ public class GovernanceController : HumansControllerBase
         if (user is null)
             return NotFound();
 
-        var applications = await _applicationDecisionService.GetUserApplicationsAsync(user.Id);
-        var latestApplication = applications.Count > 0 ? applications[0] : null;
-
-        var statutesContent = await _legalDocService.GetDocumentContentAsync("statutes");
-
-        // Tier member counts for the sidebar — count approved-tier holders off the cached UserInfo snapshot.
-        var snapshot = _userService.GetAllUserInfos();
-        var colaboradorCount = snapshot.Count(u => u.Profile?.MembershipTier == MembershipTier.Colaborador);
-        var asociadoCount = snapshot.Count(u => u.Profile?.MembershipTier == MembershipTier.Asociado);
-
-        var isApprovedColaborador = applications.Any(a =>
-            a.Status == ApplicationStatus.Approved && a.MembershipTier == MembershipTier.Colaborador);
+        var data = await _governanceIndexService.GetIndexDataAsync(user.Id);
 
         var viewModel = new GovernanceIndexViewModel
         {
-            StatutesContent = statutesContent,
-            HasApplication = latestApplication is not null,
-            ApplicationStatus = latestApplication?.Status,
-            ApplicationTier = latestApplication?.MembershipTier,
-            ApplicationSubmittedAt = latestApplication?.SubmittedAt.ToDateTimeUtc(),
-            ApplicationResolvedAt = latestApplication?.ResolvedAt?.ToDateTimeUtc(),
-            ApplicationStatusBadgeClass = latestApplication?.Status.GetBadgeClass(),
-            CanApply = latestApplication is null ||
-                latestApplication.Status != ApplicationStatus.Submitted,
-            IsApprovedColaborador = isApprovedColaborador,
-            ColaboradorCount = colaboradorCount,
-            AsociadoCount = asociadoCount
+            StatutesContent = data.StatutesContent,
+            HasApplication = data.HasApplication,
+            ApplicationStatus = data.ApplicationStatus,
+            ApplicationTier = data.ApplicationTier,
+            ApplicationSubmittedAt = data.ApplicationSubmittedAt,
+            ApplicationResolvedAt = data.ApplicationResolvedAt,
+            ApplicationStatusBadgeClass = data.ApplicationStatus.GetBadgeClass(),
+            CanApply = data.CanApply,
+            IsApprovedColaborador = data.IsApprovedColaborador,
+            ColaboradorCount = data.ColaboradorCount,
+            AsociadoCount = data.AsociadoCount
         };
 
         return View(viewModel);
@@ -104,14 +79,14 @@ public class GovernanceController : HumansControllerBase
             {
                 Id = ra.Id,
                 UserId = ra.UserId,
-                UserEmail = ra.User.Email ?? string.Empty,
-                UserDisplayName = ra.User.DisplayName,
+                UserEmail = ra.UserEmail ?? string.Empty,
+                UserDisplayName = ra.UserDisplayName,
                 RoleName = ra.RoleName,
                 ValidFrom = ra.ValidFrom.ToDateTimeUtc(),
                 ValidTo = ra.ValidTo?.ToDateTimeUtc(),
                 Notes = ra.Notes,
                 IsActive = ra.IsActive(now),
-                CreatedByName = ra.CreatedByUser?.DisplayName,
+                CreatedByName = ra.CreatedByDisplayName,
                 CreatedAt = ra.CreatedAt.ToDateTimeUtc()
             }).ToList(),
             RoleFilter = role,

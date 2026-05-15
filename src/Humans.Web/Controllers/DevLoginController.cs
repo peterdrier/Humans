@@ -92,6 +92,21 @@ public class DevLoginController : Controller
         if (string.Equals(info.Slug, "guest", StringComparison.OrdinalIgnoreCase))
             return await SignInAsFreshGuestAsync(info, returnUrl);
 
+        var (resolvedUserId, user) = await ResolveSeededPersonaUserAsync(info);
+        if (user is null)
+        {
+            _logger.LogError("Dev persona {Slug} ({Id}) not found after seeding", info.Slug, resolvedUserId);
+            return StatusCode(500, "Dev persona seeding failed");
+        }
+
+        await _signInManager.SignInAsync(user, isPersistent: false);
+        _logger.LogWarning("DEV LOGIN: signed in as {Email} ({Id})", user.Email, user.Id);
+
+        return RedirectToLocalOrHome(returnUrl);
+    }
+
+    private async Task<(Guid UserId, User? User)> ResolveSeededPersonaUserAsync(DevPersonaInfo info)
+    {
         var id = DevPersonaSeeder.PersonaGuid(info.Slug);
         Guid resolvedUserId;
 
@@ -111,24 +126,17 @@ public class DevLoginController : Controller
             SeedLock.Release();
         }
 
-        var email = $"dev-{info.Slug}@localhost";
         var user = await _userManager.FindByIdAsync(resolvedUserId.ToString());
-        if (user is null)
-        {
-            var byEmailUserId = await _userEmailService.GetUserIdByVerifiedEmailAsync(email);
-            if (byEmailUserId is not null)
-                user = await _userManager.FindByIdAsync(byEmailUserId.Value.ToString());
-        }
-        if (user is null)
-        {
-            _logger.LogError("Dev persona {Slug} ({Id}) not found after seeding", info.Slug, resolvedUserId);
-            return StatusCode(500, "Dev persona seeding failed");
-        }
+        if (user is not null)
+            return (resolvedUserId, user);
 
-        await _signInManager.SignInAsync(user, isPersistent: false);
-        _logger.LogWarning("DEV LOGIN: signed in as {Email} ({Id})", user.Email, user.Id);
+        var email = $"dev-{info.Slug}@localhost";
+        var byEmailUserId = await _userEmailService.GetUserIdByVerifiedEmailAsync(email);
+        user = byEmailUserId is null
+            ? null
+            : await _userManager.FindByIdAsync(byEmailUserId.Value.ToString());
 
-        return RedirectToLocalOrHome(returnUrl);
+        return (resolvedUserId, user);
     }
 
     /// <summary>

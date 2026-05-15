@@ -128,6 +128,42 @@ public class AdminLegalDocumentServiceTests : IDisposable
     }
 
     [HumansFact]
+    public async Task CreateLegalDocumentWithInitialSyncAsync_SyncsWhenFolderPathIsPresent()
+    {
+        _syncService.SyncResult = "updated 1 file";
+        var request = new AdminLegalDocumentUpsertRequest(
+            "Privacy Policy",
+            _team.Id,
+            true,
+            true,
+            7,
+            "privacy/");
+
+        var result = await _service.CreateLegalDocumentWithInitialSyncAsync(request);
+
+        result.InitialSyncStatus.Should().Be(AdminLegalDocumentInitialSyncStatus.Synced);
+        result.SyncMessage.Should().Be("updated 1 file");
+        _syncService.LastSyncedDocumentId.Should().Be(result.Document.Id);
+    }
+
+    [HumansFact]
+    public async Task CreateLegalDocumentWithInitialSyncAsync_SkipsSyncWithoutFolderPath()
+    {
+        var request = new AdminLegalDocumentUpsertRequest(
+            "Privacy Policy",
+            _team.Id,
+            true,
+            true,
+            7,
+            null);
+
+        var result = await _service.CreateLegalDocumentWithInitialSyncAsync(request);
+
+        result.InitialSyncStatus.Should().Be(AdminLegalDocumentInitialSyncStatus.NoGitHubFolderPath);
+        _syncService.LastSyncedDocumentId.Should().BeNull();
+    }
+
+    [HumansFact]
     public async Task UpdateVersionSummaryAsync_TrimsAndPersistsSummary()
     {
         var document = await SeedDocumentAsync("Code of Conduct");
@@ -216,24 +252,24 @@ public class AdminLegalDocumentServiceTests : IDisposable
         public Task<IReadOnlyList<LegalDocument>> CheckForUpdatesAsync(CancellationToken cancellationToken = default)
             => Task.FromResult<IReadOnlyList<LegalDocument>>(Array.Empty<LegalDocument>());
 
-        public Task<IReadOnlyList<LegalDocument>> GetActiveDocumentsAsync(CancellationToken cancellationToken = default)
-            => Task.FromResult<IReadOnlyList<LegalDocument>>(Array.Empty<LegalDocument>());
+        public Task<IReadOnlyList<LegalDocumentSnapshot>> GetActiveDocumentsAsync(CancellationToken cancellationToken = default)
+            => Task.FromResult<IReadOnlyList<LegalDocumentSnapshot>>(Array.Empty<LegalDocumentSnapshot>());
 
-        public Task<IReadOnlyList<DocumentVersion>> GetRequiredVersionsAsync(CancellationToken cancellationToken = default)
-            => Task.FromResult<IReadOnlyList<DocumentVersion>>(Array.Empty<DocumentVersion>());
+        public Task<IReadOnlyList<RequiredDocumentVersionSnapshot>> GetRequiredVersionsAsync(CancellationToken cancellationToken = default)
+            => Task.FromResult<IReadOnlyList<RequiredDocumentVersionSnapshot>>(Array.Empty<RequiredDocumentVersionSnapshot>());
 
-        public Task<DocumentVersion?> GetVersionByIdAsync(Guid versionId, CancellationToken cancellationToken = default)
-            => Task.FromResult<DocumentVersion?>(null);
+        public Task<LegalDocumentVersionSnapshot?> GetVersionByIdAsync(Guid versionId, CancellationToken cancellationToken = default)
+            => Task.FromResult<LegalDocumentVersionSnapshot?>(null);
 
-        public Task<IReadOnlyList<DocumentVersion>> GetRequiredDocumentVersionsForTeamAsync(Guid teamId, CancellationToken cancellationToken = default)
+        public Task<IReadOnlyList<RequiredDocumentVersionSnapshot>> GetRequiredDocumentVersionsForTeamAsync(Guid teamId, CancellationToken cancellationToken = default)
         {
-            return Task.FromResult<IReadOnlyList<DocumentVersion>>(Array.Empty<DocumentVersion>());
+            return Task.FromResult<IReadOnlyList<RequiredDocumentVersionSnapshot>>(Array.Empty<RequiredDocumentVersionSnapshot>());
         }
 
-        public Task<IReadOnlyList<LegalDocument>> GetActiveRequiredDocumentsForTeamsAsync(
+        public Task<IReadOnlyList<ActiveRequiredLegalDocumentSnapshot>> GetActiveRequiredDocumentsForTeamsAsync(
             IReadOnlyCollection<Guid> teamIds, CancellationToken cancellationToken = default)
         {
-            return Task.FromResult<IReadOnlyList<LegalDocument>>(Array.Empty<LegalDocument>());
+            return Task.FromResult<IReadOnlyList<ActiveRequiredLegalDocumentSnapshot>>(Array.Empty<ActiveRequiredLegalDocumentSnapshot>());
         }
     }
 }

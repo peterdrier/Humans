@@ -5,6 +5,7 @@ using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Expenses;
 using Humans.Application.Interfaces.Holded;
+using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
@@ -33,6 +34,7 @@ public class ExpenseReportServiceTests
     private readonly IBudgetService _budgetService;
     private readonly ITeamService _teamService;
     private readonly IUserService _userService;
+    private readonly IProfileService _profileService;
     private readonly IAuditLogService _auditLogService;
     private readonly ExpenseReportService _sut;
 
@@ -48,6 +50,7 @@ public class ExpenseReportServiceTests
         _budgetService = Substitute.For<IBudgetService>();
         _teamService = Substitute.For<ITeamService>();
         _userService = Substitute.For<IUserService>();
+        _profileService = Substitute.For<IProfileService>();
         _auditLogService = Substitute.For<IAuditLogService>();
 
         _sut = new ExpenseReportService(
@@ -56,6 +59,7 @@ public class ExpenseReportServiceTests
             _budgetService,
             _teamService,
             _userService,
+            _profileService,
             _auditLogService,
             Substitute.For<IHoldedClient>(),
             new FakeClock(FakeNow),
@@ -134,6 +138,35 @@ public class ExpenseReportServiceTests
     }
 
     [HumansFact]
+    public async Task UpdateDraftWithResultAsync_ReturnsSuccess_WhenDraftUpdated()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, category.Id, null);
+
+        var result = await _sut.UpdateDraftWithResultAsync(id, submitter, category.Id, "updated note");
+
+        result.Succeeded.Should().BeTrue();
+        result.ErrorMessage.Should().BeNull();
+        var loaded = await _sut.GetAsync(id);
+        loaded!.Note.Should().Be("updated note");
+    }
+
+    [HumansFact]
+    public async Task UpdateDraftWithResultAsync_ReturnsFailure_WhenNotSubmitter()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var other = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, category.Id, null);
+
+        var result = await _sut.UpdateDraftWithResultAsync(id, other, category.Id, null);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("Only the submitter");
+    }
+
+    [HumansFact]
     public async Task GetAsync_ReturnsNull_ForMissingId()
     {
         var result = await _sut.GetAsync(Guid.NewGuid());
@@ -156,6 +189,39 @@ public class ExpenseReportServiceTests
     }
 
     // ─────────────────────────────── 4.3 ─────────────────────────────────────
+
+    [HumansFact]
+    public async Task GetDetailViewDataAsync_ReturnsDraftSubmitterFlagsAndIban()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, category.Id, null);
+        var report = await _sut.GetAsync(id);
+        _profileService.GetProfileAsync(submitter, Arg.Any<CancellationToken>())
+            .Returns(new Profile { Id = Guid.NewGuid(), UserId = submitter, Iban = "ES9121000418450200051332" });
+
+        var result = await _sut.GetDetailViewDataAsync(submitter, report!);
+
+        result.CanEdit.Should().BeTrue();
+        result.CanSubmit.Should().BeTrue();
+        result.CanWithdraw.Should().BeFalse();
+        result.HasIban.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task GetDetailViewDataAsync_DeniesSubmitterActionsForOtherViewer()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, category.Id, null);
+        var report = await _sut.GetAsync(id);
+
+        var result = await _sut.GetDetailViewDataAsync(Guid.NewGuid(), report!);
+
+        result.CanEdit.Should().BeFalse();
+        result.CanSubmit.Should().BeFalse();
+        result.CanWithdraw.Should().BeFalse();
+    }
 
     [HumansFact]
     public async Task AddLineAsync_AddsLine_AndUpdatesTotal()
@@ -187,6 +253,35 @@ public class ExpenseReportServiceTests
     }
 
     [HumansFact]
+    public async Task AddLineWithResultAsync_ReturnsSuccess_WhenLineAdded()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, category.Id, null);
+
+        var result = await _sut.AddLineWithResultAsync(id, submitter, "Supplies", 25.50m);
+
+        result.Succeeded.Should().BeTrue();
+        result.ErrorMessage.Should().BeNull();
+        var loaded = await _sut.GetAsync(id);
+        loaded!.Total.Should().Be(25.50m);
+    }
+
+    [HumansFact]
+    public async Task AddLineWithResultAsync_ReturnsFailure_WhenNotSubmitter()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var other = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, category.Id, null);
+
+        var result = await _sut.AddLineWithResultAsync(id, other, "x", 10m);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("Only the submitter");
+    }
+
+    [HumansFact]
     public async Task RemoveLineAsync_RemovesLine_AndRecomputesTotal()
     {
         var (_, category) = SetupActiveYear();
@@ -200,6 +295,38 @@ public class ExpenseReportServiceTests
         var loaded = await _sut.GetAsync(id);
         loaded!.Total.Should().Be(20m);
         loaded.Lines.Should().HaveCount(1);
+    }
+
+    [HumansFact]
+    public async Task RemoveLineWithResultAsync_ReturnsSuccess_WhenLineRemoved()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, category.Id, null);
+        var lineA = await _sut.AddLineAsync(id, submitter, "A", 10m);
+        await _sut.AddLineAsync(id, submitter, "B", 20m);
+
+        var result = await _sut.RemoveLineWithResultAsync(id, submitter, lineA);
+
+        result.Succeeded.Should().BeTrue();
+        result.ErrorMessage.Should().BeNull();
+        var loaded = await _sut.GetAsync(id);
+        loaded!.Total.Should().Be(20m);
+    }
+
+    [HumansFact]
+    public async Task RemoveLineWithResultAsync_ReturnsFailure_WhenNotSubmitter()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var other = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, category.Id, null);
+        var lineId = await _sut.AddLineAsync(id, submitter, "A", 10m);
+
+        var result = await _sut.RemoveLineWithResultAsync(id, other, lineId);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("Only the submitter");
     }
 
     [HumansFact]
@@ -218,6 +345,37 @@ public class ExpenseReportServiceTests
     }
 
     // ─────────────────── AttachFileToLineAsync / RemoveAttachmentFromLineAsync ───
+
+    [HumansFact]
+    public async Task UpdateLineWithResultAsync_ReturnsSuccess_WhenLineUpdated()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, category.Id, null);
+        var lineId = await _sut.AddLineAsync(id, submitter, "A", 10m);
+
+        var result = await _sut.UpdateLineWithResultAsync(id, submitter, lineId, "A updated", 15m);
+
+        result.Succeeded.Should().BeTrue();
+        result.ErrorMessage.Should().BeNull();
+        var loaded = await _sut.GetAsync(id);
+        loaded!.Total.Should().Be(15m);
+    }
+
+    [HumansFact]
+    public async Task UpdateLineWithResultAsync_ReturnsFailure_WhenNotSubmitter()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var other = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, category.Id, null);
+        var lineId = await _sut.AddLineAsync(id, submitter, "A", 10m);
+
+        var result = await _sut.UpdateLineWithResultAsync(id, other, lineId, "A updated", 15m);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("Only the submitter");
+    }
 
     [HumansFact]
     public async Task AttachFileToLineAsync_StoresFile_CreatesRow_LinksLine_Audits()
@@ -245,6 +403,66 @@ public class ExpenseReportServiceTests
             "ExpenseReport", id,
             Arg.Any<string>(),
             submitter);
+    }
+
+    [HumansFact]
+    public async Task AttachFileToLineWithResultAsync_ReturnsSuccess_WhenAttachmentUploaded()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, category.Id, null);
+        var lineId = await _sut.AddLineAsync(id, submitter, "Item", 10m);
+
+        await using var stream = new MemoryStream([1, 2, 3]);
+        var result = await _sut.AttachFileToLineWithResultAsync(
+            id, submitter, lineId, "receipt.pdf", "application/pdf", stream);
+
+        result.Succeeded.Should().BeTrue();
+        result.ErrorMessage.Should().BeNull();
+        var loaded = await _sut.GetAsync(id);
+        loaded!.Lines[0].AttachmentId.Should().NotBeNull();
+    }
+
+    [HumansFact]
+    public async Task AttachFileToLineWithResultAsync_ReturnsFailure_WhenFileTypeUnsupported()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, category.Id, null);
+        var lineId = await _sut.AddLineAsync(id, submitter, "Item", 10m);
+
+        await using var stream = new MemoryStream([1, 2, 3]);
+        var result = await _sut.AttachFileToLineWithResultAsync(
+            id, submitter, lineId, "receipt.exe", "application/octet-stream", stream);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("Unsupported file type");
+    }
+
+    [HumansFact]
+    public async Task TryReadAttachmentAsync_ReadsAttachmentFileFromStorage()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, category.Id, null);
+        var lineId = await _sut.AddLineAsync(id, submitter, "Item", 10m);
+
+        await using var stream = new MemoryStream([1, 2, 3]);
+        var attachId = await _sut.AttachFileToLineAsync(
+            id, submitter, lineId, "receipt.pdf", "application/pdf", stream);
+        var loaded = await _sut.GetAsync(id);
+
+        _fileStorage.TryReadAsync(
+                ExpenseReportService.AttachmentKey(attachId, ".pdf"),
+                Arg.Any<CancellationToken>())
+            .Returns([4, 5, 6]);
+
+        var download = await _sut.TryReadAttachmentAsync(loaded!, attachId);
+
+        download.Should().NotBeNull();
+        download!.Bytes.Should().Equal([4, 5, 6]);
+        download.ContentType.Should().Be("application/pdf");
+        download.OriginalFileName.Should().Be("receipt.pdf");
     }
 
     [HumansFact]
@@ -411,6 +629,40 @@ public class ExpenseReportServiceTests
     }
 
     [HumansFact]
+    public async Task SubmitWithResultAsync_ReturnsSuccess_WhenReportSubmitted()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, category.Id, null);
+        var lineId = await _sut.AddLineAsync(id, submitter, "Item", 100m);
+        var attachId = await _expenseRepo.AddAttachmentAsync(MakeAttachment(submitter));
+        await _expenseRepo.SetLineAttachmentAsync(lineId, attachId);
+        SetupUserAndProfile(submitter, "Alice Tester", "ES9121000418450200051332");
+
+        var result = await _sut.SubmitWithResultAsync(id, submitter);
+
+        result.Succeeded.Should().BeTrue();
+        result.ErrorMessage.Should().BeNull();
+        var loaded = await _sut.GetAsync(id);
+        loaded!.Status.Should().Be(ExpenseReportStatus.Submitted);
+    }
+
+    [HumansFact]
+    public async Task SubmitWithResultAsync_ReturnsFailure_WhenLineHasNoAttachment()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var id = await _sut.CreateDraftAsync(submitter, category.Id, null);
+        await _sut.AddLineAsync(id, submitter, "No attachment line", 50m);
+        SetupUserAndProfile(submitter, "Bob", "ES1234");
+
+        var result = await _sut.SubmitWithResultAsync(id, submitter);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("attachment");
+    }
+
+    [HumansFact]
     public async Task WithdrawAsync_FlipsToWithdrawn()
     {
         var (_, category) = SetupActiveYear();
@@ -443,8 +695,93 @@ public class ExpenseReportServiceTests
             Arg.Any<string>(),
             submitter);
     }
+    [HumansFact]
+    public async Task WithdrawWithResultAsync_ReturnsSuccess_WhenReportWithdrawn()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var reportId = Guid.NewGuid();
+        await SeedReportWithStatus(reportId, submitter, category.Id, Guid.NewGuid(),
+            ExpenseReportStatus.Submitted);
+
+        var result = await _sut.WithdrawWithResultAsync(reportId, submitter);
+
+        result.Succeeded.Should().BeTrue();
+        result.ErrorMessage.Should().BeNull();
+        var loaded = await _sut.GetAsync(reportId);
+        loaded!.Status.Should().Be(ExpenseReportStatus.Withdrawn);
+    }
+
+    [HumansFact]
+    public async Task WithdrawWithResultAsync_ReturnsFailure_WhenNotSubmitter()
+    {
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var other = Guid.NewGuid();
+        var reportId = Guid.NewGuid();
+        await SeedReportWithStatus(reportId, submitter, category.Id, Guid.NewGuid(),
+            ExpenseReportStatus.Submitted);
+
+        var result = await _sut.WithdrawWithResultAsync(reportId, other);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("Only the submitter");
+    }
 
     // ─────────────────────────────── 4.5 ─────────────────────────────────────
+
+    [HumansFact]
+    public async Task SaveSubmitterIbanWithResultAsync_ReturnsSuccess_WhenIbanSaved()
+    {
+        var submitter = Guid.NewGuid();
+        _profileService
+            .SetIbanAsync(submitter, "ES9121000418450200051332", Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        var result = await _sut.SaveSubmitterIbanWithResultAsync(submitter, "ES91 2100 0418 4502 0005 1332");
+
+        result.Succeeded.Should().BeTrue();
+        result.Message.Should().Be("IBAN saved.");
+        result.HasIban.Should().BeTrue();
+        result.MaskedIban.Should().NotBeNullOrWhiteSpace();
+    }
+
+    [HumansFact]
+    public async Task SaveSubmitterIbanWithResultAsync_ReturnsValidationFailure_WhenIbanInvalid()
+    {
+        var submitter = Guid.NewGuid();
+        _profileService.GetProfileAsync(submitter, Arg.Any<CancellationToken>())
+            .Returns(new Profile { Id = Guid.NewGuid(), UserId = submitter, Iban = "ES9121000418450200051332" });
+
+        var result = await _sut.SaveSubmitterIbanWithResultAsync(submitter, "not-an-iban");
+
+        result.Succeeded.Should().BeFalse();
+        result.IsValidationError.Should().BeTrue();
+        result.Message.Should().Be("Invalid IBAN format.");
+        result.HasIban.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task GetSubmitterIbanViewAsync_ReturnsMaskedIban_WhenProfileHasIban()
+    {
+        var submitter = Guid.NewGuid();
+        _profileService.GetProfileAsync(submitter, Arg.Any<CancellationToken>())
+            .Returns(new Profile { Id = Guid.NewGuid(), UserId = submitter, Iban = "ES9121000418450200051332" });
+
+        var result = await _sut.GetSubmitterIbanViewAsync(submitter);
+
+        result.HasIban.Should().BeTrue();
+        result.MaskedIban.Should().NotBeNullOrWhiteSpace();
+    }
+
+    [HumansFact]
+    public async Task GetSubmitterIbanViewAsync_ReturnsEmptyState_WhenProfileMissing()
+    {
+        var result = await _sut.GetSubmitterIbanViewAsync(Guid.NewGuid());
+
+        result.HasIban.Should().BeFalse();
+        result.MaskedIban.Should().BeNull();
+    }
 
     [HumansFact]
     public async Task CategoryRequiresCoordinatorEndorsementAsync_AlwaysReturnsFalse()
@@ -484,8 +821,7 @@ public class ExpenseReportServiceTests
             ExpenseReportStatus.Submitted);
 
         var nonCoordinator = Guid.NewGuid();
-        _budgetService.GetCategoryByIdAsync(category.Id)
-            .Returns(category);
+        _budgetService.GetCategoryByIdAsync(category.Id).Returns(ToBudgetCategorySnapshot(category));
         _teamService.IsUserCoordinatorOfTeamAsync(category.TeamId!.Value, nonCoordinator,
             Arg.Any<CancellationToken>()).Returns(false);
 
@@ -513,6 +849,42 @@ public class ExpenseReportServiceTests
     }
 
     [HumansFact]
+    public async Task CoordinatorEndorseWithResultAsync_ReturnsSuccess_WhenEndorsed()
+    {
+        var (_, category) = SetupActiveYear();
+        var coordinator = Guid.NewGuid();
+        var reportId = Guid.NewGuid();
+        await SeedReportWithStatus(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
+            ExpenseReportStatus.Submitted);
+        SetupCoordinatorAuthz(category.Id, category.TeamId!.Value, coordinator);
+
+        var result = await _sut.CoordinatorEndorseWithResultAsync(reportId, coordinator);
+
+        result.Succeeded.Should().BeTrue();
+        result.ErrorMessage.Should().BeNull();
+        var loaded = await _sut.GetAsync(reportId);
+        loaded!.Status.Should().Be(ExpenseReportStatus.CoordinatorEndorsed);
+    }
+
+    [HumansFact]
+    public async Task CoordinatorEndorseWithResultAsync_ReturnsFailure_WhenNotCoordinator()
+    {
+        var (_, category) = SetupActiveYear();
+        var reportId = Guid.NewGuid();
+        await SeedReportWithStatus(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
+            ExpenseReportStatus.Submitted);
+        var nonCoordinator = Guid.NewGuid();
+        _budgetService.GetCategoryByIdAsync(category.Id).Returns(ToBudgetCategorySnapshot(category));
+        _teamService.IsUserCoordinatorOfTeamAsync(category.TeamId!.Value, nonCoordinator,
+            Arg.Any<CancellationToken>()).Returns(false);
+
+        var result = await _sut.CoordinatorEndorseWithResultAsync(reportId, nonCoordinator);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("not a coordinator");
+    }
+
+    [HumansFact]
     public async Task CoordinatorRejectAsync_ReturnsToSubmitted_And_Audits()
     {
         var (_, category) = SetupActiveYear();
@@ -537,6 +909,42 @@ public class ExpenseReportServiceTests
     }
 
     // ─────────────────────────────── 4.7 ─────────────────────────────────────
+
+    [HumansFact]
+    public async Task CoordinatorRejectWithResultAsync_ReturnsSuccess_WhenRejected()
+    {
+        var (_, category) = SetupActiveYear();
+        var coordinator = Guid.NewGuid();
+        var reportId = Guid.NewGuid();
+        await SeedReportWithStatus(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
+            ExpenseReportStatus.Submitted);
+        SetupCoordinatorAuthz(category.Id, category.TeamId!.Value, coordinator);
+
+        var result = await _sut.CoordinatorRejectWithResultAsync(reportId, coordinator, "Missing invoice");
+
+        result.Succeeded.Should().BeTrue();
+        result.ErrorMessage.Should().BeNull();
+        var loaded = await _sut.GetAsync(reportId);
+        loaded!.Status.Should().Be(ExpenseReportStatus.Draft);
+    }
+
+    [HumansFact]
+    public async Task CoordinatorRejectWithResultAsync_ReturnsFailure_WhenNotCoordinator()
+    {
+        var (_, category) = SetupActiveYear();
+        var reportId = Guid.NewGuid();
+        await SeedReportWithStatus(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
+            ExpenseReportStatus.Submitted);
+        var nonCoordinator = Guid.NewGuid();
+        _budgetService.GetCategoryByIdAsync(category.Id).Returns(ToBudgetCategorySnapshot(category));
+        _teamService.IsUserCoordinatorOfTeamAsync(category.TeamId!.Value, nonCoordinator,
+            Arg.Any<CancellationToken>()).Returns(false);
+
+        var result = await _sut.CoordinatorRejectWithResultAsync(reportId, nonCoordinator, "Missing invoice");
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("not a coordinator");
+    }
 
     [HumansFact]
     public async Task ApproveAsync_FlipsToApproved_AndAudits()
@@ -585,6 +993,32 @@ public class ExpenseReportServiceTests
     }
 
     [HumansFact]
+    public async Task ApproveWithResultAsync_ReturnsSuccess_WhenApproved()
+    {
+        var (_, category) = SetupActiveYear();
+        var actor = Guid.NewGuid();
+        var reportId = Guid.NewGuid();
+        await SeedReportWithStatus(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
+            ExpenseReportStatus.Submitted);
+
+        var result = await _sut.ApproveWithResultAsync(reportId, actor, null);
+
+        result.Succeeded.Should().BeTrue();
+        result.ErrorMessage.Should().BeNull();
+        var loaded = await _sut.GetAsync(reportId);
+        loaded!.Status.Should().Be(ExpenseReportStatus.Approved);
+    }
+
+    [HumansFact]
+    public async Task ApproveWithResultAsync_ReturnsFailure_WhenReportMissing()
+    {
+        var result = await _sut.ApproveWithResultAsync(Guid.NewGuid(), Guid.NewGuid(), null);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("Could not approve");
+    }
+
+    [HumansFact]
     public async Task FinanceRejectAsync_ReturnsToDraft_AndAudits()
     {
         var (_, category) = SetupActiveYear();
@@ -607,6 +1041,32 @@ public class ExpenseReportServiceTests
     }
 
     // ─────────────────────────────── 4.8 ─────────────────────────────────────
+
+    [HumansFact]
+    public async Task FinanceRejectWithResultAsync_ReturnsSuccess_WhenRejected()
+    {
+        var (_, category) = SetupActiveYear();
+        var actor = Guid.NewGuid();
+        var reportId = Guid.NewGuid();
+        await SeedReportWithStatus(reportId, Guid.NewGuid(), category.Id, Guid.NewGuid(),
+            ExpenseReportStatus.Submitted);
+
+        var result = await _sut.FinanceRejectWithResultAsync(reportId, actor, "Wrong category");
+
+        result.Succeeded.Should().BeTrue();
+        result.ErrorMessage.Should().BeNull();
+        var loaded = await _sut.GetAsync(reportId);
+        loaded!.Status.Should().Be(ExpenseReportStatus.Draft);
+    }
+
+    [HumansFact]
+    public async Task FinanceRejectWithResultAsync_ReturnsFailure_WhenReportMissing()
+    {
+        var result = await _sut.FinanceRejectWithResultAsync(Guid.NewGuid(), Guid.NewGuid(), "Wrong category");
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("Could not reject");
+    }
 
     [HumansFact]
     public async Task MarkSepaSentAsync_FlipsBatch_AndAuditsEach()
@@ -742,11 +1202,37 @@ public class ExpenseReportServiceTests
         year.Groups.Add(group);
 
         _budgetService.GetActiveYearAsync().Returns(year);
-        _budgetService.GetCategoryByIdAsync(category.Id).Returns(category);
+        _budgetService.GetCategoryByIdAsync(category.Id).Returns(ToBudgetCategorySnapshot(category));
 
         return (year, category);
     }
 
+
+    private static BudgetCategorySnapshot ToBudgetCategorySnapshot(BudgetCategory category) =>
+        new(
+            category.Id,
+            category.BudgetGroupId,
+            category.Name,
+            category.AllocatedAmount,
+            category.ExpenditureType,
+            category.TeamId,
+            category.SortOrder,
+            category.BudgetGroup is null
+                ? null
+                : new BudgetCategoryGroupSnapshot(
+                    category.BudgetGroup.Id,
+                    category.BudgetGroup.BudgetYearId,
+                    category.BudgetGroup.Name,
+                    category.BudgetGroup.IsRestricted,
+                    category.BudgetGroup.IsTicketingGroup,
+                    category.BudgetGroup.BudgetYear is null
+                        ? null
+                        : new BudgetCategoryYearSnapshot(
+                            category.BudgetGroup.BudgetYear.Id,
+                            category.BudgetGroup.BudgetYear.Year,
+                            category.BudgetGroup.BudgetYear.Name,
+                            category.BudgetGroup.BudgetYear.IsDeleted)),
+            []);
     private void SetupUserAndProfile(Guid userId, string displayName, string iban)
     {
         _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>())
@@ -767,7 +1253,7 @@ public class ExpenseReportServiceTests
             CreatedAt = FakeNow,
             UpdatedAt = FakeNow
         };
-        _budgetService.GetCategoryByIdAsync(categoryId).Returns(cat);
+        _budgetService.GetCategoryByIdAsync(categoryId).Returns(ToBudgetCategorySnapshot(cat));
         _teamService.IsUserCoordinatorOfTeamAsync(teamId, coordinatorUserId,
             Arg.Any<CancellationToken>()).Returns(true);
     }
@@ -803,3 +1289,4 @@ public class ExpenseReportServiceTests
         UploadedAt = Instant.FromUtc(2026, 5, 1, 0, 0)
     };
 }
+

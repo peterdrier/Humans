@@ -275,7 +275,7 @@ internal sealed class ClassifierHarness
         // Default: no pref row for any user. SetMarketingPref overrides per-user.
         _prefs
             .GetPreferenceOrNullAsync(Arg.Any<Guid>(), Arg.Any<MessageCategory>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<CommunicationPreference?>(null));
+            .Returns(Task.FromResult<CommunicationPreferenceSnapshot?>(null));
 
         Service = new MailerImportService(
             _ml,
@@ -296,17 +296,10 @@ internal sealed class ClassifierHarness
 
     public void SetMarketingPref(Guid userId, bool optedOut, string source, Instant updatedAt)
     {
-        var pref = new CommunicationPreference
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            Category = MessageCategory.Marketing,
-            OptedOut = optedOut,
-            UpdateSource = source,
-            UpdatedAt = updatedAt,
-        };
+        var pref = new CommunicationPreferenceSnapshot(MessageCategory.Marketing, optedOut, InboxEnabled: true, source, updatedAt);
         _prefs
             .GetPreferenceOrNullAsync(userId, MessageCategory.Marketing, Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<CommunicationPreference?>(pref));
+            .Returns(Task.FromResult<CommunicationPreferenceSnapshot?>(pref));
     }
 }
+

@@ -65,10 +65,10 @@ public class StubGoogleSyncService : IGoogleSyncService
         return Task.FromResult(new GroupSettingsDriftResult());
     }
 
-    public Task<bool> RemediateGroupSettingsAsync(string groupEmail, CancellationToken cancellationToken = default)
+    public Task<GroupSettingsRemediationResult> RemediateGroupSettingsAsync(string groupEmail, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("[STUB] Would remediate settings for Google Group {GroupEmail}", groupEmail);
-        return Task.FromResult(true);
+        return Task.FromResult(GroupSettingsRemediationResult.Success());
     }
 
     public Task<AllGroupsResult> GetAllDomainGroupsAsync(CancellationToken cancellationToken = default)
@@ -119,10 +119,10 @@ public class StubGoogleSyncService : IGoogleSyncService
         return Task.FromResult(0);
     }
 
-    public Task<IReadOnlyList<GoogleSyncOutboxEvent>> GetRecentOutboxEventsAsync(
+    public Task<IReadOnlyList<GoogleSyncOutboxEventSnapshot>> GetRecentOutboxEventsAsync(
         int take, CancellationToken cancellationToken = default)
     {
         // Stub: no outbox in non-production environments.
-        return Task.FromResult<IReadOnlyList<GoogleSyncOutboxEvent>>(Array.Empty<GoogleSyncOutboxEvent>());
+        return Task.FromResult<IReadOnlyList<GoogleSyncOutboxEventSnapshot>>(Array.Empty<GoogleSyncOutboxEventSnapshot>());
     }
 }

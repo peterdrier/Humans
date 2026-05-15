@@ -128,14 +128,11 @@ public class GuestController : HumansControllerBase
             if (userId is null)
                 return Unauthorized();
 
-            if (category.IsAlwaysOn())
+            if (!CanUpdatePreference(category))
                 return BadRequest("Cannot change always-on categories.");
 
-            // Anonymous token-driven updates are attributed to "MagicLink"; session-driven to "Guest".
-            var source = fromToken ? "MagicLink" : "Guest";
-
             await _commPrefService.UpdatePreferenceAsync(
-                userId.Value, category, optedOut: !emailEnabled, inboxEnabled: alertEnabled, source);
+                userId.Value, category, optedOut: !emailEnabled, inboxEnabled: alertEnabled, GetPreferenceUpdateSource(fromToken));
 
             return Ok();
         }
@@ -145,6 +142,10 @@ public class GuestController : HumansControllerBase
             return StatusCode(500);
         }
     }
+
+    private static bool CanUpdatePreference(MessageCategory category) => !category.IsAlwaysOn();
+
+    private static string GetPreferenceUpdateSource(bool fromToken) => fromToken ? "MagicLink" : "Guest";
 
     // ─── GDPR Data Export ────────────────────────────────────────────
 
@@ -205,18 +206,14 @@ public class GuestController : HumansControllerBase
             // membership/role revoke, audit, email, and shift-authorization
             // invalidation all live in AccountDeletionService.
             var result = await _accountDeletionService.RequestDeletionAsync(user.Id);
-            if (!result.Success)
+            var flash = GuestDeletionRequestFlash.From(result);
+            if (!flash.Success)
             {
-                SetError(string.Equals(result.ErrorKey, "AlreadyPending", StringComparison.Ordinal)
-                    ? "A deletion request is already pending."
-                    : "Failed to process deletion request. Please try again.");
+                SetError(flash.Message);
                 return RedirectToAction(nameof(Index));
             }
 
-            var effective = result.EffectiveDeletionDate.ToDisplayDate();
-            SetSuccess(result.IsHeldForTicket
-                ? $"Deletion request recorded. Because you have tickets for an upcoming event, your account will be deleted after {effective}."
-                : $"Deletion request recorded. Your account will be permanently deleted on {effective}.");
+            SetSuccess(flash.Message);
 
             return RedirectToAction(nameof(Index));
         }

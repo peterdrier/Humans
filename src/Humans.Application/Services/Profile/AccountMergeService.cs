@@ -83,11 +83,17 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
         _notificationService = notificationService;
     }
 
-    public Task<IReadOnlyList<AccountMergeRequest>> GetPendingRequestsAsync(CancellationToken ct = default) =>
-        _mergeRepository.GetPendingAsync(ct);
+    public async Task<IReadOnlyList<AccountMergeRequestSnapshot>> GetPendingRequestsAsync(CancellationToken ct = default)
+    {
+        var requests = await _mergeRepository.GetPendingAsync(ct);
+        return requests.Select(ToSnapshot).ToList();
+    }
 
-    public Task<AccountMergeRequest?> GetByIdAsync(Guid id, CancellationToken ct = default) =>
-        _mergeRepository.GetByIdAsync(id, ct);
+    public async Task<AccountMergeRequestSnapshot?> GetByIdAsync(Guid id, CancellationToken ct = default)
+    {
+        var request = await _mergeRepository.GetByIdAsync(id, ct);
+        return request is null ? null : ToSnapshot(request);
+    }
 
     public async Task AcceptAsync(
         Guid requestId, Guid adminUserId,
@@ -142,6 +148,27 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
         string Description,
         Guid? RelatedEntityId = null,
         string? RelatedEntityType = null);
+
+    private static AccountMergeRequestSnapshot ToSnapshot(AccountMergeRequest request) =>
+        new(
+            request.Id,
+            request.Email,
+            ToUserSnapshot(request.TargetUser),
+            ToUserSnapshot(request.SourceUser),
+            request.Status,
+            request.CreatedAt,
+            request.ResolvedAt,
+            request.ResolvedByUser?.DisplayName,
+            request.AdminNotes);
+
+    private static AccountMergeUserSnapshot ToUserSnapshot(User user) =>
+        new(
+            user.Id,
+            user.DisplayName,
+            user.Email,
+            user.ProfilePictureUrl,
+            user.PreferredLanguage,
+            user.LastLoginAt);
 
     private async Task FoldAsync(
         Guid sourceUserId, Guid targetUserId,

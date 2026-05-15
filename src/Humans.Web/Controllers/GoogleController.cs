@@ -197,17 +197,12 @@ public class GoogleController : HumansControllerBase
     public async Task<IActionResult> RemediateGroupSettings(
         [FromForm] string groupEmail, [FromForm] string? returnUrl)
     {
-        try
-        {
-            var success = await _googleSyncService.RemediateGroupSettingsAsync(groupEmail);
-            if (success) SetSuccess($"Settings remediated for {groupEmail}.");
-            else SetError($"Remediation skipped for {groupEmail} — sync may be disabled.");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to remediate settings for {GroupEmail}", groupEmail);
-            SetError($"Remediation failed for {groupEmail}: {ex.Message}");
-        }
+        var result = await _googleSyncService.RemediateGroupSettingsAsync(groupEmail);
+        if (result.Succeeded)
+            SetSuccess($"Settings remediated for {groupEmail}.");
+        else
+            SetError(result.ErrorMessage ?? $"Remediation failed for {groupEmail}.");
+
         return Redirect(Url.IsLocalUrl(returnUrl) ? returnUrl : Url.Action(nameof(AllGroups))!);
     }
 
@@ -237,17 +232,9 @@ public class GoogleController : HumansControllerBase
 
             foreach (var group in drifted)
             {
-                try
-                {
-                    var success = await _googleSyncService.RemediateGroupSettingsAsync(group.GroupEmail);
-                    if (success) fixed_++;
-                    else errors.Add($"{group.GroupEmail}: sync disabled");
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Failed to remediate {GroupEmail}", group.GroupEmail);
-                    errors.Add($"{group.GroupEmail}: {ex.Message}");
-                }
+                var remediation = await _googleSyncService.RemediateGroupSettingsAsync(group.GroupEmail);
+                if (remediation.Succeeded) fixed_++;
+                else errors.Add($"{group.GroupEmail}: {remediation.ErrorMessage ?? "failed"}");
             }
 
             if (errors.Count > 0)
@@ -495,14 +482,6 @@ public class GoogleController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ProvisionAccount(ProvisionWorkspaceAccountModel model)
     {
-        if (string.IsNullOrWhiteSpace(model.EmailPrefix) ||
-            string.IsNullOrWhiteSpace(model.FirstName) ||
-            string.IsNullOrWhiteSpace(model.LastName))
-        {
-            SetError("All fields are required.");
-            return RedirectToAction(nameof(Accounts));
-        }
-
         var currentUser = await GetCurrentUserAsync();
         if (currentUser is null) return Unauthorized();
 
@@ -571,11 +550,6 @@ public class GoogleController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ResetPassword(string email)
     {
-        if (string.IsNullOrWhiteSpace(email))
-        {
-            return BadRequest();
-        }
-
         var currentUser = await GetCurrentUserAsync();
         if (currentUser is null) return Unauthorized();
 
@@ -605,11 +579,6 @@ public class GoogleController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ResetPasswordAndGenerate2Fa(string email)
     {
-        if (string.IsNullOrWhiteSpace(email))
-        {
-            return BadRequest();
-        }
-
         var currentUser = await GetCurrentUserAsync();
         if (currentUser is null) return Unauthorized();
 

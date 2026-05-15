@@ -3,6 +3,7 @@ using Humans.Application.Interfaces;
 using Humans.Application.DTOs;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using NodaTime;
 
 namespace Humans.Application.Interfaces.GoogleIntegration;
 
@@ -86,7 +87,7 @@ public interface IGoogleSyncService : IApplicationService
     /// Applies expected settings to a Google Group, fixing any drift.
     /// Respects SyncSettings mode — returns without action if sync is disabled.
     /// </summary>
-    Task<bool> RemediateGroupSettingsAsync(string groupEmail, CancellationToken cancellationToken = default);
+    Task<GroupSettingsRemediationResult> RemediateGroupSettingsAsync(string groupEmail, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Lists all Google Groups on the domain and cross-references with the local database.
@@ -132,6 +133,23 @@ public interface IGoogleSyncService : IApplicationService
     /// (design-rules §2a/§2c) so callers do not reach past <see cref="IGoogleSyncService"/>
     /// into the repository directly.
     /// </summary>
-    Task<IReadOnlyList<GoogleSyncOutboxEvent>> GetRecentOutboxEventsAsync(
+    Task<IReadOnlyList<GoogleSyncOutboxEventSnapshot>> GetRecentOutboxEventsAsync(
         int take, CancellationToken cancellationToken = default);
 }
+
+public sealed record GroupSettingsRemediationResult(bool Succeeded, string? ErrorMessage)
+{
+    public static GroupSettingsRemediationResult Success() => new(true, null);
+
+    public static GroupSettingsRemediationResult Failure(string message) => new(false, message);
+}
+
+public sealed record GoogleSyncOutboxEventSnapshot(
+    string EventType,
+    Guid TeamId,
+    Guid UserId,
+    Instant OccurredAt,
+    Instant? ProcessedAt,
+    int RetryCount,
+    string? LastError,
+    bool FailedPermanently);

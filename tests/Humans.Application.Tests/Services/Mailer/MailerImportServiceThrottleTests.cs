@@ -164,7 +164,7 @@ internal sealed class ThrottleHarness
         // Default: no pref row for new humans → first write counts as a flip.
         _prefs
             .GetPreferenceOrNullAsync(Arg.Any<Guid>(), Arg.Any<MessageCategory>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<CommunicationPreference?>(null));
+            .Returns(Task.FromResult<CommunicationPreferenceSnapshot?>(null));
 
         Service = new MailerImportService(
             _ml, _userEmails, Substitute.For<IUserService>(),
@@ -196,17 +196,15 @@ internal sealed class ThrottleHarness
 
     public void SetMarketingPref(Guid userId, bool optedOut, string source)
     {
-        var pref = new CommunicationPreference
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            Category = MessageCategory.Marketing,
-            OptedOut = optedOut,
-            UpdateSource = source,
-            UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-        };
+        var pref = new CommunicationPreferenceSnapshot(
+            MessageCategory.Marketing,
+            optedOut,
+            InboxEnabled: true,
+            source,
+            Instant.FromUtc(2026, 1, 1, 0, 0));
         _prefs
             .GetPreferenceOrNullAsync(userId, MessageCategory.Marketing, Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<CommunicationPreference?>(pref));
+            .Returns(Task.FromResult<CommunicationPreferenceSnapshot?>(pref));
     }
 }
+

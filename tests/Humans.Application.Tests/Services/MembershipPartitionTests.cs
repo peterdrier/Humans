@@ -71,7 +71,8 @@ public class MembershipPartitionTests
             {
                 var teamId = ci.Arg<Guid>();
                 var versions = _requiredVersionsByTeam.GetValueOrDefault(teamId) ?? new();
-                return Task.FromResult<IReadOnlyList<DocumentVersion>>(versions);
+                return Task.FromResult<IReadOnlyList<RequiredDocumentVersionSnapshot>>(
+                    versions.Select(ToRequiredVersionSnapshot).ToList());
             });
 
         _consentService.GetConsentMapForUsersAsync(
@@ -85,6 +86,17 @@ public class MembershipPartitionTests
                 return Task.FromResult<IReadOnlyDictionary<Guid, IReadOnlySet<Guid>>>(result);
             });
     }
+
+    private static RequiredDocumentVersionSnapshot ToRequiredVersionSnapshot(DocumentVersion version) =>
+        new(
+            version.Id,
+            version.LegalDocumentId,
+            version.LegalDocument?.Name ?? string.Empty,
+            version.LegalDocument?.GracePeriodDays ?? 7,
+            version.VersionNumber,
+            version.EffectiveFrom,
+            version.RequiresReConsent,
+            version.ChangesSummary);
 
     [HumansFact]
     public async Task PartitionUsersAsync_ActiveUser_GoesToActiveBucket()

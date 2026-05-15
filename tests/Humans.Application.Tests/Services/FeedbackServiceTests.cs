@@ -160,6 +160,20 @@ public class FeedbackServiceTests : IDisposable
         report.AdditionalContext.Should().Be("Volunteer, Coordinator");
     }
 
+    [HumansFact(Timeout = 10000)]
+    public async Task SubmitUserFeedbackAsync_BuildsSortedRoleContext()
+    {
+        var userId = Guid.NewGuid();
+        _dbContext.Users.Add(new User { Id = userId, Email = "u@test.com", DisplayName = "U" });
+        await _dbContext.SaveChangesAsync();
+
+        var report = await _service.SubmitUserFeedbackAsync(
+            userId, FeedbackCategory.Bug, "desc", "/page", "UA",
+            ["Volunteer", "Admin", "Coordinator"], null);
+
+        report.AdditionalContext.Should().Be("Admin, Coordinator, Volunteer");
+    }
+
     [HumansFact]
     public async Task UpdateStatusAsync_SetsResolvedFields_WhenTerminal()
     {
@@ -278,6 +292,37 @@ public class FeedbackServiceTests : IDisposable
         await _emailService.Received(1).SendFeedbackResponseAsync(
             "reporter@test.com", "Reporter", "Test", "Looking into it",
             $"/Feedback/{report.Id}", "en", Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task GetFeedbackByIdForViewerAsync_NonReporter_ReturnsNull()
+    {
+        var reporterId = Guid.NewGuid();
+        _dbContext.Users.Add(new User
+        {
+            Id = reporterId,
+            Email = "reporter@test.com",
+            DisplayName = "Reporter"
+        });
+        _dbContext.FeedbackReports.Add(new FeedbackReport
+        {
+            Id = Guid.NewGuid(),
+            UserId = reporterId,
+            Category = FeedbackCategory.Bug,
+            Description = "Test",
+            PageUrl = "/test",
+            Status = FeedbackStatus.Open,
+            CreatedAt = _clock.GetCurrentInstant(),
+            UpdatedAt = _clock.GetCurrentInstant()
+        });
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.GetFeedbackByIdForViewerAsync(
+            _dbContext.FeedbackReports.Single().Id,
+            Guid.NewGuid(),
+            isAdmin: false);
+
+        result.Should().BeNull();
     }
 
     [HumansFact]

@@ -43,13 +43,12 @@ public class BudgetController : HumansControllerBase
             if (errorResult is not null) return errorResult;
 
             var isFinanceAdmin = (await _authService.AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)).Succeeded;
-            var coordinatorTeamIds = await _budgetService.GetEffectiveCoordinatorTeamIdsAsync(user.Id);
+            var data = await _budgetService.GetCoordinatorBudgetViewDataAsync(user.Id, isFinanceAdmin);
 
-            if (!isFinanceAdmin && coordinatorTeamIds.Count == 0)
+            if (data.ShouldRedirectToSummary)
                 return RedirectToAction(nameof(Summary));
 
-            var activeYear = await _budgetService.GetActiveYearAsync();
-            if (activeYear is null)
+            if (data.Year is null)
             {
                 SetInfo("No active budget year.");
                 return View("NoActiveBudget");
@@ -57,9 +56,9 @@ public class BudgetController : HumansControllerBase
 
             var model = new CoordinatorBudgetViewModel
             {
-                Year = activeYear,
-                EditableTeamIds = coordinatorTeamIds,
-                IsFinanceAdmin = isFinanceAdmin
+                Year = data.Year,
+                EditableTeamIds = data.EditableTeamIds,
+                IsFinanceAdmin = data.IsFinanceAdmin
             };
             return View(model);
         }
@@ -126,29 +125,21 @@ public class BudgetController : HumansControllerBase
             var (errorResult, user) = await RequireCurrentUserAsync();
             if (errorResult is not null) return errorResult;
 
-            var category = await _budgetService.GetCategoryByIdAsync(id);
-            if (category is null) return NotFound();
-
-            // Block access to restricted/ticketing groups for non-finance users
             var isFinanceAdmin = (await _authService.AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)).Succeeded;
-            if ((category.BudgetGroup?.IsRestricted == true || category.BudgetGroup?.IsTicketingGroup == true) && !isFinanceAdmin)
-                return Forbid();
-
-            var coordinatorTeamIds = await _budgetService.GetEffectiveCoordinatorTeamIdsAsync(user.Id);
-            if (!isFinanceAdmin && coordinatorTeamIds.Count == 0)
+            var detail = await _budgetService.GetCoordinatorCategoryDetailViewDataAsync(id, user.Id, isFinanceAdmin);
+            if (detail.Category is null) return NotFound();
+            if (detail.ShouldForbid)
                 return Forbid();
 
             // Use resource-based authorization to determine edit access
-            var canEdit = (await _authService.AuthorizeAsync(User, category, BudgetOperationRequirement.Edit)).Succeeded;
-
-            var teams = await _teamService.GetActiveTeamOptionsAsync();
+            var canEdit = (await _authService.AuthorizeAsync(User, detail.Category, BudgetOperationRequirement.Edit)).Succeeded;
 
             var model = new CoordinatorCategoryDetailViewModel
             {
-                Category = category,
+                Category = detail.Category,
                 CanEdit = canEdit,
                 IsFinanceAdmin = isFinanceAdmin,
-                Teams = teams
+                Teams = detail.Teams
             };
             return View(model);
         }
@@ -173,16 +164,14 @@ public class BudgetController : HumansControllerBase
 
         var nodaDate = expectedDate.HasValue ? LocalDate.FromDateTime(expectedDate.Value) : (LocalDate?)null;
 
-        try
-        {
-            await _budgetService.CreateLineItemAsync(budgetCategoryId, description, amount, responsibleTeamId, notes, nodaDate, vatRate, user.Id);
+        var result = await _budgetService.CreateLineItemWithResultAsync(
+            budgetCategoryId, description, amount, responsibleTeamId, notes, nodaDate, vatRate, user.Id);
+
+        if (result.Succeeded)
             SetSuccess($"Line item '{description}' created.");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error creating line item in category {CategoryId}", budgetCategoryId);
-            SetError($"Failed to create line item: {ex.Message}");
-        }
+        else
+            SetError($"Failed to create line item: {result.ErrorMessage}");
+
         return RedirectToAction(nameof(CategoryDetail), new { id = budgetCategoryId });
     }
 
@@ -202,16 +191,14 @@ public class BudgetController : HumansControllerBase
 
         var nodaDate = expectedDate.HasValue ? LocalDate.FromDateTime(expectedDate.Value) : (LocalDate?)null;
 
-        try
-        {
-            await _budgetService.UpdateLineItemAsync(id, description, amount, responsibleTeamId, notes, nodaDate, vatRate, user.Id);
+        var result = await _budgetService.UpdateLineItemWithResultAsync(
+            id, description, amount, responsibleTeamId, notes, nodaDate, vatRate, user.Id);
+
+        if (result.Succeeded)
             SetSuccess($"Line item '{description}' updated.");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error updating line item {LineItemId}", id);
-            SetError($"Failed to update line item: {ex.Message}");
-        }
+        else
+            SetError($"Failed to update line item: {result.ErrorMessage}");
+
         return RedirectToAction(nameof(CategoryDetail), new { id = lineItem.BudgetCategoryId });
     }
 

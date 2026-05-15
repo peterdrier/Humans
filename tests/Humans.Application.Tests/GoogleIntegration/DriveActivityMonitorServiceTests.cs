@@ -54,7 +54,7 @@ public class DriveActivityMonitorServiceTests
     public async Task CheckForAnomalousActivityAsync_WithNoResources_ReturnsZeroAndDoesNotHitApi()
     {
         _teamResources.GetActiveDriveFoldersAsync(Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<GoogleResource>());
+            .Returns(Array.Empty<GoogleResourceSnapshot>());
 
         var count = await _service.CheckForAnomalousActivityAsync();
 
@@ -260,7 +260,7 @@ public class DriveActivityMonitorServiceTests
 
     // ── helpers ──────────────────────────────────────────────────────────────
 
-    private void SeedResources(params GoogleResource[] resources)
+    private void SeedResources(params GoogleResourceSnapshot[] resources)
     {
         _teamResources.GetActiveDriveFoldersAsync(Arg.Any<CancellationToken>()).Returns(resources);
     }
@@ -271,14 +271,13 @@ public class DriveActivityMonitorServiceTests
             .Returns(_ => ToAsyncEnumerable(events));
     }
 
-    private static GoogleResource BuildResource(string name) => new()
-    {
-        Id = Guid.NewGuid(),
-        GoogleId = $"gid-{Guid.NewGuid():N}",
-        Name = name,
-        ResourceType = GoogleResourceType.DriveFolder,
-        TeamId = Guid.NewGuid(),
-    };
+    private static GoogleResourceSnapshot BuildResource(string name) => new(
+        Guid.NewGuid(),
+        Guid.NewGuid(),
+        $"gid-{Guid.NewGuid():N}",
+        name,
+        GoogleResourceType.DriveFolder,
+        Url: null);
 
     private static DriveActivityEvent BuildPermissionChangeEvent(
         string actorPersonName, string addedRole, string targetUser) =>

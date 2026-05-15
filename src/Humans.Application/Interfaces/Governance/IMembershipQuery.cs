@@ -1,7 +1,7 @@
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Teams;
-using Humans.Domain.Entities;
+using Humans.Domain.Enums;
 
 namespace Humans.Application.Interfaces.Governance;
 
@@ -28,10 +28,10 @@ namespace Humans.Application.Interfaces.Governance;
 public interface IMembershipQuery : IApplicationService
 {
     /// <summary>
-    /// Gets all teams the user is a member of (with <c>Team</c> navigation
-    /// populated so callers can inspect <c>SystemTeamType</c>).
+    /// Gets all teams the user is a member of, with the small amount of team
+    /// metadata needed by membership calculations.
     /// </summary>
-    Task<IReadOnlyList<TeamMember>> GetUserTeamsAsync(
+    Task<IReadOnlyList<MembershipTeamSnapshot>> GetUserTeamsAsync(
         Guid userId,
         CancellationToken cancellationToken = default);
 
@@ -58,3 +58,8 @@ public interface IMembershipQuery : IApplicationService
     Task<IReadOnlyList<Guid>> GetUserIdsWithActiveAssignmentsAsync(
         CancellationToken cancellationToken = default);
 }
+
+public sealed record MembershipTeamSnapshot(
+    Guid TeamId,
+    TeamMemberRole Role,
+    SystemTeamType TeamSystemTeamType);

@@ -1,11 +1,15 @@
+using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Store;
 using Humans.Application.Services.Store.Dtos;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Microsoft.Extensions.Logging;
 using NodaTime;
+using NodaTime.Text;
 
 namespace Humans.Application.Services.Store;
 
@@ -13,24 +17,63 @@ public class StoreService : IStoreService
 {
     private readonly IStoreRepository _repo;
     private readonly IAuditLogService _audit;
+    private readonly ICampService _campService;
     private readonly IClock _clock;
     private readonly IShiftManagementService _shifts;
+    private readonly IStripeService _stripeService;
+    private readonly ILogger<StoreService> _logger;
 
     public StoreService(
         IStoreRepository repo,
         IAuditLogService audit,
+        ICampService campService,
         IClock clock,
-        IShiftManagementService shifts)
+        IShiftManagementService shifts,
+        IStripeService stripeService,
+        ILogger<StoreService> logger)
     {
         _repo = repo;
         _audit = audit;
+        _campService = campService;
         _clock = clock;
         _shifts = shifts;
+        _stripeService = stripeService;
+        _logger = logger;
     }
 
     // ==========================================================================
     // Catalog (read)
     // ==========================================================================
+
+    public async Task<StoreIndexData> GetIndexDataAsync(
+        Guid userId,
+        bool isPrivilegedReader,
+        CancellationToken ct = default)
+    {
+        var activeEvent = await _shifts.GetActiveAsync();
+        var year = activeEvent?.Year > 0 ? activeEvent.Year : _clock.GetCurrentInstant().InUtc().Year;
+        var catalog = (await GetActiveCatalogAsync(year, ct))
+            .OrderBy(p => p.Name, StringComparer.Ordinal)
+            .ToList();
+
+        var sections = new List<StoreCampSeasonOrders>();
+        var leadSeasonId = await _campService.GetCampLeadSeasonIdForYearAsync(userId, year, ct);
+        if (leadSeasonId is { } seasonId)
+        {
+            var season = await _campService.GetCampSeasonByIdAsync(seasonId, ct);
+            if (season is not null)
+            {
+                var orders = await GetOrdersForCampSeasonAsync(season.Id, ct);
+                sections.Add(new StoreCampSeasonOrders(season.Id, season.Name, year, orders));
+            }
+        }
+
+        return new StoreIndexData(
+            year,
+            catalog,
+            sections,
+            sections.Count == 0 && !isPrivilegedReader);
+    }
 
     public async Task<IReadOnlyList<ProductDto>> GetActiveCatalogAsync(int year, CancellationToken ct = default)
     {
@@ -38,6 +81,33 @@ public class StoreService : IStoreService
         return products
             .Select(MapProduct)
             .ToList();
+    }
+
+    public async Task<StoreOrderPageData> GetOrderPageDataAsync(
+        OrderDto order,
+        bool canEdit,
+        bool canPayAuthorized,
+        CancellationToken ct = default)
+    {
+        IReadOnlyList<ProductDto> catalog = [];
+        if (canEdit)
+        {
+            var activeEvent = await _shifts.GetActiveAsync();
+            var year = activeEvent?.Year > 0 ? activeEvent.Year : _clock.GetCurrentInstant().InUtc().Year;
+            catalog = (await GetActiveCatalogAsync(year, ct))
+                .OrderBy(p => p.Name, StringComparer.Ordinal)
+                .ToList();
+        }
+
+        var season = await _campService.GetCampSeasonByIdAsync(order.CampSeasonId, ct);
+
+        return new StoreOrderPageData(
+            order,
+            catalog,
+            season?.Name ?? "(unknown camp)",
+            canEdit,
+            canPayAuthorized && order.BalanceEur > 0,
+            _stripeService.IsStoreCheckoutConfigured);
     }
 
     public async Task<IReadOnlyList<ProductDto>> GetAllProductsForYearAsync(int year, CancellationToken ct = default)
@@ -107,6 +177,49 @@ public class StoreService : IStoreService
             AuditAction.StoreProductUpdated, nameof(StoreProduct), product.Id,
             $"Updated store product '{product.Name}'",
             actorUserId);
+    }
+
+    public async Task<StoreCatalogSaveResult> SaveProductWithResultAsync(
+        StoreProductSaveRequest request,
+        Guid actorUserId,
+        CancellationToken ct = default)
+    {
+        var parseResult = LocalDatePattern.Iso.Parse(request.OrderableUntil ?? string.Empty);
+        if (!parseResult.Success)
+            return StoreCatalogSaveResult.Failure(nameof(request.OrderableUntil), "Invalid date - use YYYY-MM-DD.");
+
+        var dto = new ProductDto(
+            request.Id ?? Guid.Empty,
+            request.Year,
+            request.Name ?? string.Empty,
+            request.Description ?? string.Empty,
+            request.UnitPriceEur,
+            request.VatRatePercent,
+            request.DepositAmountEur,
+            parseResult.Value,
+            request.IsActive);
+
+        try
+        {
+            if (request.Id is null)
+            {
+                await CreateProductAsync(dto, actorUserId, ct);
+                return StoreCatalogSaveResult.Success(created: true);
+            }
+
+            await UpdateProductAsync(dto, actorUserId, ct);
+            return StoreCatalogSaveResult.Success(created: false);
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning("Store catalog Save validation failed: {Reason}", ex.Message);
+            return StoreCatalogSaveResult.Failure(null, ex.Message);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning("Store catalog Save rejected: {Reason}", ex.Message);
+            return StoreCatalogSaveResult.Failure(null, ex.Message);
+        }
     }
 
     public async Task DeactivateProductAsync(Guid productId, Guid actorUserId, CancellationToken ct = default)
@@ -224,6 +337,30 @@ public class StoreService : IStoreService
             actorUserId, order.Id, nameof(StoreOrder));
     }
 
+    public async Task<StoreMutationResult> AddLineWithResultAsync(
+        Guid orderId,
+        Guid productId,
+        int qty,
+        Guid actorUserId,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            await AddLineAsync(orderId, productId, qty, actorUserId, ct);
+            return StoreMutationResult.Success;
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning("AddLine validation failed for order {OrderId}: {Reason}", orderId, ex.Message);
+            return StoreMutationResult.Failure(ex.Message);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning("AddLine rejected for order {OrderId}: {Reason}", orderId, ex.Message);
+            return StoreMutationResult.Failure(ex.Message);
+        }
+    }
+
     public async Task RemoveLineAsync(Guid orderId, Guid lineId, Guid actorUserId, CancellationToken ct = default)
     {
         var ctx = await _repo.GetLineWithOrderAndProductAsync(lineId, ct)
@@ -247,6 +384,24 @@ public class StoreService : IStoreService
             actorUserId, ctx.OrderId, nameof(StoreOrder));
     }
 
+    public async Task<StoreMutationResult> RemoveLineWithResultAsync(
+        Guid orderId,
+        Guid lineId,
+        Guid actorUserId,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            await RemoveLineAsync(orderId, lineId, actorUserId, ct);
+            return StoreMutationResult.Success;
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning("RemoveLine rejected for line {LineId}: {Reason}", lineId, ex.Message);
+            return StoreMutationResult.Failure(ex.Message);
+        }
+    }
+
     public async Task UpdateCounterpartyAsync(Guid orderId, OrderCounterpartyInput input, Guid actorUserId, CancellationToken ct = default)
     {
         var order = await _repo.GetOrderByIdAsync(orderId, ct)
@@ -266,6 +421,24 @@ public class StoreService : IStoreService
             actorUserId);
     }
 
+    public async Task<StoreMutationResult> UpdateCounterpartyWithResultAsync(
+        Guid orderId,
+        OrderCounterpartyInput input,
+        Guid actorUserId,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            await UpdateCounterpartyAsync(orderId, input, actorUserId, ct);
+            return StoreMutationResult.Success;
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning("UpdateCounterparty rejected for order {OrderId}: {Reason}", orderId, ex.Message);
+            return StoreMutationResult.Failure(ex.Message);
+        }
+    }
+
     private async Task<LocalDate> TodayInEventZoneAsync()
     {
         var activeEvent = await _shifts.GetActiveAsync();
@@ -281,6 +454,34 @@ public class StoreService : IStoreService
 
     public Task RecordManualPaymentAsync(Guid orderId, decimal amountEur, StorePaymentMethod method, string? externalRef, string? notes, Guid actorUserId, CancellationToken ct = default)
         => throw new NotSupportedException("Phase 5");
+
+    public Task<string> CreateStripeCheckoutSessionAsync(
+        OrderDto order,
+        decimal amountEur,
+        string returnUrl,
+        CancellationToken ct = default)
+    {
+        if (!_stripeService.IsStoreCheckoutConfigured)
+            throw new InvalidOperationException("Stripe is not configured for this environment. Contact an admin.");
+
+        if (amountEur <= 0)
+            throw new InvalidOperationException("Payment amount must be greater than zero.");
+
+        if (amountEur > order.BalanceEur)
+            throw new InvalidOperationException($"Payment amount cannot exceed the outstanding balance (EUR {order.BalanceEur:0.00}).");
+
+        var description = $"Nobodies Collective - {order.CounterpartyName ?? "Camp order"}"
+            + (string.IsNullOrWhiteSpace(order.Label) ? string.Empty : $" ({order.Label})");
+
+        return _stripeService.CreateCheckoutSessionAsync(
+            storeOrderId: order.Id,
+            amountEur: amountEur,
+            successUrl: returnUrl,
+            cancelUrl: returnUrl,
+            customerEmail: order.CounterpartyEmail,
+            lineItemDescription: description,
+            ct: ct);
+    }
 
     public async Task RecordStripePaymentAsync(Guid orderId, string paymentIntentId, decimal amountEur, CancellationToken ct = default)
     {
@@ -308,6 +509,75 @@ public class StoreService : IStoreService
             $"Recorded Stripe payment of EUR {amountEur:0.00} on order {orderId} (PI {paymentIntentId})",
             "StripeWebhook",
             orderId, nameof(StoreOrder));
+    }
+
+    public async Task HandleStripeCheckoutWebhookEventAsync(StoreCheckoutWebhookEvent evt, CancellationToken ct = default)
+    {
+        switch (evt.Kind)
+        {
+            case StoreCheckoutEventKind.CheckoutSessionCompleted:
+                await HandleCheckoutSessionCompletedAsync(evt, ct);
+                break;
+
+            case StoreCheckoutEventKind.CheckoutSessionAsyncPaymentSucceeded:
+            case StoreCheckoutEventKind.CheckoutSessionAsyncPaymentFailed:
+            case StoreCheckoutEventKind.CheckoutSessionExpired:
+                _logger.LogWarning(
+                    "Stripe webhook event {Kind} (id={EventId}) received but not yet handled - async-payment state machine pending (nobodies-collective/Humans#638).",
+                    evt.Kind, evt.EventId);
+                break;
+
+            default:
+                _logger.LogDebug("Ignoring Stripe webhook event {EventId} of unhandled kind {Kind}", evt.EventId, evt.Kind);
+                break;
+        }
+    }
+
+    private async Task HandleCheckoutSessionCompletedAsync(StoreCheckoutWebhookEvent evt, CancellationToken ct)
+    {
+        if (evt.Session is not { } session)
+        {
+            _logger.LogWarning("checkout.session.completed event {EventId} did not contain a Session payload", evt.EventId);
+            return;
+        }
+
+        if (session.OrderId is not { } orderId)
+        {
+            _logger.LogWarning(
+                "Stripe Checkout Session {SessionId} has no humans_store_order_id metadata; skipping.",
+                session.SessionId);
+            return;
+        }
+
+        if (session.PaymentIntentId is not { } paymentIntentId)
+        {
+            _logger.LogWarning(
+                "Stripe Checkout Session {SessionId} has no PaymentIntentId; skipping.",
+                session.SessionId);
+            return;
+        }
+
+        if (session.AmountEur is not { } amountEur || amountEur <= 0)
+        {
+            _logger.LogWarning(
+                "Stripe Checkout Session {SessionId} has non-positive AmountTotal; skipping.",
+                session.SessionId);
+            return;
+        }
+
+        try
+        {
+            await RecordStripePaymentAsync(orderId, paymentIntentId, amountEur, ct);
+            _logger.LogInformation(
+                "Recorded Stripe payment for order {OrderId} (session {SessionId}, PI {PaymentIntentId}, EUR {Amount})",
+                orderId, session.SessionId, paymentIntentId, amountEur);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Failed to record Stripe payment for order {OrderId} (session {SessionId})",
+                orderId, session.SessionId);
+        }
     }
 
     public Task IssueInvoiceAsync(Guid orderId, Guid actorUserId, CancellationToken ct = default)

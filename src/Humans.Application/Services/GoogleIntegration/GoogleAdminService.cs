@@ -177,6 +177,13 @@ public sealed class GoogleAdminService : IGoogleAdminService
         Guid actorUserId,
         CancellationToken ct = default)
     {
+        if (string.IsNullOrWhiteSpace(emailPrefix) ||
+            string.IsNullOrWhiteSpace(firstName) ||
+            string.IsNullOrWhiteSpace(lastName))
+        {
+            return new WorkspaceAccountActionResult(false, ErrorMessage: "All fields are required.");
+        }
+
         var normalizedPrefix = emailPrefix.Trim().ToLowerInvariant();
         var fullEmail = $"{normalizedPrefix}@{NobodiesTeamDomain}";
 
@@ -314,6 +321,11 @@ public sealed class GoogleAdminService : IGoogleAdminService
         string email, Guid actorUserId,
         CancellationToken ct = default)
     {
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            return new WorkspaceAccountActionResult(false, ErrorMessage: "Email is required.");
+        }
+
         string newPassword;
         try
         {
@@ -426,6 +438,14 @@ public sealed class GoogleAdminService : IGoogleAdminService
         string email, Guid actorUserId,
         CancellationToken ct = default)
     {
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            return new WorkspaceRecoveryCredentialsResult(
+                Success: false,
+                Email: email,
+                ErrorMessage: "Email is required.");
+        }
+
         // Refuse if the account is already enrolled in 2-Step Verification.
         // The combined flow rotates the backup-code set destructively, so
         // running it against a properly-set-up account would silently break
@@ -683,7 +703,7 @@ public sealed class GoogleAdminService : IGoogleAdminService
         {
             // Issue #635 (§15i): read UserEmails through the owning section
             // service (design-rules §2c) instead of traversing user.UserEmails
-            // cross-domain. The service returns the entities so this caller
+            // cross-domain. The service returns row snapshots so this caller
             // can read per-row IsVerified / IsGoogle / Provider flags.
             var allUsers = await _userService.GetAllUsersAsync(ct);
             var allUserIds = allUsers.Select(u => u.Id).ToList();
@@ -694,7 +714,7 @@ public sealed class GoogleAdminService : IGoogleAdminService
                 {
                     var emails = emailsByUserId.TryGetValue(u.Id, out var list)
                         ? list
-                        : Array.Empty<UserEmail>();
+                        : Array.Empty<UserEmailRowSnapshot>();
                     var googleEmail = emails
                         .Where(e => e.IsVerified && e.IsGoogle)
                         .Select(e => e.Email)

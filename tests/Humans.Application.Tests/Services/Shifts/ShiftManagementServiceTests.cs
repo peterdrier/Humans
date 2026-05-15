@@ -152,15 +152,21 @@ public class ShiftManagementServiceTests : IDisposable
         var (es, rota) = SeedRotaScenario(RotaPeriod.Build);
         await _dbContext.SaveChangesAsync();
 
-        var staffing = new Dictionary<int, (int Min, int Max)>
+        var staffing = new List<DayStaffingInput>
         {
-            [-3] = (2, 5),
-            [-2] = (2, 5),
-            [-1] = (2, 5)
+            new(-3, 2, 5),
+            new(-2, 2, 5),
+            new(-1, 2, 5)
         };
 
         // Act
-        await _service.CreateBuildStrikeShiftsAsync(rota.Id, staffing);
+        var result = await _service.CreateBuildStrikeShiftsAsync(new ConfigureBuildStrikeStaffingInput(
+            rota.Id,
+            rota.TeamId,
+            staffing));
+
+        result.Succeeded.Should().BeTrue();
+        result.CreatedCount.Should().Be(3);
 
         // Assert: 3 shifts created, all IsAllDay=true, correct DayOffsets.
         // StartTime/Duration are stored as the midnight/24h sentinel (don't-care for IsAllDay rows).
@@ -175,6 +181,126 @@ public class ShiftManagementServiceTests : IDisposable
         shifts.Select(s => s.DayOffset).Should().BeEquivalentTo(new[] { -3, -2, -1 });
     }
 
+    [HumansFact]
+    public async Task CreateShiftAsync_CreatesShift_WhenInputMatchesRotaPeriodAndTeam()
+    {
+        var (_, rota) = SeedRotaScenario(RotaPeriod.Build);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.CreateShiftAsync(new CreateShiftInput(
+            rota.Id,
+            rota.TeamId,
+            "Gate crew",
+            -3,
+            new LocalTime(8, 30),
+            4,
+            2,
+            5,
+            AdminOnly: true,
+            IsAllDay: false));
+
+        result.Succeeded.Should().BeTrue();
+        result.Message.Should().Be("Shift created.");
+        result.ShiftId.Should().NotBeNull();
+
+        var shift = await _dbContext.Shifts.SingleAsync();
+        shift.Id.Should().Be(result.ShiftId.Value);
+        shift.RotaId.Should().Be(rota.Id);
+        shift.Description.Should().Be("Gate crew");
+        shift.DayOffset.Should().Be(-3);
+        shift.StartTime.Should().Be(new LocalTime(8, 30));
+        shift.Duration.Should().Be(Duration.FromHours(4));
+        shift.MinVolunteers.Should().Be(2);
+        shift.MaxVolunteers.Should().Be(5);
+        shift.AdminOnly.Should().BeTrue();
+        shift.CreatedAt.Should().Be(TestNow);
+        shift.UpdatedAt.Should().Be(TestNow);
+    }
+
+    [HumansFact]
+    public async Task CreateShiftAsync_ReturnsFailure_WhenDayOffsetOutsideRotaPeriod()
+    {
+        var (_, rota) = SeedRotaScenario(RotaPeriod.Build);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.CreateShiftAsync(new CreateShiftInput(
+            rota.Id,
+            rota.TeamId,
+            "Gate crew",
+            0,
+            new LocalTime(8, 30),
+            4,
+            2,
+            5,
+            AdminOnly: false,
+            IsAllDay: false));
+
+        result.Succeeded.Should().BeFalse();
+        result.Message.Should().Be("Shift date must fall within the rota's period.");
+        _dbContext.Shifts.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task UpdateShiftAsync_UpdatesShift_WhenInputMatchesRotaPeriodAndTeam()
+    {
+        var (_, rota) = SeedRotaScenario(RotaPeriod.Build);
+        var shift = SeedShift(rota, -4);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.UpdateShiftAsync(new UpdateShiftInput(
+            shift.Id,
+            rota.TeamId,
+            "Updated gate crew",
+            -3,
+            new LocalTime(9, 15),
+            5,
+            3,
+            6,
+            AdminOnly: true));
+
+        result.Succeeded.Should().BeTrue();
+        result.Message.Should().Be("Shift updated.");
+        result.ShiftId.Should().Be(shift.Id);
+
+        _dbContext.ChangeTracker.Clear();
+        var updated = await _dbContext.Shifts.SingleAsync();
+        updated.Description.Should().Be("Updated gate crew");
+        updated.DayOffset.Should().Be(-3);
+        updated.StartTime.Should().Be(new LocalTime(9, 15));
+        updated.Duration.Should().Be(Duration.FromHours(5));
+        updated.MinVolunteers.Should().Be(3);
+        updated.MaxVolunteers.Should().Be(6);
+        updated.AdminOnly.Should().BeTrue();
+        updated.UpdatedAt.Should().Be(TestNow);
+    }
+
+    [HumansFact]
+    public async Task UpdateShiftAsync_ReturnsFailure_WhenShiftBelongsToOtherTeam()
+    {
+        var (_, rota) = SeedRotaScenario(RotaPeriod.Build);
+        var shift = SeedShift(rota, -4);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.UpdateShiftAsync(new UpdateShiftInput(
+            shift.Id,
+            Guid.NewGuid(),
+            "Updated gate crew",
+            -3,
+            new LocalTime(9, 15),
+            5,
+            3,
+            6,
+            AdminOnly: false));
+
+        result.Succeeded.Should().BeFalse();
+        result.Message.Should().Be("Shift not found.");
+
+        _dbContext.ChangeTracker.Clear();
+        var unchanged = await _dbContext.Shifts.SingleAsync();
+        unchanged.Description.Should().BeNull();
+        unchanged.DayOffset.Should().Be(-4);
+    }
+
     [HumansFact(Timeout = 10000)]
     public async Task CreateBuildStrikeShifts_SetsCorrectMinMaxPerDay()
     {
@@ -182,15 +308,20 @@ public class ShiftManagementServiceTests : IDisposable
         var (es, rota) = SeedRotaScenario(RotaPeriod.Build);
         await _dbContext.SaveChangesAsync();
 
-        var staffing = new Dictionary<int, (int Min, int Max)>
+        var staffing = new List<DayStaffingInput>
         {
-            [-3] = (1, 3),
-            [-2] = (4, 8),
-            [-1] = (2, 6)
+            new(-3, 1, 3),
+            new(-2, 4, 8),
+            new(-1, 2, 6)
         };
 
         // Act
-        await _service.CreateBuildStrikeShiftsAsync(rota.Id, staffing);
+        var result = await _service.CreateBuildStrikeShiftsAsync(new ConfigureBuildStrikeStaffingInput(
+            rota.Id,
+            rota.TeamId,
+            staffing));
+
+        result.Succeeded.Should().BeTrue();
 
         // Assert: each shift has the min/max from its corresponding day in the grid
         var shifts = await _dbContext.Shifts
@@ -213,14 +344,19 @@ public class ShiftManagementServiceTests : IDisposable
         var (es, rota) = SeedRotaScenario(RotaPeriod.Event);
         await _dbContext.SaveChangesAsync();
 
-        var staffing = new Dictionary<int, (int Min, int Max)>
+        var staffing = new List<DayStaffingInput>
         {
-            [0] = (2, 5)
+            new(0, 2, 5)
         };
 
-        // Act + Assert: throws InvalidOperationException
-        var act = () => _service.CreateBuildStrikeShiftsAsync(rota.Id, staffing);
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        var result = await _service.CreateBuildStrikeShiftsAsync(new ConfigureBuildStrikeStaffingInput(
+            rota.Id,
+            rota.TeamId,
+            staffing));
+
+        result.Succeeded.Should().BeFalse();
+        result.Message.Should().Be("Build/strike shift generation is only for Build or Strike rotas.");
+        _dbContext.Shifts.Should().BeEmpty();
     }
 
     // ============================================================
@@ -234,14 +370,24 @@ public class ShiftManagementServiceTests : IDisposable
         var (es, rota) = SeedRotaScenario(RotaPeriod.Event);
         await _dbContext.SaveChangesAsync();
 
-        var timeSlots = new List<(LocalTime StartTime, double DurationHours)>
+        var timeSlots = new List<ShiftTimeSlotInput>
         {
-            (new LocalTime(8, 0), 4),
-            (new LocalTime(14, 0), 4)
+            new(new LocalTime(8, 0), 4),
+            new(new LocalTime(14, 0), 4)
         };
 
         // Act
-        await _service.GenerateEventShiftsAsync(rota.Id, 0, 2, timeSlots);
+        var result = await _service.GenerateEventShiftsAsync(new GenerateEventShiftsInput(
+            rota.Id,
+            rota.TeamId,
+            0,
+            2,
+            timeSlots,
+            2,
+            5));
+
+        result.Succeeded.Should().BeTrue();
+        result.CreatedCount.Should().Be(6);
 
         // Assert: 6 shifts (3 days × 2 slots), none IsAllDay
         var shifts = await _dbContext.Shifts.Where(s => s.RotaId == rota.Id).ToListAsync();
@@ -265,14 +411,23 @@ public class ShiftManagementServiceTests : IDisposable
         var (es, rota) = SeedRotaScenario(RotaPeriod.Build);
         await _dbContext.SaveChangesAsync();
 
-        var timeSlots = new List<(LocalTime StartTime, double DurationHours)>
+        var timeSlots = new List<ShiftTimeSlotInput>
         {
-            (new LocalTime(8, 0), 4)
+            new(new LocalTime(8, 0), 4)
         };
 
-        // Act + Assert: throws InvalidOperationException
-        var act = () => _service.GenerateEventShiftsAsync(rota.Id, 0, 2, timeSlots);
-        await act.Should().ThrowAsync<InvalidOperationException>();
+        var result = await _service.GenerateEventShiftsAsync(new GenerateEventShiftsInput(
+            rota.Id,
+            rota.TeamId,
+            0,
+            2,
+            timeSlots,
+            2,
+            5));
+
+        result.Succeeded.Should().BeFalse();
+        result.Message.Should().Be("Event shift generation is only for Event-period rotas.");
+        _dbContext.Shifts.Should().BeEmpty();
     }
 
     // ============================================================
@@ -919,7 +1074,15 @@ public class ShiftManagementServiceTests : IDisposable
             });
 
         // Act
-        await _service.MoveRotaToTeamAsync(rota.Id, targetTeamId, actorUserId);
+        var result = await _service.MoveRotaToTeamAsync(new MoveRotaInput(
+            rota.Id,
+            rota.TeamId,
+            targetTeamId,
+            actorUserId));
+
+        result.Succeeded.Should().BeTrue();
+        result.Message.Should().Be("Rota 'Test Rota' moved to Target Department.");
+        result.RedirectSlug.Should().Be("target-dept");
 
         // Assert: audit entry written with action=RotaMovedToTeam, related team=target.
         await _auditLog.Received(1).LogAsync(

@@ -59,6 +59,7 @@ public sealed class AuditLogRepository : IAuditLogRepository
         return await ctx.AuditLogEntries
             .AsNoTracking()
             .Where(e => e.ResourceId != null && e.RelatedEntityId == userId)
+            // arch:db-sort-ok top-N audit selector
             .OrderByDescending(e => e.OccurredAt)
             .Take(200)
             .ToListAsync(ct);
@@ -76,6 +77,7 @@ public sealed class AuditLogRepository : IAuditLogRepository
             .Where(e => e.ResourceId != null
                 && e.RelatedEntityId.HasValue
                 && userIds.Contains(e.RelatedEntityId.Value))
+            // arch:db-sort-ok top-N audit selector
             .OrderByDescending(e => e.OccurredAt)
             .Take(200)
             .ToListAsync(ct);
@@ -86,6 +88,7 @@ public sealed class AuditLogRepository : IAuditLogRepository
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.AuditLogEntries
             .AsNoTracking()
+            // arch:db-sort-ok top-N audit selector
             .OrderByDescending(e => e.OccurredAt)
             .Take(count)
             .ToListAsync(ct);
@@ -107,6 +110,7 @@ public sealed class AuditLogRepository : IAuditLogRepository
         var totalCount = await query.CountAsync(ct);
 
         var items = await query
+            // arch:db-sort-ok admin page window over append-only audit log
             .OrderByDescending(e => e.OccurredAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
@@ -127,6 +131,7 @@ public sealed class AuditLogRepository : IAuditLogRepository
             .Where(e =>
                 (e.EntityType == "User" && e.EntityId == userId) ||
                 (e.RelatedEntityId == userId))
+            // arch:db-sort-ok top-N audit selector
             .OrderByDescending(e => e.OccurredAt)
             .Take(count)
             .ToListAsync(ct);
@@ -144,6 +149,7 @@ public sealed class AuditLogRepository : IAuditLogRepository
             .Where(e =>
                 (e.EntityType == "User" && userIds.Contains(e.EntityId)) ||
                 (e.RelatedEntityId.HasValue && userIds.Contains(e.RelatedEntityId.Value)))
+            // arch:db-sort-ok top-N audit selector
             .OrderByDescending(e => e.OccurredAt)
             .Take(count)
             .ToListAsync(ct);
@@ -177,6 +183,7 @@ public sealed class AuditLogRepository : IAuditLogRepository
             query = query.Where(e => actions.Contains(e.Action));
 
         return await query
+            // arch:db-sort-ok filtered audit window over append-only log
             .OrderByDescending(e => e.OccurredAt)
             .Take(limit)
             .ToListAsync(ct);
@@ -188,6 +195,7 @@ public sealed class AuditLogRepository : IAuditLogRepository
         return await ctx.AuditLogEntries
             .AsNoTracking()
             .Where(a => a.EntityId == userId || a.RelatedEntityId == userId || a.ActorUserId == userId)
+            // arch:db-sort-ok GDPR export stable chronology
             .OrderByDescending(a => a.OccurredAt)
             .ToListAsync(ct);
     }
@@ -205,6 +213,7 @@ public sealed class AuditLogRepository : IAuditLogRepository
                 userIds.Contains(a.EntityId) ||
                 (a.RelatedEntityId.HasValue && userIds.Contains(a.RelatedEntityId.Value)) ||
                 (a.ActorUserId.HasValue && userIds.Contains(a.ActorUserId.Value)))
+            // arch:db-sort-ok GDPR export stable chronology
             .OrderByDescending(a => a.OccurredAt)
             .ToListAsync(ct);
     }

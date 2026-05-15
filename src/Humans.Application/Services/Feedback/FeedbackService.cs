@@ -81,6 +81,21 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
         _logger = logger;
     }
 
+    public Task<FeedbackReport> SubmitUserFeedbackAsync(
+        Guid userId, FeedbackCategory category, string description,
+        string pageUrl, string? userAgent, IEnumerable<string> roleNames,
+        IFormFile? screenshot, CancellationToken cancellationToken = default)
+    {
+        var sortedRoleNames = roleNames.Order(StringComparer.Ordinal).ToList();
+        var additionalContext = sortedRoleNames.Count > 0
+            ? string.Join(", ", sortedRoleNames)
+            : null;
+
+        return SubmitFeedbackAsync(
+            userId, category, description, pageUrl, userAgent,
+            additionalContext, screenshot, cancellationToken);
+    }
+
     public async Task<FeedbackReport> SubmitFeedbackAsync(
         Guid userId, FeedbackCategory category, string description,
         string pageUrl, string? userAgent, string? additionalContext,
@@ -150,6 +165,15 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
 
         var displayNames = await StitchCrossDomainNavsAsync([report], cancellationToken);
         return CreateFeedbackReportInfo(report, displayNames);
+    }
+
+    public async Task<FeedbackReportInfo?> GetFeedbackByIdForViewerAsync(
+        Guid id, Guid viewerUserId, bool isAdmin, CancellationToken cancellationToken = default)
+    {
+        var report = await GetFeedbackByIdAsync(id, cancellationToken);
+        if (report is null) return null;
+
+        return isAdmin || report.UserId == viewerUserId ? report : null;
     }
 
     public async Task<IReadOnlyList<FeedbackReportInfo>> GetFeedbackListAsync(
@@ -229,6 +253,11 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
     {
         var report = await _repository.FindForMutationAsync(reportId, cancellationToken)
             ?? throw new InvalidOperationException($"Feedback report {reportId} not found");
+
+        if (!isAdmin && senderUserId != report.UserId)
+        {
+            throw new InvalidOperationException($"Feedback report {reportId} not found for user {senderUserId}");
+        }
 
         var now = _clock.GetCurrentInstant();
         var message = new FeedbackMessage
@@ -572,6 +601,7 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
             report.GitHubIssueNumber,
             report.LastReporterMessageAt,
             report.LastAdminMessageAt,
+            NeedsReply(report),
             report.CreatedAt,
             report.UpdatedAt,
             report.ResolvedAt,
@@ -585,6 +615,11 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
             ResolveName(report.AssignedToUserId, displayNames),
             report.AssignedToTeam?.Name,
             report.Messages.Select(m => CreateFeedbackMessageInfo(m, displayNames)).ToList());
+
+    private static bool NeedsReply(FeedbackReport report) =>
+        (report.LastReporterMessageAt.HasValue &&
+            (!report.LastAdminMessageAt.HasValue || report.LastReporterMessageAt > report.LastAdminMessageAt)) ||
+        (report.Status == FeedbackStatus.Open && !report.LastAdminMessageAt.HasValue);
 
     private static FeedbackMessageInfo CreateFeedbackMessageInfo(
         FeedbackMessage message,

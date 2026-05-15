@@ -1,4 +1,4 @@
-@model List<Humans.Domain.Entities.Campaign>
+@model IReadOnlyList<Humans.Application.DTOs.CampaignListSummary>
 @{
     ViewData["Title"] = "Campaigns";
 }
@@ -41,10 +41,6 @@
                 <tbody>
                     @foreach (var campaign in Model)
                     {
-                        var totalCodes = campaign.Codes.Count;
-                        var assignedCodes = campaign.Grants.Select(g => g.CampaignCodeId).Distinct().Count();
-                        var sentCount = campaign.Grants.Count(g => g.LatestEmailStatus == EmailOutboxStatus.Sent);
-                        var failedCount = campaign.Grants.Count(g => g.LatestEmailStatus == EmailOutboxStatus.Failed);
                         var statusClass = campaign.Status switch
                         {
                             CampaignStatus.Draft => "bg-secondary",
@@ -57,16 +53,16 @@
                                 <a asp-action="Detail" asp-route-id="@campaign.Id">@campaign.Title</a>
                             </td>
                             <td><span class="badge @statusClass">@campaign.Status</span></td>
-                            <td>@assignedCodes / @totalCodes</td>
-                            <td>@sentCount</td>
+                            <td>@campaign.AssignedCodes / @campaign.TotalCodes</td>
+                            <td>@campaign.SentCount</td>
                             <td>
-                                @if (failedCount > 0)
+                                @if (campaign.FailedCount > 0)
                                 {
-                                    <span class="text-danger">@failedCount</span>
+                                    <span class="text-danger">@campaign.FailedCount</span>
                                 }
                                 else
                                 {
-                                    @failedCount
+                                    @campaign.FailedCount
                                 }
                             </td>
                             <td>@campaign.CreatedAt.ToDisplayDate()</td>

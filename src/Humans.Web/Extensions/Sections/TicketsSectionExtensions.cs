@@ -8,6 +8,7 @@ using TicketsTicketQueryService = Humans.Application.Services.Tickets.TicketQuer
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Services.Tickets;
 using Humans.Infrastructure.Repositories.Tickets;
+using Humans.Web.Models.Tickets;
 
 namespace Humans.Web.Extensions.Sections;
 
@@ -36,6 +37,7 @@ internal static class TicketsSectionExtensions
 
         // AttendeeContactImportService — orchestrates user provisioning from unmatched ticket attendees.
         services.AddScoped<IAttendeeContactImportService, AttendeeContactImportService>();
+        services.AddScoped<TicketDashboardPageBuilder>();
 
         services.AddScoped<TicketSyncJob>();
         services.AddScoped<TicketingBudgetSyncJob>();

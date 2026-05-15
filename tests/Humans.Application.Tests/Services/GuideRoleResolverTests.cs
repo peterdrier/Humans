@@ -3,10 +3,12 @@ using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using NodaTime.Testing;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
+using Humans.Infrastructure.Repositories.Teams;
 using Humans.Infrastructure.Services;
 using Humans.Testing;
 using Xunit;
@@ -16,6 +18,7 @@ namespace Humans.Application.Tests.Services;
 public class GuideRoleResolverTests : IDisposable
 {
     private readonly HumansDbContext _db;
+    private readonly TestDbContextFactory _factory;
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 4, 21, 12, 0));
 
     public GuideRoleResolverTests()
@@ -24,6 +27,7 @@ public class GuideRoleResolverTests : IDisposable
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
         _db = new HumansDbContext(options);
+        _factory = new TestDbContextFactory(options);
     }
 
     public void Dispose()
@@ -47,10 +51,13 @@ public class GuideRoleResolverTests : IDisposable
         return new ClaimsPrincipal(identity);
     }
 
+    private GuideRoleResolver CreateResolver() =>
+        new(new TeamRepository(_factory));
+
     [HumansFact]
     public async Task Resolve_Anonymous_ReturnsAnonymousContext()
     {
-        var resolver = new GuideRoleResolver(_db);
+        var resolver = CreateResolver();
 
         var result = await resolver.ResolveAsync(new ClaimsPrincipal(new ClaimsIdentity()));
 
@@ -62,7 +69,7 @@ public class GuideRoleResolverTests : IDisposable
     [HumansFact]
     public async Task Resolve_AuthWithAdminRole_ReportsSystemRoles()
     {
-        var resolver = new GuideRoleResolver(_db);
+        var resolver = CreateResolver();
         var user = PrincipalWithRoles(Guid.NewGuid(), RoleNames.Admin, RoleNames.Board);
 
         var result = await resolver.ResolveAsync(user);
@@ -95,7 +102,7 @@ public class GuideRoleResolverTests : IDisposable
         });
         await _db.SaveChangesAsync(CancellationToken.None);
 
-        var resolver = new GuideRoleResolver(_db);
+        var resolver = CreateResolver();
         var user = PrincipalWithRoles(userId);
 
         var result = await resolver.ResolveAsync(user, CancellationToken.None);
@@ -128,7 +135,7 @@ public class GuideRoleResolverTests : IDisposable
         });
         await _db.SaveChangesAsync(CancellationToken.None);
 
-        var resolver = new GuideRoleResolver(_db);
+        var resolver = CreateResolver();
         var user = PrincipalWithRoles(userId);
 
         var result = await resolver.ResolveAsync(user, CancellationToken.None);
@@ -160,7 +167,7 @@ public class GuideRoleResolverTests : IDisposable
         });
         await _db.SaveChangesAsync(CancellationToken.None);
 
-        var resolver = new GuideRoleResolver(_db);
+        var resolver = CreateResolver();
         var user = PrincipalWithRoles(userId);
 
         var result = await resolver.ResolveAsync(user, CancellationToken.None);

@@ -1,9 +1,7 @@
 using Humans.Application.Interfaces;
 using Humans.Application.DTOs;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
-using MemberApplication = Humans.Domain.Entities.Application;
 
 namespace Humans.Application.Interfaces.Dashboard;
 
@@ -27,15 +25,15 @@ public interface IDashboardService : IApplicationService
 /// are applied by the service; the controller maps this 1:1 onto its view model.
 /// </summary>
 public record MemberDashboardData(
-    Profile? Profile,
+    DashboardProfile? Profile,
     MembershipSnapshot MembershipSnapshot,
-    MemberApplication? LatestApplication,
+    DashboardApplication? LatestApplication,
     bool HasPendingApplication,
     MembershipTier CurrentTier,
     LocalDate? TermExpiresAt,
     bool TermExpiresSoon,
     bool TermExpired,
-    EventSettings? ActiveEvent,
+    DashboardEvent? ActiveEvent,
     IReadOnlyList<DashboardUrgentShift> UrgentShifts,
     IReadOnlyList<DashboardSignup> NextShifts,
     int PendingSignupCount,
@@ -45,17 +43,34 @@ public record MemberDashboardData(
     int UserTicketCount,
     ParticipationStatus? ParticipationStatus);
 
-/// <summary>Dashboard-shaped urgent shift entry (domain shift with joined department name).</summary>
+public record DashboardProfile(
+    bool ProfileComplete,
+    int CompletionPercent,
+    ConsentCheckStatus? ConsentCheckStatus,
+    bool IsRejected,
+    string? RejectionReason);
+
+public record DashboardApplication(
+    ApplicationStatus Status,
+    Instant SubmittedAt,
+    MembershipTier MembershipTier);
+
+public record DashboardEvent(
+    string EventName,
+    bool IsShiftBrowsingOpen,
+    int Year);
+
+/// <summary>Dashboard-shaped urgent shift entry with joined department and rota display data.</summary>
 public record DashboardUrgentShift(
-    Shift Shift,
+    string RotaName,
     string DepartmentName,
     Instant AbsoluteStart,
     int RemainingSlots,
     double UrgencyScore);
 
-/// <summary>Dashboard-shaped confirmed signup entry (domain signup with resolved dept and bounds).</summary>
+/// <summary>Dashboard-shaped confirmed signup entry with resolved dept, rota, and bounds.</summary>
 public record DashboardSignup(
-    ShiftSignup Signup,
+    string RotaName,
     string DepartmentName,
     Instant AbsoluteStart,
     Instant AbsoluteEnd);

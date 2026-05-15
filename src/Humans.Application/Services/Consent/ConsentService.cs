@@ -101,9 +101,7 @@ public sealed class ConsentService : IConsentService, IUserDataContributor
         return allIds;
     }
 
-    public async Task<(List<(Team Team, List<(DocumentVersion Version, ConsentRecord? Consent)> Documents)> Groups,
-        List<ConsentRecord> History)>
-        GetConsentDashboardAsync(Guid userId, CancellationToken ct = default)
+    public async Task<ConsentDashboard> GetConsentDashboardAsync(Guid userId, CancellationToken ct = default)
     {
         var now = _clock.GetCurrentInstant();
 
@@ -127,8 +125,8 @@ public sealed class ConsentService : IConsentService, IUserDataContributor
             .GroupBy(d => d.TeamId)
             .Select(g =>
             {
-                var team = g.First().Team;
-                var docPairs = new List<(DocumentVersion Version, ConsentRecord? Consent)>();
+                var first = g.First();
+                var docPairs = new List<ConsentDashboardDocument>();
 
                 foreach (var doc in g)
                 {
@@ -139,24 +137,39 @@ public sealed class ConsentService : IConsentService, IUserDataContributor
                     if (currentVersion is not null)
                     {
                         var consent = userConsents.FirstOrDefault(c => c.DocumentVersionId == currentVersion.Id);
-                        docPairs.Add((currentVersion, consent));
+                        docPairs.Add(new ConsentDashboardDocument(
+                            DocumentVersionId: currentVersion.Id,
+                            DocumentName: doc.Name,
+                            VersionNumber: currentVersion.VersionNumber,
+                            EffectiveFrom: currentVersion.EffectiveFrom,
+                            HasConsented: consent is not null,
+                            ConsentedAt: consent?.ConsentedAt,
+                            ChangesSummary: currentVersion.ChangesSummary,
+                            LastUpdated: doc.LastSyncedAt == default ? null : doc.LastSyncedAt));
                     }
                 }
 
-                return (team, docPairs);
+                return new ConsentDashboardTeamGroup(first.TeamId, first.TeamName, docPairs);
             })
             .ToList();
 
-        return (groups, userConsents.ToList());
+        var history = userConsents.Select(c => new ConsentDashboardHistoryItem(
+                DocumentVersionId: c.DocumentVersionId,
+                DocumentName: c.DocumentVersion.LegalDocument.Name,
+                VersionNumber: c.DocumentVersion.VersionNumber,
+                ConsentedAt: c.ConsentedAt))
+            .ToList();
+
+        return new ConsentDashboard(groups, history);
     }
 
-    public async Task<(DocumentVersion? Version, ConsentRecord? ExistingConsent, string? UserFullName)>
-        GetConsentReviewDetailAsync(Guid documentVersionId, Guid userId, CancellationToken ct = default)
+    public async Task<ConsentReviewDetail?> GetConsentReviewDetailAsync(
+        Guid documentVersionId, Guid userId, CancellationToken ct = default)
     {
         var version = await _legalDocumentSyncService.GetVersionByIdAsync(documentVersionId, ct);
 
         if (version is null)
-            return (null, null, null);
+            return null;
 
         // Chain-follow merge tombstones so a fold-target's review detail
         // transparently surfaces a consent record still attributed to a
@@ -171,7 +184,16 @@ public sealed class ConsentService : IConsentService, IUserDataContributor
         // _dbContext.Profiles.
         var profile = (await _userService.GetUserInfoAsync(userId, ct))?.Profile;
 
-        return (version, consentRecord, profile?.FullName);
+        return new ConsentReviewDetail(
+            DocumentVersionId: version.Id,
+            DocumentName: version.LegalDocumentName,
+            VersionNumber: version.VersionNumber,
+            Content: new Dictionary<string, string>(version.Content, StringComparer.Ordinal),
+            EffectiveFrom: version.EffectiveFrom,
+            ChangesSummary: version.ChangesSummary,
+            HasAlreadyConsented: consentRecord is not null,
+            ConsentedAt: consentRecord?.ConsentedAt,
+            UserFullName: profile?.FullName);
     }
 
     public async Task<ConsentSubmitResult> SubmitConsentAsync(
@@ -223,7 +245,7 @@ public sealed class ConsentService : IConsentService, IUserDataContributor
 
         _logger.LogInformation(
             "User {UserId} consented to document {DocumentName} version {Version}",
-            userId, version.LegalDocument.Name, version.VersionNumber);
+            userId, version.LegalDocumentName, version.VersionNumber);
 
         await _onboardingService.SetConsentCheckPendingIfEligibleAsync(userId, ct);
 
@@ -254,18 +276,27 @@ public sealed class ConsentService : IConsentService, IUserDataContributor
             _logger.LogError(ex, "Failed to resolve AccessSuspended notifications for user {UserId}", userId);
         }
 
-        return new ConsentSubmitResult(true, DocumentName: version.LegalDocument.Name);
+        return new ConsentSubmitResult(true, DocumentName: version.LegalDocumentName);
     }
 
-    public async Task<IReadOnlyList<ConsentRecord>> GetUserConsentRecordsAsync(
+    public async Task<IReadOnlyList<ConsentRecordSnapshot>> GetUserConsentRecordsAsync(
         Guid userId, CancellationToken ct = default)
     {
         // Chain-follow merge tombstones so a fold-target's history transparently
         // surfaces records still attributed to merged source ids.
         var chainIds = await GetChainFollowIdsAsync(userId, ct);
-        return chainIds is null
+        var records = chainIds is null
             ? await _repo.GetAllForUserAsync(userId, ct)
             : await _repo.GetAllForUserIdsAsync(chainIds, ct);
+
+        return records
+            .Select(c => new ConsentRecordSnapshot(
+                c.UserId,
+                c.DocumentVersionId,
+                c.DocumentVersion.LegalDocument.Name,
+                c.DocumentVersion.VersionNumber,
+                c.ConsentedAt))
+            .ToList();
     }
 
     public async Task<int> GetConsentRecordCountAsync(Guid userId, CancellationToken ct = default)
@@ -412,8 +443,8 @@ public sealed class ConsentService : IConsentService, IUserDataContributor
         foreach (var versionId in missingVersionIds)
         {
             var version = await _legalDocumentSyncService.GetVersionByIdAsync(versionId, ct);
-            if (version?.LegalDocument is { } doc)
-                names.Add(doc.Name);
+            if (version is not null)
+                names.Add(version.LegalDocumentName);
         }
 
         return names.OrderBy(n => n, StringComparer.Ordinal).ToList();
@@ -449,3 +480,4 @@ public sealed class ConsentService : IConsentService, IUserDataContributor
         return [new UserDataSlice(GdprExportSections.Consents, shaped)];
     }
 }
+

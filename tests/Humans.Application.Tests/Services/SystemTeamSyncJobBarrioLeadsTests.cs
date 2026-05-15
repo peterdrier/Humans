@@ -71,27 +71,18 @@ public class SystemTeamSyncJobBarrioLeadsTests
             _clock);
     }
 
-    private Team StubBarrioLeadsTeam(IEnumerable<TeamMember>? activeMembers = null)
+    private SystemTeamMembershipSnapshot StubBarrioLeadsTeam(IEnumerable<TeamMember>? activeMembers = null)
     {
-        var team = new Team
-        {
-            Id = Guid.NewGuid(),
-            Name = "Barrio Leads",
-            Slug = "barrio-leads",
-            Description = "System team for barrio leads",
-            SystemTeamType = SystemTeamType.BarrioLeads,
-            IsActive = true,
-            IsHidden = true,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant(),
-        };
-        if (activeMembers is not null)
-        {
-            foreach (var m in activeMembers)
-            {
-                team.Members.Add(m);
-            }
-        }
+        var team = new SystemTeamMembershipSnapshot(
+            Guid.NewGuid(),
+            "Barrio Leads",
+            "barrio-leads",
+            IsHidden: true,
+            SystemTeamType.BarrioLeads,
+            activeMembers?
+                .Where(member => member.LeftAt is null)
+                .Select(member => member.UserId)
+                .ToList() ?? []);
         _teamService.GetSystemTeamWithActiveMembersAsync(
             SystemTeamType.BarrioLeads, Arg.Any<CancellationToken>())
             .Returns(team);

@@ -115,10 +115,18 @@ public sealed class OnboardingService : IOnboardingService
             .GetSubmittedApplicationForUserAsync(userId, ct);
 
         return new ReviewDetailData(
-            profile,
+            new ReviewProfileDetail(
+                profile.FirstName,
+                profile.LastName,
+                profile.City,
+                profile.CountryCode,
+                profile.MembershipTier,
+                profile.ConsentCheckStatus,
+                profile.ConsentCheckNotes,
+                profile.CreatedAt),
             snapshot.RequiredConsentCount - snapshot.PendingConsentCount,
             snapshot.RequiredConsentCount,
-            pendingApp);
+            pendingApp?.Motivation);
     }
 
     // ==========================================================================

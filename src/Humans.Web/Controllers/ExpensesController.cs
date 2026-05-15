@@ -26,7 +26,6 @@ namespace Humans.Web.Controllers;
 public sealed class ExpensesController : HumansControllerBase
 {
     private readonly IExpenseReportService _service;
-    private readonly IFileStorage _fileStorage;
     private readonly IBudgetService _budgetService;
     private readonly IProfileService _profileService;
     private readonly IUserService _userService;
@@ -39,7 +38,6 @@ public sealed class ExpensesController : HumansControllerBase
     public ExpensesController(
         UserManager<User> userManager,
         IExpenseReportService service,
-        IFileStorage fileStorage,
         IBudgetService budgetService,
         IProfileService profileService,
         IUserService userService,
@@ -51,7 +49,6 @@ public sealed class ExpensesController : HumansControllerBase
         : base(userManager)
     {
         _service = service;
-        _fileStorage = fileStorage;
         _budgetService = budgetService;
         _profileService = profileService;
         _userService = userService;
@@ -175,24 +172,16 @@ public sealed class ExpensesController : HumansControllerBase
                 new ExpenseReportOperationRequirement(ExpenseReportOperation.View));
             if (!authResult.Succeeded) return Forbid();
 
-            var profile = await _profileService.GetProfileAsync(user.Id);
-            var category = await _budgetService.GetCategoryByIdAsync(report.BudgetCategoryId);
-            var categoryName = category is not null
-                ? $"{category.BudgetGroup?.Name} / {category.Name}"
-                : "(unknown category)";
-
-            var editableStatuses = new[] { ExpenseReportStatus.Draft };
-            var withdrawableStatuses = new[] { ExpenseReportStatus.Submitted, ExpenseReportStatus.CoordinatorEndorsed, ExpenseReportStatus.Approved };
-
+            var detail = await _service.GetDetailViewDataAsync(user.Id, report);
             var model = new ExpenseDetailViewModel
             {
                 Report = report,
-                CategoryDisplayName = categoryName,
-                CanEdit = report.SubmitterUserId == user.Id && editableStatuses.Contains(report.Status),
-                CanSubmit = report.SubmitterUserId == user.Id && report.Status == ExpenseReportStatus.Draft,
-                CanWithdraw = report.SubmitterUserId == user.Id && withdrawableStatuses.Contains(report.Status),
-                HasIban = !string.IsNullOrEmpty(profile?.Iban),
-                MaskedIban = string.IsNullOrEmpty(profile?.Iban) ? null : IbanFormatter.Mask(profile.Iban)
+                CategoryDisplayName = detail.CategoryDisplayName,
+                CanEdit = detail.CanEdit,
+                CanSubmit = detail.CanSubmit,
+                CanWithdraw = detail.CanWithdraw,
+                HasIban = detail.HasIban,
+                MaskedIban = detail.MaskedIban
             };
             return View(model);
         }
@@ -225,16 +214,12 @@ public sealed class ExpensesController : HumansControllerBase
                 return RedirectToAction(nameof(Detail), new { id });
             }
 
-            var categories = await BuildCategoryOptionsAsync();
             var model = new ExpenseEditViewModel
             {
-                Report = report,
-                Categories = categories,
-                CanEditHeader = true,
-                CanEditLines = report.Status == ExpenseReportStatus.Draft,
                 BudgetCategoryId = report.BudgetCategoryId,
                 Note = report.Note
             };
+            await PopulateEditModelAsync(model, report);
             return View(model);
         }
         catch (Exception ex)
@@ -256,31 +241,22 @@ public sealed class ExpensesController : HumansControllerBase
         if (report is null) return NotFound();
         if (report.SubmitterUserId != user.Id) return Forbid();
 
-        try
+        if (!ModelState.IsValid)
         {
-            if (!ModelState.IsValid)
-            {
-                model.Report = report;
-                model.Categories = await BuildCategoryOptionsAsync();
-                model.CanEditHeader = true;
-                model.CanEditLines = report.Status == ExpenseReportStatus.Draft;
-                return View(model);
-            }
+            await PopulateEditModelAsync(model, report);
+            return View(model);
+        }
 
-            await _service.UpdateDraftAsync(id, user.Id, model.BudgetCategoryId, model.Note);
+        var result = await _service.UpdateDraftWithResultAsync(id, user.Id, model.BudgetCategoryId, model.Note);
+        if (result.Succeeded)
+        {
             SetSuccess("Report updated.");
             return RedirectToAction(nameof(Edit), new { id });
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error updating expense report {ReportId}", id);
-            SetError($"Failed to update: {ex.Message}");
-            model.Report = report;
-            model.Categories = await BuildCategoryOptionsAsync();
-            model.CanEditHeader = true;
-            model.CanEditLines = report.Status == ExpenseReportStatus.Draft;
-            return View(model);
-        }
+
+        SetError($"Failed to update: {result.ErrorMessage}");
+        await PopulateEditModelAsync(model, report);
+        return View(model);
     }
 
     // ─────────────────────── 6.4 (continued) — Line add/edit/remove ──────────
@@ -302,16 +278,12 @@ public sealed class ExpensesController : HumansControllerBase
             return RedirectToAction(nameof(Edit), new { id });
         }
 
-        try
-        {
-            await _service.AddLineAsync(id, user.Id, input.Description, input.Amount);
+        var result = await _service.AddLineWithResultAsync(id, user.Id, input.Description, input.Amount);
+        if (!result.Succeeded)
+            SetError($"Failed to add line: {result.ErrorMessage}");
+        else
             SetSuccess("Line added.");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error adding line to report {ReportId}", id);
-            SetError($"Failed to add line: {ex.Message}");
-        }
+
         return RedirectToAction(nameof(Edit), new { id });
     }
 
@@ -332,16 +304,12 @@ public sealed class ExpensesController : HumansControllerBase
             return RedirectToAction(nameof(Edit), new { id });
         }
 
-        try
-        {
-            await _service.UpdateLineAsync(id, user.Id, input.LineId, input.Description, input.Amount);
+        var result = await _service.UpdateLineWithResultAsync(id, user.Id, input.LineId, input.Description, input.Amount);
+        if (!result.Succeeded)
+            SetError($"Failed to update line: {result.ErrorMessage}");
+        else
             SetSuccess("Line updated.");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error updating line {LineId} on report {ReportId}", input.LineId, id);
-            SetError($"Failed to update line: {ex.Message}");
-        }
+
         return RedirectToAction(nameof(Edit), new { id });
     }
 
@@ -356,16 +324,12 @@ public sealed class ExpensesController : HumansControllerBase
         if (report is null) return NotFound();
         if (report.SubmitterUserId != user.Id) return Forbid();
 
-        try
-        {
-            await _service.RemoveLineAsync(id, user.Id, lineId);
+        var result = await _service.RemoveLineWithResultAsync(id, user.Id, lineId);
+        if (!result.Succeeded)
+            SetError($"Failed to remove line: {result.ErrorMessage}");
+        else
             SetSuccess("Line removed.");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error removing line {LineId} from report {ReportId}", lineId, id);
-            SetError($"Failed to remove line: {ex.Message}");
-        }
+
         return RedirectToAction(nameof(Edit), new { id });
     }
 
@@ -389,17 +353,15 @@ public sealed class ExpensesController : HumansControllerBase
             return RedirectToAction(nameof(Edit), new { id });
         }
 
-        try
-        {
-            await using var stream = file.OpenReadStream();
-            await _service.AttachFileToLineAsync(id, user.Id, lineId, file.FileName, file.ContentType, stream);
+        await using var stream = file.OpenReadStream();
+        var result = await _service.AttachFileToLineWithResultAsync(
+            id, user.Id, lineId, file.FileName, file.ContentType, stream);
+
+        if (result.Succeeded)
             SetSuccess("Attachment uploaded.");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error uploading attachment to line {LineId} on report {ReportId}", lineId, id);
-            SetError(ex.Message);
-        }
+        else
+            SetError(result.ErrorMessage ?? "Failed to upload attachment.");
+
         return RedirectToAction(nameof(Edit), new { id });
     }
 
@@ -440,24 +402,13 @@ public sealed class ExpensesController : HumansControllerBase
         if (report is null) return NotFound();
         if (report.SubmitterUserId != user.Id) return Forbid();
 
-        try
-        {
-            var ok = await _service.SubmitAsync(id, user.Id);
-            if (ok)
-            {
-                SetSuccess("Report submitted.");
-                return RedirectToAction(nameof(Detail), new { id });
-            }
+        var result = await _service.SubmitWithResultAsync(id, user.Id);
+        if (result.Succeeded)
+            SetSuccess("Report submitted.");
+        else
+            SetError(result.ErrorMessage ?? "Could not submit the report.");
 
-            SetError("Could not submit the report. Make sure it has at least one line with an attachment and your payment IBAN is set.");
-            return RedirectToAction(nameof(Detail), new { id });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error submitting expense report {ReportId}", id);
-            SetError($"Submission failed: {ex.Message}");
-            return RedirectToAction(nameof(Detail), new { id });
-        }
+        return RedirectToAction(nameof(Detail), new { id });
     }
 
     // ───────────────────────────── 6.6  Withdraw ─────────────────────────────
@@ -471,26 +422,12 @@ public sealed class ExpensesController : HumansControllerBase
 
         var report = await _service.GetAsync(id);
         if (report is null) return NotFound();
-        if (report.SubmitterUserId != user.Id) return Forbid();
-
-        try
-        {
-            var ok = await _service.WithdrawAsync(id, user.Id);
-            if (ok)
-            {
-                SetSuccess("Report withdrawn.");
-            }
-            else
-            {
-                SetError("Could not withdraw this report.");
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error withdrawing expense report {ReportId}", id);
-            SetError($"Withdrawal failed: {ex.Message}");
-        }
-        return RedirectToAction(nameof(Detail), new { id });
+        if (report.SubmitterUserId != user.Id) return Forbid();        var result = await _service.WithdrawWithResultAsync(id, user.Id);
+        if (result.Succeeded)
+            SetSuccess("Report withdrawn.");
+        else
+            SetError(result.ErrorMessage ?? "Could not withdraw this report.");
+return RedirectToAction(nameof(Detail), new { id });
     }
 
     // ───────────────────────────── 6.7  IBAN modal ───────────────────────────
@@ -508,12 +445,12 @@ public sealed class ExpensesController : HumansControllerBase
             // Only the submitter may set their own IBAN via this route
             if (report.SubmitterUserId != user.Id) return Forbid();
 
-            var profile = await _profileService.GetProfileAsync(user.Id);
+            var iban = await _service.GetSubmitterIbanViewAsync(user.Id);
             var model = new ExpenseIbanViewModel
             {
                 ReportId = id,
-                HasIban = !string.IsNullOrEmpty(profile?.Iban),
-                MaskedIban = string.IsNullOrEmpty(profile?.Iban) ? null : IbanFormatter.Mask(profile.Iban)
+                HasIban = iban.HasIban,
+                MaskedIban = iban.MaskedIban
             };
             return View(model);
         }
@@ -536,37 +473,22 @@ public sealed class ExpensesController : HumansControllerBase
         if (report is null) return NotFound();
         if (report.SubmitterUserId != user.Id) return Forbid();
 
-        // An empty/null IBAN value means "remove"
-        var ibanValue = string.IsNullOrWhiteSpace(model.Iban) ? null : model.Iban.Trim();
-
-        if (ibanValue is not null && !IbanValidator.IsValid(ibanValue))
+        var result = await _service.SaveSubmitterIbanWithResultAsync(user.Id, model.Iban);
+        if (result.Succeeded)
         {
-            ModelState.AddModelError(nameof(model.Iban), "Invalid IBAN format.");
-            var profile = await _profileService.GetProfileAsync(user.Id);
-            model.ReportId = id;
-            model.HasIban = !string.IsNullOrEmpty(profile?.Iban);
-            model.MaskedIban = string.IsNullOrEmpty(profile?.Iban) ? null : IbanFormatter.Mask(profile.Iban);
-            return View(model);
-        }
-
-        try
-        {
-            await _profileService.SetIbanAsync(user.Id, ibanValue);
-
-            if (ibanValue is null)
-                SetSuccess("IBAN removed.");
-            else
-                SetSuccess("IBAN saved.");
-
+            SetSuccess(result.Message);
             return RedirectToAction(nameof(Detail), new { id });
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error setting IBAN for user {UserId}", user.Id);
-            SetError("Failed to save IBAN.");
-            model.ReportId = id;
-            return View(model);
-        }
+
+        if (result.IsValidationError)
+            ModelState.AddModelError(nameof(model.Iban), result.Message);
+        else
+            SetError(result.Message);
+
+        model.ReportId = id;
+        model.HasIban = result.HasIban;
+        model.MaskedIban = result.MaskedIban;
+        return View(model);
     }
 
     // ───────────────────────────── 6.8  Attachment stream ────────────────────
@@ -592,15 +514,10 @@ public sealed class ExpensesController : HumansControllerBase
                 new ExpenseReportOperationRequirement(ExpenseReportOperation.View));
             if (!authResult.Succeeded) return NotFound();
 
-            var attachment = owningReport.Lines
-                .Select(l => l.Attachment)
-                .FirstOrDefault(a => a?.Id == attachmentId);
+            var attachment = await _service.TryReadAttachmentAsync(owningReport, attachmentId);
             if (attachment is null) return NotFound();
 
-            var bytes = await _fileStorage.TryReadAsync(
-                ExpenseReportService.AttachmentKey(attachment.Id, attachment.Extension));
-            if (bytes is null) return NotFound();
-            return File(bytes, attachment.ContentType, attachment.OriginalFileName);
+            return File(attachment.Bytes, attachment.ContentType, attachment.OriginalFileName);
         }
         catch (Exception ex)
         {
@@ -647,19 +564,12 @@ public sealed class ExpensesController : HumansControllerBase
             new ExpenseReportOperationRequirement(ExpenseReportOperation.Endorse));
         if (!authResult.Succeeded) return Forbid();
 
-        try
-        {
-            var ok = await _service.CoordinatorEndorseAsync(id, user.Id);
-            if (ok)
-                SetSuccess("Report endorsed.");
-            else
-                SetError("Could not endorse the report. It may no longer be in Submitted status.");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error endorsing expense report {ReportId}", id);
-            SetError($"Endorsement failed: {ex.Message}");
-        }
+        var result = await _service.CoordinatorEndorseWithResultAsync(id, user.Id);
+        if (result.Succeeded)
+            SetSuccess("Report endorsed.");
+        else
+            SetError(result.ErrorMessage ?? "Could not endorse the report.");
+
         return RedirectToAction(nameof(Coordinator));
     }
 
@@ -683,19 +593,12 @@ public sealed class ExpensesController : HumansControllerBase
             return RedirectToAction(nameof(Coordinator));
         }
 
-        try
-        {
-            var ok = await _service.CoordinatorRejectAsync(id, user.Id, input.Reason);
-            if (ok)
-                SetSuccess("Report rejected.");
-            else
-                SetError("Could not reject the report. It may no longer be in Submitted status.");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error coordinator-rejecting expense report {ReportId}", id);
-            SetError($"Rejection failed: {ex.Message}");
-        }
+        var result = await _service.CoordinatorRejectWithResultAsync(id, user.Id, input.Reason);
+        if (result.Succeeded)
+            SetSuccess("Report rejected.");
+        else
+            SetError(result.ErrorMessage ?? "Could not reject the report.");
+
         return RedirectToAction(nameof(Coordinator));
     }
 
@@ -736,19 +639,12 @@ public sealed class ExpensesController : HumansControllerBase
             new ExpenseReportOperationRequirement(ExpenseReportOperation.Approve));
         if (!authResult.Succeeded) return Forbid();
 
-        try
-        {
-            var ok = await _service.ApproveAsync(id, user.Id, input.OverrideCategoryId);
-            if (ok)
-                SetSuccess("Report approved.");
-            else
-                SetError("Could not approve the report. It may not be in an approvable status.");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error approving expense report {ReportId}", id);
-            SetError($"Approval failed: {ex.Message}");
-        }
+        var result = await _service.ApproveWithResultAsync(id, user.Id, input.OverrideCategoryId);
+        if (result.Succeeded)
+            SetSuccess("Report approved.");
+        else
+            SetError(result.ErrorMessage ?? "Could not approve the report.");
+
         return RedirectToAction(nameof(Review));
     }
 
@@ -773,19 +669,12 @@ public sealed class ExpensesController : HumansControllerBase
             return RedirectToAction(nameof(Review));
         }
 
-        try
-        {
-            var ok = await _service.FinanceRejectAsync(id, user.Id, input.Reason);
-            if (ok)
-                SetSuccess("Report rejected.");
-            else
-                SetError("Could not reject the report. It may not be in a rejectable status.");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error finance-rejecting expense report {ReportId}", id);
-            SetError($"Rejection failed: {ex.Message}");
-        }
+        var result = await _service.FinanceRejectWithResultAsync(id, user.Id, input.Reason);
+        if (result.Succeeded)
+            SetSuccess("Report rejected.");
+        else
+            SetError(result.ErrorMessage ?? "Could not reject the report.");
+
         return RedirectToAction(nameof(Review));
     }
 
@@ -892,6 +781,14 @@ public sealed class ExpensesController : HumansControllerBase
                 : users.TryGetValue(id, out var u) && !string.IsNullOrWhiteSpace(u.DisplayName)
                     ? u.DisplayName
                     : "(unknown)");
+    }
+
+    private async Task PopulateEditModelAsync(ExpenseEditViewModel model, ExpenseReportDto report)
+    {
+        model.Report = report;
+        model.Categories = await BuildCategoryOptionsAsync();
+        model.CanEditHeader = true;
+        model.CanEditLines = report.Status == ExpenseReportStatus.Draft;
     }
 
     private async Task<IReadOnlyList<BudgetCategoryOption>> BuildCategoryOptionsAsync()

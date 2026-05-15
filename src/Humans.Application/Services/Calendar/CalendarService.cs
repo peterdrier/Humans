@@ -288,6 +288,33 @@ public sealed class CalendarService : ICalendarService
         return ev;
     }
 
+    public async Task<CalendarEventMutationResult> CreateEventWithResultAsync(
+        CreateCalendarEventDto dto,
+        Guid createdByUserId,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var ev = await CreateEventAsync(dto, createdByUserId, ct);
+            return CalendarEventMutationResult.Success(ev);
+        }
+        catch (ValidationException ex)
+        {
+            _logger.LogWarning(ex, "Calendar event create rejected: {Reason}", ex.Message);
+            return CalendarEventMutationResult.ValidationFailed(CalendarValidationMemberName(ex), ex.Message);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Calendar event create rejected: {Reason}", ex.Message);
+            return CalendarEventMutationResult.Failed(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to create calendar event");
+            return CalendarEventMutationResult.Failed("Failed to create calendar event.");
+        }
+    }
+
     private void InvalidateCache() => _cache.Remove(CacheKeyActiveEvents);
 
     // Parse-check the RRULE at write time so a malformed rule cannot persist and break
@@ -315,6 +342,11 @@ public sealed class CalendarService : ICalendarService
         if (DateTimeZoneProviders.Tzdb.GetZoneOrNull(tz) is null)
             throw new ValidationException($"Recurrence timezone is unknown: '{tz}'.");
     }
+
+    private static string CalendarValidationMemberName(ValidationException ex) =>
+        ex.Message.Contains("timezone", StringComparison.OrdinalIgnoreCase)
+            ? nameof(CreateCalendarEventDto.RecurrenceTimezone)
+            : nameof(CreateCalendarEventDto.RecurrenceRule);
 
     // Denormalise RRULE UNTIL (or the last occurrence for COUNT-bounded rules) into an Instant
     // so the SQL window prefilter can skip events that cannot possibly contribute occurrences
@@ -433,6 +465,39 @@ public sealed class CalendarService : ICalendarService
 
         InvalidateCache();
         return mutated;
+    }
+
+    public async Task<CalendarEventMutationResult> UpdateEventWithResultAsync(
+        Guid id,
+        UpdateCalendarEventDto dto,
+        Guid updatedByUserId,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var ev = await UpdateEventAsync(id, dto, updatedByUserId, ct);
+            return CalendarEventMutationResult.Success(ev);
+        }
+        catch (ValidationException ex)
+        {
+            _logger.LogWarning(ex, "Calendar event {EventId} update rejected: {Reason}", id, ex.Message);
+            return CalendarEventMutationResult.ValidationFailed(CalendarValidationMemberName(ex), ex.Message);
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.LogWarning(ex, "Calendar event {EventId} not found during update", id);
+            return CalendarEventMutationResult.Missing("Calendar event not found.");
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Calendar event {EventId} update rejected: {Reason}", id, ex.Message);
+            return CalendarEventMutationResult.Failed(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update calendar event {EventId}", id);
+            return CalendarEventMutationResult.Failed("Failed to update calendar event.");
+        }
     }
 
     public async Task DeleteEventAsync(Guid id, Guid deletedByUserId, CancellationToken ct = default)
