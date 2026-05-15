@@ -26,7 +26,6 @@ using Humans.Web.Extensions;
 using Humans.Web.Extensions.Sections;
 using Microsoft.Extensions.Caching.Memory;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Identity;
 using Humans.Infrastructure.Services;
 using Humans.Web.Authorization;
 using Humans.Web.Health;
@@ -190,13 +189,6 @@ builder.Services.AddIdentity<User, IdentityRole<Guid>>(options =>
     .AddEntityFrameworkStores<HumansDbContext>()
     .AddDefaultTokenProviders()
     .AddClaimsPrincipalFactory<HumansUserClaimsPrincipalFactory>();
-
-// Issue #635 (§15i, Phase 6 alt): replace the default EF UserStore<User>
-// registration with the LoggingUserStoreDecorator subclass. Behavior is
-// unchanged; the override emits a warning log on every FindByEmailAsync /
-// FindByNameAsync call so we can observe whether Identity itself ever
-// internally triggers those lookups in production. See class docstring.
-builder.Services.AddScoped<IUserStore<User>, LoggingUserStoreDecorator>();
 
 // Magic link tokens use DataProtection with explicit 15-minute lifetime (not Identity token providers).
 
