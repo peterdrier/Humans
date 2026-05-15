@@ -12,6 +12,7 @@ using Humans.Infrastructure.Repositories.Governance;
 using Humans.Infrastructure.Services;
 using Humans.Web.Services.Onboarding;
 using GovernanceApplicationDecisionService = Humans.Application.Services.Governance.ApplicationDecisionService;
+using GovernanceIndexService = Humans.Application.Services.Governance.GovernanceIndexService;
 using GovernanceMembershipCalculator = Humans.Application.Services.Governance.MembershipCalculator;
 using GovernanceMembershipQuery = Humans.Application.Services.Governance.MembershipQuery;
 using OnboardingOrchestratorService = Humans.Application.Services.Onboarding.OnboardingService;
@@ -37,6 +38,8 @@ internal static class GovernanceSectionExtensions
         services.AddScoped<IApplicationDecisionService>(sp => sp.GetRequiredService<GovernanceApplicationDecisionService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<GovernanceApplicationDecisionService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<GovernanceApplicationDecisionService>());
+
+        services.AddScoped<IGovernanceIndexService, GovernanceIndexService>();
 
         // Query adapter breaks the circular DI graph between IMembershipCalculator
         // and ITeamService / IRoleAssignmentService (both of which inject
