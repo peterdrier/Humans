@@ -25,11 +25,8 @@
           window, then error. Past-deadline diagnostics are emitted with
           effectiveSeverity: Error directly (bypasses this list); pre-deadline
           warnings must stay warnings so the deadline mechanism works.
-        - HUM0012: grandfathered Services.Profile classes carrying
-          [Grandfathered("HUM0012", ...)] for the Interfaces.Profiles vs
-          Services.Profile plural/singular drift, pending follow-up rename PR.
     -->
-    <WarningsNotAsErrors>$(WarningsNotAsErrors);HUM0009;HUM0010;HUM0011;HUM0012</WarningsNotAsErrors>
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);HUM0009;HUM0010;HUM0011</WarningsNotAsErrors>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <AnalysisLevel>latest</AnalysisLevel>

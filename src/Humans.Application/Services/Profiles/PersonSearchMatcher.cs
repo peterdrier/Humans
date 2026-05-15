@@ -6,7 +6,7 @@ namespace Humans.Application.Services.Profiles;
 
 /// <summary>
 /// Pure in-memory matcher for the person-search bit-flag API. Called by
-/// both the base <see cref="Humans.Application.Services.Profile.ProfileService"/>
+/// both the base <see cref="Humans.Application.Services.Profiles.ProfileService"/>
 /// (DB-backed snapshot) and the caching decorator (dict-backed snapshot)
 /// with the same output shape, so search semantics live in exactly one
 /// place.

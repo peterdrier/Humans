@@ -11,7 +11,7 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Xunit;
-using ProfileService = Humans.Application.Services.Profile.ProfileService;
+using ProfileService = Humans.Application.Services.Profiles.ProfileService;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Interfaces.Onboarding;

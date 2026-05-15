@@ -13,7 +13,7 @@ using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Auth;
 using Humans.Application.Services.Email;
-using Humans.Application.Services.Profile;
+using Humans.Application.Services.Profiles;
 using Humans.Application.Services.Shifts;
 using Humans.Application.Services.Teams;
 using Humans.Application.Services.Users;

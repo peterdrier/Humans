@@ -1,6 +1,5 @@
 using NodaTime;
 using Microsoft.Extensions.Logging;
-using Humans.Application.Architecture;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
@@ -10,12 +9,11 @@ using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
 
-namespace Humans.Application.Services.Profile;
+namespace Humans.Application.Services.Profiles;
 
 /// <summary>
 /// Service for managing contact fields with visibility controls.
 /// </summary>
-[Grandfathered("HUM0012", "Profile services live in Services.Profile but their interfaces live in Interfaces.Profiles. Plural/singular drift; folder rename deferred to a follow-up PR.", "2026-05-15", "peterdrier/Humans#557")]
 public sealed class ContactFieldService : IContactFieldService, IUserMerge
 {
     private readonly IContactFieldRepository _repository;

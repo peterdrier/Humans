@@ -1,7 +1,6 @@
 using System.Transactions;
 using Microsoft.Extensions.Logging;
 using NodaTime;
-using Humans.Application.Architecture;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -12,7 +11,7 @@ using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
 
-namespace Humans.Application.Services.Profile;
+namespace Humans.Application.Services.Profiles;
 
 /// <summary>
 /// Detects and resolves duplicate user accounts where the same email
@@ -21,11 +20,10 @@ namespace Humans.Application.Services.Profile;
 /// </summary>
 /// <remarks>
 /// Moved from <c>Humans.Infrastructure.Services</c> to
-/// <c>Humans.Application.Services.Profile</c> in PR #557. All data access
+/// <c>Humans.Application.Services.Profiles</c> in PR #557. All data access
 /// flows through repository and service interfaces; this type never injects
 /// <c>HumansDbContext</c>.
 /// </remarks>
-[Grandfathered("HUM0012", "Profile services live in Services.Profile but their interfaces live in Interfaces.Profiles. Plural/singular drift; folder rename deferred to a follow-up PR.", "2026-05-15", "peterdrier/Humans#557")]
 public sealed class DuplicateAccountService : IDuplicateAccountService
 {
     private readonly IUserRepository _userRepository;

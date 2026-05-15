@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Logging;
 using NodaTime;
-using Humans.Application.Architecture;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -8,14 +7,13 @@ using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Interfaces.Profiles;
 
-namespace Humans.Application.Services.Profile;
+namespace Humans.Application.Services.Profiles;
 
 /// <summary>
 /// Service for managing communication opt-in/opt-out preferences.
 /// Token generation and URL building are delegated to
 /// <see cref="IUnsubscribeTokenProvider"/> (Infrastructure concern).
 /// </summary>
-[Grandfathered("HUM0012", "Profile services live in Services.Profile but their interfaces live in Interfaces.Profiles. Plural/singular drift; folder rename deferred to a follow-up PR.", "2026-05-15", "peterdrier/Humans#557")]
 public sealed class CommunicationPreferenceService : ICommunicationPreferenceService, IUserMerge
 {
     private static readonly Dictionary<MessageCategory, bool> DefaultOptedOut = new()

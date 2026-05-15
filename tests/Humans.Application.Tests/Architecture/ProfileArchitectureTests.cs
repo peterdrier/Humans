@@ -7,13 +7,13 @@ using Humans.Infrastructure.Services.Profiles;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using Xunit;
-using AccountMergeService = Humans.Application.Services.Profile.AccountMergeService;
-using CommunicationPreferenceService = Humans.Application.Services.Profile.CommunicationPreferenceService;
-using ContactFieldService = Humans.Application.Services.Profile.ContactFieldService;
-using DuplicateAccountService = Humans.Application.Services.Profile.DuplicateAccountService;
-using EmailProblemsService = Humans.Application.Services.Profile.EmailProblemsService;
-using ProfileService = Humans.Application.Services.Profile.ProfileService;
-using UserEmailService = Humans.Application.Services.Profile.UserEmailService;
+using AccountMergeService = Humans.Application.Services.Profiles.AccountMergeService;
+using CommunicationPreferenceService = Humans.Application.Services.Profiles.CommunicationPreferenceService;
+using ContactFieldService = Humans.Application.Services.Profiles.ContactFieldService;
+using DuplicateAccountService = Humans.Application.Services.Profiles.DuplicateAccountService;
+using EmailProblemsService = Humans.Application.Services.Profiles.EmailProblemsService;
+using ProfileService = Humans.Application.Services.Profiles.ProfileService;
+using UserEmailService = Humans.Application.Services.Profiles.UserEmailService;
 
 namespace Humans.Application.Tests.Architecture;
 
@@ -52,7 +52,7 @@ public class ProfileArchitectureTests
     public void Profile_services_live_in_application_profile_namespace(Type serviceType)
     {
         serviceType.Namespace
-            .Should().Be("Humans.Application.Services.Profile",
+            .Should().Be("Humans.Application.Services.Profiles",
                 because: "services with business logic live in Humans.Application per design-rules, organized by section");
     }
 

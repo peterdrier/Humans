@@ -7,7 +7,7 @@ using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
-using Humans.Application.Services.Profile;
+using Humans.Application.Services.Profiles;
 using Humans.Domain.Entities;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime.Testing;

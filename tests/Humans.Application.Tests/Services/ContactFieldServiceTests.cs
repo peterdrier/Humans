@@ -9,7 +9,7 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Xunit;
-using ContactFieldService = Humans.Application.Services.Profile.ContactFieldService;
+using ContactFieldService = Humans.Application.Services.Profiles.ContactFieldService;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Profiles;

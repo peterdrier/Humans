@@ -114,7 +114,7 @@ public class EmailMutationPathsAnalyzerTests
     {
         var source = InterfaceStubs + """
 
-            namespace Humans.Application.Services.Profile
+            namespace Humans.Application.Services.Profiles
             {
                 public class UserEmailService
                 {
@@ -143,7 +143,7 @@ public class EmailMutationPathsAnalyzerTests
         // ContainingType was the class, not the interface.
         var source = InterfaceStubs + """
 
-            namespace Humans.Application.Services.Profile
+            namespace Humans.Application.Services.Profiles
             {
                 public class UserEmailService : Humans.Application.Interfaces.Profiles.IUserEmailService
                 {
@@ -161,7 +161,7 @@ public class EmailMutationPathsAnalyzerTests
                 public class SomeOtherController
                 {
                     public async System.Threading.Tasks.Task Run(
-                        Humans.Application.Services.Profile.UserEmailService concrete)
+                        Humans.Application.Services.Profiles.UserEmailService concrete)
                     {
                         await concrete.ReconcileOAuthIdentityAsync(System.Guid.Empty, "p", "k", "e@x", true);
                     }

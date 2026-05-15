@@ -73,10 +73,10 @@ src/Humans.Application/Services/GoogleIntegration/GoogleWorkspaceSyncService.cs:
 src/Humans.Application/Services/Governance/ApplicationDecisionService.cs:User#1
 src/Humans.Application/Services/Legal/AdminLegalDocumentService.cs:Team#1
 src/Humans.Application/Services/Notifications/NotificationInboxService.cs:User#1
-src/Humans.Application/Services/Profile/ContactFieldService.cs:Team#1
-src/Humans.Application/Services/Profile/ContactFieldService.cs:Team#2
-src/Humans.Application/Services/Profile/DuplicateAccountService.cs:Team#1
-src/Humans.Application/Services/Profile/DuplicateAccountService.cs:Team#2
+src/Humans.Application/Services/Profiles/ContactFieldService.cs:Team#1
+src/Humans.Application/Services/Profiles/ContactFieldService.cs:Team#2
+src/Humans.Application/Services/Profiles/DuplicateAccountService.cs:Team#1
+src/Humans.Application/Services/Profiles/DuplicateAccountService.cs:Team#2
 src/Humans.Application/Services/Search/SearchService.cs:Team#1
 src/Humans.Application/Services/Search/SearchService.cs:Team#2
 src/Humans.Application/Services/Shifts/ShiftManagementService.cs:Team#1

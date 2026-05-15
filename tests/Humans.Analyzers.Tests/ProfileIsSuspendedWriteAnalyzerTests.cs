@@ -47,7 +47,7 @@ public class ProfileIsSuspendedWriteAnalyzerTests
     {
         var source = DomainStub + """
 
-            namespace Humans.Application.Services.Profile
+            namespace Humans.Application.Services.Profiles
             {
                 public class ProfileService
                 {

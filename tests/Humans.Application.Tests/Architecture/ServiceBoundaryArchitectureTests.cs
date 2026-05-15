@@ -109,7 +109,7 @@ public class ServiceBoundaryArchitectureTests
         RepositoryOwners[typeof(IUserEmailRepository)].Should().Be("Humans");
         RepositoryOwners[typeof(IProfileRepository)].Should().Be("Humans");
         ServiceSection(typeof(Humans.Application.Services.Users.UserService)).Should().Be("Humans");
-        ServiceSection(typeof(Humans.Application.Services.Profile.ProfileService)).Should().Be("Humans");
+        ServiceSection(typeof(Humans.Application.Services.Profiles.ProfileService)).Should().Be("Humans");
     }
 
     [HumansFact]

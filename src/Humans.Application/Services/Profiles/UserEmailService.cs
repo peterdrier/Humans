@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NodaTime;
-using Humans.Application.Architecture;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Repositories;
@@ -13,14 +12,13 @@ using Humans.Domain.Helpers;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Interfaces.Profiles;
 
-namespace Humans.Application.Services.Profile;
+namespace Humans.Application.Services.Profiles;
 
 /// <summary>
 /// Service for managing user email addresses. Business logic only —
 /// no direct DbContext usage. Cross-section reads (AccountMergeRequests,
 /// Users) are routed through their owning service interfaces.
 /// </summary>
-[Grandfathered("HUM0012", "Profile services live in Services.Profile but their interfaces live in Interfaces.Profiles. Plural/singular drift; folder rename deferred to a follow-up PR.", "2026-05-15", "peterdrier/Humans#557")]
 public sealed class UserEmailService : IUserEmailService, IUserMerge
 {
     private readonly IUserEmailRepository _repository;
