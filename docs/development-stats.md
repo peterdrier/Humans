@@ -14,50 +14,50 @@ To rebuild every row from scratch (e.g. after a schema change):
 
 | Metric | Value |
 |--------|------:|
-| Latest snapshot | 2026-04-26 |
-| App + Test lines | 180,610 |
-| App / Test lines | 141,745 / 38,865 |
-| C# code (no blanks/comments) | 70,329 |
-| C# comments | 15,899 |
-| Markdown lines | 87,835 |
-| Migration lines | 260,225 |
-| Files (app + test) | 1,159 |
-| Commits | 1,076 |
-| Test ratio | 21.5% |
-| 7-day delta | +45,582 app+test lines from 2026-04-20 to 2026-04-26 |
-| 7-day average | +7,597 lines/day over the same span |
+| Latest snapshot | 2026-05-15 |
+| App + Test lines | 288,420 |
+| App / Test lines | 204,942 / 83,478 |
+| C# code (no blanks/comments) | 104,966 |
+| C# comments | 23,481 |
+| Markdown lines | 154,117 |
+| Migration lines | 363,241 |
+| Files (app + test) | 1,898 |
+| Commits | 1,341 |
+| Test ratio | 28.9% |
+| 7-day delta | +58,229 app+test lines from 2026-05-09 to 2026-05-15 |
+| 7-day average | +9,705 lines/day over the same span |
 
 ## Language Breakdown
 
-Latest app-code mix at the 2026-04-26 snapshot:
+Latest app-code mix at the 2026-05-15 snapshot:
 
 | Language | Lines | Share of App Lines | Files |
 |----------|------:|-------------------:|------:|
-| C# | 99,875 | 70.5% | 751 |
-| Razor (`.cshtml`) | 29,566 | 20.9% | 234 |
-| RESX | 10,937 | 7.7% | 6 |
-| JavaScript | 1,367 | 1.0% | 9 |
+| C# | 148,019 | 72.2% | 1,188 |
+| Razor (`.cshtml`) | 40,226 | 19.6% | 318 |
+| RESX | 13,308 | 6.5% | 6 |
+| JavaScript | 3,389 | 1.7% | 27 |
 
 Tracked separately (not part of `App Lines`):
 
 | Category | Lines | Files | Notes |
 |----------|------:|------:|-------|
-| Markdown | 87,835 | 257 | Whole repo (docs, skills, root). Roughly the size of all C# code. |
-| EF Migrations | 260,225 | 155 | Auto-generated. Larger than the entire app source — overdue for consolidation. |
-| C# comments | 15,899 | — | Subset of `CS Lines`. ~16% of C# is comments. |
+| Markdown | 154,117 | 463 | Whole repo (docs, skills, root). Now exceeds raw C# total. |
+| EF Migrations | 363,241 | 191 | Auto-generated. ~1.8× the entire app source — overdue for consolidation. |
+| C# comments | 23,481 | — | Subset of `CS Lines`. ~15.9% of C# is comments. |
 
 ## Highlights
 
 - **First commit:** 2026-02-04 (7.1k lines)
-- **Current:** 181k app+test lines across 1,159 files in 72 days with commits
-- **Growth rate:** ~2,508 lines/day average
-- **Biggest day:** 2026-04-22 (+29,432 lines) — ticket vendor / budget integrations
-- **Busiest churn day:** 2026-04-22 (+29,432 / -10,883) — same day, heavy refactor
-- **Test ratio:** 21.5% of codebase (39k test lines / 181k total)
-- **Localization:** 1,429 resx keys (5 languages = ~7,145 translated strings)
-- **Architecture:** 1,058 classes, 119 interfaces, 46 controllers, 234 views, 64 entities
-- **Documentation weight:** 88k markdown lines — almost matches the 100k of C# (raw) and dwarfs the 70k of C# code-only
-- **Migration debt:** 260k lines across 155 migration files — exceeds the entire app source, overdue for consolidation
+- **Current:** 288k app+test lines across 1,898 files in 90 days with commits
+- **Growth rate:** ~3,205 lines/day average
+- **Biggest day:** 2026-05-15 (+30,845 lines) — new all-time high
+- **Busiest churn day:** 2026-04-22 (+29,432 / -10,883) — combined +/- still tops the list
+- **Test ratio:** 28.9% of codebase (83k test lines / 288k total) — climbing fast (was 21.5% on 04-26)
+- **Localization:** 1,788 resx keys (5 languages = ~8,940 translated strings)
+- **Architecture:** 1,750 classes, 180 interfaces, 76 controllers, 318 views, 92 entities
+- **Documentation weight:** 154k markdown lines — now exceeds the 148k of raw C# and dwarfs the 105k of C# code-only
+- **Migration debt:** 363k lines across 191 migration files — ~1.8× the entire app source, overdue for consolidation
 
 ## Column Key
 
@@ -159,3 +159,21 @@ The Codebase Growth table is the LAST section in this file so `generate-stats.sh
 | 2026-04-24 | 137,063 | 36,681 | 173,744 | 96,598 | 67,876 | 15,518 | 28,589 | 10,757 | 1,119 | 82,259 | 255,312 | 6,181 | 1,388 | 1,105 | 1,014 | 112 | 45 | 224 | 63 | 1,383 | 1,047 | 3,711 | 1,947 |
 | 2026-04-25 | 141,162 | 38,567 | 179,729 | 99,486 | 70,028 | 15,860 | 29,372 | 10,937 | 1,367 | 85,440 | 260,225 | 6,362 | 1,466 | 1,155 | 1,058 | 119 | 46 | 234 | 64 | 1,429 | 1,065 | 11,819 | 1,983 |
 | 2026-04-26 | 141,745 | 38,865 | 180,610 | 99,875 | 70,329 | 15,899 | 29,566 | 10,937 | 1,367 | 87,835 | 260,225 | 6,389 | 1,478 | 1,159 | 1,058 | 119 | 46 | 234 | 64 | 1,429 | 1,076 | 7,066 | 2,252 |
+| 2026-04-27 | 145,636 | 40,291 | 185,927 | 102,097 | 71,766 | 16,237 | 30,397 | 11,202 | 1,940 | 95,253 | 270,278 | 6,584 | 1,539 | 1,221 | 1,089 | 122 | 47 | 239 | 66 | 1,472 | 1,093 | 2,696 | 1 |
+| 2026-04-28 | 145,660 | 40,291 | 185,951 | 102,105 | 71,766 | 16,245 | 30,411 | 11,202 | 1,942 | 95,252 | 270,278 | 6,586 | 1,539 | 1,221 | 1,089 | 122 | 47 | 239 | 66 | 1,472 | 1,097 | 41 | 18 |
+| 2026-04-29 | 145,047 | 41,491 | 186,538 | 102,197 | 71,649 | 16,485 | 29,700 | 11,208 | 1,942 | 100,144 | 270,278 | 6,567 | 1,589 | 1,233 | 1,092 | 123 | 46 | 245 | 66 | 1,475 | 1,118 | 10,575 | 4,254 |
+| 2026-04-30 | 144,830 | 42,258 | 187,088 | 102,220 | 71,643 | 16,532 | 29,466 | 11,202 | 1,942 | 102,245 | 275,259 | 6,562 | 1,620 | 1,230 | 1,072 | 122 | 45 | 242 | 66 | 1,474 | 1,127 | 7,566 | 2,128 |
+| 2026-05-01 | 145,957 | 44,017 | 189,974 | 103,026 | 72,192 | 16,699 | 29,601 | 11,388 | 1,942 | 107,875 | 275,259 | 6,626 | 1,694 | 1,238 | 1,090 | 122 | 45 | 242 | 66 | 1,505 | 1,136 | 6,668 | 839 |
+| 2026-05-02 | 152,286 | 48,366 | 200,652 | 108,023 | 75,523 | 17,765 | 30,344 | 11,898 | 2,021 | 113,389 | 285,725 | 6,911 | 1,876 | 1,278 | 1,130 | 126 | 47 | 247 | 68 | 1,577 | 1,148 | 17,374 | 1,101 |
+| 2026-05-03 | 155,983 | 49,270 | 205,253 | 110,805 | 77,680 | 18,020 | 30,983 | 12,060 | 2,135 | 113,702 | 291,368 | 7,069 | 1,912 | 1,357 | 1,184 | 138 | 50 | 255 | 71 | 1,601 | 1,161 | 5,375 | 328 |
+| 2026-05-04 | 161,556 | 52,277 | 213,833 | 115,376 | 80,771 | 19,017 | 31,811 | 12,234 | 2,135 | 114,630 | 308,300 | 7,320 | 2,035 | 1,421 | 1,233 | 141 | 54 | 261 | 77 | 1,611 | 1,174 | 9,946 | 424 |
+| 2026-05-05 | 166,220 | 57,063 | 223,283 | 117,962 | 82,388 | 19,703 | 33,712 | 12,317 | 2,229 | 117,107 | 313,984 | 7,556 | 2,235 | 1,471 | 1,254 | 143 | 56 | 267 | 77 | 1,637 | 1,201 | 15,812 | 2,845 |
+| 2026-05-06 | 166,614 | 57,357 | 223,971 | 118,089 | 82,475 | 19,730 | 33,913 | 12,383 | 2,229 | 118,864 | 313,984 | 7,584 | 2,246 | 1,471 | 1,256 | 143 | 56 | 267 | 77 | 1,648 | 1,203 | 2,491 | 37 |
+| 2026-05-08 | 167,506 | 57,309 | 224,815 | 118,616 | 82,850 | 19,816 | 34,194 | 12,467 | 2,229 | 117,996 | 313,984 | 7,629 | 2,238 | 1,479 | 1,263 | 143 | 57 | 270 | 77 | 1,662 | 1,217 | 2,225 | 2,148 |
+| 2026-05-09 | 169,647 | 60,544 | 230,191 | 120,607 | 84,057 | 20,404 | 34,344 | 12,467 | 2,229 | 120,883 | 313,984 | 7,718 | 2,370 | 1,511 | 1,281 | 147 | 58 | 272 | 77 | 1,662 | 1,232 | 10,653 | 2,389 |
+| 2026-05-10 | 173,281 | 63,295 | 236,576 | 123,830 | 86,324 | 21,010 | 34,737 | 12,485 | 2,229 | 124,716 | 319,821 | 7,868 | 2,481 | 1,546 | 1,314 | 152 | 61 | 277 | 78 | 1,665 | 1,242 | 11,822 | 1,471 |
+| 2026-05-11 | 177,304 | 65,260 | 242,564 | 126,376 | 88,169 | 21,394 | 35,604 | 13,091 | 2,233 | 130,414 | 331,450 | 8,086 | 2,557 | 1,580 | 1,356 | 155 | 62 | 279 | 79 | 1,749 | 1,258 | 19,126 | 6,708 |
+| 2026-05-12 | 184,798 | 71,061 | 255,859 | 132,569 | 92,897 | 22,080 | 36,905 | 13,091 | 2,233 | 136,895 | 343,829 | 8,388 | 2,771 | 1,686 | 1,446 | 163 | 65 | 287 | 83 | 1,749 | 1,277 | 22,730 | 2,768 |
+| 2026-05-13 | 189,321 | 76,496 | 265,817 | 136,416 | 95,624 | 22,771 | 37,573 | 13,099 | 2,233 | 143,277 | 349,841 | 8,577 | 2,989 | 1,750 | 1,487 | 168 | 67 | 294 | 83 | 1,752 | 1,311 | 18,724 | 2,363 |
+| 2026-05-14 | 191,729 | 79,435 | 271,164 | 138,592 | 97,042 | 23,310 | 37,805 | 13,099 | 2,233 | 148,762 | 349,841 | 8,677 | 3,107 | 1,786 | 1,509 | 173 | 68 | 296 | 83 | 1,752 | 1,328 | 11,346 | 479 |
+| 2026-05-15 | 204,942 | 83,478 | 288,420 | 148,019 | 104,966 | 23,481 | 40,226 | 13,308 | 3,389 | 154,117 | 363,241 | 9,180 | 3,265 | 1,898 | 1,750 | 180 | 76 | 318 | 92 | 1,788 | 1,341 | 30,845 | 8,332 |
