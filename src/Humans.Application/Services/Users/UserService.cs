@@ -1,9 +1,11 @@
+using Humans.Application.DTOs;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
+using Humans.Application.Services.Profiles;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Domain.Helpers;
@@ -111,6 +113,14 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
             "GetAllUserInfos is only meaningful through CachingUserService. " +
             "If this is being called on the inner UserService it indicates a DI " +
             "registration mistake — IUserService should resolve to CachingUserService.");
+
+    public Task<IReadOnlyList<HumanSearchResult>> SearchUsersAsync(
+        string query, PersonSearchFields fields, int limit = 10, CancellationToken ct = default) =>
+        throw new NotSupportedException(
+            "SearchUsersAsync runs against the cached UserInfo snapshot in " +
+            "CachingUserService. If this is being called on the inner UserService " +
+            "it indicates a DI registration mistake — IUserService should resolve " +
+            "to CachingUserService.");
 
     public Task<User?> GetByIdAsync(Guid userId, CancellationToken ct = default) =>
         _repo.GetByIdAsync(userId, ct);

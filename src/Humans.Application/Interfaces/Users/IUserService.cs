@@ -1,5 +1,7 @@
+using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Services.Profiles;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
@@ -37,6 +39,28 @@ public interface IUserService : IApplicationService, IUserMerge
     /// iterate without locking.
     /// </summary>
     IReadOnlyCollection<UserInfo> GetAllUserInfos();
+
+    /// <summary>
+    /// Single canonical person-search method. Matches <paramref name="query"/>
+    /// against the buckets named by <paramref name="fields"/> over the cached
+    /// <see cref="UserInfo"/> snapshot and returns up to <paramref name="limit"/>
+    /// matches in unspecified order — callers sort + take(N) at the presentation
+    /// layer per <c>memory/architecture/display-sort-in-controllers.md</c>.
+    ///
+    /// <para>Implicit scope: rows are filtered to "not rejected, has a
+    /// profile" — the only population anyone is searching. Emergency-contact
+    /// data is never reachable regardless of which bits are set.</para>
+    ///
+    /// <para>Auth boundary is the controller per design-rules §6: services
+    /// are auth-free, so a non-admin endpoint passing
+    /// <see cref="PersonSearchFields.Admin"/> is a programmer error caught
+    /// in code review, not a runtime check.</para>
+    /// </summary>
+    Task<IReadOnlyList<HumanSearchResult>> SearchUsersAsync(
+        string query,
+        PersonSearchFields fields,
+        int limit = 10,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Fetches a single user by id. Returns null if the user does not exist.

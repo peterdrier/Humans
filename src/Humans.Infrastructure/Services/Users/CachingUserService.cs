@@ -3,9 +3,11 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application;
+using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
+using Humans.Application.Services.Profiles;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 
@@ -101,6 +103,163 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
 
     /// <inheritdoc cref="IUserService.GetAllUserInfos" />
     public IReadOnlyCollection<UserInfo> GetAllUserInfos() => Values.ToArray();
+
+    /// <inheritdoc cref="IUserService.SearchUsersAsync" />
+    public Task<IReadOnlyList<HumanSearchResult>> SearchUsersAsync(
+        string query, PersonSearchFields fields, int limit = 10, CancellationToken ct = default)
+    {
+        if (fields == PersonSearchFields.None || string.IsNullOrWhiteSpace(query) || limit <= 0)
+            return Task.FromResult<IReadOnlyList<HumanSearchResult>>(Array.Empty<HumanSearchResult>());
+
+        var includeAdmin = (fields & PersonSearchFields.Admin) != PersonSearchFields.None;
+
+        // Admin-only exact-UserId lookup. Lets an admin paste a UserId from
+        // logs / audit trails / URLs and jump straight to that human. Public
+        // callers fall through to text matching so they can't enumerate IDs.
+        if (includeAdmin && Guid.TryParse(query, out var idGuid))
+        {
+            if (TryGet(idGuid, out var byId) && byId.Profile is not null && byId.Profile.RejectedAt is null)
+            {
+                return Task.FromResult<IReadOnlyList<HumanSearchResult>>(new[]
+                {
+                    new HumanSearchResult(
+                        UserId: byId.Id,
+                        ProfileId: byId.Profile.Id,
+                        BurnerName: byId.BurnerName,
+                        ProfilePictureUrl: byId.ProfilePictureUrl,
+                        MatchField: "User ID",
+                        MatchSnippet: null,
+                        MatchedEmail: null)
+                });
+            }
+            return Task.FromResult<IReadOnlyList<HumanSearchResult>>(Array.Empty<HumanSearchResult>());
+        }
+
+        var results = new List<HumanSearchResult>();
+        foreach (var u in Values)
+        {
+            // Must have a profile and not be rejected to be searchable.
+            if (u.Profile is null) continue;
+            if (u.Profile.RejectedAt is not null) continue;
+
+            // Public-only callers never see suspended humans. Admin callers
+            // do, because admin search is the primary tool for finding a
+            // suspended person to lift suspension etc.
+            if (!includeAdmin && u.IsSuspended) continue;
+
+            // Public-only: only approved profiles surface. Admin: pre-approval
+            // / consent-pending profiles are valid search targets.
+            if (!includeAdmin && !u.Profile.IsApproved) continue;
+
+            var match = TryMatchBuckets(u, query, fields);
+            if (match is null) continue;
+
+            results.Add(new HumanSearchResult(
+                UserId: u.Id,
+                ProfileId: u.Profile.Id,
+                BurnerName: u.BurnerName,
+                ProfilePictureUrl: u.ProfilePictureUrl,
+                MatchField: match.Value.Field,
+                MatchSnippet: match.Value.Snippet,
+                MatchedEmail: match.Value.MatchedEmail));
+
+            if (results.Count >= limit) break;
+        }
+
+        return Task.FromResult<IReadOnlyList<HumanSearchResult>>(results);
+    }
+
+    /// <summary>
+    /// Per-record predicate for <see cref="SearchUsersAsync"/>. Returns the
+    /// first bucket that matches <paramref name="query"/>, or null if none do.
+    /// Emergency-contact fields are skipped by every branch regardless of
+    /// which bits are set.
+    /// </summary>
+    private static (string Field, string? Snippet, string? MatchedEmail)?
+        TryMatchBuckets(UserInfo u, string query, PersonSearchFields fields)
+    {
+        // Callers guarantee u.Profile is not null (filtered upstream).
+        var p = u.Profile!;
+        var includeName = (fields & PersonSearchFields.Name) != PersonSearchFields.None;
+        var includeBio = (fields & PersonSearchFields.Bio) != PersonSearchFields.None;
+        var includeAdmin = (fields & PersonSearchFields.Admin) != PersonSearchFields.None;
+
+        // ── Name bucket ─────────────────────────────────────────────
+        if (includeName)
+        {
+            // BurnerName only — see memory/architecture/burnername-is-the-display-name.md.
+            if (!string.IsNullOrEmpty(p.BurnerName) &&
+                p.BurnerName.Contains(query, StringComparison.OrdinalIgnoreCase))
+                return ("Name", null, null);
+        }
+
+        // ── Bio bucket (public long-form + short fields + public ContactFields) ──
+        if (includeBio)
+        {
+            if (p.City?.Contains(query, StringComparison.OrdinalIgnoreCase) == true)
+                return ("City", p.City, null);
+
+            if (p.ContributionInterests?.Contains(query, StringComparison.OrdinalIgnoreCase) == true)
+                return ("Interests", GetSnippet(p.ContributionInterests, query), null);
+
+            if (p.Bio?.Contains(query, StringComparison.OrdinalIgnoreCase) == true)
+                return ("Bio", GetSnippet(p.Bio, query), null);
+
+            if (p.Pronouns?.Contains(query, StringComparison.OrdinalIgnoreCase) == true)
+                return ("Pronouns", p.Pronouns, null);
+
+            foreach (var v in p.VolunteerHistory)
+            {
+                if (v.EventName.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                    v.Description?.Contains(query, StringComparison.OrdinalIgnoreCase) == true)
+                    return ("Burner CV", v.EventName, null);
+            }
+
+            foreach (var cf in p.ContactFields)
+            {
+                if (cf.Visibility != ContactFieldVisibility.AllActiveProfiles) continue;
+                if (cf.Value.Contains(query, StringComparison.OrdinalIgnoreCase))
+                    return (DisplayLabel(cf), cf.Value, null);
+            }
+        }
+
+        // ── Admin bucket (verified emails + non-public ContactFields) ───────────
+        if (includeAdmin)
+        {
+            foreach (var email in u.AllVerifiedEmails)
+            {
+                if (email.Contains(query, StringComparison.OrdinalIgnoreCase))
+                    return ("Email", null, email);
+            }
+
+            foreach (var cf in p.ContactFields)
+            {
+                // Public ContactFields were already handled above (when
+                // the Bio bit was on). Admin bucket covers the remainder.
+                if (cf.Visibility == ContactFieldVisibility.AllActiveProfiles) continue;
+                if (cf.Value.Contains(query, StringComparison.OrdinalIgnoreCase))
+                    return (DisplayLabel(cf), cf.Value, cf.Value);
+            }
+        }
+
+        return null;
+    }
+
+    private static string DisplayLabel(ContactFieldInfo cf) =>
+        !string.IsNullOrWhiteSpace(cf.CustomLabel) ? cf.CustomLabel! : cf.FieldType.ToString();
+
+    private static string GetSnippet(string text, string query, int contextChars = 60)
+    {
+        var index = text.IndexOf(query, StringComparison.OrdinalIgnoreCase);
+        if (index < 0) return text.Length <= contextChars * 2 ? text : text[..(contextChars * 2)] + "...";
+
+        var start = Math.Max(0, index - contextChars);
+        var end = Math.Min(text.Length, index + query.Length + contextChars);
+        var snippet = text[start..end];
+        if (start > 0) snippet = "..." + snippet;
+        if (end < text.Length) snippet += "...";
+        return snippet;
+    }
 
     /// <summary>
     /// Rebuilds the cache entry for <paramref name="userId"/> directly from
