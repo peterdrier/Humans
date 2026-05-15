@@ -102,8 +102,8 @@ public class ShiftSignupServiceCoverageGapTests : IDisposable
         var (es, rota, shift, userA, userB) = await SeedScenarioAsync(
             minVolunteers: 2, maxVolunteers: 5);
         var coordinatorId = Guid.NewGuid();
-        _teamService.GetCoordinatorUserIdsAsync(rota.TeamId, Arg.Any<CancellationToken>())
-            .Returns(new List<Guid> { coordinatorId });
+        _teamService.GetTeamAsync(rota.TeamId, Arg.Any<CancellationToken>())
+            .Returns(BuildTeamInfoWithCoordinator(rota.TeamId, coordinatorId));
 
         var signupA = await _dbContext.ShiftSignups.FirstAsync(s => s.UserId == userA);
 
@@ -134,8 +134,8 @@ public class ShiftSignupServiceCoverageGapTests : IDisposable
         var (es, rota, shift, userA, userB) = await SeedScenarioAsync(
             minVolunteers: 1, maxVolunteers: 5);
         var coordinatorId = Guid.NewGuid();
-        _teamService.GetCoordinatorUserIdsAsync(rota.TeamId, Arg.Any<CancellationToken>())
-            .Returns(new List<Guid> { coordinatorId });
+        _teamService.GetTeamAsync(rota.TeamId, Arg.Any<CancellationToken>())
+            .Returns(BuildTeamInfoWithCoordinator(rota.TeamId, coordinatorId));
 
         var signupA = await _dbContext.ShiftSignups.FirstAsync(s => s.UserId == userA);
 
@@ -242,4 +242,16 @@ public class ShiftSignupServiceCoverageGapTests : IDisposable
         await _dbContext.SaveChangesAsync();
         return (es, rota, shift, userA, userB);
     }
+
+    private static TeamInfo BuildTeamInfoWithCoordinator(Guid teamId, Guid coordinatorUserId) =>
+        new(
+            teamId, "Team", null, "team",
+            IsActive: true, IsSystemTeam: false, SystemTeamType: SystemTeamType.None,
+            RequiresApproval: false, IsPublicPage: false, IsHidden: false,
+            IsPromotedToDirectory: false, CreatedAt: Instant.MinValue,
+            Members: new List<TeamMemberInfo>
+            {
+                new(Guid.NewGuid(), coordinatorUserId, string.Empty, null, null,
+                    TeamMemberRole.Coordinator, Instant.MinValue),
+            });
 }

@@ -1716,11 +1716,6 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
         CancellationToken cancellationToken = default) =>
         _repo.GetUserCoordinatorTeamIdsAsync(userId, cancellationToken);
 
-    public Task<IReadOnlyList<Guid>> GetCoordinatorUserIdsAsync(
-        Guid teamId,
-        CancellationToken cancellationToken = default) =>
-        _repo.GetCoordinatorUserIdsAsync(teamId, cancellationToken);
-
     public async Task<IReadOnlyList<Humans.Application.Models.TeamMembership>> GetActiveTeamMembershipsForUserAsync(
         Guid userId, CancellationToken cancellationToken = default)
     {
@@ -1760,11 +1755,6 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
         IReadOnlyCollection<Guid> teamIds,
         CancellationToken cancellationToken = default) =>
         _repo.GetByIdsWithParentsAsync(teamIds, cancellationToken);
-
-    public Task<IReadOnlyList<TeamCoordinatorRef>> GetActiveCoordinatorsForTeamsAsync(
-        IReadOnlyCollection<Guid> teamIds,
-        CancellationToken cancellationToken = default) =>
-        _repo.GetActiveCoordinatorsForTeamsAsync(teamIds, cancellationToken);
 
     public async Task<TeamMember> AddSeededMemberAsync(
         Guid teamId,
@@ -1830,10 +1820,6 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
 
     public Task<int> GetTotalPendingJoinRequestCountAsync(CancellationToken cancellationToken = default) =>
         _repo.GetTotalPendingCountAsync(cancellationToken);
-
-    public Task<IReadOnlyList<Guid>> GetActiveNonSystemTeamCoordinatorUserIdsAsync(
-        CancellationToken cancellationToken = default) =>
-        _repo.GetActiveNonSystemTeamCoordinatorUserIdsAsync(cancellationToken);
 
     public async Task<IReadOnlyList<TeamActiveMemberSnapshot>> GetActiveMembersForTeamsAsync(
         IReadOnlyCollection<Guid> teamIds,
@@ -2528,14 +2514,6 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
             return 0;
         return await _repo.ApplyMemberRoleChangesAsync(changes, cancellationToken);
     }
-
-    public Task<IReadOnlyList<Guid>> GetActiveDepartmentCoordinatorUserIdsAsync(
-        CancellationToken cancellationToken = default) =>
-        _repo.GetActiveDepartmentCoordinatorUserIdsAsync(cancellationToken);
-
-    public Task<bool> IsActiveDepartmentCoordinatorAsync(
-        Guid userId, CancellationToken cancellationToken = default) =>
-        _repo.IsActiveDepartmentCoordinatorAsync(userId, cancellationToken);
 
     public async Task<bool> ApplySystemTeamMembershipDeltaAsync(
         Guid teamId,

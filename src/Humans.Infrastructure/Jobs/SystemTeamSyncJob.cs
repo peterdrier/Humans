@@ -286,7 +286,12 @@ public class SystemTeamSyncJob : ISystemTeamSync
         }
 
         // Department-level coordinators only (sub-team managers excluded).
-        var leadUserIds = await _teamService.GetActiveDepartmentCoordinatorUserIdsAsync(cancellationToken);
+        var teamsById = await _teamService.GetTeamsAsync(cancellationToken);
+        var leadUserIds = teamsById.Values
+            .Where(t => t.IsActive && !t.IsSystemTeam && t.ParentTeamId is null)
+            .SelectMany(t => t.Members.Where(m => m.Role == TeamMemberRole.Coordinator).Select(m => m.UserId))
+            .Distinct()
+            .ToList();
 
         // Additionally filter by Coordinators-team-required consents.
         var eligibleSet = await MembershipCalculator.GetUsersWithAllRequiredConsentsForTeamAsync(
@@ -464,7 +469,10 @@ public class SystemTeamSyncJob : ISystemTeamSync
             return;
         }
 
-        var isCoordinatorAnywhere = await _teamService.IsActiveDepartmentCoordinatorAsync(userId, cancellationToken);
+        var teamsById = await _teamService.GetTeamsAsync(cancellationToken);
+        var isCoordinatorAnywhere = teamsById.Values
+            .Where(t => t.IsActive && !t.IsSystemTeam && t.ParentTeamId is null)
+            .Any(t => t.Members.Any(m => m.UserId == userId && m.Role == TeamMemberRole.Coordinator));
 
         var isEligible = isCoordinatorAnywhere
             && await MembershipCalculator.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Coordinators, cancellationToken);

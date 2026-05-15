@@ -184,6 +184,7 @@ public record TeamActiveMemberSnapshot(
 /// <remarks>
 /// Surface-budget recent history (newest first):
 /// <list type="bullet">
+///   <item>66→61 — drained 5 coordinator readers (GetCoordinatorUserIdsAsync, GetActiveCoordinatorsForTeamsAsync, GetActiveNonSystemTeamCoordinatorUserIdsAsync, GetActiveDepartmentCoordinatorUserIdsAsync, IsActiveDepartmentCoordinatorAsync) onto TeamInfo cache.</item>
 ///   <item>68→66 — drained GetActiveTeamOptionsAsync + GetBudgetableTeamsAsync onto TeamInfo cache; killed TeamOptionDto record (parent: peterdrier/Humans#555 UserInfo migration).</item>
 ///   <item>71→70 — PR #478 (issue #615): removed GetActiveChildMembersByParentIdsAsync; the child-team rollup is now inside GetExpectedAsync via GetActiveMembersForTeamsAsync.</item>
 ///   <item>2026-05-11 — InterfaceMethodBudgetTests retired; budget migrated to [SurfaceBudget(71)] (issue nobodies-collective/Humans#700).</item>
@@ -194,7 +195,7 @@ public record TeamActiveMemberSnapshot(
 ///   <item>71→70 — account-merge fold redesign: removed ReassignToUserAsync from ITeamService (moved to IUserMerge.ReassignAsync, implemented by TeamService and dispatched by AccountMergeService via IEnumerable&lt;IUserMerge&gt; fan-out).</item>
 /// </list>
 /// </remarks>
-[SurfaceBudget(66)]
+[SurfaceBudget(61)]
 public interface ITeamService : IApplicationService
 {
     /// <summary>
@@ -588,14 +589,6 @@ public interface ITeamService : IApplicationService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Gets the user IDs of all active coordinators for a team (Coordinator member role).
-    /// Used by shift services for notification dispatch.
-    /// </summary>
-    Task<IReadOnlyList<Guid>> GetCoordinatorUserIdsAsync(
-        Guid teamId,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Returns the active (non-Volunteers) teams the user belongs to with the
     /// user's role on each team. Callers that only need names project via
     /// <c>.Select(m =&gt; m.TeamName)</c>. Display ordering is the caller's
@@ -621,15 +614,6 @@ public interface ITeamService : IApplicationService
     /// reference deactivated teams and the caller still needs the name.
     /// </summary>
     Task<IReadOnlyDictionary<Guid, Team>> GetByIdsWithParentsAsync(
-        IReadOnlyCollection<Guid> teamIds,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Returns one row per active (<see cref="TeamMember.LeftAt"/> is null) coordinator
-    /// across the requested teams. Used by the shift coordinator dashboard to look up
-    /// coordinators for teams with pending signups without reading the TeamMembers table.
-    /// </summary>
-    Task<IReadOnlyList<TeamCoordinatorRef>> GetActiveCoordinatorsForTeamsAsync(
         IReadOnlyCollection<Guid> teamIds,
         CancellationToken cancellationToken = default);
 
@@ -716,17 +700,6 @@ public interface ITeamService : IApplicationService
     Task<int> GetTotalPendingJoinRequestCountAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Returns the distinct user ids of every active
-    /// (<see cref="TeamMember.LeftAt"/> is null)
-    /// <see cref="TeamMemberRole.Coordinator"/> on a non-system team.
-    /// Used by the Admin daily digest to compute pending-consent counts
-    /// for team coordinators without reading
-    /// <c>team_members</c> directly (design-rules §2c).
-    /// </summary>
-    Task<IReadOnlyList<Guid>> GetActiveNonSystemTeamCoordinatorUserIdsAsync(
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Returns every active (<see cref="TeamMember.LeftAt"/> is null) team member
     /// across the given team ids, with <see cref="TeamMember.Team"/> hydrated and
     /// the cross-domain <see cref="TeamMember.User"/> nav stitched in-memory via
@@ -773,21 +746,6 @@ public interface ITeamService : IApplicationService
     Task<int> ApplyMemberRoleChangesAsync(
         IReadOnlyCollection<(Guid TeamMemberId, TeamMemberRole Role)> changes,
         CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Returns the distinct user ids of every active coordinator on a
-    /// non-system department team (<c>ParentTeamId</c> is null). Sub-team
-    /// managers are excluded.
-    /// </summary>
-    Task<IReadOnlyList<Guid>> GetActiveDepartmentCoordinatorUserIdsAsync(
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Is the user a coordinator on any active department team
-    /// (<c>ParentTeamId</c> is null)?
-    /// </summary>
-    Task<bool> IsActiveDepartmentCoordinatorAsync(
-        Guid userId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Applies a system-team membership reconciliation in a single save:

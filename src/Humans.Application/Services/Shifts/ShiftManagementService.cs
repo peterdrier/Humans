@@ -1336,7 +1336,13 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
             }
         }
 
-        var coordsRaw = await TeamService.GetActiveCoordinatorsForTeamsAsync(relevantTeamIds.ToList());
+        var teamsById = await TeamService.GetTeamsAsync();
+        var coordsRaw = relevantTeamIds
+            .Where(teamsById.ContainsKey)
+            .SelectMany(id => teamsById[id].Members
+                .Where(m => m.Role == TeamMemberRole.Coordinator)
+                .Select(m => new TeamCoordinatorRef(id, m.UserId)))
+            .ToList();
         var coordinatorUserIds = coordsRaw.Select(c => c.UserId).Distinct().ToList();
 
         var userLookup = await UserService.GetByIdsAsync(coordinatorUserIds);

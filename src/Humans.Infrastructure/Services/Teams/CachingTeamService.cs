@@ -438,11 +438,6 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
         CancellationToken cancellationToken = default) =>
         WithInner(inner => inner.GetUserCoordinatedTeamIdsAsync(userId, cancellationToken));
 
-    public Task<IReadOnlyList<Guid>> GetCoordinatorUserIdsAsync(
-        Guid teamId,
-        CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetCoordinatorUserIdsAsync(teamId, cancellationToken));
-
     public async Task<IReadOnlyList<Humans.Application.Models.TeamMembership>> GetActiveTeamMembershipsForUserAsync(
         Guid userId,
         CancellationToken cancellationToken = default)
@@ -475,11 +470,6 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
         IReadOnlyCollection<Guid> teamIds,
         CancellationToken cancellationToken = default) =>
         WithInner(inner => inner.GetByIdsWithParentsAsync(teamIds, cancellationToken));
-
-    public Task<IReadOnlyList<TeamCoordinatorRef>> GetActiveCoordinatorsForTeamsAsync(
-        IReadOnlyCollection<Guid> teamIds,
-        CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetActiveCoordinatorsForTeamsAsync(teamIds, cancellationToken));
 
     public async Task<IReadOnlyDictionary<Guid, IReadOnlyList<string>>> GetActiveNonSystemTeamNamesByUserIdsAsync(
         IReadOnlyCollection<Guid> userIds,
@@ -573,10 +563,6 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
     public Task<int> GetTotalPendingJoinRequestCountAsync(CancellationToken cancellationToken = default) =>
         WithInner(inner => inner.GetTotalPendingJoinRequestCountAsync(cancellationToken));
 
-    public Task<IReadOnlyList<Guid>> GetActiveNonSystemTeamCoordinatorUserIdsAsync(
-        CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetActiveNonSystemTeamCoordinatorUserIdsAsync(cancellationToken));
-
     public Task<IReadOnlyList<TeamActiveMemberSnapshot>> GetActiveMembersForTeamsAsync(
         IReadOnlyCollection<Guid> teamIds,
         CancellationToken cancellationToken = default) =>
@@ -600,15 +586,6 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
             InvalidateTeamsCache();
         return result;
     }
-
-    public Task<IReadOnlyList<Guid>> GetActiveDepartmentCoordinatorUserIdsAsync(
-        CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetActiveDepartmentCoordinatorUserIdsAsync(cancellationToken));
-
-    public Task<bool> IsActiveDepartmentCoordinatorAsync(
-        Guid userId,
-        CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.IsActiveDepartmentCoordinatorAsync(userId, cancellationToken));
 
     public async Task<bool> ApplySystemTeamMembershipDeltaAsync(
         Guid teamId,

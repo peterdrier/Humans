@@ -175,21 +175,9 @@ public interface ITeamRepository : IRepository
     Task<IReadOnlyList<TeamMember>> GetActiveByUserIdAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
-    /// Get active user ids with the <see cref="TeamMemberRole.Coordinator"/>
-    /// role on the given team.
-    /// </summary>
-    Task<IReadOnlyList<Guid>> GetCoordinatorUserIdsAsync(Guid teamId, CancellationToken ct = default);
-
-    /// <summary>
     /// Check whether the user has any active coordinator membership.
     /// </summary>
     Task<bool> IsAnyActiveCoordinatorAsync(Guid userId, CancellationToken ct = default);
-
-    /// <summary>
-    /// One row per active coordinator across the requested teams.
-    /// </summary>
-    Task<IReadOnlyList<TeamCoordinatorRef>> GetActiveCoordinatorsForTeamsAsync(
-        IReadOnlyCollection<Guid> teamIds, CancellationToken ct = default);
 
     /// <summary>
     /// Active non-system team ids where the user holds
@@ -392,14 +380,6 @@ public interface ITeamRepository : IRepository
 
     /// <summary>Total pending join requests across all teams.</summary>
     Task<int> GetTotalPendingCountAsync(CancellationToken ct = default);
-
-    /// <summary>
-    /// Distinct user ids of every active (<see cref="TeamMember.LeftAt"/> is null)
-    /// <see cref="TeamMemberRole.Coordinator"/> on a non-system team
-    /// (<see cref="Team.SystemTeamType"/> == <see cref="SystemTeamType.None"/>).
-    /// </summary>
-    Task<IReadOnlyList<Guid>> GetActiveNonSystemTeamCoordinatorUserIdsAsync(
-        CancellationToken ct = default);
 
     /// <summary>Inserts a new join request.</summary>
     Task AddRequestAsync(TeamJoinRequest request, CancellationToken ct = default);
@@ -621,24 +601,6 @@ public interface ITeamRepository : IRepository
     Task<int> ApplyMemberRoleChangesAsync(
         IReadOnlyCollection<(Guid TeamMemberId, TeamMemberRole Role)> changes,
         CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns the distinct user ids of every active coordinator on a
-    /// non-system department team (<see cref="Team.ParentTeamId"/> is null).
-    /// Sub-team managers are excluded. Used by the Coordinators system-team
-    /// sync to determine membership eligibility.
-    /// </summary>
-    Task<IReadOnlyList<Guid>> GetActiveDepartmentCoordinatorUserIdsAsync(
-        CancellationToken ct = default);
-
-    /// <summary>
-    /// Does the user currently hold <see cref="TeamMemberRole.Coordinator"/>
-    /// on any active department team (<see cref="Team.ParentTeamId"/> is null)?
-    /// Used by <c>SystemTeamSyncJob.SyncMembershipForUserAsync</c> for the
-    /// Coordinators system team.
-    /// </summary>
-    Task<bool> IsActiveDepartmentCoordinatorAsync(
-        Guid userId, CancellationToken ct = default);
 
     /// <summary>
     /// Applies a bulk system-team membership reconciliation in a single save:

@@ -1075,7 +1075,11 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
                 return;
 
             var teamId = shift.Rota.TeamId;
-            var coordinatorIds = await TeamService.GetCoordinatorUserIdsAsync(teamId);
+            var team = await TeamService.GetTeamAsync(teamId);
+            var coordinatorIds = team?.Members
+                .Where(m => m.Role == TeamMemberRole.Coordinator)
+                .Select(m => m.UserId)
+                .ToList() ?? new List<Guid>();
 
             if (coordinatorIds.Count == 0)
                 return;
@@ -1116,7 +1120,11 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
             var enrichedDescription = $"{changeDescription} ({rotaName}, {FormatShiftDate(shiftDate)})";
 
             // Find coordinators for this department team
-            var coordinatorIds = await TeamService.GetCoordinatorUserIdsAsync(teamId);
+            var team = await TeamService.GetTeamAsync(teamId);
+            var coordinatorIds = team?.Members
+                .Where(m => m.Role == TeamMemberRole.Coordinator)
+                .Select(m => m.UserId)
+                .ToList() ?? new List<Guid>();
 
             if (coordinatorIds.Count == 0)
                 return;
