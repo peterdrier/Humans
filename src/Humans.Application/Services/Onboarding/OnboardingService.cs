@@ -300,8 +300,7 @@ public sealed class OnboardingService : IOnboardingService
         Guid userId, CancellationToken ct = default)
     {
         var info = await _userService.GetUserInfoAsync(userId, ct);
-        var profile = info?.Profile;
-        if (profile is null || profile.IsApproved || profile.ConsentCheckStatus is not null)
+        if (info is null || !info.NeedsConsentReview || info.Profile!.ConsentCheckStatus is not null)
             return false;
 
         var hasAllConsents = await _membershipCalculator.HasAllRequiredConsentsForTeamAsync(
