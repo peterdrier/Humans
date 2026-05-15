@@ -33,8 +33,9 @@
         {
             <button type="button" class="btn btn-outline-info btn-sm"
                     data-bs-toggle="modal" data-bs-target="#placementInfoModal-@c.Id"
-                    title="@Localizer["Container_PlacementNotes_ButtonLabel"]">
+                >
                 <i class="fa-solid fa-circle-info"></i>
+                @Localizer["Container_PlacementNotes_ButtonLabel"]
             </button>
         }
         @if (Model.CanManage)
