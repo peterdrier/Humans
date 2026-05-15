@@ -67,14 +67,15 @@ public sealed class MembershipCalculator : IMembershipCalculator
         Guid userId,
         CancellationToken cancellationToken = default)
     {
-        var profile = await _profileService.GetProfileAsync(userId, cancellationToken);
+        var info = await _userService.GetUserInfoAsync(userId, cancellationToken);
+        var profile = info?.Profile;
 
         if (profile is null)
         {
             return MembershipStatus.None;
         }
 
-        if (profile.IsSuspended)
+        if (profile.State == ProfileState.Suspended)
         {
             return MembershipStatus.Suspended;
         }

@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Profiles;
@@ -139,8 +140,19 @@ public sealed class TicketTransferService_OnwardTransferTests
                 MatchedUserId = UserB,
                 TicketOrder = new TicketOrder { Id = OrderId, MatchedUserId = UserA },
             });
-        _userService.GetByIdAsync(UserC, Arg.Any<CancellationToken>())
-            .Returns(new User { Id = UserC, DisplayName = "Carol" });
+        var carol = new User { Id = UserC, DisplayName = "Carol", PreferredLanguage = "en" };
+        _userService.GetByIdAsync(UserC, Arg.Any<CancellationToken>()).Returns(carol);
+        _userService.GetUserInfoAsync(UserC, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(
+                user: carol,
+                userEmails: Array.Empty<UserEmail>(),
+                eventParticipations: Array.Empty<EventParticipation>(),
+                externalLogins: Array.Empty<(string, string)>(),
+                profile: null,
+                contactFields: Array.Empty<ContactField>(),
+                profileLanguages: Array.Empty<ProfileLanguage>(),
+                volunteerHistory: Array.Empty<VolunteerHistoryEntry>(),
+                communicationPreferences: Array.Empty<CommunicationPreference>()));
         _userEmailService.GetPrimaryEmailAsync(UserC, Arg.Any<CancellationToken>())
             .Returns("carol@example.com");
         _transferRepo.GetBySenderAsync(UserB, Arg.Any<CancellationToken>())

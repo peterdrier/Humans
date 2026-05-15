@@ -2,6 +2,7 @@ using AwesomeAssertions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
+using Humans.Application;
 using Humans.Application.Services.Governance;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
@@ -48,8 +49,13 @@ public class MembershipCalculatorTests
             _clock);
 
         // Wire substitutes to the seed maps so tests can just mutate state.
-        _profileService.GetProfileAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(ci => Task.FromResult(_profilesByUserId.GetValueOrDefault(ci.Arg<Guid>())));
+        _userService.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(ci =>
+            {
+                var userId = ci.Arg<Guid>();
+                var profile = _profilesByUserId.GetValueOrDefault(userId);
+                return profile is null ? null : WrapInUserInfo(profile);
+            });
 
         _profileService.GetByUserIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(ci =>
@@ -780,6 +786,7 @@ public class MembershipCalculatorTests
             LastName = "User",
             IsApproved = isApproved,
             IsSuspended = isSuspended,
+            State = isSuspended ? ProfileState.Suspended : ProfileState.Active,
             CreatedAt = _clock.GetCurrentInstant(),
             UpdatedAt = _clock.GetCurrentInstant()
         };
@@ -844,4 +851,22 @@ public class MembershipCalculatorTests
         }
         list.Add(version);
     }
+
+    private static UserInfo WrapInUserInfo(Profile profile) => UserInfo.Create(
+        user: new User
+        {
+            Id = profile.UserId,
+            DisplayName = profile.BurnerName ?? "",
+            PreferredLanguage = "en",
+            CreatedAt = profile.CreatedAt,
+            GoogleEmailStatus = GoogleEmailStatus.Unknown,
+        },
+        userEmails: Array.Empty<UserEmail>(),
+        eventParticipations: Array.Empty<EventParticipation>(),
+        externalLogins: Array.Empty<(string, string)>(),
+        profile: profile,
+        contactFields: Array.Empty<ContactField>(),
+        profileLanguages: Array.Empty<ProfileLanguage>(),
+        volunteerHistory: Array.Empty<VolunteerHistoryEntry>(),
+        communicationPreferences: Array.Empty<CommunicationPreference>());
 }

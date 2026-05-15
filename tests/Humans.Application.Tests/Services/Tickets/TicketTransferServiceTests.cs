@@ -66,6 +66,8 @@ public sealed class TicketTransferServiceTests
         // Default: Receiver user exists
         _userService.GetByIdAsync(_receiverId, Arg.Any<CancellationToken>())
             .Returns(MakeUser(_receiverId, "Alice"));
+        _userService.GetUserInfoAsync(_receiverId, Arg.Any<CancellationToken>())
+            .Returns(WrapInUserInfo(MakeUser(_receiverId, "Alice"), null));
 
         // Default: Receiver has primary email
         _userEmailService.GetPrimaryEmailAsync(_receiverId, Arg.Any<CancellationToken>())
@@ -101,6 +103,8 @@ public sealed class TicketTransferServiceTests
             .Returns(userId);
         _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>())
             .Returns(MakeUser(userId, "Alice"));
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(WrapInUserInfo(MakeUser(userId, "Alice"), null));
         _userEmailService.GetPrimaryEmailAsync(userId, Arg.Any<CancellationToken>())
             .Returns("alice@example.com");
         _profileService.GetProfileAsync(userId, Arg.Any<CancellationToken>())
@@ -144,6 +148,8 @@ public sealed class TicketTransferServiceTests
             .Returns(new[] { MakeSearchResult(userId, "Sparkle Person") });
         _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>())
             .Returns(MakeUser(userId, "Sparkle Person"));
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(WrapInUserInfo(MakeUser(userId, "Sparkle Person"), null));
         _userEmailService.GetPrimaryEmailAsync(userId, Arg.Any<CancellationToken>())
             .Returns("sp@example.com");
         _profileService.GetProfileAsync(userId, Arg.Any<CancellationToken>())
@@ -169,6 +175,10 @@ public sealed class TicketTransferServiceTests
             });
         _userService.GetByIdAsync(aId, Arg.Any<CancellationToken>()).Returns(MakeUser(aId, "A"));
         _userService.GetByIdAsync(bId, Arg.Any<CancellationToken>()).Returns(MakeUser(bId, "B"));
+        _userService.GetUserInfoAsync(aId, Arg.Any<CancellationToken>())
+            .Returns(WrapInUserInfo(MakeUser(aId, "A"), null));
+        _userService.GetUserInfoAsync(bId, Arg.Any<CancellationToken>())
+            .Returns(WrapInUserInfo(MakeUser(bId, "B"), null));
         _userEmailService.GetPrimaryEmailAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns((string?)null);
         _profileService.GetProfileAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
@@ -289,6 +299,8 @@ public sealed class TicketTransferServiceTests
             .Returns(attendee);
         _userService.GetByIdAsync(_receiverId, Arg.Any<CancellationToken>())
             .Returns((User?)null);
+        _userService.GetUserInfoAsync(_receiverId, Arg.Any<CancellationToken>())
+            .Returns((UserInfo?)null);
 
         var dto = new TicketTransferRequestDto(_attendeeId, _receiverId, "test");
 
@@ -323,8 +335,10 @@ public sealed class TicketTransferServiceTests
         var attendee = MakeAttendee(_attendeeId, _orderId, _senderId, TicketAttendeeStatus.Valid);
         _ticketRepo.GetAttendeeByIdAsync(_attendeeId, Arg.Any<CancellationToken>())
             .Returns(attendee);
-        _profileService.GetProfileAsync(_receiverId, Arg.Any<CancellationToken>())
-            .Returns(new Profile { IsSuspended = true, IsApproved = true });
+        _userService.GetUserInfoAsync(_receiverId, Arg.Any<CancellationToken>())
+            .Returns(WrapInUserInfo(
+                MakeUser(_receiverId, "Alice"),
+                new Profile { IsSuspended = true, IsApproved = true, State = ProfileState.Suspended }));
 
         var dto = new TicketTransferRequestDto(_attendeeId, _receiverId, "test");
 
@@ -343,8 +357,10 @@ public sealed class TicketTransferServiceTests
         var attendee = MakeAttendee(_attendeeId, _orderId, _senderId, TicketAttendeeStatus.Valid);
         _ticketRepo.GetAttendeeByIdAsync(_attendeeId, Arg.Any<CancellationToken>())
             .Returns(attendee);
-        _profileService.GetProfileAsync(_receiverId, Arg.Any<CancellationToken>())
-            .Returns(new Profile { IsSuspended = false, IsApproved = false });
+        _userService.GetUserInfoAsync(_receiverId, Arg.Any<CancellationToken>())
+            .Returns(WrapInUserInfo(
+                MakeUser(_receiverId, "Alice"),
+                new Profile { IsSuspended = false, IsApproved = false, State = ProfileState.Active }));
 
         var dto = new TicketTransferRequestDto(_attendeeId, _receiverId, "test");
 
@@ -362,8 +378,10 @@ public sealed class TicketTransferServiceTests
         var attendee = MakeAttendee(_attendeeId, _orderId, _senderId, TicketAttendeeStatus.Valid);
         _ticketRepo.GetAttendeeByIdAsync(_attendeeId, Arg.Any<CancellationToken>())
             .Returns(attendee);
-        _profileService.GetProfileAsync(_receiverId, Arg.Any<CancellationToken>())
-            .Returns(new Profile { IsSuspended = false, IsApproved = true });
+        _userService.GetUserInfoAsync(_receiverId, Arg.Any<CancellationToken>())
+            .Returns(WrapInUserInfo(
+                MakeUser(_receiverId, "Alice"),
+                new Profile { IsSuspended = false, IsApproved = true, State = ProfileState.Active }));
         _transferRepo.GetBySenderAsync(_senderId, Arg.Any<CancellationToken>())
             .Returns(new[]
             {
@@ -396,8 +414,10 @@ public sealed class TicketTransferServiceTests
             .Returns(attendee);
         _userService.GetByIdAsync(_senderId, Arg.Any<CancellationToken>())
             .Returns(MakeUser(_senderId, "Bob"));
-        _profileService.GetProfileAsync(_receiverId, Arg.Any<CancellationToken>())
-            .Returns(new Profile { FirstName = "Alice", LastName = "Smith", IsApproved = true });
+        _userService.GetUserInfoAsync(_receiverId, Arg.Any<CancellationToken>())
+            .Returns(WrapInUserInfo(
+                MakeUser(_receiverId, "Alice"),
+                new Profile { FirstName = "Alice", LastName = "Smith", IsApproved = true, State = ProfileState.Active }));
 
         var dto = new TicketTransferRequestDto(_attendeeId, _receiverId, "Going abroad");
 
@@ -773,6 +793,17 @@ public sealed class TicketTransferServiceTests
         NormalizedEmail = $"{displayName.ToLowerInvariant().Replace(" ", "")}@EXAMPLE.COM",
         NormalizedUserName = $"{displayName.ToLowerInvariant().Replace(" ", "")}@EXAMPLE.COM",
     };
+
+    private static UserInfo WrapInUserInfo(User user, Profile? profile) => UserInfo.Create(
+        user: user,
+        userEmails: Array.Empty<UserEmail>(),
+        eventParticipations: Array.Empty<EventParticipation>(),
+        externalLogins: Array.Empty<(string, string)>(),
+        profile: profile,
+        contactFields: Array.Empty<ContactField>(),
+        profileLanguages: Array.Empty<ProfileLanguage>(),
+        volunteerHistory: Array.Empty<VolunteerHistoryEntry>(),
+        communicationPreferences: Array.Empty<CommunicationPreference>());
 
     private static TicketAttendee MakeAttendee(
         Guid id, Guid orderId, Guid orderMatchedUserId, TicketAttendeeStatus status)
