@@ -115,6 +115,24 @@ public sealed class TeamRepository : ITeamRepository
                 g => (IReadOnlySet<Guid>)new HashSet<Guid>(g.Select(r => r.UserId)));
     }
 
+    public async Task<IReadOnlyDictionary<Guid, IReadOnlyList<TeamRoleDefinition>>> GetAllRoleDefinitionsByTeamAsync(
+        CancellationToken ct = default)
+    {
+        await using var db = await _factory.CreateDbContextAsync(ct);
+        var definitions = await db.Set<TeamRoleDefinition>()
+            .AsNoTracking()
+            .Include(d => d.Assignments)
+                .ThenInclude(a => a.TeamMember)
+            .OrderBy(d => d.SortOrder).ThenBy(d => d.Name) // arch:db-sort-ok
+            .ToListAsync(ct);
+
+        return definitions
+            .GroupBy(d => d.TeamId)
+            .ToDictionary(
+                g => g.Key,
+                g => (IReadOnlyList<TeamRoleDefinition>)g.ToList());
+    }
+
     private static string EscapeLikePattern(string value)
         => value
             .Replace("\\", "\\\\")

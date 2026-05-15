@@ -78,6 +78,17 @@ public interface ITeamRepository : IRepository
         CancellationToken ct = default);
 
     /// <summary>
+    /// Map of <c>TeamId → all role definitions on that team, ordered by
+    /// <c>SortOrder</c> then <c>Name</c></c>, with assignments and assignment
+    /// member nav eagerly loaded. No filters on team activity or system type
+    /// (callers apply the relevant scope). Used once per team-cache warm to
+    /// populate <see cref="Humans.Application.Interfaces.Teams.TeamInfo.RoleDefinitions"/>.
+    /// Teams with no role definitions are omitted.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, IReadOnlyList<TeamRoleDefinition>>> GetAllRoleDefinitionsByTeamAsync(
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Page of all teams (active/inactive) with active members, pending join
     /// requests, and role definitions eagerly loaded. Admin paging stays
     /// DB-side because the include graph is too expensive to load wholesale.

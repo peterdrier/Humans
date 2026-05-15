@@ -242,10 +242,26 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
         CancellationToken cancellationToken = default) =>
         WithInner(inner => inner.GetPendingRequestCountsByTeamIdsAsync(teamIds, cancellationToken));
 
-    public Task<IReadOnlyDictionary<Guid, string>> GetManagementRoleNamesByTeamIdsAsync(
+    public async Task<IReadOnlyDictionary<Guid, string>> GetManagementRoleNamesByTeamIdsAsync(
         IEnumerable<Guid> teamIds,
-        CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetManagementRoleNamesByTeamIdsAsync(teamIds, cancellationToken));
+        CancellationToken cancellationToken = default)
+    {
+        // Mirrors TeamRepository.GetPublicManagementRoleNamesByTeamIdsAsync:
+        // for each requested team, return the name of its definition flagged
+        // both IsManagement and IsPublic. Teams with no such definition are
+        // omitted from the result.
+        var teamsById = await GetTeamsByIdAsync(cancellationToken);
+        var result = new Dictionary<Guid, string>();
+        foreach (var teamId in teamIds)
+        {
+            if (!teamsById.TryGetValue(teamId, out var team) || team.RoleDefinitions is null)
+                continue;
+            var mgmt = team.RoleDefinitions.FirstOrDefault(d => d.IsManagement && d.IsPublic);
+            if (mgmt is not null)
+                result[teamId] = mgmt.Name;
+        }
+        return result;
+    }
 
     public async Task<(bool Updated, string? PreviousPrefix)> SetGoogleGroupPrefixAsync(
         Guid teamId,
@@ -374,14 +390,33 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
         return result;
     }
 
-    public Task<IReadOnlyList<TeamRoleDefinitionSnapshot>> GetRoleDefinitionsAsync(
+    public async Task<IReadOnlyList<TeamRoleDefinitionSnapshot>> GetRoleDefinitionsAsync(
         Guid teamId,
-        CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetRoleDefinitionsAsync(teamId, cancellationToken));
+        CancellationToken cancellationToken = default)
+    {
+        // Mirrors TeamRepository.GetRoleDefinitionsAsync(teamId): all definitions
+        // for the team (no activity / system filter), ordered by SortOrder
+        // then Name. Cache projection pre-sorts at warm time.
+        var teamsById = await GetTeamsByIdAsync(cancellationToken);
+        if (!teamsById.TryGetValue(teamId, out var team) || team.RoleDefinitions is null)
+            return [];
+        return team.RoleDefinitions;
+    }
 
-    public Task<IReadOnlyList<TeamRoleDefinitionSnapshot>> GetAllRoleDefinitionsAsync(
-        CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetAllRoleDefinitionsAsync(cancellationToken));
+    public async Task<IReadOnlyList<TeamRoleDefinitionSnapshot>> GetAllRoleDefinitionsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        // Mirrors TeamRepository.GetAllRoleDefinitionsAsync: active non-system
+        // teams' role definitions, ordered by Team.Name → SortOrder → Name.
+        // Cache projection pre-sorts each team's definitions; we add the
+        // outer Team.Name sort here.
+        var teamsById = await GetTeamsByIdAsync(cancellationToken);
+        return teamsById.Values
+            .Where(t => t.IsActive && t.SystemTeamType == SystemTeamType.None)
+            .OrderBy(t => t.Name, StringComparer.Ordinal) // arch:db-sort-ok — preserves repo ordering
+            .SelectMany(t => t.RoleDefinitions ?? Array.Empty<TeamRoleDefinitionSnapshot>())
+            .ToList();
+    }
 
     public async Task<TeamRoleAssignment> AssignToRoleAsync(
         Guid roleDefinitionId,
@@ -637,12 +672,13 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
                 ? new Dictionary<Guid, Humans.Application.UserInfo>()
                 : await userService.GetUserInfosAsync(allUserIds, ct);
             var managementHolders = await _teamRepository.GetActiveManagementRoleHolderUserIdsByTeamAsync(ct);
+            var roleDefinitionsByTeam = await _teamRepository.GetAllRoleDefinitionsByTeamAsync(ct);
 
             // No defensive Clear() — InvalidateTeamsCache already emptied the cache
             // before flipping _isLoaded to false (or the cache is empty on first
             // startup). Set is upsert, so any rare leftover entry is overwritten.
             foreach (var team in teams)
-                Set(team.Id, BuildTeamInfo(team, users, managementHolders));
+                Set(team.Id, BuildTeamInfo(team, users, managementHolders, roleDefinitionsByTeam));
 
             _isLoaded = true;
         }
@@ -678,7 +714,8 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
     private static TeamInfo BuildTeamInfo(
         Team team,
         IReadOnlyDictionary<Guid, Humans.Application.UserInfo> users,
-        IReadOnlyDictionary<Guid, IReadOnlySet<Guid>> managementHolders) => new(
+        IReadOnlyDictionary<Guid, IReadOnlySet<Guid>> managementHolders,
+        IReadOnlyDictionary<Guid, IReadOnlyList<TeamRoleDefinition>> roleDefinitionsByTeam) => new(
         Id: team.Id,
         Name: team.Name,
         Description: team.Description,
@@ -713,7 +750,32 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
         IsSensitive: team.IsSensitive,
         UpdatedAt: team.UpdatedAt,
         CustomSlug: team.CustomSlug,
-        ManagementRoleHolderUserIds: managementHolders.TryGetValue(team.Id, out var holders) ? holders : null);
+        ManagementRoleHolderUserIds: managementHolders.TryGetValue(team.Id, out var holders) ? holders : null,
+        RoleDefinitions: roleDefinitionsByTeam.TryGetValue(team.Id, out var defs)
+            ? defs.Select(d => ProjectRoleDefinitionSnapshot(d, team)).ToList()
+            : null);
+
+    private static TeamRoleDefinitionSnapshot ProjectRoleDefinitionSnapshot(TeamRoleDefinition d, Team team) =>
+        new(
+            d.Id,
+            d.TeamId,
+            team.Name,
+            team.Slug,
+            d.Name,
+            d.Description,
+            d.SlotCount,
+            d.Priorities,
+            d.SortOrder,
+            d.IsManagement,
+            d.Period,
+            d.IsPublic,
+            d.Assignments
+                .Select(a => new TeamRoleAssignmentSnapshot(
+                    a.Id,
+                    a.TeamMemberId,
+                    a.SlotIndex,
+                    a.TeamMember?.UserId))
+                .ToList());
 
     private async Task<TResult> WithInner<TResult>(Func<ITeamService, Task<TResult>> action)
     {

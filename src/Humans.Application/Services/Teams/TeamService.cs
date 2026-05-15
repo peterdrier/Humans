@@ -1932,14 +1932,16 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
             ? new Dictionary<Guid, Humans.Application.UserInfo>()
             : await UserService.GetUserInfosAsync(allUserIds, ct);
         var managementHolders = await _repo.GetActiveManagementRoleHolderUserIdsByTeamAsync(ct);
+        var roleDefinitionsByTeam = await _repo.GetAllRoleDefinitionsByTeamAsync(ct);
 
-        return teams.ToDictionary(t => t.Id, t => BuildTeamInfo(t, users, managementHolders));
+        return teams.ToDictionary(t => t.Id, t => BuildTeamInfo(t, users, managementHolders, roleDefinitionsByTeam));
     }
 
     private static TeamInfo BuildTeamInfo(
         Team team,
         IReadOnlyDictionary<Guid, Humans.Application.UserInfo> users,
-        IReadOnlyDictionary<Guid, IReadOnlySet<Guid>> managementHolders) => new(
+        IReadOnlyDictionary<Guid, IReadOnlySet<Guid>> managementHolders,
+        IReadOnlyDictionary<Guid, IReadOnlyList<TeamRoleDefinition>> roleDefinitionsByTeam) => new(
         Id: team.Id,
         Name: team.Name,
         Description: team.Description,
@@ -1974,7 +1976,32 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
         IsSensitive: team.IsSensitive,
         UpdatedAt: team.UpdatedAt,
         CustomSlug: team.CustomSlug,
-        ManagementRoleHolderUserIds: managementHolders.TryGetValue(team.Id, out var holders) ? holders : null);
+        ManagementRoleHolderUserIds: managementHolders.TryGetValue(team.Id, out var holders) ? holders : null,
+        RoleDefinitions: roleDefinitionsByTeam.TryGetValue(team.Id, out var defs)
+            ? defs.Select(d => ProjectRoleDefinitionSnapshot(d, team)).ToList()
+            : null);
+
+    private static TeamRoleDefinitionSnapshot ProjectRoleDefinitionSnapshot(TeamRoleDefinition d, Team team) =>
+        new(
+            d.Id,
+            d.TeamId,
+            team.Name,
+            team.Slug,
+            d.Name,
+            d.Description,
+            d.SlotCount,
+            d.Priorities,
+            d.SortOrder,
+            d.IsManagement,
+            d.Period,
+            d.IsPublic,
+            d.Assignments
+                .Select(a => new TeamRoleAssignmentSnapshot(
+                    a.Id,
+                    a.TeamMemberId,
+                    a.SlotIndex,
+                    a.TeamMember?.UserId))
+                .ToList());
 
     // ==========================================================================
     // Internal helpers — shift authorization invalidation

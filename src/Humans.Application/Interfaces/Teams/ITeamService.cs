@@ -18,7 +18,8 @@ public record TeamInfo(
     bool IsSensitive = false,
     Instant? UpdatedAt = null,
     string? CustomSlug = null,
-    IReadOnlySet<Guid>? ManagementRoleHolderUserIds = null);
+    IReadOnlySet<Guid>? ManagementRoleHolderUserIds = null,
+    IReadOnlyList<TeamRoleDefinitionSnapshot>? RoleDefinitions = null);
 
 public record TeamMemberInfo(
     Guid TeamMemberId, Guid UserId, string DisplayName,
@@ -186,7 +187,7 @@ public record TeamActiveMemberSnapshot(
 /// <remarks>
 /// Surface-budget recent history (newest first):
 /// <list type="bullet">
-///   <item>54→54 — added <c>TeamInfo.ManagementRoleHolderUserIds</c> projection; drained the 3 coordinator/budget readers (<c>IsUserCoordinatorOfTeamAsync</c>, <c>GetUserCoordinatedTeamIdsAsync</c>, <c>GetEffectiveBudgetCoordinatorTeamIdsAsync</c>) off DB and onto the team cache. Surface unchanged (callers are external boundaries kept).</item>
+///   <item>54→54 — added <c>TeamInfo.ManagementRoleHolderUserIds</c> + <c>TeamInfo.RoleDefinitions</c> projections; drained 6 readers off DB onto the team cache (<c>IsUserCoordinatorOfTeamAsync</c>, <c>GetUserCoordinatedTeamIdsAsync</c>, <c>GetEffectiveBudgetCoordinatorTeamIdsAsync</c>, <c>GetRoleDefinitionsAsync</c>, <c>GetAllRoleDefinitionsAsync</c>, <c>GetManagementRoleNamesByTeamIdsAsync</c>). Surface unchanged (external boundaries kept).</item>
 ///   <item>56→54 — drained GetSystemTeamWithActiveMembersAsync + GetActiveMembersForTeamsAsync onto TeamInfo cache.</item>
 ///   <item>61→56 — drained 5 name-lookup readers (GetTeamNameByGoogleGroupPrefixAsync, GetTeamNamesByIdsAsync, GetNonSystemTeamNamesByUserIdsAsync, GetActiveNonSystemTeamNamesByUserIdsAsync, IsUserMemberOfTeamAsync) onto TeamInfo cache.</item>
 ///   <item>66→61 — drained 5 coordinator readers (GetCoordinatorUserIdsAsync, GetActiveCoordinatorsForTeamsAsync, GetActiveNonSystemTeamCoordinatorUserIdsAsync, GetActiveDepartmentCoordinatorUserIdsAsync, IsActiveDepartmentCoordinatorAsync) onto TeamInfo cache.</item>
