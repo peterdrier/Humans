@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using AwesomeAssertions;
+using Humans.Application;
 using Humans.Application.Configuration;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.AuditLog;
@@ -57,6 +58,7 @@ public class ProfileControllerEditTests
 {
     private readonly UserManager<User> _userManager;
     private readonly IProfileService _profileService = Substitute.For<IProfileService>();
+    private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IApplicationDecisionService _applicationDecisionService =
         Substitute.For<IApplicationDecisionService>();
     private readonly IConfiguration _configuration = Substitute.For<IConfiguration>();
@@ -111,7 +113,7 @@ public class ProfileControllerEditTests
             new MemoryCache(new MemoryCacheOptions()),
             new FakeClock(Instant.FromUtc(2026, 5, 9, 12, 0)),
             authorizationService,
-            Substitute.For<IUserService>(),
+            _userService,
             Substitute.For<IConsentService>(),
             _applicationDecisionService,
             Substitute.For<IAccountDeletionService>(),
@@ -238,7 +240,8 @@ public class ProfileControllerEditTests
             LastName = "Human",
             IsApproved = true,
         };
-        _profileService.GetProfileAsync(_userId, Arg.Any<CancellationToken>()).Returns(approvedProfile);
+        _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>())
+            .Returns(BuildUserInfo(approvedProfile));
 
         var model = MakeValidModel(MembershipTier.Colaborador, motivation: "irrelevant");
 
@@ -325,4 +328,15 @@ public class ProfileControllerEditTests
             SelectedTier = tier,
             ApplicationMotivation = motivation,
         };
+
+    private UserInfo BuildUserInfo(Profile? profile) => UserInfo.Create(
+        user: new User { Id = _userId, DisplayName = "Test Human", PreferredLanguage = "en" },
+        userEmails: Array.Empty<UserEmail>(),
+        eventParticipations: Array.Empty<EventParticipation>(),
+        externalLogins: Array.Empty<(string, string)>(),
+        profile: profile,
+        contactFields: Array.Empty<ContactField>(),
+        profileLanguages: Array.Empty<ProfileLanguage>(),
+        volunteerHistory: Array.Empty<VolunteerHistoryEntry>(),
+        communicationPreferences: Array.Empty<CommunicationPreference>());
 }

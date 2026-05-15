@@ -365,7 +365,7 @@ public class ProfileController : HumansControllerBase
             ModelState.AddModelError(nameof(model.NoPriorBurnExperience),
                 _localizer["Profile_BurnerCVRequired"].Value);
             // Need to check if initial setup for the view
-            var existingProfile = await _profileService.GetProfileAsync(user.Id);
+            var existingProfile = (await _userService.GetUserInfoAsync(user.Id))?.Profile;
             model.IsInitialSetup = existingProfile is null || !existingProfile.IsApproved;
             model.ShowPrivateFirst = string.IsNullOrEmpty(model.FirstName)
                 && string.IsNullOrEmpty(model.LastName)
@@ -375,7 +375,7 @@ public class ProfileController : HumansControllerBase
         }
 
         // Validate tier-specific fields during initial setup
-        var profileForSetupCheck = await _profileService.GetProfileAsync(user.Id);
+        var profileForSetupCheck = (await _userService.GetUserInfoAsync(user.Id))?.Profile;
         var isInitialSetup = profileForSetupCheck is null || !profileForSetupCheck.IsApproved;
         if (isInitialSetup)
         {
@@ -1696,13 +1696,13 @@ public class ProfileController : HumansControllerBase
             return RedirectToAction(nameof(Edit));
         }
 
-        var profile = await _profileService.GetProfileAsync(user.Id, ct);
-        if (profile is null)
+        var info = await _userService.GetUserInfoAsync(user.Id, ct);
+        if (info?.Profile is null)
         {
             SetError(_localizer["Profile_ImportGooglePhoto_NoProfile"].Value);
             return RedirectToAction(nameof(Edit));
         }
-        if (profile.HasCustomProfilePicture)
+        if (info.Profile.HasCustomPicture)
         {
             SetError(_localizer["Profile_ImportGooglePhoto_AlreadyHasCustom"].Value);
             return RedirectToAction(nameof(Edit));
@@ -1898,27 +1898,20 @@ public class ProfileController : HumansControllerBase
     [HttpGet("{id:guid}/Popover")]
     public async Task<IActionResult> Popover(Guid id, CancellationToken ct)
     {
-        var userTask = _userService.GetByIdAsync(id, ct);
-        var profileTask = _profileService.GetProfileAsync(id, ct);
-        await Task.WhenAll(userTask, profileTask);
-        var popoverUser = await userTask;
-        if (popoverUser is null) return NotFound();
+        var info = await _userService.GetUserInfoAsync(id, ct);
+        if (info is null) return NotFound();
 
-        var profile = await profileTask;
+        var profile = info.Profile;
         if (profile is null)
         {
-            var userEmails = await _userEmailService.GetUserEmailsAsync(id, ct);
             return PartialView("_HumanPopover",
-                ProfileSummaryViewModelBuilder.BuildWithoutProfile(popoverUser, userEmails));
+                ProfileSummaryViewModelBuilder.BuildWithoutProfile(info));
         }
 
         var memberships = await _teamService.GetActiveTeamMembershipsForUserAsync(id, ct);
-        var profileLanguages = await _profileService.GetProfileLanguagesAsync(profile.Id, ct);
         var vm = ProfileSummaryViewModelBuilder.BuildWithProfile(
-            popoverUser,
-            profile,
+            info,
             memberships,
-            profileLanguages,
             p => Url.Action(nameof(Picture), "Profile",
                 new { id = p.Id, v = p.UpdatedAt.ToUnixTimeTicks() }));
 
@@ -2069,11 +2062,14 @@ public class ProfileController : HumansControllerBase
     [HttpGet("{id:guid}/Admin")]
     public async Task<IActionResult> AdminDetail(Guid id, CancellationToken ct)
     {
-        var user = await _userService.GetByIdAsync(id, ct);
-        if (user is null)
+        // Per-section composition (issue nobodies-collective/Humans#685): the
+        // Profile section reads its own row; cross-section data (Applications,
+        // RoleAssignments, ConsentCount, UserEmails, rejected-by display name)
+        // is fetched from each owning section here.
+        var info = await _userService.GetUserInfoAsync(id, ct);
+        if (info is null)
             return NotFound();
 
-        var profile = await _profileService.GetProfileAsync(id, ct);
         var applications = await _applicationDecisionService.GetUserApplicationsAsync(id, ct);
         var userEmails = await _userEmailService.GetEntitiesByUserIdAsync(id, ct);
         var consentCount = await _consentService.GetConsentRecordCountAsync(id, ct);
@@ -2083,38 +2079,33 @@ public class ProfileController : HumansControllerBase
             .ToDictionary(kvp => kvp.Key, kvp => kvp.Value.DisplayName);
         var campaignGrants = await _campaignService.GetAllGrantsForUserAsync(id, ct);
         var outboxCount = await _emailOutboxService.GetMessageCountForUserAsync(id, ct);
-        var profileLanguages = profile is not null
-            ? await _profileService.GetProfileLanguagesAsync(profile.Id, ct)
-            : (IReadOnlyList<ProfileLanguageSnapshot>)[];
         var revealedIban = TempData.TryGetValue("RevealedIban", out var revealed) && revealed is string value
             ? value
             : null;
 
         var viewModel = AdminHumanDetailViewModelBuilder.Build(
-            user,
-            profile,
+            info,
             applications,
             userEmails,
             consentCount,
             roleAssignments,
             roleCreatorNamesByUserId,
-            profileLanguages,
             campaignGrants,
             outboxCount,
             _clock.GetCurrentInstant(),
-            await GetRejectedByNameAsync(profile, ct),
+            await GetRejectedByNameAsync(info.Profile, ct),
             revealedIban);
 
         return View("AdminDetail", viewModel);
     }
 
-    private async Task<string?> GetRejectedByNameAsync(Profile? profile, CancellationToken ct)
+    private async Task<string?> GetRejectedByNameAsync(ProfileInfo? profile, CancellationToken ct)
     {
         if (profile?.RejectedByUserId is null)
             return null;
 
-        var rejectedByUser = await _userService.GetByIdAsync(profile.RejectedByUserId.Value, ct);
-        return rejectedByUser?.DisplayName;
+        var rejectedByInfo = await _userService.GetUserInfoAsync(profile.RejectedByUserId.Value, ct);
+        return rejectedByInfo?.DisplayName;
     }
 
     /// <summary>
@@ -2133,8 +2124,9 @@ public class ProfileController : HumansControllerBase
 
     private async Task<IActionResult> RevealIbanCoreAsync(Guid id, Guid actorId, CancellationToken ct)
     {
-        var profile = await _profileService.GetProfileAsync(id, ct);
-        if (profile?.Iban is null)
+        var info = await _userService.GetUserInfoAsync(id, ct);
+        var iban = info?.Profile?.Iban;
+        if (iban is null)
         {
             SetError("No IBAN on record for this user.");
             return RedirectToAction(nameof(AdminDetail), new { id });
@@ -2142,7 +2134,7 @@ public class ProfileController : HumansControllerBase
         await _auditLogService.LogAsync(
             AuditAction.IbanReveal, "User", id,
             $"Admin revealed IBAN for user {id}", actorId);
-        TempData["RevealedIban"] = profile.Iban;
+        TempData["RevealedIban"] = iban;
         return RedirectToAction(nameof(AdminDetail), new { id });
     }
 

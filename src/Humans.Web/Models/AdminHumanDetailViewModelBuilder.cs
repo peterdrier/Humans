@@ -1,4 +1,4 @@
-using Humans.Domain.Entities;
+using Humans.Application;
 using Humans.Domain.Enums;
 using Humans.Domain.Helpers;
 using Humans.Application.Interfaces.Auth;
@@ -6,52 +6,50 @@ using Humans.Application.Interfaces.Campaigns;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Profiles;
 using NodaTime;
-using ProfileEntity = Humans.Domain.Entities.Profile;
 
 namespace Humans.Web.Models;
 
 public static class AdminHumanDetailViewModelBuilder
 {
     public static AdminHumanDetailViewModel Build(
-        User user,
-        ProfileEntity? profile,
+        UserInfo info,
         IReadOnlyList<UserApplicationSnapshot> applications,
         IReadOnlyList<UserEmailRowSnapshot> userEmails,
         int consentCount,
         IReadOnlyList<RoleAssignmentSummarySnapshot> roleAssignments,
         IReadOnlyDictionary<Guid, string> roleCreatorNamesByUserId,
-        IReadOnlyList<ProfileLanguageSnapshot> profileLanguages,
         IReadOnlyList<CampaignGrantSummary> campaignGrants,
         int outboxCount,
         Instant now,
         string? rejectedByName,
         string? revealedIban)
     {
-        ArgumentNullException.ThrowIfNull(user);
+        ArgumentNullException.ThrowIfNull(info);
         ArgumentNullException.ThrowIfNull(applications);
         ArgumentNullException.ThrowIfNull(userEmails);
         ArgumentNullException.ThrowIfNull(roleAssignments);
         ArgumentNullException.ThrowIfNull(roleCreatorNamesByUserId);
-        ArgumentNullException.ThrowIfNull(profileLanguages);
         ArgumentNullException.ThrowIfNull(campaignGrants);
+
+        var profile = info.Profile;
 
         var effectiveEmail = userEmails
             .FirstOrDefault(e => e.IsPrimary && e.IsVerified)?.Email
-            ?? user.Email;
+            ?? info.Email;
 
         return new AdminHumanDetailViewModel
         {
-            UserId = user.Id,
+            UserId = info.Id,
             Email = effectiveEmail ?? string.Empty,
-            DisplayName = user.DisplayName,
-            ProfilePictureUrl = user.ProfilePictureUrl,
-            CreatedAt = user.CreatedAt.ToDateTimeUtc(),
-            LastLoginAt = user.LastLoginAt?.ToDateTimeUtc(),
-            IsSuspended = profile?.IsSuspended ?? false,
+            DisplayName = info.DisplayName,
+            ProfilePictureUrl = info.ProfilePictureUrl,
+            CreatedAt = info.CreatedAt.ToDateTimeUtc(),
+            LastLoginAt = info.LastLoginAt?.ToDateTimeUtc(),
+            IsSuspended = info.IsSuspended,
             IsApproved = profile?.IsApproved ?? false,
             HasProfile = profile is not null,
             AdminNotes = profile?.AdminNotes,
-            PreferredLanguage = user.PreferredLanguage,
+            PreferredLanguage = info.PreferredLanguage,
             MembershipTier = profile?.MembershipTier ?? MembershipTier.Volunteer,
             ConsentCheckStatus = profile?.ConsentCheckStatus,
             IsRejected = profile?.RejectedAt is not null,
@@ -83,19 +81,19 @@ public static class AdminHumanDetailViewModelBuilder
                 CreatedByName = GetRoleCreatorName(roleCreatorNamesByUserId, ra),
                 CreatedAt = ra.CreatedAt.ToDateTimeUtc()
             }).ToList(),
-            Languages = profileLanguages.Select(pl => new ProfileLanguageDisplayViewModel
+            Languages = (profile?.Languages ?? []).Select(pl => new ProfileLanguageDisplayViewModel
             {
                 LanguageCode = pl.LanguageCode,
                 LanguageName = Helpers.LanguageCatalog.GetDisplayName(pl.LanguageCode),
                 Proficiency = pl.Proficiency
             }).ToList(),
-            OAuthEmail = user.Email,
+            OAuthEmail = info.Email,
             GoogleServiceEmail = userEmails
                 .Where(e => e.IsVerified && e.IsGoogle)
                 .Select(e => e.Email)
                 .FirstOrDefault()
-                ?? user.Email,
-            GoogleEmailStatus = user.GoogleEmailStatus,
+                ?? info.Email,
+            GoogleEmailStatus = info.GoogleEmailStatus,
             UserEmails = userEmails
                 .OrderBy(e => e.Email, StringComparer.OrdinalIgnoreCase)
                 .Select(e => new AdminUserEmailViewModel

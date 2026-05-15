@@ -620,8 +620,8 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
         if (application is null)
             return null;
 
-        var applicant = await _userService.GetByIdAsync(application.UserId, ct);
-        var profile = await _profileService.GetProfileAsync(application.UserId, ct);
+        var applicantInfo = await _userService.GetUserInfoAsync(application.UserId, ct);
+        var profile = applicantInfo?.Profile;
 
         var voterIds = application.BoardVotes
             .Select(v => v.BoardMemberUserId)
@@ -641,9 +641,9 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
         return new BoardVotingDetailData(
             ApplicationId: application.Id,
             UserId: application.UserId,
-            DisplayName: applicant?.DisplayName ?? string.Empty,
-            ProfilePictureUrl: applicant?.ProfilePictureUrl,
-            Email: applicant?.Email ?? string.Empty,
+            DisplayName: applicantInfo?.DisplayName ?? string.Empty,
+            ProfilePictureUrl: applicantInfo?.ProfilePictureUrl,
+            Email: applicantInfo?.Email ?? string.Empty,
             FirstName: profile?.FirstName ?? string.Empty,
             LastName: profile?.LastName ?? string.Empty,
             City: profile?.City,
