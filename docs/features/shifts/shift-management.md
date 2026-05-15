@@ -26,8 +26,6 @@
 
 Nobodies Collective runs multi-day events (e.g., Nowhere) where volunteers are needed for shifts across departments (Gate, Bar, DPW, etc.). The shift management system lets admins configure event schedules, department coordinators create and manage shift rotas, and volunteers browse and sign up for shifts. Urgency scoring surfaces understaffed shifts to drive volunteer action.
 
-See `docs/specs/shift-management-spec.md` for the full design specification.
-
 ## User Stories
 
 ### US-25.1: Admin Configures Event

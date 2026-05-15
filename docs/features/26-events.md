@@ -6,8 +6,6 @@ Elsewhere publishes a digital event guide (currently a standalone PWA) listing a
 
 Two types of events exist: **camp events** (submitted by a team Lead, anchored to a GuideCamp) and **individual events** (submitted by any registered human, anchored to a communal GuideSharedVenue such as "The Middle of Elsewhere").
 
-See `docs/specs/event-guide-proposal-v1.md` for the full design specification.
-
 ## User Stories
 
 ### US-26.1: Moderator Configures the Guide
