@@ -76,13 +76,7 @@ public sealed class WidgetGalleryController : HumansControllerBase
                 CanManageShifts = true,
                 IncludesSubTeamCount = 2,
             },
-            SamplePager = new PagerViewModel
-            {
-                CurrentPage = 3,
-                TotalPages = 8,
-                Action = "Index",
-                Window = 2,
-            },
+            SamplePager = new PagerViewModel(totalPages: 8, currentPage: 3, action: "Index"),
             SampleProfileSummary = new ProfileSummaryViewModel
             {
                 UserId = currentUser.Id,

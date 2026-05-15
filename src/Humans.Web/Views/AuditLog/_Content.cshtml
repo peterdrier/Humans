@@ -113,23 +113,8 @@ else
     </div>
 }
 
-@if (Model.TotalPages > 1)
-{
-    <nav class="mt-3">
-        <ul class="pagination justify-content-center">
-            @for (var i = 1; i <= Model.TotalPages && i <= 10; i++)
-            {
-                <li class="page-item @(i == Model.PageNumber ? "active" : "")">
-                    <a asp-action="Index" asp-route-filter="@Model.ActionFilter" asp-route-page="@i" class="page-link">@i</a>
-                </li>
-            }
-            @if (Model.TotalPages > 10)
-            {
-                <li class="page-item disabled"><span class="page-link">...</span></li>
-            }
-        </ul>
-    </nav>
-}
+@{ var pagerModel = new PagerViewModel(Model.TotalPages, Model.PageNumber, "Index") { NavCssClass = "mt-3" }; }
+<partial name="_Pager" model="pagerModel" />
 
 <div class="mt-3">
     <a asp-controller="Admin" asp-action="Index" class="btn btn-outline-secondary">Back to Dashboard</a>

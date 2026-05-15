@@ -57,20 +57,8 @@
     </div>
 </div>
 
-@if (Model.TotalPages > 1)
-{
-    <nav class="mt-3" aria-label="pager">
-        <ul class="pagination">
-            @for (var p = 1; p <= Model.TotalPages; p++)
-            {
-                var href = Url.Action("Index", new { page = p, pageSize = Model.PageSize, sort = Model.Sort, dir = Model.Dir });
-                <li class="page-item @(p == Model.Page ? "active" : "")">
-                    <a class="page-link" href="@href">@p</a>
-                </li>
-            }
-        </ul>
-    </nav>
-}
+@{ var pagerModel = new PagerViewModel(Model.TotalPages, Model.Page, "Index") { NavCssClass = "mt-3" }; }
+<partial name="_Pager" model="pagerModel" />
 
 @* Marketing tri-state: "Yes" when subscribed (OptedOut == false), "No" when opted out, "—" when no row exists. *@
 @* TODO: HasShift column — pending IShiftManager caching. *@

@@ -98,17 +98,5 @@ else
     @await Html.PartialAsync("_HumanSearchResults", (IReadOnlyList<Humans.Web.Models.HumanSearchResultViewModel>)Model.Humans)
 }
 
-@if (Model.TotalPages > 1)
-{
-    <nav class="mt-4">
-        <ul class="pagination justify-content-center">
-            @for (var i = 1; i <= Model.TotalPages && i <= 10; i++)
-            {
-                <li class="page-item @(i == Model.PageNumber ? "active" : "")">
-                    <a class="page-link" asp-action="AdminList" asp-route-page="@i" asp-route-search="@Model.SearchTerm"
-                       asp-route-filter="@Model.StatusFilter" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir">@i</a>
-                </li>
-            }
-        </ul>
-    </nav>
-}
+@{ var pagerModel = new PagerViewModel(Model.TotalPages, Model.PageNumber, "AdminList") { NavCssClass = "mt-4" }; }
+<partial name="_Pager" model="pagerModel" />

@@ -106,16 +106,5 @@
     </div>
 </div>
 
-@if (Model.TotalPages > 1)
-{
-    <nav class="mt-4">
-        <ul class="pagination justify-content-center">
-            @for (var i = 1; i <= Model.TotalPages && i <= 10; i++)
-            {
-                <li class="page-item @(i == Model.PageNumber ? "active" : "")">
-                    <a class="page-link" asp-action="Roles" asp-route-page="@i" asp-route-role="@Model.RoleFilter" asp-route-showInactive="@Model.ShowInactive">@i</a>
-                </li>
-            }
-        </ul>
-    </nav>
-}
+@{ var pagerModel = new PagerViewModel(Model.TotalPages, Model.PageNumber, "Roles") { NavCssClass = "mt-4" }; }
+<partial name="_Pager" model="pagerModel" />
