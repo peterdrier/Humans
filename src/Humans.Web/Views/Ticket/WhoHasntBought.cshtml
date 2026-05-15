@@ -87,8 +87,6 @@
         </table>
     </div>
 
-    @{
-        var pagerModel = new PagerViewModel { TotalPages = Model.TotalPages, CurrentPage = Model.Page, Action = "WhoHasntBought" };
-    }
+    @{ var pagerModel = new PagerViewModel(Model.TotalPages, Model.Page, "WhoHasntBought"); }
     <partial name="_Pager" model="pagerModel" />
 </div>

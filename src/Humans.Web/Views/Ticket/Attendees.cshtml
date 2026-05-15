@@ -129,8 +129,6 @@
         </table>
     </div>
 
-    @{
-        var pagerModel = new PagerViewModel { TotalPages = Model.TotalPages, CurrentPage = Model.Page, Action = "Attendees" };
-    }
+    @{ var pagerModel = new PagerViewModel(Model.TotalPages, Model.Page, "Attendees"); }
     <partial name="_Pager" model="pagerModel" />
 </div>

@@ -150,8 +150,6 @@
         </table>
     </div>
 
-    @{
-        var pagerModel = new PagerViewModel { TotalPages = Model.TotalPages, CurrentPage = Model.Page, Action = "Orders" };
-    }
+    @{ var pagerModel = new PagerViewModel(Model.TotalPages, Model.Page, "Orders"); }
     <partial name="_Pager" model="pagerModel" />
 </div>

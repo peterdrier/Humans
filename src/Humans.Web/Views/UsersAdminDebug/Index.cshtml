@@ -57,15 +57,7 @@
     </div>
 </div>
 
-@{
-    var pagerModel = new PagerViewModel
-    {
-        TotalPages = Model.TotalPages,
-        CurrentPage = Model.Page,
-        Action = "Index",
-        NavCssClass = "mt-3",
-    };
-}
+@{ var pagerModel = new PagerViewModel(Model.TotalPages, Model.Page, "Index") { NavCssClass = "mt-3" }; }
 <partial name="_Pager" model="pagerModel" />
 
 @* Marketing tri-state: "Yes" when subscribed (OptedOut == false), "No" when opted out, "—" when no row exists. *@

@@ -113,16 +113,7 @@ else
     </div>
 }
 
-@{
-    var pagerModel = new PagerViewModel
-    {
-        TotalPages = Model.TotalPages,
-        CurrentPage = Model.PageNumber,
-        Action = "Index",
-        NavCssClass = "mt-3",
-        PaginationCssClass = "justify-content-center",
-    };
-}
+@{ var pagerModel = new PagerViewModel(Model.TotalPages, Model.PageNumber, "Index") { NavCssClass = "mt-3" }; }
 <partial name="_Pager" model="pagerModel" />
 
 <div class="mt-3">

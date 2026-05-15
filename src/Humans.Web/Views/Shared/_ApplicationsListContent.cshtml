@@ -90,14 +90,5 @@
     </div>
 </div>
 
-@{
-    var pagerModel = new PagerViewModel
-    {
-        TotalPages = Model.TotalPages,
-        CurrentPage = Model.PageNumber,
-        Action = "Admin",
-        NavCssClass = "mt-4",
-        PaginationCssClass = "justify-content-center",
-    };
-}
+@{ var pagerModel = new PagerViewModel(Model.TotalPages, Model.PageNumber, "Admin") { NavCssClass = "mt-4" }; }
 <partial name="_Pager" model="pagerModel" />
