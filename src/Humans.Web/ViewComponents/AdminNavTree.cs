@@ -39,6 +39,12 @@ public static class AdminNavTree
             new("Coordinator Queue", "Expenses", "Coordinator", null, null, "fa-solid fa-list-check",     PolicyNames.IsActiveMember),
             new("Expense Review",    "Expenses", "Review",      null, null, "fa-solid fa-magnifying-glass-dollar", PolicyNames.FinanceAdminOrAdmin),
         }),
+        new("Events", new AdminNavItem[]
+        {
+            new("Guide settings", "EventsAdmin", "Settings", null, null, "fa-solid fa-calendar-days", PolicyNames.EventsAdminOrAdmin),
+            new("Guide categories", "EventsAdmin", "Categories", null, null, "fa-solid fa-tags", PolicyNames.EventsAdminOrAdmin),
+            new("Guide venues", "EventsAdmin", "Venues", null, null, "fa-solid fa-location-dot", PolicyNames.EventsAdminOrAdmin),
+        }),
         new("Governance", new AdminNavItem[]
         {
             new("Voting", "GovernanceBoardVoting", "BoardVoting", null, null, "fa-solid fa-check-to-slot", PolicyNames.BoardOrAdmin,

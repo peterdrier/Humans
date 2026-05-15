@@ -464,4 +464,15 @@ public sealed class OutboxEmailService : IEmailService
             _logger.LogInformation("Triggered immediate outbox processing for {TemplateName}", templateName);
         }
     }
+
+    public async Task SendEventLifecycleNotificationAsync(
+        EventLifecycleNotification request,
+        string userEmail,
+        CancellationToken cancellationToken = default)
+    {
+        var content = _renderer.RenderEventLifecycle(request);
+        await EnqueueAsync(userEmail, request.UserName, content,
+            request.TemplateName(), cancellationToken,
+            triggerImmediate: true);
+    }
 }

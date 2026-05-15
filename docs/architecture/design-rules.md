@@ -265,6 +265,8 @@ Each section's service owns these tables. Cross-service access goes through the 
 | **Notifications** | `NotificationService`, `NotificationInboxService`, `NotificationMeterProvider` | `notifications`, `notification_recipients` |
 | **Audit Log** | `AuditLogService` | `audit_log_entries` |
 | **Agent** | `AgentService`, `AgentSettingsService`, `AgentPromptAssembler`, `AgentToolDispatcher`, `AgentUserSnapshotProvider`, `AgentAbuseDetector`, `AnthropicClient`, `AgentConversationRetentionJob` | `agent_conversations`, `agent_messages`, `agent_settings` |
+| **Event Guide** | `EventGuideService` | `guide_events`, `guide_settings`, `event_categories`, `guide_shared_venues`, `moderation_actions`, `user_event_favourites`, `user_guide_preferences` |
+| **Agent** | `AgentService`, `AgentSettingsService`, `AgentPromptAssembler`, `AgentToolDispatcher`, `AgentUserSnapshotProvider`, `AgentAbuseDetector`, `AnthropicClient`, `AgentConversationRetentionJob` | `agent_conversations`, `agent_messages`, `agent_settings` |
 
 **`system_settings` is per-key ownership.** Each key belongs to its consuming section's repository — there is no single cross-cutting owner. Currently-tracked keys: `email_outbox_paused` (Email), `DriveActivityMonitor:LastRunAt` (Google Integration).
 

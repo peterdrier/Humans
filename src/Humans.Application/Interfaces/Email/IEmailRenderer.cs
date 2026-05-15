@@ -126,6 +126,12 @@ public interface IEmailRenderer
     EmailContent RenderCampaignCode(string subject, string markdownBody, string code, string recipientName);
 
     /// <summary>
+    /// Event lifecycle notification — dispatches on <see cref="EventLifecycleNotification.NewStatus"/>
+    /// to render the matching template (submitted / approved / rejected / resubmit-requested).
+    /// </summary>
+    EmailContent RenderEventLifecycle(EventLifecycleNotification request, string? culture = null);
+
+    /// <summary>
     /// Variant 1 group sub-template — Google Group removal, loss of access
     /// (issue peterdrier/Humans#639).
     /// </summary>

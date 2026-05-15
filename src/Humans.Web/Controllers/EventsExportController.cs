@@ -1,0 +1,203 @@
+using System.Globalization;
+using System.Text;
+using Humans.Application.Interfaces.Camps;
+using Humans.Application.Interfaces.Events;
+using Humans.Application.Interfaces.Users;
+using Humans.Domain.Constants;
+using Humans.Domain.Entities;
+using Humans.Web.Filters;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using NodaTime;
+using static Humans.Web.Helpers.EventsLookupHelpers;
+using static Humans.Web.Helpers.EventsTimeHelpers;
+
+namespace Humans.Web.Controllers;
+
+[Authorize(Roles = RoleGroups.EventsAdminOrAdmin)]
+[Route("Events/Export")]
+[ServiceFilter(typeof(EventsFeatureFilter))]
+public class EventsExportController : HumansControllerBase
+{
+    private readonly IEventService _guide;
+    private readonly ICampService _camps;
+    private readonly IUserService _users;
+
+    public EventsExportController(
+        IEventService guide,
+        ICampService camps,
+        IUserService users,
+        UserManager<User> userManager)
+        : base(userManager)
+    {
+        _guide = guide;
+        _camps = camps;
+        _users = users;
+    }
+
+    [HttpGet("")]
+    public IActionResult Index() => View();
+
+    [HttpGet("Csv")]
+    public async Task<IActionResult> DownloadCsv()
+    {
+        var (events, settings) = await _guide.GetApprovedEventsForExportAsync();
+        var eventSettings = settings != null
+            ? await _guide.GetEventSettingsByIdAsync(settings.EventSettingsId)
+            : null;
+        var tz = GetTimeZone(eventSettings);
+        var campsById = await LoadCampsByIdAsync(_camps, eventSettings?.GateOpeningDate.Year);
+
+        var sb = new StringBuilder();
+        sb.Append('﻿');
+        sb.AppendLine("Id,Title,Description,Category,CampName,VenueName,SubmitterName,LocationNote,Date,StartTime,DurationMinutes,IsRecurring,PriorityRank,Status,SubmittedAt");
+
+        foreach (var e in events)
+        {
+            var camp = e.CampId.HasValue ? campsById.GetValueOrDefault(e.CampId.Value) : null;
+            var seasonName = camp?.Seasons.OrderByDescending(s => s.Year).FirstOrDefault()?.Name;
+            var campName = seasonName ?? camp?.Slug ?? "";
+            var venueName = e.EventVenue?.Name ?? "";
+            var submitterName = "";
+            if (e.CampId == null)
+            {
+                var submitter = await _users.GetUserInfoAsync(e.SubmitterUserId);
+                submitterName = submitter?.DisplayName ?? "";
+            }
+
+            foreach (var (date, time) in GetOccurrences(e, tz))
+            {
+                sb.AppendLine(string.Join(",",
+                    CsvEscape(e.Id.ToString()),
+                    CsvEscape(e.Title),
+                    CsvEscape(e.Description),
+                    CsvEscape(e.Category.Name),
+                    CsvEscape(campName),
+                    CsvEscape(venueName),
+                    CsvEscape(submitterName),
+                    CsvEscape(e.LocationNote ?? ""),
+                    CsvEscape(date),
+                    CsvEscape(time),
+                    e.DurationMinutes.ToString(CultureInfo.InvariantCulture),
+                    e.IsRecurring ? "Yes" : "No",
+                    e.PriorityRank.ToString(CultureInfo.InvariantCulture),
+                    e.Status.ToString(),
+                    CsvEscape(ToLocalDateTime(e.SubmittedAt, tz).ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture))
+                ));
+            }
+        }
+
+        return File(Encoding.UTF8.GetBytes(sb.ToString()), "text/csv", "event-guide-export.csv");
+    }
+
+    [HttpGet("PrintGuide")]
+    public async Task<IActionResult> PrintGuide()
+    {
+        var (events, settings) = await _guide.GetApprovedEventsForExportAsync();
+        var eventSettings = settings != null
+            ? await _guide.GetEventSettingsByIdAsync(settings.EventSettingsId)
+            : null;
+        var tz = GetTimeZone(eventSettings);
+        var maxSlots = settings?.MaxPrintSlots;
+        var campsById = await LoadCampsByIdAsync(_camps, eventSettings?.GateOpeningDate.Year);
+
+        var allOccurrences = new List<PrintGuideEntry>();
+        foreach (var e in events)
+        {
+            var camp = e.CampId.HasValue ? campsById.GetValueOrDefault(e.CampId.Value) : null;
+            var seasonName = camp?.Seasons.OrderByDescending(s => s.Year).FirstOrDefault()?.Name;
+            var campName = seasonName ?? camp?.Slug;
+            var venueName = e.EventVenue?.Name;
+
+            foreach (var occ in e.GetOccurrenceInstants())
+            {
+                allOccurrences.Add(new PrintGuideEntry
+                {
+                    Title = e.Title,
+                    Description = e.Description,
+                    CategoryName = e.Category.Name,
+                    CampOrVenueName = campName ?? venueName ?? "",
+                    LocationNote = e.LocationNote,
+                    StartAt = ToLocalDateTime(occ, tz),
+                    DurationMinutes = e.DurationMinutes,
+                    PriorityRank = e.PriorityRank
+                });
+            }
+        }
+
+        if (maxSlots.HasValue && maxSlots.Value > 0)
+        {
+            allOccurrences = allOccurrences
+                .OrderBy(o => o.PriorityRank == 0 ? int.MaxValue : o.PriorityRank)
+                .ThenBy(o => o.StartAt)
+                .Take(maxSlots.Value)
+                .ToList();
+        }
+
+        var dayGroups = allOccurrences
+            .OrderBy(o => o.StartAt)
+            .GroupBy(o => o.StartAt.Date)
+            .OrderBy(g => g.Key)
+            .Select(g => new PrintGuideDayGroup
+            {
+                DayLabel = g.Key.ToString("dddd d MMMM", CultureInfo.InvariantCulture),
+                Entries = g.OrderBy(e => e.StartAt).ToList()
+            })
+            .ToList();
+
+        var model = new PrintGuideViewModel
+        {
+            EventName = eventSettings?.EventName ?? "Event Guide",
+            TimeZoneId = eventSettings?.TimeZoneId,
+            DayGroups = dayGroups
+        };
+
+        return View(model);
+    }
+
+    // ─── Helpers ──────────────────────────────────────────────────
+
+    private static List<(string Date, string Time)> GetOccurrences(Event e, DateTimeZone? tz)
+    {
+        var results = new List<(string, string)>();
+        foreach (var occurrence in e.GetOccurrenceInstants())
+        {
+            var local = ToLocalDateTime(occurrence, tz);
+            results.Add((local.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), local.ToString("HH:mm", CultureInfo.InvariantCulture)));
+        }
+        return results;
+    }
+
+    private static string CsvEscape(string value)
+    {
+        if (value.Contains('"', StringComparison.Ordinal) || value.Contains(',', StringComparison.Ordinal) || value.Contains('\n', StringComparison.Ordinal))
+            return $"\"{value.Replace("\"", "\"\"", StringComparison.Ordinal)}\"";
+        return value;
+    }
+
+    public sealed class PrintGuideViewModel
+    {
+        public string EventName { get; set; } = string.Empty;
+        public string? TimeZoneId { get; set; }
+        public List<PrintGuideDayGroup> DayGroups { get; set; } = [];
+    }
+
+    public sealed class PrintGuideDayGroup
+    {
+        public string DayLabel { get; set; } = string.Empty;
+        public List<PrintGuideEntry> Entries { get; set; } = [];
+    }
+
+    public sealed class PrintGuideEntry
+    {
+        public string Title { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public string CategoryName { get; set; } = string.Empty;
+        public string CampOrVenueName { get; set; } = string.Empty;
+        public string? LocationNote { get; set; }
+        public DateTime StartAt { get; set; }
+        public int DurationMinutes { get; set; }
+        public int PriorityRank { get; set; }
+    }
+}

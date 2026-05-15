@@ -342,4 +342,30 @@ public sealed class OutboxEmailServiceTests : IDisposable
         msg.ExtraHeaders.Should().NotBeNull();
         _metrics.Received(1).RecordEmailQueued("campaign_code");
     }
+
+    [HumansFact]
+    public async Task SendEventLifecycleNotificationAsync_CreatesOutboxRowAndTriggersImmediate()
+    {
+        var request = new EventLifecycleNotification(
+            NewStatus: EventStatus.Pending,
+            UserName: "Alice",
+            EventTitle: "Sunrise Parade",
+            ActionUrl: "https://humans.example/Events/MySubmissions",
+            Culture: "en");
+        _renderer.RenderEventLifecycle(request, null)
+            .Returns(new EmailContent("Event received", "<p>Thanks for your submission</p>"));
+
+        await _service.SendEventLifecycleNotificationAsync(request, "alice@example.com");
+
+        var msg = await _dbContext.EmailOutboxMessages.SingleAsync();
+        msg.RecipientEmail.Should().Be("alice@example.com");
+        msg.RecipientName.Should().Be("Alice");
+        msg.TemplateName.Should().Be("event_submitted");
+        msg.Subject.Should().Be("Event received");
+        msg.HtmlBody.Should().Contain("Thanks for your submission");
+        msg.Status.Should().Be(EmailOutboxStatus.Queued);
+
+        _metrics.Received(1).RecordEmailQueued("event_submitted");
+        _immediate.Received(1).TriggerImmediate();
+    }
 }

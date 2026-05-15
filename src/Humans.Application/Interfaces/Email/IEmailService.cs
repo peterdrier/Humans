@@ -288,6 +288,16 @@ public interface IEmailService : IApplicationService
     Task SendCampaignCodeAsync(CampaignCodeEmailRequest request, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Sends an event lifecycle notification (submitted / approved / rejected /
+    /// resubmit-requested) — dispatches on <see cref="EventLifecycleNotification.NewStatus"/>
+    /// to pick the matching template.
+    /// </summary>
+    Task SendEventLifecycleNotificationAsync(
+        EventLifecycleNotification request,
+        string userEmail,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Sends a notification that a Google Group membership has been removed
     /// (Variant 1 — full loss of access, group sub-template). System category;
     /// no unsubscribe footer (issue peterdrier/Humans#639).
@@ -339,3 +349,30 @@ public record CampaignCodeEmailRequest(
     string MarkdownBody,
     string Code,
     string? ReplyTo);
+
+/// <summary>
+/// Payload for an event lifecycle notification. <see cref="NewStatus"/> picks
+/// the template: <see cref="EventStatus.Pending"/> = submission received,
+/// <see cref="EventStatus.Approved"/> = approved, <see cref="EventStatus.Rejected"/>
+/// = rejected (requires <see cref="Reason"/> and <see cref="ActionUrl"/> for the
+/// edit link), <see cref="EventStatus.ResubmitRequested"/> = changes requested
+/// (also requires <see cref="Reason"/> and <see cref="ActionUrl"/>).
+/// </summary>
+public record EventLifecycleNotification(
+    EventStatus NewStatus,
+    string UserName,
+    string EventTitle,
+    string? Reason = null,
+    string? ActionUrl = null,
+    string? Culture = null)
+{
+    public string TemplateName() => NewStatus switch
+    {
+        EventStatus.Pending => "event_submitted",
+        EventStatus.Approved => "event_approved",
+        EventStatus.Rejected => "event_rejected",
+        EventStatus.ResubmitRequested => "event_resubmit_requested",
+        _ => throw new InvalidOperationException(
+            $"EventLifecycleNotification does not support status {NewStatus}")
+    };
+}

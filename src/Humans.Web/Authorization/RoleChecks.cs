@@ -62,6 +62,7 @@ public static class RoleChecks
     {
         return IsTeamsAdminBoardOrAdmin(user) ||
                IsCampAdmin(user) ||
+               user.IsInRole(RoleNames.EventsAdmin) ||
                IsHumanAdmin(user) ||
                user.IsInRole(RoleNames.TicketAdmin) ||
                user.IsInRole(RoleNames.NoInfoAdmin) ||

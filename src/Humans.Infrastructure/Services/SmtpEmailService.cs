@@ -290,6 +290,18 @@ public class SmtpEmailService : IEmailService
         _metrics.RecordEmailSent("campaign_code");
     }
 
+    /// <inheritdoc />
+    public async Task SendEventLifecycleNotificationAsync(
+        EventLifecycleNotification request,
+        string userEmail,
+        CancellationToken cancellationToken = default)
+    {
+        var content = _renderer.RenderEventLifecycle(request);
+        await SendEmailAsync(userEmail, content.Subject, content.HtmlBody, cancellationToken);
+        _metrics.RecordEmailSent(request.TemplateName());
+    }
+
+    /// <inheritdoc />
     public async Task SendIssueCommentAsync(
         string to,
         string displayName,

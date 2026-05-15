@@ -100,8 +100,8 @@ public class VolunteerTrackingRepositoryTests : IClassFixture<HumansWebApplicati
         var es = await SeedActiveEventAsync(db);   // BuildStartOffset = -10
         var sut = new VolunteerTrackingRepository(db);
 
-        var teamId = Guid.NewGuid();
-        var userId = Guid.NewGuid();
+        var teamId = (await SeedTeamAsync(db)).Id;
+        var userId = (await SeedUserAsync(db)).Id;
 
         // Build-period rota with a shift at -7 — shift exists but no signup,
         // so this should NOT appear in the result.
@@ -311,6 +311,39 @@ public class VolunteerTrackingRepositoryTests : IClassFixture<HumansWebApplicati
         db.EventSettings.Add(es);
         await db.SaveChangesAsync();
         return es;
+    }
+
+    private static async Task<Team> SeedTeamAsync(HumansDbContext db)
+    {
+        var now = SystemClock.Instance.GetCurrentInstant();
+        var team = new Team
+        {
+            Id = Guid.NewGuid(),
+            Name = $"VTrack Team {Guid.NewGuid():N}",
+            Slug = $"vtrack-{Guid.NewGuid():N}",
+            IsActive = true,
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+        db.Teams.Add(team);
+        await db.SaveChangesAsync();
+        return team;
+    }
+
+    private static async Task<User> SeedUserAsync(HumansDbContext db)
+    {
+        var now = SystemClock.Instance.GetCurrentInstant();
+        var user = new User
+        {
+            Id = Guid.NewGuid(),
+            UserName = $"vtrack-{Guid.NewGuid():N}@example.test",
+            NormalizedUserName = $"VTRACK-{Guid.NewGuid():N}@EXAMPLE.TEST",
+            DisplayName = "Volunteer Tracking Test User",
+            CreatedAt = now,
+        };
+        db.Users.Add(user);
+        await db.SaveChangesAsync();
+        return user;
     }
 
     private static Rota SeedRota(

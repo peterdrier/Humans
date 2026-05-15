@@ -69,6 +69,13 @@ public class HumansDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
     public DbSet<ShiftSignup> ShiftSignups => Set<ShiftSignup>();
     public DbSet<VolunteerEventProfile> VolunteerEventProfiles => Set<VolunteerEventProfile>();
     public DbSet<GeneralAvailability> GeneralAvailability => Set<GeneralAvailability>();
+    public DbSet<EventGuideSettings> EventGuideSettings => Set<EventGuideSettings>();
+    public DbSet<EventCategory> EventCategories => Set<EventCategory>();
+    public DbSet<EventVenue> EventVenues => Set<EventVenue>();
+    public DbSet<Event> Events => Set<Event>();
+    public DbSet<EventModerationAction> EventModerationActions => Set<EventModerationAction>();
+    public DbSet<EventPreference> EventPreferences => Set<EventPreference>();
+    public DbSet<EventFavourite> EventFavourites => Set<EventFavourite>();
     public DbSet<VolunteerBuildStatus> VolunteerBuildStatuses => Set<VolunteerBuildStatus>();
     public DbSet<FeedbackReport> FeedbackReports => Set<FeedbackReport>();
     public DbSet<FeedbackMessage> FeedbackMessages => Set<FeedbackMessage>();

@@ -1,5 +1,6 @@
 using System.Reflection;
 using AwesomeAssertions;
+using Humans.Domain.Constants;
 using Humans.Web.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -50,6 +51,87 @@ public class EndpointAuthorizationTests
     {
         AssertHasPolicy(controllerType, actionName, expectedPolicy);
     }
+
+    // The /Admin dashboard itself is reachable by any admin-shaped role so
+    // domain admins (FinanceAdmin etc.) can land on the shell. Sidebar items
+    // inside still filter per-item.
+    [HumansFact]
+    public void AdminController_Index_RequiresAnyAdminRolePolicy()
+    {
+        AssertHasPolicy(typeof(AdminController), "Index", "AnyAdminRole");
+    }
+
+    // --- Google admin endpoints must require Admin ---
+
+    [HumansTheory]
+    [InlineData("SyncSettings")]
+    [InlineData("UpdateSyncSetting")]
+    [InlineData("SyncSystemTeams")]
+    [InlineData("SyncResults")]
+    [InlineData("CheckGroupSettings")]
+    [InlineData("GroupSettingsResults")]
+    public void GoogleAdminEndpoint_RequiresAdminPolicy(string actionName)
+    {
+        AssertHasPolicy(typeof(GoogleController), actionName, "AdminOnly");
+    }
+
+    // --- Onboarding review endpoints ---
+
+    [HumansFact]
+    public void OnboardingReviewController_RequiresReviewQueueAccess()
+    {
+        AssertHasPolicy(typeof(OnboardingReviewController), null, "ReviewQueueAccess");
+    }
+
+    [HumansTheory]
+    [InlineData("Clear")]
+    [InlineData("Flag")]
+    [InlineData("Reject")]
+    public void OnboardingReviewConsentActions_RequireConsentCoordinatorBoardOrAdmin(string actionName)
+    {
+        AssertHasPolicy(typeof(OnboardingReviewController), actionName, "ConsentCoordinatorBoardOrAdmin");
+    }
+
+    // --- Finance endpoints ---
+
+    [HumansFact]
+    public void FinanceController_RequiresFinanceAdminOrAdmin()
+    {
+        AssertHasPolicy(typeof(FinanceController), null, "FinanceAdminOrAdmin");
+    }
+
+    // --- Event guide admin endpoints ---
+
+    [HumansFact]
+    public void EventsAdminController_RequiresEventsAdminOrAdminRoles()
+    {
+        AssertHasRoles(typeof(EventsAdminController), null, RoleGroups.EventsAdminOrAdmin);
+    }
+
+    // --- Shift dashboard endpoints ---
+
+    // Page entry uses the WIDER policy so any team coordinator / sub-team manager
+    // can land on the dashboard. Privileged actions (Voluntell / SearchVolunteers)
+    // override at the action level with the NARROWER ShiftDashboardAccess.
+    [HumansFact]
+    public void ShiftDashboardController_RequiresShiftDepartmentManager()
+    {
+        AssertHasPolicy(typeof(ShiftDashboardController), null, "ShiftDepartmentManager");
+    }
+
+    [HumansFact]
+    public void ShiftDashboardController_SearchVolunteers_RequiresShiftDashboardAccess()
+    {
+        AssertHasPolicy(typeof(ShiftDashboardController), "SearchVolunteers", "ShiftDashboardAccess");
+    }
+
+    [HumansFact]
+    public void ShiftDashboardController_Voluntell_RequiresShiftDashboardAccess()
+    {
+        AssertHasPolicy(typeof(ShiftDashboardController), "Voluntell", "ShiftDashboardAccess");
+    }
+
+    // --- POST actions must have ValidateAntiForgeryToken ---
 
     [HumansFact]
     public void AllPostActions_HaveAntiForgeryValidation()
@@ -228,5 +310,34 @@ public class EndpointAuthorizationTests
             $"{controllerType.Name}{(actionName is not null ? "." + actionName : "")} should have [Authorize]");
         attr!.Policy.Should().Be(expectedPolicy,
             $"{controllerType.Name}{(actionName is not null ? "." + actionName : "")} should have Policy='{expectedPolicy}'");
+    }
+
+    private static void AssertHasRoles(Type controllerType, string? actionName, string expectedRoles)
+    {
+        var attr = GetAuthorizeAttribute(controllerType, actionName);
+
+        attr.Should().NotBeNull(
+            $"{controllerType.Name}{(actionName is not null ? "." + actionName : "")} should have [Authorize]");
+        attr!.Roles.Should().Be(expectedRoles,
+            $"{controllerType.Name}{(actionName is not null ? "." + actionName : "")} should have Roles='{expectedRoles}'");
+    }
+
+    private static AuthorizeAttribute? GetAuthorizeAttribute(Type controllerType, string? actionName)
+    {
+        if (actionName is null)
+        {
+            return controllerType.GetCustomAttribute<AuthorizeAttribute>();
+        }
+
+        var methods = controllerType.GetMethods(BindingFlags.Public | BindingFlags.Instance)
+            .Where(m => string.Equals(m.Name, actionName, StringComparison.Ordinal))
+            .ToList();
+
+        methods.Should().NotBeEmpty($"action '{actionName}' should exist on {controllerType.Name}");
+
+        return methods
+            .Select(m => m.GetCustomAttribute<AuthorizeAttribute>())
+            .FirstOrDefault(a => a is not null)
+            ?? controllerType.GetCustomAttribute<AuthorizeAttribute>();
     }
 }

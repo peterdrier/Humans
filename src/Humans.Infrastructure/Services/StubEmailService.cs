@@ -250,6 +250,17 @@ public class StubEmailService : IEmailService
         return Task.CompletedTask;
     }
 
+    public Task SendEventLifecycleNotificationAsync(
+        EventLifecycleNotification request,
+        string userEmail,
+        CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation(
+            "[STUB] Would send event {Status} email to {Email} ({UserName}) for '{Title}'. Reason: {Reason}",
+            request.NewStatus, userEmail, request.UserName, request.EventTitle, request.Reason);
+        return Task.CompletedTask;
+    }
+
     public Task SendGoogleGroupRemovalLossOfAccessAsync(
         string removedEmail,
         string userName,
