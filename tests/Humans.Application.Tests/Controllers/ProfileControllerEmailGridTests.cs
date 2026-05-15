@@ -17,6 +17,8 @@ using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
+using Humans.Application;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Testing;
 using Humans.Web;
@@ -52,6 +54,7 @@ public class ProfileControllerEmailGridTests
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly IAuthorizationService _authorizationService = Substitute.For<IAuthorizationService>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
+    private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IMemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
     private readonly UserManager<User> _userManager;
     private readonly SignInManager<User> _signInManager;
@@ -102,7 +105,7 @@ public class ProfileControllerEmailGridTests
             _cache,
             new FakeClock(Instant.FromUtc(2026, 4, 30, 12, 0)),
             _authorizationService,
-            Substitute.For<IUserService>(),
+            _userService,
             Substitute.For<IConsentService>(),
             Substitute.For<IApplicationDecisionService>(),
             Substitute.For<IAccountDeletionService>(),
@@ -125,6 +128,13 @@ public class ProfileControllerEmailGridTests
 
         _userManager.GetUserAsync(Arg.Any<ClaimsPrincipal>())
             .Returns(new User { Id = _userId });
+        _userManager.GetUserId(Arg.Any<ClaimsPrincipal>()).Returns(_userId.ToString());
+
+        // GetCurrentUserInfoAsync helper reads through IUserService; default
+        // stub returns a minimal UserInfo for the test user so the actions
+        // continue past the null-guard. Per-test overrides can replace this.
+        _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(new User { Id = _userId }.ToUserInfo()));
 
         _authorizationService.AuthorizeAsync(
             Arg.Any<ClaimsPrincipal>(),

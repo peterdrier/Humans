@@ -17,6 +17,7 @@ using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Testing;
@@ -139,6 +140,17 @@ public class ProfileControllerEditTests
 
         _userManager.GetUserAsync(Arg.Any<ClaimsPrincipal>())
             .Returns(new User { Id = _userId, DisplayName = "Test Human", PreferredLanguage = "en" });
+        _userManager.GetUserId(Arg.Any<ClaimsPrincipal>()).Returns(_userId.ToString());
+
+        // Edit POST resolves the current user through GetCurrentUserInfoAsync
+        // (cache-resident); subsequent setup-detection lookups in the action body
+        // also call IUserService.GetUserInfoAsync. Default stub returns a UserInfo
+        // with no profile so the initial-setup branch is taken; per-test overrides
+        // (e.g. approved profile) replace it.
+        _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(
+                new User { Id = _userId, DisplayName = "Test Human", PreferredLanguage = "en" }
+                    .ToUserInfo()));
 
         // SaveProfileAsync is invoked unconditionally by the happy path.
         _profileService.SaveProfileAsync(
