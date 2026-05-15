@@ -86,7 +86,7 @@ public class ProcessGoogleSyncOutboxJob : IRecurringJob
             // Pre-load contextual info for richer error messages
             var userIds = pendingEvents.Select(e => e.UserId).Distinct().ToList();
             var teamIds = pendingEvents.Select(e => e.TeamId).Distinct().ToList();
-            var users = await _userService.GetByIdsAsync(userIds, cancellationToken);
+            var users = await _userService.GetUserInfosAsync(userIds, cancellationToken);
             var userEmailLookup = users.ToDictionary(
                 kvp => kvp.Key, kvp => kvp.Value.Email ?? "unknown");
             var teamNameLookup = await _teamService.GetTeamNamesByIdsAsync(

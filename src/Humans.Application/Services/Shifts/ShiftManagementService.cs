@@ -729,7 +729,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         var teamIds = shifts.Select(s => s.Rota.TeamId).Distinct().ToList();
         var teamLookup = await TeamService.GetByIdsWithParentsAsync(teamIds);
 
-        IReadOnlyDictionary<Guid, User>? userLookup = null;
+        IReadOnlyDictionary<Guid, UserInfo>? userLookup = null;
         if (includeSignups)
         {
             var userIds = shifts
@@ -739,7 +739,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
                 .Distinct()
                 .ToList();
             if (userIds.Count > 0)
-                userLookup = await UserService.GetByIdsAsync(userIds);
+                userLookup = await UserService.GetUserInfosAsync(userIds);
         }
 
         return shifts
@@ -754,7 +754,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
                         .Where(ss => ss.Status is SignupStatus.Confirmed or SignupStatus.Pending)
                         .Select(ss =>
                         {
-                            User? user = null;
+                            UserInfo? user = null;
                             userLookup?.TryGetValue(ss.UserId, out user);
                             return (
                                 ss.UserId,
@@ -1339,7 +1339,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         var coordsRaw = await TeamService.GetActiveCoordinatorsForTeamsAsync(relevantTeamIds.ToList());
         var coordinatorUserIds = coordsRaw.Select(c => c.UserId).Distinct().ToList();
 
-        var userLookup = await UserService.GetByIdsAsync(coordinatorUserIds);
+        var userLookup = await UserService.GetUserInfosAsync(coordinatorUserIds);
 
         var coordsByTeam = coordsRaw
             .GroupBy(c => c.TeamId)

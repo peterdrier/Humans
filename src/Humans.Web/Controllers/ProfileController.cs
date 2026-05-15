@@ -1865,8 +1865,8 @@ public class ProfileController : HumansControllerBase
             .Distinct()
             .ToList();
         var reviewers = reviewerIds.Count == 0
-            ? (IReadOnlyDictionary<Guid, User>)new Dictionary<Guid, User>()
-            : await _userService.GetByIdsAsync(reviewerIds, ct);
+            ? (IReadOnlyDictionary<Guid, UserInfo>)new Dictionary<Guid, UserInfo>()
+            : await _userService.GetUserInfosAsync(reviewerIds, ct);
 
         return (true, noShows.Select(s =>
         {

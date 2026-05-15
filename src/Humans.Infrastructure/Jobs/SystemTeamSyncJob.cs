@@ -188,7 +188,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
             .Concat(shouldBeMember.Select(tm => tm.UserId))
             .Distinct()
             .ToList();
-        var userNamesById = await _userService.GetByIdsAsync(affectedUserIds, cancellationToken);
+        var userNamesById = await _userService.GetUserInfosAsync(affectedUserIds, cancellationToken);
 
         var changes = new List<(Guid TeamMemberId, TeamMemberRole Role)>(
             shouldBeCoordinator.Count + shouldBeMember.Count);
@@ -384,7 +384,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
         if (downgrades.Count > 0)
         {
             var downgradeUserIds = downgrades.Select(d => d.UserId).ToList();
-            var downgradeUsersById = await _userService.GetByIdsAsync(downgradeUserIds, cancellationToken);
+            var downgradeUsersById = await _userService.GetUserInfosAsync(downgradeUserIds, cancellationToken);
 
             foreach (var (downgradeUserId, newTier) in downgrades)
             {
@@ -587,7 +587,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
 
         // Batch-load display names for affected users via IUserService.
         var affectedUserIds = toAdd.Concat(toRemove).ToList();
-        var usersById = await _userService.GetByIdsAsync(affectedUserIds, cancellationToken);
+        var usersById = await _userService.GetUserInfosAsync(affectedUserIds, cancellationToken);
         var userNames = usersById.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.DisplayName);
 
         // Apply the bulk membership delta in a single save through the Teams

@@ -1572,8 +1572,8 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
             .Distinct()
             .ToList();
         var usersById = assignedUserIds.Count == 0
-            ? new Dictionary<Guid, User>()
-            : await UserService.GetByIdsAsync(assignedUserIds, cancellationToken);
+            ? new Dictionary<Guid, UserInfo>()
+            : await UserService.GetUserInfosAsync(assignedUserIds, cancellationToken);
 
         var slots = new List<TeamRosterSlotSummary>();
         foreach (var definition in definitions)
@@ -1858,8 +1858,8 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
         var members = await _repo.GetActiveMembersForTeamsAsync(teamIds, cancellationToken);
         var userIds = members.Select(member => member.UserId).Distinct().ToList();
         var usersById = userIds.Count == 0
-            ? new Dictionary<Guid, User>()
-            : await UserService.GetByIdsAsync(userIds, cancellationToken);
+            ? new Dictionary<Guid, UserInfo>()
+            : await UserService.GetUserInfosAsync(userIds, cancellationToken);
 
         return members
             .Select(member =>

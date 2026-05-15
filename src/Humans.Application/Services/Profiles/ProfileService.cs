@@ -254,7 +254,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
             return new ProfilePictureMigrationSnapshot(0, 0, Array.Empty<ProfilePictureMigrationRow>());
         }
 
-        var users = await _userService.GetByIdsAsync(rows.Select(r => r.UserId).ToList(), ct);
+        var users = await _userService.GetUserInfosAsync(rows.Select(r => r.UserId).ToList(), ct);
 
         var onFs = 0;
         var dbOnly = new List<ProfilePictureMigrationRow>();

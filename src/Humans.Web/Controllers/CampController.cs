@@ -9,6 +9,7 @@ using Humans.Web.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using NodaTime;
+using Humans.Application;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.CityPlanning;
 using Humans.Application.Interfaces.Notifications;
@@ -407,9 +408,9 @@ public class CampController : HumansCampControllerBase
             .Where(m => m.Status == CampMemberStatus.Active)
             .Select(m => m.UserId)
             .ToList();
-        IReadOnlyDictionary<Guid, User> users = activeMemberUserIds.Count == 0
-            ? new Dictionary<Guid, User>()
-            : await _userService.GetByIdsAsync(activeMemberUserIds, ct);
+        IReadOnlyDictionary<Guid, UserInfo> users = activeMemberUserIds.Count == 0
+            ? new Dictionary<Guid, UserInfo>()
+            : await _userService.GetUserInfosAsync(activeMemberUserIds, ct);
 
         var activeMembers = members
             .Where(m => m.Status == CampMemberStatus.Active)

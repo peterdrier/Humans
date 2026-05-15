@@ -458,7 +458,7 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
             return 0;
 
         // Cross-section fetch: users (for DisplayName) and notification emails.
-        var users = await _userService.GetByIdsAsync(eligibleUserIds, ct);
+        var users = await _userService.GetUserInfosAsync(eligibleUserIds, ct);
         var notificationEmails = await _userEmailService.GetNotificationTargetEmailsAsync(eligibleUserIds, ct);
 
         // Get available codes ordered by ImportedAt, Id.
@@ -598,8 +598,8 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
 
         var userIds = grantRowsRaw.Select(r => r.UserId).Distinct().ToList();
         var users = userIds.Count > 0
-            ? await _userService.GetByIdsAsync(userIds, ct)
-            : new Dictionary<Guid, User>();
+            ? await _userService.GetUserInfosAsync(userIds, ct)
+            : new Dictionary<Guid, UserInfo>();
 
         var grantRows = new List<CampaignCodeTrackingGrant>(grantRowsRaw.Count);
         foreach (var row in grantRowsRaw)
@@ -716,7 +716,7 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
     /// email_outbox_messages ownership in a single place.
     /// </summary>
     private static CampaignCodeEmailRequest BuildCampaignCodeRequest(
-        Campaign campaign, User user, string recipientEmail, string code, Guid grantId)
+        Campaign campaign, UserInfo user, string recipientEmail, string code, Guid grantId)
     {
         return new CampaignCodeEmailRequest(
             UserId: user.Id,

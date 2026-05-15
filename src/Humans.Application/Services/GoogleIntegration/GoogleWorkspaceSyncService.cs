@@ -1767,7 +1767,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
 
         var matches = await _userEmailService.MatchByEmailsAsync(emailList, cancellationToken);
         var userIds = matches.Select(m => m.UserId).Distinct().ToList();
-        var usersById = await _userService.GetByIdsAsync(userIds, cancellationToken);
+        var usersById = await _userService.GetUserInfosAsync(userIds, cancellationToken);
 
         var result = new Dictionary<string, (string DisplayName, Guid UserId, string? ProfilePictureUrl)>(
             NormalizingEmailComparer.Instance);

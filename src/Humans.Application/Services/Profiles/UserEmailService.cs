@@ -521,7 +521,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         var missing = userIds.Where(id => !result.ContainsKey(id)).ToList();
         if (missing.Count > 0)
         {
-            var users = await _userService.GetByIdsAsync(missing, cancellationToken);
+            var users = await _userService.GetUserInfosAsync(missing, cancellationToken);
             foreach (var userId in missing)
             {
                 if (users.TryGetValue(userId, out var user) && !string.IsNullOrEmpty(user.Email))
@@ -1022,7 +1022,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         if (perUser.Count == 0)
             return [];
 
-        var users = await _userService.GetByIdsAsync(
+        var users = await _userService.GetUserInfosAsync(
             perUser.Select(x => x.UserId).ToList(),
             cancellationToken);
 

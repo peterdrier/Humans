@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
+using Humans.Application;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
@@ -508,7 +509,7 @@ public class ShiftsController : HumansControllerBase
             Rows: rows));
     }
 
-    private static async Task<IReadOnlyDictionary<Guid, User>> ResolveOrphanActorsAsync(
+    private static async Task<IReadOnlyDictionary<Guid, UserInfo>> ResolveOrphanActorsAsync(
         IReadOnlyList<OrphanSignupSnapshot> orphans, IUserService userService, CancellationToken ct)
     {
         // Display-name resolution goes through the Users section directly —
@@ -522,13 +523,13 @@ public class ShiftsController : HumansControllerBase
             .Distinct()
             .ToList();
         return userIds.Count == 0
-            ? new Dictionary<Guid, User>()
-            : await userService.GetByIdsAsync(userIds, ct);
+            ? new Dictionary<Guid, UserInfo>()
+            : await userService.GetUserInfosAsync(userIds, ct);
     }
 
     private static List<OrphanSignupRow> BuildOrphanRows(
         IReadOnlyList<OrphanSignupSnapshot> orphans,
-        IReadOnlyDictionary<Guid, User> users)
+        IReadOnlyDictionary<Guid, UserInfo> users)
     {
         string? GetName(Guid? id) => id.HasValue && users.TryGetValue(id.Value, out var u) ? u.DisplayName : null;
 

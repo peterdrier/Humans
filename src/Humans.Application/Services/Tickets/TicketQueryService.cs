@@ -513,7 +513,7 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
         if (matchedIds.Count == 0)
             return rows.ToList();
 
-        var users = await _userService.GetByIdsAsync(matchedIds);
+        var users = await _userService.GetUserInfosAsync(matchedIds);
         return rows.Select(r =>
         {
             if (r.MatchedUserId is { } uid && users.TryGetValue(uid, out var user))
@@ -556,7 +556,7 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
         if (matchedIds.Count == 0)
             return rows.ToList();
 
-        var users = await _userService.GetByIdsAsync(matchedIds);
+        var users = await _userService.GetUserInfosAsync(matchedIds);
         return rows.Select(r =>
         {
             if (r.MatchedUserId is { } uid && users.TryGetValue(uid, out var user))

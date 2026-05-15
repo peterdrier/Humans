@@ -179,9 +179,9 @@ public sealed class CampRoleService : ICampRoleService
         var assignments = await _repo.GetAssignmentsForSeasonAsync(campSeasonId, ct);
 
         var memberUserIds = assignments.Select(a => a.CampMember.UserId).Distinct().ToList();
-        IReadOnlyDictionary<Guid, User> users = memberUserIds.Count == 0
-            ? new Dictionary<Guid, User>()
-            : await _userService.GetByIdsAsync(memberUserIds, ct);
+        IReadOnlyDictionary<Guid, Humans.Application.UserInfo> users = memberUserIds.Count == 0
+            ? new Dictionary<Guid, Humans.Application.UserInfo>()
+            : await _userService.GetUserInfosAsync(memberUserIds, ct);
 
         var rows = definitions.Select(def =>
         {

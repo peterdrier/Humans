@@ -663,7 +663,7 @@ public sealed class TicketTransferService : ITicketTransferService
 
     private async Task<TicketTransferRowDto> BuildRowDtoAsync(TicketTransferRequest r, CancellationToken ct)
     {
-        var users = await _userService.GetByIdsAsync(
+        var users = await _userService.GetUserInfosAsync(
             r.DecidedByUserId is null
                 ? new[] { r.SenderUserId }
                 : new[] { r.SenderUserId, r.DecidedByUserId.Value },
@@ -682,7 +682,7 @@ public sealed class TicketTransferService : ITicketTransferService
             userIds.Add(r.SenderUserId);
             if (r.DecidedByUserId is { } decider) userIds.Add(decider);
         }
-        var users = await _userService.GetByIdsAsync(userIds, ct);
+        var users = await _userService.GetUserInfosAsync(userIds, ct);
 
         var result = new List<TicketTransferRowDto>(rows.Count);
         foreach (var r in rows)
@@ -698,11 +698,11 @@ public sealed class TicketTransferService : ITicketTransferService
 
     private static TicketTransferRowDto BuildRowDto(
         TicketTransferRequest r,
-        IReadOnlyDictionary<Guid, User> users,
+        IReadOnlyDictionary<Guid, Humans.Application.UserInfo> users,
         TicketAttendee attendee)
     {
         users.TryGetValue(r.SenderUserId, out var sender);
-        User? decider = null;
+        Humans.Application.UserInfo? decider = null;
         if (r.DecidedByUserId is { } deciderId) users.TryGetValue(deciderId, out decider);
 
         return new TicketTransferRowDto(
