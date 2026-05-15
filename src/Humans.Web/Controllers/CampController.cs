@@ -40,12 +40,11 @@ public class CampController : HumansCampControllerBase
         ICityPlanningService cityPlanningService,
         INotificationService notificationService,
         IUserService userService,
-        UserManager<User> userManager,
         IAuthorizationService authorizationService,
         IClock clock,
         ILogger<CampController> logger,
         IStringLocalizer<SharedResource> localizer)
-        : base(userManager, campService, authorizationService)
+        : base(userService, campService, authorizationService)
     {
         _campService = campService;
         _campContactService = campContactService;
@@ -66,7 +65,7 @@ public class CampController : HumansCampControllerBase
     [HttpGet("")]
     public async Task<IActionResult> Index(CampFilterViewModel? filters)
     {
-        var user = await GetCurrentUserAsync();
+        var user = await GetCurrentUserInfoAsync();
         var directory = await _campService.GetCampDirectoryAsync(
             user?.Id,
             filters is null
@@ -125,7 +124,7 @@ public class CampController : HumansCampControllerBase
         if (campDetail is null)
             return NotFound();
 
-        var currentUser = User.Identity?.IsAuthenticated == true ? await GetCurrentUserAsync() : null;
+        var currentUser = User.Identity?.IsAuthenticated == true ? await GetCurrentUserInfoAsync() : null;
         var (isLead, isCampAdmin) = await ResolveCampViewerStateAsync(campDetail.Id, currentUser, cancellationToken);
         var membership = await ResolveCurrentUserMembershipStateAsync(campDetail.Id, currentUser);
         await PopulateCityPlanningViewBagAsync(currentUser, cancellationToken);
@@ -145,7 +144,7 @@ public class CampController : HumansCampControllerBase
         if (campDetail is null)
             return NotFound();
 
-        var currentUser = User.Identity?.IsAuthenticated == true ? await GetCurrentUserAsync() : null;
+        var currentUser = User.Identity?.IsAuthenticated == true ? await GetCurrentUserInfoAsync() : null;
         var (isLead, isCampAdmin) = await ResolveCampViewerStateAsync(campDetail.Id, currentUser, cancellationToken);
         var membership = await ResolveCurrentUserMembershipStateAsync(campDetail.Id, currentUser);
         await PopulateCityPlanningViewBagAsync(currentUser, cancellationToken);
@@ -153,7 +152,7 @@ public class CampController : HumansCampControllerBase
         return View(nameof(Details), MapCampDetailViewModel(campDetail, isLead, isCampAdmin, membership));
     }
 
-    private async Task<CampMembershipStateViewModel> ResolveCurrentUserMembershipStateAsync(Guid campId, User? currentUser)
+    private async Task<CampMembershipStateViewModel> ResolveCurrentUserMembershipStateAsync(Guid campId, UserInfo? currentUser)
     {
         if (currentUser is null)
         {
@@ -204,7 +203,7 @@ public class CampController : HumansCampControllerBase
         var camp = await GetCampBySlugAsync(slug);
         if (camp is null) return NotFound();
 
-        var currentUser = await GetCurrentUserAsync();
+        var currentUser = await GetCurrentUserInfoAsync();
         if (currentUser is null) return Unauthorized();
 
         if (!ModelState.IsValid)
@@ -1140,7 +1139,7 @@ public class CampController : HumansCampControllerBase
     // Helper methods
     // ======================================================================
 
-    private async Task PopulateCityPlanningViewBagAsync(User? currentUser, CancellationToken cancellationToken)
+    private async Task PopulateCityPlanningViewBagAsync(UserInfo? currentUser, CancellationToken cancellationToken)
     {
         if (currentUser is null)
         {

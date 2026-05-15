@@ -28,8 +28,8 @@ public class EventsExportController : HumansControllerBase
         IEventService guide,
         ICampService camps,
         IUserService users,
-        UserManager<User> userManager)
-        : base(userManager)
+        IUserService userService)
+        : base(userService)
     {
         _guide = guide;
         _camps = camps;

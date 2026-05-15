@@ -55,22 +55,6 @@ public class OnboardingArchitectureTests
     }
 
     [HumansFact]
-    public void OnboardingService_ImplementsIOnboardingEligibilityQuery()
-    {
-        typeof(IOnboardingEligibilityQuery).IsAssignableFrom(typeof(OnboardingService))
-            .Should().BeTrue(
-                because: "OnboardingService exposes the narrow IOnboardingEligibilityQuery surface so ProfileService / ConsentService can break the DI cycle with OnboardingService");
-    }
-
-    [HumansFact]
-    public void IOnboardingService_ExtendsIOnboardingEligibilityQuery()
-    {
-        typeof(IOnboardingEligibilityQuery).IsAssignableFrom(typeof(IOnboardingService))
-            .Should().BeTrue(
-                because: "the narrow consent-check query surface is available to every IOnboardingService caller as well as the DI-cycle-break callers");
-    }
-
-    [HumansFact]
     public void OnboardingService_DependsOnlyOnServiceInterfaces()
     {
         var ctor = typeof(OnboardingService).GetConstructors().Single();

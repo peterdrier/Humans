@@ -26,8 +26,8 @@ public sealed class UsersAdminDebugController : HumansControllerBase
 
     private readonly IUserService _userService;
 
-    public UsersAdminDebugController(IUserService userService, UserManager<User> userManager)
-        : base(userManager)
+    public UsersAdminDebugController(IUserService userService)
+        : base(userService)
     {
         _userService = userService;
     }

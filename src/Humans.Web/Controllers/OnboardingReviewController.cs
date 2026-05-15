@@ -26,12 +26,11 @@ public class OnboardingReviewController : HumansControllerBase
     private readonly IStringLocalizer<SharedResource> _localizer;
 
     public OnboardingReviewController(
-        UserManager<User> userManager,
-        IOnboardingService onboardingService,
         IUserService userService,
+        IOnboardingService onboardingService,
         ILogger<OnboardingReviewController> logger,
         IStringLocalizer<SharedResource> localizer)
-        : base(userManager)
+        : base(userService)
     {
         _onboardingService = onboardingService;
         _userService = userService;
@@ -93,7 +92,7 @@ public class OnboardingReviewController : HumansControllerBase
     [Authorize(Policy = PolicyNames.ConsentCoordinatorBoardOrAdmin)]
     public async Task<IActionResult> Clear(Guid userId, string? notes)
     {
-        var currentUser = await GetCurrentUserAsync();
+        var currentUser = await GetCurrentUserInfoAsync();
         if (currentUser is null)
             return NotFound();
 
@@ -127,7 +126,7 @@ public class OnboardingReviewController : HumansControllerBase
     [Authorize(Policy = PolicyNames.ConsentCoordinatorBoardOrAdmin)]
     public async Task<IActionResult> BulkClear([FromForm] List<Guid> selectedUserIds, CancellationToken ct)
     {
-        var currentUser = await GetCurrentUserAsync();
+        var currentUser = await GetCurrentUserInfoAsync();
         if (currentUser is null)
             return NotFound();
 
@@ -171,7 +170,7 @@ public class OnboardingReviewController : HumansControllerBase
     [Authorize(Policy = PolicyNames.ConsentCoordinatorBoardOrAdmin)]
     public async Task<IActionResult> Flag(Guid userId, string? notes)
     {
-        var currentUser = await GetCurrentUserAsync();
+        var currentUser = await GetCurrentUserInfoAsync();
         if (currentUser is null)
             return NotFound();
 
@@ -201,7 +200,7 @@ public class OnboardingReviewController : HumansControllerBase
     [Authorize(Policy = PolicyNames.ConsentCoordinatorBoardOrAdmin)]
     public async Task<IActionResult> Reject(Guid userId, string? reason)
     {
-        var currentUser = await GetCurrentUserAsync();
+        var currentUser = await GetCurrentUserInfoAsync();
         if (currentUser is null)
             return NotFound();
 

@@ -31,7 +31,7 @@ public class AdminController : HumansControllerBase
     private readonly IAdminDatabaseDiagnosticsService _databaseDiagnostics;
 
     public AdminController(
-        UserManager<User> userManager,
+        IUserService userService,
         ILogger<AdminController> logger,
         IWebHostEnvironment environment,
         IAccountDeletionService accountDeletionService,
@@ -41,7 +41,7 @@ public class AdminController : HumansControllerBase
         IEnumerable<ICacheStats> decoratorCacheStats,
         IUserEmailProviderBackfillService userEmailProviderBackfillService,
         IAdminDatabaseDiagnosticsService databaseDiagnostics)
-        : base(userManager)
+        : base(userService)
     {
         _logger = logger;
         _environment = environment;
@@ -120,13 +120,13 @@ public class AdminController : HumansControllerBase
             return NotFound();
         }
 
-        var user = await FindUserByIdAsync(id);
+        var user = await FindUserInfoByIdAsync(id);
         if (user is null)
         {
             return NotFound();
         }
 
-        var currentUser = await GetCurrentUserAsync();
+        var currentUser = await GetCurrentUserInfoAsync();
 
         if (user.Id == currentUser?.Id)
         {
@@ -321,7 +321,7 @@ public class AdminController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> BackfillUserEmailProvidersRun(CancellationToken ct)
     {
-        var currentUser = await GetCurrentUserAsync();
+        var currentUser = await GetCurrentUserInfoAsync();
         _logger.LogInformation(
             "Admin {AdminId} running UserEmail Provider/IsGoogle backfill",
             currentUser?.Id);

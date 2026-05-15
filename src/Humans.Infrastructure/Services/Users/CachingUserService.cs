@@ -521,6 +521,18 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
         await RefreshEntryAsync(userId, ct);
     }
 
+    public async Task SetPreferredLanguageAsync(Guid userId, string preferredLanguage, CancellationToken ct = default)
+    {
+        await WithInnerAsync(inner => inner.SetPreferredLanguageAsync(userId, preferredLanguage, ct));
+        await RefreshEntryAsync(userId, ct);
+    }
+
+    public async Task SetICalTokenAsync(Guid userId, Guid token, CancellationToken ct = default)
+    {
+        await WithInnerAsync(inner => inner.SetICalTokenAsync(userId, token, ct));
+        await RefreshEntryAsync(userId, ct);
+    }
+
     public async Task<bool> SetDeletionPendingAsync(
         Guid userId, Instant requestedAt, Instant scheduledFor, Instant? eligibleAfter,
         CancellationToken ct = default)

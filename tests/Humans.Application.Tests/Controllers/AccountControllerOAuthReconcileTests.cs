@@ -64,6 +64,7 @@ public class AccountControllerOAuthReconcileTests
 
         _controller = new AccountController(
             _signInManager,
+            Substitute.For<IUserService>(),
             _userManager,
             _clock,
             NullLogger<AccountController>.Instance,

@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Humans.Application;
 using Humans.Application.Configuration;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Dashboard;
@@ -47,12 +48,22 @@ public class HomeControllerTests
     private HomeController BuildSut(User user, bool hasProfile = true)
     {
         _userManager.GetUserAsync(Arg.Any<ClaimsPrincipal>()).Returns(user);
+        _userService.GetUserInfoAsync(user.Id, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(UserInfo.Create(
+                user,
+                Array.Empty<UserEmail>(),
+                Array.Empty<EventParticipation>(),
+                Array.Empty<(string, string)>(),
+                profile: null,
+                Array.Empty<ContactField>(),
+                Array.Empty<ProfileLanguage>(),
+                Array.Empty<VolunteerHistoryEntry>(),
+                Array.Empty<CommunicationPreference>())));
 
         var ctrl = new HomeController(
-            _userManager,
+            _userService,
             _dashboardService,
             _shiftMgmt,
-            _userService,
             _widgetState,
             _configuration,
             _configRegistry,

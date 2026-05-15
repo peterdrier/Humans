@@ -9,6 +9,8 @@ using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using NodaTime.Text;
 
+using Humans.Application.Interfaces.Users;
+
 namespace Humans.Web.Controllers;
 
 [Authorize(Policy = PolicyNames.StoreCatalogAdmin)]
@@ -26,9 +28,9 @@ public class StoreAdminController : HumansControllerBase
         IStoreService storeService,
         IShiftManagementService shifts,
         IClock clock,
-        UserManager<User> userManager,
+        IUserService userService,
         ILogger<StoreAdminController> logger)
-        : base(userManager)
+        : base(userService)
     {
         _storeService = storeService;
         _shifts = shifts;

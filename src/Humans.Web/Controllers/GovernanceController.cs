@@ -14,6 +14,9 @@ using Humans.Application.Interfaces.Auth;
 // design-rules §15i.
 #pragma warning disable CS0618
 
+using Humans.Application.Interfaces.Users;
+using Humans.Application;
+
 namespace Humans.Web.Controllers;
 
 [Authorize]
@@ -25,11 +28,11 @@ public class GovernanceController : HumansControllerBase
     private readonly IClock _clock;
 
     public GovernanceController(
-        UserManager<Domain.Entities.User> userManager,
+        IUserService userService,
         IGovernanceIndexService governanceIndexService,
         IRoleAssignmentService roleAssignmentService,
         IClock clock)
-        : base(userManager)
+        : base(userService)
     {
         _governanceIndexService = governanceIndexService;
         _roleAssignmentService = roleAssignmentService;
@@ -38,7 +41,7 @@ public class GovernanceController : HumansControllerBase
 
     public async Task<IActionResult> Index()
     {
-        var user = await GetCurrentUserAsync();
+        var user = await GetCurrentUserInfoAsync();
         if (user is null)
             return NotFound();
 

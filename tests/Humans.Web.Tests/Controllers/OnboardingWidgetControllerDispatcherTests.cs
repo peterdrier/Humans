@@ -29,6 +29,7 @@ public class OnboardingWidgetControllerDispatcherTests
     private readonly IShiftSignupService _signups = Substitute.For<IShiftSignupService>();
     private readonly IShiftManagementService _shiftMgmt = Substitute.For<IShiftManagementService>();
     private readonly IConsentService _consents = Substitute.For<IConsentService>();
+    private readonly IOnboardingService _onboardingService = Substitute.For<IOnboardingService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IStringLocalizer<SharedResource> _localizer =
         Substitute.For<IStringLocalizer<SharedResource>>();
@@ -46,7 +47,7 @@ public class OnboardingWidgetControllerDispatcherTests
     {
         var user = new User { Id = userId };
         _userManager.GetUserAsync(Arg.Any<ClaimsPrincipal>()).Returns(user);
-        var ctrl = new OnboardingWidgetController(_userManager, _state, _profile, _signups, _shiftMgmt, _consents, _userService, _localizer);
+        var ctrl = new OnboardingWidgetController(_userService, _state, _profile, _signups, _shiftMgmt, _consents, _onboardingService, _localizer);
         var http = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.ToString())],

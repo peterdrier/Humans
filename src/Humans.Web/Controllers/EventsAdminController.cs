@@ -9,6 +9,8 @@ using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using static Humans.Web.Helpers.EventsTimeHelpers;
 
+using Humans.Application.Interfaces.Users;
+
 namespace Humans.Web.Controllers;
 
 [Authorize(Roles = RoleGroups.EventsAdminOrAdmin)]
@@ -22,8 +24,8 @@ public class EventsAdminController : HumansControllerBase
     public EventsAdminController(
         IEventService guide,
         ILogger<EventsAdminController> logger,
-        UserManager<User> userManager)
-        : base(userManager)
+        IUserService userService)
+        : base(userService)
     {
         _guide = guide;
         _logger = logger;

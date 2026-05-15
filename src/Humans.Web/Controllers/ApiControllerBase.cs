@@ -1,5 +1,6 @@
-using Humans.Domain.Entities;
-using Microsoft.AspNetCore.Identity;
+using System.Security.Claims;
+using Humans.Application;
+using Humans.Application.Interfaces.Users;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Web.Controllers;
@@ -17,26 +18,39 @@ namespace Humans.Web.Controllers;
 ///   <item>MVC controllers returning views or using TempData → <see cref="HumansControllerBase"/>.</item>
 ///   <item>API controllers returning JSON via <c>IActionResult</c> / <c>ActionResult&lt;T&gt;</c> → this class.</item>
 /// </list>
-/// Don't write new direct <c>_userManager.GetUserAsync(User)</c> calls in
-/// either kind of controller — use the helpers below (or the MVC
-/// equivalents) so the user-resolution behavior stays uniform.
+/// Don't write new direct <c>UserManager.GetUserAsync(User)</c> calls in
+/// either kind of controller — use the cache-resident helpers below.
+/// Actions that genuinely need a tracked <c>User</c> entity (Identity
+/// mutations, sign-in flows) should self-inject <c>UserManager</c> in
+/// the derived controller.
 /// </para>
 /// </summary>
 public abstract class ApiControllerBase : ControllerBase
 {
-    private readonly UserManager<User> _userManager;
+    private readonly IUserService _userService;
+    protected IUserService UserService => _userService;
 
-    protected UserManager<User> UserManager => _userManager;
-
-    protected ApiControllerBase(UserManager<User> userManager)
+    protected ApiControllerBase(IUserService userService)
     {
-        _userManager = userManager;
+        _userService = userService;
     }
 
-    protected Task<User?> GetCurrentUserAsync() => _userManager.GetUserAsync(User);
+    protected Guid? GetCurrentUserId()
+    {
+        var raw = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        return Guid.TryParse(raw, out var id) ? id : null;
+    }
 
-    protected Task<User?> FindUserByIdAsync(Guid userId) =>
-        _userManager.FindByIdAsync(userId.ToString());
+    protected async Task<UserInfo?> GetCurrentUserInfoAsync(CancellationToken ct = default)
+    {
+        var id = GetCurrentUserId();
+        return id is null ? null : await _userService.GetUserInfoAsync(id.Value, ct);
+    }
+
+    protected async Task<UserInfo?> FindUserInfoByIdAsync(Guid userId, CancellationToken ct = default)
+    {
+        return await _userService.GetUserInfoAsync(userId, ct);
+    }
 
     /// <summary>
     /// Resolves the current user or returns 401 Unauthorized. Use this on
@@ -46,9 +60,9 @@ public abstract class ApiControllerBase : ControllerBase
     /// handles the no-cookie case at the framework layer; this helper
     /// covers the deleted-while-session-valid case at the action layer.
     /// </summary>
-    protected async Task<(IActionResult? ErrorResult, User User)> ResolveCurrentUserOrUnauthorizedAsync()
+    protected async Task<(IActionResult? ErrorResult, UserInfo User)> ResolveCurrentUserOrUnauthorizedAsync(CancellationToken ct = default)
     {
-        var user = await GetCurrentUserAsync();
+        var user = await GetCurrentUserInfoAsync(ct);
         return user is null ? (Unauthorized(), null!) : (null, user);
     }
 }

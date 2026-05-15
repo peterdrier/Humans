@@ -9,6 +9,9 @@ using Humans.Web.Authorization;
 using Humans.Web.Extensions;
 using Humans.Web.Models;
 
+using Humans.Application.Interfaces.Users;
+using Humans.Application;
+
 namespace Humans.Web.Controllers;
 
 [Authorize]
@@ -21,10 +24,10 @@ public class GovernanceApplicationsController : HumansControllerBase
 
     public GovernanceApplicationsController(
         IApplicationDecisionService applicationDecisionService,
-        UserManager<Domain.Entities.User> userManager,
+        IUserService userService,
         IStringLocalizer<SharedResource> localizer,
         ILogger<GovernanceApplicationsController> logger)
-        : base(userManager)
+        : base(userService)
     {
         _applicationDecisionService = applicationDecisionService;
         _localizer = localizer;
@@ -34,7 +37,7 @@ public class GovernanceApplicationsController : HumansControllerBase
     [HttpGet("")]
     public async Task<IActionResult> Index()
     {
-        var user = await GetCurrentUserAsync();
+        var user = await GetCurrentUserInfoAsync();
         if (user is null)
             return NotFound();
 
@@ -67,7 +70,7 @@ public class GovernanceApplicationsController : HumansControllerBase
     [HttpGet("Create")]
     public async Task<IActionResult> Create()
     {
-        var user = await GetCurrentUserAsync();
+        var user = await GetCurrentUserInfoAsync();
         if (user is null)
             return NotFound();
 
@@ -103,7 +106,7 @@ public class GovernanceApplicationsController : HumansControllerBase
             return View("~/Views/Governance/Applications/Create.cshtml", model);
         }
 
-        var user = await GetCurrentUserAsync();
+        var user = await GetCurrentUserInfoAsync();
         if (user is null)
             return NotFound();
 
@@ -147,7 +150,7 @@ public class GovernanceApplicationsController : HumansControllerBase
     [HttpGet("Details/{id:guid}")]
     public async Task<IActionResult> Details(Guid id)
     {
-        var user = await GetCurrentUserAsync();
+        var user = await GetCurrentUserInfoAsync();
         if (user is null)
             return NotFound();
 
@@ -187,7 +190,7 @@ public class GovernanceApplicationsController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Withdraw(Guid id)
     {
-        var user = await GetCurrentUserAsync();
+        var user = await GetCurrentUserInfoAsync();
         if (user is null)
             return NotFound();
 

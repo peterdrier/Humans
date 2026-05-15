@@ -37,10 +37,10 @@ public class IssuesController : HumansControllerBase
         IAuthorizationService authorization,
         IProfileService profiles,
         IUserService users,
-        UserManager<User> userManager,
+        IUserService userService,
         IStringLocalizer<SharedResource> localizer,
         ILogger<IssuesController> logger)
-        : base(userManager)
+        : base(userService)
     {
         _issues = issues;
         _authorization = authorization;

@@ -1,9 +1,9 @@
+using Humans.Application;
 using Humans.Application.Interfaces.Teams;
-using Humans.Domain.Entities;
+using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;
 using Humans.Web.Authorization.Requirements;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Web.Controllers;
@@ -14,16 +14,16 @@ public abstract class HumansTeamControllerBase : HumansControllerBase
     private readonly IAuthorizationService _authorizationService;
 
     protected HumansTeamControllerBase(
-        UserManager<User> userManager,
+        IUserService userService,
         ITeamService teamService,
         IAuthorizationService authorizationService)
-        : base(userManager)
+        : base(userService)
     {
         _teamService = teamService;
         _authorizationService = authorizationService;
     }
 
-    protected async Task<(IActionResult? ErrorResult, User User, TeamInfo Team)> ResolveTeamManagementAsync(string slug)
+    protected async Task<(IActionResult? ErrorResult, UserInfo User, TeamInfo Team)> ResolveTeamManagementAsync(string slug)
     {
         return await ResolveTeamAccessAsync(
             slug,
@@ -36,9 +36,9 @@ public abstract class HumansTeamControllerBase : HumansControllerBase
             });
     }
 
-    protected Task<(IActionResult? ErrorResult, User User, TeamInfo Team)> ResolveDepartmentAccessAsync(
+    protected Task<(IActionResult? ErrorResult, UserInfo User, TeamInfo Team)> ResolveDepartmentAccessAsync(
         string slug,
-        Func<TeamInfo, User, Task<bool>> canAccessAsync)
+        Func<TeamInfo, UserInfo, Task<bool>> canAccessAsync)
     {
         return ResolveTeamAccessAsync(
             slug,
@@ -46,10 +46,10 @@ public abstract class HumansTeamControllerBase : HumansControllerBase
             canAccessAsync);
     }
 
-    private async Task<(IActionResult? ErrorResult, User User, TeamInfo Team)> ResolveTeamAccessAsync(
+    private async Task<(IActionResult? ErrorResult, UserInfo User, TeamInfo Team)> ResolveTeamAccessAsync(
         string slug,
         Func<TeamInfo, bool> teamFilter,
-        Func<TeamInfo, User, Task<bool>> canAccessAsync)
+        Func<TeamInfo, UserInfo, Task<bool>> canAccessAsync)
     {
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null)

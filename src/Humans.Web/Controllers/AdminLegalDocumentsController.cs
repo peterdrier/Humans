@@ -9,6 +9,8 @@ using Humans.Web.Models;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Legal;
 
+using Humans.Application.Interfaces.Users;
+
 namespace Humans.Web.Controllers;
 
 [Authorize(Policy = PolicyNames.BoardOrAdmin)]
@@ -21,12 +23,12 @@ public class AdminLegalDocumentsController : HumansControllerBase
     private readonly ILogger<AdminLegalDocumentsController> _logger;
 
     public AdminLegalDocumentsController(
-        UserManager<User> userManager,
+        IUserService userService,
         IAdminLegalDocumentService adminLegalDocumentService,
         ITeamService teamService,
         IClock clock,
         ILogger<AdminLegalDocumentsController> logger)
-        : base(userManager)
+        : base(userService)
     {
         _adminLegalDocumentService = adminLegalDocumentService;
         _teamService = teamService;
@@ -89,7 +91,7 @@ public class AdminLegalDocumentsController : HumansControllerBase
             ToUpsertRequest(model, folderPath));
         var document = result.Document;
 
-        var currentUser = await GetCurrentUserAsync();
+        var currentUser = await GetCurrentUserInfoAsync();
         _logger.LogInformation("Admin {AdminId} created legal document {DocumentId} ({Name})",
             currentUser?.Id, document.Id, document.Name);
 
@@ -190,7 +192,7 @@ public class AdminLegalDocumentsController : HumansControllerBase
             return NotFound();
         }
 
-        var currentUser = await GetCurrentUserAsync();
+        var currentUser = await GetCurrentUserInfoAsync();
         _logger.LogInformation("Admin {AdminId} updated legal document {DocumentId}", currentUser?.Id, id);
 
         SetSuccess($"Legal document '{document.Name}' updated successfully.");
@@ -207,7 +209,7 @@ public class AdminLegalDocumentsController : HumansControllerBase
             return NotFound();
         }
 
-        var currentUser = await GetCurrentUserAsync();
+        var currentUser = await GetCurrentUserInfoAsync();
         _logger.LogInformation("Admin {AdminId} archived legal document {DocumentId}", currentUser?.Id, id);
 
         SetSuccess($"Legal document '{document.Name}' archived.");
@@ -221,7 +223,7 @@ public class AdminLegalDocumentsController : HumansControllerBase
         try
         {
             var result = await _adminLegalDocumentService.SyncLegalDocumentAsync(id);
-            var currentUser = await GetCurrentUserAsync();
+            var currentUser = await GetCurrentUserInfoAsync();
             _logger.LogInformation("Admin {AdminId} triggered sync for legal document {DocumentId}", currentUser?.Id, id);
 
             SetSuccess(result ?? "Document is already up to date.");

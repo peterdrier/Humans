@@ -29,9 +29,9 @@ public class TicketController : HumansControllerBase
         ITicketSyncService ticketSyncService,
         IUserParticipationBackfillService participationBackfillService,
         TicketDashboardPageBuilder dashboardPageBuilder,
-        UserManager<User> userManager,
+        IUserService userService,
         ILogger<TicketController> logger)
-        : base(userManager)
+        : base(userService)
     {
         _ticketQueryService = ticketQueryService;
         _ticketSyncService = ticketSyncService;

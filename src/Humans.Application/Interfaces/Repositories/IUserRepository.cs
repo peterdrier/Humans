@@ -88,6 +88,16 @@ public interface IUserRepository : IRepository
     Task<bool> UpdateDisplayNameAsync(Guid userId, string displayName, CancellationToken ct = default);
 
     /// <summary>
+    /// Sets <c>User.PreferredLanguage</c>. Returns false if the user does not exist.
+    /// </summary>
+    Task<bool> SetPreferredLanguageAsync(Guid userId, string preferredLanguage, CancellationToken ct = default);
+
+    /// <summary>
+    /// Sets <c>User.ICalToken</c>. Returns false if the user does not exist.
+    /// </summary>
+    Task<bool> SetICalTokenAsync(Guid userId, Guid token, CancellationToken ct = default);
+
+    /// <summary>
     /// Sets <c>User.GoogleEmail</c> if and only if it is currently null.
     /// No-op if the user already has a GoogleEmail set or the user does not
     /// exist. Returns true if the GoogleEmail was set.

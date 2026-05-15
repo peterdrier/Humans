@@ -147,6 +147,10 @@ public class AccountProvisioningServiceTests
             throw new NotSupportedException();
         public Task<bool> UpdateDisplayNameAsync(Guid userId, string displayName, CancellationToken ct = default) =>
             throw new NotSupportedException();
+        public Task<bool> SetPreferredLanguageAsync(Guid userId, string preferredLanguage, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<bool> SetICalTokenAsync(Guid userId, Guid token, CancellationToken ct = default) =>
+            throw new NotSupportedException();
         public Task<bool> TrySetGoogleEmailAsync(Guid userId, string email, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<bool> SetDeletionPendingAsync(

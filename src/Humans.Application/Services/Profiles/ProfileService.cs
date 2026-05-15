@@ -3,14 +3,13 @@ using NodaTime;
 using Humans.Application.DTOs;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Gdpr;
-using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Domain.Helpers;
 using Humans.Application.Interfaces.AuditLog;
-using Humans.Application.Interfaces.Users;
 using Humans.Application.Interfaces.Onboarding;
+using Humans.Application.Interfaces.Users;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Profiles;
 
@@ -28,9 +27,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
     private readonly IUserEmailRepository _userEmailRepository;
     private readonly IContactFieldRepository _contactFieldRepository;
     private readonly ICommunicationPreferenceRepository _communicationPreferenceRepository;
-    private readonly IOnboardingEligibilityQuery _onboardingEligibilityQuery;
     private readonly IAuditLogService _auditLogService;
-    private readonly IMembershipCalculator _membershipCalculator;
     private readonly IFileStorage _fileStorage;
     private readonly IClock _clock;
     private readonly ILogger<ProfileService> _logger;
@@ -55,9 +52,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         IUserEmailRepository userEmailRepository,
         IContactFieldRepository contactFieldRepository,
         ICommunicationPreferenceRepository communicationPreferenceRepository,
-        IOnboardingEligibilityQuery onboardingEligibilityQuery,
         IAuditLogService auditLogService,
-        IMembershipCalculator membershipCalculator,
         IFileStorage fileStorage,
         IClock clock,
         ILogger<ProfileService> logger)
@@ -67,9 +62,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         _userEmailRepository = userEmailRepository;
         _contactFieldRepository = contactFieldRepository;
         _communicationPreferenceRepository = communicationPreferenceRepository;
-        _onboardingEligibilityQuery = onboardingEligibilityQuery;
         _auditLogService = auditLogService;
-        _membershipCalculator = membershipCalculator;
         _fileStorage = fileStorage;
         _clock = clock;
         _logger = logger;
@@ -405,9 +398,6 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         await _userService.UpdateDisplayNameAsync(userId, displayName, ct);
 
         // Cache invalidation and store update handled by CachingUserService decorator
-
-        // Check consent eligibility
-        await _onboardingEligibilityQuery.SetConsentCheckPendingIfEligibleAsync(userId, ct);
 
         _logger.LogInformation("User {UserId} updated their profile", userId);
 

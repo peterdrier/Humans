@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Application.Configuration;
+using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Web.Controllers;
 using Microsoft.AspNetCore.Hosting;
@@ -27,7 +28,7 @@ namespace Humans.Web.Tests.Controllers;
 /// </summary>
 public class DevSeedControllerTests
 {
-    private readonly UserManager<User> _userManager;
+    private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IWebHostEnvironment _environment = Substitute.For<IWebHostEnvironment>();
     private readonly IConfiguration _configuration = Substitute.For<IConfiguration>();
     private readonly ConfigurationRegistry _configRegistry = new();
@@ -35,9 +36,6 @@ public class DevSeedControllerTests
 
     public DevSeedControllerTests()
     {
-        var userStore = Substitute.For<IUserStore<User>>();
-        _userManager = Substitute.For<UserManager<User>>(
-            userStore, null, null, null, null, null, null, null, null);
     }
 
     [HumansFact]
@@ -95,7 +93,7 @@ public class DevSeedControllerTests
             _configuration,
             _configRegistry,
             _serviceProvider,
-            _userManager,
+            _userService,
             NullLogger<DevSeedController>.Instance);
 
         // Resolve ILoggerFactory from RequestServices for SetError (unused on

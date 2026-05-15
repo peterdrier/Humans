@@ -29,7 +29,7 @@ public class ProfileAdminController : HumansControllerBase
     private readonly IRoleAssignmentService _roleAssignmentService;
 
     public ProfileAdminController(
-        UserManager<User> userManager,
+        IUserService userService,
         IEmailProblemsService emailProblems,
         IAccountMergeService accountMerge,
         IUserEmailService userEmails,
@@ -39,7 +39,7 @@ public class ProfileAdminController : HumansControllerBase
         IProfileService profileService,
         ITeamService teamService,
         IRoleAssignmentService roleAssignmentService)
-        : base(userManager)
+        : base(userService)
     {
         _emailProblems = emailProblems;
         _accountMerge = accountMerge;

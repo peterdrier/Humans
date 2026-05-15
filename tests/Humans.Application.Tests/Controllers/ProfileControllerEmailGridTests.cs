@@ -78,6 +78,7 @@ public class ProfileControllerEmailGridTests
         localizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
 
         _controller = new ProfileController(
+            _userService,
             _userManager,
             Substitute.For<IProfileService>(),
             Substitute.For<IContactFieldService>(),
@@ -102,7 +103,6 @@ public class ProfileControllerEmailGridTests
             _cache,
             new FakeClock(Instant.FromUtc(2026, 4, 30, 12, 0)),
             _authorizationService,
-            _userService,
             Substitute.For<IConsentService>(),
             Substitute.For<IApplicationDecisionService>(),
             Substitute.For<IAccountDeletionService>(),

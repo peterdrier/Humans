@@ -31,11 +31,11 @@ public class EventsController : HumansControllerBase
         IEventService guide,
         ICampService camps,
         IUserService users,
-        UserManager<User> userManager,
+        IUserService userService,
         IClock clock,
         IEmailService emailService,
         ILogger<EventsController> logger)
-        : base(userManager)
+        : base(userService)
     {
         _guide = guide;
         _camps = camps;
@@ -48,7 +48,7 @@ public class EventsController : HumansControllerBase
     [HttpGet("MySubmissions")]
     public async Task<IActionResult> MySubmissions()
     {
-        var user = await GetCurrentUserAsync();
+        var user = await GetCurrentUserInfoAsync();
         if (user == null) return Challenge();
 
         var guideSettings = await _guide.GetGuideSettingsAsync();
@@ -107,7 +107,7 @@ public class EventsController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(IndividualEventFormViewModel model)
     {
-        var user = await GetCurrentUserAsync();
+        var user = await GetCurrentUserInfoAsync();
         if (user == null) return Challenge();
 
         var guideSettings = await _guide.GetGuideSettingsAsync();
@@ -173,7 +173,7 @@ public class EventsController : HumansControllerBase
     [HttpGet("Submit/{eventId:guid}/Edit")]
     public async Task<IActionResult> Edit(Guid eventId)
     {
-        var user = await GetCurrentUserAsync();
+        var user = await GetCurrentUserInfoAsync();
         if (user == null) return Challenge();
 
         var guideEvent = await _guide.GetUserEventAsync(eventId, user.Id);
@@ -219,7 +219,7 @@ public class EventsController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Update(Guid eventId, IndividualEventFormViewModel model)
     {
-        var user = await GetCurrentUserAsync();
+        var user = await GetCurrentUserInfoAsync();
         if (user == null) return Challenge();
 
         var guideEvent = await _guide.GetUserEventAsync(eventId, user.Id);
@@ -274,7 +274,7 @@ public class EventsController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Withdraw(Guid eventId)
     {
-        var user = await GetCurrentUserAsync();
+        var user = await GetCurrentUserInfoAsync();
         if (user == null) return Challenge();
 
         var guideEvent = await _guide.GetUserEventAsync(eventId, user.Id);
@@ -296,7 +296,7 @@ public class EventsController : HumansControllerBase
     [HttpGet("Schedule")]
     public async Task<IActionResult> Schedule()
     {
-        var user = await GetCurrentUserAsync();
+        var user = await GetCurrentUserInfoAsync();
         if (user == null) return Challenge();
 
         var guideSettings = await _guide.GetGuideSettingsAsync();
@@ -382,7 +382,7 @@ public class EventsController : HumansControllerBase
     public async Task<IActionResult> Browse(
         [FromQuery(Name = "days")] int[]? days, Guid? categoryId, Guid? venueId, string? q, bool favouritesOnly = false)
     {
-        var user = await GetCurrentUserAsync();
+        var user = await GetCurrentUserInfoAsync();
         if (user == null) return Challenge();
 
         var guideSettings = await _guide.GetGuideSettingsAsync();
@@ -495,7 +495,7 @@ public class EventsController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ToggleFavourite(Guid eventId, [FromQuery(Name = "days")] int[]? days, Guid? categoryId, Guid? venueId, string? q, bool favouritesOnly = false)
     {
-        var user = await GetCurrentUserAsync();
+        var user = await GetCurrentUserInfoAsync();
         if (user == null) return Challenge();
 
         await _guide.ToggleFavouriteAsync(user.Id, eventId);
@@ -506,7 +506,7 @@ public class EventsController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Unfavourite(Guid eventId)
     {
-        var user = await GetCurrentUserAsync();
+        var user = await GetCurrentUserInfoAsync();
         if (user == null) return Challenge();
 
         if (await _guide.RemoveFavouriteAsync(user.Id, eventId))

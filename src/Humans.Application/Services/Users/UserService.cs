@@ -229,6 +229,20 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
             await _userInfoInvalidator.InvalidateAsync(userId, ct);
     }
 
+    public async Task SetPreferredLanguageAsync(Guid userId, string preferredLanguage, CancellationToken ct = default)
+    {
+        var updated = await _repo.SetPreferredLanguageAsync(userId, preferredLanguage, ct);
+        if (updated)
+            await _userInfoInvalidator.InvalidateAsync(userId, ct);
+    }
+
+    public async Task SetICalTokenAsync(Guid userId, Guid token, CancellationToken ct = default)
+    {
+        var updated = await _repo.SetICalTokenAsync(userId, token, ct);
+        if (updated)
+            await _userInfoInvalidator.InvalidateAsync(userId, ct);
+    }
+
     public async Task<bool> SetDeletionPendingAsync(
         Guid userId, Instant requestedAt, Instant scheduledFor, Instant? eligibleAfter,
         CancellationToken ct = default)

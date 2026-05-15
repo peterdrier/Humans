@@ -1,3 +1,4 @@
+using System.Reflection;
 using AwesomeAssertions;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.AuditLog;
@@ -164,5 +165,141 @@ public class DependencyCycleResolutionTests
         resolveEmailService.Should().NotThrow();
         resolveUserService().Should().BeOfType<UserService>();
         resolveEmailService().Should().BeOfType<OutboxEmailService>();
+    }
+
+    /// <summary>
+    /// Generic cycle guard. Scans every concrete class implementing
+    /// <see cref="IApplicationService"/> across the Humans assemblies, maps each
+    /// interface ctor parameter to its <c>IFoo → Foo</c> implementation by naming
+    /// convention, and DFS-detects cycles. Edges through lazy escape hatches
+    /// (<see cref="IServiceProvider"/>, <see cref="Lazy{T}"/>, <see cref="Func{T}"/>,
+    /// <see cref="IEnumerable{T}"/>) are deliberately not followed — those defer
+    /// resolution out of the ctor and break cycles in MS DI.
+    ///
+    /// This test fails fast at build time, instead of hanging at first request
+    /// like the original <c>IOnboardingEligibilityQuery</c> incident, by
+    /// inspecting the graph directly rather than relying on
+    /// <c>ServiceProviderOptions.ValidateOnBuild</c>, which misses cycles routed
+    /// through <c>sp => sp.GetRequiredService&lt;ConcreteImpl&gt;()</c>
+    /// forwarder factories.
+    /// </summary>
+    [HumansFact]
+    public void NoCircularConstructorDependencies_AcrossApplicationServices()
+    {
+        var assemblies = new[]
+        {
+            typeof(IApplicationService).Assembly,
+            typeof(HumansDbContext).Assembly,
+            typeof(Humans.Web.Controllers.HomeController).Assembly,
+        };
+
+        var concreteServices = assemblies
+            .SelectMany(SafeGetTypes)
+            .Where(t => t.IsClass && !t.IsAbstract && !t.IsGenericTypeDefinition)
+            .Where(t => typeof(IApplicationService).IsAssignableFrom(t))
+            .ToHashSet();
+
+        // Interface → concrete implementation via "IFoo → Foo" naming convention,
+        // restricted to types we just collected so external interface
+        // implementations don't pollute the graph.
+        var implByInterface = new Dictionary<Type, Type>();
+        foreach (var concrete in concreteServices)
+        {
+            foreach (var iface in concrete.GetInterfaces())
+            {
+                if (!iface.Name.StartsWith("I", StringComparison.Ordinal)) continue;
+                if (!string.Equals(concrete.Name, iface.Name[1..], StringComparison.Ordinal)) continue;
+                implByInterface[iface] = concrete;
+            }
+        }
+
+        var edges = new Dictionary<Type, HashSet<Type>>();
+        foreach (var concrete in concreteServices)
+        {
+            var ctor = concrete.GetConstructors()
+                .OrderByDescending(c => c.GetParameters().Length)
+                .FirstOrDefault();
+            if (ctor is null) continue;
+
+            var deps = new HashSet<Type>();
+            foreach (var p in ctor.GetParameters())
+            {
+                var pt = p.ParameterType;
+                if (IsLazyEscapeHatch(pt)) continue;
+                if (pt.IsInterface && implByInterface.TryGetValue(pt, out var impl))
+                {
+                    deps.Add(impl);
+                }
+                else if (concreteServices.Contains(pt))
+                {
+                    deps.Add(pt);
+                }
+            }
+            edges[concrete] = deps;
+        }
+
+        var state = new Dictionary<Type, int>();
+        var cycles = new List<List<Type>>();
+        foreach (var node in edges.Keys)
+        {
+            DfsForCycle(node, edges, state, new List<Type>(), cycles);
+        }
+
+        cycles.Should().BeEmpty(
+            "constructor dependencies between IApplicationService implementations must form a DAG — " +
+            "every edge in a cycle is a real ctor injection that MS DI will fail to resolve at first " +
+            "request and (in some forwarder-factory configurations) hang instead of throw. Break cycles " +
+            "by relocating the predicate/write to its rightful owner, or as a last resort by switching " +
+            "one side to IServiceProvider/Lazy<T> lookup with a comment explaining why the inversion " +
+            "wasn't viable. Cycles found:\n" +
+            string.Join("\n", cycles.Select(c => "  " + string.Join(" -> ", c.Select(t => t.Name)))));
+    }
+
+    private static IEnumerable<Type> SafeGetTypes(Assembly a)
+    {
+        try { return a.GetTypes(); }
+        catch (ReflectionTypeLoadException ex) { return ex.Types.Where(t => t is not null)!; }
+    }
+
+    private static bool IsLazyEscapeHatch(Type t)
+    {
+        if (t == typeof(IServiceProvider)) return true;
+        if (!t.IsGenericType) return false;
+        var def = t.GetGenericTypeDefinition();
+        return def == typeof(Lazy<>) || def == typeof(Func<>) || def == typeof(IEnumerable<>);
+    }
+
+    private static void DfsForCycle(
+        Type node,
+        IDictionary<Type, HashSet<Type>> edges,
+        IDictionary<Type, int> state,
+        List<Type> path,
+        List<List<Type>> cycles)
+    {
+        if (state.TryGetValue(node, out var s))
+        {
+            if (s == 1)
+            {
+                var start = path.IndexOf(node);
+                if (start >= 0)
+                {
+                    var cycle = path.GetRange(start, path.Count - start);
+                    cycle.Add(node);
+                    cycles.Add(cycle);
+                }
+            }
+            return;
+        }
+        state[node] = 1;
+        path.Add(node);
+        if (edges.TryGetValue(node, out var nexts))
+        {
+            foreach (var next in nexts)
+            {
+                DfsForCycle(next, edges, state, path, cycles);
+            }
+        }
+        path.RemoveAt(path.Count - 1);
+        state[node] = 2;
     }
 }

@@ -32,17 +32,16 @@ public sealed class ExpensesController : HumansControllerBase
     private readonly ILogger<ExpensesController> _logger;
 
     public ExpensesController(
-        UserManager<User> userManager,
+        IUserService userService,
         IExpenseReportService service,
         IBudgetService budgetService,
         IProfileService profileService,
-        IUserService userService,
         IClock clock,
         IAuthorizationService authService,
         ISepaPaymentFileBuilder sepaBuilder,
         IOptions<SepaConfig> sepaConfig,
         ILogger<ExpensesController> logger)
-        : base(userManager)
+        : base(userService)
     {
         _service = service;
         _budgetService = budgetService;

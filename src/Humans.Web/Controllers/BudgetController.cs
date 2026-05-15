@@ -9,6 +9,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 
+using Humans.Application.Interfaces.Users;
+
 namespace Humans.Web.Controllers;
 
 [Authorize]
@@ -24,9 +26,9 @@ public class BudgetController : HumansControllerBase
         IBudgetService budgetService,
         ITeamService teamService,
         IAuthorizationService authService,
-        UserManager<User> userManager,
+        IUserService userService,
         ILogger<BudgetController> logger)
-        : base(userManager)
+        : base(userService)
     {
         _budgetService = budgetService;
         _teamService = teamService;

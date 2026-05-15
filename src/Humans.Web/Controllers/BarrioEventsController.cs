@@ -26,7 +26,7 @@ public class BarrioEventsController : HumansCampControllerBase
     private readonly ILogger<BarrioEventsController> _logger;
 
     public BarrioEventsController(
-        UserManager<User> userManager,
+        IUserService userService,
         ICampService campService,
         IAuthorizationService authorizationService,
         IEventService guide,
@@ -34,7 +34,7 @@ public class BarrioEventsController : HumansCampControllerBase
         IClock clock,
         IEmailService emailService,
         ILogger<BarrioEventsController> logger)
-        : base(userManager, campService, authorizationService)
+        : base(userService, campService, authorizationService)
     {
         _guide = guide;
         _users = users;

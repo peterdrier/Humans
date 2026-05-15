@@ -9,6 +9,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
+using Humans.Application.Interfaces.Users;
+
 namespace Humans.Web.Controllers;
 
 [Authorize]
@@ -24,9 +26,9 @@ public class StoreController : HumansControllerBase
         IStoreService storeService,
         ICampService campService,
         IAuthorizationService authService,
-        UserManager<User> userManager,
+        IUserService userService,
         ILogger<StoreController> logger)
-        : base(userManager)
+        : base(userService)
     {
         _storeService = storeService;
         _campService = campService;

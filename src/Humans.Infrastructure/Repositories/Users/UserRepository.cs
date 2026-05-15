@@ -188,6 +188,32 @@ public sealed class UserRepository : IUserRepository
         return true;
     }
 
+    public async Task<bool> SetPreferredLanguageAsync(
+        Guid userId, string preferredLanguage, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var user = await ctx.Users.FindAsync([userId], ct);
+        if (user is null)
+            return false;
+
+        user.PreferredLanguage = preferredLanguage;
+        await ctx.SaveChangesAsync(ct);
+        return true;
+    }
+
+    public async Task<bool> SetICalTokenAsync(
+        Guid userId, Guid token, CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        var user = await ctx.Users.FindAsync([userId], ct);
+        if (user is null)
+            return false;
+
+        user.ICalToken = token;
+        await ctx.SaveChangesAsync(ct);
+        return true;
+    }
+
     public async Task<bool> TrySetGoogleEmailAsync(
         Guid userId, string email, CancellationToken ct = default)
     {

@@ -65,10 +65,21 @@ public class VolunteerTrackingControllerTests
         if (currentUser is not null)
         {
             _userManager.GetUserAsync(Arg.Any<ClaimsPrincipal>()).Returns(currentUser);
+            _userService.GetUserInfoAsync(currentUser.Id, Arg.Any<CancellationToken>())
+                .Returns(new ValueTask<UserInfo?>(UserInfo.Create(
+                    currentUser,
+                    Array.Empty<UserEmail>(),
+                    Array.Empty<EventParticipation>(),
+                    Array.Empty<(string, string)>(),
+                    profile: null,
+                    Array.Empty<ContactField>(),
+                    Array.Empty<ProfileLanguage>(),
+                    Array.Empty<VolunteerHistoryEntry>(),
+                    Array.Empty<CommunicationPreference>())));
         }
 
         var ctrl = new VolunteerTrackingController(
-            _service, _userService, _auditLog, _userManager, _localizer);
+            _service, _userService, _auditLog, _localizer);
 
         var http = new DefaultHttpContext();
         if (currentUser is not null)
