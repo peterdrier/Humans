@@ -65,7 +65,7 @@ public class ProfileApiController : ApiControllerBase
             return authError;
         var viewerUserId = viewer.Id;
 
-        var results = await _profileService.SearchProfilesAsync(q, fields, MaxResults, ct);
+        var results = await _userService.SearchUsersAsync(q, fields, MaxResults, ct);
         var userIds = results.Select(r => r.UserId).ToList();
         var pictureUrls = await ProfilePictureUrlHelper.BuildEffectiveUrlsAsync(
             _profileService,

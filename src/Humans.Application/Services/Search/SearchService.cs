@@ -1,9 +1,9 @@
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Camps;
-using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Search;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Profiles;
 
 namespace Humans.Application.Services.Search;
@@ -26,7 +26,7 @@ namespace Humans.Application.Services.Search;
 /// </remarks>
 public sealed class SearchService : ISearchService
 {
-    private readonly IProfileService _profileService;
+    private readonly IUserService _userService;
     private readonly ITeamService _teamService;
     private readonly ICampService _campService;
     private readonly IShiftManagementService _shiftService;
@@ -37,12 +37,12 @@ public sealed class SearchService : ISearchService
     private const int ScoreContainsName = 60;
 
     public SearchService(
-        IProfileService profileService,
+        IUserService userService,
         ITeamService teamService,
         ICampService campService,
         IShiftManagementService shiftService)
     {
-        _profileService = profileService;
+        _userService = userService;
         _teamService = teamService;
         _campService = campService;
         _shiftService = shiftService;
@@ -87,7 +87,7 @@ public sealed class SearchService : ISearchService
         // Every viewer sees the public surface — admin profile fields
         // (verified emails, non-public ContactFields) never surface from
         // /Search regardless of role.
-        return await _profileService.SearchProfilesAsync(
+        return await _userService.SearchUsersAsync(
             query, PersonSearchFields.PublicAll, limit, ct);
     }
 

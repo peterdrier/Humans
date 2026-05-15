@@ -98,7 +98,7 @@ public sealed class TicketTransferService : ITicketTransferService
 
         // Name queries: case-insensitive contains over BurnerName + DisplayName
         // (the consolidated PersonSearchFields.Name bucket).
-        var hits = await _profileService.SearchProfilesAsync(
+        var hits = await _userService.SearchUsersAsync(
             trimmed, PersonSearchFields.Name, MaxBurnerNameMatches, ct);
         var candidates = hits
             .Where(h => h.UserId != senderUserId)
