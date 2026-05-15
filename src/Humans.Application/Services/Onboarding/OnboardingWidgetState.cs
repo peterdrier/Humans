@@ -1,15 +1,15 @@
 using Humans.Application.Interfaces.Consent;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Onboarding;
-using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
 
 namespace Humans.Application.Services.Onboarding;
 
 public class OnboardingWidgetState : IOnboardingWidgetState
 {
-    private readonly IProfileService _profile;
+    private readonly IUserService _users;
     private readonly IShiftSignupService _signups;
     private readonly IMembershipCalculator _membership;
     private readonly IShiftManagementService _shiftMgmt;
@@ -17,14 +17,14 @@ public class OnboardingWidgetState : IOnboardingWidgetState
     private readonly IOnboardingWidgetSessionState _session;
 
     public OnboardingWidgetState(
-        IProfileService profile,
+        IUserService users,
         IShiftSignupService signups,
         IMembershipCalculator membership,
         IShiftManagementService shiftMgmt,
         IConsentService consents,
         IOnboardingWidgetSessionState session)
     {
-        _profile = profile;
+        _users = users;
         _signups = signups;
         _membership = membership;
         _shiftMgmt = shiftMgmt;
@@ -38,8 +38,11 @@ public class OnboardingWidgetState : IOnboardingWidgetState
         if (await _membership.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, ct))
             return OnboardingWidgetStep.Complete;
 
-        var profile = await _profile.GetProfileAsync(userId, ct);
-        if (profile is null)
+        // A Stub profile (or no profile row) means the user hasn't filled in
+        // legal name yet — the consent flow will refuse to write a record
+        // (ConsentService defense-in-depth gate), so route to Names first.
+        var info = await _users.GetUserInfoAsync(userId, ct);
+        if (info is null || info.IsStub)
             return OnboardingWidgetStep.Names;
 
         // Returning member: any signed row in the current required Volunteer

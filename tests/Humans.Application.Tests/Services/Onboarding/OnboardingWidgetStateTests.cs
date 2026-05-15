@@ -1,12 +1,14 @@
+using Humans.Application;
 using Humans.Application.Interfaces.Consent;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Onboarding;
-using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Onboarding;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using NodaTime;
 using NSubstitute;
 using Xunit;
 
@@ -14,7 +16,7 @@ namespace Humans.Application.Tests.Services.Onboarding;
 
 public class OnboardingWidgetStateTests
 {
-    private readonly IProfileService _profile = Substitute.For<IProfileService>();
+    private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly IShiftSignupService _signups = Substitute.For<IShiftSignupService>();
     private readonly IMembershipCalculator _membership = Substitute.For<IMembershipCalculator>();
     private readonly IShiftManagementService _shiftMgmt = Substitute.For<IShiftManagementService>();
@@ -34,7 +36,49 @@ public class OnboardingWidgetStateTests
     }
 
     private OnboardingWidgetState BuildSut() =>
-        new(_profile, _signups, _membership, _shiftMgmt, _consents, _session);
+        new(_users, _signups, _membership, _shiftMgmt, _consents, _session);
+
+    private static UserInfo NonStubUserInfo(Guid userId) =>
+        WrapInUserInfo(userId, new Profile
+        {
+            UserId = userId,
+            BurnerName = "Burner",
+            FirstName = "First",
+            LastName = "Last",
+            State = ProfileState.Active,
+            CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+            UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+        });
+
+    private static UserInfo StubUserInfo(Guid userId) =>
+        WrapInUserInfo(userId, new Profile
+        {
+            UserId = userId,
+            BurnerName = "",
+            FirstName = "",
+            LastName = "",
+            State = ProfileState.Stub,
+            CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+            UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+        });
+
+    private static UserInfo WrapInUserInfo(Guid userId, Profile? profile) => UserInfo.Create(
+        user: new User
+        {
+            Id = userId,
+            DisplayName = "Test",
+            PreferredLanguage = "en",
+            CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+            GoogleEmailStatus = GoogleEmailStatus.Unknown,
+        },
+        userEmails: Array.Empty<UserEmail>(),
+        eventParticipations: Array.Empty<EventParticipation>(),
+        externalLogins: Array.Empty<(string, string)>(),
+        profile: profile,
+        contactFields: Array.Empty<ContactField>(),
+        profileLanguages: Array.Empty<ProfileLanguage>(),
+        volunteerHistory: Array.Empty<VolunteerHistoryEntry>(),
+        communicationPreferences: Array.Empty<CommunicationPreference>());
 
     [HumansFact]
     public async Task ConsentsComplete_ShortCircuitsToComplete_EvenWithoutSignup()
@@ -49,12 +93,28 @@ public class OnboardingWidgetStateTests
     }
 
     [HumansFact]
-    public async Task NoProfile_ReturnsNames()
+    public async Task NoUserInfo_ReturnsNames()
     {
         var userId = Guid.NewGuid();
         _membership.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, default)
             .Returns(false);
-        _profile.GetProfileAsync(userId, default).Returns((Profile?)null);
+        _users.GetUserInfoAsync(userId, default).Returns((UserInfo?)null);
+
+        var step = await BuildSut().GetCurrentStepAsync(userId);
+
+        Assert.Equal(OnboardingWidgetStep.Names, step);
+    }
+
+    [HumansFact]
+    public async Task StubProfile_ReturnsNames()
+    {
+        // The bug fix: a Stub profile (created by EnsureStubProfileAsync at
+        // signup) means the user hasn't filled in legal name yet — they must
+        // hit the Names step before the consent flow can write a record.
+        var userId = Guid.NewGuid();
+        _membership.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, default)
+            .Returns(false);
+        _users.GetUserInfoAsync(userId, default).Returns(StubUserInfo(userId));
 
         var step = await BuildSut().GetCurrentStepAsync(userId);
 
@@ -68,8 +128,7 @@ public class OnboardingWidgetStateTests
         var eventId = Guid.NewGuid();
         _membership.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, default)
             .Returns(false);
-        _profile.GetProfileAsync(userId, default)
-            .Returns(new Profile { UserId = userId, BurnerName = "x", FirstName = "y", LastName = "z" });
+        _users.GetUserInfoAsync(userId, default).Returns(NonStubUserInfo(userId));
         _shiftMgmt.GetActiveAsync()
             .Returns(new EventSettings { Id = eventId });
         _signups.GetActiveSignupStatusesAsync(userId, eventId)
@@ -87,8 +146,7 @@ public class OnboardingWidgetStateTests
         var eventId = Guid.NewGuid();
         _membership.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, default)
             .Returns(false);
-        _profile.GetProfileAsync(userId, default)
-            .Returns(new Profile { UserId = userId });
+        _users.GetUserInfoAsync(userId, default).Returns(NonStubUserInfo(userId));
         _shiftMgmt.GetActiveAsync()
             .Returns(new EventSettings { Id = eventId });
         _signups.GetActiveSignupStatusesAsync(userId, eventId)
@@ -108,8 +166,7 @@ public class OnboardingWidgetStateTests
         var shiftId = Guid.NewGuid();
         _membership.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, default)
             .Returns(false);
-        _profile.GetProfileAsync(userId, default)
-            .Returns(new Profile { UserId = userId });
+        _users.GetUserInfoAsync(userId, default).Returns(NonStubUserInfo(userId));
         _shiftMgmt.GetActiveAsync()
             .Returns(new EventSettings { Id = eventId });
         _signups.GetActiveSignupStatusesAsync(userId, eventId)
@@ -133,8 +190,7 @@ public class OnboardingWidgetStateTests
         var unsignedDocId = Guid.NewGuid();
         _membership.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, default)
             .Returns(false);
-        _profile.GetProfileAsync(userId, default)
-            .Returns(new Profile { UserId = userId });
+        _users.GetUserInfoAsync(userId, default).Returns(NonStubUserInfo(userId));
         _consents.GetRequiredConsentRowsForUserAsync(
                 userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
             .Returns(new[]
@@ -158,8 +214,7 @@ public class OnboardingWidgetStateTests
         var userId = Guid.NewGuid();
         _membership.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, default)
             .Returns(false);
-        _profile.GetProfileAsync(userId, default)
-            .Returns(new Profile { UserId = userId });
+        _users.GetUserInfoAsync(userId, default).Returns(NonStubUserInfo(userId));
         _shiftMgmt.GetActiveAsync().Returns((EventSettings?)null);
 
         var step = await BuildSut().GetCurrentStepAsync(userId);

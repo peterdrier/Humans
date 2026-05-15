@@ -4,6 +4,7 @@ using Humans.Application.Interfaces.Consent;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Web.Models;
@@ -29,6 +30,7 @@ public class OnboardingWidgetController : HumansControllerBase
     private readonly IShiftSignupService _signupService;
     private readonly IShiftManagementService _shiftMgmt;
     private readonly IConsentService _consents;
+    private readonly IUserService _userService;
     private readonly IStringLocalizer<SharedResource> _localizer;
 
     public OnboardingWidgetController(
@@ -38,6 +40,7 @@ public class OnboardingWidgetController : HumansControllerBase
         IShiftSignupService signupService,
         IShiftManagementService shiftMgmt,
         IConsentService consents,
+        IUserService userService,
         IStringLocalizer<SharedResource> localizer)
         : base(userManager)
     {
@@ -46,6 +49,7 @@ public class OnboardingWidgetController : HumansControllerBase
         _signupService = signupService;
         _shiftMgmt = shiftMgmt;
         _consents = consents;
+        _userService = userService;
         _localizer = localizer;
     }
 
@@ -176,6 +180,13 @@ public class OnboardingWidgetController : HumansControllerBase
     public async Task<IActionResult> Consents(CancellationToken ct)
     {
         var userId = CurrentUserId();
+
+        // Stub-profile users can't sign consents (defense-in-depth gate in
+        // ConsentService.SubmitConsentAsync would refuse). Bounce them back to
+        // the Names step where they belong instead of rendering a doomed form.
+        if (await IsStubAsync(userId, ct))
+            return RedirectToNamesForStub();
+
         var rows = await _consents.GetRequiredConsentRowsForUserAsync(userId, SystemTeamIds.Volunteers, ct);
         var unsigned = rows.Where(r => !r.Signed).ToList();
         if (unsigned.Count == 0)
@@ -212,18 +223,49 @@ public class OnboardingWidgetController : HumansControllerBase
             return RedirectToAction(nameof(Consents));
         }
 
+        var userId = CurrentUserId();
+
+        // Mirror the GET-side gate so a Stub user who reaches the form via a
+        // stale page or back-button can't POST into the StubProfile refusal
+        // path below.
+        if (await IsStubAsync(userId, ct))
+            return RedirectToNamesForStub();
+
         var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
         var userAgent = Request.Headers.UserAgent.ToString();
 
         var result = await _consents.SubmitConsentAsync(
-            CurrentUserId(), documentVersionId, explicitConsent: true, ipAddress, userAgent, ct);
+            userId, documentVersionId, explicitConsent: true, ipAddress, userAgent, ct);
 
-        if (!result.Success && !string.IsNullOrEmpty(result.ErrorKey))
-            SetError(result.ErrorKey);
+        if (!result.Success)
+        {
+            // Translate known error keys; never display the raw key to the user.
+            switch (result.ErrorKey)
+            {
+                case "StubProfile":
+                    // Defense-in-depth: gates above should have caught this.
+                    return RedirectToNamesForStub();
+                case "AlreadyConsented":
+                    SetInfo(_localizer["Consent_AlreadyConsented"].Value);
+                    break;
+            }
+        }
 
         // Always go through the dispatcher: routes Home once the final required
         // consent is signed instead of stranding the user on the signed-documents
-        // view. Failure path also dispatches; TempData carries the error.
+        // view. Failure path also dispatches; TempData carries the message.
         return RedirectToAction(nameof(Index));
+    }
+
+    private async Task<bool> IsStubAsync(Guid userId, CancellationToken ct)
+    {
+        var info = await _userService.GetUserInfoAsync(userId, ct);
+        return info is null || info.IsStub;
+    }
+
+    private IActionResult RedirectToNamesForStub()
+    {
+        SetInfo(_localizer["Consent_StubProfile_AddName"].Value);
+        return RedirectToAction(nameof(Names));
     }
 }

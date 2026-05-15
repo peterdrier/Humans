@@ -3,6 +3,7 @@ using Humans.Application.Interfaces.Consent;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
+using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Testing;
 using Humans.Web.Constants;
@@ -34,6 +35,7 @@ public class OnboardingWidgetControllerShiftsTests
     private readonly IShiftSignupService _signups = Substitute.For<IShiftSignupService>();
     private readonly IShiftManagementService _shiftMgmt = Substitute.For<IShiftManagementService>();
     private readonly IConsentService _consents = Substitute.For<IConsentService>();
+    private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IStringLocalizer<Humans.Web.SharedResource> _localizer =
         Substitute.For<IStringLocalizer<Humans.Web.SharedResource>>();
     private readonly DefaultHttpContext _http = new();
@@ -59,7 +61,7 @@ public class OnboardingWidgetControllerShiftsTests
         var services = new ServiceCollection();
         services.AddSingleton<ILoggerFactory>(NullLoggerFactory.Instance);
         _http.RequestServices = services.BuildServiceProvider();
-        var ctrl = new OnboardingWidgetController(_userManager, _state, _profile, _signups, _shiftMgmt, _consents, _localizer);
+        var ctrl = new OnboardingWidgetController(_userManager, _state, _profile, _signups, _shiftMgmt, _consents, _userService, _localizer);
         ctrl.ControllerContext = new ControllerContext
         {
             HttpContext = _http,
