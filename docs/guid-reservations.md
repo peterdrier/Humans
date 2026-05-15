@@ -13,6 +13,7 @@ This project uses a small number of hand-chosen GUID ranges for seed data. The r
 | `0002` | Sync service settings seeds | [SyncServiceSettingsConfiguration.cs](../src/Humans.Infrastructure/Data/Configurations/SyncServiceSettingsConfiguration.cs) |
 | `0003` | Shift tag seeds | [ShiftTagConfiguration.cs](../src/Humans.Infrastructure/Data/Configurations/Shifts/ShiftTagConfiguration.cs) |
 | `0010` | Camp settings seed | [CampSettingsConfiguration.cs](../src/Humans.Infrastructure/Data/Configurations/Camps/CampSettingsConfiguration.cs) |
+| `0026` | Event category seeds | [EventCategoryConfiguration.cs](../src/Humans.Infrastructure/Data/Configurations/EventCategoryConfiguration.cs) |
 
 ## Rules
 

@@ -3,7 +3,7 @@
 Audit of which services access which database tables and cache keys, organized by section.
 The goal is to identify cross-section table overlap, duplicated caching, and cache configuration issues.
 
-**Generated:** 2026-04-25
+**Generated:** 2026-05-15
 
 > **Methodology.** Tables are resolved by following each service's injected
 > repository interface to its EF-backed implementation in
@@ -16,8 +16,10 @@ The goal is to identify cross-section table overlap, duplicated caching, and cac
 > `INotificationMeterCacheInvalidator`, `IVotingBadgeCacheInvalidator`,
 > `IRoleAssignmentClaimsCacheInvalidator`, `IActiveTeamsCacheInvalidator`,
 > `ICampLeadJoinRequestsBadgeCacheInvalidator`, `IShiftAuthorizationInvalidator`,
-> `IFullProfileInvalidator`) are resolved to the cache keys their backing
-> `MemoryCacheExtensions` invalidator hits.
+> `IFullProfileInvalidator`, `IUserInfoInvalidator`, `IShiftViewInvalidator`,
+> `IIssuesBadgeCacheInvalidator`) are resolved via
+> `Humans.Infrastructure/Caching/MemoryCacheInvalidators.cs` to the cache keys
+> their backing `MemoryCacheExtensions` invalidator hits.
 >
 > At ~500-user single-server scale this map is diagnostic, not gating —
 > **cross-section table reads are flagged as design-rule violations per
@@ -28,43 +30,53 @@ The goal is to identify cross-section table overlap, duplicated caching, and cac
 
 ## Table of Contents
 
-1. [Profile](#profile)
+1. [Profiles](#profiles)
 2. [Users](#users)
 3. [Onboarding](#onboarding)
-4. [Governance](#governance)
-5. [Auth](#auth)
-6. [Teams](#teams)
-7. [Google Integration](#google-integration)
-8. [Camps](#camps)
-9. [City Planning](#city-planning)
-10. [Calendar](#calendar)
-11. [Shifts](#shifts)
-12. [Legal](#legal)
-13. [Consent](#consent)
-14. [Notifications](#notifications)
-15. [Tickets](#tickets)
-16. [Budget](#budget)
-17. [Campaigns](#campaigns)
-18. [Email](#email)
-19. [Feedback](#feedback)
-20. [Dashboard](#dashboard)
-21. [Gdpr](#gdpr)
-22. [AuditLog](#auditlog)
-23. [Cross-Section Analysis](#cross-section-analysis)
-24. [Cache Inventory](#cache-inventory)
-25. [Appendix A: Out-of-Service Database Access](#appendix-a-out-of-service-database-access)
-26. [Appendix B: Out-of-Service Cache Access](#appendix-b-out-of-service-cache-access)
+4. [Human Lifecycle](#human-lifecycle)
+5. [Governance](#governance)
+6. [Auth](#auth)
+7. [Teams](#teams)
+8. [Google Integration](#google-integration)
+9. [Camps](#camps)
+10. [Containers](#containers)
+11. [City Planning](#city-planning)
+12. [Calendar](#calendar)
+13. [Shifts](#shifts)
+14. [Legal](#legal)
+15. [Consent](#consent)
+16. [Notifications](#notifications)
+17. [Tickets](#tickets)
+18. [Budget](#budget)
+19. [Campaigns](#campaigns)
+20. [Email](#email)
+21. [Mailer](#mailer)
+22. [Feedback](#feedback)
+23. [Issues](#issues)
+24. [Events (Event Guide)](#events-event-guide)
+25. [Expenses](#expenses)
+26. [Store](#store)
+27. [Agent](#agent)
+28. [Search](#search)
+29. [Dashboard](#dashboard)
+30. [Gdpr](#gdpr)
+31. [AuditLog](#auditlog)
+32. [Cross-Section Analysis](#cross-section-analysis)
+33. [Cache Inventory](#cache-inventory)
+34. [Appendix A: Out-of-Service Database Access](#appendix-a-out-of-service-database-access)
+35. [Appendix B: Out-of-Service Cache Access](#appendix-b-out-of-service-cache-access)
 
 ---
 
-## Profile
+## Profiles
 
-Folder: `src/Humans.Application/Services/Profile/`. Owns `Profiles`,
+Folder: `src/Humans.Application/Services/Profiles/`. Owns `Profiles`,
 `ContactFields`, `ProfileLanguages`, `VolunteerHistoryEntries`,
 `UserEmails`, `CommunicationPreferences`, `AccountMergeRequests`. The
-`IProfileService` registration is wrapped by
-`Humans.Infrastructure.Services.Profiles.CachingProfileService` (Singleton
-decorator) which holds the canonical `FullProfile` dictionary.
+inner `IProfileService` registration is wrapped by
+`Humans.Infrastructure.Services.Profiles.CachingProfileService`
+(Singleton decorator inheriting `TrackedCache<Guid, FullProfile>`) which
+holds the canonical `FullProfile` dictionary.
 
 ### ProfileService (Scoped — wrapped by CachingProfileService Singleton decorator)
 
@@ -81,17 +93,19 @@ Repositories: `IProfileRepository`, `IUserEmailRepository`,
 | CommunicationPreferences | R | ICommunicationPreferenceRepository |
 
 Cross-section reads via owning interfaces (no direct table access):
-`IUserService`, `IRoleAssignmentService`, `ITeamService`,
-`ITicketQueryService`, `IConsentService`, `ICampaignService`,
-`IApplicationDecisionService`, `IMembershipCalculator`,
-`IOnboardingEligibilityQuery`. No `IMemoryCache` injection; cache lives
-in `CachingProfileService` (`_byUserId` `ConcurrentDictionary<Guid, FullProfile>`).
+`IUserService`, `IOnboardingEligibilityQuery`, `IMembershipCalculator`,
+`IAuditLogService`. Implements `IUserDataContributor` (GDPR) and
+`IUserMerge` (account-merge fan-out). No `IMemoryCache` injection; cache
+lives in `CachingProfileService` (`ConcurrentDictionary<Guid, FullProfile>`
+inherited from `TrackedCache<Guid, FullProfile>`).
 
 ### CachingProfileService (Singleton, Infrastructure)
 
 | Cache | Type | Read | Write | Invalidate |
 |-------|------|------|-------|------------|
-| `_byUserId` `ConcurrentDictionary<Guid, FullProfile>` (in-process, no `IMemoryCache`) | Per-User | yes | yes | yes (per-user evict + warmup hosted service) |
+| `TrackedCache<Guid, FullProfile>` (in-process, no `IMemoryCache`) | Per-User | yes | yes | yes (per-user evict via `IFullProfileInvalidator` + warmup hosted service) |
+
+Surfaced on `/Admin/CacheStats` via `ICacheStats`.
 
 ### ContactFieldService (Scoped)
 
@@ -104,14 +118,14 @@ Repositories: `IContactFieldRepository`, `IProfileRepository`.
 
 Cross-section reads via `ITeamService`, `IRoleAssignmentService`. Holds
 request-scoped permission caches (board-member, coordinator, viewer team
-ids); no `IMemoryCache`.
+ids); no `IMemoryCache`. Invalidates `UserInfo` cache via
+`IUserInfoInvalidator`. Implements `IUserMerge`.
 
-### ContactService (Scoped)
+### ContactService
 
-No repository — coordination service over `IUserService`,
-`IUserEmailService`, `ICommunicationPreferenceService`,
-`IAuditLogService`, plus ASP.NET `UserManager<User>`. No direct table
-access, no cache.
+Removed — service-folder coordination duties were inlined or absorbed by
+`UserService` / `UserEmailService` during the `UserInfo` consolidation.
+No longer present in `src/Humans.Application/Services/Profiles/`.
 
 ### CommunicationPreferenceService (Scoped)
 
@@ -121,7 +135,8 @@ Repository: `ICommunicationPreferenceRepository`.
 |-------|-----|
 | CommunicationPreferences | R/W |
 
-No cache. Uses `IUnsubscribeTokenProvider` for one-click links.
+No cache. Uses `IUnsubscribeTokenProvider` for one-click links. Implements
+`IUserMerge`.
 
 ### UserEmailService (Scoped)
 
@@ -130,39 +145,33 @@ Repository: `IUserEmailRepository`.
 | Table | R/W |
 |-------|-----|
 | UserEmails | R/W |
-| Users | R/W (via `IUserEmailRepository` which holds the only direct EF write to `Users.GoogleEmail`/`GoogleEmailStatus`/`Email`) |
+| Users | R/W (via `IUserEmailRepository` which holds the only direct EF write to `Users.GoogleEmail` / `Users.GoogleEmailStatus` / `Users.Email`) |
 
-Cross-section calls via `IAccountMergeService`, `IUserService`,
-`ITeamService`, `IEmailService`, `IFullProfileInvalidator`. No
-`IMemoryCache` directly. **Cross-section design-rule note:** the repo's
-`Users` writes overlap the User section — this is the audited bridge for
-Google email status updates and is intentional per Profile §15 design.
+Cross-section calls via `IUserService`, `IFullProfileInvalidator`, plus
+ASP.NET `UserManager<User>` and `IServiceProvider` for lazy resolution.
+Implements `IUserMerge`. No `IMemoryCache` directly.
+**Cross-section design-rule note:** the repository's `Users` writes
+overlap the User section — this is the audited bridge for Google email
+status updates and is intentional per Profiles §15 design.
 
 ### AccountMergeService (Scoped)
 
-Repositories: `IAccountMergeRepository`, `IProfileRepository`,
-`IUserEmailRepository`, `IUserRepository`.
+Repositories: `IAccountMergeRepository`, `IUserEmailRepository`.
 
 | Table | R/W |
 |-------|-----|
 | AccountMergeRequests | R/W |
-| Profiles | R/W |
-| ContactFields | R/W (via `IProfileRepository`) |
-| ProfileLanguages | R/W (via `IProfileRepository`) |
-| VolunteerHistoryEntries | R/W (via `IProfileRepository`) |
 | UserEmails | R/W |
-| Users | R/W |
-| EventParticipations | R/W (via `IUserRepository`) |
-| IdentityUserLogins | R/W (via `IUserRepository.ReassignLoginsToUserAsync`) |
 
-**Cross-section table writes (design-rule violations):** `Users`,
-`EventParticipations`, `IdentityUserLogins` are owned by the User section
-but written here directly via `IUserRepository`. Tracked under the §15
-"merge orchestrator" carve-out.
+No longer injects `IProfileRepository` / `IUserRepository`. The merge
+fan-out now happens through the `IEnumerable<IUserMerge>` aggregator —
+each section's service implements `IUserMerge.MoveAsync(fromUserId,
+toUserId, ct)` and handles its own owned-table reassignment. Direct
+callers used: `IUserService`, `ITeamService`, `IRoleAssignmentService`,
+`INotificationService`, `IAuditLogService`, `IFullProfileInvalidator`.
 
-Cache: invalidates the canonical `FullProfile` cache via
-`IFullProfileInvalidator`; ends role assignments via
-`IRoleAssignmentService` (which invalidates nav-badge + claims caches).
+Cache: per-section `IUserMerge` implementations invalidate their own
+caches; the `FullProfile` cache is evicted via `IFullProfileInvalidator`.
 
 ### DuplicateAccountService (Scoped)
 
@@ -172,53 +181,99 @@ Repositories: `IProfileRepository`, `IUserEmailRepository`,
 | Table | R/W |
 |-------|-----|
 | Profiles | R/W |
-| ContactFields | R/W |
-| ProfileLanguages | R/W |
-| VolunteerHistoryEntries | R/W |
+| ContactFields | R/W (via `IProfileRepository`) |
+| ProfileLanguages | R/W (via `IProfileRepository`) |
+| VolunteerHistoryEntries | R/W (via `IProfileRepository`) |
 | UserEmails | R/W |
 | Users | R/W |
 | EventParticipations | R/W (via `IUserRepository`) |
-| IdentityUserLogins | R/W (via `IUserRepository`) |
 
-Same cross-section profile vs user split as AccountMergeService;
-invalidates `FullProfile` via `IFullProfileInvalidator`.
+**Cross-section table writes (design-rule violations):** `Users`,
+`EventParticipations` are owned by the User section but written here
+directly via `IUserRepository`. Tracked under the §15 "merge
+orchestrator" carve-out — long-term should converge with
+`AccountMergeService` on the `IUserMerge` aggregator.
+
+Cross-section calls via `IUserService`, `ITeamService`,
+`IRoleAssignmentService`, `IAuditLogService`,
+`IFullProfileInvalidator`.
+
+### AdminHumanListAssembler / EmailProblemsService / PersonSearchFields / PersonSearchMatcher
+
+Read-only DTO assemblers — no repository, no cache. Fan out over
+`IProfileService`, `IUserService`, `IUserEmailService`,
+`IRoleAssignmentService`, `ITeamService`.
 
 ---
 
 ## Users
 
 Folder: `src/Humans.Application/Services/Users/`. Owns `Users`,
-`EventParticipations`, ASP.NET `IdentityUserLogins` (via `Set<>`).
+`UserEmails` cross-bridge (read-through), `EventParticipations`, ASP.NET
+`IdentityUserLogins`. The inner `IUserService` registration is wrapped
+by `Humans.Infrastructure.Services.Users.CachingUserService` (Singleton
+decorator inheriting `TrackedCache<Guid, UserInfo>`) which holds the
+canonical `UserInfo` read-model spanning User + Profile sections (added
+2026-04-23 via issue #521).
 
-### UserService (Scoped)
+### UserService (Scoped — wrapped by CachingUserService Singleton decorator)
 
-Repositories: `IUserRepository`, `IUserEmailRepository`.
+Repositories: `IUserRepository`, `IUserEmailRepository`,
+`IProfileRepository`, `IContactFieldRepository`,
+`ICommunicationPreferenceRepository`.
 
-| Table | R/W |
-|-------|-----|
-| Users | R/W |
-| UserEmails | R |
-| EventParticipations | R/W |
-| IdentityUserLogins | R/W (via `IUserRepository.ReassignLoginsToUserAsync`) |
+| Table | R/W | Repo |
+|-------|-----|------|
+| Users | R/W | IUserRepository |
+| UserEmails | R | IUserEmailRepository |
+| EventParticipations | R/W | IUserRepository |
+| Profiles | R | IProfileRepository |
+| ContactFields | R | IContactFieldRepository |
+| CommunicationPreferences | R | ICommunicationPreferenceRepository |
 
-Cross-section calls via `IProfileService`, `IShiftManagementService`,
-`IShiftSignupService`, `IRoleAssignmentService`, `ITeamService`. Cache
-invalidation via `IFullProfileInvalidator`,
-`IRoleAssignmentClaimsCacheInvalidator`,
-`IShiftAuthorizationInvalidator`. Resolves
-`IServiceProvider` for the dependency-cycle-resolution pattern
-documented in `design-rules.md §15`.
+The five-repo injection composes the `UserInfo` projection inside
+`CachingUserService` — a single cached read-model fanning out from the
+inner `UserService.AssembleUserInfoAsync` over the User + Profile
+section repositories. Implements `IUserDataContributor`, `IUserMerge`.
+
+Cross-section calls via `IAdminAuthorizationService`,
+`IFullProfileInvalidator`. No direct `IMemoryCache` — caching is in the
+Singleton decorator.
+
+### CachingUserService (Singleton, Infrastructure)
+
+| Cache | Type | Read | Write | Invalidate |
+|-------|------|------|-------|------------|
+| `TrackedCache<Guid, UserInfo>` (in-process, no `IMemoryCache`) | Per-User | yes | yes | yes (`IUserInfoInvalidator` — fired by UserService writes and by `IUserMerge` participants) |
+
+Implements `IUserMerge` (to participate in account merges) and
+`IUserInfoInvalidator`. Surfaced on `/Admin/CacheStats`.
 
 ### AccountProvisioningService (Scoped)
 
-Repositories: `IUserRepository`, `IUserEmailRepository`.
+Repositories: `IUserRepository`, `IUserEmailRepository` (via
+`IUserEmailService`), `IProfileRepository` (via `IProfileService`).
 
 | Table | R/W |
 |-------|-----|
 | Users | R/W |
-| UserEmails | R/W |
+| UserEmails | R/W (via `IUserEmailService`) |
+| Profiles | R/W (via `IProfileService`) |
 
-No cache.
+Uses ASP.NET `UserManager<User>` for password and identity primitives.
+Cross-section calls via `IUserEmailService`, `IProfileService`,
+`IAuditLogService`. No cache.
+
+### AccountDeletionService (Scoped) — `Users/AccountLifecycle/`
+
+No repository. GDPR right-to-deletion orchestrator. Fans out over
+`IUserService`, `IUserEmailService`, `ITeamService`,
+`IRoleAssignmentService`, `IShiftSignupService`,
+`IShiftManagementService`, `IProfileService`, `ITicketQueryService`,
+`IAuditLogService`, `IEmailService`. Invalidates
+`IRoleAssignmentClaimsCacheInvalidator`,
+`IShiftAuthorizationInvalidator`, `IShiftViewInvalidator`. No cache, no
+direct DB access — all writes go through owning services.
 
 ### UnsubscribeService (Scoped)
 
@@ -231,6 +286,23 @@ Repository: `IUserRepository`.
 Calls `ICommunicationPreferenceService` to flip per-category opt-outs;
 uses `IDataProtectionProvider` for token validation. No cache.
 
+### UserEmailProviderBackfillService (Scoped)
+
+Repositories: `IUserRepository`, `IUserEmailRepository`.
+
+| Table | R/W |
+|-------|-----|
+| Users | R |
+| UserEmails | R/W |
+
+One-shot backfill — populates `EmailProvider` on legacy `UserEmails`
+rows. Uses `UserManager<User>` and `IAuditLogService`. No cache.
+
+### UserParticipationBackfillService (Scoped)
+
+No repository. Fan-out over `IUserService` and `IShiftManagementService`
+to backfill `EventParticipations`. No direct DB access, no cache.
+
 ---
 
 ## Onboarding
@@ -241,18 +313,35 @@ section — owns no DB tables, holds no `IMemoryCache` injection.
 ### OnboardingService (Scoped)
 
 No repository injected. Cross-section calls via `IProfileService`,
-`IUserService`, `IRoleAssignmentService`, `ISystemTeamSync`,
-`IApplicationDecisionService`, `IMembershipCalculator`,
-`INotificationService`, `INotificationInboxService`, `IEmailService`.
-No `IMemoryCache`. State changes flow through the owning services so
-cache invalidation happens at the boundary they each own.
+`IUserService`, `IApplicationDecisionService`, `IEmailService`,
+`INotificationService`, `ISystemTeamSync`, `IMembershipCalculator`,
+`IHumansMetrics`. No `IMemoryCache`. State changes flow through the
+owning services so cache invalidation happens at the boundary they each
+own.
+
+`OnboardingWidgetState` is a value DTO with no behavior.
+
+---
+
+## Human Lifecycle
+
+Folder: `src/Humans.Application/Services/HumanLifecycle/`. Orchestrator —
+owns no DB tables. Pairs with `OnboardingService`; the two together
+handle suspend/unsuspend/restore state transitions.
+
+### HumanLifecycleService (Scoped)
+
+No repository. Fans out over `IProfileService`, `INotificationService`,
+`INotificationInboxService`, `IHumansMetrics`. No direct DB access, no
+cache. All `Profile.State` writes go through `IProfileService` which
+invalidates the FullProfile + UserInfo caches downstream.
 
 ---
 
 ## Governance
 
 Folder: `src/Humans.Application/Services/Governance/`. Owns
-`Applications`, `BoardVotes`.
+`Applications`, `ApplicationStateHistories`, `BoardVotes`.
 
 ### ApplicationDecisionService (Scoped)
 
@@ -261,6 +350,7 @@ Repository: `IApplicationRepository`.
 | Table | R/W |
 |-------|-----|
 | Applications | R/W |
+| ApplicationStateHistories | R/W |
 | BoardVotes | R/W (removed for GDPR after decision) |
 
 | Cache (via invalidators) | Invalidate |
@@ -269,24 +359,28 @@ Repository: `IApplicationRepository`.
 | `NotificationMeters` (`INotificationMeterCacheInvalidator`) | yes |
 | `NavBadge:Voting:{userId}` (`IVotingBadgeCacheInvalidator`) | yes (per voter) |
 
-Cross-section calls via `IProfileService.SetMembershipTierAsync`,
-`IRoleAssignmentService` (term assignments), `ISystemTeamSync`
-(provisioning), `INotificationService`, `IEmailService`. No direct
-profile/role-assignment table writes — all routed through owning
-services.
+Cross-section calls via `IUserService`, `IProfileService`,
+`IRoleAssignmentService`, `IEmailService`, `IUserEmailService`,
+`INotificationService`, `ISystemTeamSync`, `IAuditLogService`,
+`IHumansMetrics`. Implements `IUserDataContributor`, `IUserMerge`.
 
 ### MembershipCalculator (Scoped)
 
 No repository. Pure read computation over `IProfileService`,
-`IMembershipQuery` (fan-out to team + role-assignment + system-team-sync
-reads, breaks a DI cycle), `IUserService`, `ILegalDocumentSyncService`,
+`IMembershipQuery`, `IUserService`, `ILegalDocumentSyncService`,
 `IConsentService` (resolved lazily via `IServiceProvider` to break a
-second DI cycle), and `IClock`. No DB access, no cache.
+DI cycle), and `IClock`. No DB access, no cache.
 
 ### MembershipQuery (Scoped)
 
 No repository. Read-only fan-out over `IRoleAssignmentService`,
-`ITeamService`, `ISystemTeamSync`. No DB access, no cache.
+`ITeamService`. No DB access, no cache.
+
+### GovernanceIndexService (Scoped)
+
+No repository. Read-only assembly of the governance index view over
+`IApplicationDecisionService`, `ILegalDocumentService`, `IUserService`.
+No DB access, no cache.
 
 ---
 
@@ -308,30 +402,32 @@ Repository: `IRoleAssignmentRepository`.
 | `claims:{userId}` (`IRoleAssignmentClaimsCacheInvalidator`) | yes |
 
 Cross-section calls via `IUserService`, `ISystemTeamSync`,
-`IAuditLogService`. Implements `IUserDataContributor` for GDPR exports.
+`IAuditLogService`. Implements `IUserDataContributor` for GDPR exports
+and `IUserMerge` for account merges.
 
 ### MagicLinkService (Scoped)
 
-Repository: `IUserRepository`. Reads/updates auth-related fields on
-`Users`.
+No repository. Uses ASP.NET `UserManager<User>` plus `IUserEmailService`,
+`IEmailService`, `IMagicLinkRateLimiter`, `IMagicLinkUrlBuilder`,
+`IUnsubscribeTokenProvider`. No direct `IMemoryCache` —
+rate-limit/replay sentinels are owned by `IMagicLinkRateLimiter`
+(Infrastructure) which writes `magic_link_used:{tokenPrefix}` and
+`magic_link_signup:{normalizedEmail}` into `IMemoryCache`.
+
+Prior `IUserRepository` injection has been removed; all `Users` reads
+and writes go through `UserManager<User>` and `IUserEmailService`.
+
+### AdminAuthorizationService (Scoped)
+
+Repository: `IRoleAssignmentRepository`.
 
 | Table | R/W |
 |-------|-----|
-| Users | R/W |
+| RoleAssignments | R |
 
-| Cache Key | TTL | Type |
-|-----------|-----|------|
-| `magic_link_used:{tokenPrefix}` | 15 min | Rate limit / replay prevention |
-| `magic_link_signup:{normalizedEmail}` | 60 sec | Rate limit |
-
-Cross-section calls via `IUserEmailService`, `IEmailService`,
-`IMagicLinkRateLimiter`, `IMagicLinkUrlBuilder`,
-`IUnsubscribeTokenProvider`.
-
-**Cross-section table read (design-rule violation):** repository writes to
-`Users` (User section). MagicLinkService is the only Auth service that
-mutates `Users`; consider a dedicated `IUserService.UpdateLoginAsync` to
-remove the boundary.
+Read-only — answers "is this user a board member / coordinator / admin"
+for cross-section authorization checks. Cycle-safe (does not pull
+`IAuthorizationService`). No cache.
 
 ---
 
@@ -339,10 +435,14 @@ remove the boundary.
 
 Folder: `src/Humans.Application/Services/Teams/`. Owns `Teams`,
 `TeamMembers`, `TeamJoinRequests`, `TeamRoleAssignments`,
-`TeamRoleDefinition`, `GoogleResources` (via `TeamResourceService`),
-`GoogleSyncOutboxEvents` for team-mutation outbox writes.
+`TeamRoleDefinitions`. Also owns the `GoogleResources` table via
+`TeamResourceService`, and writes `GoogleSyncOutboxEvents` atomically on
+team mutations (cross-section bridge — Google Integration is the read
+owner). The inner `ITeamService` registration is wrapped by
+`Humans.Infrastructure.Services.Teams.CachingTeamService` (Singleton
+decorator inheriting `TrackedCache<Guid, TeamInfo>`).
 
-### TeamService (Scoped)
+### TeamService (Scoped — wrapped by CachingTeamService Singleton decorator)
 
 Repository: `ITeamRepository`.
 
@@ -352,29 +452,40 @@ Repository: `ITeamRepository`.
 | TeamMembers | R/W |
 | TeamJoinRequests | R/W |
 | TeamRoleAssignments | R/W |
-| TeamRoleDefinition | R/W |
-| GoogleSyncOutboxEvents | R/W (outbox events emitted on team mutations) |
+| TeamRoleDefinitions | R |
+| GoogleSyncOutboxEvents | W (outbox events emitted on team mutations) |
 
-| Cache Key | TTL | Read | Write | Invalidate |
-|-----------|-----|------|-------|------------|
-| `ActiveTeams` (`ConcurrentDictionary<Guid, CachedTeam>`) | 10 min | yes | yes | yes |
-| `NotificationMeters` (`INotificationMeterCacheInvalidator`) | 2 min | | | yes |
-| `shift-auth:{userId}` (`IShiftAuthorizationInvalidator`) | 60 sec | | | yes |
+| Cache (via invalidators) | Invalidate |
+|-------------------------|------------|
+| `NotificationMeters` (`INotificationMeterCacheInvalidator`) | yes |
+| `shift-auth:{userId}` (`IShiftAuthorizationInvalidator`) | yes |
 
-Cross-section calls via `IRoleAssignmentService`, `IUserService`,
-`IShiftManagementService` (lazy via `IServiceProvider` to break cycle),
-`ITeamResourceService`, `ISystemTeamSync`, `IEmailService`,
-`IAuditLogService`. **Cross-section table read (design-rule violation):**
+Cross-section calls via `IAuditLogService`, `INotificationEmitter`,
+`IShiftManagementService`, `IAdminAuthorizationService`, plus
+`IServiceProvider` for cycle-breaking. Implements
+`IGoogleGroupMembershipSource`, `IUserDataContributor`, `IUserMerge`.
+
+**Cross-section table write (design-rule violation, audited):**
 `GoogleSyncOutboxEvents` is owned by the Google Integration section but
 written directly by `ITeamRepository.AddOutboxEventAsync` so team
 mutations are atomic with their outbox event. Acceptable per the Google
-Integration section's outbox design but worth surfacing.
+Integration section's outbox design.
+
+### CachingTeamService (Singleton, Infrastructure)
+
+| Cache | Type | Read | Write | Invalidate |
+|-------|------|------|-------|------------|
+| `TrackedCache<Guid, TeamInfo>` (in-process, no `IMemoryCache`) | Per-Entity | yes | yes | yes (via `IActiveTeamsCacheInvalidator`, called from `IUserMerge` flows and direct mutation paths) |
+
+Implements `ITeamService`, `IUserMerge`. Replaces the previous
+`ActiveTeams` `IMemoryCache` entry — the `TeamInfo` dictionary is the
+canonical source. Surfaced on `/Admin/CacheStats`.
 
 ### TeamPageService (Scoped)
 
-No repository. Read-only fan-out over `IUserService`,
-`IProfileService`, `IShiftManagementService`, `ITeamService`,
-`ITeamResourceService`. No DB access, no cache.
+No repository. Read-only fan-out over `ITeamService`,
+`IProfileService`, `ITeamResourceService`, `IShiftManagementService`,
+`IUserService`. No DB access, no cache.
 
 ### TeamResourceService (Scoped)
 
@@ -387,19 +498,27 @@ Repository: `IGoogleResourceRepository`.
 Sole owner of `google_resources`. All consumers call
 `ITeamResourceService` read methods rather than touching
 `DbSet<GoogleResource>`; ownership is enforced by
-`scripts/check-google-resource-ownership.sh`. Cross-section calls via
-`ITeamService`, `IRoleAssignmentService`, `IGoogleSyncService`,
-`ITeamResourceGoogleClient`, `IAuditLogService`. No cache.
+`scripts/check-google-resource-ownership.sh` and the
+`Architecture.GoogleResourceOwnership` analyzer. Cross-section calls via
+`ITeamService`, `ITeamResourceGoogleClient`, `IGoogleDrivePermissionsClient`,
+`IAuditLogService`, plus `IServiceProvider` to break a DI cycle. No
+cache.
+
+### TeamDirectoryBuilder
+
+Stateless helper used by `TeamPageService` — no DI dependencies beyond
+plain data shaping.
 
 ---
 
 ## Google Integration
 
 Folder: `src/Humans.Application/Services/GoogleIntegration/`. Owns
-`GoogleResources` (via `TeamResourceService` in Teams),
-`GoogleSyncOutboxEvents`, `SyncServiceSettings`. `Users` writes for
-`GoogleEmail`/`GoogleEmailStatus` happen through `IUserService` /
-`IUserEmailService` per §15.
+`SyncServiceSettings` and `GoogleSyncOutboxEvents` (the outbox is
+appended-to atomically by `TeamRepository`; Google Integration is the
+read/process owner). `GoogleResources` is owned by Teams via
+`TeamResourceService`. `Users.GoogleEmail` / `GoogleEmailStatus` writes
+go through `IUserService` / `IUserEmailService` per §15.
 
 ### GoogleWorkspaceSyncService (Scoped)
 
@@ -410,44 +529,52 @@ Repositories: `IGoogleResourceRepository`, `IGoogleSyncOutboxRepository`.
 | GoogleResources | R/W |
 | GoogleSyncOutboxEvents | R/W |
 
-Cross-section calls via `IUserService`, `ITeamService`,
-`ITeamResourceService`, `IUserEmailService`, `ISyncSettingsService`,
-`IAuditLogService`, `IGoogleDirectoryClient`,
-`IGoogleDrivePermissionsClient`, `IGoogleGroupMembershipClient`,
-`IGoogleGroupProvisioningClient`, `ITeamResourceGoogleClient`. Lazy
+Implements `IGoogleSyncService`. Cross-section calls via `IUserService`,
+`ITeamService`, `ITeamResourceService`, `IUserEmailService`,
+`ISyncSettingsService`, `IAuditLogService`, `IGoogleDirectoryClient`,
+`IGoogleDrivePermissionsClient`, `IGoogleGroupSync` (sync orchestrator),
+`ITeamResourceGoogleClient`, `IGoogleRemovalNotificationService`. Lazy
 `IServiceProvider` resolution for parallel/per-batch scope creation. No
 `IMemoryCache`.
 
+### GoogleGroupSyncService (Scoped)
+
+No repository directly — operates over external clients and the
+in-process `IEnumerable<IGoogleGroupMembershipSource>` (currently only
+`TeamService`). Cross-section calls via `IGoogleGroupMembershipClient`,
+`IGoogleGroupProvisioningClient`, `ITeamResourceGoogleClient`,
+`ITeamResourceService`, `ITeamService`, `IUserService`,
+`IUserEmailService`, `IProfileService`, `ISyncSettingsService`,
+`IAuditLogService`, `IGoogleRemovalNotificationService`,
+`IGoogleGroupSyncScheduler`. No direct DB access, no cache.
+
 ### GoogleAdminService (Scoped)
 
-Repositories: `IUserEmailRepository`, `IUserRepository`. (Direct
-repository injection — bypasses owning services.)
+Repository: `IUserEmailRepository`.
 
 | Table | R/W |
 |-------|-----|
-| UserEmails | R/W |
-| Users | R/W |
+| UserEmails | R/W (via `IUserEmailRepository`) |
 
-**Cross-section table writes (design-rule violation):** `Users` and
-`UserEmails` are owned by the User and Profile sections respectively.
-Direct repo injection bypasses `IUserService`/`IUserEmailService`. Should
-route through the owning services.
+Read-mostly admin facade. Fans out over `IGoogleWorkspaceUserService`,
+`IGoogleSyncService`, `IUserService`, `IUserEmailService`,
+`IAuditLogService`, `IEmailService`. No cache.
 
-Cross-section calls via `ITeamService`, `ITeamResourceService`,
-`IGoogleSyncService`, `IGoogleWorkspaceUserService`, `IUserService`,
-`IUserEmailService`, `IAuditLogService`. No cache.
+**Cross-section reads (design-rule violations):** the `IUserEmailRepository`
+injection is direct rather than through `IUserEmailService`. Tracked as
+part of the §15 cleanup backlog — preserved while the Google admin tool
+surface stabilises.
 
 ### GoogleWorkspaceUserService (Scoped)
 
-No repository, no DB access. Pure Google Directory API wrapper
-(`IWorkspaceUserDirectoryClient`). No cache.
+No repository. Thin facade over `IWorkspaceUserDirectoryClient`
+(Infrastructure). No DB access, no cache.
 
 ### EmailProvisioningService (Scoped)
 
-No repository injected — orchestrates `IUserService`,
-`IUserEmailService`, `IProfileService`, `ITeamService`,
-`IGoogleWorkspaceUserService`, `INotificationService`, `IEmailService`,
-`IAuditLogService`. No DB access, no cache.
+No repository. Wraps `IGoogleAdminService` + `IUserEmailService` +
+`IAuditLogService` to provision Google Workspace mailboxes. No direct DB
+access, no cache.
 
 ### SyncSettingsService (Scoped)
 
@@ -457,7 +584,7 @@ Repository: `ISyncSettingsRepository`.
 |-------|-----|
 | SyncServiceSettings | R/W |
 
-No cache.
+No cross-section calls, no cache.
 
 ### DriveActivityMonitorService (Scoped)
 
@@ -465,22 +592,24 @@ Repository: `IDriveActivityMonitorRepository`.
 
 | Table | R/W |
 |-------|-----|
-| GoogleResources | R |
-| AuditLogEntries | R/W |
-| SystemSettings | R/W |
-| Users | R |
-| IdentityUserLogins | R |
+| GoogleResources | R (via repo) |
+| AuditLogEntries | R (via repo) |
+| Users | R (via repo) |
+| SystemSettings | R/W (key `DriveActivityMonitor:LastRunAt`) |
 
-**Cross-section table reads (design-rule violation):** `Users` (User
-section), `IdentityUserLogins` (Auth/Identity), `AuditLogEntries`
-(AuditLog section). The repo bundles them because the Drive Activity
-reconciler needs to correlate Drive events to user PeopleIds; should
-split into owning-service calls. `SystemSettings` access here is the
-Google Integration-owned `DriveActivityMonitor:LastRunAt` key (not a
-violation under per-key ownership — see Cross-Section Analysis §5).
+**Cross-section reads (design-rule violations):** the
+`DriveActivityMonitorRepository` queries `AuditLogEntries` and `Users`
+directly. The cleanup path is to inject `IAuditLogService` /
+`IUserService` and reduce the repo to `GoogleResources`-only reads.
 
-Cross-section calls via `ITeamResourceService`,
-`IGoogleDriveActivityClient`. No cache.
+Cross-section calls via `IGoogleDriveActivityClient`,
+`ITeamResourceService`. No cache.
+
+### GoogleRemovalNotificationService (Scoped)
+
+No repository. Wraps `IUserEmailService` + `IUserService` +
+`IEmailService` to send notifications when access is removed. No direct
+DB access, no cache.
 
 ---
 
@@ -488,11 +617,12 @@ Cross-section calls via `ITeamResourceService`,
 
 Folder: `src/Humans.Application/Services/Camps/`. Owns `Camps`,
 `CampSeasons`, `CampLeads`, `CampHistoricalNames`, `CampImages`,
-`CampSettings`, `CampMembers`.
+`CampSettings`, `CampMembers`, `CampRoleDefinitions`,
+`CampRoleAssignments`.
 
 ### CampService (Scoped)
 
-Repository: `ICampRepository`.
+Repositories: `ICampRepository`, `ICampRoleRepository`.
 
 | Table | R/W |
 |-------|-----|
@@ -508,28 +638,66 @@ Repository: `ICampRepository`.
 |-----------|-----|------|-------|------------|
 | `camps_year_{year}` | 5 min | yes | yes | yes |
 | `CampSettings` | 5 min | yes | yes | yes |
-| `NavBadge:CampLeadJoinRequests:{userId}` (`ICampLeadJoinRequestsBadgeCacheInvalidator`) | 2 min | | | yes (per lead) |
+| `NavBadge:CampLeadJoinRequests:{userId}` (`ICampLeadJoinRequestsBadgeCacheInvalidator`) | 2 min | | | yes |
 
-Cross-section calls via `IUserService`, `ISystemTeamSync`,
-`IAuditLogService`, `IFileStorage`. Implements
-`IUserDataContributor` for GDPR exports.
+**Cross-section table read (design-rule violation):** `ICampRepository`
+reads `Users` directly (via `_dbContext.Users.AsNoTracking()` in
+`GetCampLeadsAsync`). Tracked as a §15 cleanup item — should fan out
+through `IUserService`.
+
+Cross-section calls via `IUserService`, `IAuditLogService`,
+`ISystemTeamSync`, `IFileStorage`, `INotificationEmitter`, plus
+`Lazy<ICampRoleService>` to break a DI cycle. Implements
+`IUserDataContributor`, `IUserMerge`.
+
+### CampRoleService (Scoped)
+
+Repository: `ICampRoleRepository`.
+
+| Table | R/W |
+|-------|-----|
+| CampRoleDefinitions | R/W |
+| CampRoleAssignments | R/W |
+| CampMembers | R |
+| Camps | R |
+
+Cross-section calls via `ICampService`, `IUserService`,
+`IAuditLogService`, `INotificationEmitter`. No `IMemoryCache`.
 
 ### CampContactService (Scoped)
 
-No repository — pure messaging/audit orchestrator.
+No repository. Rate-limited contact relay. Cross-section calls via
+`IEmailService`, `IAuditLogService`, `INotificationEmitter`.
 
 | Cache Key | TTL | Type |
 |-----------|-----|------|
 | `CampContactRateLimit:{userId}:{campId}` | 10 min | Rate limit |
 
-Cross-section calls via `IEmailService`, `IAuditLogService`.
+---
+
+## Containers
+
+Folder: `src/Humans.Application/Services/Containers/`. Owns
+`Containers`, `ContainerPlacements`.
+
+### ContainerService (Scoped)
+
+Repository: `IContainerRepository`.
+
+| Table | R/W |
+|-------|-----|
+| Containers | R/W |
+| ContainerPlacements | R/W |
+
+Cross-section calls via `ICampService`, `IAuditLogService`,
+`IFileStorage`. No cache.
 
 ---
 
 ## City Planning
 
 Folder: `src/Humans.Application/Services/CityPlanning/`. Owns
-`CampPolygons`, `CampPolygonHistories`, `CityPlanningSettings`.
+`CityPlanningSettings`, `CampPolygons`, `CampPolygonHistories`.
 
 ### CityPlanningService (Scoped)
 
@@ -537,13 +705,12 @@ Repository: `ICityPlanningRepository`.
 
 | Table | R/W |
 |-------|-----|
+| CityPlanningSettings | R/W |
 | CampPolygons | R/W |
 | CampPolygonHistories | R/W |
-| CityPlanningSettings | R/W |
 
-Cross-section calls via `ICampService` (camp/season reads),
-`IProfileService`, `ITeamService`, `IUserService`. No direct cross-section
-table reads — all routed through owning services. No cache.
+Cross-section calls via `ICampService`, `ITeamService`, `IUserService`.
+Uses `CityPlanningOptions`. No `IMemoryCache`.
 
 ---
 
@@ -560,44 +727,54 @@ Repository: `ICalendarRepository`.
 |-------|-----|
 | CalendarEvents | R/W |
 | CalendarEventExceptions | R/W |
+| Teams | R (via `ICalendarRepository` for team-scoped event lookups) |
 
-| Cache Key | TTL | Type |
-|-----------|-----|------|
-| `calendar:active-events` | short-TTL marker | Static (per `design-rules §15f` request-acceleration carve-out) |
+| Cache Key | TTL | Read | Write | Invalidate |
+|-----------|-----|------|-------|------------|
+| `calendar:active-events` | short-TTL | yes | yes | yes |
 
-Cross-section calls via `ITeamService` (in-memory team-name join per
-§6b), `IAuditLogService`. No cross-section table reads.
+**Cross-section table read (design-rule violation):** `CalendarRepository`
+joins `Teams` directly. Could move to `ITeamService` lookup; preserved
+for query efficiency.
+
+Cross-section calls via `ITeamService`, `IAuditLogService`.
 
 ---
 
 ## Shifts
 
 Folder: `src/Humans.Application/Services/Shifts/`. Owns `Rotas`,
-`Shifts`, `ShiftSignups`, `ShiftTags`, `VolunteerEventProfiles`,
-`VolunteerTagPreferences`, `EventSettings`, `GeneralAvailability`.
+`Shifts`, `ShiftSignups`, `EventSettings`, `GeneralAvailability`,
+`VolunteerEventProfiles`, `VolunteerBuildStatuses`, `ShiftTags`,
+`VolunteerTagPreferences`.
+
+The Application-layer `ShiftViewService` provides the inner
+implementation of `IShiftView`; it is wrapped by
+`Humans.Infrastructure.Services.Shifts.CachingShiftViewService`
+(Singleton decorator with two `TrackedCache` dictionaries for user and
+rota views).
 
 ### ShiftManagementService (Scoped)
 
-Repository: `IShiftManagementRepository`. Implements
-`IShiftAuthorizationInvalidator`.
+Repository: `IShiftManagementRepository`.
 
 | Table | R/W |
 |-------|-----|
 | Rotas | R/W |
 | Shifts | R/W |
 | ShiftSignups | R |
-| ShiftTags | R/W |
-| VolunteerEventProfiles | R/W |
-| VolunteerTagPreferences | R/W |
 | EventSettings | R/W |
+| VolunteerEventProfiles | R/W |
+| ShiftTags | R/W |
+| VolunteerTagPreferences | R/W |
 
 | Cache Key | TTL | Read | Write | Invalidate |
 |-----------|-----|------|-------|------------|
-| `shift-auth:{userId}` | 60 sec | yes | yes | yes |
+| `shift-auth:{userId}` | 60 sec | yes | yes | yes (also via `IShiftAuthorizationInvalidator`) |
 
-Cross-section calls via `ITeamService`, `IRoleAssignmentService`,
-`IUserService`, `ITicketQueryService`, `IAuditLogService`. Lazy
-`IServiceProvider` resolution for cycle-breaking.
+Cross-section calls via `IAuditLogService`, `IAdminAuthorizationService`,
+`IShiftViewInvalidator`, plus `IServiceProvider` for cycle-breaking.
+Implements `IShiftAuthorizationInvalidator`, `IUserMerge`.
 
 ### ShiftSignupService (Scoped)
 
@@ -606,20 +783,22 @@ Repository: `IShiftSignupRepository`.
 | Table | R/W |
 |-------|-----|
 | ShiftSignups | R/W |
-| Shifts | R |
-| Rotas | R/W |
-| VolunteerEventProfiles | R/W |
-| VolunteerTagPreferences | R |
-| GeneralAvailability | R |
+| Shifts | R (via repo) |
+| Rotas | R (via repo) |
+| GeneralAvailability | R (via repo, for conflict checks) |
+| VolunteerEventProfiles | R/W (via repo) |
+| VolunteerTagPreferences | R (via repo) |
 
-**Cross-section table read (design-rule violation):**
-`GeneralAvailability` is owned by `GeneralAvailabilityService`. The
-repository reads it for shift conflict checks; should route through
-`IGeneralAvailabilityService`.
+Cross-section calls via `IShiftManagementService`,
+`IMembershipCalculator`, `IAuditLogService`, `INotificationService`,
+`IAdminAuthorizationService`, `IShiftViewInvalidator`,
+`IServiceProvider`. Implements `IUserDataContributor`, `IUserMerge`. No
+`IMemoryCache`.
 
-Cross-section calls via `IShiftManagementService`, `ITeamService`,
-`INotificationService`, `IAuditLogService`. Lazy `IServiceProvider`.
-Implements `IUserDataContributor`. No cache.
+**Cross-section table read (design-rule note):** the repository reads
+`GeneralAvailability` (owned by `IGeneralAvailabilityService` in the
+same section) for conflict detection. In-section, but worth flagging
+because the two services nominally own different tables.
 
 ### GeneralAvailabilityService (Scoped)
 
@@ -629,7 +808,66 @@ Repository: `IGeneralAvailabilityRepository`.
 |-------|-----|
 | GeneralAvailability | R/W |
 
-No cache. No cross-section deps beyond `IClock`.
+Cross-section calls via `IShiftViewInvalidator`. Implements `IUserMerge`.
+No `IMemoryCache`.
+
+### VolunteerTrackingService (Scoped)
+
+Repositories: `IVolunteerTrackingRepository`, `IShiftManagementRepository`,
+`IGeneralAvailabilityRepository`.
+
+| Table | R/W |
+|-------|-----|
+| EventSettings | R |
+| ShiftSignups | R |
+| VolunteerBuildStatuses | R/W |
+| Shifts | R |
+| Rotas | R |
+| GeneralAvailability | R |
+| VolunteerEventProfiles | R |
+| ShiftTags | R |
+| VolunteerTagPreferences | R |
+
+Cross-section calls via `IUserService`, `IShiftViewInvalidator`. No
+cache. Holds the gap-detection algorithm + heatmap data assembly.
+
+### ShiftViewService (Scoped — wrapped by CachingShiftViewService Singleton decorator)
+
+Repositories: `IShiftManagementRepository`, `IShiftSignupRepository`,
+`IGeneralAvailabilityRepository`, `IVolunteerTrackingRepository`.
+
+| Table | R/W |
+|-------|-----|
+| EventSettings | R |
+| Rotas | R |
+| Shifts | R |
+| ShiftSignups | R |
+| GeneralAvailability | R |
+| VolunteerEventProfiles | R |
+| VolunteerBuildStatuses | R |
+| ShiftTags | R |
+| VolunteerTagPreferences | R |
+
+Implements `IShiftView`. Pure read assembler — composes user + rota
+views from the four repositories. Wrapped by `CachingShiftViewService`
+which caches both projection types per-entity (per-user view and
+per-rota view). Service-keyed as `"shift-view-inner"` so the decorator
+can resolve it without self-recursion.
+
+### CachingShiftViewService (Singleton, Infrastructure)
+
+| Cache | Type | Read | Write | Invalidate |
+|-------|------|------|-------|------------|
+| `TrackedCache<Guid, ShiftUserView>` (in-process, no `IMemoryCache`) | Per-User | yes | yes | yes (via `IShiftViewInvalidator.InvalidateUser`) |
+| `TrackedCache<Guid, ShiftRotaView>` (in-process, no `IMemoryCache`) | Per-Entity | yes | yes | yes (via `IShiftViewInvalidator.InvalidateRota`) |
+
+Implements `IShiftView`, `IShiftViewInvalidator`. Resolves the inner
+Scoped `IShiftView` via `IServiceScopeFactory` to honour scope rules.
+Both cache instances are surfaced on `/Admin/CacheStats`.
+
+### EarlyEntryCapacityCalculator
+
+Stateless calculator — no DI dependencies, no DB access.
 
 ---
 
@@ -640,12 +878,14 @@ Folder: `src/Humans.Application/Services/Legal/`. Owns `LegalDocuments`,
 
 ### LegalDocumentService (Scoped)
 
-No repository — wraps `IGitHubLegalDocumentConnector` for live document
-fetches.
+No repository (read-through service). Uses `IGitHubLegalDocumentConnector`
++ `IMemoryCache`.
 
-| Cache Key | TTL | Read | Write |
-|-----------|-----|------|-------|
-| `Legal:{slug}` | 1 hr (30 sec on failure) | yes | yes |
+| Cache Key | TTL | Read | Write | Invalidate |
+|-----------|-----|------|-------|------------|
+| `Legal:{slug}` | 1 hr | yes | yes | yes |
+
+No DB access. Documents are cached from the GitHub source.
 
 ### LegalDocumentSyncService (Scoped)
 
@@ -656,8 +896,9 @@ Repository: `ILegalDocumentRepository`.
 | LegalDocuments | R/W |
 | DocumentVersions | R/W |
 
-Cross-section calls via `IProfileService` (re-consent reminders),
-`INotificationService`, `IGitHubLegalDocumentConnector`. No cache.
+Cross-section calls via `INotificationService`, `IUserService`,
+`IGitHubLegalDocumentConnector`. No `IMemoryCache`. Periodic background
+sync of legal documents from the legal-internal repo.
 
 ### AdminLegalDocumentService (Scoped)
 
@@ -668,15 +909,15 @@ Repository: `ILegalDocumentRepository`.
 | LegalDocuments | R/W |
 | DocumentVersions | R/W |
 
-Cross-section calls via `ITeamService`, `ILegalDocumentSyncService`. No
-cache.
+Admin-only mutation surface. Cross-section calls via
+`ILegalDocumentSyncService`, `ITeamService`. Uses `GitHubSettings`. No
+`IMemoryCache`.
 
 ---
 
 ## Consent
 
-Folder: `src/Humans.Application/Services/Consent/`. Owns
-`ConsentRecords` (append-only — DB triggers prevent UPDATE/DELETE).
+Folder: `src/Humans.Application/Services/Consent/`. Owns `ConsentRecords`.
 
 ### ConsentService (Scoped)
 
@@ -684,12 +925,13 @@ Repository: `IConsentRepository`.
 
 | Table | R/W |
 |-------|-----|
-| ConsentRecords | R/W (INSERT-only enforced by trigger) |
+| ConsentRecords | R/W |
 
-Cross-section calls via `IProfileService`, `IOnboardingService` (lazy
-via `IServiceProvider` for cycle-breaking), `IMembershipCalculator`,
+Cross-section calls via `IOnboardingService`,
 `ILegalDocumentSyncService`, `INotificationInboxService`,
-`ISystemTeamSync`. Implements `IUserDataContributor`. No cache.
+`ISystemTeamSync`, `IUserService`, `IHumansMetrics`, plus
+`IServiceProvider` for cycle-breaking. Implements `IUserDataContributor`.
+No `IMemoryCache`.
 
 ---
 
@@ -707,32 +949,15 @@ Repository: `INotificationRepository`.
 | Notifications | R/W |
 | NotificationRecipients | R/W |
 
-| Cache Key | Invalidate |
-|-----------|------------|
-| `NotificationBadge:{userId}` | yes (per recipient) |
+| Cache Key | TTL | Read | Write | Invalidate |
+|-----------|-----|------|-------|------------|
+| `NotificationBadge:{userId}` | 2 min | | | yes (on dispatch) |
 
-Cross-section calls via `INotificationRecipientResolver`,
-`ICommunicationPreferenceService`.
+Cross-section calls via `INotificationEmitter`,
+`INotificationRecipientResolver`, `ICommunicationPreferenceService`,
+`IClock`. Implements `IUserMerge`.
 
 ### NotificationEmitter (Scoped)
-
-Repository: `INotificationRepository`. Companion to
-`NotificationService` for batch emit.
-
-| Table | R/W |
-|-------|-----|
-| Notifications | R/W |
-| NotificationRecipients | R/W |
-
-| Cache Key | Invalidate |
-|-----------|------------|
-| `NotificationBadge:{userId}` | yes (single-recipient direct emits) |
-
-Cross-section calls via `INotificationRecipientResolver`,
-`ICommunicationPreferenceService`, `IRoleAssignmentService`,
-`ITeamService`.
-
-### NotificationInboxService (Scoped)
 
 Repository: `INotificationRepository`.
 
@@ -741,40 +966,56 @@ Repository: `INotificationRepository`.
 | Notifications | R/W |
 | NotificationRecipients | R/W |
 
-| Cache Key | Invalidate |
-|-----------|------------|
-| `NotificationBadge:{userId}` | yes |
+| Cache Key | TTL | Read | Write | Invalidate |
+|-----------|-----|------|-------|------------|
+| `NotificationBadge:{userId}` | 2 min | | | yes |
 
-Cross-section calls via `IUserService`. Implements
-`IUserDataContributor`.
+Low-level emitter used by `NotificationService` and direct callers
+(`TeamService`, `CampService`, `CampRoleService`, `CampContactService`)
+that have a single-recipient dispatch already targeted. Cross-section
+calls via `ICommunicationPreferenceService`.
 
-### NotificationRecipientResolver (Scoped)
+### NotificationInboxService (Scoped)
 
-No repository, no DB access. Resolves recipient sets from
-`IRoleAssignmentService`, `ITeamService`. No cache.
+Repository: `INotificationRepository`.
+
+| Table | R/W |
+|-------|-----|
+| Notifications | R |
+| NotificationRecipients | R/W (read state, dismissal) |
+
+| Cache Key | TTL | Read | Write | Invalidate |
+|-----------|-----|------|-------|------------|
+| `NotificationBadge:{userId}` | 2 min | | | yes (on read/dismiss) |
+
+Cross-section calls via `IUserService`. Implements `IUserDataContributor`.
 
 ### NotificationMeterProvider (Scoped)
 
-No repository — aggregates counts via owning services.
+No repository. Pure read-aggregation over owning services.
 
-| Cache Key | TTL | Read | Write |
-|-----------|-----|------|-------|
-| `NotificationMeters` | 2 min | yes | yes |
-| `NavBadge:Voting:{userId}` | 2 min | yes | yes |
-| `NavBadge:CampLeadJoinRequests:{userId}` | 2 min | yes | yes |
+| Cache Key | TTL | Read | Write | Invalidate |
+|-----------|-----|------|-------|------------|
+| `NotificationMeters` | 2 min | yes | yes | (per `INotificationMeterCacheInvalidator` callers) |
+| `NavBadge:Voting:{userId}` | 2 min | yes | yes | (per `IVotingBadgeCacheInvalidator`) |
+| `NavBadge:CampLeadJoinRequests:{userId}` | 2 min | yes | yes | (per `ICampLeadJoinRequestsBadgeCacheInvalidator`) |
 
 Cross-section calls via `IProfileService`, `IUserService`,
-`ITeamService`, `IApplicationDecisionService`, `ITicketSyncService`,
-`IGoogleSyncService`, `ICampService`. No direct table reads — fully
-fan-out aggregator after the §15 migration.
+`IGoogleSyncService`, `ITeamService`, `ITicketSyncService`,
+`IApplicationDecisionService`, `ICampService`. **No direct DB access** —
+every counter fans out through an owning-service interface call.
+
+### NotificationRecipientResolver (Scoped)
+
+No repository. Fan-out over `ITeamService`, `IRoleAssignmentService`.
+No DB access, no cache.
 
 ---
 
 ## Tickets
 
 Folder: `src/Humans.Application/Services/Tickets/`. Owns `TicketOrders`,
-`TicketAttendees`, `TicketSyncStates`. Vendor HTTP calls live in
-`Humans.Infrastructure.Services.TicketTailorService` (out-of-section).
+`TicketAttendees`, `TicketSyncStates`, `TicketTransferRequests`.
 
 ### TicketQueryService (Scoped)
 
@@ -785,70 +1026,82 @@ Repository: `ITicketRepository`.
 | TicketOrders | R |
 | TicketAttendees | R |
 | TicketSyncStates | R |
-| UserEmails | R (via `ITicketRepository.GetAllUserEmailLookupEntriesAsync`, used to match attendees) |
+| UserEmails | R (via `ITicketRepository.GetAllUserEmailLookupEntriesAsync`, materialises a `UserEmailLookupEntry` projection from `Set<UserEmail>`) |
 
-**Cross-section table read (design-rule violation):** `UserEmails`
-(Profile section). The repository materializes a lookup-entry projection
-from `UserEmails` for attendee matching; should route through
-`IUserEmailService` (and potentially expose a bulk lookup method there).
+| Cache Key | TTL | Read | Write | Invalidate |
+|-----------|-----|------|-------|------------|
+| `UserTicketCount:{userId}` | 5 min | yes | yes | (TTL-only) |
+| `UserTicketHoldings:{userId}` | 5 min | yes | yes | (TTL-only) |
+| `UserIdsWithTickets` | 5 min | yes | yes | (TicketSyncService bulk invalidate) |
+| `ValidAttendeeEmails` | 5 min | yes | yes | (TicketSyncService bulk invalidate) |
+| `TicketDashboardStats` | 5 min | (compute-only — no read-through wrapper) | | (TicketSyncService bulk invalidate) |
 
-Cross-section calls via `IUserService`, `IUserEmailService`,
-`ITeamService`, `ICampaignService`, `IBudgetService`,
-`IShiftManagementService`, `IProfileService`. Implements
-`IUserDataContributor`.
+Cross-section calls via `IBudgetService`, `ICampaignService`,
+`IUserService`, `IUserEmailService`, `IProfileService`, `ITeamService`,
+`IShiftManagementService`. Implements `IUserDataContributor`.
 
-| Cache Key | TTL | Read | Write |
-|-----------|-----|------|-------|
-| `UserTicketCount:{userId}` | 5 min | yes | yes |
-| `UserIdsWithTickets` | 5 min | yes | yes |
-| `ValidAttendeeEmails` | 5 min | yes | yes |
-| `TicketDashboardStats` | 5 min | (computed by `GetDashboardStatsAsync()` — no read-through cache) | (computed fresh per call) |
-
-`GetDashboardStatsAsync()` is the canonical producer of the
-`TicketDashboardStats` DTO and is currently invoked directly by
-`TicketController.Index` without read-through caching at this service
-boundary. The `TicketDashboardStats` cache key
-(`CacheKeys.TicketDashboardStats`) and its `InvalidateTicketDashboardStats`
-hook (called from `TicketSyncService.InvalidateTicketCaches`) exist so a
-future caching wrapper can be added without changing the invalidation
-contract — at ~500-user scale the recompute is cheap so the wrapper has
-not been added yet.
+**Cross-section table read (design-rule violation):** `TicketRepository`
+materialises a `UserEmail` projection (`UserEmailLookupEntry`) for
+attendee matching. `IUserEmailService` does not yet expose a bulk
+lookup; this is the cleanest single fix to retire the violation.
 
 ### TicketSyncService (Scoped)
 
-Repository: `ITicketRepository`.
+Repositories: `ITicketRepository`, `ITicketTransferRepository`.
 
 | Table | R/W |
 |-------|-----|
 | TicketOrders | R/W |
 | TicketAttendees | R/W |
 | TicketSyncStates | R/W |
-| UserEmails | R (via ticket repo's email-lookup projection) |
+| TicketTransferRequests | R |
 
-| Cache Key | Invalidate |
-|-----------|------------|
-| `TicketEventSummary:{eventId}` | yes |
-| `TicketDashboardStats` | yes (via `InvalidateTicketCaches` — invalidation hook only; producer is `TicketQueryService.GetDashboardStatsAsync`, which does not currently cache) |
-| `UserIdsWithTickets` | yes (via `InvalidateTicketCaches`) |
-| `ValidAttendeeEmails` | yes (via `InvalidateTicketCaches`) |
+| Cache Key | TTL | Read | Write | Invalidate |
+|-----------|-----|------|-------|------------|
+| `TicketEventSummary:{eventId}` | 15 min | yes | yes | yes (per event) |
+| All `TicketDashboardStats` / `UserIdsWithTickets` / `ValidAttendeeEmails` (via `InvalidateTicketCaches`) | various | | | yes |
 
-Cross-section calls via `IUserService`, `ICampaignService`,
-`IShiftManagementService`, `ITicketVendorService`, `IStripeService`. No
-direct cross-section table writes — `event_participations` and
-`campaign_grants` updates route through `IUserService` and
-`ICampaignService` respectively per §15.
+Cross-section calls via `ITicketVendorService`, `IStripeService`,
+`IUserService`, `ICampaignService`, `IShiftManagementService`. Implements
+`IUserMerge`.
+
+### TicketTransferService (Scoped)
+
+Repositories: `ITicketRepository`, `ITicketTransferRepository`.
+
+| Table | R/W |
+|-------|-----|
+| TicketOrders | R |
+| TicketAttendees | R/W |
+| TicketTransferRequests | R/W |
+
+Cross-section calls via `ITicketVendorService`, `ITicketQueryService`,
+`IUserService`, `IUserEmailService`, `IProfileService`,
+`IAuditLogService`. No `IMemoryCache`.
 
 ### TicketingBudgetService (Scoped)
 
-Repositories: `ITicketingBudgetRepository`. (`IBudgetService` also
-injected for cross-section budget mutations.)
+Repository: `ITicketingBudgetRepository`.
 
 | Table | R/W |
 |-------|-----|
 | TicketOrders | R |
 
-Cross-section budget writes (BudgetLineItems, TicketingProjections) now
-route through `IBudgetService` rather than directly. No cache.
+Cross-section calls via `IBudgetService`. Aggregates ticket revenue
+into a budget-side projection. No cache.
+
+### AttendeeContactImportService (Scoped)
+
+Repository: `ITicketRepository`.
+
+| Table | R/W |
+|-------|-----|
+| TicketAttendees | R |
+
+Cross-section calls via `IUserEmailService`, `IAccountProvisioningService`,
+`IUserService`, `IShiftManagementService`, `ITicketQueryService`,
+`IAuditLogService`. Imports attendee contact data into the system. No
+cache.
 
 ---
 
@@ -870,9 +1123,14 @@ Repository: `IBudgetRepository`.
 | BudgetLineItems | R/W |
 | BudgetAuditLogs | R/W |
 | TicketingProjections | R/W |
+| Teams | R (via `IBudgetRepository` — read-only join for team-scoped budget views) |
 
-Cross-section calls via `ITeamService` for permission resolution.
-Implements `IUserDataContributor`. No cache.
+**Cross-section table read (design-rule violation):** `BudgetRepository`
+reads `Teams` directly. The repository joins `Teams` for display; could
+fan out through `ITeamService.GetAsync` but the join is read-only.
+
+Cross-section calls via `ITeamService`, `IUserService`. Implements
+`IUserDataContributor`. No `IMemoryCache`.
 
 ---
 
@@ -891,34 +1149,18 @@ Repository: `ICampaignRepository`.
 | CampaignCodes | R/W |
 | CampaignGrants | R/W |
 
-Cross-section calls via `IUserService`, `IUserEmailService`,
-`ITeamService`, `INotificationService`,
-`ICommunicationPreferenceService`, `IEmailService`. Email outbox
-enqueues now route through `IEmailService` (no direct
-`EmailOutboxMessages` writes from this service after §15). Implements
-`IUserDataContributor`. No cache.
+Cross-section calls via `ITeamService`, `IUserEmailService`,
+`IUserService`, `INotificationService`, `ICommunicationPreferenceService`,
+`IEmailService`, `ITicketVendorService`. Implements `IUserDataContributor`,
+`IUserMerge`. No `IMemoryCache`.
 
 ---
 
 ## Email
 
 Folder: `src/Humans.Application/Services/Email/`. Owns
-`EmailOutboxMessages`. `OutboxEmailService` is the public facade
-(`IEmailService` impl) that enqueues; `EmailOutboxService` owns persisted
-outbox processing. SMTP transport / rendering live in Infrastructure.
-
-### OutboxEmailService (Scoped, registered as `IEmailService`)
-
-Repository: `IEmailOutboxRepository`.
-
-| Table | R/W |
-|-------|-----|
-| EmailOutboxMessages | R/W |
-| SystemSettings | R (Email-owned `IsEmailSendingPaused` key only — pause flag check) |
-
-Cross-section calls via `IUserEmailService`,
-`ICommunicationPreferenceService`, `IEmailBodyComposer`,
-`IEmailRenderer`, `IEmailTransport`. No cache.
+`EmailOutboxMessages`; owns `SystemSettings` key
+`email_outbox_paused`.
 
 ### EmailOutboxService (Scoped)
 
@@ -927,13 +1169,52 @@ Repository: `IEmailOutboxRepository`.
 | Table | R/W |
 |-------|-----|
 | EmailOutboxMessages | R/W |
-| SystemSettings | R/W (Email-owned `IsEmailSendingPaused` key only — admin pause toggle and processor pause check) |
+| SystemSettings | R/W (only key `email_outbox_paused`) |
 
-`SystemSettings` access here is the Email-owned `IsEmailSendingPaused`
-key (not a violation under per-key ownership — see Cross-Section
-Analysis §5).
+No cross-section calls beyond `IClock`. No `IMemoryCache`.
 
-No cache.
+### OutboxEmailService (Scoped)
+
+Repository: `IEmailOutboxRepository`.
+
+| Table | R/W |
+|-------|-----|
+| EmailOutboxMessages | R/W |
+
+Implements `IEmailService` — the canonical send path. Cross-section
+calls via `IUserEmailService`, `IEmailRenderer`, `IEmailBodyComposer`,
+`IImmediateOutboxProcessor`, `IHumansMetrics`,
+`ICommunicationPreferenceService`. No `IMemoryCache`.
+
+---
+
+## Mailer
+
+Folder: `src/Humans.Application/Services/Mailer/`. No owned DB tables —
+MailerLite is the external system; classifier writes through other
+sections' services.
+
+### MailerImportService (Scoped)
+
+No repository. Cross-section calls via `IMailerLiteService` (external),
+`IUserEmailService`, `IUserService`, `IAccountProvisioningService`,
+`ICommunicationPreferenceService`, `IAuditLogService`. Inbound import
+slice — reads MailerLite subscribers and provisions matching accounts.
+No DB access, no cache.
+
+### MailerAudienceSyncService (Scoped)
+
+No repository. Cross-section calls via `IMailerLiteService`,
+`IUserEmailService`, `IAuditLogService`, plus
+`IEnumerable<IMailerAudience>` (audience definitions). Outbound slice —
+pushes computed audiences back to MailerLite groups. No DB access, no
+cache.
+
+### TicketNoShiftsAudience (Scoped, IMailerAudience)
+
+No repository. Audience-membership computation via
+`ITicketQueryService`, `IShiftSignupService`, `IShiftManagementService`.
+No direct DB access, no cache.
 
 ---
 
@@ -956,61 +1237,244 @@ Repository: `IFeedbackRepository`.
 | `NavBadgeCounts` (`INavBadgeCacheInvalidator`) | yes |
 
 Cross-section calls via `IUserService`, `IUserEmailService`,
-`ITeamService`, `IEmailService`, `INotificationService`,
-`IAuditLogService`. Implements `IUserDataContributor`.
+`ITeamService`, `IProfileService`, `IEmailService`,
+`INotificationService`, `IAuditLogService`, `IHostEnvironment`.
+Implements `IUserDataContributor`, `IUserMerge`. `IMemoryCache` is
+injected only as the substrate for `INavBadgeCacheInvalidator`.
+
+---
+
+## Issues
+
+Folder: `src/Humans.Application/Services/Issues/`. Owns `Issues`,
+`IssueComments`.
+
+### IssuesService (Scoped)
+
+Repository: `IIssuesRepository`.
+
+| Table | R/W |
+|-------|-----|
+| Issues | R/W |
+| IssueComments | R/W |
+
+| Cache Key | TTL | Read | Write | Invalidate |
+|-----------|-----|------|-------|------------|
+| `NavBadge:Issues:{userId}` (`IIssuesBadgeCacheInvalidator`) | 2 min | yes | yes | yes |
+| `NavBadgeCounts` (`INavBadgeCacheInvalidator`) | 2 min | | | yes |
+
+Cross-section calls via `IUserService`, `IUserEmailService`,
+`IRoleAssignmentService`, `IEmailService`, `INotificationService`,
+`IAuditLogService`, `IHostEnvironment`. Implements `IUserDataContributor`.
+
+---
+
+## Events (Event Guide)
+
+Folder: `src/Humans.Application/Services/Events/`. Owns `Events`,
+`EventGuideSettings`, `EventCategories`, `EventVenues`,
+`EventModerationActions`, `EventPreferences`, `EventFavourites`,
+`EventSettings`. (Note: `EventSettings` is the historical shifts/event
+configuration table — see "cross-section read" below.)
+
+### EventService (Scoped)
+
+Repository: `IEventRepository`.
+
+| Table | R/W |
+|-------|-----|
+| Events | R/W |
+| EventGuideSettings | R/W |
+| EventCategories | R/W |
+| EventVenues | R/W |
+| EventModerationActions | R/W |
+| EventPreferences | R/W |
+| EventFavourites | R/W |
+| EventSettings | R (via `IEventRepository.GetActiveCampEventsAsync` / `GetActiveEventSettingsAsync` — read-only lookup of the active Shifts event for event-guide scoping) |
+
+Cross-section calls limited to `IClock`. Implements
+`IUserDataContributor`. No `IMemoryCache`.
+
+**Cross-section table read (design-rule violation, audited):**
+`EventRepository` reads `EventSettings` (owned by Shifts) for active-event
+discovery. Could route through `IShiftManagementService.GetActiveAsync`
+to retire the boundary crossing.
+
+---
+
+## Expenses
+
+Folder: `src/Humans.Application/Services/Expenses/`. Owns
+`ExpenseReports`, `ExpenseLines`, `ExpenseAttachments`,
+`HoldedExpenseOutboxEvents`.
+
+### ExpenseReportService (Scoped)
+
+Repository: `IExpenseRepository`.
+
+| Table | R/W |
+|-------|-----|
+| ExpenseReports | R/W |
+| ExpenseLines | R/W |
+| ExpenseAttachments | R/W |
+| HoldedExpenseOutboxEvents | R/W (outbox to Holded) |
+
+Cross-section calls via `IFileStorage`, `IBudgetService`, `ITeamService`,
+`IUserService`, `IProfileService`, `IAuditLogService`, `IHoldedClient`
+(Infrastructure). Implements `IUserDataContributor`. No `IMemoryCache`.
+
+### SepaPaymentFileBuilder
+
+Stateless builder — formats SEPA XML payment files. No DI dependencies
+beyond `SepaConfig` options. No DB access.
+
+---
+
+## Store
+
+Folder: `src/Humans.Application/Services/Store/`. Owns `StoreProducts`,
+`StoreOrders`, `StoreOrderLines`, `StorePayments`, `StoreInvoices`,
+`StoreTreasurySyncStates`.
+
+### StoreService (Scoped)
+
+Repository: `IStoreRepository`.
+
+| Table | R/W |
+|-------|-----|
+| StoreProducts | R/W |
+| StoreOrders | R/W |
+| StoreOrderLines | R/W |
+| StorePayments | R/W |
+| StoreInvoices | R/W |
+| StoreTreasurySyncStates | R/W |
+
+Cross-section calls via `IAuditLogService`, `ICampService`,
+`IShiftManagementService`, `IStripeService` (Infrastructure). No
+`IMemoryCache`.
+
+### BalanceCalculator
+
+Stateless calculator — no DI dependencies, no DB access.
+
+---
+
+## Agent
+
+Folder: `src/Humans.Application/Services/Agent/` (Application surface)
+and `src/Humans.Infrastructure/Services/Agent/` (Infrastructure
+adapters). Owns `AgentConversations`, `AgentMessages`, `AgentSettings`.
+
+### AgentService (Scoped, Application)
+
+Repository: `IAgentRepository`.
+
+| Table | R/W |
+|-------|-----|
+| AgentConversations | R/W |
+| AgentMessages | R/W |
+| AgentSettings | R (via `IAgentSettingsService`) |
+
+Cross-section calls via `IAgentSettingsService`, `IAgentRateLimitStore`,
+`IAgentAbuseDetector`, `IAgentUserSnapshotProvider`,
+`IAgentPreloadCorpusBuilder`, `IAgentPromptAssembler`,
+`IAgentToolDispatcher`, `IAnthropicClient`. Implements
+`IUserDataContributor`. Uses `AnthropicOptions`. No `IMemoryCache`.
+
+### AgentSettingsService / AgentPromptAssembler / AgentToolDispatcher / AgentUserSnapshotProvider / AgentAbuseDetector (Infrastructure)
+
+Live under `src/Humans.Infrastructure/Services/Agent/`. The settings
+service is the only one that touches `AgentSettings` directly (via
+`AgentRepository.GetAgentSettingsAsync` / `UpsertAgentSettingsAsync`).
+The others are stateless adapters or fan-out over public service
+interfaces (`ITeamService`, `IUserService`, `IProfileService`,
+`IRoleAssignmentService`, `ICampService`, `IShiftView`, etc.) for the
+agent's tool-dispatch and user-snapshot surfaces. No `IMemoryCache`.
+
+### AnthropicClient (Infrastructure)
+
+Outbound API client over `AnthropicOptions`. No DB access, no cache.
+
+---
+
+## Search
+
+Folder: `src/Humans.Application/Services/Search/`. No owned DB tables.
+
+### SearchService (Scoped)
+
+No repository. Pure read-aggregation over `IProfileService`,
+`ITeamService`, `ICampService`, `IShiftManagementService`. No DB access,
+no cache. All search results come from the cached UserInfo / TeamInfo /
+camp / shift projections.
 
 ---
 
 ## Dashboard
 
-Folder: `src/Humans.Application/Services/Dashboard/`. Read-only
-aggregator — owns no DB tables.
+Folder: `src/Humans.Application/Services/Dashboard/`. No owned DB tables.
 
 ### DashboardService (Scoped)
 
-No repository. Pure fan-out over `IProfileService`, `IUserService`,
-`ITeamService`, `IShiftManagementService`, `IShiftSignupService`,
-`ITicketQueryService`, `IMembershipCalculator`,
+No repository. Read-only fan-out over `IProfileService`,
+`IMembershipCalculator`, `IApplicationDecisionService`,
+`IShiftManagementService`, `IShiftView`, `ITicketQueryService`,
+`IUserService`, `ITeamService`. Uses `TicketVendorSettings`. No DB
+access, no cache.
+
+### AdminDashboardService (Scoped)
+
+No repository. Fan-out over `IUserService`, `IMembershipCalculator`,
 `IApplicationDecisionService`. No DB access, no cache.
 
 ---
 
 ## Gdpr
 
-Folder: `src/Humans.Application/Services/Gdpr/`. Aggregator —
-fan-out over every section's `IUserDataContributor` to build the export.
+Folder: `src/Humans.Application/Services/Gdpr/`. No owned DB tables —
+the export orchestrator runs over per-section `IUserDataContributor`
+fan-out.
 
 ### GdprExportService (Scoped)
 
-No repository. Iterates `IEnumerable<IUserDataContributor>` registered by
-sections (Profile, Auth, AuditLog, Camp, Campaign, Tickets, Shifts,
-Notifications, etc.). No DB access, no cache.
+No repository. Injects `IEnumerable<IUserDataContributor>` — every
+section that owns per-user tables implements this and contributes its
+slice. Current contributors (per design-rules §8a): Profiles
+(`ProfileService`), Users (`UserService`), Auth (`RoleAssignmentService`),
+Governance (`ApplicationDecisionService`), Camps (`CampService`), Shifts
+(`ShiftSignupService`), Tickets (`TicketQueryService`), Notifications
+(`NotificationInboxService`), AuditLog (`AuditLogService`), Budget
+(`BudgetService`), Campaigns (`CampaignService`), Feedback
+(`FeedbackService`), Issues (`IssuesService`), Events (`EventService`),
+Expenses (`ExpenseReportService`), Agent (`AgentService`), Teams
+(`TeamService`). No direct DB access, no cache.
 
 ---
 
 ## AuditLog
 
 Folder: `src/Humans.Application/Services/AuditLog/`. Owns
-`AuditLogEntries` (append-only per design-rules §12).
+`AuditLogEntries`.
 
 ### AuditLogService (Scoped)
 
-Repository: `IAuditLogRepository` (registered Singleton, factory-based).
+Repository: `IAuditLogRepository`.
 
 | Table | R/W |
 |-------|-----|
-| AuditLogEntries | R/W (append-only) |
-| Users | R (display-name lookup for UI rendering) |
-| Teams | R (team-name lookup for UI rendering) |
+| AuditLogEntries | R/W |
 
-**Cross-section table reads (design-rule violation, deliberate):** the
-audit-log UI needs actor/subject display names without pulling
-controllers into `DbContext`. The repository exposes
-`GetUserDisplayNamesAsync` / `GetTeamNamesAsync` projections; consider
-routing through `IUserService.GetDisplayNamesAsync` /
-`ITeamService.GetTeamNamesByIdsAsync` to remove the boundary.
+Cross-section calls via `IUserService`. Implements `IUserDataContributor`.
+No `IMemoryCache`.
 
-Implements `IUserDataContributor`. No cache.
+### AuditViewerService (Scoped)
+
+No repository. Read-only view assembler over `IAuditLogService`,
+`IProfileService`, `ITeamService`, `ITeamResourceService`. No DB access,
+no cache.
+
+`AuditEvent` and `AuditEventTextualizer` are value types / pure
+formatters with no DI dependencies.
 
 ---
 
@@ -1018,34 +1482,36 @@ Implements `IUserDataContributor`. No cache.
 
 ### Tables Accessed by Multiple Sections (via repository)
 
-After the §15 migration moved most cross-section access through owning
-service interfaces, only a few repositories still reach across
-boundaries directly. These are the remaining design-rule violations.
+After the §15 / `IUserMerge` consolidation, only a handful of
+repositories still reach across boundaries directly. These are the
+remaining design-rule violations.
 
 | Table | Owning Section | Cross-Section Repo Readers (violations) |
 |-------|----------------|-----------------------------------------|
-| **Users** | Users | Profile (`AccountMergeService`, `DuplicateAccountService` via `IUserRepository`), GoogleIntegration (`GoogleAdminService` via `IUserRepository`), Auth (`MagicLinkService` via `IUserRepository`), AuditLog (display lookup), Google (`DriveActivityMonitorRepository`) |
-| **UserEmails** | Profile | GoogleIntegration (`GoogleAdminService` via `IUserEmailRepository`), Tickets (`TicketRepository` via `Set<UserEmail>` for attendee email lookup), Auth (`MagicLinkService` reads `UserEmail` via `IUserRepository`), Profile (`AccountMergeService`/`DuplicateAccountService` via `IUserEmailRepository`) |
-| **EventParticipations** | Users | Profile (`AccountMergeService`, `DuplicateAccountService` via `IUserRepository`) |
-| **IdentityUserLogins** | Auth/Identity | Profile (`AccountMergeService`, `DuplicateAccountService` via `IUserRepository.ReassignLoginsToUserAsync`), GoogleIntegration (`DriveActivityMonitorRepository`) |
-| **AuditLogEntries** | AuditLog | GoogleIntegration (`DriveActivityMonitorRepository`) |
-| **GoogleSyncOutboxEvents** | GoogleIntegration | Teams (`TeamRepository` writes outbox events on team mutations) |
-| **GeneralAvailability** | Shifts (GeneralAvailabilityService) | Shifts (`ShiftSignupRepository` reads it for conflict checks) |
+| **Users** | Users | Profiles (`UserEmailRepository` writes `GoogleEmail`/`GoogleEmailStatus`/`Email`; `DuplicateAccountService` via `IUserRepository`), Google Integration (`DriveActivityMonitorRepository`), Camps (`CampRepository.GetCampLeadsAsync`) |
+| **UserEmails** | Profiles | Google Integration (`GoogleAdminService` via `IUserEmailRepository`), Tickets (`TicketRepository.GetAllUserEmailLookupEntriesAsync` via `Set<UserEmail>`) |
+| **EventParticipations** | Users | Profiles (`DuplicateAccountService` via `IUserRepository`) |
+| **AuditLogEntries** | AuditLog | Google Integration (`DriveActivityMonitorRepository`) |
+| **GoogleSyncOutboxEvents** | Google Integration | Teams (`TeamRepository` writes outbox events on team mutations) |
+| **GeneralAvailability** | Shifts (`GeneralAvailabilityService`) | Shifts (`ShiftSignupRepository` reads it for conflict checks) — in-section, but service boundary still crossed |
+| **Teams** | Teams | Budget (`BudgetRepository`), Calendar (`CalendarRepository`), Google Integration (`GoogleResourceRepository`) |
+| **EventSettings** | Shifts | Events (`EventRepository.GetActiveCampEventsAsync` / `GetActiveEventSettingsAsync`) |
 | **SystemSettings** | per-key (see SystemSettings ownership table below) | not a violation when the owning section's repo touches its own key |
 
 ### Notable Cross-Section Patterns
 
-1. **Profile↔User Identity coupling.** `AccountMergeService` /
-   `DuplicateAccountService` write `Users`, `EventParticipations`, and
-   `IdentityUserLogins` directly via `IUserRepository`. This is the §15
-   "merge orchestrator" carve-out — the merge needs all
-   user-identity-linked tables in one transaction. Long-term it should
-   move to a `IUserService.MergeAccountsAsync` orchestrator.
+1. **`IUserMerge` retired most cross-section profile/identity writes.**
+   `AccountMergeService` no longer injects `IUserRepository` /
+   `IProfileRepository` directly — it fans out over
+   `IEnumerable<IUserMerge>`, with each section's service implementing
+   `IUserMerge.MoveAsync(fromUserId, toUserId, ct)` to reassign its
+   own owned rows. `DuplicateAccountService` still uses direct
+   repositories pending convergence on the same pattern.
 
-2. **Tickets ↔ Profile email lookup.** `TicketRepository`
+2. **Tickets ↔ Profiles email lookup.** `TicketRepository`
    materializes a `UserEmail` projection (`UserEmailLookupEntry`) for
    attendee matching. `IUserEmailService` does not yet expose a bulk
-   lookup; this is the cleanest single fix.
+   lookup; this is the cleanest single fix to retire the violation.
 
 3. **Teams ↔ Google outbox.** `TeamRepository` writes
    `GoogleSyncOutboxEvents` so each team mutation is atomic with its
@@ -1053,11 +1519,11 @@ boundaries directly. These are the remaining design-rule violations.
    via `IGoogleSyncOutboxRepository`. The atomicity benefit outweighs
    the boundary cost.
 
-4. **DriveActivityMonitor reaches into four sections.**
-   `DriveActivityMonitorRepository` reads `Users`, `IdentityUserLogins`,
-   `AuditLogEntries`, `SystemSettings`. The cleanup path is to inject
-   the owning services and reduce the repo to `GoogleResources`-only
-   reads.
+4. **DriveActivityMonitor reaches into three sections.**
+   `DriveActivityMonitorRepository` reads `Users`, `AuditLogEntries`,
+   `SystemSettings` (its own `DriveActivityMonitor:LastRunAt` key). The
+   cleanup path is to inject `IUserService` / `IAuditLogService` and
+   reduce the repo to `GoogleResources` + `SystemSettings`-only writes.
 
 5. **SystemSettings has per-key ownership (no single owner service).**
    Each key is owned by the section whose repository accesses it; this
@@ -1067,31 +1533,42 @@ boundaries directly. These are the remaining design-rule violations.
 
    | Key | Owning section | Read by | Written by |
    |-----|----------------|---------|------------|
-   | `IsEmailSendingPaused` | Email | `EmailOutboxRepository.GetSendingPausedAsync` | `EmailOutboxRepository.SetSendingPausedAsync` |
+   | `email_outbox_paused` | Email | `EmailOutboxRepository.GetSendingPausedAsync` | `EmailOutboxRepository.SetSendingPausedAsync` |
    | `DriveActivityMonitor:LastRunAt` | Google Integration | `DriveActivityMonitorRepository.GetLastRunTimestampAsync` | `DriveActivityMonitorRepository.PersistAnomaliesAsync` |
 
    Because `EmailOutboxRepository` only reads/writes its own
    Email-owned key and `DriveActivityMonitorRepository` only
    reads/writes its own Google-owned key, there is no cross-section
-   `SystemSettings` access — the prior "no clear owner" flag was an
-   artifact of treating the table as a single resource rather than a
-   keyed namespace. No `ISystemSettingsService` is needed; if a third
-   key is added, it should be owned by the section whose repository
-   reads/writes it.
+   `SystemSettings` access. No `ISystemSettingsService` is needed; if a
+   third key is added, it should be owned by the section whose
+   repository reads/writes it.
 
-6. **CachingProfileService is the canonical Profile cache.** Per §15
-   the legacy `ApprovedProfiles` `IMemoryCache` entry is gone; the
-   `_byUserId` `ConcurrentDictionary<Guid, FullProfile>` inside the
-   Singleton decorator is now the single source of cached profile
-   truth, evicted via `IFullProfileInvalidator`.
+6. **Cached read-models displace the legacy per-key `IMemoryCache`
+   pattern.** Singleton decorators inheriting
+   `TrackedCache<TKey, TValue>` now own the canonical projections:
+   - `CachingProfileService` → `FullProfile` per user (Profiles).
+   - `CachingUserService` → `UserInfo` per user (Users + Profiles
+     read-model added 2026-04-23 for issue #521).
+   - `CachingTeamService` → `TeamInfo` per team (replaces the prior
+     `ActiveTeams` `IMemoryCache` entry).
+   - `CachingShiftViewService` → `ShiftUserView` + `ShiftRotaView`
+     (two `TrackedCache` instances).
+   All are surfaced on `/Admin/CacheStats` via `ICacheStats` and evicted
+   through narrow `I*Invalidator` interfaces — no direct `IMemoryCache`
+   coupling in the Application layer.
 
 7. **Notification meters are computed, not queried.**
-   `NotificationMeterProvider` no longer reads any tables directly —
-   every counter fans out through an owning-service interface call
-   (`IProfileService`, `IUserService`, `ITeamService`,
-   `IApplicationDecisionService`, `ITicketSyncService`,
-   `IGoogleSyncService`, `ICampService`). Cache invalidation goes
-   through `INotificationMeterCacheInvalidator`.
+   `NotificationMeterProvider` reads no tables directly — every counter
+   fans out through an owning-service interface call (`IProfileService`,
+   `IUserService`, `ITeamService`, `IApplicationDecisionService`,
+   `ITicketSyncService`, `IGoogleSyncService`, `ICampService`). Cache
+   invalidation goes through `INotificationMeterCacheInvalidator`.
+
+8. **HUM analyzers enforce the boundaries at compile time.** Roslyn
+   analyzers ratchet the layering rules: `HUM0008` blocks
+   `HumansDbContext` in controllers, `HUM0009` blocks `HumansDbContext`
+   in Application-layer services. See
+   [`code-analysis.md`](code-analysis.md) for the full analyzer list.
 
 ---
 
@@ -1100,46 +1577,53 @@ boundaries directly. These are the remaining design-rule violations.
 ### All Cache Keys
 
 Sourced from `src/Humans.Application/CacheKeys.cs` and
-`src/Humans.Application/Extensions/MemoryCacheExtensions.cs`.
+`src/Humans.Application/Extensions/MemoryCacheExtensions.cs`. TTL/type
+classification mirrors `CacheKeys.Metadata` (surfaced on the Admin
+`/Admin/CacheStats` page).
 
 | Key | TTL | Type | Populated By | Invalidated By |
 |-----|-----|------|-------------|----------------|
-| `NavBadgeCounts` | 2 min | Static | **NavBadgesViewComponent** | `INavBadgeCacheInvalidator` (FeedbackService, ApplicationDecisionService, RoleAssignmentService, OnboardingService via cross-cuts) |
+| `NavBadgeCounts` | 2 min | Static | **NavBadgesViewComponent** | `INavBadgeCacheInvalidator` (FeedbackService, IssuesService, ApplicationDecisionService, RoleAssignmentService) |
 | `NotificationBadge:{userId}` | 2 min | Per-User | **NotificationBellViewComponent** | NotificationService, NotificationEmitter, NotificationInboxService |
 | `NotificationMeters` | 2 min | Static | NotificationMeterProvider | `INotificationMeterCacheInvalidator` (TeamService, ApplicationDecisionService) |
-| `ActiveTeams` | 10 min | Static | TeamService (`ConcurrentDictionary<Guid, CachedTeam>` projection) | TeamService, `IActiveTeamsCacheInvalidator` |
-| `claims:{userId}` | 60 sec | Per-User | (claims principal factory) | `IRoleAssignmentClaimsCacheInvalidator` (RoleAssignmentService, UserService) |
-| `shift-auth:{userId}` | 60 sec | Per-User | ShiftManagementService | ShiftManagementService, `IShiftAuthorizationInvalidator` (TeamService, UserService) |
-| `NavBadge:Voting:{userId}` | 2 min | Per-User | NotificationMeterProvider | `IVotingBadgeCacheInvalidator` (ApplicationDecisionService) |
+| `ActiveTeams` | 10 min | Static | _(retired — replaced by `CachingTeamService` `TrackedCache<Guid, TeamInfo>`; key remains in `CacheKeys.Metadata` for invalidator compat)_ | `IActiveTeamsCacheInvalidator` → `ITeamService.InvalidateActiveTeamsCache()` |
+| `claims:{userId}` | 60 sec | Per-User | (claims principal factory) | `IRoleAssignmentClaimsCacheInvalidator` (RoleAssignmentService, AccountDeletionService) |
+| `shift-auth:{userId}` | 60 sec | Per-User | ShiftManagementService | ShiftManagementService, `IShiftAuthorizationInvalidator` (TeamService, AccountDeletionService) |
+| `NavBadge:Voting:{userId}` | 2 min | Per-User | NavBadgesViewComponent, NotificationMeterProvider | `IVotingBadgeCacheInvalidator` (ApplicationDecisionService) |
 | `NavBadge:CampLeadJoinRequests:{userId}` | 2 min | Per-User | NotificationMeterProvider | `ICampLeadJoinRequestsBadgeCacheInvalidator` (CampService) |
+| `NavBadge:Issues:{userId}` | 2 min | Per-User | IssuesService | `IIssuesBadgeCacheInvalidator` (IssuesService) |
 | `camps_year_{year}` | 5 min | Per-Entity | CampService | CampService |
 | `CampSettings` | 5 min | Static | CampService | CampService |
 | `Legal:{slug}` | 1 hr | Per-Entity | LegalDocumentService | LegalDocumentService |
 | `UserTicketCount:{userId}` | 5 min | Per-User | TicketQueryService | (TTL-based only) |
+| `UserTicketHoldings:{userId}` | 5 min | Per-User | TicketQueryService | (TTL-based only) |
 | `UserIdsWithTickets` | 5 min | Static | TicketQueryService | TicketSyncService (`InvalidateTicketCaches`) |
 | `ValidAttendeeEmails` | 5 min | Static | TicketQueryService | TicketSyncService (`InvalidateTicketCaches`) |
-| `TicketEventSummary:{eventId}` | 15 min | Per-Entity | TicketTailorService (Infrastructure) | TicketSyncService |
-| `TicketDashboardStats` | 5 min | Static | TicketQueryService.GetDashboardStatsAsync (computes — no read-through cache; key reserved for future wrapper) | TicketSyncService (`InvalidateTicketCaches`) |
-| `NobodiesTeamEmails_All` | 2 min | Static | **NobodiesEmailBadgeViewComponent** | GoogleController |
+| `TicketEventSummary:{eventId}` | 15 min | Per-Entity | TicketTailorService (Infrastructure) / TicketSyncService | TicketSyncService |
+| `TicketDashboardStats` | 5 min | Static | TicketQueryService.GetDashboardStatsAsync (compute — no read-through cache; key reserved for future wrapper) | TicketSyncService (`InvalidateTicketCaches`) |
+| `NobodiesTeamEmails_All` | 2 min | Static | **NobodiesEmailBadgeViewComponent** | TeamAdminController, GoogleController, ProfileController |
 | `CampContactRateLimit:{userId}:{campId}` | 10 min | Rate Limit | CampContactService | CampContactService |
-| `magic_link_used:{tokenPrefix}` | 15 min | Rate Limit | MagicLinkService | MagicLinkService |
-| `magic_link_signup:{normalizedEmail}` | 60 sec | Rate Limit | MagicLinkService | MagicLinkService |
-| `calendar:active-events` | short-TTL | Static (request-acceleration) | CalendarService | CalendarService |
-| (`_byUserId` in CachingProfileService) | per-process | Per-User | CachingProfileService warmup + lazy load | `IFullProfileInvalidator` (Profile section + cross-section call sites) |
+| `magic_link_used:{tokenPrefix}` | 15 min | Rate Limit | MagicLinkRateLimiter (Infrastructure) | MagicLinkRateLimiter |
+| `magic_link_signup:{normalizedEmail}` | 60 sec | Rate Limit | MagicLinkRateLimiter (Infrastructure) | MagicLinkRateLimiter |
+| `calendar:active-events` | short-TTL | Static (request acceleration) | CalendarService | CalendarService |
+| `TrackedCache<Guid, FullProfile>` (CachingProfileService) | per-process | Per-User | CachingProfileService warmup + lazy load | `IFullProfileInvalidator` (ProfileService, UserService, UserEmailService, AccountMergeService, DuplicateAccountService) |
+| `TrackedCache<Guid, UserInfo>` (CachingUserService) | per-process | Per-User | CachingUserService lazy load | `IUserInfoInvalidator` + `IUserMerge` fan-out |
+| `TrackedCache<Guid, TeamInfo>` (CachingTeamService) | per-process | Per-Entity | CachingTeamService lazy load | `IActiveTeamsCacheInvalidator` + `IUserMerge` fan-out |
+| `TrackedCache<Guid, ShiftUserView>` / `TrackedCache<Guid, ShiftRotaView>` (CachingShiftViewService) | per-process | Per-User / Per-Entity | CachingShiftViewService lazy load | `IShiftViewInvalidator` (ShiftManagementService, ShiftSignupService, GeneralAvailabilityService, VolunteerTrackingService, AccountDeletionService) |
 
 ### Cache Issues / Notes
 
-1. **View components still populate two caches** that services
-   invalidate. `NavBadgeCounts` is populated by `NavBadgesViewComponent`
-   and `NotificationBadge:{userId}` by `NotificationBellViewComponent`,
-   both invalidated through the section invalidator interfaces. This is
-   the same backwards pattern as before §15 — services know how to
-   invalidate but not to recompute.
+1. **View components still populate three caches** that services
+   invalidate. `NavBadgeCounts`, `NotificationBadge:{userId}`, and
+   `NobodiesTeamEmails_All` are populated by their respective view
+   components. This is the same backwards pattern called out in prior
+   sweeps — services know how to invalidate but not to recompute.
 
-2. **`UserTicketCount:{userId}` has no explicit invalidation.** Per-user
-   ticket counts cache for 5 min and rely on TTL only;
-   `InvalidateTicketCaches` deliberately skips per-user keys at
-   ~500-user scale per the comment in `MemoryCacheExtensions`.
+2. **`UserTicketCount:{userId}` / `UserTicketHoldings:{userId}` have no
+   explicit invalidation.** Per-user ticket data caches for 5 min and
+   relies on TTL only; `InvalidateTicketCaches` deliberately skips
+   per-user keys at ~500-user scale per the comment in
+   `MemoryCacheExtensions`.
 
 3. **`TicketDashboardStats` is invalidation-only, not read-through.**
    `TicketQueryService.GetDashboardStatsAsync()` is the canonical
@@ -1148,62 +1632,66 @@ Sourced from `src/Humans.Application/CacheKeys.cs` and
    The cache key (`CacheKeys.TicketDashboardStats`) and
    `TicketSyncService`'s `InvalidateTicketCaches` invalidation are kept
    so a future caching wrapper can be added without changing the
-   invalidation contract; at ~500-user scale the recompute is cheap
-   enough that the wrapper has not been added.
+   invalidation contract.
 
-4. **`NobodiesTeamEmails_All`** is still populated by
-   `NobodiesEmailBadgeViewComponent` and invalidated by
-   `GoogleController`. No service involvement — should move into the
-   Google or Email section.
+4. **`NobodiesTeamEmails_All`** is populated by
+   `NobodiesEmailBadgeViewComponent` and invalidated by three
+   controllers (`TeamAdminController`, `GoogleController`,
+   `ProfileController`). No service involvement — should move into the
+   owning section behind a service interface.
 
-5. **CachingProfileService is in `Humans.Infrastructure`**, not
-   `Humans.Application/Services/`, because it is a transparent
-   decorator over the inner Application-layer `ProfileService`
-   (registered keyed `"profile-inner"`) and uses a plain
-   `ConcurrentDictionary` rather than `IMemoryCache` for the
-   `FullProfile` projection.
+5. **Caching decorators live in `Humans.Infrastructure`**, not
+   `Humans.Application/Services/`, because they are transparent
+   decorators over inner Application-layer services (registered keyed
+   `"profile-inner"`, `"user-inner"`, `"team-inner"`,
+   `"shift-view-inner"`) and inherit `TrackedCache<TKey, TValue>`
+   rather than using `IMemoryCache` for their projection state.
 
 ---
 
 ## Appendix A: Out-of-Service Database Access
 
 Controllers and view components that inject `HumansDbContext` or
-repositories directly, bypassing the service layer. After the §15
-migration most controllers go through services, but a few legacy
-direct-DB call sites remain.
+repositories directly, bypassing the service layer. After the
+`HUM0008` / `HUM0009` analyzers shipped (PR #493, #494), this surface
+shrank to a single dev-only path.
 
 ### Controllers
 
-Re-audited 2026-04-26. Controllers with direct `HumansDbContext` /
+Re-audited 2026-05-15. Controllers with direct `HumansDbContext` /
 repository injection:
 
 | Controller | Notes |
 |------------|-------|
-| **AdminController** | Injects `HumansDbContext`. Migration metadata reads (`Database.GetAppliedMigrationsAsync` / `GetPendingMigrationsAsync`), Hangfire lock table SQL (`DELETE FROM hangfire.lock`), and direct reads of `Users`, `Profiles`, `TicketOrders`, `TicketAttendees` for the `AudienceSegmentation` admin diagnostic. The migration/Hangfire reads are legitimate infrastructure; the audience segmentation reads should route through `IUserService` / `IProfileService` / `ITicketQueryService`. |
-| **DevLoginController** | Injects `HumansDbContext`. Camps/CampSeasons/CampLeads seeding for dev personas. Legitimate dev-only path. |
+| **DevLoginController** | Injects `HumansDbContext`. Camps / CampSeasons / CampLeads seeding for dev personas. Legitimate dev-only path; the controller is conditionally registered only when `DevAuth__Enabled=true`. |
 
-`EmailController`, `GoogleController`, `ProfileController`,
-`BoardController`, `BudgetController`, `CampAdminController`,
-`GuestController`, and `UnsubscribeController` were re-audited and
-have no direct `DbContext` / repository access — they go entirely
-through service interfaces post-§15. `GoogleController` still touches
-`IMemoryCache` directly; that's tracked under Appendix B, not here.
+`AdminController` is no longer in this list — its previous direct DB
+reads moved behind `IAdminDatabaseDiagnosticsService` (PR #494). All
+other web controllers (Email, Google, Profile, Board, Budget,
+CampAdmin, Guest, Unsubscribe, TeamAdmin, ShiftAdmin, Calendar,
+Feedback, Issues, Tickets, etc.) go entirely through service
+interfaces. Some controllers still touch `IMemoryCache` directly for
+the `NobodiesTeamEmails_All` invalidation — that's tracked under
+Appendix B, not here.
 
 ### View Components (cache populators)
 
 | Component | Cache Key |
 |-----------|-----------|
-| **NavBadgesViewComponent** | `NavBadgeCounts` (read/write) |
+| **NavBadgesViewComponent** | `NavBadgeCounts` (read/write), `NavBadge:Voting:{userId}` (read/write) |
 | **NotificationBellViewComponent** | `NotificationBadge:{userId}` (read/write) |
 | **NobodiesEmailBadgeViewComponent** | `NobodiesTeamEmails_All` (read/write) |
-| **AuditLogViewComponent**, **MyGoogleResourcesViewComponent**, **ProfileCardViewComponent** | Read via owning services after §15 audit. |
+
+All other view components read via owning services post-§15 audit.
 
 ### Background Jobs (Infrastructure)
 
 Jobs live in `Humans.Infrastructure.Jobs` and may use repositories
-directly. Mutation-heavy logic should funnel into services even from
-jobs. Specific jobs and their tables vary; treat each as an audit item
-per the Profile §15 / Teams §15 / Google §15 carve-outs.
+directly. Mutation-heavy logic funnels into services even from jobs
+(e.g. `CleanupNotificationsJob` calls `INotificationRepository` via
+`NotificationService`; `LegalDocumentSyncService` runs via Hangfire and
+goes through its own repository). Specific jobs and their tables vary;
+treat each as an audit item per the section §15 carve-outs.
 
 ---
 
@@ -1213,12 +1701,16 @@ Controllers and components that touch `IMemoryCache` directly.
 
 | Controller / Component | Cache Operation | Key |
 |------------------------|-----------------|-----|
+| **TeamAdminController** | Remove | `NobodiesTeamEmails_All` |
 | **GoogleController** | Remove | `NobodiesTeamEmails_All` |
-| **DevLoginController** | Remove | `ActiveTeams`, `claims:{userId}` (via `InvalidateUserAccess`) |
-| **NavBadgesViewComponent** | GetOrCreate | `NavBadgeCounts` |
+| **ProfileController** | Remove (×11 call sites — email edits, primary changes, deletes, etc.) | `NobodiesTeamEmails_All` |
+| **NavBadgesViewComponent** | GetOrCreate | `NavBadgeCounts`, `NavBadge:Voting:{userId}` |
 | **NotificationBellViewComponent** | GetOrCreate | `NotificationBadge:{userId}` |
 | **NobodiesEmailBadgeViewComponent** | TryGetValue / Set | `NobodiesTeamEmails_All` |
 
 The §15 work continues to push cache populators into the owning service
 behind transparent decorators. The remaining view-component populators
-are the next slice.
+plus the `NobodiesTeamEmails_All` invalidation scattered across three
+controllers are the next slice — collapsing them into an
+`INobodiesTeamEmailsService` (or `IGoogleService` extension) would
+retire the last out-of-service cache writes.
