@@ -23,14 +23,6 @@ public interface IProfileService : IApplicationService, IUserMerge
     Task<Profile?> GetProfileAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns the denormalized <see cref="FullProfile"/> projection for the
-    /// given user, stitched from Profile + User + CV entries. The caching
-    /// decorator serves dict hits synchronously; the base implementation loads
-    /// from repositories each call.
-    /// </summary>
-    ValueTask<FullProfile?> GetFullProfileAsync(Guid userId, CancellationToken ct = default);
-
-    /// <summary>
     /// Batched profile fetch keyed by user id. Missing users are absent
     /// from the returned dictionary. Used by cross-section services that
     /// need to stitch profile slices in memory instead of pulling them
@@ -101,28 +93,6 @@ public interface IProfileService : IApplicationService, IUserMerge
 
     Task<IReadOnlyList<(Guid ProfileId, Guid UserId, long UpdatedAtTicks)>>
         GetCustomPictureInfoByUserIdsAsync(IEnumerable<Guid> userIds, CancellationToken ct = default);
-
-    /// <summary>
-    /// Single canonical person-search method. Matches <paramref name="query"/>
-    /// against the buckets named by <paramref name="fields"/> and returns up
-    /// to <paramref name="limit"/> matches in unspecified order — callers
-    /// sort + take(N) at the presentation layer per
-    /// <c>memory/architecture/display-sort-in-controllers.md</c>.
-    ///
-    /// <para>Implicit scope: the service always filters to "not rejected,
-    /// not deleted" — the only population anyone is searching. Emergency
-    /// contact data is never reachable regardless of which bits are set.</para>
-    ///
-    /// <para>Auth boundary is the controller per design-rules §6: services
-    /// are auth-free, so a non-admin endpoint passing
-    /// <see cref="PersonSearchFields.Admin"/> is a programmer error caught
-    /// in code review, not a runtime check.</para>
-    /// </summary>
-    Task<IReadOnlyList<HumanSearchResult>> SearchProfilesAsync(
-        string query,
-        PersonSearchFields fields,
-        int limit = 10,
-        CancellationToken ct = default);
 
     /// <summary>
     /// Reconciles the user's CV entries (volunteer history) with the provided set.

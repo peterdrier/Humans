@@ -107,16 +107,6 @@ public class ProfileArchitectureTests
     }
 
     [HumansFact]
-    public void CachingProfileService_lives_in_infrastructure_and_implements_public_interfaces()
-    {
-        typeof(CachingProfileService).Namespace
-            .Should().Be("Humans.Infrastructure.Services.Profiles",
-                because: "caching decorators live in Infrastructure");
-        typeof(CachingProfileService).Should().BeAssignableTo<IProfileService>();
-        typeof(CachingProfileService).Should().BeAssignableTo<IFullProfileInvalidator>();
-    }
-
-    [HumansFact]
     public void EmailProblemsService_depends_only_on_section_services_not_repositories()
     {
         var ctor = typeof(EmailProblemsService).GetConstructors().Single();

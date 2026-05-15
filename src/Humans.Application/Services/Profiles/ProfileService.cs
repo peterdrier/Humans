@@ -80,25 +80,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
 
     public async Task<Domain.Entities.Profile?> GetProfileAsync(Guid userId, CancellationToken ct = default)
     {
-        // The per-user profile cache (2-min TTL) is managed by CachingProfileService decorator.
-        // This inner method always hits the repository.
         return await _profileRepository.GetByUserIdReadOnlyAsync(userId, ct);
-    }
-
-    public async ValueTask<FullProfile?> GetFullProfileAsync(Guid userId, CancellationToken ct = default)
-    {
-        // GetByUserIdReadOnlyAsync includes VolunteerHistory; GetByUserIdAsync does not.
-        var profile = await _profileRepository.GetByUserIdReadOnlyAsync(userId, ct);
-        if (profile is null) return null;
-
-        var user = await _userService.GetByIdAsync(userId, ct);
-        if (user is null) return null;
-
-        var userEmails = await _userEmailRepository.GetByUserIdReadOnlyAsync(userId, ct);
-
-        // Issue #635 (§15i): pass userEmails directly so PrimaryEmail /
-        // AllVerifiedEmails / GoogleEmail derive from already-loaded data.
-        return FullProfile.Create(profile, user, profile.VolunteerHistory.ToList(), userEmails);
     }
 
     public async Task<IReadOnlyDictionary<Guid, Domain.Entities.Profile>> GetByUserIdsAsync(
@@ -439,40 +421,6 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         GetCustomPictureInfoByUserIdsAsync(IEnumerable<Guid> userIds, CancellationToken ct = default) =>
         _profileRepository.GetCustomPictureInfoByUserIdsAsync(userIds, ct);
 
-    /// <summary>
-    /// Builds a <see cref="FullProfile"/> snapshot from repositories. Used by the
-    /// base <see cref="ProfileService"/> as the DB-backed fallback for
-    /// <see cref="SearchProfilesAsync"/>; the caching decorator overrides that
-    /// method to read from its in-memory dict instead.
-    /// </summary>
-    private async Task<IReadOnlyList<FullProfile>> BuildFullProfileSnapshotAsync(CancellationToken ct)
-    {
-        var profiles = await _profileRepository.GetAllAsync(ct);
-        if (profiles.Count == 0) return [];
-
-        var userIds = profiles.Select(p => p.UserId).ToList();
-        var users = await _userService.GetByIdsAsync(userIds, ct);
-
-        var allUserEmails = await _userEmailRepository.GetAllAsync(ct);
-        var emailsByUserId = allUserEmails
-            .GroupBy(e => e.UserId)
-            .ToDictionary(g => g.Key, g => (IReadOnlyList<UserEmail>)g.ToList());
-
-        var result = new List<FullProfile>(profiles.Count);
-        foreach (var profile in profiles)
-        {
-            if (!users.TryGetValue(profile.UserId, out var user))
-                continue;
-
-            var userEmails = emailsByUserId.TryGetValue(profile.UserId, out var list)
-                ? list
-                : Array.Empty<UserEmail>();
-            result.Add(FullProfile.Create(profile, user, profile.VolunteerHistory.ToList(), userEmails));
-        }
-
-        return result;
-    }
-
     public async Task<(bool CanAdd, int MinutesUntilResend, Guid? PendingEmailId)>
         GetEmailCooldownInfoAsync(Guid pendingEmailId, CancellationToken ct = default)
     {
@@ -490,43 +438,6 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         }
 
         return (true, 0, null);
-    }
-
-    public async Task<IReadOnlyList<HumanSearchResult>> SearchProfilesAsync(
-        string query,
-        PersonSearchFields fields,
-        int limit = 10,
-        CancellationToken ct = default)
-    {
-        if (fields == PersonSearchFields.None || string.IsNullOrWhiteSpace(query) || limit <= 0)
-            return Array.Empty<HumanSearchResult>();
-
-        var snapshot = await BuildFullProfileSnapshotAsync(ct);
-
-        // Implicit scope: skip rejected profiles unconditionally.
-        // (Deleted profiles never reach FullProfile.Create because the
-        // owning User row is gone or anonymized; rejected profiles are
-        // still present and need an explicit filter.)
-        var eligible = snapshot.Where(p => !p.IsRejected).ToList();
-
-        IReadOnlyDictionary<Guid, IReadOnlyList<ContactField>>? contactFieldsByProfileId = null;
-        if ((fields & (PersonSearchFields.Bio | PersonSearchFields.Admin)) != PersonSearchFields.None)
-        {
-            contactFieldsByProfileId = await LoadContactFieldsByProfileIdAsync(ct);
-        }
-
-        return PersonSearchMatcher.Match(eligible, query, fields, contactFieldsByProfileId, limit);
-    }
-
-    private async Task<IReadOnlyDictionary<Guid, IReadOnlyList<ContactField>>>
-        LoadContactFieldsByProfileIdAsync(CancellationToken ct)
-    {
-        var all = await _contactFieldRepository.GetAllAsync(ct);
-        return all
-            .GroupBy(cf => cf.ProfileId)
-            .ToDictionary(
-                g => g.Key,
-                g => (IReadOnlyList<ContactField>)g.ToList());
     }
 
     public async Task SaveCVEntriesAsync(Guid userId, IReadOnlyList<CVEntry> entries, CancellationToken ct = default)
