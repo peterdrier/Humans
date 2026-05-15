@@ -1,5 +1,4 @@
 using Humans.Application.Configuration;
-using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Web.Authorization;

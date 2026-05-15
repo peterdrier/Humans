@@ -2,8 +2,6 @@ using AwesomeAssertions;
 using Microsoft.Extensions.Options;
 using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Services;
-using Humans.Testing;
-using Xunit;
 
 namespace Humans.Application.Tests.Services;
 

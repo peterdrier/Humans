@@ -1,6 +1,3 @@
-using Humans.Application.Interfaces;
-using Humans.Domain.Enums;
-
 namespace Humans.Application.Interfaces.Onboarding;
 
 public record OnboardingResult(bool Success, string? ErrorKey = null);

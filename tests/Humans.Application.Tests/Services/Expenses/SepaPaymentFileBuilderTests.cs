@@ -4,7 +4,6 @@ using Humans.Application.Services.Expenses;
 using Humans.Application.Services.Expenses.Dtos;
 using Humans.Domain.Enums;
 using NodaTime;
-using Xunit;
 
 namespace Humans.Application.Tests.Services.Expenses;
 

@@ -7,7 +7,6 @@ using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Repositories.Tickets;
-using Xunit;
 using TicketQueryService = Humans.Application.Services.Tickets.TicketQueryService;
 
 namespace Humans.Application.Tests.Architecture;

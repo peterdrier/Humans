@@ -7,7 +7,6 @@ using Humans.Infrastructure.Repositories.Events;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using NodaTime.Testing;
-using Xunit;
 
 namespace Humans.Application.Tests.Repositories;
 
@@ -43,7 +42,7 @@ public sealed class EventRepositoryTests : IDisposable
 
         var result = await _repo.GetActiveCategoriesAsync();
 
-        result.Select(c => c.Id).Should().Equal([first.Id, second.Id]);
+        result.Select(c => c.Id).Should().Equal(first.Id, second.Id);
         result.Should().NotContain(c => c.Id == inactive.Id);
     }
 
@@ -71,7 +70,7 @@ public sealed class EventRepositoryTests : IDisposable
 
         var result = await _repo.GetUserSubmissionsAsync(userId);
 
-        result.Select(e => e.Id).Should().Equal([newer.Id, older.Id]);
+        result.Select(e => e.Id).Should().Equal(newer.Id, older.Id);
     }
 
     [HumansFact]
@@ -134,7 +133,7 @@ public sealed class EventRepositoryTests : IDisposable
 
         var result = await _repo.GetEventsByStatusAsync(EventStatus.Pending);
 
-        result.Select(e => e.Id).Should().Equal([older.Id, newer.Id]);
+        result.Select(e => e.Id).Should().Equal(older.Id, newer.Id);
     }
 
     [HumansFact]
@@ -153,7 +152,7 @@ public sealed class EventRepositoryTests : IDisposable
 
         var result = await _repo.GetFavouritesWithEventsAsync(userId);
 
-        result.Select(f => f.GuideEventId).Should().Equal([earlier.Id, later.Id]);
+        result.Select(f => f.GuideEventId).Should().Equal(earlier.Id, later.Id);
     }
 
     [HumansFact]

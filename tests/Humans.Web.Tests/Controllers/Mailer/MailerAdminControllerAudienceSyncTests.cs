@@ -13,7 +13,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
-using Xunit;
 
 namespace Humans.Web.Tests.Controllers.Mailer;
 
@@ -52,7 +51,7 @@ public class MailerAdminControllerAudienceSyncTests
                 Candidates: 10, ExcludedUnsubscribed: 1,
                 Created: 5, Assigned: 3, AlreadyAssigned: 1, Unassigned: 0, Errors: 0));
 
-        var ctrl = BuildSut(new[] { audience });
+        var ctrl = BuildSut([audience]);
 
         var result = await ctrl.SyncAudience("ticket-no-shifts", CancellationToken.None);
 
@@ -65,7 +64,7 @@ public class MailerAdminControllerAudienceSyncTests
     [HumansFact]
     public async Task SyncAudience_UnknownKey_Returns404()
     {
-        var ctrl = BuildSut(Array.Empty<IMailerAudience>());
+        var ctrl = BuildSut([]);
 
         var result = await ctrl.SyncAudience("nope", CancellationToken.None);
 
@@ -82,7 +81,7 @@ public class MailerAdminControllerAudienceSyncTests
         _audienceSync.SyncAsync(audience, Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
             .Returns<Task<AudienceSyncResult>>(_ => throw new InvalidOperationException("prefix violation"));
 
-        var ctrl = BuildSut(new[] { audience });
+        var ctrl = BuildSut([audience]);
 
         var result = await ctrl.SyncAudience("bad-audience", CancellationToken.None);
 
@@ -99,8 +98,8 @@ public class MailerAdminControllerAudienceSyncTests
 
         var http = new DefaultHttpContext
         {
-            User = new ClaimsPrincipal(new ClaimsIdentity(
-                new[] { new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString()) },
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString())
+                ],
                 "test")),
         };
         ctrl.ControllerContext = new ControllerContext { HttpContext = http };

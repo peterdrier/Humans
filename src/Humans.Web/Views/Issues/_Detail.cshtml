@@ -156,7 +156,7 @@
                             @Html.AntiForgeryToken()
                             <select name="Section" class="form-select form-select-sm detail-auto-submit">
                                 <option value="">@Localizer["Issue_Unspecified"]</option>
-                                @foreach (var kvp in Humans.Web.Models.AreaLabelMap.Map)
+                                @foreach (var kvp in AreaLabelMap.Map)
                                 {
                                     if (string.Equals(Model.Section, kvp.Key, StringComparison.Ordinal))
                                     {
@@ -178,7 +178,7 @@
 
                 <dt class="col-5">@Localizer["Issue_Reporter"]</dt>
                 <dd class="col-7">
-                    <vc:human user-id="@Model.ReporterUserId" link="@(Model.IsHandler ? Humans.Web.ViewComponents.HumanLink.Admin : Humans.Web.ViewComponents.HumanLink.Public)" />
+                    <vc:human user-id="@Model.ReporterUserId" link="@(Model.IsHandler ? HumanLink.Admin : HumanLink.Public)" />
                 </dd>
 
                 <dt class="col-5">@Localizer["Issue_Assignee"]</dt>

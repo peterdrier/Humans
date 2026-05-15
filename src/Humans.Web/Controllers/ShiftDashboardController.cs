@@ -1,10 +1,8 @@
 using Humans.Application.Enums;
 using Humans.Application.Interfaces.Shifts;
-using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Authorization;
-using Humans.Web.Extensions;
 using Humans.Web.Helpers;
 using Humans.Web.Models;
 using Humans.Web.Models.Shifts;

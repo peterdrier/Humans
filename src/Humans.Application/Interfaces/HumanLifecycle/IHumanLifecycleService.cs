@@ -1,4 +1,3 @@
-using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Onboarding;
 
 namespace Humans.Application.Interfaces.HumanLifecycle;

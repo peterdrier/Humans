@@ -88,7 +88,7 @@ public sealed class VolunteerTrackingController : HumansControllerBase
             .ToList();
 
         var unbookedSorted = hideUnbookedSection
-            ? new List<VolunteerCohortRow>()
+            ? []
             : data.UnbookedCohort
                 .OrderByDescending(r => r.UnbookedCount)
                 .ThenBy(r => r.FirstAvailableDay)

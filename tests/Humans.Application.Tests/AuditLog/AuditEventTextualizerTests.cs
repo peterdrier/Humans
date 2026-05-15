@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.Services.AuditLog;
 using Humans.Domain.Enums;
-using Xunit;
 
 namespace Humans.Application.Tests.AuditLog;
 

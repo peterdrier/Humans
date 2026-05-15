@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
-using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Authorization;
@@ -58,7 +57,7 @@ public class FeedbackController : HumansControllerBase
             .Where(u => u.IsActive)
             .Select(u => u.Id)
             .ToList();
-        if (activeIds.Count == 0) return new List<AssigneeOption>();
+        if (activeIds.Count == 0) return [];
 
         var users = await _userService.GetByIdsAsync(activeIds, ct);
         var profiles = await _profileService.GetByUserIdsAsync(activeIds, ct);

@@ -5,7 +5,6 @@ using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Repositories.Tickets;
-using Xunit;
 using TicketSyncService = Humans.Application.Services.Tickets.TicketSyncService;
 
 namespace Humans.Application.Tests.Architecture;

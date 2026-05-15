@@ -1,4 +1,3 @@
-using Humans.Application.Interfaces;
 using System.ComponentModel.DataAnnotations;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;

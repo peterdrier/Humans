@@ -1,4 +1,3 @@
-using Humans.Application.Interfaces;
 using Humans.Application.DTOs.EmailProblems;
 
 namespace Humans.Application.Interfaces.Profiles;

@@ -5,7 +5,6 @@ using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
-using Humans.Testing;
 using Humans.Web.Controllers;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
@@ -31,8 +30,8 @@ public class OnboardingWidgetControllerDispatcherTests
     private readonly IShiftManagementService _shiftMgmt = Substitute.For<IShiftManagementService>();
     private readonly IConsentService _consents = Substitute.For<IConsentService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
-    private readonly IStringLocalizer<Humans.Web.SharedResource> _localizer =
-        Substitute.For<IStringLocalizer<Humans.Web.SharedResource>>();
+    private readonly IStringLocalizer<SharedResource> _localizer =
+        Substitute.For<IStringLocalizer<SharedResource>>();
 
     public OnboardingWidgetControllerDispatcherTests()
     {
@@ -50,8 +49,7 @@ public class OnboardingWidgetControllerDispatcherTests
         var ctrl = new OnboardingWidgetController(_userManager, _state, _profile, _signups, _shiftMgmt, _consents, _userService, _localizer);
         var http = new DefaultHttpContext
         {
-            User = new ClaimsPrincipal(new ClaimsIdentity(
-                new[] { new Claim(ClaimTypes.NameIdentifier, userId.ToString()) },
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.ToString())],
                 "test")),
         };
         ctrl.ControllerContext = new ControllerContext { HttpContext = http };

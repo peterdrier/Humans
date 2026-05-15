@@ -5,7 +5,6 @@ using NodaTime;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Gdpr;
-using Humans.Application.Models;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;

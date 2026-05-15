@@ -2,7 +2,6 @@ using System.Globalization;
 using Hangfire;
 using Microsoft.Extensions.Logging;
 using NodaTime;
-using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Governance;
@@ -89,7 +88,7 @@ public class TermRenewalReminderJob : IRecurringJob
                 .Distinct()
                 .ToList();
             var applicantsById = applicantIds.Count == 0
-                ? new Dictionary<Guid, Humans.Application.UserInfo>()
+                ? new Dictionary<Guid, Application.UserInfo>()
                 : (await _userService.GetUserInfosAsync(applicantIds, cancellationToken))
                     .ToDictionary(kv => kv.Key, kv => kv.Value);
 

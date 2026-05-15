@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Infrastructure.Repositories.Shifts;
-using Xunit;
 using VolunteerTrackingService = Humans.Application.Services.Shifts.VolunteerTrackingService;
 
 namespace Humans.Application.Tests.Architecture;

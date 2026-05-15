@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Http;
 using AwesomeAssertions;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
@@ -7,7 +6,6 @@ using Humans.Integration.Tests.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
-using Xunit;
 
 namespace Humans.Integration.Tests.Controllers;
 

@@ -2,7 +2,6 @@ using AwesomeAssertions;
 using Humans.Application.Services.Store;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Xunit;
 
 namespace Humans.Application.Tests.Services.Store;
 

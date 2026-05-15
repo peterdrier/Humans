@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Humans.Application.DTOs;
-using Humans.Application.Extensions;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
@@ -61,12 +60,12 @@ public sealed class TicketTransferService : ITicketTransferService
 
     private static readonly JsonSerializerOptions VendorStepsJsonOptions =
         new JsonSerializerOptions(JsonSerializerDefaults.Web)
-            .ConfigureForNodaTime(NodaTime.DateTimeZoneProviders.Tzdb);
+            .ConfigureForNodaTime(DateTimeZoneProviders.Tzdb);
 
     private static void AppendStep(TicketTransferRequest request, TicketTransferVendorStep step)
     {
         var list = JsonSerializer.Deserialize<List<TicketTransferVendorStep>>(
-            request.VendorStepsJson, VendorStepsJsonOptions) ?? new();
+            request.VendorStepsJson, VendorStepsJsonOptions) ?? [];
         list.Add(step);
         request.VendorStepsJson = JsonSerializer.Serialize(list, VendorStepsJsonOptions);
     }
@@ -81,7 +80,7 @@ public sealed class TicketTransferService : ITicketTransferService
     public async Task<IReadOnlyList<ReceiverLookupResultDto>> LookupReceiversAsync(
         string query, Guid senderUserId, CancellationToken ct = default)
     {
-        if (string.IsNullOrWhiteSpace(query)) return Array.Empty<ReceiverLookupResultDto>();
+        if (string.IsNullOrWhiteSpace(query)) return [];
         var trimmed = query.Trim();
 
         // Email queries: exact match only, never fuzzy — don't leak addresses.
@@ -89,7 +88,7 @@ public sealed class TicketTransferService : ITicketTransferService
         {
             var userId = await _userEmailService.GetUserIdByExactEmailAsync(trimmed, ct);
             if (userId is null || userId == senderUserId)
-                return Array.Empty<ReceiverLookupResultDto>();
+                return [];
             var card = await BuildReceiverCardAsync(userId.Value, ct);
             return card is null
                 ? Array.Empty<ReceiverLookupResultDto>()
@@ -362,7 +361,7 @@ public sealed class TicketTransferService : ITicketTransferService
         var siblingIds = order is not null
             ? (await _ticketRepo.GetVendorTicketIdsForOrderAsync(order.Id, ct))
                 .OrderBy(s => s, StringComparer.Ordinal).ToList()
-            : (IReadOnlyList<string>)Array.Empty<string>();
+            : (IReadOnlyList<string>)[];
 
         // Cards fall back to a minimal stub if a profile somehow can't be built
         // (e.g. user soft-deleted between request and admin review). The row's
@@ -401,7 +400,7 @@ public sealed class TicketTransferService : ITicketTransferService
         }
 
         var steps = JsonSerializer.Deserialize<List<TicketTransferVendorStep>>(
-            request.VendorStepsJson, VendorStepsJsonOptions) ?? new();
+            request.VendorStepsJson, VendorStepsJsonOptions) ?? [];
         var lastVoid = steps.LastOrDefault(s =>
             s.Kind == TicketTransferVendorStepKind.Void && s.Success && s.VendorReferenceId is not null);
         if (lastVoid is null)
@@ -608,8 +607,7 @@ public sealed class TicketTransferService : ITicketTransferService
         // ticket while the vendor has already committed the void+reissue.
         var now = _clock.GetCurrentInstant();
         attendee.Status = TicketAttendeeStatus.Void;
-        await _ticketRepo.UpsertAttendeesAsync(new[]
-        {
+        await _ticketRepo.UpsertAttendeesAsync([
             new TicketAttendee
             {
                 Id = Guid.NewGuid(),
@@ -624,8 +622,8 @@ public sealed class TicketTransferService : ITicketTransferService
                 SyncedAt = now,
                 MatchedUserId = request.ReceiverUserId,
             },
-            attendee,
-        }, ct);
+            attendee
+        ], ct);
         AppendStep(request, new TicketTransferVendorStep(
             Kind: TicketTransferVendorStepKind.LocalWriteback,
             Success: true,
@@ -674,7 +672,7 @@ public sealed class TicketTransferService : ITicketTransferService
     private async Task<IReadOnlyList<TicketTransferRowDto>> BuildRowDtosAsync(
         IReadOnlyList<TicketTransferRequest> rows, CancellationToken ct)
     {
-        if (rows.Count == 0) return Array.Empty<TicketTransferRowDto>();
+        if (rows.Count == 0) return [];
 
         var userIds = new HashSet<Guid>();
         foreach (var r in rows)
@@ -698,11 +696,11 @@ public sealed class TicketTransferService : ITicketTransferService
 
     private static TicketTransferRowDto BuildRowDto(
         TicketTransferRequest r,
-        IReadOnlyDictionary<Guid, Humans.Application.UserInfo> users,
+        IReadOnlyDictionary<Guid, UserInfo> users,
         TicketAttendee attendee)
     {
         users.TryGetValue(r.SenderUserId, out var sender);
-        Humans.Application.UserInfo? decider = null;
+        UserInfo? decider = null;
         if (r.DecidedByUserId is { } deciderId) users.TryGetValue(deciderId, out decider);
 
         return new TicketTransferRowDto(

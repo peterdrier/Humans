@@ -8,7 +8,6 @@ using Humans.Application.DTOs;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Services;
-using Xunit;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Notifications;
 

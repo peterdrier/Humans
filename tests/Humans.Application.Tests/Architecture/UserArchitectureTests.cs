@@ -20,12 +20,12 @@ namespace Humans.Application.Tests.Architecture;
 /// </summary>
 public class UserArchitectureTests
 {
-    public static TheoryData<Type> UserServices => new()
-    {
+    public static TheoryData<Type> UserServices =>
+    [
         typeof(UserService),
         typeof(AccountProvisioningService),
-        typeof(UnsubscribeService),
-    };
+        typeof(UnsubscribeService)
+    ];
 
     public static TheoryData<Type, Type> RequiredConstructorEdges => new()
     {

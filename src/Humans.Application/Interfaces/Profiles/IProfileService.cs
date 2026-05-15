@@ -1,8 +1,6 @@
-using Humans.Application.Interfaces;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Users;
-using Humans.Application.Services.Profiles;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;

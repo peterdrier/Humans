@@ -23,10 +23,10 @@ else
         {
             <div class="list-group-item">
                 <div class="d-flex align-items-center gap-3">
-                    <vc:human user-id="@result.UserId" layout="Avatar" size="48" link="@(result.AdminDetailUrl is not null ? Humans.Web.ViewComponents.HumanLink.Admin : Humans.Web.ViewComponents.HumanLink.Public)" />
+                    <vc:human user-id="@result.UserId" layout="Avatar" size="48" link="@(result.AdminDetailUrl is not null ? HumanLink.Admin : HumanLink.Public)" />
                     <div class="flex-grow-1">
                         <div class="d-flex align-items-center gap-2 flex-wrap">
-                            <strong><vc:human user-id="@result.UserId" link="@(result.AdminDetailUrl is not null ? Humans.Web.ViewComponents.HumanLink.Admin : Humans.Web.ViewComponents.HumanLink.Public)" /></strong>
+                            <strong><vc:human user-id="@result.UserId" link="@(result.AdminDetailUrl is not null ? HumanLink.Admin : HumanLink.Public)" /></strong>
                             @if (!string.IsNullOrEmpty(result.AdminEmail))
                             {
                                 <small class="text-muted">@result.AdminEmail</small>

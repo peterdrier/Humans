@@ -22,7 +22,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Xunit;
 using IssuesApplicationService = Humans.Application.Services.Issues.IssuesService;
 
 namespace Humans.Application.Tests.Services;
@@ -180,7 +179,7 @@ public class IssuesServiceTests : IDisposable
             screenshot: null);
 
         capturedRecipients.Should().NotBeNull();
-        capturedRecipients.Should().BeEquivalentTo(new[] { adminId, ticketAdminId });
+        capturedRecipients.Should().BeEquivalentTo([adminId, ticketAdminId]);
         capturedRecipients.Should().NotContain(reporterId);
     }
 
@@ -1030,7 +1029,7 @@ public class IssuesServiceTests : IDisposable
             Path.GetTempPath(), "wwwroot", "uploads", "issues", issueId.ToString());
         Directory.CreateDirectory(screenshotDir);
         var screenshotFile = Path.Combine(screenshotDir, "shot.png");
-        await File.WriteAllBytesAsync(screenshotFile, new byte[] { 1, 2, 3 });
+        await File.WriteAllBytesAsync(screenshotFile, [1, 2, 3]);
 
         try
         {

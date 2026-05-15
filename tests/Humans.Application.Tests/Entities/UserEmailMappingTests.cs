@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
-using Humans.Testing;
 using Microsoft.EntityFrameworkCore;
 
 namespace Humans.Application.Tests.Entities;

@@ -2,7 +2,6 @@ using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Jobs;
-using Humans.Infrastructure.Services;
 using TicketsTicketSyncService = Humans.Application.Services.Tickets.TicketSyncService;
 using TicketsTicketQueryService = Humans.Application.Services.Tickets.TicketQueryService;
 using Humans.Application.Interfaces.Tickets;

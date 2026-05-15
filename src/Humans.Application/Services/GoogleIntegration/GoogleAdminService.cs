@@ -5,11 +5,8 @@ using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
-using Humans.Domain.Constants;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging;
-using NodaTime;
 
 namespace Humans.Application.Services.GoogleIntegration;
 
@@ -101,7 +98,7 @@ public sealed class GoogleAdminService : IGoogleAdminService
             // Batch-load users for matched emails
             var matchedUserIds = matchByEmail.Values.Select(m => m.UserId).Distinct().ToList();
             var usersById = matchedUserIds.Count == 0
-                ? new Dictionary<Guid, Humans.Application.UserInfo>()
+                ? new Dictionary<Guid, UserInfo>()
                 : (await _userService.GetUserInfosAsync(matchedUserIds, ct))
                     .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
@@ -716,7 +713,7 @@ public sealed class GoogleAdminService : IGoogleAdminService
                 {
                     var emails = emailsByUserId.TryGetValue(u.Id, out var list)
                         ? list
-                        : Array.Empty<UserEmailRowSnapshot>();
+                        : [];
                     var googleEmail = emails
                         .Where(e => e.IsVerified && e.IsGoogle)
                         .Select(e => e.Email)

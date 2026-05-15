@@ -45,11 +45,10 @@ public class StoreServiceTests
     public async Task GetIndexDataAsync_returns_active_year_catalog_and_empty_lead_sections()
     {
         _repo.GetActiveProductsForYearAsync(2026, Arg.Any<CancellationToken>())
-            .Returns(new[]
-            {
+            .Returns([
                 MakeProduct(name: "Tent"),
                 MakeProduct(name: "Blanket")
-            });
+            ]);
 
         var result = await _service.GetIndexDataAsync(Guid.NewGuid(), isPrivilegedReader: false);
 
@@ -80,11 +79,10 @@ public class StoreServiceTests
             PaymentsTotalEur: 0m,
             BalanceEur: 25m);
         _repo.GetActiveProductsForYearAsync(2026, Arg.Any<CancellationToken>())
-            .Returns(new[]
-            {
+            .Returns([
                 MakeProduct(name: "Tent"),
                 MakeProduct(name: "Blanket")
-            });
+            ]);
         _campService.GetCampSeasonByIdAsync(order.CampSeasonId, Arg.Any<CancellationToken>())
             .Returns(new CampSeasonLookup(order.CampSeasonId, Guid.NewGuid(), 2026, "Camp Test", null));
         _stripeService.IsStoreCheckoutConfigured.Returns(true);
@@ -102,7 +100,7 @@ public class StoreServiceTests
     public async Task GetActiveCatalogAsync_returns_empty_for_empty_catalog()
     {
         _repo.GetActiveProductsForYearAsync(2026, Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<StoreProduct>());
+            .Returns([]);
 
         var result = await _service.GetActiveCatalogAsync(2026);
 
@@ -114,7 +112,7 @@ public class StoreServiceTests
     {
         var p = MakeProduct(name: "Tent", price: 50m, vat: 21m, deposit: 100m);
         _repo.GetActiveProductsForYearAsync(2026, Arg.Any<CancellationToken>())
-            .Returns(new[] { p });
+            .Returns([p]);
 
         var result = await _service.GetActiveCatalogAsync(2026);
 
@@ -129,12 +127,11 @@ public class StoreServiceTests
     public async Task GetActiveCatalogAsync_preserves_repository_order()
     {
         _repo.GetActiveProductsForYearAsync(2026, Arg.Any<CancellationToken>())
-            .Returns(new[]
-            {
+            .Returns([
                 MakeProduct(name: "Tent"),
                 MakeProduct(name: "Cup"),
                 MakeProduct(name: "Blanket")
-            });
+            ]);
 
         var result = await _service.GetActiveCatalogAsync(2026);
 
@@ -152,7 +149,7 @@ public class StoreServiceTests
         activeCup.IsActive = true;
 
         _repo.GetAllProductsForYearAsync(2026, Arg.Any<CancellationToken>())
-            .Returns(new[] { activeTent, inactiveBag, activeCup });
+            .Returns([activeTent, inactiveBag, activeCup]);
 
         var result = await _service.GetAllProductsForYearAsync(2026);
 
@@ -177,7 +174,7 @@ public class StoreServiceTests
             }
         };
         _repo.GetOrdersForCampSeasonAsync(campSeasonId, Arg.Any<CancellationToken>())
-            .Returns(new[] { order });
+            .Returns([order]);
         _repo.GetProductNamesByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, string> { [product.Id] = product.Name });
 
@@ -772,7 +769,7 @@ public class StoreServiceTests
         // Verify the service relays that contract: a deactivated product is not in the
         // collection returned from the repo.
         _repo.GetActiveProductsForYearAsync(2026, Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<StoreProduct>());
+            .Returns([]);
 
         var result = await _service.GetActiveCatalogAsync(2026);
 

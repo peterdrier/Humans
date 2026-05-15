@@ -6,7 +6,6 @@ using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Tickets;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
-using Xunit;
 
 namespace Humans.Application.Tests.Repositories;
 
@@ -80,14 +79,10 @@ public sealed class TicketingBudgetRepositoryTests : IDisposable
     public async Task GetPaidOrderSummariesAsync_ExcludesNonPaidOrders()
     {
         var purchasedAt = Instant.FromUtc(2026, 3, 1, 12, 0);
-        await SeedOrderAsync(TicketPaymentStatus.Paid, 50m, 1.5m, 0.5m, purchasedAt,
-            new[] { TicketAttendeeStatus.Valid });
-        await SeedOrderAsync(TicketPaymentStatus.Pending, 80m, 2m, 0.8m, purchasedAt,
-            new[] { TicketAttendeeStatus.Valid });
-        await SeedOrderAsync(TicketPaymentStatus.Refunded, 90m, 2m, 0.9m, purchasedAt,
-            new[] { TicketAttendeeStatus.Valid });
-        await SeedOrderAsync(TicketPaymentStatus.Cancelled, 100m, 0m, 0m, purchasedAt,
-            new[] { TicketAttendeeStatus.Void });
+        await SeedOrderAsync(TicketPaymentStatus.Paid, 50m, 1.5m, 0.5m, purchasedAt, [TicketAttendeeStatus.Valid]);
+        await SeedOrderAsync(TicketPaymentStatus.Pending, 80m, 2m, 0.8m, purchasedAt, [TicketAttendeeStatus.Valid]);
+        await SeedOrderAsync(TicketPaymentStatus.Refunded, 90m, 2m, 0.9m, purchasedAt, [TicketAttendeeStatus.Valid]);
+        await SeedOrderAsync(TicketPaymentStatus.Cancelled, 100m, 0m, 0m, purchasedAt, [TicketAttendeeStatus.Void]);
 
         var result = await _repo.GetPaidOrderSummariesAsync();
 
@@ -99,14 +94,13 @@ public sealed class TicketingBudgetRepositoryTests : IDisposable
     public async Task GetPaidOrderSummariesAsync_CountsOnlyValidAndCheckedInAttendees()
     {
         var purchasedAt = Instant.FromUtc(2026, 3, 1, 12, 0);
-        await SeedOrderAsync(TicketPaymentStatus.Paid, 200m, 6m, 2m, purchasedAt, new[]
-        {
+        await SeedOrderAsync(TicketPaymentStatus.Paid, 200m, 6m, 2m, purchasedAt, [
             TicketAttendeeStatus.Valid,      // counted
             TicketAttendeeStatus.CheckedIn,  // counted
             TicketAttendeeStatus.Void,       // excluded
             TicketAttendeeStatus.Valid,      // counted
-            TicketAttendeeStatus.Void,       // excluded
-        });
+            TicketAttendeeStatus.Void // excluded
+        ]);
 
         var result = await _repo.GetPaidOrderSummariesAsync();
 
@@ -119,7 +113,7 @@ public sealed class TicketingBudgetRepositoryTests : IDisposable
     {
         var purchasedAt = Instant.FromUtc(2026, 3, 5, 10, 30);
         await SeedOrderAsync(TicketPaymentStatus.Paid, 150m, stripeFee: null, applicationFee: null, purchasedAt,
-            new[] { TicketAttendeeStatus.Valid });
+            [TicketAttendeeStatus.Valid]);
 
         var result = await _repo.GetPaidOrderSummariesAsync();
 
@@ -136,8 +130,8 @@ public sealed class TicketingBudgetRepositoryTests : IDisposable
     public async Task GetPaidOrderSummariesAsync_ReturnsZeroTicketCount_WhenAllAttendeesVoid()
     {
         var purchasedAt = Instant.FromUtc(2026, 3, 1, 12, 0);
-        await SeedOrderAsync(TicketPaymentStatus.Paid, 50m, 1m, 0.3m, purchasedAt,
-            new[] { TicketAttendeeStatus.Void, TicketAttendeeStatus.Void });
+        await SeedOrderAsync(TicketPaymentStatus.Paid, 50m, 1m, 0.3m, purchasedAt, [TicketAttendeeStatus.Void, TicketAttendeeStatus.Void
+        ]);
 
         var result = await _repo.GetPaidOrderSummariesAsync();
 

@@ -8,7 +8,6 @@ using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Testing;
 using Humans.Web.Authorization;
 using Humans.Web.Constants;
 using Humans.Web.Controllers;
@@ -49,8 +48,8 @@ public class VolunteerTrackingControllerTests
     private readonly IVolunteerTrackingService _service = Substitute.For<IVolunteerTrackingService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IAuditLogService _auditLog = Substitute.For<IAuditLogService>();
-    private readonly IStringLocalizer<Humans.Web.SharedResource> _localizer =
-        Substitute.For<IStringLocalizer<Humans.Web.SharedResource>>();
+    private readonly IStringLocalizer<SharedResource> _localizer =
+        Substitute.For<IStringLocalizer<SharedResource>>();
 
     public VolunteerTrackingControllerTests()
     {
@@ -74,8 +73,8 @@ public class VolunteerTrackingControllerTests
         var http = new DefaultHttpContext();
         if (currentUser is not null)
         {
-            http.User = new ClaimsPrincipal(new ClaimsIdentity(
-                new[] { new Claim(ClaimTypes.NameIdentifier, currentUser.Id.ToString()) },
+            http.User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, currentUser.Id.ToString())
+                ],
                 "test"));
         }
 
@@ -159,8 +158,8 @@ public class VolunteerTrackingControllerTests
                 BuildStartOffset: 0,
                 GateOpeningDate: default,
                 Today: default,
-                MainCohort: Array.Empty<VolunteerHeatmapRow>(),
-                UnbookedCohort: Array.Empty<VolunteerCohortRow>()));
+                MainCohort: [],
+                UnbookedCohort: []));
         var ctrl = BuildSut(current);
 
         var result = await ctrl.Index(false, false, false, CancellationToken.None);
@@ -189,20 +188,20 @@ public class VolunteerTrackingControllerTests
         {
             new(aliceId, FirstSignupDay: -10, LastEligibleSignupOffset: -2,
                 BarrioSetupStartDate: null, GapCount: 2,
-                Cells: Array.Empty<VolunteerCell>(),
-                DayOffs: Array.Empty<DayOffSummary>()),
+                Cells: [],
+                DayOffs: []),
             new(bobId, FirstSignupDay: -10, LastEligibleSignupOffset: -1,
                 BarrioSetupStartDate: null, GapCount: 3,
-                Cells: Array.Empty<VolunteerCell>(),
-                DayOffs: Array.Empty<DayOffSummary>()),
+                Cells: [],
+                DayOffs: []),
             new(carolId, FirstSignupDay: -10, LastEligibleSignupOffset: -5,
                 BarrioSetupStartDate: null, GapCount: 2,
-                Cells: Array.Empty<VolunteerCell>(),
-                DayOffs: Array.Empty<DayOffSummary>()),
+                Cells: [],
+                DayOffs: []),
         };
         _service.GetTrackingDataAsync(Arg.Any<CancellationToken>())
             .Returns(new VolunteerTrackingViewModel(true, -10, new LocalDate(2026, 6, 24), new LocalDate(2026, 6, 15), rows,
-                Array.Empty<VolunteerCohortRow>()));
+                []));
         _userService.GetUserInfoAsync(aliceId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(StubUserInfo(aliceId, "Alice")));
         _userService.GetUserInfoAsync(bobId, Arg.Any<CancellationToken>())
@@ -225,12 +224,12 @@ public class VolunteerTrackingControllerTests
         var a = Guid.NewGuid(); var b = Guid.NewGuid();
         var rows = new List<VolunteerHeatmapRow>
         {
-            new(a, -10, -2, null, GapCount: 0, Array.Empty<VolunteerCell>(), Array.Empty<DayOffSummary>()),
-            new(b, -10, -2, null, GapCount: 1, Array.Empty<VolunteerCell>(), Array.Empty<DayOffSummary>()),
+            new(a, -10, -2, null, GapCount: 0, [], []),
+            new(b, -10, -2, null, GapCount: 1, [], []),
         };
         _service.GetTrackingDataAsync(Arg.Any<CancellationToken>())
             .Returns(new VolunteerTrackingViewModel(true, -10, new LocalDate(2026, 6, 24), new LocalDate(2026, 6, 15), rows,
-                Array.Empty<VolunteerCohortRow>()));
+                []));
         var ctrl = BuildSut(new User { Id = Guid.NewGuid() });
 
         var result = await ctrl.Index(hideNoGaps: true, false, false, CancellationToken.None);
@@ -248,12 +247,12 @@ public class VolunteerTrackingControllerTests
         var rows = new List<VolunteerHeatmapRow>
         {
             new(a, -10, -2, BarrioSetupStartDate: new LocalDate(2026, 6, 14),
-                GapCount: 5, Array.Empty<VolunteerCell>(), Array.Empty<DayOffSummary>()),
-            new(b, -10, -2, null, GapCount: 5, Array.Empty<VolunteerCell>(), Array.Empty<DayOffSummary>()),
+                GapCount: 5, [], []),
+            new(b, -10, -2, null, GapCount: 5, [], []),
         };
         _service.GetTrackingDataAsync(Arg.Any<CancellationToken>())
             .Returns(new VolunteerTrackingViewModel(true, -10, new LocalDate(2026, 6, 24), new LocalDate(2026, 6, 15), rows,
-                Array.Empty<VolunteerCohortRow>()));
+                []));
         var ctrl = BuildSut(new User { Id = Guid.NewGuid() });
 
         var result = await ctrl.Index(false, hideCampSetup: true, false, CancellationToken.None);
@@ -271,11 +270,11 @@ public class VolunteerTrackingControllerTests
         var unbooked = new List<VolunteerCohortRow>
         {
             new(u, FirstAvailableDay: -3, BarrioSetupStartDate: null,
-                UnbookedCount: 2, Cells: Array.Empty<VolunteerCell>()),
+                UnbookedCount: 2, Cells: []),
         };
         _service.GetTrackingDataAsync(Arg.Any<CancellationToken>())
             .Returns(new VolunteerTrackingViewModel(true, -10, new LocalDate(2026, 6, 24), new LocalDate(2026, 6, 15),
-                Array.Empty<VolunteerHeatmapRow>(), unbooked));
+                [], unbooked));
         var ctrl = BuildSut(new User { Id = Guid.NewGuid() });
 
         var result = await ctrl.Index(false, false, hideUnbookedSection: true, CancellationToken.None);
@@ -298,7 +297,7 @@ public class VolunteerTrackingControllerTests
         _service.SetCampSetupAsync(
                 target, Arg.Any<LocalDate>(), Arg.Any<string?>(),
                 current.Id, Arg.Any<CancellationToken>())
-            .Returns(new SetCampSetupResult(Ok: true, ErrorMessageKey: null, AutoClearedDayOffs: Array.Empty<int>()));
+            .Returns(new SetCampSetupResult(Ok: true, ErrorMessageKey: null, AutoClearedDayOffs: []));
         var ctrl = BuildSut(current);
         var form = new SetCampSetupForm { UserId = target, Date = "2026-06-14", Notes = "early" };
 
@@ -551,7 +550,7 @@ public class VolunteerTrackingControllerTests
         _service.SetCampSetupAsync(target, Arg.Any<LocalDate>(), Arg.Any<string?>(), current.Id, Arg.Any<CancellationToken>())
             .Returns(new SetCampSetupResult(
                 Ok: true, ErrorMessageKey: null,
-                AutoClearedDayOffs: new[] { -6, -4 }));
+                AutoClearedDayOffs: [-6, -4]));
         var ctrl = BuildSut(current);
         var form = new SetCampSetupForm { UserId = target, Date = "2026-06-30", Notes = null };
 
@@ -588,13 +587,13 @@ public class VolunteerTrackingControllerTests
         };
         return UserInfo.Create(
             user: user,
-            userEmails: Array.Empty<UserEmail>(),
-            eventParticipations: Array.Empty<EventParticipation>(),
-            externalLogins: Array.Empty<(string, string)>(),
+            userEmails: [],
+            eventParticipations: [],
+            externalLogins: [],
             profile: profile,
-            contactFields: Array.Empty<ContactField>(),
-            profileLanguages: Array.Empty<ProfileLanguage>(),
-            volunteerHistory: Array.Empty<VolunteerHistoryEntry>(),
-            communicationPreferences: Array.Empty<CommunicationPreference>());
+            contactFields: [],
+            profileLanguages: [],
+            volunteerHistory: [],
+            communicationPreferences: []);
     }
 }

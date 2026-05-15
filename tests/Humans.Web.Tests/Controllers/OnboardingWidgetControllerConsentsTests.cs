@@ -8,7 +8,6 @@ using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Testing;
 using Humans.Web.Constants;
 using Humans.Web.Controllers;
 using Humans.Web.Models.OnboardingWidget;
@@ -42,8 +41,8 @@ public class OnboardingWidgetControllerConsentsTests
     private readonly IShiftManagementService _shiftMgmt = Substitute.For<IShiftManagementService>();
     private readonly IConsentService _consents = Substitute.For<IConsentService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
-    private readonly IStringLocalizer<Humans.Web.SharedResource> _localizer =
-        Substitute.For<IStringLocalizer<Humans.Web.SharedResource>>();
+    private readonly IStringLocalizer<SharedResource> _localizer =
+        Substitute.For<IStringLocalizer<SharedResource>>();
     private readonly DefaultHttpContext _http = new();
 
     public OnboardingWidgetControllerConsentsTests()
@@ -59,8 +58,7 @@ public class OnboardingWidgetControllerConsentsTests
     {
         var user = new User { Id = userId };
         _userManager.GetUserAsync(Arg.Any<ClaimsPrincipal>()).Returns(user);
-        _http.User = new ClaimsPrincipal(new ClaimsIdentity(
-            new[] { new Claim(ClaimTypes.NameIdentifier, userId.ToString()) },
+        _http.User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.ToString())],
             "test"));
         // SetError on HumansControllerBase resolves ILoggerFactory from RequestServices.
         var services = new ServiceCollection();
@@ -113,14 +111,14 @@ public class OnboardingWidgetControllerConsentsTests
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             GoogleEmailStatus = GoogleEmailStatus.Unknown,
         },
-        userEmails: Array.Empty<UserEmail>(),
-        eventParticipations: Array.Empty<EventParticipation>(),
-        externalLogins: Array.Empty<(string, string)>(),
+        userEmails: [],
+        eventParticipations: [],
+        externalLogins: [],
         profile: profile,
-        contactFields: Array.Empty<ContactField>(),
-        profileLanguages: Array.Empty<ProfileLanguage>(),
-        volunteerHistory: Array.Empty<VolunteerHistoryEntry>(),
-        communicationPreferences: Array.Empty<CommunicationPreference>());
+        contactFields: [],
+        profileLanguages: [],
+        volunteerHistory: [],
+        communicationPreferences: []);
 
     [HumansFact]
     public async Task SignConsent_Post_CallsConsentService_AndRedirectsThroughIndexDispatcher()
@@ -272,7 +270,7 @@ public class OnboardingWidgetControllerConsentsTests
                 "Privacy Policy",
                 "1.2",
                 new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "# Politica", ["en"] = "# Policy" },
-                NodaTime.Instant.FromUnixTimeSeconds(0),
+                Instant.FromUnixTimeSeconds(0),
                 "Updated section 4",
                 HasAlreadyConsented: false,
                 ConsentedAt: null,

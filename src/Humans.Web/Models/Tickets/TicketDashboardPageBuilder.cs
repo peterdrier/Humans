@@ -2,7 +2,6 @@ using Humans.Application.Configuration;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
-using Humans.Infrastructure.Services;
 using Microsoft.Extensions.Options;
 
 namespace Humans.Web.Models.Tickets;

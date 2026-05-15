@@ -19,14 +19,12 @@ using Humans.Application.Services.Teams;
 using Humans.Application.Services.Users;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
-using Xunit;
 
 namespace Humans.Application.Tests.Services;
 

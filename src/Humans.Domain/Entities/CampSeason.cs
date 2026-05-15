@@ -32,7 +32,7 @@ public class CampSeason
     public PerformanceSpaceStatus HasPerformanceSpace { get; set; }
     public string? PerformanceTypes { get; set; }
 
-    public List<CampVibe> Vibes { get; set; } = new();
+    public List<CampVibe> Vibes { get; set; } = [];
 
     public AdultPlayspacePolicy AdultPlayspace { get; set; }
 

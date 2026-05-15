@@ -135,7 +135,7 @@ public sealed class ShiftSignupRepository : IShiftSignupRepository
         Guid userId, IReadOnlyCollection<Guid> shiftIds, CancellationToken ct = default)
     {
         if (shiftIds.Count == 0)
-            return new HashSet<Guid>();
+            return [];
 
         return await _dbContext.ShiftSignups
             .AsNoTracking()
@@ -241,7 +241,7 @@ public sealed class ShiftSignupRepository : IShiftSignupRepository
             .ToListAsync(ct);
 
         if (activeSignups.Count == 0)
-            return Array.Empty<(Guid, Guid)>();
+            return [];
 
         var cancelled = new List<(Guid SignupId, Guid ShiftId)>(activeSignups.Count);
         foreach (var signup in activeSignups)

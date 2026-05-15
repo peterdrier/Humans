@@ -4,8 +4,6 @@ using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
-using Humans.Domain.Enums;
-using Humans.Testing;
 using Humans.Web.Controllers;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
@@ -13,14 +11,12 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using SignInResult = Microsoft.AspNetCore.Identity.SignInResult;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Xunit;
 
 namespace Humans.Application.Tests.Controllers;
 
@@ -36,8 +32,8 @@ public class AccountControllerOAuthReconcileTests
 {
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly IMagicLinkService _magicLinkService = Substitute.For<IMagicLinkService>();
-    private readonly IStringLocalizer<Humans.Web.SharedResource> _localizer =
-        Substitute.For<IStringLocalizer<Humans.Web.SharedResource>>();
+    private readonly IStringLocalizer<Web.SharedResource> _localizer =
+        Substitute.For<IStringLocalizer<Web.SharedResource>>();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 5, 11, 12, 0));
     private readonly UserManager<User> _userManager;
     private readonly SignInManager<User> _signInManager;
@@ -182,10 +178,9 @@ public class AccountControllerOAuthReconcileTests
         _signInManager.ExternalLoginSignInAsync(Provider, ProviderKey, false, true)
             .Returns(SignInResult.Failed);
 
-        var identity = new ClaimsIdentity(new[]
-        {
-            new Claim(ClaimTypes.NameIdentifier, currentUserId.ToString()),
-        }, authenticationType: "TestAuth");
+        var identity = new ClaimsIdentity([
+            new Claim(ClaimTypes.NameIdentifier, currentUserId.ToString())
+        ], authenticationType: "TestAuth");
         var principal = new ClaimsPrincipal(identity);
         _controller.ControllerContext = new ControllerContext
         {

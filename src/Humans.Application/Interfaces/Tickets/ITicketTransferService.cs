@@ -1,5 +1,4 @@
 using Humans.Application.DTOs;
-using Humans.Application.Interfaces;
 using Humans.Domain.Enums;
 using Humans.Application.Architecture;
 

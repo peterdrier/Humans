@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Infrastructure.Repositories.Shifts;
-using Xunit;
 using ShiftSignupService = Humans.Application.Services.Shifts.ShiftSignupService;
 
 namespace Humans.Application.Tests.Architecture;

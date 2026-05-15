@@ -65,13 +65,12 @@ public class EventSettingsViewModel : IValidatableObject
         {
             yield return new ValidationResult(
                 "Build sub-period offsets must be strictly ascending: First crew < Set-up week < Pre-event week < Finishing weekend.",
-                new[]
-                {
+                [
                     nameof(FirstCrewStartOffset),
                     nameof(SetupWeekStartOffset),
                     nameof(PreEventWeekStartOffset),
-                    nameof(FinishingWeekendStartOffset),
-                });
+                    nameof(FinishingWeekendStartOffset)
+                ]);
         }
     }
 }
@@ -546,11 +545,11 @@ public class ShiftDashboardViewModel
     public List<DailyStaffingHours> StaffingHours { get; set; } = [];
 
     public DashboardOverview? Overview { get; set; }
-    public IReadOnlyList<CoordinatorActivityRow> CoordinatorActivity { get; set; } = Array.Empty<CoordinatorActivityRow>();
-    public IReadOnlyList<DashboardTrendPoint> Trends { get; set; } = Array.Empty<DashboardTrendPoint>();
-    public IReadOnlyList<DailyDepartmentStaffing> DailyDepartmentStaffing { get; set; } = Array.Empty<DailyDepartmentStaffing>();
-    public IReadOnlyList<ShiftDurationBreakdownRow> ShiftDurationBreakdown { get; set; } = Array.Empty<ShiftDurationBreakdownRow>();
-    public CoverageHeatmap CoverageHeatmap { get; set; } = new(Array.Empty<CoverageHeatmapDay>(), Array.Empty<CoverageHeatmapRotaRow>());
+    public IReadOnlyList<CoordinatorActivityRow> CoordinatorActivity { get; set; } = [];
+    public IReadOnlyList<DashboardTrendPoint> Trends { get; set; } = [];
+    public IReadOnlyList<DailyDepartmentStaffing> DailyDepartmentStaffing { get; set; } = [];
+    public IReadOnlyList<ShiftDurationBreakdownRow> ShiftDurationBreakdown { get; set; } = [];
+    public CoverageHeatmap CoverageHeatmap { get; set; } = new([], []);
     public TrendWindow TrendWindow { get; set; } = TrendWindow.Last30Days;
     public bool IsDevelopment { get; set; }
     public BuildDayCountdown Countdown { get; set; } = new(0, LocalDate.MinIsoValue, 0, 0);

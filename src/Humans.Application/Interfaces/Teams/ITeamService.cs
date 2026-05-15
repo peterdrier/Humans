@@ -1,9 +1,7 @@
 using Humans.Application.Architecture;
-using Humans.Application.Interfaces;
 using Humans.Application.DTOs;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Domain.ValueObjects;
 using NodaTime;
 
 namespace Humans.Application.Interfaces.Teams;
@@ -562,7 +560,7 @@ public interface ITeamService : IApplicationService
     /// <c>.Select(m =&gt; m.TeamName)</c>. Display ordering is the caller's
     /// responsibility (rendering layer).
     /// </summary>
-    Task<IReadOnlyList<Humans.Application.Models.TeamMembership>> GetActiveTeamMembershipsForUserAsync(
+    Task<IReadOnlyList<Models.TeamMembership>> GetActiveTeamMembershipsForUserAsync(
         Guid userId, CancellationToken cancellationToken = default);
 
     /// <summary>

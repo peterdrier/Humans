@@ -1,12 +1,9 @@
 using System.Runtime.CompilerServices;
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Gdpr;
-using Humans.Application.Interfaces.Profiles;
-using Humans.Infrastructure.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.DependencyInjection;
-using Xunit;
 using ApplicationDecisionService = Humans.Application.Services.Governance.ApplicationDecisionService;
 using BudgetService = Humans.Application.Services.Budget.BudgetService;
 using ExpenseReportService = Humans.Application.Services.Expenses.ExpenseReportService;
@@ -137,7 +134,7 @@ public class GdprExportDependencyInjectionTests
         // so the test doesn't need a live DbContext, Postgres, or config.
         var services = new ServiceCollection();
         var config = BuildMinimalConfiguration();
-        Humans.Web.Extensions.InfrastructureServiceCollectionExtensions
+        Web.Extensions.InfrastructureServiceCollectionExtensions
             .AddHumansInfrastructure(
                 services,
                 config,
@@ -166,7 +163,7 @@ public class GdprExportDependencyInjectionTests
     public void GdprExportServiceIsRegistered()
     {
         var services = new ServiceCollection();
-        Humans.Web.Extensions.InfrastructureServiceCollectionExtensions
+        Web.Extensions.InfrastructureServiceCollectionExtensions
             .AddHumansInfrastructure(
                 services,
                 BuildMinimalConfiguration(),
@@ -189,7 +186,7 @@ public class GdprExportDependencyInjectionTests
         // `ExpectedContributorTypes`.
         var services = new ServiceCollection();
         var config = BuildMinimalConfiguration();
-        Humans.Web.Extensions.InfrastructureServiceCollectionExtensions
+        Web.Extensions.InfrastructureServiceCollectionExtensions
             .AddHumansInfrastructure(
                 services,
                 config,

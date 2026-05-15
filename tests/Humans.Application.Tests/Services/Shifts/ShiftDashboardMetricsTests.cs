@@ -20,7 +20,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Xunit;
 
 namespace Humans.Application.Tests.Services.Shifts;
 
@@ -961,7 +960,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         public async Task<IReadOnlyCollection<Guid>> GetMatchedUserIdsForPaidOrdersAsync(CancellationToken ct = default)
         {
             return await _db.TicketOrders
-                .Where(o => o.PaymentStatus == Humans.Domain.Enums.TicketPaymentStatus.Paid && o.MatchedUserId != null)
+                .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid && o.MatchedUserId != null)
                 .Select(o => o.MatchedUserId!.Value)
                 .Distinct()
                 .ToListAsync(ct);
@@ -970,7 +969,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         public async Task<IReadOnlyList<Instant>> GetPaidOrderDatesInWindowAsync(Instant fromInclusive, Instant toExclusive, CancellationToken ct = default)
         {
             return await _db.TicketOrders
-                .Where(o => o.PaymentStatus == Humans.Domain.Enums.TicketPaymentStatus.Paid
+                .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid
                             && o.PurchasedAt >= fromInclusive
                             && o.PurchasedAt < toExclusive)
                 .Select(o => o.PurchasedAt)
@@ -983,17 +982,17 @@ public class ShiftDashboardMetricsTests : IDisposable
         public Task<HashSet<Guid>> GetAllMatchedUserIdsAsync() => throw new NotSupportedException();
         public Task<IReadOnlySet<Guid>> GetMatchedUserIdsForYearAsync(int year, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<IReadOnlyList<int>> GetMatchedTicketYearsAsync(CancellationToken ct = default) => throw new NotSupportedException();
-        public Task<Humans.Application.DTOs.TicketDashboardStats> GetDashboardStatsAsync() => throw new NotSupportedException();
+        public Task<TicketDashboardStats> GetDashboardStatsAsync() => throw new NotSupportedException();
         public Task<decimal> GetGrossTicketRevenueAsync() => throw new NotSupportedException();
-        public Task<Humans.Application.DTOs.BreakEvenResult> CalculateBreakEvenAsync(int ticketsSold, decimal grossRevenue, string currency, bool canAccessFinance, int fallbackTarget) => throw new NotSupportedException();
-        public Task<Humans.Application.DTOs.TicketSalesAggregates> GetSalesAggregatesAsync() => throw new NotSupportedException();
+        public Task<BreakEvenResult> CalculateBreakEvenAsync(int ticketsSold, decimal grossRevenue, string currency, bool canAccessFinance, int fallbackTarget) => throw new NotSupportedException();
+        public Task<TicketSalesAggregates> GetSalesAggregatesAsync() => throw new NotSupportedException();
         public Task<List<string>> GetAvailableTicketTypesAsync() => throw new NotSupportedException();
-        public Task<Humans.Application.DTOs.CodeTrackingData> GetCodeTrackingDataAsync(string? search) => throw new NotSupportedException();
-        public Task<Humans.Application.DTOs.OrdersPageResult> GetOrdersPageAsync(string? search, string sortBy, bool sortDesc, int page, int pageSize, string? filterPaymentStatus, string? filterTicketType, bool? filterMatched) => throw new NotSupportedException();
-        public Task<Humans.Application.DTOs.AttendeesPageResult> GetAttendeesPageAsync(string? search, string sortBy, bool sortDesc, int page, int pageSize, string? filterTicketType, string? filterStatus, bool? filterMatched, string? filterOrderId, bool filterMultipleTickets = false) => throw new NotSupportedException();
-        public Task<Humans.Application.DTOs.WhoHasntBoughtResult> GetWhoHasntBoughtAsync(string? search, string? filterTeam, string? filterTier, string? filterTicketStatus, int page, int pageSize) => throw new NotSupportedException();
-        public Task<List<Humans.Application.DTOs.AttendeeExportRow>> GetAttendeeExportDataAsync() => throw new NotSupportedException();
-        public Task<List<Humans.Application.DTOs.OrderExportRow>> GetOrderExportDataAsync() => throw new NotSupportedException();
+        public Task<CodeTrackingData> GetCodeTrackingDataAsync(string? search) => throw new NotSupportedException();
+        public Task<OrdersPageResult> GetOrdersPageAsync(string? search, string sortBy, bool sortDesc, int page, int pageSize, string? filterPaymentStatus, string? filterTicketType, bool? filterMatched) => throw new NotSupportedException();
+        public Task<AttendeesPageResult> GetAttendeesPageAsync(string? search, string sortBy, bool sortDesc, int page, int pageSize, string? filterTicketType, string? filterStatus, bool? filterMatched, string? filterOrderId, bool filterMultipleTickets = false) => throw new NotSupportedException();
+        public Task<WhoHasntBoughtResult> GetWhoHasntBoughtAsync(string? search, string? filterTeam, string? filterTier, string? filterTicketStatus, int page, int pageSize) => throw new NotSupportedException();
+        public Task<List<AttendeeExportRow>> GetAttendeeExportDataAsync() => throw new NotSupportedException();
+        public Task<List<OrderExportRow>> GetOrderExportDataAsync() => throw new NotSupportedException();
         public Task<bool> HasTicketAttendeeMatchAsync(Guid userId) => throw new NotSupportedException();
         public Task<List<UserTicketOrderSummary>> GetUserTicketOrderSummariesAsync(Guid userId) => throw new NotSupportedException();
         public Task<IReadOnlyList<Guid>> GetOpenTicketIdsForUserAsync(Guid userId, CancellationToken ct = default) => throw new NotSupportedException();
@@ -1011,28 +1010,28 @@ public class ShiftDashboardMetricsTests : IDisposable
         private readonly HumansDbContext _db;
         public FakeUserService(HumansDbContext db) => _db = db;
 
-        public ValueTask<Humans.Application.UserInfo?> GetUserInfoAsync(Guid userId, CancellationToken ct = default)
+        public ValueTask<UserInfo?> GetUserInfoAsync(Guid userId, CancellationToken ct = default)
             => throw new NotSupportedException();
 
-        public IReadOnlyCollection<Humans.Application.UserInfo> GetAllUserInfos()
+        public IReadOnlyCollection<UserInfo> GetAllUserInfos()
         {
             // Build a UserInfo snapshot from the in-memory DB so dashboard-metrics
             // tests that drive ComputeDashboardTrendsAsync (which now filters
             // LastLoginAt off the cached snapshot) can observe the fake's data.
             var users = _db.Users.ToList();
-            return users.Select(u => Humans.Application.UserInfo.Create(
+            return users.Select(u => UserInfo.Create(
                 u,
-                userEmails: Array.Empty<UserEmail>(),
-                eventParticipations: Array.Empty<Humans.Domain.Entities.EventParticipation>(),
-                externalLogins: Array.Empty<(string, string)>(),
+                userEmails: [],
+                eventParticipations: [],
+                externalLogins: [],
                 profile: null,
-                contactFields: Array.Empty<Humans.Domain.Entities.ContactField>(),
-                profileLanguages: Array.Empty<Humans.Domain.Entities.ProfileLanguage>(),
-                volunteerHistory: Array.Empty<Humans.Domain.Entities.VolunteerHistoryEntry>(),
-                communicationPreferences: Array.Empty<Humans.Domain.Entities.CommunicationPreference>())).ToList();
+                contactFields: [],
+                profileLanguages: [],
+                volunteerHistory: [],
+                communicationPreferences: [])).ToList();
         }
 
-        public Task<IReadOnlyList<Humans.Application.DTOs.HumanSearchResult>> SearchUsersAsync(
+        public Task<IReadOnlyList<HumanSearchResult>> SearchUsersAsync(
             string query, Humans.Application.Services.Profiles.PersonSearchFields fields,
             int limit = 10, CancellationToken ct = default) => throw new NotSupportedException();
 
@@ -1046,15 +1045,15 @@ public class ShiftDashboardMetricsTests : IDisposable
             return users.ToDictionary(u => u.Id);
         }
 
-        public ValueTask<IReadOnlyDictionary<Guid, Humans.Application.UserInfo>> GetUserInfosAsync(
+        public ValueTask<IReadOnlyDictionary<Guid, UserInfo>> GetUserInfosAsync(
             IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
         {
             var snapshot = GetAllUserInfos().ToDictionary(u => u.Id);
-            var dict = new Dictionary<Guid, Humans.Application.UserInfo>();
+            var dict = new Dictionary<Guid, UserInfo>();
             foreach (var id in userIds)
                 if (snapshot.TryGetValue(id, out var info))
                     dict[id] = info;
-            return new ValueTask<IReadOnlyDictionary<Guid, Humans.Application.UserInfo>>(dict);
+            return new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(dict);
         }
 
         public async Task<IReadOnlyDictionary<Guid, User>> GetByIdsWithEmailsAsync(IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
@@ -1073,13 +1072,13 @@ public class ShiftDashboardMetricsTests : IDisposable
         }
 
         // Members below are unused by the dashboard compute paths under test.
-        public Task<Humans.Domain.Entities.EventParticipation?> GetParticipationAsync(Guid userId, int year, CancellationToken ct = default) => throw new NotSupportedException();
-        public Task<List<Humans.Domain.Entities.EventParticipation>> GetAllParticipationsForYearAsync(int year, CancellationToken ct = default) => throw new NotSupportedException();
-        public Task<Humans.Domain.Entities.EventParticipation> DeclareNotAttendingAsync(Guid userId, int year, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<EventParticipation?> GetParticipationAsync(Guid userId, int year, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<List<EventParticipation>> GetAllParticipationsForYearAsync(int year, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<EventParticipation> DeclareNotAttendingAsync(Guid userId, int year, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<bool> UndoNotAttendingAsync(Guid userId, int year, CancellationToken ct = default) => throw new NotSupportedException();
-        public Task SetParticipationFromTicketSyncAsync(Guid userId, int year, Humans.Domain.Enums.ParticipationStatus status, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task SetParticipationFromTicketSyncAsync(Guid userId, int year, ParticipationStatus status, CancellationToken ct = default) => throw new NotSupportedException();
         public Task RemoveTicketSyncParticipationAsync(Guid userId, int year, CancellationToken ct = default) => throw new NotSupportedException();
-        public Task<int> BackfillParticipationsAsync(int year, List<(Guid UserId, Humans.Domain.Enums.ParticipationStatus Status)> entries, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<int> BackfillParticipationsAsync(int year, List<(Guid UserId, ParticipationStatus Status)> entries, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<IReadOnlyList<User>> GetAllUsersAsync(CancellationToken ct = default) => throw new NotSupportedException();
         public Task<bool> TrySetGoogleEmailAsync(Guid userId, string email, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<bool> SetGoogleEmailAsync(Guid userId, string email, CancellationToken ct = default) => throw new NotSupportedException();
@@ -1123,7 +1122,7 @@ public class ShiftDashboardMetricsTests : IDisposable
                 .Distinct()
                 .ToList();
             var parents = parentIds.Count == 0
-                ? new List<Team>()
+                ? []
                 : await _db.Teams.Where(t => parentIds.Contains(t.Id)).ToListAsync(cancellationToken);
             var dict = new Dictionary<Guid, Team>();
             foreach (var t in requested) dict[t.Id] = t;
@@ -1183,8 +1182,8 @@ public class ShiftDashboardMetricsTests : IDisposable
         public Task<TeamMember> AddMemberToTeamAsync(Guid teamId, Guid targetUserId, Guid actorUserId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task SetMemberRoleAsync(Guid teamId, Guid userId, TeamMemberRole role, Guid actorUserId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<TeamPageUpdateResult> UpdateTeamPageContentAsync(Guid teamId, string? pageContent, IReadOnlyList<TeamPageCallToActionInput> callsToAction, bool isPublicPage, bool showCoordinatorsOnPublicPage, Guid updatedByUserId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-        public Task<TeamRoleDefinition> CreateRoleDefinitionAsync(Guid teamId, string name, string? description, int slotCount, List<Humans.Domain.Enums.SlotPriority> priorities, int sortOrder, Humans.Domain.Enums.RolePeriod period, Guid actorUserId, bool isPublic = true, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-        public Task<TeamRoleDefinition> UpdateRoleDefinitionAsync(Guid roleDefinitionId, string name, string? description, int slotCount, List<Humans.Domain.Enums.SlotPriority> priorities, int sortOrder, bool isManagement, Humans.Domain.Enums.RolePeriod period, Guid actorUserId, bool isPublic = true, bool canToggleManagement = true, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<TeamRoleDefinition> CreateRoleDefinitionAsync(Guid teamId, string name, string? description, int slotCount, List<SlotPriority> priorities, int sortOrder, RolePeriod period, Guid actorUserId, bool isPublic = true, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<TeamRoleDefinition> UpdateRoleDefinitionAsync(Guid roleDefinitionId, string name, string? description, int slotCount, List<SlotPriority> priorities, int sortOrder, bool isManagement, RolePeriod period, Guid actorUserId, bool isPublic = true, bool canToggleManagement = true, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task DeleteRoleDefinitionAsync(Guid roleDefinitionId, Guid actorUserId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<TeamRoleManagementToggleResult> ToggleRoleIsManagementAsync(Guid roleDefinitionId, Guid actorUserId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<IReadOnlyList<TeamRoleDefinitionSnapshot>> GetRoleDefinitionsAsync(Guid teamId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
@@ -1196,7 +1195,7 @@ public class ShiftDashboardMetricsTests : IDisposable
         public Task<bool> PermanentlyDeleteTeamAsync(Guid teamId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public void RemoveMemberFromAllTeamsCache(Guid userId) => throw new NotSupportedException();
         public void InvalidateActiveTeamsCache() => throw new NotSupportedException();
-        public Task<IReadOnlyList<Humans.Application.Models.TeamMembership>> GetActiveTeamMembershipsForUserAsync(Guid userId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<IReadOnlyList<Models.TeamMembership>> GetActiveTeamMembershipsForUserAsync(Guid userId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task EnqueueGoogleResyncForUserTeamsAsync(Guid userId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<int> RevokeAllMembershipsAsync(Guid userId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task ReassignToUserAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt, CancellationToken cancellationToken = default) => throw new NotSupportedException();

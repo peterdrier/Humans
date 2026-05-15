@@ -2,7 +2,6 @@ using AwesomeAssertions;
 using Humans.Application.Interfaces;
 using Humans.Application.Services.AuditLog;
 using Humans.Infrastructure.Data;
-using Humans.Testing;
 using Microsoft.EntityFrameworkCore;
 
 namespace Humans.Application.Tests.Architecture.Rules;

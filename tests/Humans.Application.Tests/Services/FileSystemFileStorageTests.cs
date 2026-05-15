@@ -1,10 +1,8 @@
 using AwesomeAssertions;
 using Humans.Infrastructure.Services;
-using Humans.Testing;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
-using Xunit;
 
 namespace Humans.Application.Tests.Services;
 
@@ -59,7 +57,7 @@ public class FileSystemFileStorageTests : IDisposable
         Directory.Exists(Path.Combine(_wwwroot, "uploads", "camps", "deep", "nested"))
             .Should().BeFalse();
 
-        await _store.SaveAsync("uploads/camps/deep/nested/file.png", new byte[] { 1 });
+        await _store.SaveAsync("uploads/camps/deep/nested/file.png", [1]);
 
         Directory.Exists(Path.Combine(_wwwroot, "uploads", "camps", "deep", "nested"))
             .Should().BeTrue();
@@ -68,8 +66,8 @@ public class FileSystemFileStorageTests : IDisposable
     [HumansFact]
     public async Task SaveAsync_OverwriteReplacesExistingFile()
     {
-        await _store.SaveAsync("uploads/profile-pictures/p1.jpg", new byte[] { 1, 1, 1 });
-        await _store.SaveAsync("uploads/profile-pictures/p1.jpg", new byte[] { 9, 9, 9, 9 });
+        await _store.SaveAsync("uploads/profile-pictures/p1.jpg", [1, 1, 1]);
+        await _store.SaveAsync("uploads/profile-pictures/p1.jpg", [9, 9, 9, 9]);
 
         var bytes = await _store.TryReadAsync("uploads/profile-pictures/p1.jpg");
         bytes.Should().BeEquivalentTo(new byte[] { 9, 9, 9, 9 });
@@ -78,7 +76,7 @@ public class FileSystemFileStorageTests : IDisposable
     [HumansFact]
     public async Task SaveAsync_LeavesNoTempFilesAfterSuccess()
     {
-        await _store.SaveAsync("uploads/profile-pictures/p2.jpg", new byte[] { 1 });
+        await _store.SaveAsync("uploads/profile-pictures/p2.jpg", [1]);
 
         var dir = new DirectoryInfo(Path.Combine(_wwwroot, "uploads", "profile-pictures"));
         dir.GetFiles("*.tmp").Should().BeEmpty(
@@ -103,7 +101,7 @@ public class FileSystemFileStorageTests : IDisposable
     [HumansFact]
     public async Task DeleteAsync_RemovesFile()
     {
-        await _store.SaveAsync("uploads/profile-pictures/p3.jpg", new byte[] { 1 });
+        await _store.SaveAsync("uploads/profile-pictures/p3.jpg", [1]);
 
         await _store.DeleteAsync("uploads/profile-pictures/p3.jpg");
 
@@ -115,7 +113,7 @@ public class FileSystemFileStorageTests : IDisposable
     public async Task SaveAsync_RejectsParentDirectorySegment()
     {
         var act = async () =>
-            await _store.SaveAsync("uploads/../etc/passwd", new byte[] { 1 });
+            await _store.SaveAsync("uploads/../etc/passwd", [1]);
 
         await act.Should().ThrowAsync<ArgumentException>(
             because: "path-traversal segments must be rejected to prevent writes outside wwwroot");
@@ -134,7 +132,7 @@ public class FileSystemFileStorageTests : IDisposable
     {
         // Use a runtime-constructed rooted path so this works on Linux + Windows.
         var rootedKey = Path.IsPathRooted("/abs/path") ? "/abs/path" : Path.Combine("C:", "abs");
-        var act = async () => await _store.SaveAsync(rootedKey, new byte[] { 1 });
+        var act = async () => await _store.SaveAsync(rootedKey, [1]);
 
         await act.Should().ThrowAsync<ArgumentException>(
             because: "rooted paths could escape wwwroot");
@@ -143,7 +141,7 @@ public class FileSystemFileStorageTests : IDisposable
     [HumansFact]
     public async Task SaveAsync_RejectsEmptyKey()
     {
-        var act = async () => await _store.SaveAsync("", new byte[] { 1 });
+        var act = async () => await _store.SaveAsync("", [1]);
 
         await act.Should().ThrowAsync<ArgumentException>();
     }
@@ -151,7 +149,7 @@ public class FileSystemFileStorageTests : IDisposable
     [HumansFact]
     public async Task SaveAsync_AcceptsForwardOrBackslashSeparators()
     {
-        await _store.SaveAsync("uploads/camps/x/a.jpg", new byte[] { 1 });
+        await _store.SaveAsync("uploads/camps/x/a.jpg", [1]);
 
         var bytes = await _store.TryReadAsync("uploads/camps/x/a.jpg");
         bytes.Should().BeEquivalentTo(new byte[] { 1 });

@@ -277,7 +277,7 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
             .Where(m => m.LeftAt is null)
             .ToList();
         var usersById = activeMembers.Count == 0
-            ? new Dictionary<Guid, Humans.Application.UserInfo>()
+            ? new Dictionary<Guid, UserInfo>()
             : await UserService.GetUserInfosAsync(
                 activeMembers.Select(m => m.UserId).Distinct().ToList(),
                 cancellationToken);
@@ -1692,11 +1692,11 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
         CancellationToken cancellationToken = default) =>
         _repo.GetUserCoordinatorTeamIdsAsync(userId, cancellationToken);
 
-    public async Task<IReadOnlyList<Humans.Application.Models.TeamMembership>> GetActiveTeamMembershipsForUserAsync(
+    public async Task<IReadOnlyList<Models.TeamMembership>> GetActiveTeamMembershipsForUserAsync(
         Guid userId, CancellationToken cancellationToken = default)
     {
         var teamsById = await LoadTeamsByIdAsync(cancellationToken);
-        var rows = new List<Humans.Application.Models.TeamMembership>();
+        var rows = new List<Models.TeamMembership>();
         foreach (var team in teamsById.Values.Where(t => t.IsActive))
         {
             if (team.SystemTeamType == SystemTeamType.Volunteers)
@@ -1704,7 +1704,7 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
             var membership = team.Members.FirstOrDefault(m => m.UserId == userId);
             if (membership is null)
                 continue;
-            rows.Add(new Humans.Application.Models.TeamMembership(team.Name, membership.Role)
+            rows.Add(new Models.TeamMembership(team.Name, membership.Role)
             {
                 IsHidden = team.IsHidden,
             });
@@ -1929,7 +1929,7 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
             .Distinct()
             .ToList();
         var users = allUserIds.Count == 0
-            ? new Dictionary<Guid, Humans.Application.UserInfo>()
+            ? new Dictionary<Guid, UserInfo>()
             : await UserService.GetUserInfosAsync(allUserIds, ct);
         var managementHolders = await _repo.GetActiveManagementRoleHolderUserIdsByTeamAsync(ct);
         var roleDefinitionsByTeam = await _repo.GetAllRoleDefinitionsByTeamAsync(ct);
@@ -1939,7 +1939,7 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
 
     private static TeamInfo BuildTeamInfo(
         Team team,
-        IReadOnlyDictionary<Guid, Humans.Application.UserInfo> users,
+        IReadOnlyDictionary<Guid, UserInfo> users,
         IReadOnlyDictionary<Guid, IReadOnlySet<Guid>> managementHolders,
         IReadOnlyDictionary<Guid, IReadOnlyList<TeamRoleDefinition>> roleDefinitionsByTeam) => new(
         Id: team.Id,
@@ -2210,7 +2210,7 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
 
         try
         {
-            var users = await UserService.GetUserInfosAsync(new[] { userId }, cancellationToken);
+            var users = await UserService.GetUserInfosAsync([userId], cancellationToken);
             if (!users.TryGetValue(userId, out var user))
                 return;
 
@@ -2342,7 +2342,7 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
 
     private static TeamDetailMemberSummary MapTeamDetailMemberSummary(
         TeamMember member,
-        IReadOnlyDictionary<Guid, Humans.Application.UserInfo> usersById) => new(
+        IReadOnlyDictionary<Guid, UserInfo> usersById) => new(
         UserId: member.UserId,
         DisplayName: GetMemberDisplayName(member, usersById),
         Email: usersById.GetValueOrDefault(member.UserId)?.Email,
@@ -2388,7 +2388,7 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
 
     private static string GetMemberDisplayName(
         TeamMember member,
-        IReadOnlyDictionary<Guid, Humans.Application.UserInfo> usersById) =>
+        IReadOnlyDictionary<Guid, UserInfo> usersById) =>
         usersById.GetValueOrDefault(member.UserId)?.DisplayName ?? string.Empty;
 
     private static string GetPriorityBadgeClass(SlotPriority priority) =>
@@ -2518,7 +2518,7 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
                 .Select(m => m.UserId);
 
             var childUserIds = childMemberUserIdsByParentTeam.GetValueOrDefault(team.Id)
-                ?? Array.Empty<Guid>();
+                ?? [];
 
             result[team.GoogleGroupEmail!] = directUserIds
                 .Concat(childUserIds)

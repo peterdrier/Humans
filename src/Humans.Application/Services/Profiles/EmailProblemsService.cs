@@ -66,7 +66,7 @@ public sealed class EmailProblemsService : IEmailProblemsService
                 var norm = EmailNormalization.NormalizeForComparison(email.Email);
                 if (!normToUsers.TryGetValue(norm, out var list))
                 {
-                    list = new List<(Guid, string)>();
+                    list = [];
                     normToUsers[norm] = list;
                 }
                 list.Add((p.Id, email.Email));

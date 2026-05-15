@@ -12,7 +12,6 @@ using Humans.Web.Models.Mailer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 
 namespace Humans.Web.Controllers.Mailer;
 
@@ -77,7 +76,7 @@ public sealed class MailerAdminController : HumansControllerBase
         var optedOut = await _prefs.GetCountByCategoryAndStateAsync(MessageCategory.Marketing, optedOut: true, ct);
 
         var recent = await _audit.GetFilteredEntriesAsync(
-            actions: new[] { AuditAction.MailerLiteReconciliationCompleted },
+            actions: [AuditAction.MailerLiteReconciliationCompleted],
             limit: 1,
             ct: ct);
         var last = recent.FirstOrDefault();
@@ -94,12 +93,12 @@ public sealed class MailerAdminController : HumansControllerBase
         catch (HttpRequestException ex)
         {
             _logger.LogWarning(ex, "Audience stats failed");
-            audienceRows = Array.Empty<AudienceCardRow>();
+            audienceRows = [];
         }
         catch (TaskCanceledException) when (!ct.IsCancellationRequested)
         {
             _logger.LogWarning("Audience stats timed out");
-            audienceRows = Array.Empty<AudienceCardRow>();
+            audienceRows = [];
         }
 
         var vm = new MailerDashboardViewModel(

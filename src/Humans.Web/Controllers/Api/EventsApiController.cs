@@ -1,9 +1,7 @@
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Events;
 using Humans.Domain.Entities;
-using Humans.Domain.Enums;
 using Humans.Web.Filters;
-using Humans.Web.Models;
 using Humans.Web.Models.Events;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Cors;

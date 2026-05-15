@@ -14,10 +14,8 @@ using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Services;
-using Xunit;
 using Humans.Application.Interfaces.Campaigns;
 using Humans.Application.Interfaces.Email;
-using Humans.Application.Interfaces.Metering;
 using Humans.Infrastructure.Repositories.Email;
 using Humans.Infrastructure.Services.Metering;
 

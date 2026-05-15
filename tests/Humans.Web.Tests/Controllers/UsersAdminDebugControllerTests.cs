@@ -5,12 +5,10 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Controllers;
 using Humans.Web.Models;
-using Humans.Testing;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using NSubstitute;
-using Xunit;
 
 namespace Humans.Web.Tests.Controllers;
 
@@ -60,14 +58,14 @@ public class UsersAdminDebugControllerTests
                 CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
                 GoogleEmailStatus = GoogleEmailStatus.Unknown,
             },
-            userEmails: Array.Empty<UserEmail>(),
+            userEmails: [],
             eventParticipations: participations,
-            externalLogins: Array.Empty<(string, string)>(),
+            externalLogins: [],
             profile: profile,
-            contactFields: Array.Empty<ContactField>(),
-            profileLanguages: Array.Empty<ProfileLanguage>(),
-            volunteerHistory: Array.Empty<VolunteerHistoryEntry>(),
-            communicationPreferences: Array.Empty<CommunicationPreference>());
+            contactFields: [],
+            profileLanguages: [],
+            volunteerHistory: [],
+            communicationPreferences: []);
     }
 
     [HumansFact]

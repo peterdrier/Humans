@@ -491,13 +491,13 @@ public sealed class CityPlanningService : ICityPlanningService
 
         var polygons = await _repo.GetPolygonsByCampSeasonIdsAsync(seasonIds, cancellationToken);
 
-        var docs = new List<System.Text.Json.JsonDocument>();
+        var docs = new List<JsonDocument>();
         try
         {
             var features = polygons.Select(p =>
             {
                 var data = displayData[p.CampSeasonId];
-                var doc = System.Text.Json.JsonDocument.Parse(p.GeoJson);
+                var doc = JsonDocument.Parse(p.GeoJson);
                 docs.Add(doc);
                 var geom = doc.RootElement.TryGetProperty("geometry", out var g) ? g : doc.RootElement;
                 return new
@@ -514,9 +514,9 @@ public sealed class CityPlanningService : ICityPlanningService
                 };
             }).ToList();
 
-            return System.Text.Json.JsonSerializer.Serialize(
+            return JsonSerializer.Serialize(
                 new { type = "FeatureCollection", features },
-                new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+                new JsonSerializerOptions { WriteIndented = true });
         }
         finally
         {

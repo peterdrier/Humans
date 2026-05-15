@@ -1,4 +1,3 @@
-using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Mailer.Dtos;
 
 namespace Humans.Application.Interfaces.Mailer;

@@ -19,7 +19,7 @@
     </div>
     <div class="mb-3">
         <label asp-for="PreloadConfig" class="form-label">Preload Config</label>
-        <select asp-for="PreloadConfig" asp-items="Html.GetEnumSelectList<Humans.Domain.Enums.AgentPreloadConfig>()" class="form-select"></select>
+        <select asp-for="PreloadConfig" asp-items="Html.GetEnumSelectList<AgentPreloadConfig>()" class="form-select"></select>
         <div class="form-text">Tier1 for a fresh Anthropic org; Tier2 after promotion ($40 + 7 days).</div>
     </div>
     <div class="row g-3 mb-3">

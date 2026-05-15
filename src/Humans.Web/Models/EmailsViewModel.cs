@@ -90,7 +90,7 @@ public class EmailsViewModel
     /// snapshot shown alongside the `UserEmail` grid. Empty in self contexts.
     /// </summary>
     public IReadOnlyList<ExternalLoginRowViewModel> ExternalLogins { get; init; } =
-        Array.Empty<ExternalLoginRowViewModel>();
+        [];
 
     /// <summary>
     /// Admin-only raw UserEmail row snapshots for the target user — every
@@ -98,7 +98,7 @@ public class EmailsViewModel
     /// the stored row shape directly. Empty in self contexts.
     /// </summary>
     public IReadOnlyList<UserEmailRowSnapshot> RawUserEmails { get; init; } =
-        Array.Empty<UserEmailRowSnapshot>();
+        [];
 }
 
 /// <summary>

@@ -5,10 +5,7 @@ using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Profiles;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
-using Microsoft.EntityFrameworkCore.InMemory.Internal;
-using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
-using Xunit;
 
 namespace Humans.Application.Tests.Repositories;
 

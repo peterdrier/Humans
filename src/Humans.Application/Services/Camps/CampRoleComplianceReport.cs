@@ -1,5 +1,3 @@
-using Humans.Domain.Entities;
-
 namespace Humans.Application.Services.Camps;
 
 public sealed record CampRoleComplianceReport(

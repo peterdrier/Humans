@@ -7,7 +7,6 @@ using Humans.Infrastructure.Repositories.GoogleIntegration;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using NodaTime.Testing;
-using Xunit;
 
 namespace Humans.Application.Tests.GoogleIntegration;
 
@@ -67,7 +66,7 @@ public sealed class GoogleResourceRepositoryTests : IDisposable
     [HumansFact]
     public async Task GetActiveByTeamIdsAsync_EmptyCollection_ReturnsEmptyDictionary()
     {
-        var dict = await _repository.GetActiveByTeamIdsAsync(Array.Empty<Guid>());
+        var dict = await _repository.GetActiveByTeamIdsAsync([]);
         dict.Should().BeEmpty();
     }
 
@@ -186,7 +185,7 @@ public sealed class GoogleResourceRepositoryTests : IDisposable
 
         var deactivated = await _repository.DeactivateByTeamAsync(teamId, GoogleResourceType.DriveFolder);
 
-        deactivated.Select(r => r.Id).Should().BeEquivalentTo(new[] { drive.Id });
+        deactivated.Select(r => r.Id).Should().BeEquivalentTo([drive.Id]);
 
         using var check = new HumansDbContext(_options);
         (await check.GoogleResources.FindAsync(drive.Id))!.IsActive.Should().BeFalse();

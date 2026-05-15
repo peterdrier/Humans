@@ -10,7 +10,6 @@ using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain;
 using Humans.Domain.Constants;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using MemberApplication = Humans.Domain.Entities.Application;
 using Humans.Application.Interfaces.AuditLog;
@@ -135,7 +134,7 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
         // itself carries the actor + timestamp).
         await _auditLogService.LogAsync(
             AuditAction.TierApplicationApproved,
-            nameof(Humans.Domain.Entities.Application),
+            nameof(Domain.Entities.Application),
             application.Id,
             $"{application.MembershipTier} application approved",
             reviewerUserId);
@@ -248,7 +247,7 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
 
         await _auditLogService.LogAsync(
             AuditAction.TierApplicationRejected,
-            nameof(Humans.Domain.Entities.Application),
+            nameof(Domain.Entities.Application),
             application.Id,
             $"{application.MembershipTier} application rejected",
             reviewerUserId);
@@ -469,7 +468,7 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
         var (apps, totalCount) = await _repository.GetFilteredAsync(status, tier, page, pageSize, ct);
         if (apps.Count == 0)
         {
-            return (Array.Empty<ApplicationAdminRowDto>(), totalCount);
+            return ([], totalCount);
         }
 
         var userIds = apps.Select(a => a.UserId).Distinct().ToList();

@@ -16,13 +16,11 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Domain.ValueObjects;
 using Humans.Application.Interfaces.Caching;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Services.Shifts;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Teams;
-using Xunit;
 using RoleAssignmentService = Humans.Application.Services.Auth.RoleAssignmentService;
 using TeamService = Humans.Application.Services.Teams.TeamService;
 using Humans.Application.Interfaces.AuditLog;
@@ -132,25 +130,25 @@ public class TeamServiceTests : IDisposable
             {
                 var ids = callInfo.Arg<IReadOnlyCollection<Guid>>();
                 if (ids.Count == 0)
-                    return new ValueTask<IReadOnlyDictionary<Guid, Humans.Application.UserInfo>>(
-                        new Dictionary<Guid, Humans.Application.UserInfo>());
+                    return new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                        new Dictionary<Guid, UserInfo>());
                 using var db = new HumansDbContext(options);
                 var users = db.Users.AsNoTracking()
                     .Include(u => u.UserEmails)
                     .Where(u => ids.Contains(u.Id))
                     .ToList();
-                IReadOnlyDictionary<Guid, Humans.Application.UserInfo> dict = users.ToDictionary(
+                IReadOnlyDictionary<Guid, UserInfo> dict = users.ToDictionary(
                     u => u.Id,
-                    u => Humans.Application.UserInfo.Create(
+                    u => UserInfo.Create(
                         u, u.UserEmails.ToList(),
-                        Array.Empty<Humans.Domain.Entities.EventParticipation>(),
-                        Array.Empty<(string, string)>(),
+                        [],
+                        [],
                         profile: null,
-                        Array.Empty<Humans.Domain.Entities.ContactField>(),
-                        Array.Empty<Humans.Domain.Entities.ProfileLanguage>(),
-                        Array.Empty<Humans.Domain.Entities.VolunteerHistoryEntry>(),
-                        Array.Empty<Humans.Domain.Entities.CommunicationPreference>()));
-                return new ValueTask<IReadOnlyDictionary<Guid, Humans.Application.UserInfo>>(dict);
+                        [],
+                        [],
+                        [],
+                        []));
+                return new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(dict);
             });
         testUserService
             .GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
@@ -539,12 +537,10 @@ public class TeamServiceTests : IDisposable
 
         var result = await _service.UpdateTeamPageContentAsync(
             team.Id,
-            "Welcome",
-            new[]
-            {
+            "Welcome", [
                 new TeamPageCallToActionInput(" Join ", " /join ", CallToActionStyle.Primary),
                 new TeamPageCallToActionInput("", "/ignored", CallToActionStyle.Secondary)
-            },
+            ],
             isPublicPage: true,
             showCoordinatorsOnPublicPage: true,
             user.Id);
@@ -664,7 +660,7 @@ public class TeamServiceTests : IDisposable
 
         var result = await _service.GetAllTeamsAsync();
 
-        result.Select(t => t.Name).Should().BeEquivalentTo(["Alpha", "Bravo", "Charlie"]);
+        result.Select(t => t.Name).Should().BeEquivalentTo("Alpha", "Bravo", "Charlie");
     }
 
     [HumansFact]

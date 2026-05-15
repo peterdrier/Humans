@@ -4,7 +4,6 @@ using Humans.Application.Interfaces.Consent;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Testing;
 using Humans.Web.Controllers;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
@@ -30,8 +29,8 @@ public class ConsentControllerTests
     private readonly UserManager<User> _userManager;
     private readonly IConsentService _consentService = Substitute.For<IConsentService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
-    private readonly IStringLocalizer<Humans.Web.SharedResource> _localizer =
-        Substitute.For<IStringLocalizer<Humans.Web.SharedResource>>();
+    private readonly IStringLocalizer<SharedResource> _localizer =
+        Substitute.For<IStringLocalizer<SharedResource>>();
     private readonly DefaultHttpContext _http = new();
 
     public ConsentControllerTests()
@@ -47,8 +46,7 @@ public class ConsentControllerTests
     {
         var user = new User { Id = userId };
         _userManager.GetUserAsync(Arg.Any<ClaimsPrincipal>()).Returns(user);
-        _http.User = new ClaimsPrincipal(new ClaimsIdentity(
-            new[] { new Claim(ClaimTypes.NameIdentifier, userId.ToString()) },
+        _http.User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.ToString())],
             "test"));
         var services = new ServiceCollection();
         services.AddSingleton<ILoggerFactory>(NullLoggerFactory.Instance);
@@ -104,14 +102,14 @@ public class ConsentControllerTests
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             GoogleEmailStatus = GoogleEmailStatus.Unknown,
         },
-        userEmails: Array.Empty<UserEmail>(),
-        eventParticipations: Array.Empty<EventParticipation>(),
-        externalLogins: Array.Empty<(string, string)>(),
+        userEmails: [],
+        eventParticipations: [],
+        externalLogins: [],
         profile: profile,
-        contactFields: Array.Empty<ContactField>(),
-        profileLanguages: Array.Empty<ProfileLanguage>(),
-        volunteerHistory: Array.Empty<VolunteerHistoryEntry>(),
-        communicationPreferences: Array.Empty<CommunicationPreference>());
+        contactFields: [],
+        profileLanguages: [],
+        volunteerHistory: [],
+        communicationPreferences: []);
 
     [HumansFact]
     public async Task Review_Get_StubProfile_RedirectsToProfileEdit()
@@ -139,7 +137,7 @@ public class ConsentControllerTests
             .Returns(WrapInUserInfo(StubProfile(userId)));
         var ctrl = BuildSut(userId);
 
-        var result = await ctrl.Submit(new Humans.Web.Models.ConsentSubmitModel
+        var result = await ctrl.Submit(new Models.ConsentSubmitModel
         {
             DocumentVersionId = Guid.NewGuid(),
             ExplicitConsent = true,

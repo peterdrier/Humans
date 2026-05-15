@@ -57,8 +57,7 @@ public sealed class ApplicationServiceLocationAnalyzer : DiagnosticAnalyzer
             "the move once callers' usings are updated, but the architectural contract is broken " +
             "(design-rules §2b, §6).");
 
-    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
-        ImmutableArray.Create(Rule);
+    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
 
     public override void Initialize(AnalysisContext context)
     {
@@ -173,7 +172,7 @@ public sealed class ApplicationServiceLocationAnalyzer : DiagnosticAnalyzer
             effectiveSeverity: severity,
             additionalLocations: null,
             properties: null,
-            messageArgs: new object[] { type.Name, actualNamespace, expectedFormatted }));
+            messageArgs: [type.Name, actualNamespace, expectedFormatted]));
     }
 
     private static bool ImplementsMarker(INamedTypeSymbol type, INamedTypeSymbol marker)

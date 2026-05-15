@@ -5,7 +5,6 @@ using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Domain.Helpers;
@@ -13,9 +12,7 @@ using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Profiles;
-using Humans.Application.Services.Profiles;
 
 namespace Humans.Application.Services.Profiles;
 
@@ -78,12 +75,12 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         _logger = logger;
     }
 
-    public async Task<Domain.Entities.Profile?> GetProfileAsync(Guid userId, CancellationToken ct = default)
+    public async Task<Profile?> GetProfileAsync(Guid userId, CancellationToken ct = default)
     {
         return await _profileRepository.GetByUserIdReadOnlyAsync(userId, ct);
     }
 
-    public async Task<IReadOnlyDictionary<Guid, Domain.Entities.Profile>> GetByUserIdsAsync(
+    public async Task<IReadOnlyDictionary<Guid, Profile>> GetByUserIdsAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
         await _profileRepository.GetByUserIdsAsync(userIds, ct);
 
@@ -115,7 +112,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
             if (existing is not null) return;
 
             var now = _clock.GetCurrentInstant();
-            var profile = new Domain.Entities.Profile
+            var profile = new Profile
             {
                 Id = Guid.NewGuid(),
                 UserId = userId,
@@ -233,7 +230,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         var rows = await _profileRepository.GetCustomPictureRowsAsync(ct);
         if (rows.Count == 0)
         {
-            return new ProfilePictureMigrationSnapshot(0, 0, Array.Empty<ProfilePictureMigrationRow>());
+            return new ProfilePictureMigrationSnapshot(0, 0, []);
         }
 
         var users = await _userService.GetUserInfosAsync(rows.Select(r => r.UserId).ToList(), ct);
@@ -294,7 +291,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
             // populated (BurnerName/FirstName/LastName), giving the
             // ProfileService_UpdateProfileAsync_TransitionsStubToActive
             // behavior contract a single home.
-            profile = new Domain.Entities.Profile
+            profile = new Profile
             {
                 Id = Guid.NewGuid(),
                 UserId = userId,
@@ -599,7 +596,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         if (result is not ConsentCheckStatus.Cleared and not ConsentCheckStatus.Flagged)
         {
             throw new ArgumentException(
-                $"RecordConsentCheckAsync only accepts Cleared or Flagged; use SetConsentCheckPendingAsync for the system-driven Pending transition.",
+                "RecordConsentCheckAsync only accepts Cleared or Flagged; use SetConsentCheckPendingAsync for the system-driven Pending transition.",
                 nameof(result));
         }
 
@@ -625,7 +622,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
 
         await _auditLogService.LogAsync(
             cleared ? AuditAction.ConsentCheckCleared : AuditAction.ConsentCheckFlagged,
-            nameof(Domain.Entities.Profile), userId,
+            nameof(Profile), userId,
             cleared ? "Consent check cleared" : $"Consent check flagged: {notes}",
             reviewerId);
 
@@ -657,7 +654,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         await _profileRepository.UpdateAsync(profile, ct);
 
         await _auditLogService.LogAsync(
-            AuditAction.SignupRejected, nameof(Domain.Entities.Profile), userId,
+            AuditAction.SignupRejected, nameof(Profile), userId,
             $"Signup rejected{(string.IsNullOrWhiteSpace(reason) ? "" : $": {reason}")}",
             reviewerId);
 
@@ -851,7 +848,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
 
         await _auditLogService.LogAsync(
             isClearing ? AuditAction.IbanRemove : AuditAction.IbanSet,
-            nameof(Domain.Entities.Profile), userId,
+            nameof(Profile), userId,
             isClearing ? "IBAN removed" : "IBAN set",
             userId);
 

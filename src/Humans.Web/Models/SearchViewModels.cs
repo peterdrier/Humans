@@ -23,16 +23,16 @@ public sealed class GlobalSearchViewModel
     /// <c>_HumanSearchResults</c> partial.
     /// </summary>
     public IReadOnlyList<HumanSearchResultViewModel> HumanResults { get; init; } =
-        Array.Empty<HumanSearchResultViewModel>();
+        [];
 
     public IReadOnlyList<GlobalSearchResult> TeamResults { get; init; } =
-        Array.Empty<GlobalSearchResult>();
+        [];
 
     public IReadOnlyList<GlobalSearchResult> CampResults { get; init; } =
-        Array.Empty<GlobalSearchResult>();
+        [];
 
     public IReadOnlyList<GlobalSearchResult> ShiftResults { get; init; } =
-        Array.Empty<GlobalSearchResult>();
+        [];
 
     public int HumanCount => HumanResults.Count;
     public int TeamCount => TeamResults.Count;

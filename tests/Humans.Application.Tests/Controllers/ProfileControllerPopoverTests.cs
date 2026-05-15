@@ -1,8 +1,6 @@
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.Application;
 using Humans.Application.Configuration;
-using Humans.Application.DTOs;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Campaigns;
@@ -19,7 +17,6 @@ using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Testing;
 using Humans.Web;
 using Humans.Web.Controllers;
 using Humans.Web.Models;
@@ -103,10 +100,9 @@ public class ProfileControllerPopoverTests
             signInManager,
             Options.Create(new GoogleWorkspaceOptions()));
 
-        var identity = new ClaimsIdentity(new[]
-        {
-            new Claim(ClaimTypes.NameIdentifier, _viewerId.ToString()),
-        }, authenticationType: "TestAuth");
+        var identity = new ClaimsIdentity([
+            new Claim(ClaimTypes.NameIdentifier, _viewerId.ToString())
+        ], authenticationType: "TestAuth");
         var principal = new ClaimsPrincipal(identity);
 
         var httpContext = new DefaultHttpContext { User = principal };
@@ -192,7 +188,7 @@ public class ProfileControllerPopoverTests
         _userService.GetUserInfoAsync(id, Arg.Any<CancellationToken>())
             .Returns(BuildUserInfo(user, profile, userEmails: null));
         _teamService.GetActiveTeamMembershipsForUserAsync(id, Arg.Any<CancellationToken>())
-            .Returns(new List<Humans.Application.Models.TeamMembership>());
+            .Returns(new List<Models.TeamMembership>());
 
         var result = await _controller.Popover(id, CancellationToken.None);
 
@@ -210,12 +206,12 @@ public class ProfileControllerPopoverTests
     private static UserInfo BuildUserInfo(User user, Profile? profile, IReadOnlyList<UserEmail>? userEmails) =>
         UserInfo.Create(
             user: user,
-            userEmails: userEmails ?? Array.Empty<UserEmail>(),
-            eventParticipations: Array.Empty<EventParticipation>(),
-            externalLogins: Array.Empty<(string, string)>(),
+            userEmails: userEmails ?? [],
+            eventParticipations: [],
+            externalLogins: [],
             profile: profile,
-            contactFields: Array.Empty<ContactField>(),
-            profileLanguages: Array.Empty<ProfileLanguage>(),
-            volunteerHistory: Array.Empty<VolunteerHistoryEntry>(),
-            communicationPreferences: Array.Empty<CommunicationPreference>());
+            contactFields: [],
+            profileLanguages: [],
+            volunteerHistory: [],
+            communicationPreferences: []);
 }

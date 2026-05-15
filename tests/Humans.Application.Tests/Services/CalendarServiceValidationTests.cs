@@ -8,7 +8,6 @@ using Humans.Application.Services.Calendar;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
-using Humans.Testing;
 using NodaTime;
 using NodaTime.Testing;
 using NodaTime.TimeZones;

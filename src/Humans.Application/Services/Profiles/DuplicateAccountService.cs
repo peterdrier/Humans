@@ -334,7 +334,7 @@ public sealed class DuplicateAccountService : IDuplicateAccountService
         Guid userId,
         List<string> emailSources,
         Dictionary<Guid, User> userMap,
-        IReadOnlyDictionary<Guid, Domain.Entities.Profile> profiles,
+        IReadOnlyDictionary<Guid, Profile> profiles,
         Dictionary<Guid, int> teamCounts,
         Dictionary<Guid, int> roleAssignmentCounts)
     {

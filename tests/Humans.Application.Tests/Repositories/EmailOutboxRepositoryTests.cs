@@ -8,7 +8,6 @@ using Humans.Infrastructure.Repositories.Email;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using NodaTime.Testing;
-using Xunit;
 
 namespace Humans.Application.Tests.Repositories;
 
@@ -229,7 +228,7 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
         await _repo.AddAsync(stalePickedUp);
 
         var batch = await _repo.GetProcessingBatchAsync(now, stale, maxRetries: 10, batchSize: 100);
-        batch.Select(m => m.Id).Should().BeEquivalentTo(new[] { eligible.Id, stalePickedUp.Id });
+        batch.Select(m => m.Id).Should().BeEquivalentTo([eligible.Id, stalePickedUp.Id]);
     }
 
     [HumansFact]
@@ -243,7 +242,7 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
         await _repo.AddAsync(untouched);
 
         var pickedUpAt = Instant.FromUtc(2026, 4, 1, 15, 0);
-        await _repo.MarkPickedUpAsync(new[] { m1.Id, m2.Id }, pickedUpAt);
+        await _repo.MarkPickedUpAsync([m1.Id, m2.Id], pickedUpAt);
 
         var all = await _dbContext.EmailOutboxMessages.AsNoTracking().ToListAsync();
         all.Single(x => x.Id == m1.Id).PickedUpAt.Should().Be(pickedUpAt);
@@ -333,7 +332,7 @@ public sealed class EmailOutboxRepositoryTests : IDisposable
         deleted.Should().Be(1);
 
         var remaining = await _dbContext.EmailOutboxMessages.AsNoTracking().Select(m => m.Id).ToListAsync();
-        remaining.Should().BeEquivalentTo(new[] { recentSent.Id, oldFailed.Id, oldQueued.Id });
+        remaining.Should().BeEquivalentTo([recentSent.Id, oldFailed.Id, oldQueued.Id]);
     }
 
     // ==========================================================================

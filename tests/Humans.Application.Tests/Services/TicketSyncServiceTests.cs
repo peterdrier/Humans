@@ -21,7 +21,6 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
-using Xunit;
 
 namespace Humans.Application.Tests.Services;
 
@@ -59,7 +58,7 @@ public class TicketSyncServiceTests : IDisposable
         _stripeService = Substitute.For<IStripeService>();
         _userService = Substitute.For<IUserService>();
         _userService.GetAllParticipationsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(new List<EventParticipation>());
+            .Returns([]);
         _campaignService = Substitute.For<ICampaignService>();
         _shiftManagementService = Substitute.For<IShiftManagementService>();
 
@@ -119,7 +118,7 @@ public class TicketSyncServiceTests : IDisposable
 
         var dbOrders = await _dbContext.TicketOrders.ToListAsync();
         dbOrders.Should().HaveCount(2);
-        dbOrders.Select(o => o.VendorOrderId).Should().BeEquivalentTo(new[] { "ord_001", "ord_002" });
+        dbOrders.Select(o => o.VendorOrderId).Should().BeEquivalentTo("ord_001", "ord_002");
     }
 
     // ==========================================================================

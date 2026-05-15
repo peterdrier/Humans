@@ -1,15 +1,12 @@
-using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Caching;
-using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Teams;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Domain.ValueObjects;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NodaTime;
@@ -467,12 +464,12 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
         return result.ToList();
     }
 
-    public async Task<IReadOnlyList<Humans.Application.Models.TeamMembership>> GetActiveTeamMembershipsForUserAsync(
+    public async Task<IReadOnlyList<Application.Models.TeamMembership>> GetActiveTeamMembershipsForUserAsync(
         Guid userId,
         CancellationToken cancellationToken = default)
     {
         var teamsById = await GetTeamsByIdAsync(cancellationToken);
-        var rows = new List<Humans.Application.Models.TeamMembership>();
+        var rows = new List<Application.Models.TeamMembership>();
 
         foreach (var team in teamsById.Values.Where(t => t.IsActive))
         {
@@ -481,7 +478,7 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
 
             var membership = team.Members.FirstOrDefault(m => m.UserId == userId);
             if (membership is not null)
-                rows.Add(new Humans.Application.Models.TeamMembership(team.Name, membership.Role)
+                rows.Add(new Application.Models.TeamMembership(team.Name, membership.Role)
                 {
                     IsHidden = team.IsHidden,
                 });
@@ -669,7 +666,7 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
             await using var scope = _scopeFactory.CreateAsyncScope();
             var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
             var users = allUserIds.Count == 0
-                ? new Dictionary<Guid, Humans.Application.UserInfo>()
+                ? new Dictionary<Guid, Application.UserInfo>()
                 : await userService.GetUserInfosAsync(allUserIds, ct);
             var managementHolders = await _teamRepository.GetActiveManagementRoleHolderUserIdsByTeamAsync(ct);
             var roleDefinitionsByTeam = await _teamRepository.GetAllRoleDefinitionsByTeamAsync(ct);
@@ -713,7 +710,7 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
 
     private static TeamInfo BuildTeamInfo(
         Team team,
-        IReadOnlyDictionary<Guid, Humans.Application.UserInfo> users,
+        IReadOnlyDictionary<Guid, Application.UserInfo> users,
         IReadOnlyDictionary<Guid, IReadOnlySet<Guid>> managementHolders,
         IReadOnlyDictionary<Guid, IReadOnlyList<TeamRoleDefinition>> roleDefinitionsByTeam) => new(
         Id: team.Id,

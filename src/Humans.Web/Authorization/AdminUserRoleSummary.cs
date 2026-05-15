@@ -11,12 +11,12 @@ namespace Humans.Web.Authorization;
 public static class AdminUserRoleSummary
 {
     private static readonly string[] Order =
-    {
+    [
         RoleNames.Admin, RoleNames.Board, RoleNames.HumanAdmin, RoleNames.FinanceAdmin,
         RoleNames.TicketAdmin, RoleNames.TeamsAdmin, RoleNames.CampAdmin,
         RoleNames.FeedbackAdmin, RoleNames.NoInfoAdmin, RoleNames.VolunteerCoordinator,
-        RoleNames.ConsentCoordinator,
-    };
+        RoleNames.ConsentCoordinator
+    ];
 
     public static string PrimaryRole(ClaimsPrincipal user)
     {

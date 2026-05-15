@@ -502,7 +502,7 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
         await _auditLogService.LogAsync(
             AuditAction.ExpenseSubmit,
             "ExpenseReport", reportId,
-            $"Submitted expense report.",
+            "Submitted expense report.",
             submitterUserId);
 
         return true;
@@ -540,7 +540,7 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
         await _auditLogService.LogAsync(
             AuditAction.ExpenseWithdraw,
             "ExpenseReport", reportId,
-            $"Withdrew expense report.",
+            "Withdrew expense report.",
             submitterUserId);
 
         return true;
@@ -604,7 +604,7 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
             MaskedIban: hasIban ? IbanFormatter.Mask(profile!.Iban!) : null);
     }
 
-    private static ExpenseIbanSaveResult IbanFailure(string message, bool isValidationError, Domain.Entities.Profile? profile)
+    private static ExpenseIbanSaveResult IbanFailure(string message, bool isValidationError, Profile? profile)
     {
         var hasIban = !string.IsNullOrEmpty(profile?.Iban);
         return new ExpenseIbanSaveResult(
@@ -630,7 +630,7 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
         await _auditLogService.LogAsync(
             AuditAction.ExpenseEndorse,
             "ExpenseReport", reportId,
-            $"Coordinator endorsed expense report.",
+            "Coordinator endorsed expense report.",
             coordinatorUserId);
 
         return true;
@@ -710,7 +710,7 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
         await _auditLogService.LogAsync(
             AuditAction.ExpenseApprove,
             "ExpenseReport", reportId,
-            $"Finance approved expense report.",
+            "Finance approved expense report.",
             actorUserId);
 
         if (overrideCategoryId.HasValue && overrideCategoryId.Value != report.BudgetCategoryId)
@@ -944,7 +944,7 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
 
                 if (doc.PaymentsPending == 0 && doc.ApprovedAt is not null)
                 {
-                    await this.MarkPaidAsync(report.Id, ct);
+                    await MarkPaidAsync(report.Id, ct);
                     _logger.LogInformation(
                         "Marked expense report {ReportId} as Paid (HoldedDocId={HoldedDocId})",
                         report.Id, report.HoldedDocId);

@@ -1,6 +1,5 @@
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Store;
-using Humans.Application.Services.Store.Dtos;
 using Humans.Domain.Entities;
 using Humans.Web.Authorization;
 using Humans.Web.Models;

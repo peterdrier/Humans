@@ -4,7 +4,6 @@ using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Shifts;
 using Humans.Integration.Tests.Infrastructure;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using Xunit;
@@ -88,7 +87,7 @@ public class VolunteerTrackingRepositoryTests : IClassFixture<HumansWebApplicati
         var rows = await sut.GetByEventAsync(es1.Id);
 
         rows.Should().HaveCount(2);
-        rows.Select(r => r.UserId).Should().BeEquivalentTo(new[] { u1, u2 });
+        rows.Select(r => r.UserId).Should().BeEquivalentTo([u1, u2]);
         rows.Should().OnlyContain(r => r.EventSettingsId == es1.Id);
     }
 
@@ -280,7 +279,7 @@ public class VolunteerTrackingRepositoryTests : IClassFixture<HumansWebApplicati
             setAt: t,
             setupOffsetThreshold: -4);
 
-        trimmed.Should().Equal(new[] { -3 });
+        trimmed.Should().Equal(-3);
         var fetched = await sut.GetAsync(userId, es.Id);
         fetched.Should().NotBeNull();
         fetched!.DayOffs.Select(d => d.DayOffset).Should().Equal(-8, -5);

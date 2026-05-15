@@ -5,7 +5,6 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Application.Interfaces.Legal;
 using Humans.Application.Interfaces.Notifications;
-using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
 
 namespace Humans.Application.Services.Legal;

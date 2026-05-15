@@ -4,7 +4,6 @@ using Humans.Web.Authorization;
 using Humans.Web.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Xunit;
 
 namespace Humans.Web.Tests.Controllers;
 

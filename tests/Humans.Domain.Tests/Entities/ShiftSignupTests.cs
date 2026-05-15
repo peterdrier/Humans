@@ -3,7 +3,6 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
 using NodaTime.Testing;
-using Xunit;
 
 namespace Humans.Domain.Tests.Entities;
 

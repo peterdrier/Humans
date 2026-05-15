@@ -1,5 +1,4 @@
 using Humans.Application.Architecture;
-using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;

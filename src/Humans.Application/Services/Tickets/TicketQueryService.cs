@@ -6,7 +6,6 @@ using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Constants;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Campaigns;

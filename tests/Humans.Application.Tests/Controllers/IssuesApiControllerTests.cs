@@ -12,7 +12,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using NSubstitute;
-using Xunit;
 
 #pragma warning disable CS0618 // Cross-domain navs are intentional in test fixtures.
 
@@ -123,12 +122,12 @@ public class IssuesApiControllerTests
                 Arg.Do<IssueListFilter>(f => captured = f),
                 Arg.Any<Guid>(), Arg.Any<IReadOnlyList<string>>(),
                 Arg.Any<bool>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<IssueListSnapshot>>(Array.Empty<IssueListSnapshot>()));
+            .Returns(Task.FromResult<IReadOnlyList<IssueListSnapshot>>([]));
 
         await _sut.List(status: IssueStatus.Open, category: null, section: null, assignee: null);
 
         captured.Should().NotBeNull();
-        captured!.Statuses.Should().BeEquivalentTo(new[] { IssueStatus.Open });
+        captured!.Statuses.Should().BeEquivalentTo([IssueStatus.Open]);
     }
 
     [HumansFact]
@@ -140,12 +139,12 @@ public class IssuesApiControllerTests
                 Arg.Do<IssueListFilter>(f => captured = f),
                 Arg.Any<Guid>(), Arg.Any<IReadOnlyList<string>>(),
                 Arg.Any<bool>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<IssueListSnapshot>>(Array.Empty<IssueListSnapshot>()));
+            .Returns(Task.FromResult<IReadOnlyList<IssueListSnapshot>>([]));
 
         await _sut.List(status: null, category: null, section: "Tickets", assignee: null);
 
         captured.Should().NotBeNull();
-        captured!.Sections.Should().BeEquivalentTo(new string?[] { "Tickets" });
+        captured!.Sections.Should().BeEquivalentTo("Tickets");
     }
 
     [HumansFact]
@@ -157,7 +156,7 @@ public class IssuesApiControllerTests
                 Arg.Do<IssueListFilter>(f => captured = f),
                 Arg.Any<Guid>(), Arg.Any<IReadOnlyList<string>>(),
                 Arg.Any<bool>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<IssueListSnapshot>>(Array.Empty<IssueListSnapshot>()));
+            .Returns(Task.FromResult<IReadOnlyList<IssueListSnapshot>>([]));
 
         var reporterId = Guid.NewGuid();
         await _sut.List(
@@ -177,7 +176,7 @@ public class IssuesApiControllerTests
                 Arg.Do<IssueListFilter>(f => captured = f),
                 Arg.Any<Guid>(), Arg.Any<IReadOnlyList<string>>(),
                 Arg.Any<bool>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<IssueListSnapshot>>(Array.Empty<IssueListSnapshot>()));
+            .Returns(Task.FromResult<IReadOnlyList<IssueListSnapshot>>([]));
 
         await _sut.List(
             status: null, category: null, section: null, assignee: null,
@@ -196,7 +195,7 @@ public class IssuesApiControllerTests
                 Arg.Do<IssueListFilter>(f => captured = f),
                 Arg.Any<Guid>(), Arg.Any<IReadOnlyList<string>>(),
                 Arg.Any<bool>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<IssueListSnapshot>>(Array.Empty<IssueListSnapshot>()));
+            .Returns(Task.FromResult<IReadOnlyList<IssueListSnapshot>>([]));
 
         await _sut.List(
             status: null, category: null, section: null, assignee: null,

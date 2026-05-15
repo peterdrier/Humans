@@ -5,7 +5,6 @@ using Humans.Application.Services.Governance;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Governance;
 using Microsoft.EntityFrameworkCore;
-using Xunit;
 
 namespace Humans.Application.Tests.Architecture;
 

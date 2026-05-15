@@ -46,8 +46,7 @@ public sealed class ApplicationServiceDbContextInjectionAnalyzer : DiagnosticAna
             "downgrades this diagnostic to a warning for the tagged class only — the attribute " +
             "is a TODO for migration, not a permanent exemption.");
 
-    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
-        ImmutableArray.Create(Rule);
+    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
 
     private const string HumansDbContextFullName = "Humans.Infrastructure.Data.HumansDbContext";
     private const string IRepositoryFullName = "Humans.Application.Interfaces.Repositories.IRepository";

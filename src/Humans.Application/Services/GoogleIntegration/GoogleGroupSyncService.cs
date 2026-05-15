@@ -405,7 +405,7 @@ public sealed class GoogleGroupSyncService : IGoogleGroupSync
     {
         var emails = emailsByUserId.TryGetValue(userId, out var list)
             ? list
-            : Array.Empty<UserEmailRowSnapshot>();
+            : [];
 
         return emails
             .Where(e => e.IsVerified && e.IsGoogle)
@@ -418,7 +418,7 @@ public sealed class GoogleGroupSyncService : IGoogleGroupSync
                 .FirstOrDefault();
     }
 
-    private static bool IsSuspended(Humans.Domain.Entities.Profile profile)
+    private static bool IsSuspended(Profile profile)
     {
         if (profile.State == ProfileState.Suspended)
             return true;

@@ -10,7 +10,6 @@ using Humans.Infrastructure.Repositories.Teams;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using NodaTime.Testing;
-using Xunit;
 
 namespace Humans.Application.Tests.Repositories;
 

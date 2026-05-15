@@ -1,6 +1,5 @@
 using Humans.Application.Interfaces.Issues;
 using Humans.Domain.Entities;
-using Humans.Domain.Enums;
 using NodaTime;
 
 namespace Humans.Application.Interfaces.Repositories;

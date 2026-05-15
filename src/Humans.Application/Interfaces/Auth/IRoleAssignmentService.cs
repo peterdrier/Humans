@@ -1,6 +1,4 @@
-using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Onboarding;
-using Humans.Domain.Entities;
 using NodaTime;
 
 namespace Humans.Application.Interfaces.Auth;

@@ -18,7 +18,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Xunit;
 using FeedbackApplicationService = Humans.Application.Services.Feedback.FeedbackService;
 
 namespace Humans.Application.Tests.Services;
