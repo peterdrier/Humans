@@ -76,6 +76,49 @@ public class ShiftViewServiceTests
     }
 
     [HumansFact]
+    public async Task GetUserAsync_NoActiveEvent_DoesNotQuerySignups()
+    {
+        var userId = Guid.NewGuid();
+        _management.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns((EventSettings?)null);
+        _management.GetVolunteerEventProfileAsync(userId, Arg.Any<CancellationToken>())
+            .Returns((VolunteerEventProfile?)null);
+        _signups.GetVolunteerTagPreferencesForUserAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(Array.Empty<VolunteerTagPreference>());
+
+        var sut = CreateSut();
+        var view = await sut.GetUserAsync(userId);
+
+        view.Signups.Should().BeEmpty();
+        await _signups.DidNotReceive().GetByUserAsync(
+            Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task GetUserAsync_WithActiveEvent_ScopesSignupsToActiveEventId()
+    {
+        var userId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        var es = new EventSettings { Id = eventId, IsActive = true };
+        var scoped = new[] { new ShiftSignup { Id = Guid.NewGuid(), UserId = userId } };
+
+        _management.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(es);
+        _management.GetVolunteerEventProfileAsync(userId, Arg.Any<CancellationToken>())
+            .Returns((VolunteerEventProfile?)null);
+        _signups.GetVolunteerTagPreferencesForUserAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(Array.Empty<VolunteerTagPreference>());
+        _signups.GetByUserAsync(userId, eventId, Arg.Any<CancellationToken>()).Returns(scoped);
+
+        var sut = CreateSut();
+        var view = await sut.GetUserAsync(userId);
+
+        view.Signups.Should().BeSameAs(scoped);
+        await _signups.Received(1).GetByUserAsync(userId, eventId, Arg.Any<CancellationToken>());
+        await _signups.DidNotReceive().GetByUserAsync(
+            userId, (Guid?)null, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task GetRotaAsync_UnknownRotaId_ReturnsEmptyView()
     {
         var rotaId = Guid.NewGuid();

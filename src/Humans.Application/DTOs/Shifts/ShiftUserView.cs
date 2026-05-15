@@ -1,4 +1,5 @@
 using Humans.Domain.Entities;
+using Humans.Domain.Enums;
 
 namespace Humans.Application.DTOs.Shifts;
 
@@ -22,6 +23,17 @@ public sealed record ShiftUserView(
     IReadOnlyList<VolunteerTagPreference> TagPreferences,
     IReadOnlyList<ShiftSignup> Signups)
 {
+    /// <summary>
+    /// True when the user has at least one signup in an active state
+    /// (<see cref="SignupStatus.Pending"/> or <see cref="SignupStatus.Confirmed"/>)
+    /// in the active event. Refused / Bailed / Cancelled / NoShow signups
+    /// don't count — they're no longer commitments. Mirrors the convention
+    /// used by <c>ShiftSignupRepository</c>, <c>ShiftManagementService</c>,
+    /// and the agent snapshot.
+    /// </summary>
+    public bool HasShift => Signups.Any(s =>
+        s.Status is SignupStatus.Pending or SignupStatus.Confirmed);
+
     /// <summary>
     /// Empty view returned for unknown ids / no active event.
     /// </summary>
