@@ -23,7 +23,6 @@ public enum ProfileCardViewMode
 public class ProfileCardViewComponent : ViewComponent
 {
     private readonly UserManager<User> _userManager;
-    private readonly IProfileService _profileService;
     private readonly IUserService _userService;
     private readonly IContactFieldService _contactFieldService;
     private readonly IUserEmailService _userEmailService;
@@ -34,7 +33,6 @@ public class ProfileCardViewComponent : ViewComponent
 
     public ProfileCardViewComponent(
         UserManager<User> userManager,
-        IProfileService profileService,
         IUserService userService,
         IContactFieldService contactFieldService,
         IUserEmailService userEmailService,
@@ -44,7 +42,6 @@ public class ProfileCardViewComponent : ViewComponent
         ICommunicationPreferenceService commPrefService)
     {
         _userManager = userManager;
-        _profileService = profileService;
         _userService = userService;
         _contactFieldService = contactFieldService;
         _userEmailService = userEmailService;
@@ -56,15 +53,12 @@ public class ProfileCardViewComponent : ViewComponent
 
     public async Task<IViewComponentResult> InvokeAsync(Guid userId, ProfileCardViewMode viewMode)
     {
-        // Load profile and user independently (nav property stripped)
-        var profile = await _profileService.GetProfileAsync(userId);
-        var user = await _userService.GetByIdAsync(userId)
-            ?? await _userManager.FindByIdAsync(userId.ToString());
-
-        if (user is null)
+        var info = await _userService.GetUserInfoAsync(userId);
+        if (info is null)
         {
             return Content(string.Empty);
         }
+        var profile = info.Profile;
 
         var isOwnProfile = viewMode == ProfileCardViewMode.Self;
         var canViewLegalName = viewMode != ProfileCardViewMode.Public;
@@ -100,15 +94,6 @@ public class ProfileCardViewComponent : ViewComponent
 
         // nobodies.team email badge is now handled by NobodiesEmailBadgeViewComponent
 
-        // Get CV entries from the FullProfile projection
-        var fullProfile = await _profileService.GetFullProfileAsync(userId);
-        var cvEntries = fullProfile?.CVEntries ?? [];
-
-        // Get profile languages (service returns sorted by proficiency desc, then language code)
-        var profileLanguages = profile is not null
-            ? await _profileService.GetProfileLanguagesAsync(profile.Id)
-            : (IReadOnlyList<ProfileLanguageSnapshot>)[];
-
         // Get user's teams (excluding Volunteers system team)
         var userTeams = await _teamService.GetUserTeamsAsync(userId);
         var displayableTeams = userTeams
@@ -128,7 +113,7 @@ public class ProfileCardViewComponent : ViewComponent
         // Get membership status
         var membershipSnapshot = await _membershipCalculator.GetMembershipSnapshotAsync(userId);
 
-        var hasCustomPicture = profile?.HasCustomProfilePicture == true;
+        var hasCustomPicture = profile?.HasCustomPicture == true;
         var pictureUrl = hasCustomPicture
             ? Url.Action(nameof(ProfileController.Picture), "Profile", new { id = profile!.Id, v = profile.UpdatedAt.ToUnixTimeTicks() })
             : null;
@@ -136,8 +121,8 @@ public class ProfileCardViewComponent : ViewComponent
         var model = new ProfileCardViewModel
         {
             UserId = userId,
-            DisplayName = user.DisplayName,
-            ProfilePictureUrl = user.ProfilePictureUrl,
+            DisplayName = info.DisplayName,
+            ProfilePictureUrl = info.ProfilePictureUrl,
             HasCustomProfilePicture = hasCustomPicture,
             CustomProfilePictureUrl = pictureUrl,
             BurnerName = profile?.BurnerName ?? string.Empty,
@@ -146,8 +131,8 @@ public class ProfileCardViewComponent : ViewComponent
             IsApproved = profile?.IsApproved ?? false,
             City = profile?.City,
             CountryCode = profile?.CountryCode,
-            BirthdayMonth = profile?.DateOfBirth?.Month,
-            BirthdayDay = profile?.DateOfBirth?.Day,
+            BirthdayMonth = profile?.BirthdayMonth,
+            BirthdayDay = profile?.BirthdayDay,
             Bio = profile?.Bio,
             ContributionInterests = profile?.ContributionInterests,
             BoardNotes = canViewLegalName ? profile?.BoardNotes : null,
@@ -175,20 +160,20 @@ public class ProfileCardViewComponent : ViewComponent
                 Value = cf.Value,
                 Visibility = cf.Visibility
             }).ToList(),
-            VolunteerHistory = cvEntries.Select(cv => new VolunteerHistoryEntryViewModel
+            VolunteerHistory = (profile?.VolunteerHistory ?? []).Select(cv => new VolunteerHistoryEntryViewModel
             {
                 Date = cv.Date,
                 EventName = cv.EventName,
                 Description = cv.Description
             }).ToList(),
             Teams = displayableTeams,
-            Languages = profileLanguages.Select(pl => new ProfileLanguageDisplayViewModel
+            Languages = (profile?.Languages ?? []).Select(pl => new ProfileLanguageDisplayViewModel
             {
                 LanguageCode = pl.LanguageCode,
                 LanguageName = LanguageCatalog.GetDisplayName(pl.LanguageCode),
                 Proficiency = pl.Proficiency
             }).ToList(),
-            PreferredLanguage = user.PreferredLanguage,
+            PreferredLanguage = info.PreferredLanguage,
             CanSendMessage = !isOwnProfile
                 && !visibleEmails.Any(e => e.Visibility >= ContactFieldVisibility.AllActiveProfiles)
                 && await _commPrefService.AcceptsFacilitatedMessagesAsync(userId)

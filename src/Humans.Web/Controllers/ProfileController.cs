@@ -244,7 +244,7 @@ public class ProfileController : HumansControllerBase
         if (user is null)
             return NotFound();
 
-        var profile = await _profileService.GetProfileAsync(user.Id, ct);
+        var profile = (await _userService.GetUserInfoAsync(user.Id, ct))?.Profile;
         var snapshot = await _membershipCalculator.GetMembershipSnapshotAsync(user.Id, ct);
         var pendingConsentCount = snapshot.PendingConsentCount;
 
@@ -1808,9 +1808,10 @@ public class ProfileController : HumansControllerBase
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> ViewProfile(Guid id, CancellationToken ct)
     {
-        var profile = await _profileService.GetProfileAsync(id, ct);
+        var profileInfo = await _userService.GetUserInfoAsync(id, ct);
+        var profile = profileInfo?.Profile;
 
-        if (profile is null || profile.IsSuspended)
+        if (profile is null || profile.State == ProfileState.Suspended)
         {
             return NotFound();
         }
@@ -1826,12 +1827,11 @@ public class ProfileController : HumansControllerBase
         var noShowContext = await BuildNoShowHistoryContextAsync(id, viewer, isOwnProfile, ct);
 
         // The ProfileCard ViewComponent handles all data fetching and permission checks.
-        var profileUser = await _userService.GetByIdAsync(id, ct);
         var viewModel = new ProfileViewModel
         {
             Id = profile.Id,
             UserId = id,
-            DisplayName = profileUser?.DisplayName ?? "Unknown",
+            DisplayName = profileInfo!.DisplayName,
             IsOwnProfile = isOwnProfile,
             IsApproved = profile.IsApproved,
             NoShowHistory = noShowContext.History,
