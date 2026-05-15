@@ -1581,7 +1581,7 @@
   <!-- Containers               -->
   <!-- ======================== -->
   <data name="Container_Breadcrumb" xml:space="preserve"><value>Contenedores</value></data>
-  <data name="Container_PlacementClosed" xml:space="preserve"><value>La colocación de contenedores está cerrada. Contacta con city planning para solicitar cambios.</value></data>
+  <data name="Container_PlacementClosed" xml:space="preserve"><value>La colocación de contenedores está actualmente cerrada. Puedes gestionar los contenedores de tu campamento, pero aún no colocarlos en el mapa.</value></data>
   <data name="Container_Empty" xml:space="preserve"><value>Aún no hay contenedores registrados para esta temporada.</value></data>
   <data name="Container_AddModal_Title" xml:space="preserve"><value>Añadir Contenedor</value></data>
   <data name="Container_EditModal_Title" xml:space="preserve"><value>Editar Contenedor</value></data>

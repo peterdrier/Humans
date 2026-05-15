@@ -1629,7 +1629,7 @@
   <!-- Containers               -->
   <!-- ======================== -->
   <data name="Container_Breadcrumb" xml:space="preserve"><value>Containers</value></data>
-  <data name="Container_PlacementClosed" xml:space="preserve"><value>Container placement is currently closed. Contact city planning to request changes.</value></data>
+  <data name="Container_PlacementClosed" xml:space="preserve"><value>Container placement is currently closed. You can manage containers you own, but not yet place them on the map.</value></data>
   <data name="Container_Empty" xml:space="preserve"><value>No containers registered for this season yet.</value></data>
   <data name="Container_AddModal_Title" xml:space="preserve"><value>Add Container</value></data>
   <data name="Container_EditModal_Title" xml:space="preserve"><value>Edit Container</value></data>

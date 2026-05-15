@@ -1579,7 +1579,7 @@
   <!-- Containers               -->
   <!-- ======================== -->
   <data name="Container_Breadcrumb" xml:space="preserve"><value>Container</value></data>
-  <data name="Container_PlacementClosed" xml:space="preserve"><value>Die Container-Platzierung ist derzeit geschlossen. Kontaktiere das City-Planning-Team für Änderungsanfragen.</value></data>
+  <data name="Container_PlacementClosed" xml:space="preserve"><value>Die Container-Platzierung ist derzeit geschlossen. Du kannst deine Container verwalten, sie aber noch nicht auf der Karte platzieren.</value></data>
   <data name="Container_Empty" xml:space="preserve"><value>Noch keine Container für diese Saison registriert.</value></data>
   <data name="Container_AddModal_Title" xml:space="preserve"><value>Container Hinzufügen</value></data>
   <data name="Container_EditModal_Title" xml:space="preserve"><value>Container Bearbeiten</value></data>

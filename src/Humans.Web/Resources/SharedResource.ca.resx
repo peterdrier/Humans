@@ -1581,7 +1581,7 @@
   <!-- Containers               -->
   <!-- ======================== -->
   <data name="Container_Breadcrumb" xml:space="preserve"><value>Contenidors</value></data>
-  <data name="Container_PlacementClosed" xml:space="preserve"><value>La col·locació de contenidors està tancada. Contacta amb city planning per sol·licitar canvis.</value></data>
+  <data name="Container_PlacementClosed" xml:space="preserve"><value>La col·locació de contenidors està actualment tancada. Pots gestionar els contenidors del teu campament, però encara no col·locar-los al mapa.</value></data>
   <data name="Container_Empty" xml:space="preserve"><value>Encara no hi ha contenidors registrats per a aquesta temporada.</value></data>
   <data name="Container_AddModal_Title" xml:space="preserve"><value>Afegir Contenidor</value></data>
   <data name="Container_EditModal_Title" xml:space="preserve"><value>Editar Contenidor</value></data>

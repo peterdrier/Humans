@@ -1579,7 +1579,7 @@
   <!-- Containers               -->
   <!-- ======================== -->
   <data name="Container_Breadcrumb" xml:space="preserve"><value>Contenitori</value></data>
-  <data name="Container_PlacementClosed" xml:space="preserve"><value>Il posizionamento dei contenitori è attualmente chiuso. Contatta il city planning per richiedere modifiche.</value></data>
+  <data name="Container_PlacementClosed" xml:space="preserve"><value>Il posizionamento dei contenitori è attualmente chiuso. Puoi gestire i tuoi contenitori, ma non ancora posizionarli sulla mappa.</value></data>
   <data name="Container_Empty" xml:space="preserve"><value>Nessun contenitore registrato per questa stagione.</value></data>
   <data name="Container_AddModal_Title" xml:space="preserve"><value>Aggiungi Contenitore</value></data>
   <data name="Container_EditModal_Title" xml:space="preserve"><value>Modifica Contenitore</value></data>
