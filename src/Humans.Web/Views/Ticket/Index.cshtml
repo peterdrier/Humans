@@ -445,12 +445,16 @@
                 for (var i = 0; i < allThree; i++)      elems.push({ name: 'a' + i,  sets: ['Profile', 'Ticket', 'Shift'] });
                 var sets = window.UpSetJS.extractSets(elems);
                 var combinations = window.UpSetJS.generateCombinations(sets);
-                window.UpSetJS.render(upset, {
+                var props = {
                     sets: sets,
                     combinations: combinations,
                     width: 400,
-                    height: 360
-                });
+                    height: 360,
+                    selection: null
+                };
+                function rerender() { window.UpSetJS.render(upset, props); }
+                props.onHover = function (s) { props.selection = s; rerender(); };
+                rerender();
             }
         });
     </script>
