@@ -673,8 +673,8 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
             await using var scope = _scopeFactory.CreateAsyncScope();
             var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
             var users = allUserIds.Count == 0
-                ? new Dictionary<Guid, User>()
-                : await userService.GetByIdsWithEmailsAsync(allUserIds, ct);
+                ? new Dictionary<Guid, Humans.Application.UserInfo>()
+                : await userService.GetUserInfosAsync(allUserIds, ct);
 
             // No defensive Clear() — InvalidateTeamsCache already emptied the cache
             // before flipping _isLoaded to false (or the cache is empty on first
@@ -712,7 +712,7 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
             && IsUserCoordinatorOfActiveTeam(teams, coordinatorTeamIds, team.ParentTeamId.Value, userId);
     }
 
-    private static TeamInfo BuildTeamInfo(Team team, IReadOnlyDictionary<Guid, User> users) => new(
+    private static TeamInfo BuildTeamInfo(Team team, IReadOnlyDictionary<Guid, Humans.Application.UserInfo> users) => new(
         Id: team.Id,
         Name: team.Name,
         Description: team.Description,

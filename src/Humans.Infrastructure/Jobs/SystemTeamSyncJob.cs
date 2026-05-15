@@ -654,7 +654,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
             var resourceTuples = resources.Select(r => (r.Name, r.Url)).ToList();
 
             var addedUsersWithEmails = await _userService
-                .GetByIdsWithEmailsAsync(toAdd, cancellationToken);
+                .GetUserInfosAsync(toAdd, cancellationToken);
 
             foreach (var userId in toAdd)
             {

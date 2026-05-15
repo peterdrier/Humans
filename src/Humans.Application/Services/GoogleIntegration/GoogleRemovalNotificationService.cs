@@ -85,7 +85,7 @@ public sealed class GoogleRemovalNotificationService : IGoogleRemovalNotificatio
         }
 
         // Load the user with all UserEmails so we can run the variant selector.
-        var usersById = await _userService.GetByIdsWithEmailsAsync([userId.Value], cancellationToken);
+        var usersById = await _userService.GetUserInfosAsync([userId.Value], cancellationToken);
         if (!usersById.TryGetValue(userId.Value, out var user))
         {
             _logger.LogWarning(
@@ -164,7 +164,7 @@ public sealed class GoogleRemovalNotificationService : IGoogleRemovalNotificatio
     /// is NOT <paramref name="removedEmail"/>, or <c>null</c> when no such
     /// row exists. Drives the Variant 1 / Variant 2 split.
     /// </summary>
-    private static string? FindOtherVerifiedGoogleEmail(User user, string removedEmail)
+    private static string? FindOtherVerifiedGoogleEmail(UserInfo user, string removedEmail)
     {
         foreach (var ue in user.UserEmails)
         {

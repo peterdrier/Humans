@@ -122,7 +122,7 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
             // Fan out user + email hydration for notifications, and team membership
             // lookup for Google-sync cleanup.
             var usersById = await _userService
-                .GetByIdsWithEmailsAsync(suspendedIds, cancellationToken);
+                .GetUserInfosAsync(suspendedIds, cancellationToken);
 
             foreach (var userId in suspendedIds)
             {

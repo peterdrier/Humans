@@ -112,6 +112,14 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
             "If this is being called on the inner UserService it indicates a DI " +
             "registration mistake — IUserService should resolve to CachingUserService.");
 
+    public ValueTask<IReadOnlyDictionary<Guid, UserInfo>> GetUserInfosAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
+        throw new NotSupportedException(
+            "GetUserInfosAsync is only meaningful through CachingUserService — " +
+            "the decorator serves cached hits from the dict and refills misses " +
+            "through inner.GetUserInfoAsync. If this is being called on the inner " +
+            "UserService it indicates a DI registration mistake.");
+
     public Task<User?> GetByIdAsync(Guid userId, CancellationToken ct = default) =>
         _repo.GetByIdAsync(userId, ct);
 

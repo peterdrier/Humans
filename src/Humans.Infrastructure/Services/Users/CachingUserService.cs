@@ -102,6 +102,33 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
     /// <inheritdoc cref="IUserService.GetAllUserInfos" />
     public IReadOnlyCollection<UserInfo> GetAllUserInfos() => Values.ToArray();
 
+    /// <inheritdoc cref="IUserService.GetUserInfosAsync" />
+    public async ValueTask<IReadOnlyDictionary<Guid, UserInfo>> GetUserInfosAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
+    {
+        var result = new Dictionary<Guid, UserInfo>(userIds.Count);
+        List<Guid>? misses = null;
+        foreach (var id in userIds)
+        {
+            if (TryGet(id, out var hit))
+                result[id] = hit;
+            else
+                (misses ??= []).Add(id);
+        }
+
+        if (misses is not null)
+        {
+            foreach (var id in misses)
+            {
+                var info = await LoadAndCacheAsync(id, ct);
+                if (info is not null)
+                    result[id] = info;
+            }
+        }
+
+        return result;
+    }
+
     /// <summary>
     /// Rebuilds the cache entry for <paramref name="userId"/> directly from
     /// repositories. If the user no longer exists, the entry is removed.

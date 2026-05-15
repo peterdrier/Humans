@@ -1952,7 +1952,7 @@ public class ProfileController : HumansControllerBase
         // Issue #635 (§15i): bulk-fetch sender + recipient with UserEmails
         // hydrated through the section-owned service instead of a raw
         // `.Include(u => u.UserEmails)` over the cross-domain nav.
-        var participants = await _userService.GetByIdsWithEmailsAsync(
+        var participants = await _userService.GetUserInfosAsync(
             new[] { id, currentUser.Id });
         if (!participants.TryGetValue(id, out var targetUser))
             return NotFound();

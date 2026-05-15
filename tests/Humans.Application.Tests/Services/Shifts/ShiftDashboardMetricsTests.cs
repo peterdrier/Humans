@@ -1042,6 +1042,17 @@ public class ShiftDashboardMetricsTests : IDisposable
             return users.ToDictionary(u => u.Id);
         }
 
+        public ValueTask<IReadOnlyDictionary<Guid, Humans.Application.UserInfo>> GetUserInfosAsync(
+            IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
+        {
+            var snapshot = GetAllUserInfos().ToDictionary(u => u.Id);
+            var dict = new Dictionary<Guid, Humans.Application.UserInfo>();
+            foreach (var id in userIds)
+                if (snapshot.TryGetValue(id, out var info))
+                    dict[id] = info;
+            return new ValueTask<IReadOnlyDictionary<Guid, Humans.Application.UserInfo>>(dict);
+        }
+
         public async Task<IReadOnlyDictionary<Guid, User>> GetByIdsWithEmailsAsync(IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
         {
             if (userIds.Count == 0) return new Dictionary<Guid, User>();

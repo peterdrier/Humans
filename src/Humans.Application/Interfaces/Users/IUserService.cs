@@ -13,6 +13,7 @@ namespace Humans.Application.Interfaces.Users;
 /// <remarks>
 /// Surface-budget recent history (newest first):
 /// <list type="bullet">
+///   <item>28→29 — UserInfo bypass tier 1: added GetUserInfosAsync(ids) — batched UserInfo lookup served from the cache dict (per-miss refill through the existing GetUserInfoAsync path). Replaces GetByIdsAsync / GetByIdsWithEmailsAsync at every reader call site; both User-shape batch readers will be removed once migration completes.</item>
 ///   <item>32→28 — UserInfo snapshot consolidation (PR #553): removed 4 single-caller DB readers (GetRejectedGoogleEmailCountAsync, GetCountByContactSourceAsync, GetLoginTimestampsInWindowAsync, GetParticipationAsync); reimplemented 2 multi-caller readers (GetAllParticipationsForYearAsync, GetMergedSourceIdsAsync) over the cached UserInfo snapshot via the CachingUserService decorator. Inner UserService now throws NotSupportedException on the swapped methods to match the existing GetAllUserInfos pattern. Net effect: 7 DB read paths drained, one cache snapshot.</item>
 ///   <item>33→32 — admin dashboard language tile (PR #553 follow-up): removed GetLanguageDistributionForUserIdsAsync. Sole caller (AdminDashboardService) now groups in memory over the cached UserInfo snapshot rather than a per-render SQL GROUP BY against `users` — eliminates a DB round-trip on every admin dashboard render.</item>
 ///   <item>32→33 — admin stats + /Users/Admin/Debug + /Tickets Venn: added GetAllUserInfos. Snapshot accessor — the cache is the canonical read-model; all aggregate consumers read from it rather than re-querying the underlying tables.</item>
@@ -29,7 +30,7 @@ namespace Humans.Application.Interfaces.Users;
 ///   <item>-1 GetContactUsersAsync removed (/Contacts surface deleted in PR 2 of email-identity-decoupling — only ContactService called it).</item>
 /// </list>
 /// </remarks>
-[SurfaceBudget(28)]
+[SurfaceBudget(29)]
 public interface IUserService : IApplicationService, IUserMerge
 {
     /// <summary>
@@ -52,6 +53,20 @@ public interface IUserService : IApplicationService, IUserMerge
     /// iterate without locking.
     /// </summary>
     IReadOnlyCollection<UserInfo> GetAllUserInfos();
+
+    /// <summary>
+    /// Batched <see cref="UserInfo"/> lookup. Returns a dictionary keyed by
+    /// user id; ids without a corresponding user are absent. Served from the
+    /// caching decorator's in-memory dict for any id already cached; missing
+    /// ids are refilled through the same per-user load path used by
+    /// <see cref="GetUserInfoAsync"/>. The canonical replacement for
+    /// <c>GetByIdsAsync</c> / <c>GetByIdsWithEmailsAsync</c> at reader call
+    /// sites — those still exist for the rare consumer that needs a real
+    /// <see cref="User"/> entity (Identity machinery, in-place mutations).
+    /// </summary>
+    ValueTask<IReadOnlyDictionary<Guid, UserInfo>> GetUserInfosAsync(
+        IReadOnlyCollection<Guid> userIds,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Fetches a single user by id. Returns null if the user does not exist.

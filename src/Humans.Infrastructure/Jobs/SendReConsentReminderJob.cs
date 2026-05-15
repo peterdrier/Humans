@@ -80,7 +80,7 @@ public class SendReConsentReminderJob : IRecurringJob
                 .ToList();
 
             var userIds = usersNeedingReminder.ToList();
-            var users = await _userService.GetByIdsWithEmailsAsync(userIds, cancellationToken);
+            var users = await _userService.GetUserInfosAsync(userIds, cancellationToken);
 
             var now = _clock.GetCurrentInstant();
             var cooldown = Duration.FromDays(cooldownDays);
