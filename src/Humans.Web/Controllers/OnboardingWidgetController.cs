@@ -193,8 +193,8 @@ public class OnboardingWidgetController : HumansControllerBase
             return RedirectToAction(nameof(Index));
 
         var next = unsigned[0];
-        var (version, _, _) = await _consents.GetConsentReviewDetailAsync(next.DocumentVersionId, userId, ct);
-        if (version is null)
+        var detail = await _consents.GetConsentReviewDetailAsync(next.DocumentVersionId, userId, ct);
+        if (detail is null)
             return RedirectToAction(nameof(Index));
 
         var totalRequired = rows.Count;
@@ -202,11 +202,11 @@ public class OnboardingWidgetController : HumansControllerBase
 
         var vm = new ConsentsStepViewModel
         {
-            DocumentVersionId = version.Id,
-            DocumentName = version.LegalDocument.Name,
-            VersionNumber = version.VersionNumber,
-            Content = new Dictionary<string, string>(version.Content, StringComparer.Ordinal),
-            ChangesSummary = version.ChangesSummary,
+            DocumentVersionId = detail.DocumentVersionId,
+            DocumentName = detail.DocumentName,
+            VersionNumber = detail.VersionNumber,
+            Content = new Dictionary<string, string>(detail.Content, StringComparer.Ordinal),
+            ChangesSummary = detail.ChangesSummary,
             CurrentIndex = currentIndex,
             TotalRequired = totalRequired,
         };

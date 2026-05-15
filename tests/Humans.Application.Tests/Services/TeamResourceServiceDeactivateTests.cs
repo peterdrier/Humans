@@ -31,6 +31,7 @@ public class TeamResourceServiceDeactivateTests : IDisposable
     private readonly HumansDbContext _dbContext;
     private readonly FakeClock _clock;
     private readonly IAuditLogService _auditLogService;
+    private readonly IGoogleDrivePermissionsClient _drivePermissions;
     private readonly TeamResourceService _service;
 
     public TeamResourceServiceDeactivateTests()
@@ -41,6 +42,7 @@ public class TeamResourceServiceDeactivateTests : IDisposable
         _dbContext = new HumansDbContext(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 4, 15, 12, 0));
         _auditLogService = Substitute.For<IAuditLogService>();
+        _drivePermissions = Substitute.For<IGoogleDrivePermissionsClient>();
 
         var factory = new SingleContextFactory(options);
         IGoogleResourceRepository repository = new GoogleResourceRepository(factory);
@@ -48,7 +50,7 @@ public class TeamResourceServiceDeactivateTests : IDisposable
         _service = new TeamResourceService(
             repository,
             googleClient: Substitute.For<ITeamResourceGoogleClient>(),
-            drivePermissions: Substitute.For<IGoogleDrivePermissionsClient>(),
+            drivePermissions: _drivePermissions,
             teamService: Substitute.For<ITeamService>(),
             serviceProvider: Substitute.For<IServiceProvider>(),
             auditLogService: _auditLogService,
@@ -125,6 +127,27 @@ public class TeamResourceServiceDeactivateTests : IDisposable
         rows.Should().HaveCount(2);
         rows.Single(r => r.ResourceType == GoogleResourceType.DriveFolder).IsActive.Should().BeFalse();
         rows.Single(r => r.ResourceType == GoogleResourceType.Group).IsActive.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task SetRestrictInheritedAccessWithResultAsync_ReturnsSuccessAndUpdatesFolder()
+    {
+        var teamId = Guid.NewGuid();
+        SeedTeam(teamId, "Access");
+        var resourceId = SeedResource(teamId, "Folder", GoogleResourceType.DriveFolder);
+        await _dbContext.SaveChangesAsync();
+        _drivePermissions.SetInheritedPermissionsDisabledAsync(
+                Arg.Any<string>(),
+                true,
+                Arg.Any<CancellationToken>())
+            .Returns((GoogleClientError?)null);
+
+        var result = await _service.SetRestrictInheritedAccessWithResultAsync(resourceId, restrict: true);
+
+        result.Succeeded.Should().BeTrue();
+
+        var stored = await _dbContext.GoogleResources.AsNoTracking().SingleAsync(r => r.Id == resourceId);
+        stored.RestrictInheritedAccess.Should().BeTrue();
     }
 
     // ==========================================================================
@@ -211,11 +234,12 @@ public class TeamResourceServiceDeactivateTests : IDisposable
         });
     }
 
-    private void SeedResource(Guid teamId, string name, GoogleResourceType type, bool isActive = true)
+    private Guid SeedResource(Guid teamId, string name, GoogleResourceType type, bool isActive = true)
     {
+        var id = Guid.NewGuid();
         _dbContext.GoogleResources.Add(new GoogleResource
         {
-            Id = Guid.NewGuid(),
+            Id = id,
             TeamId = teamId,
             Name = name,
             GoogleId = Guid.NewGuid().ToString(),
@@ -224,6 +248,7 @@ public class TeamResourceServiceDeactivateTests : IDisposable
             IsActive = isActive,
             ProvisionedAt = _clock.GetCurrentInstant()
         });
+        return id;
     }
 
     /// <summary>

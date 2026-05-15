@@ -102,7 +102,7 @@ public sealed class MailerImportService : IMailerImportService
     /// plan and apply is honored — the plan bucket is for preview/UI only.
     /// </summary>
     private static SubscriberOutcome ClassifyVerifiedMatch(
-        MailerLiteSubscriber ml, CommunicationPreference? existingMarketing)
+        MailerLiteSubscriber ml, CommunicationPreferenceSnapshot? existingMarketing)
     {
         var mlOptedOut = !string.Equals(ml.Status, "active", StringComparison.OrdinalIgnoreCase);
         var mlActionAt = ml.UnsubscribedAt ?? ml.SubscribedAt;

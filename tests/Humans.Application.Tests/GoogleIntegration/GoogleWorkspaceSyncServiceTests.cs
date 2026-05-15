@@ -148,12 +148,20 @@ public sealed class GoogleWorkspaceSyncServiceTests
 
         _userEmailService
             .GetEntitiesByUserIdAsync(TestUserId, Arg.Any<CancellationToken>())
-            .Returns((IReadOnlyList<UserEmail>)[
-                new UserEmail
-                {
-                    Id = Guid.NewGuid(), UserId = TestUserId,
-                    Email = TestUserEmail, IsVerified = true, IsGoogle = true
-                }
+            .Returns((IReadOnlyList<UserEmailRowSnapshot>)[
+                new UserEmailRowSnapshot(
+                    Guid.NewGuid(),
+                    TestUserId,
+                    TestUserEmail,
+                    IsVerified: true,
+                    Provider: null,
+                    ProviderKey: null,
+                    IsGoogle: true,
+                    IsPrimary: false,
+                    Visibility: null,
+                    VerificationSentAt: null,
+                    CreatedAt: default,
+                    UpdatedAt: default)
             ]);
 
         var driveResource = MakeDriveFolderResource(TestDriveFolderResourceId, TestTeamId, TestGoogleFolderId);
@@ -209,11 +217,11 @@ public sealed class GoogleWorkspaceSyncServiceTests
         // No expected members (empty team) — any permission in Google is "extra".
         _teamService
             .GetActiveMembersForTeamsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<TeamMember>());
+            .Returns(Array.Empty<TeamActiveMemberSnapshot>());
 
         _userEmailService
             .GetEntitiesByUserIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, IReadOnlyList<UserEmail>>());
+            .Returns(new Dictionary<Guid, IReadOnlyList<UserEmailRowSnapshot>>());
 
         // Google Drive reports one direct user permission for an extra email.
         const string extraEmail = "extra@example.com";

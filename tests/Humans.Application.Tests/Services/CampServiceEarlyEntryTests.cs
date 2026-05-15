@@ -406,7 +406,9 @@ public class CampServiceEarlyEntryTests : IDisposable
         var (_, season) = await SeedCampWithSeasonAsync(initialEeSlotCount: 5);
         var member = await SeedActiveMemberWithEarlyEntryAsync(season.Id);
 
-        await _service.LeaveCampAsync(member.Id, member.UserId);
+        var result = await _service.LeaveCampAsync(member.Id, member.UserId);
+
+        result.Succeeded.Should().BeTrue();
 
         var reloaded = await _dbContext.CampMembers.AsNoTracking().FirstAsync(m => m.Id == member.Id);
         reloaded.HasEarlyEntry.Should().BeFalse();

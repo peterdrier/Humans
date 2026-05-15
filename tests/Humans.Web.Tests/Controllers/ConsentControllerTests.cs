@@ -165,7 +165,7 @@ public class ConsentControllerTests
         // proof that control reached the service.
         _consentService.GetConsentReviewDetailAsync(
                 documentVersionId, userId, Arg.Any<CancellationToken>())
-            .Returns(((DocumentVersion?)null, (ConsentRecord?)null, (string?)null));
+            .Returns((ConsentReviewDetail?)null);
         var ctrl = BuildSut(userId);
 
         var result = await ctrl.Review(documentVersionId);

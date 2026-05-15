@@ -408,7 +408,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         }
 
         var userEmails = user is null
-            ? (IReadOnlyList<UserEmail>)Array.Empty<UserEmail>()
+            ? (IReadOnlyList<UserEmailRowSnapshot>)Array.Empty<UserEmailRowSnapshot>()
             : await _userEmailService.GetEntitiesByUserIdAsync(userId, cancellationToken);
 
         var googleEmail = userEmails
@@ -574,7 +574,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         foreach (var group in grouped)
         {
             var list = group.ToList();
-            var allMembers = new Dictionary<Guid, List<TeamMember>>();
+            var allMembers = new Dictionary<Guid, List<TeamActiveMemberSnapshot>>();
             var allChildMembers = new Dictionary<Guid, List<TeamMember>>();
             foreach (var r in list)
             {
@@ -711,7 +711,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         List<GoogleResource> resources,
         SyncAction action,
         Instant now,
-        Dictionary<Guid, List<TeamMember>> membersByTeam,
+        Dictionary<Guid, List<TeamActiveMemberSnapshot>> membersByTeam,
         Dictionary<Guid, List<TeamMember>> childMembersByTeam,
         CancellationToken cancellationToken)
     {
@@ -735,9 +735,11 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
             // Issue #635 (§15i): bulk-fetch UserEmails once for all members
             // across the team union so TryGetGoogleEmail does not traverse
             // user.UserEmails cross-domain.
-            var allMembersForEmails = membersByTeam.Values.SelectMany(v => v)
-                .Concat(childMembersByTeam.Values.SelectMany(v => v));
-            var emailsByUserId = await LoadEmailsForMembersAsync(allMembersForEmails, cancellationToken);
+            var allMemberUserIds = membersByTeam.Values.SelectMany(v => v.Select(m => m.UserId))
+                .Concat(childMembersByTeam.Values.SelectMany(v => v.Select(m => m.UserId)))
+                .Distinct()
+                .ToList();
+            var emailsByUserId = await LoadEmailsForUserIdsAsync(allMemberUserIds, cancellationToken);
 
             foreach (var resource in resources)
             {
@@ -1242,27 +1244,35 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
     }
 
     /// <inheritdoc />
-    public async Task<bool> RemediateGroupSettingsAsync(string groupEmail, CancellationToken cancellationToken = default)
+    public async Task<GroupSettingsRemediationResult> RemediateGroupSettingsAsync(string groupEmail, CancellationToken cancellationToken = default)
     {
-        // Settings remediation is always allowed — it doesn't add/remove members.
-        var error = await _groupProvisioning.UpdateGroupSettingsAsync(
-            groupEmail, BuildExpectedGroupSettings(), cancellationToken);
-
-        if (error is not null)
+        try
         {
-            _logger.LogError(
-                "Failed to remediate settings for Google Group {GroupEmail} — HTTP {Code}: {Message}",
-                groupEmail, error.StatusCode, error.RawMessage);
-            throw new InvalidOperationException(
-                $"Google Groups settings update failed for {groupEmail}: HTTP {error.StatusCode} — {error.RawMessage}");
+            // Settings remediation is always allowed — it doesn't add/remove members.
+            var error = await _groupProvisioning.UpdateGroupSettingsAsync(
+                groupEmail, BuildExpectedGroupSettings(), cancellationToken);
+
+            if (error is not null)
+            {
+                _logger.LogError(
+                    "Failed to remediate settings for Google Group {GroupEmail} — HTTP {Code}: {Message}",
+                    groupEmail, error.StatusCode, error.RawMessage);
+                return GroupSettingsRemediationResult.Failure(
+                    $"Google Groups settings update failed for {groupEmail}: HTTP {error.StatusCode} — {error.RawMessage}");
+            }
+
+            await _auditLogService.LogAsync(
+                AuditAction.GoogleResourceSettingsRemediated, nameof(GoogleResource), Guid.Empty,
+                $"Remediated settings for Google Group '{groupEmail}'",
+                nameof(GoogleWorkspaceSyncService));
+
+            return GroupSettingsRemediationResult.Success();
         }
-
-        await _auditLogService.LogAsync(
-            AuditAction.GoogleResourceSettingsRemediated, nameof(GoogleResource), Guid.Empty,
-            $"Remediated settings for Google Group '{groupEmail}'",
-            nameof(GoogleWorkspaceSyncService));
-
-        return true;
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to remediate settings for {GroupEmail}", groupEmail);
+            return GroupSettingsRemediationResult.Failure($"Remediation failed for {groupEmail}: {ex.Message}");
+        }
     }
 
     // ==========================================================================
@@ -1565,9 +1575,22 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         => _googleSyncOutboxRepository.CountFailedAsync(cancellationToken);
 
     /// <inheritdoc />
-    public Task<IReadOnlyList<GoogleSyncOutboxEvent>> GetRecentOutboxEventsAsync(
+    public async Task<IReadOnlyList<GoogleSyncOutboxEventSnapshot>> GetRecentOutboxEventsAsync(
         int take, CancellationToken cancellationToken = default)
-        => _googleSyncOutboxRepository.GetRecentAsync(take, cancellationToken);
+    {
+        var events = await _googleSyncOutboxRepository.GetRecentAsync(take, cancellationToken);
+        return events
+            .Select(e => new GoogleSyncOutboxEventSnapshot(
+                e.EventType,
+                e.TeamId,
+                e.UserId,
+                e.OccurredAt,
+                e.ProcessedAt,
+                e.RetryCount,
+                e.LastError,
+                e.FailedPermanently))
+            .ToList();
+    }
 
     // ==========================================================================
     // Private helpers — data loading / identity / permission helpers
@@ -1577,10 +1600,10 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
     /// Batch-loads active members for every team id, stitches user slices,
     /// and returns a dictionary keyed by team id.
     /// </summary>
-    private async Task<IReadOnlyDictionary<Guid, IReadOnlyList<TeamMember>>> LoadActiveMembersByTeamAsync(
+    private async Task<IReadOnlyDictionary<Guid, IReadOnlyList<TeamActiveMemberSnapshot>>> LoadActiveMembersByTeamAsync(
         IReadOnlyCollection<Guid> teamIds, CancellationToken ct)
     {
-        var result = new Dictionary<Guid, IReadOnlyList<TeamMember>>(teamIds.Count);
+        var result = new Dictionary<Guid, IReadOnlyList<TeamActiveMemberSnapshot>>(teamIds.Count);
         if (teamIds.Count == 0) return result;
 
         var members = await _teamService.GetActiveMembersForTeamsAsync(teamIds, ct);
@@ -1770,7 +1793,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
     /// </summary>
     private static string? TryGetGoogleEmail(
         TeamMember tm,
-        IReadOnlyDictionary<Guid, IReadOnlyList<UserEmail>> emailsByUserId)
+        IReadOnlyDictionary<Guid, IReadOnlyList<UserEmailRowSnapshot>> emailsByUserId)
     {
 #pragma warning disable CS0618 // Cross-domain User nav populated in-memory by ITeamService (§6b).
         var user = tm.User;
@@ -1782,7 +1805,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
 
         var emails = emailsByUserId.TryGetValue(tm.UserId, out var list)
             ? list
-            : Array.Empty<UserEmail>();
+            : Array.Empty<UserEmailRowSnapshot>();
 
         return emails
             .Where(e => e.IsVerified && e.IsGoogle)
@@ -1802,13 +1825,29 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
     /// call so we never traverse <c>user.UserEmails</c> cross-domain. Routed
     /// through the owning section service per design-rules §2c.
     /// </summary>
-    private Task<IReadOnlyDictionary<Guid, IReadOnlyList<UserEmail>>>
-        LoadEmailsForMembersAsync(
-            IEnumerable<TeamMember> members,
+    private Task<IReadOnlyDictionary<Guid, IReadOnlyList<UserEmailRowSnapshot>>>
+        LoadEmailsForUserIdsAsync(
+            IReadOnlyCollection<Guid> userIds,
             CancellationToken ct)
     {
-        var userIds = members.Select(m => m.UserId).Distinct().ToList();
         return _userEmailService.GetEntitiesByUserIdsAsync(userIds, ct);
+    }
+
+    private static string? TryGetGoogleEmail(
+        TeamActiveMemberSnapshot tm,
+        IReadOnlyDictionary<Guid, IReadOnlyList<UserEmailRowSnapshot>> emailsByUserId)
+    {
+        if (tm.GoogleEmailStatus == GoogleEmailStatus.Rejected)
+            return null;
+
+        var emails = emailsByUserId.TryGetValue(tm.UserId, out var list)
+            ? list
+            : Array.Empty<UserEmailRowSnapshot>();
+
+        return emails
+            .Where(e => e.IsVerified && e.IsGoogle)
+            .Select(e => e.Email)
+            .FirstOrDefault();
     }
 
     private static string GetDisplayName(TeamMember tm)
@@ -1820,12 +1859,18 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
 
     private static Guid GetUserId(TeamMember tm) => tm.UserId;
 
+    private static Guid GetUserId(TeamActiveMemberSnapshot tm) => tm.UserId;
+
     private static string? GetProfilePictureUrl(TeamMember tm)
     {
 #pragma warning disable CS0618
         return tm.User?.ProfilePictureUrl;
 #pragma warning restore CS0618
     }
+
+    private static string GetDisplayName(TeamActiveMemberSnapshot tm) => tm.DisplayName;
+
+    private static string? GetProfilePictureUrl(TeamActiveMemberSnapshot tm) => tm.ProfilePictureUrl;
 
     // ==========================================================================
     // Group permissions — classification helpers (pure, over the bridge's

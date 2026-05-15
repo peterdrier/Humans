@@ -537,9 +537,16 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         await _profileRepository.ReconcileCVEntriesAsync(profile.Id, entries, ct);
     }
 
-    public Task<IReadOnlyList<ProfileLanguage>> GetProfileLanguagesAsync(
-        Guid profileId, CancellationToken ct = default) =>
-        _profileRepository.GetLanguagesAsync(profileId, ct);
+    public async Task<IReadOnlyList<ProfileLanguageSnapshot>> GetProfileLanguagesAsync(
+        Guid profileId, CancellationToken ct = default)
+    {
+        var languages = await _profileRepository.GetLanguagesAsync(profileId, ct);
+        return languages.Select(l => new ProfileLanguageSnapshot(
+            l.Id,
+            l.ProfileId,
+            l.LanguageCode,
+            l.Proficiency)).ToList();
+    }
 
     public Task SaveProfileLanguagesAsync(Guid profileId, IReadOnlyList<ProfileLanguage> languages, CancellationToken ct = default) =>
         _profileRepository.ReplaceLanguagesAsync(profileId, languages, ct);

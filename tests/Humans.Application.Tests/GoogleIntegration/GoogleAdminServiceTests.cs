@@ -249,6 +249,22 @@ public class GoogleAdminServiceTests
     }
 
     [HumansFact]
+    public async Task ProvisionStandaloneAccountAsync_ReturnsErrorForMissingRequiredFields()
+    {
+        var result = await _service.ProvisionStandaloneAccountAsync(
+            "test",
+            "",
+            "User",
+            _actorUserId);
+
+        result.Success.Should().BeFalse();
+        result.ErrorMessage.Should().Be("All fields are required.");
+
+        await _workspaceUserService.DidNotReceiveWithAnyArgs().GetAccountAsync(default!, default);
+        await _workspaceUserService.DidNotReceiveWithAnyArgs().ProvisionAccountAsync(default!, default!, default!, default!, default, default);
+    }
+
+    [HumansFact]
     public async Task ProvisionStandaloneAccountAsync_RejectsWhenPrefixInUseByUserEmail()
     {
         _userEmailService.IsEmailLinkedToAnyUserAsync(
@@ -387,6 +403,17 @@ public class GoogleAdminServiceTests
 
         await _workspaceUserService.Received(1)
             .ResetPasswordAsync("test@nobodies.team", Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ResetPasswordAsync_ReturnsErrorForMissingEmail()
+    {
+        var result = await _service.ResetPasswordAsync("", _actorUserId);
+
+        result.Success.Should().BeFalse();
+        result.ErrorMessage.Should().Be("Email is required.");
+
+        await _workspaceUserService.DidNotReceiveWithAnyArgs().ResetPasswordAsync(default!, default!, default);
     }
 
     [HumansFact]
@@ -708,6 +735,18 @@ public class GoogleAdminServiceTests
 
         await _workspaceUserService.DidNotReceive().ResetPasswordAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ResetPasswordAndGenerate2FaAsync_ReturnsErrorForMissingEmail()
+    {
+        var result = await _service.ResetPasswordAndGenerate2FaAsync("", _actorUserId);
+
+        result.Success.Should().BeFalse();
+        result.ErrorMessage.Should().Be("Email is required.");
+
+        await _workspaceUserService.DidNotReceiveWithAnyArgs().GetAccountAsync(default!, default);
+        await _workspaceUserService.DidNotReceiveWithAnyArgs().ResetPasswordAsync(default!, default!, default);
     }
 
     // --- LinkAccountAsync ---

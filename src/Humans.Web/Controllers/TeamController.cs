@@ -40,7 +40,6 @@ public class TeamController : HumansControllerBase
     private readonly INotificationService _notificationService;
     private readonly IGoogleSyncService _googleSyncService;
     private readonly ITeamResourceService _teamResourceService;
-    private readonly ISystemTeamSync _systemTeamSync;
     private readonly IStringLocalizer<SharedResource> _localizer;
     private readonly IConfiguration _configuration;
     private readonly ConfigurationRegistry _configRegistry;
@@ -56,7 +55,6 @@ public class TeamController : HumansControllerBase
         INotificationService notificationService,
         IGoogleSyncService googleSyncService,
         ITeamResourceService teamResourceService,
-        ISystemTeamSync systemTeamSync,
         IStringLocalizer<SharedResource> localizer,
         IConfiguration configuration,
         ConfigurationRegistry configRegistry,
@@ -71,7 +69,6 @@ public class TeamController : HumansControllerBase
         _notificationService = notificationService;
         _googleSyncService = googleSyncService;
         _teamResourceService = teamResourceService;
-        _systemTeamSync = systemTeamSync;
         _localizer = localizer;
         _configuration = configuration;
         _configRegistry = configRegistry;
@@ -164,6 +161,9 @@ public class TeamController : HumansControllerBase
         }
 
         var customPictureByUserId = BuildCustomPictureUrlsByUserId(teamPage.Members);
+        var members = teamPage.Members
+            .Select(member => MapTeamMember(member, customPictureByUserId))
+            .ToList();
 
         var viewModel = new TeamDetailViewModel
         {
@@ -185,9 +185,11 @@ public class TeamController : HumansControllerBase
             PageContentUpdatedByDisplayName = teamPage.PageContentUpdatedByDisplayName,
             IsAuthenticated = teamPage.IsAuthenticated,
             CanEditPageContent = teamPage.CanCurrentUserManage,
-            RoleDefinitions = teamPage.RoleDefinitions.Select(TeamRoleDefinitionViewModel.FromEntity).ToList(),
+            RoleDefinitions = teamPage.RoleDefinitions
+                .Select(role => TeamRoleDefinitionViewModel.FromSnapshot(role, members))
+                .ToList(),
             Resources = teamPage.Resources.Select(MapTeamResource).ToList(),
-            Members = teamPage.Members.Select(member => MapTeamMember(member, customPictureByUserId)).ToList(),
+            Members = members,
             ParentTeam = team.ParentTeam,
             ChildTeams = teamPage.ChildTeams,
             IsCurrentUserMember = teamPage.IsCurrentUserMember,
@@ -230,7 +232,7 @@ public class TeamController : HumansControllerBase
                         viewModel.SubteamLeads.Add(new ChildTeamMemberViewModel
                         {
                             UserId = cm.UserId,
-                            DisplayName = cm.User.DisplayName,
+                            DisplayName = cm.DisplayName,
                             // Populated below via ProfilePictureUrlHelper (custom uploads only).
                             ProfilePictureUrl = null,
                             ChildTeamName = child.Name,
@@ -246,7 +248,7 @@ public class TeamController : HumansControllerBase
                     viewModel.ChildTeamMembers.Add(new ChildTeamMemberViewModel
                     {
                         UserId = cm.UserId,
-                        DisplayName = cm.User.DisplayName,
+                        DisplayName = cm.DisplayName,
                         // Populated below via ProfilePictureUrlHelper (custom uploads only).
                         ProfilePictureUrl = null,
                         ChildTeamName = child.Name,
@@ -578,62 +580,17 @@ public class TeamController : HumansControllerBase
             return NotFound();
         }
 
-        var coordinatorUserIds = team.Members
-            .Where(m => m.Role == TeamMemberRole.Coordinator)
-            .Select(m => m.UserId)
-            .ToList();
-
         try
         {
             if (team.RequiresApproval)
             {
                 await _teamService.RequestToJoinTeamAsync(team.Id, user.Id, model.Message);
                 SetSuccess(_localizer["Team_JoinRequestSubmitted"].Value);
-
-                if (coordinatorUserIds.Count > 0)
-                {
-                    try
-                    {
-                        await _notificationService.SendAsync(
-                            NotificationSource.TeamJoinRequestSubmitted,
-                            NotificationClass.Actionable,
-                            NotificationPriority.Normal,
-                            $"New join request for {team.Name}",
-                            coordinatorUserIds,
-                            body: $"{user.DisplayName} has requested to join {team.Name}.",
-                            actionUrl: $"/Teams/{slug}/Members",
-                            actionLabel: "Review request");
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Failed to dispatch TeamJoinRequestSubmitted notification for team {TeamId}", team.Id);
-                    }
-                }
             }
             else
             {
                 await _teamService.JoinTeamDirectlyAsync(team.Id, user.Id);
                 SetSuccess(_localizer["Team_Joined"].Value);
-
-                if (coordinatorUserIds.Count > 0)
-                {
-                    try
-                    {
-                        await _notificationService.SendAsync(
-                            NotificationSource.TeamMemberAdded,
-                            NotificationClass.Informational,
-                            NotificationPriority.Normal,
-                            $"{user.DisplayName} joined {team.Name}",
-                            coordinatorUserIds,
-                            body: $"{user.DisplayName} has joined {team.Name}.",
-                            actionUrl: $"/Teams/{slug}/Members",
-                            actionLabel: "View members");
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Failed to dispatch TeamMemberAdded notification for team {TeamId}", team.Id);
-                    }
-                }
             }
 
             return RedirectToAction(nameof(Details), new { slug });
@@ -664,11 +621,7 @@ public class TeamController : HumansControllerBase
 
         try
         {
-            var wasCoordinator = await _teamService.LeaveTeamAsync(team.Id, user.Id);
-            if (wasCoordinator)
-            {
-                await _systemTeamSync.SyncMembershipForUserAsync(user.Id, SystemTeamType.Coordinators);
-            }
+            await _teamService.LeaveTeamAsync(team.Id, user.Id);
             SetSuccess(_localizer["Team_Left"].Value);
             return RedirectToAction(nameof(Index));
         }

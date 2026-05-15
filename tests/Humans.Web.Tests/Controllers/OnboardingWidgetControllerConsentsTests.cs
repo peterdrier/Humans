@@ -266,17 +266,17 @@ public class OnboardingWidgetControllerConsentsTests
         };
         _consents.GetRequiredConsentRowsForUserAsync(
                 userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
-            .Returns(rows);
-        var version = new DocumentVersion
-        {
-            Id = unsignedId,
-            VersionNumber = "1.2",
-            Content = new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "# Política", ["en"] = "# Policy" },
-            ChangesSummary = "Updated section 4",
-            LegalDocument = new LegalDocument { Name = "Privacy Policy" },
-        };
-        _consents.GetConsentReviewDetailAsync(unsignedId, userId, Arg.Any<CancellationToken>())
-            .Returns((version, (ConsentRecord?)null, (string?)null));
+            .Returns(rows); _consents.GetConsentReviewDetailAsync(unsignedId, userId, Arg.Any<CancellationToken>())
+            .Returns(new ConsentReviewDetail(
+                unsignedId,
+                "Privacy Policy",
+                "1.2",
+                new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "# Politica", ["en"] = "# Policy" },
+                NodaTime.Instant.FromUnixTimeSeconds(0),
+                "Updated section 4",
+                HasAlreadyConsented: false,
+                ConsentedAt: null,
+                UserFullName: null));
         var ctrl = BuildSut(userId);
 
         var result = await ctrl.Consents(CancellationToken.None);

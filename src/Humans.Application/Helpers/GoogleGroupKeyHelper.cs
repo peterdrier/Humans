@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces.Teams;
 using Humans.Domain.Entities;
 
 namespace Humans.Application.Helpers;
@@ -8,31 +9,50 @@ public static class GoogleGroupKeyHelper
         GoogleResource resource,
         string? teamGoogleGroupEmail = null,
         string? configuredDomain = null)
+        => TryGetGroupKey(resource.GoogleId, resource.Url, teamGoogleGroupEmail, configuredDomain);
+
+    public static string? TryGetGroupKey(
+        GoogleResourceSnapshot resource,
+        string? teamGoogleGroupEmail = null,
+        string? configuredDomain = null)
+        => TryGetGroupKey(resource.GoogleId, resource.Url, teamGoogleGroupEmail, configuredDomain);
+
+    private static string? TryGetGroupKey(
+        string googleId,
+        string? url,
+        string? teamGoogleGroupEmail,
+        string? configuredDomain)
     {
         if (!string.IsNullOrWhiteSpace(teamGoogleGroupEmail))
             return teamGoogleGroupEmail.Trim();
 
-        var urlEmail = TryDeriveGroupEmail(resource, configuredDomain);
+        var urlEmail = TryDeriveGroupEmail(url, configuredDomain);
         if (!string.IsNullOrWhiteSpace(urlEmail))
             return urlEmail;
 
-        return resource.GoogleId.Contains('@', StringComparison.Ordinal)
-            ? resource.GoogleId.Trim()
+        return googleId.Contains('@', StringComparison.Ordinal)
+            ? googleId.Trim()
             : null;
     }
 
     public static string? TryDeriveGroupEmail(GoogleResource resource, string? configuredDomain = null)
+        => TryDeriveGroupEmail(resource.Url, configuredDomain);
+
+    public static string? TryDeriveGroupEmail(GoogleResourceSnapshot resource, string? configuredDomain = null)
+        => TryDeriveGroupEmail(resource.Url, configuredDomain);
+
+    private static string? TryDeriveGroupEmail(string? url, string? configuredDomain = null)
     {
-        if (string.IsNullOrWhiteSpace(resource.Url))
+        if (string.IsNullOrWhiteSpace(url))
             return null;
 
         const string marker = "/g/";
-        var idx = resource.Url.IndexOf(marker, StringComparison.Ordinal);
+        var idx = url.IndexOf(marker, StringComparison.Ordinal);
         if (idx < 0)
             return null;
 
-        var prefix = resource.Url[(idx + marker.Length)..].TrimEnd('/');
-        var beforeGroup = resource.Url[..idx];
+        var prefix = url[(idx + marker.Length)..].TrimEnd('/');
+        var beforeGroup = url[..idx];
         const string domainMarker = "/a/";
         var domainIdx = beforeGroup.LastIndexOf(domainMarker, StringComparison.Ordinal);
         var domain = domainIdx < 0

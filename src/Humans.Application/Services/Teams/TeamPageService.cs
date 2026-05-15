@@ -146,8 +146,8 @@ public sealed class TeamPageService : ITeamPageService
     }
 
     private async Task<TeamPageShiftsSummary?> GetShiftsSummaryAsync(
-        Team team,
-        IReadOnlyList<Team> childTeams,
+        TeamPageTeamSummary team,
+        IReadOnlyList<TeamPageTeamLink> childTeams,
         Guid? userId,
         bool isAuthenticated,
         bool canManageShiftsByRole,

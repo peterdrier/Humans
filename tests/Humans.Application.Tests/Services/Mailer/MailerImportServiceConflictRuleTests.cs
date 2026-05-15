@@ -159,19 +159,11 @@ internal sealed class ApplyHarness
     public void SetHumansPref(Guid userId, MessageCategory category, bool optedOut,
         string updateSource, Instant updatedAt)
     {
-        var pref = new CommunicationPreference
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            Category = category,
-            OptedOut = optedOut,
-            UpdateSource = updateSource,
-            UpdatedAt = updatedAt,
-        };
+        var pref = new CommunicationPreferenceSnapshot(category, optedOut, InboxEnabled: true, updateSource, updatedAt);
 
         _prefs.GetPreferenceOrNullAsync(
                 Arg.Is<Guid>(id => id == userId), category, Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<CommunicationPreference?>(pref));
+            .Returns(Task.FromResult<CommunicationPreferenceSnapshot?>(pref));
 
         _prefs.UpdatePreferenceAsync(
                 Arg.Any<Guid>(), Arg.Any<MessageCategory>(), Arg.Any<bool>(),
@@ -197,3 +189,4 @@ internal sealed class PrefsVerifier(ICommunicationPreferenceService mock)
             userId, category, Arg.Any<bool>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 }
+

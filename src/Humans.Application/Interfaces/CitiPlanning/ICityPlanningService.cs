@@ -2,6 +2,7 @@ using Humans.Application.Interfaces;
 using System.ComponentModel.DataAnnotations;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Microsoft.AspNetCore.Http;
 using NodaTime;
 
 namespace Humans.Application.Interfaces.CitiPlanning;
@@ -37,10 +38,13 @@ public interface ICityPlanningService : IApplicationService
     Task ClosePlacementAsync(Guid userId, CancellationToken cancellationToken = default);
     Task OpenContainerPlacementAsync(Guid userId, CancellationToken cancellationToken = default);
     Task CloseContainerPlacementAsync(Guid userId, CancellationToken cancellationToken = default);
+    Task<GeoJsonUploadResult> UpdateLimitZoneFromUploadAsync(IFormFile? file, Guid userId, CancellationToken cancellationToken = default);
     Task UpdateLimitZoneAsync(string geoJson, Guid userId, CancellationToken cancellationToken = default);
     Task DeleteLimitZoneAsync(Guid userId, CancellationToken cancellationToken = default);
+    Task<GeoJsonUploadResult> UpdateOfficialZonesFromUploadAsync(IFormFile? file, Guid userId, CancellationToken cancellationToken = default);
     Task UpdateOfficialZonesAsync(string geoJson, Guid userId, CancellationToken cancellationToken = default);
     Task DeleteOfficialZonesAsync(Guid userId, CancellationToken cancellationToken = default);
+    Task<PlacementDateUpdateResult> UpdatePlacementDatesAsync(string? opensAt, string? closesAt, CancellationToken cancellationToken = default);
     Task UpdatePlacementDatesAsync(LocalDateTime? opensAt, LocalDateTime? closesAt, CancellationToken cancellationToken = default);
     Task<string?> GetRegistrationInfoAsync(CancellationToken cancellationToken = default);
     Task UpdateRegistrationInfoAsync(string? registrationInfo, CancellationToken cancellationToken = default);
@@ -89,6 +93,14 @@ public record CityPlanningSettingsDto(
     Instant? ContainerPlacementOpenedAt,
     Instant? ContainerPlacementClosedAt,
     Instant UpdatedAt);
+
+public sealed record PlacementDateUpdateResult(
+    bool Success,
+    string? ErrorKey = null);
+
+public sealed record GeoJsonUploadResult(
+    bool Success,
+    string? ErrorKey = null);
 
 public record SaveCampPolygonRequest(
     string GeoJson,

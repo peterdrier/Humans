@@ -80,6 +80,44 @@ public class BudgetServiceTests : IAsyncLifetime
             .WithMessage("*between 0 and 21*");
     }
 
+    [HumansFact]
+    public async Task CreateLineItemWithResultAsync_ReturnsSuccess_WhenLineItemCreated()
+    {
+        var category = await SeedCategoryAsync();
+
+        var result = await _service.CreateLineItemWithResultAsync(
+            category.Id,
+            "Test line item",
+            100m,
+            null,
+            null,
+            null,
+            0,
+            Guid.NewGuid());
+
+        result.Succeeded.Should().BeTrue();
+        result.ErrorMessage.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task CreateLineItemWithResultAsync_ReturnsFailure_WhenVatRateInvalid()
+    {
+        var category = await SeedCategoryAsync();
+
+        var result = await _service.CreateLineItemWithResultAsync(
+            category.Id,
+            "Test line item",
+            100m,
+            null,
+            null,
+            null,
+            22,
+            Guid.NewGuid());
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("VAT rate");
+    }
+
     [HumansTheory]
     [InlineData(-1)]
     [InlineData(22)]
@@ -116,6 +154,104 @@ public class BudgetServiceTests : IAsyncLifetime
     }
 
     // ─── CreateYearAsync with scaffold ──────────────────────────────────────
+
+    [HumansFact]
+    public async Task UpdateLineItemWithResultAsync_ReturnsSuccess_WhenLineItemUpdated()
+    {
+        var category = await SeedCategoryAsync();
+        var lineItem = new BudgetLineItem
+        {
+            Id = Guid.NewGuid(),
+            BudgetCategoryId = category.Id,
+            Description = "Existing",
+            Amount = 100m,
+            VatRate = 0
+        };
+        await using (var ctx = await _factory.CreateDbContextAsync())
+        {
+            ctx.BudgetLineItems.Add(lineItem);
+            await ctx.SaveChangesAsync();
+        }
+
+        var result = await _service.UpdateLineItemWithResultAsync(
+            lineItem.Id,
+            "Updated",
+            150m,
+            null,
+            null,
+            null,
+            0,
+            Guid.NewGuid());
+
+        result.Succeeded.Should().BeTrue();
+        result.ErrorMessage.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task UpdateLineItemWithResultAsync_ReturnsFailure_WhenVatRateInvalid()
+    {
+        var result = await _service.UpdateLineItemWithResultAsync(
+            Guid.NewGuid(),
+            "Updated",
+            150m,
+            null,
+            null,
+            null,
+            22,
+            Guid.NewGuid());
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("VAT rate");
+    }
+
+    [HumansFact]
+    public async Task GetCoordinatorBudgetViewDataAsync_RedirectsNonCoordinatorNonFinanceUser()
+    {
+        var result = await _service.GetCoordinatorBudgetViewDataAsync(Guid.NewGuid(), isFinanceAdmin: false);
+
+        result.ShouldRedirectToSummary.Should().BeTrue();
+        result.Year.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task GetCoordinatorBudgetViewDataAsync_LoadsActiveYearForFinanceAdmin()
+    {
+        _teamService.GetBudgetableTeamsAsync().Returns(Array.Empty<TeamOptionDto>());
+        var year = await _service.CreateYearAsync("2026", "Budget 2026", Guid.NewGuid());
+        await _service.UpdateYearStatusAsync(year.Id, BudgetYearStatus.Active, Guid.NewGuid());
+
+        var result = await _service.GetCoordinatorBudgetViewDataAsync(Guid.NewGuid(), isFinanceAdmin: true);
+
+        result.ShouldRedirectToSummary.Should().BeFalse();
+        result.Year!.Id.Should().Be(year.Id);
+        result.IsFinanceAdmin.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task GetCoordinatorCategoryDetailViewDataAsync_ReturnsCategoryAndTeamsForFinanceAdmin()
+    {
+        var category = await SeedCategoryAsync();
+        IReadOnlyList<TeamOptionDto> teams = [new(Guid.NewGuid(), "Kitchen")];
+        _teamService.GetActiveTeamOptionsAsync().Returns(teams);
+
+        var result = await _service.GetCoordinatorCategoryDetailViewDataAsync(category.Id, Guid.NewGuid(), isFinanceAdmin: true);
+
+        result.ShouldForbid.Should().BeFalse();
+        result.Category!.Id.Should().Be(category.Id);
+        result.Teams.Should().BeEquivalentTo(teams);
+    }
+
+    [HumansFact]
+    public async Task GetCoordinatorCategoryDetailViewDataAsync_ForbidsNonFinanceNonCoordinator()
+    {
+        var category = await SeedCategoryAsync();
+
+        var result = await _service.GetCoordinatorCategoryDetailViewDataAsync(category.Id, Guid.NewGuid(), isFinanceAdmin: false);
+
+        result.ShouldForbid.Should().BeTrue();
+        result.Category!.Id.Should().Be(category.Id);
+        result.Teams.Should().BeEmpty();
+    }
 
     [HumansFact]
     public async Task CreateYearAsync_seeds_department_and_ticketing_groups_atomically()

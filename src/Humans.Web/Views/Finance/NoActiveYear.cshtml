@@ -1,6 +1,6 @@
 @{
     ViewData["Title"] = "Finance";
-    var years = ViewBag.Years as IReadOnlyList<BudgetYear> ?? [];
+    var years = ViewBag.Years as IReadOnlyList<Humans.Application.Interfaces.Budget.BudgetYearSummarySnapshot> ?? [];
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">

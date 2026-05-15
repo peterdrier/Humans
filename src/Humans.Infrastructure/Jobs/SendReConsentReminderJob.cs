@@ -75,7 +75,7 @@ public class SendReConsentReminderJob : IRecurringJob
 
             var requiredVersions = await _legalDocService.GetRequiredVersionsAsync(cancellationToken);
             var requiredDocNames = requiredVersions
-                .Select(v => v.LegalDocument.Name)
+                .Select(v => v.LegalDocumentName)
                 .Distinct(StringComparer.Ordinal)
                 .ToList();
 

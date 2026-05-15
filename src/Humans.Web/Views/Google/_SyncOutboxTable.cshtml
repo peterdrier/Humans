@@ -1,5 +1,5 @@
 @using Humans.Web.Extensions
-@model IList<Humans.Domain.Entities.GoogleSyncOutboxEvent>
+@model IList<Humans.Application.Interfaces.GoogleIntegration.GoogleSyncOutboxEventSnapshot>
 @{
     var googleEmailLookup = (Dictionary<Guid, string>)ViewData["GoogleEmailLookup"]!;
     var displayNameLookup = (Dictionary<Guid, string>)ViewData["DisplayNameLookup"]!;

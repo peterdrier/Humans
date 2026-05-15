@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
+using Humans.Application.DTOs;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -15,6 +16,7 @@ using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Tickets;
 using Humans.Infrastructure.Repositories.Campaigns;
 
 namespace Humans.Application.Tests.Services;
@@ -28,6 +30,7 @@ public class CampaignServiceTests : IDisposable
     private readonly ITeamService _teamService;
     private readonly IUserService _userService;
     private readonly IUserEmailService _userEmailService;
+    private readonly ITicketVendorService _ticketVendorService;
 
     public CampaignServiceTests()
     {
@@ -42,6 +45,7 @@ public class CampaignServiceTests : IDisposable
         _teamService = Substitute.For<ITeamService>();
         _userService = Substitute.For<IUserService>();
         _userEmailService = Substitute.For<IUserEmailService>();
+        _ticketVendorService = Substitute.For<ITicketVendorService>();
 
         // Default stubs: fetch data from the in-memory DbContext so the existing
         // seed helpers still drive the scenarios end-to-end.
@@ -134,6 +138,7 @@ public class CampaignServiceTests : IDisposable
             Substitute.For<INotificationService>(),
             commPrefService,
             _emailService,
+            _ticketVendorService,
             _clock,
             NullLogger<CampaignServiceImpl>.Instance);
     }
@@ -160,15 +165,30 @@ public class CampaignServiceTests : IDisposable
             "Your code: {{Code}}", "<p>Hi {{Name}}, your code is {{Code}}</p>",
             null, userId);
 
-        result.Title.Should().Be("Test Campaign");
-        result.Description.Should().Be("A description");
-        result.Status.Should().Be(CampaignStatus.Draft);
-        result.CreatedAt.Should().Be(_clock.GetCurrentInstant());
-        result.CreatedByUserId.Should().Be(userId);
+        result.Success.Should().BeTrue();
+        result.Campaign.Should().NotBeNull();
+        result.Campaign!.Title.Should().Be("Test Campaign");
+        result.Campaign.Description.Should().Be("A description");
+        result.Campaign.Status.Should().Be(CampaignStatus.Draft);
+        result.Campaign.CreatedAt.Should().Be(_clock.GetCurrentInstant());
+        result.Campaign.CreatedByUserId.Should().Be(userId);
 
-        var inDb = await _dbContext.Campaigns.FindAsync(result.Id);
+        var inDb = await _dbContext.Campaigns.FindAsync(result.Campaign.Id);
         inDb.Should().NotBeNull();
         inDb!.Status.Should().Be(CampaignStatus.Draft);
+    }
+
+    [HumansFact]
+    public async Task CreateAsync_BlankTitle_ReturnsValidationError()
+    {
+        var result = await _service.CreateAsync(
+            "  ", "A description",
+            "Subject", "Body",
+            null, Guid.NewGuid());
+
+        result.Success.Should().BeFalse();
+        result.ErrorKey.Should().Be("TitleRequired");
+        (await _dbContext.Campaigns.CountAsync()).Should().Be(0);
     }
 
     // ==========================================================================
@@ -203,6 +223,46 @@ public class CampaignServiceTests : IDisposable
             .Where(c => c.CampaignId == campaign.Id)
             .ToListAsync();
         codes.Should().HaveCount(3);
+    }
+
+    [HumansFact]
+    public async Task GenerateAndImportDiscountCodesAsync_DraftCampaign_GeneratesAndImportsCodes()
+    {
+        var campaign = await SeedCampaignAsync();
+        _ticketVendorService
+            .GenerateDiscountCodesAsync(Arg.Any<DiscountCodeSpec>(), Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyList<string>)["CODE-A", "CODE-B"]);
+
+        var result = await _service.GenerateAndImportDiscountCodesAsync(
+            campaign.Id, 2, "Fixed", 10m);
+
+        result.Success.Should().BeTrue();
+        result.GeneratedCount.Should().Be(2);
+        await _ticketVendorService.Received(1).GenerateDiscountCodesAsync(
+            Arg.Is<DiscountCodeSpec>(s =>
+                s.Count == 2 &&
+                s.DiscountType == DiscountType.Fixed &&
+                s.DiscountValue == 10m),
+            Arg.Any<CancellationToken>());
+        var codes = await _dbContext.CampaignCodes
+            .Where(c => c.CampaignId == campaign.Id)
+            .Select(c => c.Code)
+            .ToListAsync();
+        codes.Should().BeEquivalentTo(["CODE-A", "CODE-B"]);
+    }
+
+    [HumansFact]
+    public async Task GenerateAndImportDiscountCodesAsync_NonDraftCampaign_ReturnsNotDraft()
+    {
+        var campaign = await SeedCampaignAsync(CampaignStatus.Active);
+
+        var result = await _service.GenerateAndImportDiscountCodesAsync(
+            campaign.Id, 2, "Fixed", 10m);
+
+        result.Success.Should().BeFalse();
+        result.ErrorKey.Should().Be("NotDraft");
+        await _ticketVendorService.DidNotReceive().GenerateDiscountCodesAsync(
+            Arg.Any<DiscountCodeSpec>(), Arg.Any<CancellationToken>());
     }
 
     // ==========================================================================
@@ -256,7 +316,7 @@ public class CampaignServiceTests : IDisposable
             "  Updated body  ",
             "  reply@example.com  ");
 
-        updated.Should().BeTrue();
+        updated.Success.Should().BeTrue();
 
         var refreshed = await _dbContext.Campaigns.FindAsync(campaign.Id);
         refreshed.Should().NotBeNull();
@@ -265,6 +325,23 @@ public class CampaignServiceTests : IDisposable
         refreshed.EmailSubject.Should().Be("Updated subject");
         refreshed.EmailBodyTemplate.Should().Be("Updated body");
         refreshed.ReplyToAddress.Should().Be("reply@example.com");
+    }
+
+    [HumansFact]
+    public async Task UpdateAsync_BlankEmailSubject_ReturnsValidationError()
+    {
+        var campaign = await SeedCampaignAsync();
+
+        var updated = await _service.UpdateAsync(
+            campaign.Id,
+            "Title",
+            null,
+            " ",
+            "Body",
+            null);
+
+        updated.Success.Should().BeFalse();
+        updated.ErrorKey.Should().Be("EmailSubjectRequired");
     }
 
     [HumansFact]

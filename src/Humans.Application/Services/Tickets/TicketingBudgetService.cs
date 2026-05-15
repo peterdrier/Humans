@@ -104,6 +104,27 @@ public sealed class TicketingBudgetService : ITicketingBudgetService
         }
     }
 
+    public async Task<int> UpdateProjectionAndRefreshAsync(
+        TicketingProjectionUpdateCommand command,
+        Guid actorUserId,
+        CancellationToken ct = default)
+    {
+        await _budgetService.UpdateTicketingProjectionAsync(
+            command.BudgetGroupId,
+            command.StartDate,
+            command.EventDate,
+            command.InitialSalesCount,
+            command.DailySalesRate,
+            command.AverageTicketPrice,
+            command.VatRate,
+            command.StripeFeePercent,
+            command.StripeFeeFixed,
+            command.TicketTailorFeePercent,
+            actorUserId);
+
+        return await RefreshProjectionsAsync(command.BudgetYearId, ct);
+    }
+
     public Task<IReadOnlyList<TicketingWeekProjection>> GetProjectionsAsync(Guid budgetGroupId)
     {
         return _budgetService.GetTicketingProjectionEntriesAsync(budgetGroupId);

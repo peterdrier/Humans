@@ -2,6 +2,8 @@ using System.Collections.Generic;
 using System.Threading;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Models;
+using Humans.Domain.Enums;
+using NodaTime;
 
 namespace Humans.Application.Interfaces;
 
@@ -9,13 +11,13 @@ public interface IAgentService : IApplicationService, IUserDataContributor
 {
     IAsyncEnumerable<AgentTurnToken> AskAsync(AgentTurnRequest request, CancellationToken cancellationToken);
 
-    Task<IReadOnlyList<Humans.Domain.Entities.AgentConversation>> GetHistoryAsync(
+    Task<IReadOnlyList<AgentConversationListSnapshot>> GetHistoryAsync(
         Guid userId, int take, CancellationToken cancellationToken);
 
     /// <summary>Fetches a conversation with messages eagerly loaded only if it
     /// belongs to <paramref name="userId"/>; returns null otherwise. Used by the
     /// user-facing /Agent/Conversation/{id} viewer.</summary>
-    Task<Humans.Domain.Entities.AgentConversation?> GetConversationForUserAsync(
+    Task<AgentConversationTranscriptSnapshot?> GetConversationForUserAsync(
         Guid userId, Guid conversationId, CancellationToken cancellationToken);
 
     /// <summary>
@@ -31,7 +33,7 @@ public interface IAgentService : IApplicationService, IUserDataContributor
         Guid userId, Guid conversationId, CancellationToken cancellationToken);
 
     /// <summary>Admin-only listing of all conversations across users (for /Agent/Admin/Conversations).</summary>
-    Task<IReadOnlyList<Humans.Domain.Entities.AgentConversation>> ListAllConversationsForAdminAsync(
+    Task<IReadOnlyList<AgentConversationListSnapshot>> ListAllConversationsForAdminAsync(
         bool refusalsOnly, Guid? userId, int take, int skip,
         CancellationToken cancellationToken);
 
@@ -40,12 +42,12 @@ public interface IAgentService : IApplicationService, IUserDataContributor
     /// callers can compute per-conversation aggregates without N+1 round trips.
     /// Used by <c>/api/agent/conversations</c>.
     /// </summary>
-    Task<IReadOnlyList<Humans.Domain.Entities.AgentConversation>> ListAllConversationsForAdminWithMessagesAsync(
+    Task<IReadOnlyList<AgentConversationTranscriptSnapshot>> ListAllConversationsForAdminWithMessagesAsync(
         bool refusalsOnly, bool handoffsOnly, Guid? userId, int take, int skip,
         CancellationToken cancellationToken);
 
     /// <summary>Admin-only fetch of a single conversation with messages eagerly loaded.</summary>
-    Task<Humans.Domain.Entities.AgentConversation?> GetConversationForAdminAsync(
+    Task<AgentConversationTranscriptSnapshot?> GetConversationForAdminAsync(
         Guid id, CancellationToken cancellationToken);
 
     /// <summary>
@@ -56,3 +58,35 @@ public interface IAgentService : IApplicationService, IUserDataContributor
     Task<AgentPromptPreview?> GetPromptPreviewForAdminAsync(
         Guid conversationId, CancellationToken cancellationToken);
 }
+
+public sealed record AgentConversationTranscriptSnapshot(
+    Guid Id,
+    Guid UserId,
+    string Locale,
+    Instant StartedAt,
+    Instant LastMessageAt,
+    int MessageCount,
+    IReadOnlyList<AgentMessageSnapshot> Messages);
+
+public sealed record AgentConversationListSnapshot(
+    Guid Id,
+    Guid UserId,
+    string Locale,
+    Instant StartedAt,
+    Instant LastMessageAt,
+    int MessageCount);
+
+public sealed record AgentMessageSnapshot(
+    Guid Id,
+    Guid ConversationId,
+    AgentRole Role,
+    string Content,
+    Instant CreatedAt,
+    int PromptTokens,
+    int OutputTokens,
+    int CachedTokens,
+    string Model,
+    int DurationMs,
+    string[] FetchedDocs,
+    string? RefusalReason,
+    Guid? HandedOffToFeedbackId);

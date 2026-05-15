@@ -491,11 +491,11 @@ public class FinanceController : HumansControllerBase
 
         try
         {
-            var added = await _budgetService.EnsureTicketingGroupAsync(id, user.Id);
-            if (added)
-                SetSuccess("Ticketing group added to this budget year.");
+            var result = await _budgetService.EnsureTicketingGroupAsync(id, user.Id);
+            if (result.Created)
+                SetSuccess(result.Message);
             else
-                SetInfo("Ticketing group already exists for this budget year.");
+                SetInfo(result.Message);
         }
         catch (Exception ex)
         {
@@ -508,25 +508,28 @@ public class FinanceController : HumansControllerBase
 
     [HttpPost("TicketingProjection/{groupId:guid}/Update")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> UpdateTicketingProjection(Guid groupId, DateTime? startDate, DateTime? eventDate,
-        int initialSalesCount, decimal dailySalesRate, decimal averageTicketPrice, int vatRate,
-        decimal stripeFeePercent, decimal stripeFeeFixed, decimal ticketTailorFeePercent, Guid budgetYearId)
+    public async Task<IActionResult> UpdateTicketingProjection(Guid groupId, TicketingProjectionUpdateForm form)
     {
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
-        var nodaStart = startDate.HasValue ? LocalDate.FromDateTime(startDate.Value) : (LocalDate?)null;
-        var nodaEvent = eventDate.HasValue ? LocalDate.FromDateTime(eventDate.Value) : (LocalDate?)null;
-
         try
         {
-            await _budgetService.UpdateTicketingProjectionAsync(groupId, nodaStart, nodaEvent,
-                initialSalesCount, dailySalesRate, averageTicketPrice, vatRate,
-                stripeFeePercent, stripeFeeFixed, ticketTailorFeePercent, user.Id);
-
-            // Refresh projections after saving parameters (no actuals sync needed)
-            var count = await _ticketingBudgetService.RefreshProjectionsAsync(budgetYearId);
-            SetSuccess($"Ticketing projection saved — {count} projected line item(s) generated.");
+            var count = await _ticketingBudgetService.UpdateProjectionAndRefreshAsync(
+                new TicketingProjectionUpdateCommand(
+                    groupId,
+                    form.BudgetYearId,
+                    form.StartDate.HasValue ? LocalDate.FromDateTime(form.StartDate.Value) : null,
+                    form.EventDate.HasValue ? LocalDate.FromDateTime(form.EventDate.Value) : null,
+                    form.InitialSalesCount,
+                    form.DailySalesRate,
+                    form.AverageTicketPrice,
+                    form.VatRate,
+                    form.StripeFeePercent,
+                    form.StripeFeeFixed,
+                    form.TicketTailorFeePercent),
+                user.Id);
+            SetSuccess($"Ticketing projection saved - {count} projected line item(s) generated.");
         }
         catch (Exception ex)
         {
@@ -534,9 +537,8 @@ public class FinanceController : HumansControllerBase
             SetError($"Failed to update projection: {ex.Message}");
         }
 
-        return RedirectToAction(nameof(YearDetail), new { id = budgetYearId });
+        return RedirectToAction(nameof(YearDetail), new { id = form.BudgetYearId });
     }
-
     [HttpPost("TicketingBudget/{yearId:guid}/Sync")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SyncTicketingBudget(Guid yearId)
@@ -563,7 +565,7 @@ public class FinanceController : HumansControllerBase
     /// so FinanceAdmin sees everything on one page without navigating to /Budget/Summary.
     /// Also computes actual tickets sold for ticketing groups and stores in ViewBag.
     /// </summary>
-    private async Task<FinanceOverviewViewModel> BuildFinanceOverviewAsync(BudgetYear year, IReadOnlyList<BudgetYear> allYears)
+    private async Task<FinanceOverviewViewModel> BuildFinanceOverviewAsync(BudgetYear year, IReadOnlyList<BudgetYearSummarySnapshot> allYears)
     {
         // All groups (including restricted) for FinanceAdmin summary, with buffer slices
         var summary = _budgetService.ComputeBudgetSummaryWithBuffers(year.Groups);
@@ -768,3 +770,4 @@ public class FinanceController : HumansControllerBase
         LocalDate PeriodEnd,
         List<CashFlowEntry> Items);
 }
+

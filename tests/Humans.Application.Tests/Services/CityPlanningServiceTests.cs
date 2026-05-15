@@ -10,6 +10,7 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.CitiPlanning;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using NodaTime;
@@ -93,6 +94,12 @@ public class CityPlanningServiceTests : IDisposable
 
     private static Guid NewUserId() => Guid.NewGuid();
 
+    private static IFormFile CreateUpload(string content)
+    {
+        var bytes = System.Text.Encoding.UTF8.GetBytes(content);
+        return new FormFile(new MemoryStream(bytes), 0, bytes.Length, "file", "upload.geojson");
+    }
+
     // --- Tests ---
 
     [HumansFact]
@@ -132,6 +139,75 @@ public class CityPlanningServiceTests : IDisposable
         historyCount.Should().Be(2);
         polygon.GeoJson.Should().Be(geoJson2);
         polygon.AreaSqm.Should().Be(200.0);
+    }
+
+    [HumansFact]
+    public async Task SaveCampPolygonAsync_InvalidGeoJson_Throws()
+    {
+        var act = async () => await _sut.SaveCampPolygonAsync(
+            Guid.NewGuid(), "{not-json", 100.0, NewUserId());
+
+        await act.Should().ThrowAsync<ArgumentException>()
+            .WithMessage("Invalid GeoJSON.*");
+    }
+
+    [HumansFact]
+    public async Task UpdatePlacementDatesAsync_StringInputs_ParsesAndPersists()
+    {
+        await SeedMapSettingsAsync();
+
+        var result = await _sut.UpdatePlacementDatesAsync("2026-06-01T08:30", "2026-06-02T18:45");
+
+        result.Success.Should().BeTrue();
+        var settings = await _dbContext.CityPlanningSettings.AsNoTracking().SingleAsync();
+        settings.PlacementOpensAt.Should().Be(new LocalDateTime(2026, 6, 1, 8, 30));
+        settings.PlacementClosesAt.Should().Be(new LocalDateTime(2026, 6, 2, 18, 45));
+    }
+
+    [HumansFact]
+    public async Task UpdatePlacementDatesAsync_InvalidOpenString_ReturnsError()
+    {
+        var result = await _sut.UpdatePlacementDatesAsync("not-a-date", null);
+
+        result.Success.Should().BeFalse();
+        result.ErrorKey.Should().Be("InvalidOpensAt");
+    }
+
+    [HumansFact]
+    public async Task UpdateLimitZoneFromUploadAsync_ValidFile_PersistsLimitZone()
+    {
+        await SeedMapSettingsAsync();
+        var file = CreateUpload("""{"type":"FeatureCollection","features":[]}""");
+
+        var result = await _sut.UpdateLimitZoneFromUploadAsync(file, NewUserId());
+
+        result.Success.Should().BeTrue();
+        var settings = await _dbContext.CityPlanningSettings.AsNoTracking().SingleAsync();
+        settings.LimitZoneGeoJson.Should().Be("""{"type":"FeatureCollection","features":[]}""");
+    }
+
+    [HumansFact]
+    public async Task UpdateLimitZoneFromUploadAsync_InvalidJson_ReturnsError()
+    {
+        var file = CreateUpload("{not-json");
+
+        var result = await _sut.UpdateLimitZoneFromUploadAsync(file, NewUserId());
+
+        result.Success.Should().BeFalse();
+        result.ErrorKey.Should().Be("InvalidGeoJson");
+    }
+
+    [HumansFact]
+    public async Task UpdateOfficialZonesFromUploadAsync_ValidFile_PersistsOfficialZones()
+    {
+        await SeedMapSettingsAsync();
+        var file = CreateUpload("""{"type":"FeatureCollection","features":[]}""");
+
+        var result = await _sut.UpdateOfficialZonesFromUploadAsync(file, NewUserId());
+
+        result.Success.Should().BeTrue();
+        var settings = await _dbContext.CityPlanningSettings.AsNoTracking().SingleAsync();
+        settings.OfficialZonesGeoJson.Should().Be("""{"type":"FeatureCollection","features":[]}""");
     }
 
     [HumansFact]
@@ -519,7 +595,7 @@ public class CityPlanningServiceTests : IDisposable
         await _dbContext.SaveChangesAsync();
         _dbContext.Entry(seeded).State = EntityState.Detached;
 
-        await _sut.UpdatePlacementDatesAsync(null, null);
+        await _sut.UpdatePlacementDatesAsync((LocalDateTime?)null, (LocalDateTime?)null);
 
         var updated = await _dbContext.CityPlanningSettings.AsNoTracking().SingleAsync();
         updated.PlacementOpensAt.Should().BeNull();

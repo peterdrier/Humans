@@ -187,6 +187,11 @@ public interface ITeamRepository : IRepository
     Task<IReadOnlyList<Guid>> GetCoordinatorUserIdsAsync(Guid teamId, CancellationToken ct = default);
 
     /// <summary>
+    /// Check whether the user has any active coordinator membership.
+    /// </summary>
+    Task<bool> IsAnyActiveCoordinatorAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
     /// One row per active coordinator across the requested teams.
     /// </summary>
     Task<IReadOnlyList<TeamCoordinatorRef>> GetActiveCoordinatorsForTeamsAsync(

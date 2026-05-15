@@ -130,19 +130,16 @@ internal sealed class IdempotencyHarness
     private void WirePrefsAlreadyMatching()
     {
         // Marketing pref already OptedOut=false, matching the "active" subscriber → NoChange.
-        var pref = new CommunicationPreference
-        {
-            Id = Guid.NewGuid(),
-            UserId = _userId,
-            Category = MessageCategory.Marketing,
-            OptedOut = false,        // matches ML "active" (mlOptedOut=false)
-            UpdateSource = "MailerLiteSync",
-            UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
-        };
+        var pref = new CommunicationPreferenceSnapshot(
+            MessageCategory.Marketing,
+            OptedOut: false,
+            InboxEnabled: true,
+            UpdateSource: "MailerLiteSync",
+            UpdatedAt: Instant.FromUtc(2026, 1, 1, 0, 0));
 
         _prefs
             .GetPreferenceOrNullAsync(Arg.Any<Guid>(), MessageCategory.Marketing, Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<CommunicationPreference?>(pref));
+            .Returns(Task.FromResult<CommunicationPreferenceSnapshot?>(pref));
     }
 }
 
@@ -179,3 +176,4 @@ internal sealed class AuditCounter
                      && c.GetArguments() is [AuditAction action, ..]
                      && action != AuditAction.MailerLiteReconciliationCompleted);
 }
+

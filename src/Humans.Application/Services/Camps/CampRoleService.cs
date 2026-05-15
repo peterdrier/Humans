@@ -108,7 +108,7 @@ public sealed class CampRoleService : ICampRoleService
             assignment.CampRoleDefinitionId,
             assignment.CampMemberId);
 
-    public async Task<bool> UpdateDefinitionAsync(Guid id, UpdateCampRoleDefinitionInput input, Guid actorUserId, CancellationToken ct = default)
+    public async Task<UpdateCampRoleDefinitionResult> UpdateDefinitionAsync(Guid id, UpdateCampRoleDefinitionInput input, Guid actorUserId, CancellationToken ct = default)
     {
         ValidateMinimumRequired(input.SlotCount, input.MinimumRequired);
 
@@ -126,7 +126,7 @@ public sealed class CampRoleService : ICampRoleService
             def.UpdatedAt = now;
         }, ct);
 
-        if (!updated) return false;
+        if (!updated) return UpdateCampRoleDefinitionResult.NotFound;
 
         await _auditLog.LogAsync(
             AuditAction.CampRoleDefinitionUpdated,
@@ -135,7 +135,7 @@ public sealed class CampRoleService : ICampRoleService
             $"Updated camp role definition '{input.Name}'.",
             actorUserId);
 
-        return true;
+        return UpdateCampRoleDefinitionResult.Updated(input.Name);
     }
 
     public async Task<bool> DeactivateDefinitionAsync(Guid id, Guid actorUserId, CancellationToken ct = default)

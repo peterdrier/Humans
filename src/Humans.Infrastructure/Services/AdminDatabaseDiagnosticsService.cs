@@ -1,54 +1,35 @@
-using Humans.Application.Architecture;
 using Humans.Application.Interfaces.Admin;
 using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
-using Humans.Infrastructure.Data;
-using Microsoft.EntityFrameworkCore;
 
 namespace Humans.Infrastructure.Services;
 
-[Grandfathered(
-    ruleId: "HUM0009",
-    justification: "Admin diagnostics queries currently bypass the repository layer; should be migrated to a dedicated diagnostics repository or split across existing repositories.",
-    since: "2026-05-12",
-    issueRef: "nobodies-collective/Humans#701")]
 public sealed class AdminDatabaseDiagnosticsService : IAdminDatabaseDiagnosticsService
 {
-    private readonly IDbContextFactory<HumansDbContext> _factory;
+    private readonly IAdminDatabaseDiagnosticsRepository _repository;
     private readonly IUserService _userService;
     private readonly IProfileService _profileService;
     private readonly ITicketQueryService _ticketQueryService;
 
     public AdminDatabaseDiagnosticsService(
-        IDbContextFactory<HumansDbContext> factory,
+        IAdminDatabaseDiagnosticsRepository repository,
         IUserService userService,
         IProfileService profileService,
         ITicketQueryService ticketQueryService)
     {
-        _factory = factory;
+        _repository = repository;
         _userService = userService;
         _profileService = profileService;
         _ticketQueryService = ticketQueryService;
     }
 
-    public async Task<DatabaseMigrationStatus> GetMigrationStatusAsync(CancellationToken ct = default)
-    {
-        await using var db = await _factory.CreateDbContextAsync(ct);
-        var applied = (await db.Database.GetAppliedMigrationsAsync(ct)).ToList();
-        var pending = await db.Database.GetPendingMigrationsAsync(ct);
+    public Task<DatabaseMigrationStatus> GetMigrationStatusAsync(CancellationToken ct = default) =>
+        _repository.GetMigrationStatusAsync(ct);
 
-        return new DatabaseMigrationStatus(
-            LastApplied: applied.LastOrDefault(),
-            AppliedCount: applied.Count,
-            PendingCount: pending.Count());
-    }
-
-    public async Task<int> ClearHangfireLocksAsync(CancellationToken ct = default)
-    {
-        await using var db = await _factory.CreateDbContextAsync(ct);
-        return await db.Database.ExecuteSqlRawAsync("DELETE FROM hangfire.lock", ct);
-    }
+    public Task<int> ClearHangfireLocksAsync(CancellationToken ct = default) =>
+        _repository.ClearHangfireLocksAsync(ct);
 
     public async Task<AudienceSegmentation> GetAudienceSegmentationAsync(int? year, CancellationToken ct = default)
     {

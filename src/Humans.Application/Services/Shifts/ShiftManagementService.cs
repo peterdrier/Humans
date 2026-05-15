@@ -230,40 +230,41 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         _viewInvalidator.InvalidateRota(rota.Id);
     }
 
-    public async Task MoveRotaToTeamAsync(Guid rotaId, Guid targetTeamId, Guid actorUserId)
+    public async Task<RotaMoveResult> MoveRotaToTeamAsync(MoveRotaInput input)
     {
-        var rota = await _repo.GetRotaForUpdateAsync(rotaId);
-        if (rota is null)
-            throw new InvalidOperationException("Rota not found.");
+        var rota = await _repo.GetRotaForUpdateAsync(input.RotaId);
+        if (rota is null || rota.TeamId != input.SourceTeamId)
+            return RotaMoveResult.Failure("Rota not found.");
 
-        var targetTeam = await TeamService.GetTeamByIdAsync(targetTeamId);
+        var targetTeam = await TeamService.GetTeamByIdAsync(input.TargetTeamId);
         if (targetTeam is null)
-            throw new InvalidOperationException("Target team not found.");
+            return RotaMoveResult.Failure("Target team not found.");
         if (targetTeam.ParentTeamId is not null)
-            throw new InvalidOperationException("Rotas can only be moved to parent teams (departments).");
+            return RotaMoveResult.Failure("Rotas can only be moved to parent teams (departments).");
         if (targetTeam.SystemTeamType != SystemTeamType.None)
-            throw new InvalidOperationException("Rotas cannot be moved to system teams.");
-        if (rota.TeamId == targetTeamId)
-            throw new InvalidOperationException("Rota is already in this team.");
+            return RotaMoveResult.Failure("Rotas cannot be moved to system teams.");
+        if (rota.TeamId == input.TargetTeamId)
+            return RotaMoveResult.Failure("Rota is already in this team.");
 
-        // Fetch the old team name via ITeamService — no cross-domain Include.
+        // Fetch the old team name via ITeamService - no cross-domain Include.
         var oldTeam = await TeamService.GetTeamByIdAsync(rota.TeamId);
         var oldTeamName = oldTeam?.Name ?? "(unknown)";
 
         // Targeted write: only TeamId + UpdatedAt are marked modified, so a
-        // concurrent admin editing unrelated rota fields (Name, Period, …)
+        // concurrent admin editing unrelated rota fields (Name, Period, ...)
         // does not have their save clobbered by this detached-graph update.
         await _repo.UpdateRotaTeamAssignmentAsync(
-            rota.Id, targetTeamId, _clock.GetCurrentInstant());
+            rota.Id, input.TargetTeamId, _clock.GetCurrentInstant());
         _viewInvalidator.InvalidateRota(rota.Id);
 
         await _auditLogService.LogAsync(
             AuditAction.RotaMovedToTeam, nameof(Rota), rota.Id,
             $"Moved rota '{rota.Name}' from '{oldTeamName}' to '{targetTeam.Name}'",
-            actorUserId,
-            relatedEntityId: targetTeamId, relatedEntityType: nameof(Team));
-    }
+            input.ActorUserId,
+            relatedEntityId: input.TargetTeamId, relatedEntityType: nameof(Team));
 
+        return RotaMoveResult.Success($"Rota '{rota.Name}' moved to {targetTeam.Name}.", targetTeam.Slug);
+    }
     public async Task DeleteRotaAsync(Guid rotaId)
     {
         var rota = await _repo.GetRotaWithShiftsAndSignupsForDeleteAsync(rotaId);
@@ -352,12 +353,26 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
     /// </summary>
     public static LocalTime AllDayShiftEndTime => Shift.AllDayWindowEnd;
 
-    public async Task CreateBuildStrikeShiftsAsync(Guid rotaId, Dictionary<int, (int Min, int Max)> dailyStaffing)
+    public async Task<ShiftGenerationResult> CreateBuildStrikeShiftsAsync(ConfigureBuildStrikeStaffingInput input)
     {
-        var rota = await _repo.GetRotaWithEventSettingsAsync(rotaId);
-        if (rota is null) throw new InvalidOperationException("Rota not found");
+        var rota = await _repo.GetRotaWithEventSettingsAsync(input.RotaId);
+        if (rota is null || rota.TeamId != input.TeamId)
+            return ShiftGenerationResult.Failure("Rota not found.");
+
         if (rota.Period == RotaPeriod.Event)
-            throw new InvalidOperationException("Build/strike shift generation is only for Build or Strike rotas");
+            return ShiftGenerationResult.Failure("Build/strike shift generation is only for Build or Strike rotas.");
+
+        var dailyStaffing = input.Days
+            .GroupBy(d => d.DayOffset)
+            .ToDictionary(
+                g => g.Key,
+                g => (Min: g.Last().MinVolunteers, Max: g.Last().MaxVolunteers));
+
+        if (dailyStaffing.Count == 0)
+            return ShiftGenerationResult.Failure("At least one staffing day is required.");
+
+        if (dailyStaffing.Values.Any(d => d.Min > d.Max))
+            return ShiftGenerationResult.Failure("MinVolunteers cannot exceed MaxVolunteers.");
 
         var es = rota.EventSettings;
 
@@ -370,7 +385,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         }
 
         // Skip days that already have shifts (additive mode)
-        var existingDayOffsets = await _repo.GetShiftDayOffsetsForRotaAsync(rotaId);
+        var existingDayOffsets = await _repo.GetShiftDayOffsetsForRotaAsync(input.RotaId);
         var existingSet = existingDayOffsets.ToHashSet();
 
         var now = _clock.GetCurrentInstant();
@@ -381,7 +396,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
             toInsert.Add(new Shift
             {
                 Id = Guid.NewGuid(),
-                RotaId = rotaId,
+                RotaId = input.RotaId,
                 IsAllDay = true,
                 DayOffset = dayOffset,
                 // StartTime and Duration are don't-care for IsAllDay rows; GetAbsoluteStart/End
@@ -398,35 +413,50 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         if (toInsert.Count > 0)
         {
             await _repo.AddShiftsAsync(toInsert);
-            _viewInvalidator.InvalidateRota(rotaId);
+            _viewInvalidator.InvalidateRota(input.RotaId);
         }
+
+        return ShiftGenerationResult.Success($"Created {toInsert.Count} shifts for '{rota.Name}'.", toInsert.Count);
     }
 
-    public async Task GenerateEventShiftsAsync(Guid rotaId, int startDayOffset, int endDayOffset,
-        List<(LocalTime StartTime, double DurationHours)> timeSlots, int minVolunteers = 2, int maxVolunteers = 5)
+    public async Task<ShiftGenerationResult> GenerateEventShiftsAsync(GenerateEventShiftsInput input)
     {
-        var rota = await _repo.GetRotaWithEventSettingsAsync(rotaId);
-        if (rota is null) throw new InvalidOperationException("Rota not found");
+        var rota = await _repo.GetRotaWithEventSettingsAsync(input.RotaId);
+        if (rota is null || rota.TeamId != input.TeamId)
+            return ShiftGenerationResult.Failure("Rota not found.");
+
         if (rota.Period != RotaPeriod.Event)
-            throw new InvalidOperationException("Event shift generation is only for Event-period rotas");
+            return ShiftGenerationResult.Failure("Event shift generation is only for Event-period rotas.");
+
+        var es = rota.EventSettings;
+        if (input.StartDayOffset < 0 ||
+            input.EndDayOffset > es.EventEndOffset ||
+            input.StartDayOffset > input.EndDayOffset)
+            return ShiftGenerationResult.Failure("Shift dates must fall within the event period.");
+
+        if (input.MinVolunteers > input.MaxVolunteers)
+            return ShiftGenerationResult.Failure("MinVolunteers cannot exceed MaxVolunteers.");
+
+        if (input.TimeSlots.Count == 0)
+            return ShiftGenerationResult.Failure("At least one time slot is required.");
 
         var now = _clock.GetCurrentInstant();
         var toInsert = new List<Shift>();
 
-        for (var day = startDayOffset; day <= endDayOffset; day++)
+        for (var day = input.StartDayOffset; day <= input.EndDayOffset; day++)
         {
-            foreach (var (startTime, durationHours) in timeSlots)
+            foreach (var slot in input.TimeSlots)
             {
                 toInsert.Add(new Shift
                 {
                     Id = Guid.NewGuid(),
-                    RotaId = rotaId,
+                    RotaId = input.RotaId,
                     IsAllDay = false,
                     DayOffset = day,
-                    StartTime = startTime,
-                    Duration = Duration.FromHours(durationHours),
-                    MinVolunteers = minVolunteers,
-                    MaxVolunteers = maxVolunteers,
+                    StartTime = slot.StartTime,
+                    Duration = Duration.FromHours(slot.DurationHours),
+                    MinVolunteers = input.MinVolunteers,
+                    MaxVolunteers = input.MaxVolunteers,
                     CreatedAt = now,
                     UpdatedAt = now
                 });
@@ -436,37 +466,87 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         if (toInsert.Count > 0)
         {
             await _repo.AddShiftsAsync(toInsert);
-            _viewInvalidator.InvalidateRota(rotaId);
+            _viewInvalidator.InvalidateRota(input.RotaId);
         }
+
+        return ShiftGenerationResult.Success($"Generated {toInsert.Count} shifts for '{rota.Name}'.", toInsert.Count);
     }
 
     // ============================================================
     // Shift
     // ============================================================
 
-    public async Task CreateShiftAsync(Shift shift)
+    public async Task<ShiftMutationResult> CreateShiftAsync(CreateShiftInput input)
     {
-        var rota = await _repo.GetRotaWithEventSettingsAsync(shift.RotaId);
-        if (rota is null) throw new InvalidOperationException("Rota not found.");
+        var rota = await _repo.GetRotaWithEventSettingsAsync(input.RotaId);
+        if (rota is null || rota.TeamId != input.TeamId)
+            return ShiftMutationResult.Failure("Rota not found.");
 
         var es = rota.EventSettings;
-        if (shift.DayOffset < es.BuildStartOffset || shift.DayOffset > es.StrikeEndOffset)
-            throw new InvalidOperationException(
-                $"DayOffset {shift.DayOffset} is outside the valid range ({es.BuildStartOffset}..{es.StrikeEndOffset}).");
+        var (periodStart, periodEnd) = GetRotaDayOffsetBounds(rota.Period, es);
+        if (input.DayOffset < periodStart || input.DayOffset > periodEnd)
+            return ShiftMutationResult.Failure("Shift date must fall within the rota's period.");
 
-        if (shift.MinVolunteers > shift.MaxVolunteers)
-            throw new InvalidOperationException("MinVolunteers cannot exceed MaxVolunteers.");
+        if (input.MinVolunteers > input.MaxVolunteers)
+            return ShiftMutationResult.Failure("MinVolunteers cannot exceed MaxVolunteers.");
 
-        shift.UpdatedAt = _clock.GetCurrentInstant();
+        var now = _clock.GetCurrentInstant();
+        var shift = new Shift
+        {
+            Id = Guid.NewGuid(),
+            RotaId = input.RotaId,
+            Description = input.Description,
+            DayOffset = input.DayOffset,
+            StartTime = input.StartTime,
+            Duration = Duration.FromHours(input.DurationHours),
+            MinVolunteers = input.MinVolunteers,
+            MaxVolunteers = input.MaxVolunteers,
+            AdminOnly = input.AdminOnly,
+            IsAllDay = input.IsAllDay,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+
         await _repo.AddShiftAsync(shift);
-        _viewInvalidator.InvalidateRota(shift.RotaId);
+        _viewInvalidator.InvalidateRota(input.RotaId);
+        return ShiftMutationResult.Success("Shift created.", shift.Id);
     }
 
-    public async Task UpdateShiftAsync(Shift shift)
+    private static (int Start, int End) GetRotaDayOffsetBounds(RotaPeriod period, EventSettings es) =>
+        period switch
+        {
+            RotaPeriod.Build => (es.BuildStartOffset, -1),
+            RotaPeriod.Event => (0, es.EventEndOffset),
+            RotaPeriod.Strike => (es.EventEndOffset + 1, es.StrikeEndOffset),
+            _ => (es.BuildStartOffset, es.StrikeEndOffset)
+        };
+
+    public async Task<ShiftMutationResult> UpdateShiftAsync(UpdateShiftInput input)
     {
+        var shift = await _repo.GetShiftByIdAsync(input.ShiftId);
+        if (shift is null || shift.Rota.TeamId != input.TeamId)
+            return ShiftMutationResult.Failure("Shift not found.");
+
+        var es = shift.Rota.EventSettings;
+        var (periodStart, periodEnd) = GetRotaDayOffsetBounds(shift.Rota.Period, es);
+        if (input.DayOffset < periodStart || input.DayOffset > periodEnd)
+            return ShiftMutationResult.Failure("Shift date must fall within the rota's period.");
+
+        if (input.MinVolunteers > input.MaxVolunteers)
+            return ShiftMutationResult.Failure("MinVolunteers cannot exceed MaxVolunteers.");
+
+        shift.Description = input.Description;
+        shift.DayOffset = input.DayOffset;
+        shift.StartTime = input.StartTime;
+        shift.Duration = Duration.FromHours(input.DurationHours);
+        shift.MinVolunteers = input.MinVolunteers;
+        shift.MaxVolunteers = input.MaxVolunteers;
+        shift.AdminOnly = input.AdminOnly;
         shift.UpdatedAt = _clock.GetCurrentInstant();
+
         await _repo.UpdateShiftAsync(shift);
         _viewInvalidator.InvalidateShift(shift.Id);
+        return ShiftMutationResult.Success("Shift updated.", shift.Id);
     }
 
     public async Task DeleteShiftAsync(Guid shiftId)
@@ -1670,14 +1750,19 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
     // Shift Tags
     // ============================================================
 
-    public Task<IReadOnlyList<ShiftTag>> GetTagsAsync(string? query = null) =>
-        _repo.GetTagsAsync(query);
+    public async Task<IReadOnlyList<ShiftTagSummary>> GetTagsAsync(string? query = null)
+    {
+        var tags = await _repo.GetTagsAsync(query);
+        return tags
+            .Select(tag => new ShiftTagSummary(tag.Id, tag.Name))
+            .ToList();
+    }
 
-    public async Task<ShiftTag> GetOrCreateTagAsync(string name)
+    public async Task<ShiftTagSummary> GetOrCreateTagAsync(string name)
     {
         var trimmed = name.Trim();
         var existing = await _repo.FindTagByNameAsync(trimmed);
-        if (existing is not null) return existing;
+        if (existing is not null) return new ShiftTagSummary(existing.Id, existing.Name);
 
         var tag = new ShiftTag
         {
@@ -1685,7 +1770,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
             Name = trimmed
         };
         await _repo.AddTagAsync(tag);
-        return tag;
+        return new ShiftTagSummary(tag.Id, tag.Name);
     }
 
     public async Task SetRotaTagsAsync(Guid rotaId, IReadOnlyList<Guid> tagIds)
@@ -1694,8 +1779,13 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         _viewInvalidator.InvalidateRota(rotaId);
     }
 
-    public Task<IReadOnlyList<ShiftTag>> GetVolunteerTagPreferencesAsync(Guid userId) =>
-        _repo.GetVolunteerTagPreferencesAsync(userId);
+    public async Task<IReadOnlyList<ShiftTagPreferenceSummary>> GetVolunteerTagPreferencesAsync(Guid userId)
+    {
+        var preferences = await _repo.GetVolunteerTagPreferencesAsync(userId);
+        return preferences
+            .Select(tag => new ShiftTagPreferenceSummary(tag.Id, tag.Name))
+            .ToList();
+    }
 
     public async Task SetVolunteerTagPreferencesAsync(Guid userId, IReadOnlyList<Guid> tagIds)
     {

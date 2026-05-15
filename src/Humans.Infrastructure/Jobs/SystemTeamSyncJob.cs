@@ -167,14 +167,14 @@ public class SystemTeamSyncJob : ISystemTeamSync
         var shouldBeCoordinator = memberships
             .Where(tm =>
                 tm.Role == TeamMemberRole.Member &&
-                tm.RoleAssignments.Any(ra => ra.TeamRoleDefinition.IsManagement))
+                tm.HasManagementRoleAssignment)
             .ToList();
 
         var shouldBeMember = memberships
             .Where(tm =>
                 tm.Role == TeamMemberRole.Coordinator &&
-                tm.Team.SystemTeamType == SystemTeamType.None &&
-                !tm.RoleAssignments.Any(ra => ra.TeamRoleDefinition.IsManagement))
+                tm.SystemTeamType == SystemTeamType.None &&
+                !tm.HasManagementRoleAssignment)
             .ToList();
 
         if (shouldBeCoordinator.Count == 0 && shouldBeMember.Count == 0)
@@ -195,10 +195,10 @@ public class SystemTeamSyncJob : ISystemTeamSync
 
         foreach (var member in shouldBeCoordinator)
         {
-            changes.Add((member.Id, TeamMemberRole.Coordinator));
+            changes.Add((member.TeamMemberId, TeamMemberRole.Coordinator));
             var userName = userNamesById.TryGetValue(member.UserId, out var u)
                 ? u.DisplayName : member.UserId.ToString();
-            var teamName = member.Team.Name;
+            var teamName = member.TeamName;
             step.Fixed(member.UserId, userName, $"Promoted to Coordinator on {teamName}");
             _logger.LogInformation(
                 "Reconciled {UserName} to Coordinator on team {TeamId} (had IsManagement role assignment)",
@@ -207,10 +207,10 @@ public class SystemTeamSyncJob : ISystemTeamSync
 
         foreach (var member in shouldBeMember)
         {
-            changes.Add((member.Id, TeamMemberRole.Member));
+            changes.Add((member.TeamMemberId, TeamMemberRole.Member));
             var userName = userNamesById.TryGetValue(member.UserId, out var u)
                 ? u.DisplayName : member.UserId.ToString();
-            var teamName = member.Team.Name;
+            var teamName = member.TeamName;
             step.Fixed(member.UserId, userName, $"Demoted to Member on {teamName} (no IsManagement role)");
             _logger.LogInformation(
                 "Reconciled {UserName} to Member on team {TeamId} (no IsManagement role assignment)",
@@ -551,7 +551,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
         // membership from a previous registration.
         if (isLeadAnywhere)
         {
-            var alreadyActive = team.Members.Any(m => m.UserId == userId && m.LeftAt == null);
+            var alreadyActive = team.ActiveMemberUserIds.Contains(userId);
             if (alreadyActive)
             {
                 return;
@@ -562,13 +562,10 @@ public class SystemTeamSyncJob : ISystemTeamSync
         await SyncTeamMembershipAsync(team, eligibleUserIds, cancellationToken, singleUserSync: userId);
     }
 
-    private async Task SyncTeamMembershipAsync(Team team, List<Guid> eligibleUserIds,
+    private async Task SyncTeamMembershipAsync(SystemTeamMembershipSnapshot team, List<Guid> eligibleUserIds,
         CancellationToken cancellationToken, Guid? singleUserSync = null, SyncStepResult? step = null)
     {
-        var currentMemberIds = team.Members
-            .Where(m => m.LeftAt is null)
-            .Select(m => m.UserId)
-            .ToHashSet();
+        var currentMemberIds = team.ActiveMemberUserIds.ToHashSet();
 
         var eligibleSet = eligibleUserIds.ToHashSet();
 

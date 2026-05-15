@@ -6,6 +6,10 @@ namespace Humans.Application.Interfaces.Expenses;
 public interface IExpenseReportService : IApplicationService
 {
     Task<ExpenseReportDto?> GetAsync(Guid id, CancellationToken ct = default);
+
+    Task<ExpenseDetailViewData> GetDetailViewDataAsync(
+        Guid viewerUserId, ExpenseReportDto report, CancellationToken ct = default);
+
     /// <summary>
     /// Returns the report that owns the given attachment (via its line), with
     /// Lines populated. Returns null if the attachment doesn't belong to any
@@ -16,6 +20,11 @@ public interface IExpenseReportService : IApplicationService
     /// </summary>
     Task<ExpenseReportDto?> GetReportOwningAttachmentAsync(
         Guid attachmentId, CancellationToken ct = default);
+
+    Task<ExpenseAttachmentDownload?> TryReadAttachmentAsync(
+        ExpenseReportDto owningReport,
+        Guid attachmentId,
+        CancellationToken ct = default);
     Task<IReadOnlyList<ExpenseReportDto>> GetForSubmitterAsync(
         Guid submitterUserId, CancellationToken ct = default);
     Task<IReadOnlyList<ExpenseReportDto>> GetCoordinatorQueueAsync(
@@ -31,7 +40,17 @@ public interface IExpenseReportService : IApplicationService
         Guid budgetCategoryId, string? note,
         CancellationToken ct = default);
 
+    Task<ExpenseMutationResult> UpdateDraftWithResultAsync(
+        Guid reportId, Guid submitterUserId,
+        Guid budgetCategoryId, string? note,
+        CancellationToken ct = default);
+
     Task<Guid> AddLineAsync(
+        Guid reportId, Guid submitterUserId,
+        string description, decimal amount,
+        CancellationToken ct = default);
+
+    Task<ExpenseMutationResult> AddLineWithResultAsync(
         Guid reportId, Guid submitterUserId,
         string description, decimal amount,
         CancellationToken ct = default);
@@ -41,7 +60,16 @@ public interface IExpenseReportService : IApplicationService
         Guid lineId, string description, decimal amount,
         CancellationToken ct = default);
 
+    Task<ExpenseMutationResult> UpdateLineWithResultAsync(
+        Guid reportId, Guid submitterUserId,
+        Guid lineId, string description, decimal amount,
+        CancellationToken ct = default);
+
     Task RemoveLineAsync(
+        Guid reportId, Guid submitterUserId, Guid lineId,
+        CancellationToken ct = default);
+
+    Task<ExpenseMutationResult> RemoveLineWithResultAsync(
         Guid reportId, Guid submitterUserId, Guid lineId,
         CancellationToken ct = default);
 
@@ -51,6 +79,11 @@ public interface IExpenseReportService : IApplicationService
     /// Returns the new attachment id.
     /// </summary>
     Task<Guid> AttachFileToLineAsync(
+        Guid reportId, Guid submitterUserId,
+        Guid lineId, string originalFileName, string contentType,
+        Stream content, CancellationToken ct = default);
+
+    Task<ExpenseMutationResult> AttachFileToLineWithResultAsync(
         Guid reportId, Guid submitterUserId,
         Guid lineId, string originalFileName, string contentType,
         Stream content, CancellationToken ct = default);
@@ -67,13 +100,33 @@ public interface IExpenseReportService : IApplicationService
     Task<bool> SubmitAsync(
         Guid reportId, Guid submitterUserId, CancellationToken ct = default);
 
+    Task<ExpenseMutationResult> SubmitWithResultAsync(
+        Guid reportId, Guid submitterUserId, CancellationToken ct = default);
+
     Task<bool> WithdrawAsync(
         Guid reportId, Guid submitterUserId, CancellationToken ct = default);
+
+
+    Task<ExpenseMutationResult> WithdrawWithResultAsync(
+        Guid reportId, Guid submitterUserId, CancellationToken ct = default);
+
+    Task<ExpenseIbanSaveResult> SaveSubmitterIbanWithResultAsync(
+        Guid submitterUserId, string? iban, CancellationToken ct = default);
+
+    Task<ExpenseIbanViewData> GetSubmitterIbanViewAsync(
+        Guid submitterUserId, CancellationToken ct = default);
 
     Task<bool> CoordinatorEndorseAsync(
         Guid reportId, Guid coordinatorUserId, CancellationToken ct = default);
 
+    Task<ExpenseMutationResult> CoordinatorEndorseWithResultAsync(
+        Guid reportId, Guid coordinatorUserId, CancellationToken ct = default);
+
     Task<bool> CoordinatorRejectAsync(
+        Guid reportId, Guid coordinatorUserId, string reason,
+        CancellationToken ct = default);
+
+    Task<ExpenseMutationResult> CoordinatorRejectWithResultAsync(
         Guid reportId, Guid coordinatorUserId, string reason,
         CancellationToken ct = default);
 
@@ -81,7 +134,15 @@ public interface IExpenseReportService : IApplicationService
         Guid reportId, Guid actorUserId, Guid? overrideCategoryId,
         CancellationToken ct = default);
 
+    Task<ExpenseMutationResult> ApproveWithResultAsync(
+        Guid reportId, Guid actorUserId, Guid? overrideCategoryId,
+        CancellationToken ct = default);
+
     Task<bool> FinanceRejectAsync(
+        Guid reportId, Guid actorUserId, string reason,
+        CancellationToken ct = default);
+
+    Task<ExpenseMutationResult> FinanceRejectWithResultAsync(
         Guid reportId, Guid actorUserId, string reason,
         CancellationToken ct = default);
 
@@ -110,3 +171,32 @@ public interface IExpenseReportService : IApplicationService
     /// </summary>
     Task PollHoldedPaidStatusAsync(int batchSize, CancellationToken ct = default);
 }
+
+public sealed record ExpenseAttachmentDownload(
+    byte[] Bytes,
+    string ContentType,
+    string OriginalFileName);
+
+public sealed record ExpenseMutationResult(bool Succeeded, string? ErrorMessage)
+{
+    public static ExpenseMutationResult Success { get; } = new(true, null);
+
+    public static ExpenseMutationResult Failure(string message) => new(false, message);
+}
+
+public sealed record ExpenseIbanSaveResult(
+    bool Succeeded,
+    bool IsValidationError,
+    string Message,
+    bool HasIban,
+    string? MaskedIban);
+
+public sealed record ExpenseIbanViewData(bool HasIban, string? MaskedIban);
+
+public sealed record ExpenseDetailViewData(
+    string CategoryDisplayName,
+    bool CanEdit,
+    bool CanSubmit,
+    bool CanWithdraw,
+    bool HasIban,
+    string? MaskedIban);

@@ -1,5 +1,6 @@
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Application.Interfaces.Campaigns;
 using Humans.Application.Interfaces.Email;
 
 namespace Humans.Web.Models;
@@ -68,6 +69,8 @@ public class AdminHumanDetailViewModel
     // Stats
     public int ApplicationCount { get; set; }
     public int ConsentCount { get; set; }
+    public IReadOnlyList<CampaignGrantSummary> CampaignGrants { get; set; } = [];
+    public int OutboxCount { get; set; }
     public List<AdminHumanApplicationViewModel> Applications { get; set; } = [];
     public List<AdminRoleAssignmentViewModel> RoleAssignments { get; set; } = [];
     public IReadOnlyList<ProfileLanguageDisplayViewModel> Languages { get; set; } = [];

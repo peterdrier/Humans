@@ -1,8 +1,8 @@
-@model IReadOnlyList<BudgetAuditLog>
+@model IReadOnlyList<Humans.Application.Interfaces.Budget.BudgetAuditLogSnapshot>
 @{
     ViewData["Title"] = "Budget Audit Log";
     var yearId = ViewBag.YearId as Guid?;
-    var years = ViewBag.Years as IReadOnlyList<BudgetYear> ?? [];
+    var years = ViewBag.Years as IReadOnlyList<Humans.Application.Interfaces.Budget.BudgetYearSummarySnapshot> ?? [];
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">

@@ -470,18 +470,21 @@ public sealed class GoogleGroupSyncServiceTests
                     .Where(u => requested.Contains(u.UserId))
                     .ToDictionary(
                         u => u.UserId,
-                        u => (IReadOnlyList<UserEmail>)
+                        u => (IReadOnlyList<UserEmailRowSnapshot>)
                         [
-                            new UserEmail
-                            {
-                                Id = Guid.NewGuid(),
-                                UserId = u.UserId,
-                                Email = u.Email,
-                                IsVerified = true,
-                                IsGoogle = true,
-                                CreatedAt = _clock.GetCurrentInstant(),
-                                UpdatedAt = _clock.GetCurrentInstant()
-                            }
+                            new UserEmailRowSnapshot(
+                                Guid.NewGuid(),
+                                u.UserId,
+                                u.Email,
+                                IsVerified: true,
+                                Provider: null,
+                                ProviderKey: null,
+                                IsGoogle: true,
+                                IsPrimary: false,
+                                Visibility: null,
+                                VerificationSentAt: null,
+                                CreatedAt: _clock.GetCurrentInstant(),
+                                UpdatedAt: _clock.GetCurrentInstant())
                         ]);
             });
 
@@ -547,11 +550,11 @@ public sealed class GoogleGroupSyncServiceTests
         _teamResourceService.GetResourcesByTeamIdsAsync(
                 Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(teamId)),
                 Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, IReadOnlyList<GoogleResource>>
+            .Returns(new Dictionary<Guid, IReadOnlyList<GoogleResourceSnapshot>>
             {
                 [teamId] =
                 [
-                    resource
+                    ToSnapshot(resource)
                 ]
             });
         _teamService.GetTeamByIdAsync(teamId, Arg.Any<CancellationToken>())
@@ -593,10 +596,10 @@ public sealed class GoogleGroupSyncServiceTests
         _teamResourceService.GetResourcesByTeamIdsAsync(
                 Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(first.TeamId) && ids.Contains(secondTeamId)),
                 Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, IReadOnlyList<GoogleResource>>
+            .Returns(new Dictionary<Guid, IReadOnlyList<GoogleResourceSnapshot>>
             {
-                [first.TeamId] = [first],
-                [secondTeamId] = [second]
+                [first.TeamId] = [ToSnapshot(first)],
+                [secondTeamId] = [ToSnapshot(second)]
             });
         _teamService.GetTeamByIdAsync(secondTeamId, Arg.Any<CancellationToken>())
             .Returns(new Team
@@ -609,6 +612,16 @@ public sealed class GoogleGroupSyncServiceTests
                 UpdatedAt = _clock.GetCurrentInstant()
             });
     }
+
+    private static GoogleResourceSnapshot ToSnapshot(GoogleResource resource) =>
+        new(
+            resource.Id,
+            resource.TeamId,
+            resource.GoogleId,
+            resource.Name,
+            resource.ResourceType,
+            resource.Url,
+            IsActive: resource.IsActive);
 
     private sealed class StaticSource : IGoogleGroupMembershipSource
     {

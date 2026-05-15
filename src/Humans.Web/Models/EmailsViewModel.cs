@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Humans.Application.Interfaces.Profiles;
 using Humans.Domain.Enums;
 
 namespace Humans.Web.Models;
@@ -92,12 +93,12 @@ public class EmailsViewModel
         Array.Empty<ExternalLoginRowViewModel>();
 
     /// <summary>
-    /// Admin-only raw <see cref="Humans.Domain.Entities.UserEmail"/> entities for
-    /// the target user — every column, no formatting. Diagnostic surface for
-    /// reading the on-disk shape directly. Empty in self contexts.
+    /// Admin-only raw UserEmail row snapshots for the target user — every
+    /// exposed metadata column, no formatting. Diagnostic surface for reading
+    /// the stored row shape directly. Empty in self contexts.
     /// </summary>
-    public IReadOnlyList<Humans.Domain.Entities.UserEmail> RawUserEmails { get; init; } =
-        Array.Empty<Humans.Domain.Entities.UserEmail>();
+    public IReadOnlyList<UserEmailRowSnapshot> RawUserEmails { get; init; } =
+        Array.Empty<UserEmailRowSnapshot>();
 }
 
 /// <summary>

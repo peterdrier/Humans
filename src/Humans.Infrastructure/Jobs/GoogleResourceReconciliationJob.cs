@@ -78,8 +78,12 @@ public class GoogleResourceReconciliationJob : IRecurringJob
                 {
                     try
                     {
-                        await _googleSyncService.RemediateGroupSettingsAsync(report.GroupEmail, cancellationToken);
-                        _logger.LogInformation("Auto-remediated settings drift for group '{GroupEmail}'", report.GroupEmail);
+                        var remediation = await _googleSyncService.RemediateGroupSettingsAsync(report.GroupEmail, cancellationToken);
+                        if (remediation.Succeeded)
+                            _logger.LogInformation("Auto-remediated settings drift for group '{GroupEmail}'", report.GroupEmail);
+                        else
+                            _logger.LogError("Failed to auto-remediate settings for group '{GroupEmail}': {ErrorMessage}",
+                                report.GroupEmail, remediation.ErrorMessage);
                     }
                     catch (Exception ex)
                     {

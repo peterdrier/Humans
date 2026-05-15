@@ -7,6 +7,7 @@ using Humans.Web.Authorization;
 using Humans.Web.Extensions;
 using Humans.Web.Helpers;
 using Humans.Web.Models;
+using Humans.Web.Models.Shifts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -27,8 +28,7 @@ public class ShiftDashboardController : HumansControllerBase
     private readonly IShiftSignupService _signupService;
     private readonly IGeneralAvailabilityService _availabilityService;
     private readonly UserManager<User> _userManager;
-    private readonly IWebHostEnvironment _environment;
-    private readonly IClock _clock;
+    private readonly ShiftDashboardPageBuilder _pageBuilder;
     private readonly ILogger<ShiftDashboardController> _logger;
 
     public ShiftDashboardController(
@@ -36,8 +36,7 @@ public class ShiftDashboardController : HumansControllerBase
         IShiftSignupService signupService,
         IGeneralAvailabilityService availabilityService,
         UserManager<User> userManager,
-        IWebHostEnvironment environment,
-        IClock clock,
+        ShiftDashboardPageBuilder pageBuilder,
         ILogger<ShiftDashboardController> logger)
         : base(userManager)
     {
@@ -45,8 +44,7 @@ public class ShiftDashboardController : HumansControllerBase
         _signupService = signupService;
         _availabilityService = availabilityService;
         _userManager = userManager;
-        _environment = environment;
-        _clock = clock;
+        _pageBuilder = pageBuilder;
         _logger = logger;
     }
 
@@ -89,70 +87,23 @@ public class ShiftDashboardController : HumansControllerBase
             return RedirectToAction(nameof(HomeController.Index), "Home");
         }
 
-        LocalDate? filterStartDate = ParseIsoDateOrNull(startDate);
-        LocalDate? filterEndDate = ParseIsoDateOrNull(endDate);
+        var filterStartDate = ParseIsoDateOrNull(startDate);
+        var filterEndDate = ParseIsoDateOrNull(endDate);
         var (activeStart, activeEnd) = ResolveActiveDateRange(period, filterStartDate, filterEndDate);
 
-        var window = trendWindow ?? TrendWindow.Last30Days;
-
-        // Sequential awaits — shared scoped DbContext is not safe for concurrent queries.
-        var shifts = await _shiftMgmt.GetUrgentShiftsAsync(es.Id, limit: null, departmentId, activeStart, activeEnd, period, subPeriod);
-        var staffingData = await _shiftMgmt.GetStaffingDataAsync(es.Id, departmentId, period, subPeriod);
-        var staffingHours = await _shiftMgmt.GetStaffingHoursAsync(es.Id, departmentId, period, subPeriod);
-        var overview = await _shiftMgmt.GetDashboardOverviewAsync(es.Id, period, subPeriod);
-        var coordinatorActivity = await _shiftMgmt.GetCoordinatorActivityAsync(es.Id, period, subPeriod);
-        // Always fetch the full history; the partial slices client-side on window toggle
-        // so the user doesn't incur a full page reload to change the trend range.
-        var trends = await _shiftMgmt.GetDashboardTrendsAsync(es.Id, TrendWindow.All, period, subPeriod);
-        var dailyDeptStaffing = await _shiftMgmt.GetDailyDepartmentStaffingAsync(es.Id, period, subPeriod);
-        var shiftDurationBreakdown = await _shiftMgmt.GetShiftDurationBreakdownAsync(es.Id, period, subPeriod);
-        var coverageHeatmap = await _shiftMgmt.GetCoverageHeatmapAsync(es.Id, period, subPeriod);
-        var deptTuples = await _shiftMgmt.GetDepartmentsWithRotasAsync(es.Id);
-
-        var departments = deptTuples.Select(d => new DepartmentOption
-        {
-            TeamId = d.TeamId,
-            Name = d.TeamName
-        }).ToList();
-
-        // Countdown to "feet on the ground" (first build day). Computed in the event
-        // timezone so midnight-local is the reference, and from the injected IClock
-        // so tests can override with FakeClock.
-        var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(es.TimeZoneId) ?? DateTimeZone.Utc;
-        var todayLocal = _clock.GetCurrentInstant().InZone(tz).Date;
-        var firstBuildDay = es.GateOpeningDate.PlusDays(es.BuildStartOffset);
-        var daysToBuild = Period.Between(todayLocal, firstBuildDay, PeriodUnits.Days).Days;
-        var countdown = new BuildDayCountdown(
-            DaysToBuild: daysToBuild,
-            FirstBuildDay: firstBuildDay,
-            Weeks: Math.Abs(daysToBuild) / 7,
-            RemainderDays: Math.Abs(daysToBuild) % 7);
-
-        var model = new ShiftDashboardViewModel
-        {
-            Shifts = shifts.ToList(),
-            Departments = departments,
-            SelectedDepartmentId = departmentId,
-            SelectedRotaId = rotaId,
-            SelectedStartDate = startDate,
-            SelectedEndDate = endDate,
-            SelectedPeriod = period,
-            SelectedSubPeriod = subPeriod,
-            FilterStartDate = filterStartDate,
-            FilterEndDate = filterEndDate,
-            EventSettings = es,
-            StaffingData = staffingData.ToList(),
-            StaffingHours = staffingHours.ToList(),
-            Overview = overview,
-            CoordinatorActivity = coordinatorActivity,
-            Trends = trends,
-            DailyDepartmentStaffing = dailyDeptStaffing,
-            ShiftDurationBreakdown = shiftDurationBreakdown,
-            CoverageHeatmap = coverageHeatmap,
-            TrendWindow = window,
-            IsDevelopment = _environment.IsDevelopment(),
-            Countdown = countdown,
-        };
+        var model = await _pageBuilder.BuildAsync(new ShiftDashboardPageRequest(
+            es,
+            departmentId,
+            rotaId,
+            startDate,
+            endDate,
+            filterStartDate,
+            filterEndDate,
+            activeStart,
+            activeEnd,
+            trendWindow ?? TrendWindow.Last30Days,
+            period,
+            subPeriod));
 
         return View(model);
     }
@@ -164,27 +115,18 @@ public class ShiftDashboardController : HumansControllerBase
     [HttpGet("SearchVolunteers")]
     public async Task<IActionResult> SearchVolunteers(Guid shiftId, string? query)
     {
-        if (!query.HasSearchTerm())
-            return Json(Array.Empty<VolunteerSearchResult>());
-
         try
         {
-            var shift = await _shiftMgmt.GetShiftByIdAsync(shiftId);
-            if (shift is null) return NotFound();
-
-            var es = shift.Rota.EventSettings ?? await _shiftMgmt.GetActiveAsync();
-            if (es is null) return NotFound();
-
-            var results = await ShiftVolunteerSearchBuilder.BuildAsync(
-                shift,
+            var result = await ShiftVolunteerSearchBuilder.BuildForShiftAsync(
+                await _shiftMgmt.GetShiftByIdAsync(shiftId),
                 query,
-                es,
+                _shiftMgmt.GetActiveAsync,
                 ShiftRoleChecks.CanViewMedical(User),
                 _userManager,
                 _shiftMgmt,
                 _signupService,
                 _availabilityService);
-            return Json(results);
+            return ToVolunteerSearchActionResult(result);
         }
         catch (Exception ex)
         {
@@ -192,6 +134,15 @@ public class ShiftDashboardController : HumansControllerBase
             return StatusCode(500, new { error = "Search failed." });
         }
     }
+
+    private IActionResult ToVolunteerSearchActionResult(VolunteerSearchBuildResult result) =>
+        result.Status switch
+        {
+            VolunteerSearchBuildStatus.EmptyQuery => Json(Array.Empty<VolunteerSearchResult>()),
+            VolunteerSearchBuildStatus.NotFound => NotFound(),
+            VolunteerSearchBuildStatus.Success => Json(result.Results),
+            _ => throw new InvalidOperationException($"Unexpected volunteer search status '{result.Status}'.")
+        };
 
     // Privileged action — only the narrow ShiftDashboardAccess role list can
     // assign humans to shifts. Hides from the wider ShiftDepartmentManager

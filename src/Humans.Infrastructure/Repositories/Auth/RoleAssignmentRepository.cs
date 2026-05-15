@@ -48,6 +48,7 @@ public sealed class RoleAssignmentRepository : IRoleAssignmentRepository
         return await ctx.RoleAssignments
             .AsNoTracking()
             .Where(ra => ra.UserId == userId)
+            // arch:db-sort-ok user role history chronology
             .OrderByDescending(ra => ra.ValidFrom)
             .ToListAsync(ct);
     }
@@ -76,6 +77,7 @@ public sealed class RoleAssignmentRepository : IRoleAssignmentRepository
         var totalCount = await query.CountAsync(ct);
 
         var items = await query
+            // arch:db-sort-ok admin page window over role assignments
             .OrderBy(ra => ra.RoleName)
             .ThenByDescending(ra => ra.ValidFrom)
             .Skip((page - 1) * pageSize)

@@ -61,7 +61,7 @@ public sealed class MailerAudienceSyncService(
             limit: 200,
             ct: ct);
 
-        var lastByKey = new Dictionary<string, AuditLogEntry>(StringComparer.Ordinal);
+        var lastByKey = new Dictionary<string, AuditLogEntrySnapshot>(StringComparer.Ordinal);
         foreach (var e in auditEntries)
         {
             var key = TryExtractAudienceKey(e.Description);

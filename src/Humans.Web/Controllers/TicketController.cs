@@ -1,21 +1,17 @@
 using Hangfire;
-using Humans.Application.Configuration;
-using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Jobs;
-using Humans.Infrastructure.Services;
 using Humans.Web.Authorization;
 using Humans.Web.Extensions;
 using Humans.Web.Models;
+using Humans.Web.Models.Tickets;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Options;
-using NodaTime;
 
 namespace Humans.Web.Controllers;
 
@@ -23,131 +19,32 @@ namespace Humans.Web.Controllers;
 [Route("Tickets")]
 public class TicketController : HumansControllerBase
 {
-    private readonly ITicketVendorService _vendorService;
-    private readonly TicketVendorSettings _settings;
     private readonly ITicketQueryService _ticketQueryService;
     private readonly ITicketSyncService _ticketSyncService;
-    private readonly IUserService _userService;
-    private readonly IShiftManagementService _shiftMgmt;
-    private readonly IClock _clock;
+    private readonly IUserParticipationBackfillService _participationBackfillService;
+    private readonly TicketDashboardPageBuilder _dashboardPageBuilder;
     private readonly ILogger<TicketController> _logger;
 
     public TicketController(
-        ITicketVendorService vendorService,
-        IOptions<TicketVendorSettings> settings,
         ITicketQueryService ticketQueryService,
         ITicketSyncService ticketSyncService,
-        IUserService userService,
-        IShiftManagementService shiftMgmt,
-        IClock clock,
+        IUserParticipationBackfillService participationBackfillService,
+        TicketDashboardPageBuilder dashboardPageBuilder,
         UserManager<User> userManager,
         ILogger<TicketController> logger)
         : base(userManager)
     {
-        _vendorService = vendorService;
-        _settings = settings.Value;
         _ticketQueryService = ticketQueryService;
         _ticketSyncService = ticketSyncService;
-        _userService = userService;
-        _shiftMgmt = shiftMgmt;
-        _clock = clock;
+        _participationBackfillService = participationBackfillService;
+        _dashboardPageBuilder = dashboardPageBuilder;
         _logger = logger;
     }
 
     [HttpGet("")]
     public async Task<IActionResult> Index()
     {
-        if (!_settings.IsConfigured)
-        {
-            return View(new TicketDashboardViewModel { IsConfigured = false });
-        }
-
-        var stats = await _ticketQueryService.GetDashboardStatsAsync();
-        var currency = stats.RecentOrders.FirstOrDefault()?.Currency ?? "EUR";
-        var canAccessFinance = RoleChecks.CanAccessFinance(User);
-        var breakEven = await _ticketQueryService.CalculateBreakEvenAsync(
-            stats.TicketsSold, stats.Revenue, currency, canAccessFinance, _settings.BreakEvenTarget);
-
-        int totalCapacity = 0;
-        try
-        {
-            var summary = await _vendorService.GetEventSummaryAsync(_settings.EventId);
-            totalCapacity = summary?.TotalCapacity ?? 0;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Could not fetch event summary from vendor");
-        }
-
-        var model = new TicketDashboardViewModel
-        {
-            TicketsSold = stats.TicketsSold,
-            TotalCapacity = totalCapacity,
-            BreakEvenDetail = breakEven.Detail,
-            BreakEvenTarget = breakEven.Target,
-            Currency = currency,
-            Revenue = stats.Revenue,
-            AveragePrice = stats.GrossAveragePrice,
-            TicketsRemaining = totalCapacity - stats.TicketsSold,
-            TotalStripeFees = stats.TotalStripeFees,
-            TotalApplicationFees = stats.TotalApplicationFees,
-            NetRevenue = stats.NetRevenue,
-            FeesByPaymentMethod = stats.FeesByPaymentMethod.Select(f => new PaymentMethodFeeBreakdown
-            {
-                PaymentMethod = f.PaymentMethod,
-                OrderCount = f.OrderCount,
-                TotalAmount = f.TotalAmount,
-                TotalStripeFees = f.TotalStripeFees,
-                TotalApplicationFees = f.TotalApplicationFees,
-                EffectiveRate = f.EffectiveRate,
-            }).ToList(),
-            DailySales = stats.DailySalesPoints.Select(d => new DailySalesPoint
-            {
-                Date = d.Date,
-                TicketsSold = d.TicketsSold,
-                RollingAverage = d.RollingAverage,
-            }).ToList(),
-            UnmatchedOrderCount = stats.UnmatchedOrderCount,
-            SyncStatus = stats.SyncStatus,
-            SyncError = stats.SyncError,
-            LastSyncAt = stats.LastSyncAt,
-            RecentOrders = stats.RecentOrders.Select(o => new TicketOrderSummary
-            {
-                Id = o.Id,
-                BuyerName = o.BuyerName,
-                TicketCount = o.TicketCount,
-                Amount = o.Amount,
-                Currency = o.Currency,
-                PurchasedAt = o.PurchasedAt,
-                IsMatched = o.IsMatched,
-                PaymentStatus = o.PaymentStatus,
-            }).ToList(),
-            IsConfigured = true,
-        };
-
-        // Set membership across the UserInfo cache — drives the Venn + UpSet.
-        // Ticket-holder is scoped to the active event year so post-rollover
-        // users with only prior-year participations don't count.
-        // TODO: extend to (HasProfile, HasTicket, HasShift) when IShiftManager caching lands.
-        var snapshot = _userService.GetAllUserInfos();
-        var activeEvent = await _shiftMgmt.GetActiveAsync();
-        var activeYear = activeEvent?.Year ?? 0;
-        var usersOnly = 0;
-        var profileOnly = 0;
-        var ticketOnly = 0;
-        var both = 0;
-        foreach (var u in snapshot)
-        {
-            var hasProfile = u.Profile is not null;
-            var hasTicket = activeYear > 0 && u.HasTicketForYear(activeYear);
-            if (hasProfile && hasTicket) both++;
-            else if (hasProfile) profileOnly++;
-            else if (hasTicket) ticketOnly++;
-            else usersOnly++;
-        }
-        model.SetMembership = new UserSetMembership(usersOnly, profileOnly, ticketOnly, both);
-
-        return View(model);
+        return View(await _dashboardPageBuilder.BuildAsync(RoleChecks.CanAccessFinance(User)));
     }
 
     [HttpGet("Orders")]
@@ -398,10 +295,9 @@ public class TicketController : HumansControllerBase
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> ParticipationBackfill()
     {
-        var activeEvent = await _shiftMgmt.GetActiveAsync();
         var model = new ParticipationBackfillViewModel
         {
-            Year = activeEvent?.Year ?? _clock.GetCurrentInstant().InUtc().Year,
+            Year = await _participationBackfillService.GetDefaultYearAsync(),
         };
         return View(model);
     }
@@ -411,7 +307,7 @@ public class TicketController : HumansControllerBase
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> ParticipationBackfill(ParticipationBackfillViewModel model)
     {
-        if (!ModelState.IsValid || string.IsNullOrWhiteSpace(model.CsvData))
+        if (!ModelState.IsValid)
         {
             SetError("Please provide CSV data with UserId and Status columns.");
             return View(model);
@@ -419,31 +315,14 @@ public class TicketController : HumansControllerBase
 
         try
         {
-            var entries = new List<(Guid UserId, ParticipationStatus Status)>();
-            var lines = model.CsvData.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
-            foreach (var line in lines)
+            var result = await _participationBackfillService.BackfillFromCsvAsync(model.Year, model.CsvData);
+            if (!result.Succeeded)
             {
-                var parts = line.Split(',', StringSplitOptions.TrimEntries);
-                if (parts.Length < 2) continue;
-
-                // Skip header row
-                if (string.Equals(parts[0], "UserId", StringComparison.OrdinalIgnoreCase)) continue;
-
-                if (!Guid.TryParse(parts[0], out var userId)) continue;
-                if (!Enum.TryParse<ParticipationStatus>(parts[1], ignoreCase: true, out var status)) continue;
-
-                entries.Add((userId, status));
-            }
-
-            if (entries.Count == 0)
-            {
-                SetError("No valid entries found in the CSV data.");
+                SetError(result.Message);
                 return View(model);
             }
 
-            var count = await _userService.BackfillParticipationsAsync(model.Year, entries);
-            SetSuccess($"Successfully backfilled {count} participation records for {model.Year}.");
+            SetSuccess(result.Message);
         }
         catch (Exception ex)
         {

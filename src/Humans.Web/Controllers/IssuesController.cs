@@ -186,19 +186,6 @@ public class IssuesController : HumansControllerBase
         try
         {
             var roles = ClaimsRoles();
-            var additionalContextParts = new List<string>();
-            if (!string.IsNullOrWhiteSpace(model.AdditionalContext))
-                additionalContextParts.Add(model.AdditionalContext);
-            if (roles.Count > 0)
-                additionalContextParts.Add($"roles: {string.Join(", ", roles.Order(StringComparer.Ordinal))}");
-            var additionalContext = additionalContextParts.Count > 0
-                ? string.Join(" | ", additionalContextParts)
-                : null;
-            // additional_context column is varchar(2000); the user input is bounded
-            // by [StringLength(2000)] but the roles suffix can push it past the limit.
-            if (additionalContext is { Length: > 2000 })
-                additionalContext = additionalContext[..2000];
-
             var issue = await _issues.SubmitIssueAsync(
                 reporterUserId: user.Id,
                 category: model.Category,
@@ -207,9 +194,10 @@ public class IssuesController : HumansControllerBase
                 section: section,
                 pageUrl: model.PageUrl,
                 userAgent: model.UserAgent,
-                additionalContext: additionalContext,
+                additionalContext: model.AdditionalContext,
                 screenshot: model.Screenshot,
-                dueDate: model.DueDate);
+                dueDate: model.DueDate,
+                reporterRoles: roles);
 
             if (isAjax) return Json(new { id = issue.Id });
 
@@ -321,13 +309,12 @@ public class IssuesController : HumansControllerBase
 
         try
         {
-            await _issues.PostCommentAsync(id, user.Id, model.Content, senderIsReporter: isReporter);
-
-            // "Comment & mark resolved" — only handlers can mark resolved.
-            if (model.ResolveOnPost && canHandle && !issue.Status.IsTerminal())
-            {
-                await _issues.UpdateStatusAsync(id, IssueStatus.Resolved, user.Id);
-            }
+            await _issues.PostCommentAsync(
+                id,
+                user.Id,
+                model.Content,
+                senderIsReporter: isReporter,
+                resolveOnPost: model.ResolveOnPost && canHandle);
 
             SetSuccess("Comment posted.");
         }
@@ -359,22 +346,16 @@ public class IssuesController : HumansControllerBase
         var auth = await _authorization.AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle);
         if (!auth.Succeeded) return Forbid();
 
-        try
+        var result = await _issues.UpdateStatusWithResultAsync(id, model.Status, user.Id);
+        if (result.NotFound) return NotFound();
+
+        if (result.Succeeded)
         {
-            await _issues.UpdateStatusAsync(id, model.Status, user.Id);
             SetSuccess("Status updated.");
         }
-        catch (InvalidOperationException)
+        else
         {
-            // Race: issue existed at the null-check above but was deleted
-            // before the mutation reached the service.
-            _logger.LogWarning("Issue {IssueId} not found during UpdateStatus (deleted in race)", id);
-            return NotFound();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to update issue {IssueId} status", id);
-            SetError("Failed to update status.");
+            SetError(result.ErrorMessage ?? "Failed to update status.");
         }
 
         return RedirectToAction(nameof(Index), new { selected = id });
@@ -392,22 +373,16 @@ public class IssuesController : HumansControllerBase
         var auth = await _authorization.AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle);
         if (!auth.Succeeded) return Forbid();
 
-        try
+        var result = await _issues.UpdateAssigneeWithResultAsync(id, model.AssigneeUserId, user.Id);
+        if (result.NotFound) return NotFound();
+
+        if (result.Succeeded)
         {
-            await _issues.UpdateAssigneeAsync(id, model.AssigneeUserId, user.Id);
             SetSuccess("Assignee updated.");
         }
-        catch (InvalidOperationException)
+        else
         {
-            // Race: issue existed at the null-check above but was deleted
-            // before the mutation reached the service.
-            _logger.LogWarning("Issue {IssueId} not found during UpdateAssignee (deleted in race)", id);
-            return NotFound();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to update assignee on issue {IssueId}", id);
-            SetError("Failed to update assignee.");
+            SetError(result.ErrorMessage ?? "Failed to update assignee.");
         }
 
         return RedirectToAction(nameof(Index), new { selected = id });
@@ -425,26 +400,14 @@ public class IssuesController : HumansControllerBase
         var auth = await _authorization.AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle);
         if (!auth.Succeeded) return Forbid();
 
-        try
+        var result = await _issues.UpdateSectionWithResultAsync(id, model.Section, user.Id);
+        if (result.Succeeded)
         {
-            await _issues.UpdateSectionAsync(id, model.Section, user.Id);
             SetSuccess("Section updated.");
         }
-        catch (InvalidOperationException ex)
+        else
         {
-            // UpdateSectionAsync throws for both "not found" and "section is
-            // not editable on a terminal issue" — surface the message so a
-            // handler trying to re-route a closed issue sees the actual reason
-            // rather than a silent 404. Both are expected user-driven problems;
-            // log at Warning so they stay visible in the prod log viewer
-            // (memory/code/always-log-problems.md).
-            _logger.LogWarning("Issue {IssueId} UpdateSection rejected: {Reason}", id, ex.Message);
-            SetError(ex.Message);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to update section on issue {IssueId}", id);
-            SetError("Failed to update section.");
+            SetError(result.ErrorMessage ?? "Failed to update section.");
         }
 
         return RedirectToAction(nameof(Index), new { selected = id });
@@ -462,28 +425,22 @@ public class IssuesController : HumansControllerBase
         var auth = await _authorization.AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle);
         if (!auth.Succeeded) return Forbid();
 
-        try
+        var result = await _issues.SetGitHubIssueNumberWithResultAsync(id, model.GitHubIssueNumber, user.Id);
+        if (result.NotFound) return NotFound();
+
+        if (result.Succeeded)
         {
-            await _issues.SetGitHubIssueNumberAsync(id, model.GitHubIssueNumber, user.Id);
             SetSuccess("GitHub issue linked.");
         }
-        catch (InvalidOperationException)
+        else
         {
-            // Race: issue existed at the null-check above but was deleted
-            // before the mutation reached the service.
-            _logger.LogWarning("Issue {IssueId} not found during SetGitHubIssue (deleted in race)", id);
-            return NotFound();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to set GitHub issue for issue {IssueId}", id);
-            SetError("Failed to link GitHub issue.");
+            SetError(result.ErrorMessage ?? "Failed to link GitHub issue.");
         }
 
         return RedirectToAction(nameof(Index), new { selected = id });
     }
 
-    private static IssueListItemViewModel MapListItem(Issue i) => new()
+    private static IssueListItemViewModel MapListItem(IssueListSnapshot i) => new()
     {
         Id = i.Id,
         Status = i.Status,
@@ -491,12 +448,12 @@ public class IssuesController : HumansControllerBase
         Section = i.Section,
         AreaLabel = AreaLabelMap.LabelFor(i.Section),
         Title = i.Title,
-        ReporterName = i.Reporter?.DisplayName ?? "Unknown",
+        ReporterName = i.ReporterDisplayName ?? "Unknown",
         ReporterUserId = i.ReporterUserId,
         LastUpdate = i.UpdatedAt.ToDateTimeUtc(),
-        CommentCount = i.Comments.Count,
+        CommentCount = i.CommentCount,
         AssigneeUserId = i.AssigneeUserId,
-        AssigneeName = i.Assignee?.DisplayName,
+        AssigneeName = i.AssigneeDisplayName,
         GitHubIssueNumber = i.GitHubIssueNumber
     };
 

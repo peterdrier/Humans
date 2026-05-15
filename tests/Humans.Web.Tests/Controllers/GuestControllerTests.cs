@@ -6,11 +6,16 @@ using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Testing;
+using Humans.Web.Constants;
 using Humans.Web.Controllers;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Controllers;
+using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
@@ -61,8 +66,16 @@ public class GuestControllerTests
             User = new ClaimsPrincipal(new ClaimsIdentity(
                 new[] { new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()) },
                 "test")),
+            RequestServices = new ServiceCollection()
+                .AddSingleton<ILoggerFactory>(NullLoggerFactory.Instance)
+                .BuildServiceProvider(),
         };
-        ctrl.ControllerContext = new ControllerContext { HttpContext = http };
+        ctrl.ControllerContext = new ControllerContext
+        {
+            HttpContext = http,
+            ActionDescriptor = new ControllerActionDescriptor { ActionName = "Test" },
+        };
+        ctrl.Url = Substitute.For<IUrlHelper>();
         ctrl.TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>());
         return ctrl;
     }
@@ -94,5 +107,38 @@ public class GuestControllerTests
         var result = await ctrl.Index(CancellationToken.None);
 
         Assert.IsType<ViewResult>(result);
+    }
+
+    [HumansFact]
+    public async Task RequestDeletion_AlreadyPending_RedirectsWithSpecificError()
+    {
+        var user = new User { Id = Guid.NewGuid(), DisplayName = "Test" };
+        _accountDeletionService.RequestDeletionAsync(user.Id)
+            .Returns(new DeletionRequestResult(false, "AlreadyPending"));
+        var ctrl = BuildSut(user);
+
+        var result = await ctrl.RequestDeletion();
+
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal("Index", redirect.ActionName);
+        Assert.Equal("A deletion request is already pending.", ctrl.TempData[TempDataKeys.ErrorMessage]);
+    }
+
+    [HumansFact]
+    public async Task RequestDeletion_Success_RedirectsWithDeletionMessage()
+    {
+        var user = new User { Id = Guid.NewGuid(), DisplayName = "Test" };
+        _accountDeletionService.RequestDeletionAsync(user.Id)
+            .Returns(new DeletionRequestResult(
+                true,
+                EffectiveDeletionDate: Instant.FromUtc(2026, 6, 15, 0, 0)));
+        var ctrl = BuildSut(user);
+
+        var result = await ctrl.RequestDeletion();
+
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal("Index", redirect.ActionName);
+        var message = Assert.IsType<string>(ctrl.TempData[TempDataKeys.SuccessMessage]);
+        Assert.Contains("permanently deleted", message, StringComparison.Ordinal);
     }
 }

@@ -3,6 +3,7 @@ using Humans.Application.DTOs;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -32,30 +33,30 @@ file sealed class StubAuditLog : IAuditLogService
         string? errorMessage = null,
         Guid? relatedEntityId = null, string? relatedEntityType = null) => Task.CompletedTask;
 
-    public Task<IReadOnlyList<AuditLogEntry>> GetByResourceAsync(Guid resourceId) =>
-        Task.FromResult<IReadOnlyList<AuditLogEntry>>(Array.Empty<AuditLogEntry>());
+    public Task<IReadOnlyList<AuditLogEntrySnapshot>> GetByResourceAsync(Guid resourceId) =>
+        Task.FromResult<IReadOnlyList<AuditLogEntrySnapshot>>(Array.Empty<AuditLogEntrySnapshot>());
 
-    public Task<IReadOnlyList<AuditLogEntry>> GetGoogleSyncByUserAsync(Guid userId) =>
-        Task.FromResult<IReadOnlyList<AuditLogEntry>>(Array.Empty<AuditLogEntry>());
+    public Task<IReadOnlyList<AuditLogEntrySnapshot>> GetGoogleSyncByUserAsync(Guid userId) =>
+        Task.FromResult<IReadOnlyList<AuditLogEntrySnapshot>>(Array.Empty<AuditLogEntrySnapshot>());
 
-    public Task<IReadOnlyList<AuditLogEntry>> GetRecentAsync(int count, CancellationToken ct = default) =>
-        Task.FromResult<IReadOnlyList<AuditLogEntry>>(Array.Empty<AuditLogEntry>());
+    public Task<IReadOnlyList<AuditLogEntrySnapshot>> GetRecentAsync(int count, CancellationToken ct = default) =>
+        Task.FromResult<IReadOnlyList<AuditLogEntrySnapshot>>(Array.Empty<AuditLogEntrySnapshot>());
 
-    public Task<(IReadOnlyList<AuditLogEntry> Items, int TotalCount, int AnomalyCount)> GetFilteredAsync(
+    public Task<(IReadOnlyList<AuditLogEntrySnapshot> Items, int TotalCount, int AnomalyCount)> GetFilteredAsync(
         string? actionFilter, int page, int pageSize, CancellationToken ct = default) =>
-        Task.FromResult<(IReadOnlyList<AuditLogEntry>, int, int)>((Array.Empty<AuditLogEntry>(), 0, 0));
+        Task.FromResult<(IReadOnlyList<AuditLogEntrySnapshot>, int, int)>((Array.Empty<AuditLogEntrySnapshot>(), 0, 0));
 
-    public Task<IReadOnlyList<AuditLogEntry>> GetByUserAsync(Guid userId, int count, CancellationToken ct = default) =>
-        Task.FromResult<IReadOnlyList<AuditLogEntry>>(Array.Empty<AuditLogEntry>());
+    public Task<IReadOnlyList<AuditLogEntrySnapshot>> GetByUserAsync(Guid userId, int count, CancellationToken ct = default) =>
+        Task.FromResult<IReadOnlyList<AuditLogEntrySnapshot>>(Array.Empty<AuditLogEntrySnapshot>());
 
-    public Task<IReadOnlyList<AuditLogEntry>> GetFilteredEntriesAsync(
+    public Task<IReadOnlyList<AuditLogEntrySnapshot>> GetFilteredEntriesAsync(
         string? entityType = null,
         Guid? entityId = null,
         Guid? userId = null,
         IReadOnlyList<AuditAction>? actions = null,
         int limit = 20,
         CancellationToken ct = default) =>
-        Task.FromResult<IReadOnlyList<AuditLogEntry>>(Array.Empty<AuditLogEntry>());
+        Task.FromResult<IReadOnlyList<AuditLogEntrySnapshot>>(Array.Empty<AuditLogEntrySnapshot>());
 
     public Task<IReadOnlyList<Guid>> GetEntityIdsForActionInWindowAsync(
         Instant windowStart, Instant windowEnd, AuditAction action, CancellationToken ct = default) =>
@@ -81,6 +82,7 @@ public class AccountProvisioningServiceTests
         private readonly Dictionary<Guid, User> _users = new();
 
         public void Seed(User user) => _users[user.Id] = user;
+        public void Remove(Guid userId) => _users.Remove(userId);
         public bool Contains(Guid userId) => _users.ContainsKey(userId);
         public int Count => _users.Count;
         public IReadOnlyCollection<User> All => _users.Values;
@@ -231,6 +233,8 @@ public class AccountProvisioningServiceTests
     {
         private readonly Dictionary<Guid, UserEmail> _emails = new();
 
+        public bool ThrowOnAddVerified { get; set; }
+
         public void Seed(UserEmail email) => _emails[email.Id] = email;
         public int Count => _emails.Count;
         public IReadOnlyCollection<UserEmail> All => _emails.Values;
@@ -281,6 +285,61 @@ public class AccountProvisioningServiceTests
             return Task.CompletedTask;
         }
 
+        public Task<UserEmailWithUser?> FindVerifiedEmailWithUser(string email, FakeUserRepository users)
+        {
+            var normalizedEmail = EmailNormalization.NormalizeForComparison(email);
+            var alternateEmail = GetAlternateEmail(normalizedEmail);
+            foreach (var ue in _emails.Values)
+            {
+                if (!ue.IsVerified)
+                    continue;
+
+                var n = EmailNormalization.NormalizeForComparison(ue.Email);
+                if (!string.Equals(n, normalizedEmail, StringComparison.OrdinalIgnoreCase)
+                    && (alternateEmail is null || !string.Equals(n, alternateEmail, StringComparison.OrdinalIgnoreCase)))
+                    continue;
+
+                var user = users.All.FirstOrDefault(u => u.Id == ue.UserId);
+                return Task.FromResult<UserEmailWithUser?>(new UserEmailWithUser(
+                    ue.UserId,
+                    ue.Email,
+                    user?.ContactSource,
+                    user?.LastLoginAt));
+            }
+
+            return Task.FromResult<UserEmailWithUser?>(null);
+        }
+
+        public Task<bool> AddVerified(Guid userId, string email, Instant now)
+        {
+            if (ThrowOnAddVerified)
+                throw new InvalidOperationException("boom");
+
+            var normalized = EmailNormalization.NormalizeForComparison(email);
+            foreach (var ue in _emails.Values)
+            {
+                if (ue.UserId != userId) continue;
+                var existing = EmailNormalization.NormalizeForComparison(ue.Email);
+                if (string.Equals(existing, normalized, StringComparison.OrdinalIgnoreCase))
+                    return Task.FromResult(false);
+            }
+
+            var row = new UserEmail
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                Email = email,
+                IsVerified = true,
+                IsPrimary = true,
+                IsGoogle = true,
+                Visibility = null,
+                CreatedAt = now,
+                UpdatedAt = now,
+            };
+            _emails[row.Id] = row;
+            return Task.FromResult(true);
+        }
+
         private static string? GetAlternateEmail(string normalizedEmail)
         {
             if (normalizedEmail.EndsWith("@gmail.com", StringComparison.Ordinal))
@@ -295,6 +354,7 @@ public class AccountProvisioningServiceTests
     private readonly FakeUserRepository _userRepo;
     private readonly FakeUserEmailService _userEmailFake;
     private readonly IUserEmailService _userEmailService;
+    private readonly IProfileService _profileService;
     private readonly AccountProvisioningService _service;
 
     public AccountProvisioningServiceTests()
@@ -319,6 +379,14 @@ public class AccountProvisioningServiceTests
                 Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(call => _userEmailFake.AddProvisioned(
                 call.ArgAt<Guid>(0), call.ArgAt<string>(1), _clock.GetCurrentInstant()));
+        _userEmailService.FindVerifiedEmailWithUserAsync(
+                Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(call => _userEmailFake.FindVerifiedEmailWithUser(
+                call.Arg<string>(), _userRepo));
+        _userEmailService.AddVerifiedEmailAsync(
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(call => _userEmailFake.AddVerified(
+                call.ArgAt<Guid>(0), call.ArgAt<string>(1), _clock.GetCurrentInstant()));
 
         // Mock CreateAsync to persist the user into the fake repo and return success.
         _userManager.CreateAsync(Arg.Any<User>())
@@ -330,11 +398,21 @@ public class AccountProvisioningServiceTests
                 _userRepo.Seed(user);
                 return Task.FromResult(IdentityResult.Success);
             });
+        _userManager.UpdateAsync(Arg.Any<User>())
+            .Returns(IdentityResult.Success);
+        _userManager.DeleteAsync(Arg.Any<User>())
+            .Returns(callInfo =>
+            {
+                _userRepo.Remove(callInfo.Arg<User>().Id);
+                return Task.FromResult(IdentityResult.Success);
+            });
+
+        _profileService = Substitute.For<IProfileService>();
 
         _service = new AccountProvisioningService(
             _userRepo,
             _userEmailService,
-            Substitute.For<Humans.Application.Interfaces.Profiles.IProfileService>(),
+            _profileService,
             _userManager,
             new StubAuditLog(),
             _clock,
@@ -588,5 +666,69 @@ public class AccountProvisioningServiceTests
             .FindAnyUserIdByEmailAsync("jane@example.com", Arg.Any<CancellationToken>());
         await _userEmailService.Received(1)
             .AddProvisionedEmailAsync(result.User.Id, "jane@example.com", Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task CompleteMagicLinkSignupAsync_CreatesUserEmailAndStubProfile()
+    {
+        var result = await _service.CompleteMagicLinkSignupAsync(
+            "magic@example.com", " Magic Human ");
+
+        result.Outcome.Should().Be(MagicLinkSignupCompletionOutcome.Created);
+        result.User.Should().NotBeNull();
+        result.User!.DisplayName.Should().Be("Magic Human");
+        result.User.LastLoginAt.Should().Be(_clock.GetCurrentInstant());
+        _userEmailFake.All.Should().ContainSingle(ue =>
+            ue.UserId == result.User.Id
+            && ue.Email == "magic@example.com"
+            && ue.IsVerified
+            && ue.IsPrimary);
+        await _profileService.Received(1)
+            .EnsureStubProfileAsync(result.User.Id, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task CompleteMagicLinkSignupAsync_ExistingVerifiedEmailUpdatesLastLogin()
+    {
+        var user = new User
+        {
+            Id = Guid.NewGuid(),
+            DisplayName = "Existing",
+            CreatedAt = _clock.GetCurrentInstant(),
+        };
+        _userRepo.Seed(user);
+        _userEmailFake.Seed(new UserEmail
+        {
+            Id = Guid.NewGuid(),
+            UserId = user.Id,
+            Email = "existing@example.com",
+            IsVerified = true,
+            IsPrimary = true,
+            CreatedAt = _clock.GetCurrentInstant(),
+            UpdatedAt = _clock.GetCurrentInstant(),
+        });
+
+        var result = await _service.CompleteMagicLinkSignupAsync(
+            "existing@example.com", "Ignored");
+
+        result.Outcome.Should().Be(MagicLinkSignupCompletionOutcome.ExistingUser);
+        result.User.Should().BeSameAs(user);
+        user.LastLoginAt.Should().Be(_clock.GetCurrentInstant());
+        await _userManager.Received(1).UpdateAsync(user);
+        await _userManager.DidNotReceive().CreateAsync(Arg.Any<User>());
+    }
+
+    [HumansFact]
+    public async Task CompleteMagicLinkSignupAsync_AddVerifiedEmailFailureRollsBackUser()
+    {
+        _userEmailFake.ThrowOnAddVerified = true;
+
+        var result = await _service.CompleteMagicLinkSignupAsync(
+            "rollback@example.com", "Rollback");
+
+        result.Outcome.Should().Be(MagicLinkSignupCompletionOutcome.Failed);
+        result.User.Should().BeNull();
+        _userRepo.Count.Should().Be(0);
+        await _userManager.Received(1).DeleteAsync(Arg.Any<User>());
     }
 }

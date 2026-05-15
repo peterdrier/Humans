@@ -7,6 +7,7 @@ using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -37,6 +38,7 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
     private readonly INotificationService _notificationService;
     private readonly ICommunicationPreferenceService _commPrefService;
     private readonly IEmailService _emailService;
+    private readonly ITicketVendorService _ticketVendorService;
     private readonly IClock _clock;
     private readonly ILogger<CampaignService> _logger;
 
@@ -48,6 +50,7 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
         INotificationService notificationService,
         ICommunicationPreferenceService commPrefService,
         IEmailService emailService,
+        ITicketVendorService ticketVendorService,
         IClock clock,
         ILogger<CampaignService> logger)
     {
@@ -58,21 +61,31 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
         _notificationService = notificationService;
         _commPrefService = commPrefService;
         _emailService = emailService;
+        _ticketVendorService = ticketVendorService;
         _clock = clock;
         _logger = logger;
     }
 
-    public async Task<Campaign> CreateAsync(string title, string? description,
+    public async Task<CampaignCreateResult> CreateAsync(string title, string? description,
         string emailSubject, string emailBodyTemplate, string? replyToAddress,
         Guid createdByUserId, CancellationToken ct = default)
     {
+        if (string.IsNullOrWhiteSpace(title))
+            return new CampaignCreateResult(false, ErrorKey: "TitleRequired");
+
+        if (string.IsNullOrWhiteSpace(emailSubject))
+            return new CampaignCreateResult(false, ErrorKey: "EmailSubjectRequired");
+
+        if (string.IsNullOrWhiteSpace(emailBodyTemplate))
+            return new CampaignCreateResult(false, ErrorKey: "EmailBodyTemplateRequired");
+
         var campaign = new Campaign
         {
             Id = Guid.NewGuid(),
-            Title = title,
-            Description = description,
-            EmailSubject = emailSubject,
-            EmailBodyTemplate = emailBodyTemplate,
+            Title = title.Trim(),
+            Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim(),
+            EmailSubject = emailSubject.Trim(),
+            EmailBodyTemplate = emailBodyTemplate.Trim(),
             ReplyToAddress = string.IsNullOrWhiteSpace(replyToAddress) ? null : replyToAddress.Trim(),
             Status = CampaignStatus.Draft,
             CreatedAt = _clock.GetCurrentInstant(),
@@ -82,21 +95,61 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
         await _repository.AddCampaignAsync(campaign, ct);
 
         _logger.LogInformation("Campaign {CampaignId} created: {Title}", campaign.Id, title);
-        return campaign;
+        return new CampaignCreateResult(true, campaign);
     }
 
-    public Task<IReadOnlyList<CampaignGrant>> GetActiveOrCompletedGrantsForUserAsync(
-        Guid userId, CancellationToken ct = default) =>
-        _repository.GetActiveOrCompletedGrantsForUserAsync(userId, ct);
+    public async Task<IReadOnlyList<CampaignGrantSummary>> GetActiveOrCompletedGrantsForUserAsync(
+        Guid userId, CancellationToken ct = default)
+    {
+        var grants = await _repository.GetActiveOrCompletedGrantsForUserAsync(userId, ct);
+        return grants.Select(ToSummary).ToList();
+    }
 
-    public Task<IReadOnlyList<CampaignGrant>> GetAllGrantsForUserAsync(
-        Guid userId, CancellationToken ct = default) =>
-        _repository.GetAllGrantsForUserAsync(userId, ct);
+    public async Task<IReadOnlyList<CampaignGrantSummary>> GetAllGrantsForUserAsync(
+        Guid userId, CancellationToken ct = default)
+    {
+        var grants = await _repository.GetAllGrantsForUserAsync(userId, ct);
+        return grants.Select(ToSummary).ToList();
+    }
 
-    public Task<Campaign?> GetByIdAsync(Guid id, CancellationToken ct = default) =>
-        _repository.GetByIdAsync(id, ct);
+    private static CampaignGrantSummary ToSummary(CampaignGrant grant) =>
+        new(
+            grant.Id,
+            grant.CampaignId,
+            grant.Campaign.Title,
+            grant.CampaignCodeId,
+            grant.Code.Code,
+            grant.UserId,
+            grant.AssignedAt,
+            grant.LatestEmailStatus,
+            grant.LatestEmailAt,
+            grant.RedeemedAt);
 
-    public async Task<bool> UpdateAsync(
+    private static CampaignAdminSummary ToAdminSummary(Campaign campaign) =>
+        new(
+            campaign.Id,
+            campaign.Title,
+            campaign.Description,
+            campaign.Status,
+            campaign.Grants.Select(ToSummary).ToList());
+
+    public async Task<CampaignEditSnapshot?> GetByIdAsync(Guid id, CancellationToken ct = default)
+    {
+        var campaign = await _repository.GetByIdAsync(id, ct);
+        return campaign is null ? null : ToEditSnapshot(campaign);
+    }
+
+    private static CampaignEditSnapshot ToEditSnapshot(Campaign campaign) =>
+        new(
+            campaign.Id,
+            campaign.Title,
+            campaign.Description,
+            campaign.EmailSubject,
+            campaign.EmailBodyTemplate,
+            campaign.ReplyToAddress,
+            campaign.Status);
+
+    public async Task<CampaignUpdateResult> UpdateAsync(
         Guid id,
         string title,
         string? description,
@@ -105,9 +158,18 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
         string? replyToAddress,
         CancellationToken ct = default)
     {
+        if (string.IsNullOrWhiteSpace(title))
+            return new CampaignUpdateResult(false, "TitleRequired");
+
+        if (string.IsNullOrWhiteSpace(emailSubject))
+            return new CampaignUpdateResult(false, "EmailSubjectRequired");
+
+        if (string.IsNullOrWhiteSpace(emailBodyTemplate))
+            return new CampaignUpdateResult(false, "EmailBodyTemplateRequired");
+
         var campaign = await _repository.FindForMutationAsync(id, ct);
         if (campaign is null)
-            return false;
+            return new CampaignUpdateResult(false, "NotFound");
 
         campaign.Title = title.Trim();
         campaign.Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
@@ -118,15 +180,32 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
         await _repository.UpdateCampaignAsync(campaign, ct);
 
         _logger.LogInformation("Campaign {CampaignId} updated", id);
-        return true;
+        return new CampaignUpdateResult(true);
     }
 
-    public Task<List<Campaign>> GetAllAsync(CancellationToken ct = default) =>
-        _repository.GetAllAsync(ct);
+    public async Task<IReadOnlyList<CampaignListSummary>> GetAllAsync(CancellationToken ct = default)
+    {
+        var campaigns = await _repository.GetAllAsync(ct);
+        return campaigns.Select(ToListSummary).ToList();
+    }
+
+    private static CampaignListSummary ToListSummary(Campaign campaign)
+    {
+        var assignedCodes = campaign.Grants.Select(g => g.CampaignCodeId).Distinct().Count();
+        return new CampaignListSummary(
+            campaign.Id,
+            campaign.Title,
+            campaign.Status,
+            campaign.Codes.Count,
+            assignedCodes,
+            campaign.Grants.Count(g => g.LatestEmailStatus == EmailOutboxStatus.Sent),
+            campaign.Grants.Count(g => g.LatestEmailStatus == EmailOutboxStatus.Failed),
+            campaign.CreatedAt);
+    }
 
     public async Task<CampaignDetailPageDto?> GetDetailPageAsync(Guid id, CancellationToken ct = default)
     {
-        var campaign = await GetByIdAsync(id, ct);
+        var campaign = await _repository.GetByIdAsync(id, ct);
         if (campaign is null)
             return null;
 
@@ -139,7 +218,7 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
         var totalGrants = campaign.Grants.Count;
 
         return new CampaignDetailPageDto(
-            campaign,
+            ToAdminSummary(campaign),
             new CampaignDetailStatsDto(
                 totalCodes,
                 availableCodes,
@@ -154,7 +233,7 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
         Guid? teamId,
         CancellationToken ct = default)
     {
-        var campaign = await GetByIdAsync(campaignId, ct);
+        var campaign = await _repository.GetByIdAsync(campaignId, ct);
         if (campaign is null)
             return null;
 
@@ -167,7 +246,7 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
             ? await PreviewWaveSendAsync(campaignId, teamId.Value, ct)
             : null;
 
-        return new CampaignSendWavePageDto(campaign, teamOptions, teamId, preview);
+        return new CampaignSendWavePageDto(ToAdminSummary(campaign), teamOptions, teamId, preview);
     }
 
     public Task<Guid?> GetCampaignIdForGrantAsync(Guid grantId, CancellationToken ct = default) =>
@@ -220,7 +299,7 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
             campaignId, imported, skipped);
     }
 
-    public async Task ImportGeneratedCodesAsync(Guid campaignId, IReadOnlyList<string> codes,
+    private async Task ImportGeneratedCodesAsync(Guid campaignId, IReadOnlyList<string> codes,
         CancellationToken ct = default)
     {
         var campaign = await _repository.FindForMutationWithCodesAsync(campaignId, ct)
@@ -248,6 +327,33 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
         _logger.LogInformation(
             "Campaign {CampaignId}: imported {Count} vendor-generated codes",
             campaignId, codes.Count);
+    }
+
+    public async Task<CampaignGenerateCodesResult> GenerateAndImportDiscountCodesAsync(
+        Guid campaignId,
+        int count,
+        string discountType,
+        decimal discountValue,
+        CancellationToken ct = default)
+    {
+        var campaign = await GetByIdAsync(campaignId, ct);
+        if (campaign is null)
+            return new CampaignGenerateCodesResult(false, "NotFound");
+
+        if (campaign.Status != CampaignStatus.Draft)
+            return new CampaignGenerateCodesResult(false, "NotDraft");
+
+        if (count <= 0)
+            return new CampaignGenerateCodesResult(false, "InvalidCount");
+
+        if (!Enum.TryParse<DiscountType>(discountType, ignoreCase: true, out var parsedType))
+            return new CampaignGenerateCodesResult(false, "InvalidDiscountType");
+
+        var spec = new DiscountCodeSpec(count, parsedType, discountValue, ExpiresAt: null);
+        var codes = await _ticketVendorService.GenerateDiscountCodesAsync(spec, ct);
+        await ImportGeneratedCodesAsync(campaignId, codes, ct);
+
+        return new CampaignGenerateCodesResult(true, GeneratedCount: codes.Count);
     }
 
     public async Task ActivateAsync(Guid campaignId, CancellationToken ct = default)

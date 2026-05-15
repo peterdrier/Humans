@@ -164,30 +164,58 @@ public sealed class AuditLogService : IAuditLogService, IUserDataContributor
     // ==========================================================================
 
     /// <inheritdoc />
-    public Task<IReadOnlyList<AuditLogEntry>> GetByResourceAsync(Guid resourceId) =>
-        _repo.GetByResourceAsync(resourceId);
+    public async Task<IReadOnlyList<AuditLogEntrySnapshot>> GetByResourceAsync(Guid resourceId)
+    {
+        var entries = await _repo.GetByResourceAsync(resourceId);
+        return entries.Select(ToSnapshot).ToList();
+    }
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<AuditLogEntry>> GetGoogleSyncByUserAsync(Guid userId)
+    public async Task<IReadOnlyList<AuditLogEntrySnapshot>> GetGoogleSyncByUserAsync(Guid userId)
     {
         // Chain-follow merge tombstones so a fold-target's Google sync history
         // transparently surfaces rows still attributed to merged source ids.
         var sourceIds = await _userService.GetMergedSourceIdsAsync(userId);
         if (sourceIds.Count == 0)
-            return await _repo.GetGoogleSyncByUserAsync(userId);
+        {
+            var entries = await _repo.GetGoogleSyncByUserAsync(userId);
+            return entries.Select(ToSnapshot).ToList();
+        }
 
         var allIds = new List<Guid>(sourceIds.Count + 1);
         allIds.AddRange(sourceIds);
         allIds.Add(userId);
-        return await _repo.GetGoogleSyncByUserIdsAsync(allIds);
+        var mergedEntries = await _repo.GetGoogleSyncByUserIdsAsync(allIds);
+        return mergedEntries.Select(ToSnapshot).ToList();
     }
 
     /// <inheritdoc />
-    public Task<IReadOnlyList<AuditLogEntry>> GetRecentAsync(int count, CancellationToken ct = default) =>
-        _repo.GetRecentAsync(count, ct);
+    public async Task<IReadOnlyList<AuditLogEntrySnapshot>> GetRecentAsync(int count, CancellationToken ct = default)
+    {
+        var entries = await _repo.GetRecentAsync(count, ct);
+        return entries.Select(ToSnapshot).ToList();
+    }
+
+    private static AuditLogEntrySnapshot ToSnapshot(AuditLogEntry entry) =>
+        new(
+            entry.Id,
+            entry.Action,
+            entry.EntityType,
+            entry.EntityId,
+            entry.Description,
+            entry.OccurredAt,
+            entry.ActorUserId,
+            entry.RelatedEntityId,
+            entry.RelatedEntityType,
+            entry.ResourceId,
+            entry.Success,
+            entry.ErrorMessage,
+            entry.Role,
+            entry.SyncSource,
+            entry.UserEmail);
 
     /// <inheritdoc />
-    public Task<(IReadOnlyList<AuditLogEntry> Items, int TotalCount, int AnomalyCount)> GetFilteredAsync(
+    public async Task<(IReadOnlyList<AuditLogEntrySnapshot> Items, int TotalCount, int AnomalyCount)> GetFilteredAsync(
         string? actionFilter, int page, int pageSize, CancellationToken ct = default)
     {
         AuditAction? parsed = null;
@@ -197,26 +225,31 @@ public sealed class AuditLogService : IAuditLogService, IUserDataContributor
             parsed = action;
         }
 
-        return _repo.GetFilteredAsync(parsed, page, pageSize, ct);
+        var (items, totalCount, anomalyCount) = await _repo.GetFilteredAsync(parsed, page, pageSize, ct);
+        return (items.Select(ToSnapshot).ToList(), totalCount, anomalyCount);
     }
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<AuditLogEntry>> GetByUserAsync(Guid userId, int count, CancellationToken ct = default)
+    public async Task<IReadOnlyList<AuditLogEntrySnapshot>> GetByUserAsync(Guid userId, int count, CancellationToken ct = default)
     {
         // Chain-follow merge tombstones so a fold-target's audit history
         // transparently surfaces rows still attributed to merged source ids.
         var sourceIds = await _userService.GetMergedSourceIdsAsync(userId, ct);
         if (sourceIds.Count == 0)
-            return await _repo.GetByUserAsync(userId, count, ct);
+        {
+            var entries = await _repo.GetByUserAsync(userId, count, ct);
+            return entries.Select(ToSnapshot).ToList();
+        }
 
         var allIds = new List<Guid>(sourceIds.Count + 1);
         allIds.AddRange(sourceIds);
         allIds.Add(userId);
-        return await _repo.GetByUserIdsAsync(allIds, count, ct);
+        var mergedEntries = await _repo.GetByUserIdsAsync(allIds, count, ct);
+        return mergedEntries.Select(ToSnapshot).ToList();
     }
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<AuditLogEntry>> GetFilteredEntriesAsync(
+    public async Task<IReadOnlyList<AuditLogEntrySnapshot>> GetFilteredEntriesAsync(
         string? entityType = null,
         Guid? entityId = null,
         Guid? userId = null,
@@ -244,7 +277,8 @@ public sealed class AuditLogService : IAuditLogService, IUserDataContributor
             }
         }
 
-        return await _repo.GetFilteredEntriesAsync(entityType, entityId, userIds, actions, limit, ct);
+        var entries = await _repo.GetFilteredEntriesAsync(entityType, entityId, userIds, actions, limit, ct);
+        return entries.Select(ToSnapshot).ToList();
     }
 
     // ==========================================================================

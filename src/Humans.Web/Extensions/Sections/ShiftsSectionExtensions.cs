@@ -10,6 +10,7 @@ using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Repositories.Shifts;
 using Humans.Infrastructure.Services.Shifts;
+using Humans.Web.Models.Shifts;
 
 namespace Humans.Web.Extensions.Sections;
 
@@ -69,6 +70,9 @@ internal static class ShiftsSectionExtensions
         // Surface both ShiftView caches (User + Rota) on /Admin/CacheStats.
         services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingShiftViewService>().UserCacheStats);
         services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingShiftViewService>().RotaCacheStats);
+        services.AddScoped<ShiftBrowsePageBuilder>();
+        services.AddScoped<ShiftAdminPageBuilder>();
+        services.AddScoped<ShiftDashboardPageBuilder>();
 
         return services;
     }

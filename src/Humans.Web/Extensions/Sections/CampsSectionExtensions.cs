@@ -5,6 +5,7 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Caching;
 using Humans.Infrastructure.Repositories.Camps;
+using Humans.Web.Models.CampAdmin;
 using CampsCampContactService = Humans.Application.Services.Camps.CampContactService;
 using CampsCampRoleService = Humans.Application.Services.Camps.CampRoleService;
 using CampsCampService = Humans.Application.Services.Camps.CampService;
@@ -28,6 +29,8 @@ internal static class CampsSectionExtensions
         services.AddTransient(sp => new Lazy<ICampRoleService>(() => sp.GetRequiredService<ICampRoleService>()));
 
         services.AddScoped<ICampContactService, CampsCampContactService>();
+        services.AddScoped<CampAdminPageBuilder>();
+        services.AddScoped<CampCsvExportBuilder>();
 
         services.AddScoped<ICampLeadJoinRequestsBadgeCacheInvalidator, CampLeadJoinRequestsBadgeCacheInvalidator>();
 

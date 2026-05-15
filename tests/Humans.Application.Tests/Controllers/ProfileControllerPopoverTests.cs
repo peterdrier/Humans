@@ -228,7 +228,7 @@ public class ProfileControllerPopoverTests
         };
         _profileService.GetProfileAsync(id, Arg.Any<CancellationToken>()).Returns(profile);
         _profileService.GetProfileLanguagesAsync(profile.Id, Arg.Any<CancellationToken>())
-            .Returns(new List<ProfileLanguage>());
+            .Returns(new List<ProfileLanguageSnapshot>());
         _teamService.GetActiveTeamMembershipsForUserAsync(id, Arg.Any<CancellationToken>())
             .Returns(new List<Humans.Application.Models.TeamMembership>());
 

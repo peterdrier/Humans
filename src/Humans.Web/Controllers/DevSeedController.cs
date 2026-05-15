@@ -1,6 +1,5 @@
 using Humans.Application.Configuration;
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Camps;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Web.Authorization;
@@ -57,7 +56,7 @@ public class DevSeedController : HumansControllerBase
         {
             var seeder = _serviceProvider.GetRequiredService<DevelopmentBudgetSeeder>();
             var result = await seeder.SeedAsync(user.Id, cancellationToken);
-            SetSuccess($"Budget demo data seeded: {result.TeamsCreated} teams created, {result.TeamsUpdated} updated, {result.CategoriesCreated} categories, {result.LineItemsCreated} line items.");
+            SetSuccess(result.SuccessMessage);
         }
         catch (Exception ex)
         {
@@ -84,35 +83,11 @@ public class DevSeedController : HumansControllerBase
             return errorResult;
         }
 
-        var seeds = new CreateCampRoleDefinitionInput[]
-        {
-            new("Consent Lead", null, SlotCount: 2, MinimumRequired: 1, SortOrder: 10),
-            new("LNT",          null, SlotCount: 1, MinimumRequired: 1, SortOrder: 20),
-            new("Shit Ninja",   null, SlotCount: 1, MinimumRequired: 1, SortOrder: 30),
-            new("Power",        null, SlotCount: 1, MinimumRequired: 0, SortOrder: 40),
-            new("Build Lead",   null, SlotCount: 2, MinimumRequired: 1, SortOrder: 50),
-        };
-
         try
         {
-            var campRoleService = _serviceProvider.GetRequiredService<ICampRoleService>();
-            var existing = await campRoleService.ListDefinitionsAsync(includeDeactivated: true, cancellationToken);
-            var existingNames = existing.Select(d => d.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-            int created = 0;
-            int skipped = 0;
-            foreach (var input in seeds)
-            {
-                if (existingNames.Contains(input.Name))
-                {
-                    skipped++;
-                    continue;
-                }
-                await campRoleService.CreateDefinitionAsync(input, user.Id, cancellationToken);
-                created++;
-            }
-
-            SetSuccess($"Camp roles seeded: {created} created, {skipped} already existed.");
+            var seeder = _serviceProvider.GetRequiredService<DevelopmentCampRoleSeeder>();
+            var result = await seeder.SeedAsync(user.Id, cancellationToken);
+            SetSuccess(result.SuccessMessage);
         }
         catch (Exception ex)
         {

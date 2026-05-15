@@ -6,6 +6,7 @@ using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Expenses;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Holded;
+using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
@@ -30,6 +31,7 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
     private readonly IBudgetService _budgetService;
     private readonly ITeamService _teamService;
     private readonly IUserService _userService;
+    private readonly IProfileService _profileService;
     private readonly IAuditLogService _auditLogService;
     private readonly IHoldedClient _holdedClient;
     private readonly IClock _clock;
@@ -41,6 +43,7 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
         IBudgetService budgetService,
         ITeamService teamService,
         IUserService userService,
+        IProfileService profileService,
         IAuditLogService auditLogService,
         IHoldedClient holdedClient,
         IClock clock,
@@ -51,6 +54,7 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
         _budgetService = budgetService;
         _teamService = teamService;
         _userService = userService;
+        _profileService = profileService;
         _auditLogService = auditLogService;
         _holdedClient = holdedClient;
         _clock = clock;
@@ -71,6 +75,29 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
     public Task<ExpenseReportDto?> GetAsync(Guid id, CancellationToken ct = default)
         => _repo.GetByIdAsync(id, ct);
 
+    public async Task<ExpenseDetailViewData> GetDetailViewDataAsync(
+        Guid viewerUserId, ExpenseReportDto report, CancellationToken ct = default)
+    {
+        var category = await _budgetService.GetCategoryByIdAsync(report.BudgetCategoryId);
+        var categoryName = category is not null
+            ? $"{category.BudgetGroup?.Name} / {category.Name}"
+            : "(unknown category)";
+
+        var isSubmitter = report.SubmitterUserId == viewerUserId;
+        var canWithdraw = report.Status is ExpenseReportStatus.Submitted
+            or ExpenseReportStatus.CoordinatorEndorsed
+            or ExpenseReportStatus.Approved;
+        var iban = await GetSubmitterIbanViewAsync(viewerUserId, ct);
+
+        return new ExpenseDetailViewData(
+            CategoryDisplayName: categoryName,
+            CanEdit: isSubmitter && report.Status == ExpenseReportStatus.Draft,
+            CanSubmit: isSubmitter && report.Status == ExpenseReportStatus.Draft,
+            CanWithdraw: isSubmitter && canWithdraw,
+            HasIban: iban.HasIban,
+            MaskedIban: iban.MaskedIban);
+    }
+
     public Task<IReadOnlyList<ExpenseReportDto>> GetForSubmitterAsync(
         Guid submitterUserId, CancellationToken ct = default)
         => _repo.GetForSubmitterAsync(submitterUserId, ct);
@@ -85,6 +112,23 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
         var reportId = await _repo.GetReportIdByAttachmentIdAsync(attachmentId, ct);
         if (reportId is null) return null;
         return await _repo.GetByIdAsync(reportId.Value, ct);
+    }
+
+    public async Task<ExpenseAttachmentDownload?> TryReadAttachmentAsync(
+        ExpenseReportDto owningReport,
+        Guid attachmentId,
+        CancellationToken ct = default)
+    {
+        var attachment = owningReport.Lines
+            .Select(l => l.Attachment)
+            .FirstOrDefault(a => a?.Id == attachmentId);
+        if (attachment is null) return null;
+
+        var bytes = await _fileStorage.TryReadAsync(
+            AttachmentKey(attachment.Id, attachment.Extension), ct);
+        return bytes is null
+            ? null
+            : new ExpenseAttachmentDownload(bytes, attachment.ContentType, attachment.OriginalFileName);
     }
 
     public async Task<IReadOnlyList<ExpenseReportDto>> GetCoordinatorQueueAsync(
@@ -173,6 +217,23 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
         await _repo.UpdateDraftAsync(updated, ct);
     }
 
+    public async Task<ExpenseMutationResult> UpdateDraftWithResultAsync(
+        Guid reportId, Guid submitterUserId,
+        Guid budgetCategoryId, string? note,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            await UpdateDraftAsync(reportId, submitterUserId, budgetCategoryId, note, ct);
+            return ExpenseMutationResult.Success;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating expense report {ReportId}", reportId);
+            return ExpenseMutationResult.Failure(ex.Message);
+        }
+    }
+
     // ────────────────────────── Line Methods ─────────────────────────────────
 
     public async Task<Guid> AddLineAsync(
@@ -194,6 +255,23 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
         return line.Id;
     }
 
+    public async Task<ExpenseMutationResult> AddLineWithResultAsync(
+        Guid reportId, Guid submitterUserId,
+        string description, decimal amount,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            await AddLineAsync(reportId, submitterUserId, description, amount, ct);
+            return ExpenseMutationResult.Success;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error adding line to report {ReportId}", reportId);
+            return ExpenseMutationResult.Failure(ex.Message);
+        }
+    }
+
     public async Task UpdateLineAsync(
         Guid reportId, Guid submitterUserId,
         Guid lineId, string description, decimal amount,
@@ -210,6 +288,23 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
         };
         var ok = await _repo.UpdateLineAsync(reportId, line, ct);
         if (!ok) throw new InvalidOperationException("Failed to update line.");
+    }
+
+    public async Task<ExpenseMutationResult> UpdateLineWithResultAsync(
+        Guid reportId, Guid submitterUserId,
+        Guid lineId, string description, decimal amount,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            await UpdateLineAsync(reportId, submitterUserId, lineId, description, amount, ct);
+            return ExpenseMutationResult.Success;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating line {LineId} on report {ReportId}", lineId, reportId);
+            return ExpenseMutationResult.Failure(ex.Message);
+        }
     }
 
     public async Task RemoveLineAsync(
@@ -240,6 +335,22 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
 
         var ok = await _repo.RemoveLineAsync(reportId, lineId, ct);
         if (!ok) throw new InvalidOperationException("Failed to remove line.");
+    }
+
+    public async Task<ExpenseMutationResult> RemoveLineWithResultAsync(
+        Guid reportId, Guid submitterUserId, Guid lineId,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            await RemoveLineAsync(reportId, submitterUserId, lineId, ct);
+            return ExpenseMutationResult.Success;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error removing line {LineId} from report {ReportId}", lineId, reportId);
+            return ExpenseMutationResult.Failure(ex.Message);
+        }
     }
 
     /// <summary>Max attachment size validated at the service layer (20 MB).</summary>
@@ -292,6 +403,23 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
             submitterUserId);
 
         return attachmentId;
+    }
+
+    public async Task<ExpenseMutationResult> AttachFileToLineWithResultAsync(
+        Guid reportId, Guid submitterUserId,
+        Guid lineId, string originalFileName, string contentType,
+        Stream content, CancellationToken ct = default)
+    {
+        try
+        {
+            await AttachFileToLineAsync(reportId, submitterUserId, lineId, originalFileName, contentType, content, ct);
+            return ExpenseMutationResult.Success;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error uploading attachment to line {LineId} on report {ReportId}", lineId, reportId);
+            return ExpenseMutationResult.Failure(ex.Message);
+        }
     }
 
     public async Task RemoveAttachmentFromLineAsync(
@@ -380,6 +508,23 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
         return true;
     }
 
+    public async Task<ExpenseMutationResult> SubmitWithResultAsync(
+        Guid reportId, Guid submitterUserId, CancellationToken ct = default)
+    {
+        try
+        {
+            var submitted = await SubmitAsync(reportId, submitterUserId, ct);
+            return submitted
+                ? ExpenseMutationResult.Success
+                : ExpenseMutationResult.Failure("Could not submit the report. Make sure it has at least one line with an attachment and your payment IBAN is set.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error submitting expense report {ReportId}", reportId);
+            return ExpenseMutationResult.Failure($"Submission failed: {ex.Message}");
+        }
+    }
+
     public async Task<bool> WithdrawAsync(
         Guid reportId, Guid submitterUserId, CancellationToken ct = default)
     {
@@ -400,8 +545,75 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
 
         return true;
     }
+    public async Task<ExpenseMutationResult> WithdrawWithResultAsync(
+        Guid reportId, Guid submitterUserId, CancellationToken ct = default)
+    {
+        try
+        {
+            var withdrawn = await WithdrawAsync(reportId, submitterUserId, ct);
+            return withdrawn
+                ? ExpenseMutationResult.Success
+                : ExpenseMutationResult.Failure("Could not withdraw this report.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error withdrawing expense report {ReportId}", reportId);
+            return ExpenseMutationResult.Failure($"Withdrawal failed: {ex.Message}");
+        }
+    }
 
     // ─────────────────────── Coordinator Endorsement ─────────────────────────
+
+    public async Task<ExpenseIbanSaveResult> SaveSubmitterIbanWithResultAsync(
+        Guid submitterUserId, string? iban, CancellationToken ct = default)
+    {
+        var ibanValue = string.IsNullOrWhiteSpace(iban) ? null : iban.Trim();
+        var profile = await _profileService.GetProfileAsync(submitterUserId, ct);
+
+        if (ibanValue is not null && !IbanValidator.IsValid(ibanValue))
+            return IbanFailure("Invalid IBAN format.", isValidationError: true, profile);
+
+        var normalized = ibanValue is null ? null : IbanValidator.Normalize(ibanValue);
+        try
+        {
+            var saved = await _profileService.SetIbanAsync(submitterUserId, normalized, ct);
+            if (!saved)
+                return IbanFailure("Failed to save IBAN.", isValidationError: false, profile);
+
+            return new ExpenseIbanSaveResult(
+                Succeeded: true,
+                IsValidationError: false,
+                Message: normalized is null ? "IBAN removed." : "IBAN saved.",
+                HasIban: normalized is not null,
+                MaskedIban: normalized is null ? null : IbanFormatter.Mask(normalized));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error setting IBAN for user {UserId}", submitterUserId);
+            return IbanFailure("Failed to save IBAN.", isValidationError: false, profile);
+        }
+    }
+
+    public async Task<ExpenseIbanViewData> GetSubmitterIbanViewAsync(
+        Guid submitterUserId, CancellationToken ct = default)
+    {
+        var profile = await _profileService.GetProfileAsync(submitterUserId, ct);
+        var hasIban = !string.IsNullOrEmpty(profile?.Iban);
+        return new ExpenseIbanViewData(
+            HasIban: hasIban,
+            MaskedIban: hasIban ? IbanFormatter.Mask(profile!.Iban!) : null);
+    }
+
+    private static ExpenseIbanSaveResult IbanFailure(string message, bool isValidationError, Domain.Entities.Profile? profile)
+    {
+        var hasIban = !string.IsNullOrEmpty(profile?.Iban);
+        return new ExpenseIbanSaveResult(
+            Succeeded: false,
+            IsValidationError: isValidationError,
+            Message: message,
+            HasIban: hasIban,
+            MaskedIban: hasIban ? IbanFormatter.Mask(profile!.Iban!) : null);
+    }
 
     public async Task<bool> CoordinatorEndorseAsync(
         Guid reportId, Guid coordinatorUserId, CancellationToken ct = default)
@@ -424,6 +636,23 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
         return true;
     }
 
+    public async Task<ExpenseMutationResult> CoordinatorEndorseWithResultAsync(
+        Guid reportId, Guid coordinatorUserId, CancellationToken ct = default)
+    {
+        try
+        {
+            var endorsed = await CoordinatorEndorseAsync(reportId, coordinatorUserId, ct);
+            return endorsed
+                ? ExpenseMutationResult.Success
+                : ExpenseMutationResult.Failure("Could not endorse the report. It may no longer be in Submitted status.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error endorsing expense report {ReportId}", reportId);
+            return ExpenseMutationResult.Failure($"Endorsement failed: {ex.Message}");
+        }
+    }
+
     public async Task<bool> CoordinatorRejectAsync(
         Guid reportId, Guid coordinatorUserId, string reason,
         CancellationToken ct = default)
@@ -444,6 +673,24 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
             coordinatorUserId);
 
         return true;
+    }
+
+    public async Task<ExpenseMutationResult> CoordinatorRejectWithResultAsync(
+        Guid reportId, Guid coordinatorUserId, string reason,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var rejected = await CoordinatorRejectAsync(reportId, coordinatorUserId, reason, ct);
+            return rejected
+                ? ExpenseMutationResult.Success
+                : ExpenseMutationResult.Failure("Could not reject the report. It may no longer be in Submitted status.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error coordinator-rejecting expense report {ReportId}", reportId);
+            return ExpenseMutationResult.Failure($"Rejection failed: {ex.Message}");
+        }
     }
 
     // ────────────────────── Finance Approve / Reject ──────────────────────────
@@ -478,6 +725,24 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
         return true;
     }
 
+    public async Task<ExpenseMutationResult> ApproveWithResultAsync(
+        Guid reportId, Guid actorUserId, Guid? overrideCategoryId,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var approved = await ApproveAsync(reportId, actorUserId, overrideCategoryId, ct);
+            return approved
+                ? ExpenseMutationResult.Success
+                : ExpenseMutationResult.Failure("Could not approve the report. It may not be in an approvable status.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error approving expense report {ReportId}", reportId);
+            return ExpenseMutationResult.Failure($"Approval failed: {ex.Message}");
+        }
+    }
+
     public async Task<bool> FinanceRejectAsync(
         Guid reportId, Guid actorUserId, string reason,
         CancellationToken ct = default)
@@ -499,6 +764,24 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
     }
 
     // ─────────────────────────── SEPA + Paid ─────────────────────────────────
+
+    public async Task<ExpenseMutationResult> FinanceRejectWithResultAsync(
+        Guid reportId, Guid actorUserId, string reason,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var rejected = await FinanceRejectAsync(reportId, actorUserId, reason, ct);
+            return rejected
+                ? ExpenseMutationResult.Success
+                : ExpenseMutationResult.Failure("Could not reject the report. It may not be in a rejectable status.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error finance-rejecting expense report {ReportId}", reportId);
+            return ExpenseMutationResult.Failure($"Rejection failed: {ex.Message}");
+        }
+    }
 
     public async Task<IReadOnlyList<Guid>> MarkSepaSentAsync(
         IReadOnlyCollection<Guid> reportIds, Guid actorUserId,

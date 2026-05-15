@@ -66,7 +66,9 @@ public class MembershipCalculatorTests
             {
                 var userId = ci.Arg<Guid>();
                 var memberships = _teamMembershipsByUserId.GetValueOrDefault(userId) ?? new();
-                return Task.FromResult<IReadOnlyList<TeamMember>>(memberships);
+                return Task.FromResult<IReadOnlyList<MembershipTeamSnapshot>>(memberships
+                    .Select(m => new MembershipTeamSnapshot(m.TeamId, m.Role, m.Team.SystemTeamType))
+                    .ToList());
             });
 
         _membershipQuery.IsUserMemberOfTeamAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
@@ -90,7 +92,8 @@ public class MembershipCalculatorTests
             {
                 var teamId = ci.Arg<Guid>();
                 var versions = _requiredVersionsByTeam.GetValueOrDefault(teamId) ?? new();
-                return Task.FromResult<IReadOnlyList<DocumentVersion>>(versions);
+                return Task.FromResult<IReadOnlyList<RequiredDocumentVersionSnapshot>>(
+                    versions.Select(ToRequiredVersionSnapshot).ToList());
             });
 
         _consentService.GetConsentedVersionIdsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
@@ -112,6 +115,17 @@ public class MembershipCalculatorTests
                 return Task.FromResult<IReadOnlyDictionary<Guid, IReadOnlySet<Guid>>>(result);
             });
     }
+
+    private static RequiredDocumentVersionSnapshot ToRequiredVersionSnapshot(DocumentVersion version) =>
+        new(
+            version.Id,
+            version.LegalDocumentId,
+            version.LegalDocument?.Name ?? string.Empty,
+            version.LegalDocument?.GracePeriodDays ?? 7,
+            version.VersionNumber,
+            version.EffectiveFrom,
+            version.RequiresReConsent,
+            version.ChangesSummary);
 
     [HumansFact]
     public async Task ComputeStatusAsync_NotApprovedProfile_ReturnsPending()

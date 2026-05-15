@@ -14,6 +14,7 @@ using NSubstitute;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Domain.ValueObjects;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
@@ -503,6 +504,40 @@ public class TeamServiceTests : IDisposable
         result.Should().BeFalse();
     }
 
+    [HumansFact]
+    public async Task UpdateTeamPageContentWithResultAsync_NormalizesCallsToActionAndUpdatesPage()
+    {
+        var user = SeedUser();
+        var team = SeedTeam("Alpha");
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.UpdateTeamPageContentAsync(
+            team.Id,
+            "Welcome",
+            new[]
+            {
+                new TeamPageCallToActionInput(" Join ", " /join ", CallToActionStyle.Primary),
+                new TeamPageCallToActionInput("", "/ignored", CallToActionStyle.Secondary)
+            },
+            isPublicPage: true,
+            showCoordinatorsOnPublicPage: true,
+            user.Id);
+
+        result.Succeeded.Should().BeTrue();
+
+        var stored = await _dbContext.Teams.AsNoTracking().SingleAsync(t => t.Id == team.Id);
+        stored.PageContent.Should().Be("Welcome");
+        stored.CallsToAction.Should().ContainSingle()
+            .Which.Should().BeEquivalentTo(new CallToAction
+            {
+                Text = "Join",
+                Url = "/join",
+                Style = CallToActionStyle.Primary
+            });
+        stored.IsPublicPage.Should().BeTrue();
+        stored.ShowCoordinatorsOnPublicPage.Should().BeTrue();
+    }
+
     // ==========================================================================
     // IsUserMemberOfTeamAsync
     // ==========================================================================
@@ -835,98 +870,6 @@ public class TeamServiceTests : IDisposable
     }
 
     // ==========================================================================
-    // GetPendingRequestsForApproverAsync
-    // ==========================================================================
-
-    [HumansFact]
-    public async Task GetPendingRequestsForApproverAsync_BoardMember_ReturnsAllPending()
-    {
-        var approver = SeedUser();
-        SeedRoleAssignment(approver.Id, RoleNames.Board,
-            _clock.GetCurrentInstant() - Duration.FromDays(10));
-        var teamA = SeedTeam("Alpha", requiresApproval: true);
-        var teamB = SeedTeam("Beta", requiresApproval: true);
-        var requestor1 = SeedUser(displayName: "R1");
-        var requestor2 = SeedUser(displayName: "R2");
-        SeedJoinRequest(teamA.Id, requestor1.Id);
-        SeedJoinRequest(teamB.Id, requestor2.Id);
-        await _dbContext.SaveChangesAsync();
-
-        var result = await _service.GetPendingRequestsForApproverAsync(approver.Id);
-
-        result.Should().HaveCount(2);
-    }
-
-    [HumansFact]
-    public async Task GetPendingRequestsForApproverAsync_Coordinator_ReturnsOnlyOwnTeamRequests()
-    {
-        var coordinator = SeedUser();
-        var teamA = SeedTeam("Alpha", requiresApproval: true);
-        var teamB = SeedTeam("Beta", requiresApproval: true);
-        SeedTeamMember(teamA.Id, coordinator.Id, TeamMemberRole.Coordinator);
-        var requestor1 = SeedUser(displayName: "R1");
-        var requestor2 = SeedUser(displayName: "R2");
-        SeedJoinRequest(teamA.Id, requestor1.Id);
-        SeedJoinRequest(teamB.Id, requestor2.Id);
-        await _dbContext.SaveChangesAsync();
-
-        var result = await _service.GetPendingRequestsForApproverAsync(coordinator.Id);
-
-        result.Should().ContainSingle();
-        result[0].TeamId.Should().Be(teamA.Id);
-    }
-
-    [HumansFact]
-    public async Task GetPendingRequestsForApproverAsync_CoordinatorOfParent_IncludesChildTeamRequests()
-    {
-        var coordinator = SeedUser();
-        var parent = SeedTeam("Department");
-        var child = SeedTeam("SubTeam");
-        child.ParentTeamId = parent.Id;
-        SeedTeamMember(parent.Id, coordinator.Id, TeamMemberRole.Coordinator);
-        var requestor = SeedUser(displayName: "R1");
-        SeedJoinRequest(child.Id, requestor.Id);
-        await _dbContext.SaveChangesAsync();
-
-        var result = await _service.GetPendingRequestsForApproverAsync(coordinator.Id);
-
-        result.Should().ContainSingle();
-        result[0].TeamId.Should().Be(child.Id);
-    }
-
-    [HumansFact]
-    public async Task GetPendingRequestsForApproverAsync_RegularUser_ReturnsEmpty()
-    {
-        var user = SeedUser();
-        var team = SeedTeam("Alpha", requiresApproval: true);
-        var requestor = SeedUser(displayName: "R1");
-        SeedJoinRequest(team.Id, requestor.Id);
-        await _dbContext.SaveChangesAsync();
-
-        var result = await _service.GetPendingRequestsForApproverAsync(user.Id);
-
-        result.Should().BeEmpty();
-    }
-
-    [HumansFact]
-    public async Task GetPendingRequestsForApproverAsync_ExcludesNonPendingRequests()
-    {
-        var approver = SeedUser();
-        SeedRoleAssignment(approver.Id, RoleNames.Board,
-            _clock.GetCurrentInstant() - Duration.FromDays(10));
-        var team = SeedTeam("Alpha", requiresApproval: true);
-        var r1 = SeedUser(displayName: "R1");
-        var r2 = SeedUser(displayName: "R2");
-        SeedJoinRequest(team.Id, r1.Id, TeamJoinRequestStatus.Approved);
-        SeedJoinRequest(team.Id, r2.Id, TeamJoinRequestStatus.Pending);
-        await _dbContext.SaveChangesAsync();
-
-        var result = await _service.GetPendingRequestsForApproverAsync(approver.Id);
-
-        result.Should().ContainSingle();
-    }
-
-    // ==========================================================================
     // GetPendingRequestsForTeamAsync
     // ==========================================================================
 
@@ -1244,88 +1187,88 @@ public class TeamServiceTests : IDisposable
     }
 
     // ==========================================================================
-    // GetAllTeamsForAdminAsync
+    // GetAdminTeamListAsync
     // ==========================================================================
 
     [HumansFact]
-    public async Task GetAllTeamsForAdminAsync_ReturnsPaginatedResults()
+    public async Task GetAdminTeamListAsync_ReturnsPaginatedResults()
     {
         SeedTeam("Alpha");
         SeedTeam("Beta");
         SeedTeam("Charlie");
         await _dbContext.SaveChangesAsync();
 
-        var (items, totalCount) = await _service.GetAllTeamsForAdminAsync(1, 2);
+        var result = await _service.GetAdminTeamListAsync(1, 2);
 
-        items.Should().HaveCount(2);
-        totalCount.Should().Be(3);
+        result.Teams.Should().HaveCount(2);
+        result.TotalCount.Should().Be(3);
     }
 
     [HumansFact]
-    public async Task GetAllTeamsForAdminAsync_SecondPage_ReturnsRemainingItems()
+    public async Task GetAdminTeamListAsync_SecondPage_ReturnsRemainingItems()
     {
         SeedTeam("Alpha");
         SeedTeam("Beta");
         SeedTeam("Charlie");
         await _dbContext.SaveChangesAsync();
 
-        var (items, totalCount) = await _service.GetAllTeamsForAdminAsync(2, 2);
+        var result = await _service.GetAdminTeamListAsync(2, 2);
 
-        items.Should().ContainSingle();
-        totalCount.Should().Be(3);
+        result.Teams.Should().ContainSingle();
+        result.TotalCount.Should().Be(3);
     }
 
     [HumansFact]
-    public async Task GetAllTeamsForAdminAsync_IncludesMembers()
+    public async Task GetAdminTeamListAsync_IncludesMemberCount()
     {
         var team = SeedTeam("Alpha");
         var active = SeedUser(displayName: "Active");
         SeedTeamMember(team.Id, active.Id);
         await _dbContext.SaveChangesAsync();
 
-        var (items, _) = await _service.GetAllTeamsForAdminAsync(1, 10);
+        var result = await _service.GetAdminTeamListAsync(1, 10);
 
-        items.Single().Members.Should().ContainSingle();
+        result.Teams.Single().MemberCount.Should().Be(1);
     }
 
     [HumansFact]
-    public async Task GetAllTeamsForAdminAsync_IncludesJoinRequests()
+    public async Task GetAdminTeamListAsync_IncludesPendingRequestCount()
     {
         var team = SeedTeam("Alpha");
         var u1 = SeedUser(displayName: "U1");
         SeedJoinRequest(team.Id, u1.Id);
         await _dbContext.SaveChangesAsync();
 
-        var (items, _) = await _service.GetAllTeamsForAdminAsync(1, 10);
+        var result = await _service.GetAdminTeamListAsync(1, 10);
 
-        items.Single().JoinRequests.Should().ContainSingle();
+        result.Teams.Single().PendingRequestCount.Should().Be(1);
     }
 
     [HumansFact]
-    public async Task GetAllTeamsForAdminAsync_IncludesInactiveTeams()
+    public async Task GetAdminTeamListAsync_IncludesInactiveTeams()
     {
         SeedTeam("Active");
         SeedTeam("Inactive", isActive: false);
         await _dbContext.SaveChangesAsync();
 
-        var (items, totalCount) = await _service.GetAllTeamsForAdminAsync(1, 10);
+        var result = await _service.GetAdminTeamListAsync(1, 10);
 
-        totalCount.Should().Be(2);
-        items.Should().HaveCount(2);
+        result.TotalCount.Should().Be(2);
+        result.Teams.Should().HaveCount(2);
     }
 
     [HumansFact]
-    public async Task GetAllTeamsForAdminAsync_SystemTeamsOrderedFirst()
+    public async Task GetAdminTeamListAsync_SystemTeamsOrderedFirst()
     {
         SeedTeam("Zebra");
         SeedTeam("Volunteers", type: SystemTeamType.Volunteers);
         await _dbContext.SaveChangesAsync();
 
-        var (items, _) = await _service.GetAllTeamsForAdminAsync(1, 10);
+        var result = await _service.GetAdminTeamListAsync(1, 10);
 
         // SystemTeamType.None(0) < Volunteers(1), so None sorts first in ascending order
-        items[0].SystemTeamType.Should().Be(SystemTeamType.None);
-        items[1].SystemTeamType.Should().Be(SystemTeamType.Volunteers);
+        result.Teams[0].SystemTeamType.Should().BeNull();
+        result.Teams[1].SystemTeamType.Should().Be(nameof(SystemTeamType.Volunteers));
     }
 
     // ==========================================================================
@@ -1831,3 +1774,5 @@ public class TeamServiceTests : IDisposable
         return signup;
     }
 }
+
+

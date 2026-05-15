@@ -1,5 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using NodaTime;
+using Humans.Application.Interfaces.Campaigns;
+using Humans.Application.Interfaces.Shifts;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Helpers;
@@ -313,7 +315,7 @@ public class ProfileViewModel
     /// Campaign grants assigned to this user (Active and Completed campaigns only).
     /// Only populated when IsOwnProfile is true.
     /// </summary>
-    public IReadOnlyList<CampaignGrant> CampaignGrants { get; set; } = [];
+    public IReadOnlyList<CampaignGrantSummary> CampaignGrants { get; set; } = [];
 
     /// <summary>
     /// No-show history for coordinators/admins viewing other profiles.
@@ -339,7 +341,7 @@ public class ProfileViewModel
     /// <summary>
     /// All available shift tags (for the picker). Owner only.
     /// </summary>
-    public IReadOnlyList<ShiftTag> AllShiftTags { get; set; } = [];
+    public IReadOnlyList<ShiftTagSummary> AllShiftTags { get; set; } = [];
 
     /// <summary>
     /// IDs of shift tags the user has marked as preferred. Owner only.

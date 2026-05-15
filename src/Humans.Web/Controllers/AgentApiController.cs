@@ -88,7 +88,7 @@ public class AgentApiController : ControllerBase
         return await _users.GetByIdsAsync(distinct, ct);
     }
 
-    private static object ToSummary(AgentConversation c, IReadOnlyDictionary<Guid, User> users)
+    private static object ToSummary(AgentConversationTranscriptSnapshot c, IReadOnlyDictionary<Guid, User> users)
     {
         // Most-recent user message preview is useful at-a-glance triage signal —
         // matches the listing UX in the admin web view but stays JSON-clean for
@@ -118,6 +118,18 @@ public class AgentApiController : ControllerBase
     }
 
     private static object ToMessageDto(AgentMessage m) => new
+    {
+        m.Id,
+        Role = m.Role.ToString(),
+        m.Content,
+        CreatedAt = m.CreatedAt.ToDateTimeUtc(),
+        m.Model,
+        m.RefusalReason,
+        m.HandedOffToFeedbackId,
+        FetchedDocs = m.FetchedDocs
+    };
+
+    private static object ToMessageDto(AgentMessageSnapshot m) => new
     {
         m.Id,
         Role = m.Role.ToString(),

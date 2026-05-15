@@ -2,8 +2,8 @@
 @{
     ViewData["Title"] = string.Format(Localizer["AdminHumanDetail_Title"].Value, Model.DisplayName);
     Layout = "_AdminLayout";
-    var campaignGrants = (IList<CampaignGrant>?)ViewBag.CampaignGrants;
-    var outboxCount = (int?)ViewBag.OutboxCount ?? 0;
+    var campaignGrants = Model.CampaignGrants;
+    var outboxCount = Model.OutboxCount;
 }
 
 <nav aria-label="breadcrumb">
@@ -245,8 +245,8 @@
                                     _ => "bg-secondary"
                                 };
                                 <tr>
-                                    <td>@grant.Campaign.Title</td>
-                                    <td><code>@grant.Code.Code</code></td>
+                                    <td>@grant.CampaignTitle</td>
+                                    <td><code>@grant.Code</code></td>
                                     <td>@grant.AssignedAt.ToDisplayDate()</td>
                                     <td>
                                         @if (grant.LatestEmailStatus.HasValue)

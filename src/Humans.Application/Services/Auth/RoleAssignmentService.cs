@@ -33,9 +33,9 @@ namespace Humans.Application.Services.Auth;
 /// same rationale as Governance / Feedback. The service stitches display
 /// data in memory onto the <see cref="RoleAssignment"/> entity's (now
 /// <c>[Obsolete]</c>) cross-domain navigation properties so existing
-/// controllers and views can continue to read <c>ra.User.DisplayName</c>,
-/// <c>ra.CreatedByUser.DisplayName</c>, etc. without change — this is the
-/// "in-memory join" from design-rules §6b.
+/// controllers and views can continue to read assignee / creator display
+/// names without change — this is the "in-memory join" from
+/// design-rules §6b.
 /// </remarks>
 public sealed class RoleAssignmentService : IRoleAssignmentService, IUserDataContributor, IUserMerge
 {
@@ -79,31 +79,64 @@ public sealed class RoleAssignmentService : IRoleAssignmentService, IUserDataCon
         CancellationToken cancellationToken = default) =>
         _repository.HasOverlappingAssignmentAsync(userId, roleName, validFrom, validTo, cancellationToken);
 
-    public async Task<(IReadOnlyList<RoleAssignment> Items, int TotalCount)> GetFilteredAsync(
+    public async Task<(IReadOnlyList<RoleAssignmentSummarySnapshot> Items, int TotalCount)> GetFilteredAsync(
         string? roleFilter, bool activeOnly, int page, int pageSize, Instant now,
         CancellationToken ct = default)
     {
         var (items, totalCount) = await _repository.GetFilteredAsync(
             roleFilter, activeOnly, page, pageSize, now, ct);
 
-        await StitchCrossDomainNavsAsync(items, ct);
-        return (items, totalCount);
+        return (await ToSummarySnapshotsAsync(items, ct), totalCount);
     }
 
-    public async Task<RoleAssignment?> GetByIdAsync(Guid assignmentId, CancellationToken ct = default)
+    public async Task<RoleAssignmentDetailSnapshot?> GetByIdAsync(Guid assignmentId, CancellationToken ct = default)
     {
         var assignment = await _repository.GetByIdAsync(assignmentId, ct);
         if (assignment is null) return null;
 
-        await StitchCrossDomainNavsAsync([assignment], ct);
-        return assignment;
+        var user = await _userService.GetByIdAsync(assignment.UserId, ct);
+        return new RoleAssignmentDetailSnapshot(
+            assignment.UserId,
+            assignment.RoleName,
+            user?.DisplayName ?? "Unknown");
     }
 
-    public async Task<IReadOnlyList<RoleAssignment>> GetByUserIdAsync(Guid userId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<RoleAssignmentSummarySnapshot>> GetByUserIdAsync(Guid userId, CancellationToken ct = default)
     {
         var items = await _repository.GetByUserIdAsync(userId, ct);
-        await StitchCrossDomainNavsAsync(items, ct);
-        return items;
+        return await ToSummarySnapshotsAsync(items, ct);
+    }
+
+    private async Task<IReadOnlyList<RoleAssignmentSummarySnapshot>> ToSummarySnapshotsAsync(
+        IReadOnlyList<RoleAssignment> assignments,
+        CancellationToken ct)
+    {
+        var userIds = assignments
+            .Select(a => a.UserId)
+            .Concat(assignments.Select(a => a.CreatedByUserId))
+            .Distinct()
+            .ToList();
+        var users = userIds.Count == 0
+            ? new Dictionary<Guid, User>()
+            : await _userService.GetByIdsAsync(userIds, ct);
+
+        return assignments.Select(assignment =>
+        {
+            users.TryGetValue(assignment.UserId, out var user);
+            users.TryGetValue(assignment.CreatedByUserId, out var creator);
+            return new RoleAssignmentSummarySnapshot(
+            assignment.Id,
+            assignment.UserId,
+            user?.Email,
+            user?.DisplayName ?? "Unknown",
+            assignment.RoleName,
+            assignment.ValidFrom,
+            assignment.ValidTo,
+            assignment.Notes,
+            assignment.CreatedByUserId,
+            creator?.DisplayName,
+            assignment.CreatedAt);
+        }).ToList();
     }
 
     public async Task<OnboardingResult> AssignRoleAsync(
@@ -288,13 +321,14 @@ public sealed class RoleAssignmentService : IRoleAssignmentService, IUserDataCon
 
     public void InvalidateNavBadgeCache() => _navBadge.Invalidate();
 
-    public async Task<IReadOnlyList<RoleAssignment>> GetActiveForUserAsync(Guid userId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<RoleAssignmentSnapshot>> GetActiveForUserAsync(Guid userId, CancellationToken ct = default)
     {
         var now = _clock.GetCurrentInstant();
         var all = await _repository.GetByUserIdAsync(userId, ct);
         return all
             .Where(ra => ra.ValidFrom <= now && (ra.ValidTo == null || ra.ValidTo > now))
             .OrderBy(ra => ra.RoleName, StringComparer.Ordinal)
+            .Select(ra => new RoleAssignmentSnapshot(ra.RoleName, ra.ValidTo))
             .ToList();
     }
 
@@ -345,3 +379,4 @@ public sealed class RoleAssignmentService : IRoleAssignmentService, IUserDataCon
 
 #pragma warning restore CS0618
 }
+

@@ -1,7 +1,7 @@
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
-using Humans.Domain.Enums;
 using Humans.Web.Models;
+using Humans.Web.Models.Shifts;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 
@@ -49,46 +49,21 @@ public class ShiftSignupsViewComponent : ViewComponent
             var now = _clock.GetCurrentInstant();
             model.EventSettings = es;
 
-            var componentTeamIds = signups
-                .Where(s => s.Shift?.Rota is not null)
-                .Select(s => s.Shift.Rota.TeamId)
-                .Distinct()
-                .ToList();
+            var componentTeamIds = ShiftSignupBucketer.GetTeamIds(signups);
             var componentTeamNames = componentTeamIds.Count == 0
                 ? (IReadOnlyDictionary<Guid, string>)new Dictionary<Guid, string>()
                 : await _teamService.GetTeamNamesByIdsAsync(componentTeamIds);
 
-            foreach (var signup in signups)
-            {
-                if (signup.Shift?.Rota is null || es is null)
-                    continue;
+            var buckets = ShiftSignupBucketer.Build(
+                signups,
+                es,
+                componentTeamNames,
+                now,
+                includeOtherStatusesInPast: false);
 
-                var item = new MySignupItem
-                {
-                    Signup = signup,
-                    DepartmentName = componentTeamNames.GetValueOrDefault(signup.Shift.Rota.TeamId, "Unknown"),
-                    AbsoluteStart = signup.Shift.GetAbsoluteStart(es),
-                    AbsoluteEnd = signup.Shift.GetAbsoluteEnd(es)
-                };
-
-                switch (signup.Status)
-                {
-                    case SignupStatus.Confirmed when item.AbsoluteEnd > now:
-                        model.Upcoming.Add(item);
-                        break;
-                    case SignupStatus.Pending:
-                        model.Pending.Add(item);
-                        break;
-                    default:
-                        if (signup.Status is SignupStatus.Confirmed or SignupStatus.NoShow or SignupStatus.Bailed)
-                            model.Past.Add(item);
-                        break;
-                }
-            }
-
-            model.Upcoming = model.Upcoming.OrderBy(s => s.AbsoluteStart).ToList();
-            model.Pending = model.Pending.OrderBy(s => s.AbsoluteStart).ToList();
-            model.Past = model.Past.OrderByDescending(s => s.AbsoluteStart).ToList();
+            model.Upcoming = buckets.Upcoming;
+            model.Pending = buckets.Pending;
+            model.Past = buckets.Past;
         }
         catch (Exception ex)
         {

@@ -109,32 +109,6 @@ public class GovernanceApplicationsController : HumansControllerBase
         if (user is null)
             return NotFound();
 
-        // Validate tier is not Volunteer (applications are for Colaborador/Asociado only)
-        if (model.MembershipTier == MembershipTier.Volunteer)
-        {
-            ModelState.AddModelError(nameof(model.MembershipTier), _localizer["Application_InvalidTier"].Value);
-            return View("~/Views/Governance/Applications/Create.cshtml", model);
-        }
-
-        // Validate Asociado-specific fields
-        if (model.MembershipTier == MembershipTier.Asociado)
-        {
-            if (string.IsNullOrWhiteSpace(model.SignificantContribution))
-            {
-                ModelState.AddModelError(nameof(model.SignificantContribution),
-                    _localizer["Application_SignificantContributionRequired"].Value);
-            }
-            if (string.IsNullOrWhiteSpace(model.RoleUnderstanding))
-            {
-                ModelState.AddModelError(nameof(model.RoleUnderstanding),
-                    _localizer["Application_RoleUnderstandingRequired"].Value);
-            }
-            if (!ModelState.IsValid)
-            {
-                return View("~/Views/Governance/Applications/Create.cshtml", model);
-            }
-        }
-
         try
         {
             var result = await _applicationDecisionService.SubmitAsync(
@@ -146,6 +120,18 @@ public class GovernanceApplicationsController : HumansControllerBase
             {
                 if (string.Equals(result.ErrorKey, "AlreadyPending", StringComparison.Ordinal))
                     SetError(_localizer["Application_AlreadyPending"].Value);
+                else if (string.Equals(result.ErrorKey, "InvalidTier", StringComparison.Ordinal))
+                    ModelState.AddModelError(nameof(model.MembershipTier), _localizer["Application_InvalidTier"].Value);
+                else if (string.Equals(result.ErrorKey, "SignificantContributionRequired", StringComparison.Ordinal))
+                    ModelState.AddModelError(nameof(model.SignificantContribution),
+                        _localizer["Application_SignificantContributionRequired"].Value);
+                else if (string.Equals(result.ErrorKey, "RoleUnderstandingRequired", StringComparison.Ordinal))
+                    ModelState.AddModelError(nameof(model.RoleUnderstanding),
+                        _localizer["Application_RoleUnderstandingRequired"].Value);
+
+                if (!ModelState.IsValid)
+                    return View("~/Views/Governance/Applications/Create.cshtml", model);
+
                 return RedirectToAction(nameof(Index));
             }
 

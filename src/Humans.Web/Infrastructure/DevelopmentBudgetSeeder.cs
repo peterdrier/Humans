@@ -18,7 +18,11 @@ public sealed record DevelopmentBudgetSeedResult(
     int DepartmentCategoriesSynced,
     int GroupsCreated,
     int CategoriesCreated,
-    int LineItemsCreated);
+    int LineItemsCreated)
+{
+    public string SuccessMessage =>
+        $"Budget demo data seeded: {TeamsCreated} teams created, {TeamsUpdated} updated, {CategoriesCreated} categories, {LineItemsCreated} line items.";
+}
 
 public sealed class DevelopmentBudgetSeeder
 {
@@ -178,21 +182,27 @@ public sealed class DevelopmentBudgetSeeder
         }
 
         var allYears = await _budgetService.GetAllYearsAsync(includeArchived: true);
-        var budgetYear = allYears.FirstOrDefault(y => string.Equals(y.Year, budgetYearCode, StringComparison.Ordinal));
+        var budgetYearSummary = allYears.FirstOrDefault(y => string.Equals(y.Year, budgetYearCode, StringComparison.Ordinal));
+        Guid budgetYearId;
 
-        if (budgetYear is null)
+        if (budgetYearSummary is null)
         {
-            budgetYear = await _budgetService.CreateYearAsync(budgetYearCode, budgetYearName, actorUserId);
+            var createdBudgetYear = await _budgetService.CreateYearAsync(budgetYearCode, budgetYearName, actorUserId);
+            budgetYearId = createdBudgetYear.Id;
         }
-        else if (budgetYear.IsDeleted)
+        else
         {
-            await _budgetService.RestoreYearAsync(budgetYear.Id, actorUserId);
+            budgetYearId = budgetYearSummary.Id;
+            if (budgetYearSummary.IsDeleted)
+            {
+                await _budgetService.RestoreYearAsync(budgetYearId, actorUserId);
+            }
         }
 
-        var departmentCategoriesSynced = await _budgetService.SyncDepartmentsAsync(budgetYear.Id, actorUserId);
+        var departmentCategoriesSynced = await _budgetService.SyncDepartmentsAsync(budgetYearId, actorUserId);
 
         var groupsCreated = 0;
-        if (await _budgetService.EnsureTicketingGroupAsync(budgetYear.Id, actorUserId))
+        if ((await _budgetService.EnsureTicketingGroupAsync(budgetYearId, actorUserId)).Created)
         {
             groupsCreated++;
         }
@@ -201,13 +211,13 @@ public sealed class DevelopmentBudgetSeeder
         var activatedBudgetYear = false;
         if (activeYear is null)
         {
-            await _budgetService.UpdateYearStatusAsync(budgetYear.Id, BudgetYearStatus.Active, actorUserId);
+            await _budgetService.UpdateYearStatusAsync(budgetYearId, BudgetYearStatus.Active, actorUserId);
             activatedBudgetYear = true;
         }
 
         // Load full year tree — groups, categories, line items — for in-memory lookups
-        var currentYear = await _budgetService.GetYearByIdAsync(budgetYear.Id)
-            ?? throw new InvalidOperationException($"Budget year {budgetYear.Id} not found after creation");
+        var currentYear = await _budgetService.GetYearByIdAsync(budgetYearId)
+            ?? throw new InvalidOperationException($"Budget year {budgetYearId} not found after creation");
 
         var departmentGroup = currentYear.Groups.Single(g => g.IsDepartmentGroup);
         await _budgetService.UpdateGroupAsync(departmentGroup.Id, departmentGroup.Name, 0, departmentGroup.IsRestricted, actorUserId);
@@ -217,7 +227,7 @@ public sealed class DevelopmentBudgetSeeder
 
         if (sharedServicesGroup is null)
         {
-            sharedServicesGroup = await _budgetService.CreateGroupAsync(budgetYear.Id, "Shared Services", false, actorUserId);
+            sharedServicesGroup = await _budgetService.CreateGroupAsync(budgetYearId, "Shared Services", false, actorUserId);
             groupsCreated++;
         }
 
@@ -230,8 +240,8 @@ public sealed class DevelopmentBudgetSeeder
         var lineItemsCreated = 0;
 
         // Re-load after group changes for accurate category lookups
-        currentYear = await _budgetService.GetYearByIdAsync(budgetYear.Id)
-            ?? throw new InvalidOperationException($"Budget year {budgetYear.Id} not found");
+        currentYear = await _budgetService.GetYearByIdAsync(budgetYearId)
+            ?? throw new InvalidOperationException($"Budget year {budgetYearId} not found");
 
         departmentGroup = currentYear.Groups.Single(g => g.IsDepartmentGroup);
         sharedServicesGroup = currentYear.Groups.Single(g =>
@@ -302,7 +312,7 @@ public sealed class DevelopmentBudgetSeeder
             budgetYearCode, teamsCreated, teamsUpdated, categoriesCreated, lineItemsCreated);
 
         return new DevelopmentBudgetSeedResult(
-            BudgetYearId: budgetYear.Id,
+            BudgetYearId: budgetYearId,
             BudgetYearCode: budgetYearCode,
             BudgetYearName: budgetYearName,
             ActivatedBudgetYear: activatedBudgetYear,

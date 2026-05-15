@@ -299,23 +299,27 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
         var activeMembers = team.Members
             .Where(m => m.LeftAt is null)
             .ToList();
+        var usersById = activeMembers.Count == 0
+            ? new Dictionary<Guid, User>()
+            : await UserService.GetByIdsWithEmailsAsync(
+                activeMembers.Select(m => m.UserId).Distinct().ToList(),
+                cancellationToken);
 
         if (!userId.HasValue)
         {
             var coordinators = activeMembers
                 .Where(m => m.Role == TeamMemberRole.Coordinator)
-#pragma warning disable CS0618 // Cross-domain nav populated in-memory via StitchMemberUserSlicesAsync
-                .OrderBy(m => m.User.DisplayName, StringComparer.OrdinalIgnoreCase)
-#pragma warning restore CS0618
-                .Select(MapTeamDetailMemberSummary)
+                .OrderBy(m => GetMemberDisplayName(m, usersById), StringComparer.OrdinalIgnoreCase)
+                .Select(m => MapTeamDetailMemberSummary(m, usersById))
                 .ToList();
 
             return new TeamDetailResult(
-                Team: team,
+                Team: MapTeamSummary(team),
                 Members: coordinators,
                 ChildTeams: team.ChildTeams
                     .Where(c => c.IsActive && c.IsPublicPage && !c.IsHidden)
                     .OrderBy(c => c.Name, StringComparer.Ordinal)
+                    .Select(MapTeamLink)
                     .ToList(),
                 RoleDefinitions: [],
                 IsAuthenticated: false,
@@ -344,23 +348,22 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
         var pendingRequestCount = canManage
             ? (await GetPendingRequestsForTeamAsync(team.Id, cancellationToken)).Count
             : 0;
-        var roleDefinitions = await GetRoleDefinitionsAsync(team.Id, cancellationToken);
+        var roleDefinitions = await _repo.GetRoleDefinitionsAsync(team.Id, cancellationToken);
         await StitchRoleAssignmentUserSlicesAsync(roleDefinitions, cancellationToken);
 
         return new TeamDetailResult(
-            Team: team,
+            Team: MapTeamSummary(team),
             Members: activeMembers
                 .OrderBy(m => m.Role)
-#pragma warning disable CS0618 // Cross-domain nav populated in-memory via StitchMemberUserSlicesAsync
-                .ThenBy(m => m.User.DisplayName, StringComparer.OrdinalIgnoreCase)
-#pragma warning restore CS0618
-                .Select(MapTeamDetailMemberSummary)
+                .ThenBy(m => GetMemberDisplayName(m, usersById), StringComparer.OrdinalIgnoreCase)
+                .Select(m => MapTeamDetailMemberSummary(m, usersById))
                 .ToList(),
             ChildTeams: team.ChildTeams
                 .Where(c => c.IsActive)
                 .OrderBy(c => c.Name, StringComparer.Ordinal)
+                .Select(MapTeamLink)
                 .ToList(),
-            RoleDefinitions: roleDefinitions,
+            RoleDefinitions: roleDefinitions.Select(definition => ToRoleDefinitionSnapshot(definition, team)).ToList(),
             IsAuthenticated: true,
             IsCurrentUserMember: isCurrentUserMember,
             IsCurrentUserCoordinator: isCurrentUserCoordinator,
@@ -541,7 +544,7 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
         return team;
     }
 
-    public async Task UpdateTeamPageContentAsync(
+    private async Task UpdateTeamPageContentCoreAsync(
         Guid teamId,
         string? pageContent,
         List<CallToAction> callsToAction,
@@ -585,6 +588,40 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
 
     }
 
+    public async Task<TeamPageUpdateResult> UpdateTeamPageContentAsync(
+        Guid teamId,
+        string? pageContent,
+        IReadOnlyList<TeamPageCallToActionInput> callsToAction,
+        bool isPublicPage,
+        bool showCoordinatorsOnPublicPage,
+        Guid updatedByUserId,
+        CancellationToken cancellationToken = default)
+    {
+        var normalizedCallsToAction = callsToAction
+            .Where(c => !string.IsNullOrWhiteSpace(c.Text) && !string.IsNullOrWhiteSpace(c.Url))
+            .Select(c => new CallToAction { Text = c.Text!.Trim(), Url = c.Url!.Trim(), Style = c.Style })
+            .ToList();
+
+        try
+        {
+            await UpdateTeamPageContentCoreAsync(
+                teamId,
+                pageContent,
+                normalizedCallsToAction,
+                isPublicPage,
+                showCoordinatorsOnPublicPage,
+                updatedByUserId,
+                cancellationToken);
+
+            return TeamPageUpdateResult.Success();
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Failed to update team page for team {TeamId} by user {UserId}", teamId, updatedByUserId);
+            return TeamPageUpdateResult.Failed(ex.Message);
+        }
+    }
+
     public async Task DeleteTeamAsync(Guid teamId, CancellationToken cancellationToken = default)
     {
         var team = await _repo.GetByIdAsync(teamId, cancellationToken)
@@ -622,7 +659,7 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
         string? message,
         CancellationToken cancellationToken = default)
     {
-        var team = await _repo.GetByIdAsync(teamId, cancellationToken)
+        var team = await _repo.GetByIdWithRelationsAsync(teamId, cancellationToken)
             ?? throw new InvalidOperationException($"Team {teamId} not found");
 
         if (team.IsSystemTeam)
@@ -654,6 +691,7 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
         await _repo.AddRequestAsync(request, cancellationToken);
 
         _logger.LogInformation("User {UserId} requested to join team {TeamId}", userId, teamId);
+        await SendTeamJoinRequestSubmittedNotificationAsync(team, userId, cancellationToken);
 
         return request;
     }
@@ -663,7 +701,7 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
         Guid userId,
         CancellationToken cancellationToken = default)
     {
-        var team = await _repo.GetByIdAsync(teamId, cancellationToken)
+        var team = await _repo.GetByIdWithRelationsAsync(teamId, cancellationToken)
             ?? throw new InvalidOperationException($"Team {teamId} not found");
 
         if (team.IsSystemTeam)
@@ -715,8 +753,84 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
 
         await RequestGoogleGroupSyncForTeamAsync(team, cancellationToken);
         await SendAddedToTeamEmailAsync(userId, team, cancellationToken);
+        await SendTeamMemberAddedNotificationAsync(team, userId, cancellationToken);
 
         return member;
+    }
+
+    private async Task SendTeamJoinRequestSubmittedNotificationAsync(
+        Team team,
+        Guid userId,
+        CancellationToken cancellationToken)
+    {
+        var coordinatorUserIds = GetCoordinatorUserIds(team);
+        if (coordinatorUserIds.Count == 0)
+        {
+            return;
+        }
+
+        var displayName = await GetDisplayNameAsync(userId, cancellationToken);
+        try
+        {
+            await _notificationService.SendAsync(
+                NotificationSource.TeamJoinRequestSubmitted,
+                NotificationClass.Actionable,
+                NotificationPriority.Normal,
+                $"New join request for {team.Name}",
+                coordinatorUserIds,
+                body: $"{displayName} has requested to join {team.Name}.",
+                actionUrl: $"/Teams/{team.Slug}/Members",
+                actionLabel: "Review request",
+                cancellationToken: cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to dispatch TeamJoinRequestSubmitted notification for team {TeamId}", team.Id);
+        }
+    }
+
+    private async Task SendTeamMemberAddedNotificationAsync(
+        Team team,
+        Guid userId,
+        CancellationToken cancellationToken)
+    {
+        var coordinatorUserIds = GetCoordinatorUserIds(team);
+        if (coordinatorUserIds.Count == 0)
+        {
+            return;
+        }
+
+        var displayName = await GetDisplayNameAsync(userId, cancellationToken);
+        try
+        {
+            await _notificationService.SendAsync(
+                NotificationSource.TeamMemberAdded,
+                NotificationClass.Informational,
+                NotificationPriority.Normal,
+                $"{displayName} joined {team.Name}",
+                coordinatorUserIds,
+                body: $"{displayName} has joined {team.Name}.",
+                actionUrl: $"/Teams/{team.Slug}/Members",
+                actionLabel: "View members",
+                cancellationToken: cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to dispatch TeamMemberAdded notification for team {TeamId}", team.Id);
+        }
+    }
+
+    private static IReadOnlyList<Guid> GetCoordinatorUserIds(Team team) =>
+        team.Members
+            .Where(member => member.Role == TeamMemberRole.Coordinator && member.LeftAt is null)
+            .Select(member => member.UserId)
+            .Distinct()
+            .ToList();
+
+    private async Task<string> GetDisplayNameAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        var user = await UserService.GetByIdAsync(userId, cancellationToken);
+        return user?.DisplayName ?? "Someone";
     }
 
     private async Task<bool> TryAddMemberOnlyAsync(TeamMember member, CancellationToken ct)
@@ -762,6 +876,12 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
 
         InvalidateShiftAuthorizationIfNeeded(userId, removedAssignments);
         await RequestGoogleGroupSyncForTeamAsync(team, cancellationToken);
+
+        if (wasCoordinator)
+        {
+            await SystemTeamSync.SyncMembershipForUserAsync(
+                userId, SystemTeamType.Coordinators, cancellationToken);
+        }
 
         return wasCoordinator;
     }
@@ -841,8 +961,33 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
 
         await RequestGoogleGroupSyncForTeamIdAsync(request.TeamId, cancellationToken);
         await SendAddedToTeamEmailAsync(request.UserId, request.Team, cancellationToken);
+        await SendJoinRequestApprovedNotificationAsync(request.Team, member.UserId, cancellationToken);
 
         return member;
+    }
+
+    private async Task SendJoinRequestApprovedNotificationAsync(
+        Team team,
+        Guid requesterUserId,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _notificationService.SendAsync(
+                NotificationSource.TeamJoinRequestDecided,
+                NotificationClass.Informational,
+                NotificationPriority.Normal,
+                $"Your request to join {team.Name} has been approved",
+                [requesterUserId],
+                body: $"Welcome to {team.Name}!",
+                actionUrl: $"/Teams/{team.Slug}",
+                actionLabel: "View team",
+                cancellationToken: cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to dispatch TeamJoinRequestDecided notification for team {TeamId}", team.Id);
+        }
     }
 
     public async Task RejectJoinRequestAsync(
@@ -851,7 +996,7 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
         string reason,
         CancellationToken cancellationToken = default)
     {
-        var request = await _repo.FindRequestForMutationAsync(requestId, cancellationToken)
+        var request = await _repo.FindRequestWithTeamForMutationAsync(requestId, cancellationToken)
             ?? throw new InvalidOperationException("Join request not found");
 
         var canApprove = await CanUserApproveRequestsForTeamAsync(request.TeamId, approverUserId, cancellationToken);
@@ -870,51 +1015,52 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
             relatedEntityId: request.UserId, relatedEntityType: nameof(User));
 
         _notificationMeterInvalidator.Invalidate();
+        await SendJoinRequestRejectedNotificationAsync(request.Team, request.UserId, cancellationToken);
     }
 
-    public async Task<IReadOnlyList<TeamJoinRequest>> GetPendingRequestsForApproverAsync(
-        Guid approverUserId,
-        CancellationToken cancellationToken = default)
+    private async Task SendJoinRequestRejectedNotificationAsync(
+        Team team,
+        Guid requesterUserId,
+        CancellationToken cancellationToken)
     {
-        var isBoardMember = await RoleAssignmentService.IsUserBoardMemberAsync(approverUserId, cancellationToken);
-        var isTeamsAdmin = !isBoardMember && await RoleAssignmentService.IsUserTeamsAdminAsync(approverUserId, cancellationToken);
-
-        var directLeadTeamIds = await _repo.GetUserCoordinatorTeamIdsAsync(approverUserId, cancellationToken);
-
-        var childTeams = directLeadTeamIds.Count > 0
-            ? await _repo.GetActiveChildIdsByParentsAsync(directLeadTeamIds, cancellationToken)
-            : [];
-
-        var allLeadTeamIds = directLeadTeamIds.Union(childTeams.Select(c => c.ChildId)).ToList();
-
-        IReadOnlyList<TeamJoinRequest> requests;
-        if (isBoardMember || isTeamsAdmin)
-            requests = await _repo.GetAllPendingWithTeamsAsync(cancellationToken);
-        else if (allLeadTeamIds.Count > 0)
-            requests = await _repo.GetPendingForTeamIdsAsync(allLeadTeamIds, cancellationToken);
-        else
-            return [];
-
-        // Stitch the cross-domain User slice in memory.
-        await StitchJoinRequestUserSlicesAsync(requests, cancellationToken);
-
-        return requests;
+        try
+        {
+            await _notificationService.SendAsync(
+                NotificationSource.TeamJoinRequestDecided,
+                NotificationClass.Informational,
+                NotificationPriority.Normal,
+                $"Your request to join {team.Name} was not approved",
+                [requesterUserId],
+                body: $"Your request to join {team.Name} was not approved.",
+                actionUrl: "/Teams",
+                actionLabel: "Browse teams",
+                cancellationToken: cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to dispatch TeamJoinRequestDecided notification for team {TeamId}", team.Id);
+        }
     }
 
-    public async Task<IReadOnlyList<TeamJoinRequest>> GetPendingRequestsForTeamAsync(
+    public async Task<IReadOnlyList<TeamJoinRequestSnapshot>> GetPendingRequestsForTeamAsync(
         Guid teamId,
         CancellationToken cancellationToken = default)
     {
         var requests = await _repo.GetPendingForTeamAsync(teamId, cancellationToken);
-        await StitchJoinRequestUserSlicesAsync(requests, cancellationToken);
-        return requests;
+        var usersById = await GetJoinRequestUsersByIdAsync(requests, cancellationToken);
+        return requests
+            .Select(request => ToJoinRequestSnapshot(request, usersById))
+            .ToList();
     }
 
-    public Task<TeamJoinRequest?> GetUserPendingRequestAsync(
+    public async Task<TeamJoinRequestSnapshot?> GetUserPendingRequestAsync(
         Guid teamId,
         Guid userId,
-        CancellationToken cancellationToken = default) =>
-        _repo.FindUserPendingRequestAsync(teamId, userId, cancellationToken);
+        CancellationToken cancellationToken = default)
+    {
+        var request = await _repo.FindUserPendingRequestAsync(teamId, userId, cancellationToken);
+        return request is null ? null : ToJoinRequestSnapshot(request);
+    }
 
     public async Task<bool> CanUserApproveRequestsForTeamAsync(
         Guid teamId,
@@ -1221,6 +1367,7 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
         Guid roleDefinitionId, string name, string? description, int slotCount,
         List<SlotPriority> priorities, int sortOrder, bool isManagement, RolePeriod period, Guid actorUserId,
         bool isPublic = true,
+        bool canToggleManagement = true,
         CancellationToken cancellationToken = default)
     {
         var definition = await _repo.FindRoleDefinitionForMutationAsync(roleDefinitionId, cancellationToken)
@@ -1231,6 +1378,9 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
             throw new InvalidOperationException("User does not have permission to manage role definitions for this team");
 
         ValidateSlotCountAndPriorities(slotCount, priorities);
+
+        if (!canToggleManagement)
+            isManagement = definition.IsManagement;
 
         if (slotCount < definition.Assignments.Count)
             throw new InvalidOperationException(
@@ -1315,8 +1465,8 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
             relatedEntityId: definition.TeamId, relatedEntityType: nameof(Team));
     }
 
-    public async Task SetRoleIsManagementAsync(
-        Guid roleDefinitionId, bool isManagement, Guid actorUserId,
+    public async Task<TeamRoleManagementToggleResult> ToggleRoleIsManagementAsync(
+        Guid roleDefinitionId, Guid actorUserId,
         CancellationToken cancellationToken = default)
     {
         var definition = await _repo.FindRoleDefinitionWithMembersForMutationAsync(roleDefinitionId, cancellationToken)
@@ -1326,6 +1476,7 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
         if (!canManage)
             throw new InvalidOperationException("User does not have permission to manage role definitions for this team");
 
+        var isManagement = !definition.IsManagement;
         var usersNeedingShiftAuthorizationInvalidation =
             IsShiftAuthorizationDefinition(definition) &&
             definition.IsManagement != isManagement &&
@@ -1364,23 +1515,47 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
             relatedEntityId: definition.TeamId, relatedEntityType: nameof(Team));
 
         InvalidateShiftAuthorization(usersNeedingShiftAuthorizationInvalidation);
+
+        return new TeamRoleManagementToggleResult(definition.Name, definition.IsManagement);
     }
 
-    public async Task<IReadOnlyList<TeamRoleDefinition>> GetRoleDefinitionsAsync(
+    public async Task<IReadOnlyList<TeamRoleDefinitionSnapshot>> GetRoleDefinitionsAsync(
         Guid teamId, CancellationToken cancellationToken = default)
     {
         var definitions = await _repo.GetRoleDefinitionsAsync(teamId, cancellationToken);
-        await StitchRoleAssignmentUserSlicesAsync(definitions, cancellationToken);
-        return definitions;
+        return definitions.Select(definition => ToRoleDefinitionSnapshot(definition)).ToList();
     }
 
-    public async Task<IReadOnlyList<TeamRoleDefinition>> GetAllRoleDefinitionsAsync(
+    public async Task<IReadOnlyList<TeamRoleDefinitionSnapshot>> GetAllRoleDefinitionsAsync(
         CancellationToken cancellationToken = default)
     {
         var definitions = await _repo.GetAllRoleDefinitionsAsync(cancellationToken);
-        await StitchRoleAssignmentUserSlicesAsync(definitions, cancellationToken);
-        return definitions;
+        return definitions.Select(definition => ToRoleDefinitionSnapshot(definition)).ToList();
     }
+
+    private static TeamRoleDefinitionSnapshot ToRoleDefinitionSnapshot(
+        TeamRoleDefinition definition,
+        Team? fallbackTeam = null) =>
+        new(
+            definition.Id,
+            definition.TeamId,
+            definition.Team?.Name ?? fallbackTeam?.Name ?? string.Empty,
+            definition.Team?.Slug ?? fallbackTeam?.Slug ?? string.Empty,
+            definition.Name,
+            definition.Description,
+            definition.SlotCount,
+            definition.Priorities,
+            definition.SortOrder,
+            definition.IsManagement,
+            definition.Period,
+            definition.IsPublic,
+            definition.Assignments
+                .Select(assignment => new TeamRoleAssignmentSnapshot(
+                    assignment.Id,
+                    assignment.TeamMemberId,
+                    assignment.SlotIndex,
+                    assignment.TeamMember?.UserId))
+                .ToList());
 
     public async Task<IReadOnlyList<TeamRosterSlotSummary>> GetRosterAsync(
         string? priority,
@@ -1389,6 +1564,16 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
         CancellationToken cancellationToken = default)
     {
         var definitions = await GetAllRoleDefinitionsAsync(cancellationToken);
+        var assignedUserIds = definitions
+            .SelectMany(d => d.Assignments)
+            .Select(a => a.AssignedUserId)
+            .Where(id => id.HasValue)
+            .Select(id => id!.Value)
+            .Distinct()
+            .ToList();
+        var usersById = assignedUserIds.Count == 0
+            ? new Dictionary<Guid, User>()
+            : await UserService.GetByIdsAsync(assignedUserIds, cancellationToken);
 
         var slots = new List<TeamRosterSlotSummary>();
         foreach (var definition in definitions)
@@ -1401,8 +1586,8 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
                     : SlotPriority.None;
 
                 slots.Add(new TeamRosterSlotSummary(
-                    definition.Team.Name,
-                    definition.Team.Slug,
+                    definition.TeamName,
+                    definition.TeamSlug,
                     definition.Name,
                     definition.Description,
                     definition.Id,
@@ -1411,10 +1596,10 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
                     GetPriorityBadgeClass(slotPriority),
                     definition.Period.ToString(),
                     assignment is not null,
-                    assignment?.TeamMember?.UserId,
-#pragma warning disable CS0618 // User slice stitched in-memory by StitchRoleAssignmentUserSlicesAsync
-                    assignment?.TeamMember?.User?.DisplayName));
-#pragma warning restore CS0618
+                    assignment?.AssignedUserId,
+                    assignment?.AssignedUserId is Guid assignedUserId
+                        ? usersById.GetValueOrDefault(assignedUserId)?.DisplayName
+                        : null));
             }
         }
 
@@ -1664,15 +1849,34 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
         CancellationToken cancellationToken = default) =>
         _repo.GetActiveNonSystemTeamCoordinatorUserIdsAsync(cancellationToken);
 
-    public async Task<IReadOnlyList<TeamMember>> GetActiveMembersForTeamsAsync(
+    public async Task<IReadOnlyList<TeamActiveMemberSnapshot>> GetActiveMembersForTeamsAsync(
         IReadOnlyCollection<Guid> teamIds,
         CancellationToken cancellationToken = default)
     {
         if (teamIds.Count == 0)
             return [];
         var members = await _repo.GetActiveMembersForTeamsAsync(teamIds, cancellationToken);
-        await StitchMemberUserSlicesAsync(members, cancellationToken);
-        return members;
+        var userIds = members.Select(member => member.UserId).Distinct().ToList();
+        var usersById = userIds.Count == 0
+            ? new Dictionary<Guid, User>()
+            : await UserService.GetByIdsAsync(userIds, cancellationToken);
+
+        return members
+            .Select(member =>
+            {
+                usersById.TryGetValue(member.UserId, out var user);
+                return new TeamActiveMemberSnapshot(
+                    member.TeamId,
+                    member.Id,
+                    member.UserId,
+                    user?.DisplayName ?? string.Empty,
+                    user?.Email,
+                    user?.ProfilePictureUrl,
+                    user?.GoogleEmailStatus ?? GoogleEmailStatus.Unknown,
+                    member.Role,
+                    member.JoinedAt);
+            })
+            .ToList();
     }
 
     public Task<IReadOnlyDictionary<Guid, string>> GetManagementRoleNamesByTeamIdsAsync(
@@ -1705,12 +1909,6 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
         }
 
         return result;
-    }
-
-    public async Task<(IReadOnlyList<Team> Items, int TotalCount)> GetAllTeamsForAdminAsync(
-        int page, int pageSize, CancellationToken cancellationToken = default)
-    {
-        return await _repo.GetAllForAdminAsync(page, pageSize, cancellationToken);
     }
 
     public async Task<AdminTeamListResult> GetAdminTeamListAsync(
@@ -1815,6 +2013,7 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
             })
         }).ToList());
 
+#pragma warning disable CS0618 // TeamJoinRequest.Team is included on this read path; in-section nav read for the GDPR export projection.
         var joinRequestSlice = new UserDataSlice(GdprExportSections.TeamJoinRequests, joinRequests.Select(tjr => new
         {
             TeamName = tjr.Team.Name,
@@ -1823,6 +2022,7 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
             RequestedAt = tjr.RequestedAt.ToInvariantInstantString(),
             ResolvedAt = tjr.ResolvedAt.ToInvariantInstantString()
         }).ToList());
+#pragma warning restore CS0618
 
         return [membershipSlice, joinRequestSlice];
     }
@@ -1899,9 +2099,11 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
     private static bool IsShiftAuthorizationAssignment(TeamRoleAssignment assignment) =>
         IsShiftAuthorizationDefinition(assignment.TeamRoleDefinition);
 
+#pragma warning disable CS0618 // TeamRoleDefinition.Team is included on this read path; in-section nav read.
     private static bool IsShiftAuthorizationDefinition(TeamRoleDefinition definition) =>
         definition.IsManagement &&
         definition.Team.SystemTeamType == SystemTeamType.None;
+#pragma warning restore CS0618
 
     // ==========================================================================
     // Internal helpers — user stitching
@@ -1958,6 +2160,19 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
 #pragma warning restore CS0618
             }
         }
+    }
+
+    private async Task<IReadOnlyDictionary<Guid, User>> GetJoinRequestUsersByIdAsync(
+        IReadOnlyList<TeamJoinRequest> requests,
+        CancellationToken ct)
+    {
+        if (requests.Count == 0)
+            return new Dictionary<Guid, User>();
+
+        var userIds = requests.Select(request => request.UserId)
+            .Distinct()
+            .ToList();
+        return await UserService.GetByIdsAsync(userIds, ct);
     }
 
     private async Task StitchRoleAssignmentUserSlicesAsync(
@@ -2172,15 +2387,80 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
             team.IsHidden);
     }
 
-    private static TeamDetailMemberSummary MapTeamDetailMemberSummary(TeamMember member) => new(
+    private static TeamPageTeamSummary MapTeamSummary(Team team) => new(
+        team.Id,
+        team.Name,
+        team.DisplayName,
+        team.Description,
+        team.Slug,
+        team.IsActive,
+        team.RequiresApproval,
+        team.IsSystemTeam,
+        team.SystemTeamType,
+        team.CreatedAt,
+        team.IsPublicPage,
+        team.ShowCoordinatorsOnPublicPage,
+        team.PageContent,
+        team.CallsToAction ?? [],
+        team.PageContentUpdatedAt,
+        team.PageContentUpdatedByUserId,
+        team.ParentTeam is null ? null : MapTeamLink(team.ParentTeam));
+
+    private static TeamPageTeamLink MapTeamLink(Team team) => new(
+        team.Id,
+        team.Name,
+        team.Slug);
+
+    private static TeamDetailMemberSummary MapTeamDetailMemberSummary(
+        TeamMember member,
+        IReadOnlyDictionary<Guid, User> usersById) => new(
         UserId: member.UserId,
-#pragma warning disable CS0618 // populated in memory
-        DisplayName: member.User?.DisplayName ?? string.Empty,
-        Email: member.User?.Email,
-        ProfilePictureUrl: member.User?.ProfilePictureUrl,
-#pragma warning restore CS0618
+        DisplayName: GetMemberDisplayName(member, usersById),
+        Email: usersById.GetValueOrDefault(member.UserId)?.Email,
+        ProfilePictureUrl: usersById.GetValueOrDefault(member.UserId)?.ProfilePictureUrl,
         Role: member.Role,
         JoinedAt: member.JoinedAt);
+
+#pragma warning disable CS0618 // TeamJoinRequest.Team is included on this read path; in-section nav read for snapshot projections.
+    private static TeamJoinRequestSnapshot ToJoinRequestSnapshot(TeamJoinRequest request) => new(
+        request.Id,
+        request.TeamId,
+        request.Team?.Name,
+        request.UserId,
+        UserDisplayName: null,
+        UserEmail: null,
+        UserProfilePictureUrl: null,
+        request.Status,
+        request.Message,
+        request.RequestedAt,
+        request.ResolvedAt,
+        request.ReviewNotes);
+
+    private static TeamJoinRequestSnapshot ToJoinRequestSnapshot(
+        TeamJoinRequest request,
+        IReadOnlyDictionary<Guid, User> usersById)
+    {
+        usersById.TryGetValue(request.UserId, out var user);
+        return new TeamJoinRequestSnapshot(
+            request.Id,
+            request.TeamId,
+            request.Team?.Name,
+            request.UserId,
+            user?.DisplayName,
+            user?.Email,
+            user?.ProfilePictureUrl,
+            request.Status,
+            request.Message,
+            request.RequestedAt,
+            request.ResolvedAt,
+            request.ReviewNotes);
+    }
+#pragma warning restore CS0618
+
+    private static string GetMemberDisplayName(
+        TeamMember member,
+        IReadOnlyDictionary<Guid, User> usersById) =>
+        usersById.GetValueOrDefault(member.UserId)?.DisplayName ?? string.Empty;
 
     private static string GetPriorityBadgeClass(SlotPriority priority) =>
         priority switch
@@ -2213,13 +2493,41 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
     // System team sync support (issue #570 — §15 Google-writing jobs)
     // ==========================================================================
 
-    public Task<Team?> GetSystemTeamWithActiveMembersAsync(
-        SystemTeamType type, CancellationToken cancellationToken = default) =>
-        _repo.GetSystemTeamWithActiveMembersAsync(type, cancellationToken);
+    public async Task<SystemTeamMembershipSnapshot?> GetSystemTeamWithActiveMembersAsync(
+        SystemTeamType type, CancellationToken cancellationToken = default)
+    {
+        var team = await _repo.GetSystemTeamWithActiveMembersAsync(type, cancellationToken);
+        return team is null
+            ? null
+            : new SystemTeamMembershipSnapshot(
+                team.Id,
+                team.Name,
+                team.Slug,
+                team.IsHidden,
+                team.SystemTeamType,
+                team.Members
+                    .Where(member => member.LeftAt is null)
+                    .Select(member => member.UserId)
+                    .ToList());
+    }
 
-    public Task<IReadOnlyList<TeamMember>> GetActiveMembershipsForRoleReconciliationAsync(
-        CancellationToken cancellationToken = default) =>
-        _repo.GetActiveMembershipsForRoleReconciliationAsync(cancellationToken);
+    public async Task<IReadOnlyList<TeamRoleReconciliationMembership>> GetActiveMembershipsForRoleReconciliationAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var memberships = await _repo.GetActiveMembershipsForRoleReconciliationAsync(cancellationToken);
+#pragma warning disable CS0618 // TeamMember.Team is included on this read path; in-section nav read for the reconciliation snapshot.
+        return memberships
+            .Select(member => new TeamRoleReconciliationMembership(
+                member.Id,
+                member.UserId,
+                member.TeamId,
+                member.Team.Name,
+                member.Role,
+                member.Team.SystemTeamType,
+                member.RoleAssignments.Any(assignment => assignment.TeamRoleDefinition.IsManagement)))
+            .ToList();
+#pragma warning restore CS0618
+    }
 
     public async Task<int> ApplyMemberRoleChangesAsync(
         IReadOnlyCollection<(Guid TeamMemberId, TeamMemberRole Role)> changes,

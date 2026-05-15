@@ -139,9 +139,7 @@ public class FeedbackController : HumansControllerBase
                 HasScreenshot = r.ScreenshotStoragePath is not null,
                 MessageCount = r.Messages.Count,
                 GitHubIssueNumber = r.GitHubIssueNumber,
-                NeedsReply = (r.LastReporterMessageAt.HasValue &&
-                    (!r.LastAdminMessageAt.HasValue || r.LastReporterMessageAt > r.LastAdminMessageAt)) ||
-                    (r.Status == FeedbackStatus.Open && !r.LastAdminMessageAt.HasValue),
+                NeedsReply = r.NeedsReply,
                 AssignedToName = r.AssignedToName,
                 AssignedToUserId = r.AssignedToUserId,
                 AssignedToTeamName = r.AssignedToTeamName,
@@ -158,11 +156,9 @@ public class FeedbackController : HumansControllerBase
         var (userMissing, user) = await RequireCurrentUserAsync();
         if (userMissing is not null) return userMissing;
 
-        var report = await _feedbackService.GetFeedbackByIdAsync(id);
-        if (report is null) return NotFound();
-
         var isAdmin = RoleChecks.IsFeedbackAdmin(User);
-        if (!isAdmin && report.UserId != user.Id) return NotFound();
+        var report = await _feedbackService.GetFeedbackByIdForViewerAsync(id, user.Id, isAdmin);
+        if (report is null) return NotFound();
 
         var viewModel = MapDetailViewModel(report, isAdmin);
 
@@ -202,11 +198,10 @@ public class FeedbackController : HumansControllerBase
         try
         {
             var roles = await UserManager.GetRolesAsync(user);
-            var additionalContext = roles.Count > 0 ? string.Join(", ", roles.Order(StringComparer.Ordinal)) : null;
 
-            await _feedbackService.SubmitFeedbackAsync(
+            await _feedbackService.SubmitUserFeedbackAsync(
                 user.Id, model.Category, model.Description,
-                model.PageUrl, model.UserAgent, additionalContext,
+                model.PageUrl, model.UserAgent, roles,
                 model.Screenshot);
 
             var successMsg = _localizer["Feedback_Submitted"].Value;
@@ -231,12 +226,6 @@ public class FeedbackController : HumansControllerBase
         var (userMissing, user) = await RequireCurrentUserAsync();
         if (userMissing is not null) return userMissing;
 
-        var report = await _feedbackService.GetFeedbackByIdAsync(id);
-        if (report is null) return NotFound();
-
-        var isAdmin = RoleChecks.IsFeedbackAdmin(User);
-        if (!isAdmin && report.UserId != user.Id) return NotFound();
-
         if (!ModelState.IsValid)
         {
             SetError("Message is required.");
@@ -245,7 +234,7 @@ public class FeedbackController : HumansControllerBase
 
         try
         {
-            await _feedbackService.PostMessageAsync(id, user.Id, model.Content, isAdmin);
+            await _feedbackService.PostMessageAsync(id, user.Id, model.Content, RoleChecks.IsFeedbackAdmin(User));
             SetSuccess("Message posted.");
         }
         catch (InvalidOperationException)

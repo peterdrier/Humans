@@ -1,6 +1,8 @@
 using Humans.Application.Interfaces.Admin;
+using Humans.Application.Interfaces.Repositories;
 using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Jobs;
+using Humans.Infrastructure.Repositories.Admin;
 using Humans.Infrastructure.Services;
 using Humans.Web.Filters;
 
@@ -12,6 +14,7 @@ internal static class AdminSectionExtensions
     {
         services.AddScoped<ProcessAccountDeletionsJob>();
         services.AddScoped<SuspendNonCompliantMembersJob>();
+        services.AddSingleton<IAdminDatabaseDiagnosticsRepository, AdminDatabaseDiagnosticsRepository>();
         services.AddScoped<IAdminDatabaseDiagnosticsService, AdminDatabaseDiagnosticsService>();
 
         // Log API key (separate credential from feedback)

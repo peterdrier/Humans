@@ -6,8 +6,11 @@ using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
 using NodaTime;
+using NodaTime.Text;
+using System.Text.Json;
 
 namespace Humans.Application.Services.CityPlanning;
 
@@ -34,6 +37,7 @@ public sealed class CityPlanningService : ICityPlanningService
     private readonly ICampService _campService;
     private readonly ITeamService _teamService;
     private readonly IUserService _userService;
+    private const long MaxGeoJsonUploadBytes = 10 * 1024 * 1024;
 
     public CityPlanningService(
         ICityPlanningRepository repo,
@@ -177,9 +181,25 @@ public sealed class CityPlanningService : ICityPlanningService
         Guid campSeasonId, string geoJson, double areaSqm, Guid modifiedByUserId,
         string note = "Saved", CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrWhiteSpace(geoJson) || !IsValidJson(geoJson))
+            throw new ArgumentException("Invalid GeoJSON.", nameof(geoJson));
+
         var now = _clock.GetCurrentInstant();
         return _repo.SavePolygonAndAppendHistoryAsync(
             campSeasonId, geoJson, areaSqm, modifiedByUserId, note, now, cancellationToken);
+    }
+
+    private static bool IsValidJson(string value)
+    {
+        try
+        {
+            JsonDocument.Parse(value).Dispose();
+            return true;
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
     }
 
     public async Task<(CampPolygon polygon, CampPolygonHistory history)> RestoreCampPolygonVersionAsync(
@@ -310,6 +330,34 @@ public sealed class CityPlanningService : ICityPlanningService
             cancellationToken);
     }
 
+    public async Task<GeoJsonUploadResult> UpdateLimitZoneFromUploadAsync(
+        IFormFile? file, Guid userId, CancellationToken cancellationToken = default)
+    {
+        var geoJson = await ReadGeoJsonUploadAsync(file, cancellationToken);
+        if (!geoJson.Success)
+            return new GeoJsonUploadResult(false, geoJson.ErrorKey);
+
+        await UpdateLimitZoneAsync(geoJson.Content!, userId, cancellationToken);
+        return new GeoJsonUploadResult(true);
+    }
+
+    private static async Task<(bool Success, string? ErrorKey, string? Content)> ReadGeoJsonUploadAsync(
+        IFormFile? file,
+        CancellationToken cancellationToken)
+    {
+        if (file is null || file.Length == 0)
+            return (false, "MissingFile", null);
+
+        if (file.Length > MaxGeoJsonUploadBytes)
+            return (false, "FileTooLarge", null);
+
+        using var reader = new StreamReader(file.OpenReadStream());
+        var geoJson = await reader.ReadToEndAsync(cancellationToken);
+        return IsValidJson(geoJson)
+            ? (true, null, geoJson)
+            : (false, "InvalidGeoJson", null);
+    }
+
     public async Task DeleteLimitZoneAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         var campSettings = await _campService.GetSettingsAsync(cancellationToken);
@@ -329,6 +377,17 @@ public sealed class CityPlanningService : ICityPlanningService
             s => s.OfficialZonesGeoJson = geoJson,
             _clock.GetCurrentInstant(),
             cancellationToken);
+    }
+
+    public async Task<GeoJsonUploadResult> UpdateOfficialZonesFromUploadAsync(
+        IFormFile? file, Guid userId, CancellationToken cancellationToken = default)
+    {
+        var geoJson = await ReadGeoJsonUploadAsync(file, cancellationToken);
+        if (!geoJson.Success)
+            return new GeoJsonUploadResult(false, geoJson.ErrorKey);
+
+        await UpdateOfficialZonesAsync(geoJson.Content!, userId, cancellationToken);
+        return new GeoJsonUploadResult(true);
     }
 
     public async Task DeleteOfficialZonesAsync(Guid userId, CancellationToken cancellationToken = default)
@@ -354,6 +413,36 @@ public sealed class CityPlanningService : ICityPlanningService
             },
             _clock.GetCurrentInstant(),
             cancellationToken);
+    }
+
+    public async Task<PlacementDateUpdateResult> UpdatePlacementDatesAsync(
+        string? opensAt, string? closesAt, CancellationToken cancellationToken = default)
+    {
+        var pattern = LocalDateTimePattern.CreateWithInvariantCulture("yyyy-MM-ddTHH:mm");
+
+        var opensResult = ParsePlacementDate(opensAt, pattern);
+        if (!opensResult.Success)
+            return new PlacementDateUpdateResult(false, "InvalidOpensAt");
+
+        var closesResult = ParsePlacementDate(closesAt, pattern);
+        if (!closesResult.Success)
+            return new PlacementDateUpdateResult(false, "InvalidClosesAt");
+
+        await UpdatePlacementDatesAsync(opensResult.Value, closesResult.Value, cancellationToken);
+        return new PlacementDateUpdateResult(true);
+    }
+
+    private static (bool Success, LocalDateTime? Value) ParsePlacementDate(
+        string? input,
+        LocalDateTimePattern pattern)
+    {
+        if (input is not { Length: > 0 })
+            return (true, null);
+
+        var result = pattern.Parse(input);
+        return result.Success
+            ? (true, result.Value)
+            : (false, null);
     }
 
     public async Task<string?> GetRegistrationInfoAsync(CancellationToken cancellationToken = default)

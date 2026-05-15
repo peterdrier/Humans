@@ -963,17 +963,41 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
     public Task<IReadOnlyList<ShiftSignup>> GetActiveSignupsForUserAsync(Guid userId, CancellationToken ct = default) =>
         _repo.GetActiveSignupsForUserAsync(userId, ct);
 
-    public Task<ShiftSignup?> GetByIdAsync(Guid signupId) =>
-        _repo.GetByIdAsync(signupId);
+    public async Task<ShiftSignupTeamProbe?> GetByIdAsync(Guid signupId)
+    {
+        var signup = await _repo.GetByIdAsync(signupId);
+        return signup is null
+            ? null
+            : new ShiftSignupTeamProbe(signup.Id, signup.ShiftId, signup.Shift.Rota.TeamId);
+    }
 
-    public Task<ShiftSignup?> GetByBlockIdFirstAsync(Guid signupBlockId) =>
-        _repo.GetByBlockIdFirstAsync(signupBlockId);
+    public async Task<ShiftSignupTeamProbe?> GetByBlockIdFirstAsync(Guid signupBlockId)
+    {
+        var signup = await _repo.GetByBlockIdFirstAsync(signupBlockId);
+        return signup is null
+            ? null
+            : new ShiftSignupTeamProbe(signup.Id, signup.ShiftId, signup.Shift.Rota.TeamId);
+    }
 
     public Task<IReadOnlyList<ShiftSignup>> GetByShiftAsync(Guid shiftId) =>
         _repo.GetByShiftAsync(shiftId);
 
-    public Task<IReadOnlyList<ShiftSignup>> GetNoShowHistoryAsync(Guid userId) =>
-        _repo.GetNoShowHistoryAsync(userId);
+    public async Task<IReadOnlyList<NoShowHistoryEntry>> GetNoShowHistoryAsync(Guid userId)
+    {
+        var signups = await _repo.GetNoShowHistoryAsync(userId);
+        return signups.Select(s =>
+        {
+            var rota = s.Shift.Rota;
+            var eventSettings = rota.EventSettings;
+            return new NoShowHistoryEntry(
+                ShiftLabel: rota.Name,
+                TeamId: rota.TeamId,
+                ShiftStart: s.Shift.GetAbsoluteStart(eventSettings),
+                TimeZoneId: eventSettings.TimeZoneId,
+                ReviewedByUserId: s.ReviewedByUserId,
+                ReviewedAt: s.ReviewedAt);
+        }).ToList();
+    }
 
     public async Task<(HashSet<Guid> ShiftIds, Dictionary<Guid, SignupStatus> Statuses)> GetActiveSignupStatusesAsync(
         Guid userId, Guid eventSettingsId)
@@ -1218,8 +1242,20 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
         return deleted;
     }
 
-    public Task<IReadOnlyList<ShiftSignup>> GetAllForOrphanScanAsync(CancellationToken ct = default) =>
-        _repo.GetAllForOrphanScanAsync(ct);
+    public async Task<IReadOnlyList<OrphanSignupSnapshot>> GetAllForOrphanScanAsync(CancellationToken ct = default)
+    {
+        var signups = await _repo.GetAllForOrphanScanAsync(ct);
+        return signups.Select(s => new OrphanSignupSnapshot(
+            s.Id,
+            s.UserId,
+            s.Shift.Rota.Name,
+            s.Shift.Rota.EventSettings.GateOpeningDate.PlusDays(s.Shift.DayOffset),
+            s.Status,
+            s.CreatedAt,
+            s.ReviewedByUserId,
+            s.EnrolledByUserId,
+            s.SignupBlockId)).ToList();
+    }
 
     public async Task PromoteWidgetPendingSignupsAfterAdmissionAsync(
         Guid userId, CancellationToken ct = default)

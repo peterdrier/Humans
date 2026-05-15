@@ -1,5 +1,6 @@
 using Humans.Application.Interfaces.Campaigns;
 using Humans.Domain.Entities;
+using Humans.Domain.Enums;
 
 namespace Humans.Application.DTOs;
 
@@ -12,15 +13,41 @@ public record CampaignDetailStatsDto(
     int TotalGrants);
 
 public record CampaignDetailPageDto(
-    Campaign Campaign,
+    CampaignAdminSummary Campaign,
     CampaignDetailStatsDto Stats);
+
+public record CampaignListSummary(
+    Guid Id,
+    string Title,
+    CampaignStatus Status,
+    int TotalCodes,
+    int AssignedCodes,
+    int SentCount,
+    int FailedCount,
+    NodaTime.Instant CreatedAt);
+
+public record CampaignEditSnapshot(
+    Guid Id,
+    string Title,
+    string? Description,
+    string EmailSubject,
+    string EmailBodyTemplate,
+    string? ReplyToAddress,
+    CampaignStatus Status);
+
+public record CampaignAdminSummary(
+    Guid Id,
+    string Title,
+    string? Description,
+    CampaignStatus Status,
+    IReadOnlyList<CampaignGrantSummary> Grants);
 
 public record CampaignTeamOptionDto(
     Guid Id,
     string Name);
 
 public record CampaignSendWavePageDto(
-    Campaign Campaign,
+    CampaignAdminSummary Campaign,
     IReadOnlyList<CampaignTeamOptionDto> Teams,
     Guid? SelectedTeamId,
     WaveSendPreview? Preview);

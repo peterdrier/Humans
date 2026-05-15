@@ -4,6 +4,7 @@ using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Expenses;
 using Humans.Application.Interfaces.Holded;
+using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
@@ -35,23 +36,21 @@ public class ExpenseReportServiceHoldedOutboxTests
     private static readonly Guid SubmitterId = Guid.NewGuid();
     private static readonly Guid CategoryId = Guid.NewGuid();
 
-    private readonly BudgetGroup _group = new()
-    {
-        Id = Guid.NewGuid(),
-        Name = "Camp Build",
-    };
-
-    private readonly BudgetCategory _category;
+    private readonly BudgetCategorySnapshot _category;
 
     public ExpenseReportServiceHoldedOutboxTests()
     {
-        _category = new BudgetCategory
-        {
-            Id = CategoryId,
-            Name = "Camp",
-            BudgetGroupId = _group.Id,
-            BudgetGroup = _group,
-        };
+        var groupId = Guid.NewGuid();
+        _category = new BudgetCategorySnapshot(
+            CategoryId,
+            groupId,
+            "Camp",
+            0m,
+            default,
+            null,
+            0,
+            new BudgetCategoryGroupSnapshot(groupId, Guid.NewGuid(), "Camp Build", false, false, null),
+            []);
 
         _repo = Substitute.For<IExpenseRepository>();
         _budgetService = Substitute.For<IBudgetService>();
@@ -75,6 +74,7 @@ public class ExpenseReportServiceHoldedOutboxTests
             _budgetService,
             Substitute.For<ITeamService>(),
             _userService,
+            Substitute.For<IProfileService>(),
             Substitute.For<IAuditLogService>(),
             _holdedClient,
             _clock,
@@ -440,6 +440,7 @@ public class ExpenseReportServiceHoldedOutboxTests
             _budgetService,
             Substitute.For<ITeamService>(),
             _userService,
+            Substitute.For<IProfileService>(),
             Substitute.For<IAuditLogService>(),
             _holdedClient,
             _clock,

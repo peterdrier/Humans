@@ -63,6 +63,7 @@ public sealed class BudgetRepository : IBudgetRepository
             query = query.Where(y => !y.IsDeleted);
 
         return await query
+            // arch:db-sort-ok budget year list chronology
             .OrderByDescending(y => y.Year)
             .ToListAsync(ct);
     }
@@ -77,6 +78,7 @@ public sealed class BudgetRepository : IBudgetRepository
         // lookups elsewhere.
         return await ctx.BudgetYears
             .AsNoTracking()
+            // arch:db-sort-ok budget tree persisted SortOrder
             .Include(y => y.Groups.OrderBy(g => g.SortOrder))
                 .ThenInclude(g => g.Categories.OrderBy(c => c.SortOrder))
                     .ThenInclude(c => c.LineItems.OrderBy(li => li.SortOrder))
@@ -92,6 +94,7 @@ public sealed class BudgetRepository : IBudgetRepository
         var activeId = await ctx.BudgetYears
             .AsNoTracking()
             .Where(y => y.Status == BudgetYearStatus.Active && !y.IsDeleted)
+            // arch:db-sort-ok deterministic singleton selector
             .OrderBy(y => y.Id)
             .Select(y => (Guid?)y.Id)
             .FirstOrDefaultAsync(ct);
@@ -101,6 +104,7 @@ public sealed class BudgetRepository : IBudgetRepository
 
         return await ctx.BudgetYears
             .AsNoTracking()
+            // arch:db-sort-ok budget tree persisted SortOrder
             .Include(y => y.Groups.OrderBy(g => g.SortOrder))
                 .ThenInclude(g => g.Categories.OrderBy(c => c.SortOrder))
                     .ThenInclude(c => c.LineItems.OrderBy(li => li.SortOrder))
@@ -373,6 +377,7 @@ public sealed class BudgetRepository : IBudgetRepository
 
         var deptGroup = await ctx.BudgetGroups
             .Include(g => g.Categories)
+            // arch:db-sort-ok deterministic singleton selector
             .OrderBy(g => g.Id)
             .FirstOrDefaultAsync(g => g.BudgetYearId == budgetYearId && g.IsDepartmentGroup, ct)
             ?? throw new InvalidOperationException("No Departments group found for this budget year");
@@ -1110,6 +1115,7 @@ public sealed class BudgetRepository : IBudgetRepository
             query = query.Where(a => a.BudgetYearId == budgetYearId.Value);
 
         return await query
+            // arch:db-sort-ok top-N budget audit selector
             .OrderByDescending(a => a.OccurredAt)
             .Take(500)
             .ToListAsync(ct);
@@ -1123,6 +1129,7 @@ public sealed class BudgetRepository : IBudgetRepository
         return await ctx.BudgetAuditLogs
             .AsNoTracking()
             .Where(bal => bal.ActorUserId == userId)
+            // arch:db-sort-ok budget audit user chronology
             .OrderByDescending(bal => bal.OccurredAt)
             .ToListAsync(ct);
     }
@@ -1138,6 +1145,7 @@ public sealed class BudgetRepository : IBudgetRepository
         return await ctx.BudgetAuditLogs
             .AsNoTracking()
             .Where(bal => userIds.Contains(bal.ActorUserId))
+            // arch:db-sort-ok budget audit user chronology
             .OrderByDescending(bal => bal.OccurredAt)
             .ToListAsync(ct);
     }

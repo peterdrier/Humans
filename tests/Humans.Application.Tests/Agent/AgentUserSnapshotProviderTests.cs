@@ -154,7 +154,7 @@ public class AgentUserSnapshotProviderTests
             .Returns(new User { Id = userId, DisplayName = "T", PreferredLanguage = "es" });
         var roles = Substitute.For<IRoleAssignmentService>();
         roles.GetActiveForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<RoleAssignment>());
+            .Returns(Array.Empty<RoleAssignmentSnapshot>());
 
         var teams = Substitute.For<ITeamService>();
         teams.GetActiveTeamMembershipsForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())

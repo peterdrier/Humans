@@ -1,8 +1,16 @@
 using System.ComponentModel.DataAnnotations;
 using AwesomeAssertions;
+using Humans.Application.DTOs.Calendar;
+using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Teams;
 using Humans.Application.Services.Calendar;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging.Abstractions;
+using NSubstitute;
 using Humans.Testing;
 using NodaTime;
+using NodaTime.Testing;
 using NodaTime.TimeZones;
 using Xunit;
 
@@ -100,5 +108,64 @@ public class CalendarServiceValidationTests
         // as a 500 to the user on submit. The fix swaps this for GetZoneOrNull.
         var act = () => DateTimeZoneProviders.Tzdb["Europe/Madird"];
         act.Should().Throw<DateTimeZoneNotFoundException>();
+    }
+
+    [HumansFact]
+    public async Task CreateEventWithResultAsync_returns_validation_member_for_malformed_recurrence()
+    {
+        var repo = Substitute.For<ICalendarRepository>();
+        var service = BuildService(repo);
+        var dto = new CreateCalendarEventDto(
+            "Planning",
+            Description: null,
+            Location: null,
+            LocationUrl: null,
+            OwningTeamId: Guid.NewGuid(),
+            StartUtc: Instant.FromUtc(2026, 5, 15, 17, 0),
+            EndUtc: Instant.FromUtc(2026, 5, 15, 18, 0),
+            IsAllDay: false,
+            RecurrenceRule: "FREQ=NOT_A_REAL_FREQ",
+            RecurrenceTimezone: "Europe/Madrid");
+
+        var result = await service.CreateEventWithResultAsync(dto, Guid.NewGuid());
+
+        result.Succeeded.Should().BeFalse();
+        result.ValidationMemberName.Should().Be(nameof(CreateCalendarEventDto.RecurrenceRule));
+        result.ErrorMessage.Should().Contain("Recurrence rule is malformed");
+        await repo.DidNotReceive().AddAsync(Arg.Any<Humans.Domain.Entities.CalendarEvent>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task UpdateEventWithResultAsync_returns_validation_member_for_unknown_timezone()
+    {
+        var service = BuildService(Substitute.For<ICalendarRepository>());
+        var dto = new UpdateCalendarEventDto(
+            "Planning",
+            Description: null,
+            Location: null,
+            LocationUrl: null,
+            OwningTeamId: Guid.NewGuid(),
+            StartUtc: Instant.FromUtc(2026, 5, 15, 17, 0),
+            EndUtc: Instant.FromUtc(2026, 5, 15, 18, 0),
+            IsAllDay: false,
+            RecurrenceRule: "FREQ=DAILY",
+            RecurrenceTimezone: "Europe/Madird");
+
+        var result = await service.UpdateEventWithResultAsync(Guid.NewGuid(), dto, Guid.NewGuid());
+
+        result.Succeeded.Should().BeFalse();
+        result.ValidationMemberName.Should().Be(nameof(CreateCalendarEventDto.RecurrenceTimezone));
+        result.ErrorMessage.Should().Contain("Recurrence timezone is unknown");
+    }
+
+    private static CalendarService BuildService(ICalendarRepository repo)
+    {
+        return new CalendarService(
+            repo,
+            Substitute.For<ITeamService>(),
+            new MemoryCache(new MemoryCacheOptions()),
+            new FakeClock(Instant.FromUtc(2026, 5, 15, 12, 0)),
+            Substitute.For<IAuditLogService>(),
+            NullLogger<CalendarService>.Instance);
     }
 }

@@ -1,5 +1,7 @@
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
+using Humans.Domain.Enums;
+using NodaTime;
 
 namespace Humans.Application.Interfaces.Profiles;
 
@@ -11,12 +13,12 @@ public interface IAccountMergeService : IApplicationService
     /// <summary>
     /// Gets all pending merge requests for admin review.
     /// </summary>
-    Task<IReadOnlyList<AccountMergeRequest>> GetPendingRequestsAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<AccountMergeRequestSnapshot>> GetPendingRequestsAsync(CancellationToken ct = default);
 
     /// <summary>
     /// Gets a merge request by ID with navigation properties loaded.
     /// </summary>
-    Task<AccountMergeRequest?> GetByIdAsync(Guid id, CancellationToken ct = default);
+    Task<AccountMergeRequestSnapshot?> GetByIdAsync(Guid id, CancellationToken ct = default);
 
     /// <summary>
     /// Accepts a merge request: migrates data from source to target, archives source account.
@@ -70,3 +72,22 @@ public interface IAccountMergeService : IApplicationService
         Guid adminUserId, string? notes = null,
         CancellationToken ct = default);
 }
+
+public sealed record AccountMergeRequestSnapshot(
+    Guid Id,
+    string Email,
+    AccountMergeUserSnapshot TargetUser,
+    AccountMergeUserSnapshot SourceUser,
+    AccountMergeRequestStatus Status,
+    Instant CreatedAt,
+    Instant? ResolvedAt,
+    string? ResolvedByDisplayName,
+    string? AdminNotes);
+
+public sealed record AccountMergeUserSnapshot(
+    Guid Id,
+    string DisplayName,
+    string? Email,
+    string? ProfilePictureUrl,
+    string? PreferredLanguage,
+    Instant? LastLoginAt);

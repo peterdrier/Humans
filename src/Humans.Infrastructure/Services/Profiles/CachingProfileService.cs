@@ -393,7 +393,7 @@ public sealed class CachingProfileService : TrackedCache<Guid, FullProfile>, IPr
         return PersonSearchMatcher.Match(snapshot, query, fields, contactFieldsByProfileId, limit);
     }
 
-    public async Task<IReadOnlyList<ProfileLanguage>> GetProfileLanguagesAsync(
+    public async Task<IReadOnlyList<ProfileLanguageSnapshot>> GetProfileLanguagesAsync(
         Guid profileId, CancellationToken ct = default)
     {
         await using var scope = _scopeFactory.CreateAsyncScope();

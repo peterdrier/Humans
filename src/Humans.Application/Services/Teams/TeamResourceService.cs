@@ -65,13 +65,21 @@ public sealed partial class TeamResourceService : ITeamResourceService
     // Reads
     // ==========================================================================
 
-    public Task<IReadOnlyList<GoogleResource>> GetTeamResourcesAsync(Guid teamId, CancellationToken ct = default)
-        => _repository.GetActiveByTeamIdAsync(teamId, ct);
+    public async Task<IReadOnlyList<GoogleResourceSnapshot>> GetTeamResourcesAsync(Guid teamId, CancellationToken ct = default)
+    {
+        var resources = await _repository.GetActiveByTeamIdAsync(teamId, ct);
+        return resources.Select(ToSnapshot).ToList();
+    }
 
-    public Task<IReadOnlyDictionary<Guid, IReadOnlyList<GoogleResource>>> GetResourcesByTeamIdsAsync(
+    public async Task<IReadOnlyDictionary<Guid, IReadOnlyList<GoogleResourceSnapshot>>> GetResourcesByTeamIdsAsync(
         IReadOnlyCollection<Guid> teamIds,
         CancellationToken ct = default)
-        => _repository.GetActiveByTeamIdsAsync(teamIds, ct);
+    {
+        var resourcesByTeam = await _repository.GetActiveByTeamIdsAsync(teamIds, ct);
+        return resourcesByTeam.ToDictionary(
+            kvp => kvp.Key,
+            kvp => (IReadOnlyList<GoogleResourceSnapshot>)kvp.Value.Select(ToSnapshot).ToList());
+    }
 
     public async Task<IReadOnlyDictionary<Guid, TeamResourceSummary>> GetTeamResourceSummariesAsync(
         IReadOnlyCollection<Guid> teamIds,
@@ -155,8 +163,11 @@ public sealed partial class TeamResourceService : ITeamResourceService
         return rows;
     }
 
-    public Task<IReadOnlyList<GoogleResource>> GetActiveDriveFoldersAsync(CancellationToken ct = default)
-        => _repository.GetActiveDriveFoldersAsync(ct);
+    public async Task<IReadOnlyList<GoogleResourceSnapshot>> GetActiveDriveFoldersAsync(CancellationToken ct = default)
+    {
+        var resources = await _repository.GetActiveDriveFoldersAsync(ct);
+        return resources.Select(ToSnapshot).ToList();
+    }
 
     public Task<int> GetResourceCountAsync(CancellationToken ct = default)
         => _repository.GetCountAsync(ct);
@@ -166,8 +177,40 @@ public sealed partial class TeamResourceService : ITeamResourceService
         CancellationToken ct = default)
         => _repository.GetNamesByIdsAsync(resourceIds, ct);
 
-    public Task<GoogleResource?> GetResourceByIdAsync(Guid resourceId, CancellationToken ct = default)
-        => _repository.GetByIdAsync(resourceId, ct);
+    public async Task<GoogleResourceSnapshot?> GetResourceByIdAsync(Guid resourceId, CancellationToken ct = default)
+    {
+        var resource = await _repository.GetByIdAsync(resourceId, ct);
+        return resource is null
+            ? null
+            : new GoogleResourceSnapshot(
+                resource.Id,
+                resource.TeamId,
+                resource.GoogleId,
+                resource.Name,
+                resource.ResourceType,
+                resource.Url,
+                resource.ProvisionedAt,
+                resource.LastSyncedAt,
+                resource.IsActive,
+                resource.ErrorMessage,
+                resource.DrivePermissionLevel,
+                resource.RestrictInheritedAccess);
+    }
+
+    private static GoogleResourceSnapshot ToSnapshot(GoogleResource resource) =>
+        new(
+            resource.Id,
+            resource.TeamId,
+            resource.GoogleId,
+            resource.Name,
+            resource.ResourceType,
+            resource.Url,
+            resource.ProvisionedAt,
+            resource.LastSyncedAt,
+            resource.IsActive,
+            resource.ErrorMessage,
+            resource.DrivePermissionLevel,
+            resource.RestrictInheritedAccess);
 
     // ==========================================================================
     // Link — Drive folder
@@ -513,6 +556,22 @@ public sealed partial class TeamResourceService : ITeamResourceService
             _logger.LogError(ex, "Failed to set inheritedPermissionsDisabled on Google Drive for resource {ResourceId} ({GoogleId})",
                 resourceId, mutated.GoogleId);
             throw;
+        }
+    }
+
+    public async Task<TeamResourceMutationResult> SetRestrictInheritedAccessWithResultAsync(
+        Guid resourceId,
+        bool restrict,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            await SetRestrictInheritedAccessAsync(resourceId, restrict, ct);
+            return TeamResourceMutationResult.Success();
+        }
+        catch (Exception ex)
+        {
+            return TeamResourceMutationResult.Failed($"Failed to update inherited access setting: {ex.Message}");
         }
     }
 

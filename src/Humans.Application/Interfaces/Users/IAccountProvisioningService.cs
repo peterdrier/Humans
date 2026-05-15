@@ -23,6 +23,17 @@ public interface IAccountProvisioningService : IApplicationService
     Task<AccountProvisioningResult> FindOrCreateUserByEmailAsync(
         string email, string? displayName, ContactSource source,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Completes a magic-link signup after the Auth section has verified the
+    /// signup token. Idempotently signs in the existing verified-email owner
+    /// on double submit, otherwise creates User + verified UserEmail + stub
+    /// Profile and rolls back the User if the email row cannot be created.
+    /// </summary>
+    Task<MagicLinkSignupCompletionResult> CompleteMagicLinkSignupAsync(
+        string email,
+        string? displayName,
+        CancellationToken ct = default);
 }
 
 /// <summary>
@@ -31,3 +42,14 @@ public interface IAccountProvisioningService : IApplicationService
 /// <param name="User">The existing or newly created user.</param>
 /// <param name="Created">True if a new account was created; false if an existing one was found.</param>
 public record AccountProvisioningResult(User User, bool Created);
+
+public sealed record MagicLinkSignupCompletionResult(
+    MagicLinkSignupCompletionOutcome Outcome,
+    User? User);
+
+public enum MagicLinkSignupCompletionOutcome
+{
+    Created,
+    ExistingUser,
+    Failed
+}

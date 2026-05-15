@@ -86,28 +86,28 @@ public class AdminLegalDocumentsController : HumansControllerBase
             return View("~/Views/Admin/CreateLegalDocument.cshtml", model);
         }
 
-        var document = await _adminLegalDocumentService.CreateLegalDocumentAsync(ToUpsertRequest(model, folderPath));
+        var result = await _adminLegalDocumentService.CreateLegalDocumentWithInitialSyncAsync(
+            ToUpsertRequest(model, folderPath));
+        var document = result.Document;
 
         var currentUser = await GetCurrentUserAsync();
         _logger.LogInformation("Admin {AdminId} created legal document {DocumentId} ({Name})",
             currentUser?.Id, document.Id, document.Name);
 
-        // Attempt initial sync immediately.
-        if (!string.IsNullOrEmpty(document.GitHubFolderPath))
+        if (result.InitialSyncStatus == AdminLegalDocumentInitialSyncStatus.Synced)
         {
-            try
-            {
-                var result = await _adminLegalDocumentService.SyncLegalDocumentAsync(document.Id);
-                SetSuccess(result is not null
-                    ? $"Legal document '{document.Name}' created. {result}"
-                    : $"Legal document '{document.Name}' created. GitHub content is already up to date.");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Initial sync failed for new document {DocumentId}", document.Id);
-                SetSuccess($"Legal document '{document.Name}' created.");
-                SetError($"Initial sync failed: {ex.Message}");
-            }
+            SetSuccess($"Legal document '{document.Name}' created. {result.SyncMessage}");
+        }
+        else if (result.InitialSyncStatus == AdminLegalDocumentInitialSyncStatus.AlreadyCurrent)
+        {
+            SetSuccess($"Legal document '{document.Name}' created. GitHub content is already up to date.");
+        }
+        else if (result.InitialSyncStatus == AdminLegalDocumentInitialSyncStatus.Failed)
+        {
+            _logger.LogWarning("Initial sync failed for new document {DocumentId}: {SyncError}",
+                document.Id, result.SyncError);
+            SetSuccess($"Legal document '{document.Name}' created.");
+            SetError($"Initial sync failed: {result.SyncError}");
         }
         else
         {
@@ -156,8 +156,8 @@ public class AdminLegalDocumentsController : HumansControllerBase
                     CreatedAt = v.CreatedAt.ToDateTimeUtc(),
                     ChangesSummary = v.ChangesSummary,
                     RequiresReConsent = v.RequiresReConsent,
-                    LanguageCount = v.Content.Count,
-                    Languages = v.Content.Keys.Order(StringComparer.Ordinal).ToList()
+                    LanguageCount = v.LanguageCount,
+                    Languages = v.Languages.ToList()
                 })
                 .ToList()
         };

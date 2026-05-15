@@ -209,17 +209,12 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
         CancellationToken cancellationToken = default) =>
         WithInner(inner => inner.RejectJoinRequestAsync(requestId, approverUserId, reason, cancellationToken));
 
-    public Task<IReadOnlyList<TeamJoinRequest>> GetPendingRequestsForApproverAsync(
-        Guid approverUserId,
-        CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetPendingRequestsForApproverAsync(approverUserId, cancellationToken));
-
-    public Task<IReadOnlyList<TeamJoinRequest>> GetPendingRequestsForTeamAsync(
+    public Task<IReadOnlyList<TeamJoinRequestSnapshot>> GetPendingRequestsForTeamAsync(
         Guid teamId,
         CancellationToken cancellationToken = default) =>
         WithInner(inner => inner.GetPendingRequestsForTeamAsync(teamId, cancellationToken));
 
-    public Task<TeamJoinRequest?> GetUserPendingRequestAsync(
+    public Task<TeamJoinRequestSnapshot?> GetUserPendingRequestAsync(
         Guid teamId,
         Guid userId,
         CancellationToken cancellationToken = default) =>
@@ -294,12 +289,6 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
         return result;
     }
 
-    public Task<(IReadOnlyList<Team> Items, int TotalCount)> GetAllTeamsForAdminAsync(
-        int page,
-        int pageSize,
-        CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetAllTeamsForAdminAsync(page, pageSize, cancellationToken));
-
     public Task<AdminTeamListResult> GetAdminTeamListAsync(
         int page,
         int pageSize,
@@ -336,19 +325,24 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
         InvalidateTeamsCache();
     }
 
-    public async Task UpdateTeamPageContentAsync(
+    public async Task<TeamPageUpdateResult> UpdateTeamPageContentAsync(
         Guid teamId,
         string? pageContent,
-        List<CallToAction> callsToAction,
+        IReadOnlyList<TeamPageCallToActionInput> callsToAction,
         bool isPublicPage,
         bool showCoordinatorsOnPublicPage,
         Guid updatedByUserId,
         CancellationToken cancellationToken = default)
     {
-        await WithInner(inner => inner.UpdateTeamPageContentAsync(
+        var result = await WithInner(inner => inner.UpdateTeamPageContentAsync(
             teamId, pageContent, callsToAction, isPublicPage,
             showCoordinatorsOnPublicPage, updatedByUserId, cancellationToken));
-        InvalidateTeamsCache();
+        if (result.Succeeded)
+        {
+            InvalidateTeamsCache();
+        }
+
+        return result;
     }
 
     public async Task<TeamRoleDefinition> CreateRoleDefinitionAsync(
@@ -381,11 +375,12 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
         RolePeriod period,
         Guid actorUserId,
         bool isPublic = true,
+        bool canToggleManagement = true,
         CancellationToken cancellationToken = default)
     {
         var result = await WithInner(inner => inner.UpdateRoleDefinitionAsync(
             roleDefinitionId, name, description, slotCount, priorities, sortOrder,
-            isManagement, period, actorUserId, isPublic, cancellationToken));
+            isManagement, period, actorUserId, isPublic, canToggleManagement, cancellationToken));
         InvalidateTeamsCache();
         return result;
     }
@@ -399,23 +394,23 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
         InvalidateTeamsCache();
     }
 
-    public async Task SetRoleIsManagementAsync(
+    public async Task<TeamRoleManagementToggleResult> ToggleRoleIsManagementAsync(
         Guid roleDefinitionId,
-        bool isManagement,
         Guid actorUserId,
         CancellationToken cancellationToken = default)
     {
-        await WithInner(inner => inner.SetRoleIsManagementAsync(
-            roleDefinitionId, isManagement, actorUserId, cancellationToken));
+        var result = await WithInner(inner => inner.ToggleRoleIsManagementAsync(
+            roleDefinitionId, actorUserId, cancellationToken));
         InvalidateTeamsCache();
+        return result;
     }
 
-    public Task<IReadOnlyList<TeamRoleDefinition>> GetRoleDefinitionsAsync(
+    public Task<IReadOnlyList<TeamRoleDefinitionSnapshot>> GetRoleDefinitionsAsync(
         Guid teamId,
         CancellationToken cancellationToken = default) =>
         WithInner(inner => inner.GetRoleDefinitionsAsync(teamId, cancellationToken));
 
-    public Task<IReadOnlyList<TeamRoleDefinition>> GetAllRoleDefinitionsAsync(
+    public Task<IReadOnlyList<TeamRoleDefinitionSnapshot>> GetAllRoleDefinitionsAsync(
         CancellationToken cancellationToken = default) =>
         WithInner(inner => inner.GetAllRoleDefinitionsAsync(cancellationToken));
 
@@ -590,17 +585,17 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
         CancellationToken cancellationToken = default) =>
         WithInner(inner => inner.GetActiveNonSystemTeamCoordinatorUserIdsAsync(cancellationToken));
 
-    public Task<IReadOnlyList<TeamMember>> GetActiveMembersForTeamsAsync(
+    public Task<IReadOnlyList<TeamActiveMemberSnapshot>> GetActiveMembersForTeamsAsync(
         IReadOnlyCollection<Guid> teamIds,
         CancellationToken cancellationToken = default) =>
         WithInner(inner => inner.GetActiveMembersForTeamsAsync(teamIds, cancellationToken));
 
-    public Task<Team?> GetSystemTeamWithActiveMembersAsync(
+    public Task<SystemTeamMembershipSnapshot?> GetSystemTeamWithActiveMembersAsync(
         SystemTeamType type,
         CancellationToken cancellationToken = default) =>
         WithInner(inner => inner.GetSystemTeamWithActiveMembersAsync(type, cancellationToken));
 
-    public Task<IReadOnlyList<TeamMember>> GetActiveMembershipsForRoleReconciliationAsync(
+    public Task<IReadOnlyList<TeamRoleReconciliationMembership>> GetActiveMembershipsForRoleReconciliationAsync(
         CancellationToken cancellationToken = default) =>
         WithInner(inner => inner.GetActiveMembershipsForRoleReconciliationAsync(cancellationToken));
 

@@ -48,7 +48,7 @@ public sealed class CommunicationPreferenceService : ICommunicationPreferenceSer
         _logger = logger;
     }
 
-    public async Task<IReadOnlyList<CommunicationPreference>> GetPreferencesAsync(
+    public async Task<IReadOnlyList<CommunicationPreferenceSnapshot>> GetPreferencesAsync(
         Guid userId, CancellationToken cancellationToken = default)
     {
         var existing = await _repository.GetByUserIdAsync(userId, cancellationToken);
@@ -81,17 +81,36 @@ public sealed class CommunicationPreferenceService : ICommunicationPreferenceSer
 
         return existing
             .OrderBy(cp => cp.Category)
-            .ToList()
-            .AsReadOnly();
+            .Select(ToSnapshot)
+            .ToList();
     }
 
-    public Task<CommunicationPreference?> GetPreferenceOrNullAsync(
-        Guid userId, MessageCategory category, CancellationToken cancellationToken = default) =>
-        _repository.GetByUserAndCategoryAsync(userId, category, cancellationToken);
+    public async Task<CommunicationPreferenceSnapshot?> GetPreferenceOrNullAsync(
+        Guid userId, MessageCategory category, CancellationToken cancellationToken = default)
+    {
+        var preference = await _repository.GetByUserAndCategoryAsync(userId, category, cancellationToken);
+        return preference is null
+            ? null
+            : ToSnapshot(preference);
+    }
 
-    public Task<IReadOnlyList<CommunicationPreference>> GetPreferencesReadOnlyAsync(
-        Guid userId, CancellationToken cancellationToken = default) =>
-        _repository.GetByUserIdReadOnlyAsync(userId, cancellationToken);
+    public async Task<IReadOnlyList<CommunicationPreferenceSnapshot>> GetPreferencesReadOnlyAsync(
+        Guid userId, CancellationToken cancellationToken = default)
+    {
+        var preferences = await _repository.GetByUserIdReadOnlyAsync(userId, cancellationToken);
+        return preferences
+            .Select(ToSnapshot)
+            .ToList();
+    }
+
+    private static CommunicationPreferenceSnapshot ToSnapshot(CommunicationPreference preference) =>
+        new(
+            preference.Category,
+            preference.OptedOut,
+            preference.InboxEnabled,
+            preference.UpdateSource,
+            preference.UpdatedAt,
+            preference.SubscribedAt);
 
     public async Task<bool> IsOptedOutAsync(
         Guid userId, MessageCategory category, CancellationToken cancellationToken = default)

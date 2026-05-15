@@ -591,22 +591,39 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
             .ToList();
     }
 
-    public async Task<IReadOnlyList<UserEmail>> GetEntitiesByUserIdAsync(
+    public async Task<IReadOnlyList<UserEmailRowSnapshot>> GetEntitiesByUserIdAsync(
         Guid userId, CancellationToken cancellationToken = default) =>
-        await _repository.GetByUserIdReadOnlyAsync(userId, cancellationToken);
+        (await _repository.GetByUserIdReadOnlyAsync(userId, cancellationToken))
+            .Select(ToSnapshot)
+            .ToList();
 
-    public async Task<IReadOnlyDictionary<Guid, IReadOnlyList<UserEmail>>> GetEntitiesByUserIdsAsync(
+    private static UserEmailRowSnapshot ToSnapshot(UserEmail email) =>
+        new(
+            email.Id,
+            email.UserId,
+            email.Email,
+            email.IsVerified,
+            email.Provider,
+            email.ProviderKey,
+            email.IsGoogle,
+            email.IsPrimary,
+            email.Visibility,
+            email.VerificationSentAt,
+            email.CreatedAt,
+            email.UpdatedAt);
+
+    public async Task<IReadOnlyDictionary<Guid, IReadOnlyList<UserEmailRowSnapshot>>> GetEntitiesByUserIdsAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken cancellationToken = default)
     {
         if (userIds.Count == 0)
-            return new Dictionary<Guid, IReadOnlyList<UserEmail>>();
+            return new Dictionary<Guid, IReadOnlyList<UserEmailRowSnapshot>>();
 
         var allEmails = await _repository.GetAllAsync(cancellationToken);
         var idSet = new HashSet<Guid>(userIds);
         return allEmails
             .Where(e => idSet.Contains(e.UserId))
             .GroupBy(e => e.UserId)
-            .ToDictionary(g => g.Key, g => (IReadOnlyList<UserEmail>)g.ToList());
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<UserEmailRowSnapshot>)g.Select(ToSnapshot).ToList());
     }
 
     public async Task<IReadOnlyDictionary<Guid, string>> GetNotificationEmailsByUserIdsAsync(
@@ -1023,7 +1040,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
     }
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<UserEmail>> GetOrphanUserEmailsAsync(CancellationToken ct = default)
+    public async Task<IReadOnlyList<UserEmailOrphan>> GetOrphanUserEmailsAsync(CancellationToken ct = default)
     {
         var allEmails = await _repository.GetAllAsync(ct);
         var allUsers = await _userService.GetAllUsersAsync(ct);
@@ -1034,6 +1051,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
 
         return allEmails
             .Where(e => !liveUserIds.Contains(e.UserId))
+            .Select(e => new UserEmailOrphan(e.UserId, e.Id, e.Email))
             .ToList();
     }
 

@@ -6,6 +6,7 @@ using NodaTime;
 using Humans.Domain.Entities;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Users;
 
 namespace Humans.Web.Controllers;
 
@@ -17,6 +18,7 @@ public class AccountController : HumansControllerBase
     private readonly ILogger<AccountController> _logger;
     private readonly IUserEmailService _userEmailService;
     private readonly IMagicLinkService _magicLinkService;
+    private readonly IAccountProvisioningService _accountProvisioningService;
     private readonly IProfileService _profileService;
     private readonly IStringLocalizer<SharedResource> _localizer;
 
@@ -27,6 +29,7 @@ public class AccountController : HumansControllerBase
         ILogger<AccountController> logger,
         IUserEmailService userEmailService,
         IMagicLinkService magicLinkService,
+        IAccountProvisioningService accountProvisioningService,
         IProfileService profileService,
         IStringLocalizer<SharedResource> localizer)
         : base(userManager)
@@ -37,6 +40,7 @@ public class AccountController : HumansControllerBase
         _logger = logger;
         _userEmailService = userEmailService;
         _magicLinkService = magicLinkService;
+        _accountProvisioningService = accountProvisioningService;
         _profileService = profileService;
         _localizer = localizer;
     }
@@ -566,66 +570,17 @@ public class AccountController : HumansControllerBase
             return View("MagicLinkError");
         }
 
-        email = verifiedEmail;
+        var result = await _accountProvisioningService.CompleteMagicLinkSignupAsync(
+            verifiedEmail,
+            displayName,
+            HttpContext.RequestAborted);
 
-        // Check if account was already created (double-click protection)
-        var existingUser = await _magicLinkService.FindUserByVerifiedEmailAsync(email);
-        if (existingUser is not null)
-        {
-            await _signInManager.SignInAsync(existingUser, isPersistent: false);
-            existingUser.LastLoginAt = _clock.GetCurrentInstant();
-            await _userManager.UpdateAsync(existingUser);
-            return RedirectToLocal(returnUrl);
-        }
-
-        var now = _clock.GetCurrentInstant();
-        var newUserId = Guid.NewGuid();
-        var user = new User
-        {
-            Id = newUserId,
-            DisplayName = string.IsNullOrWhiteSpace(displayName) ? email : displayName.Trim(),
-            CreatedAt = now,
-            LastLoginAt = now
-        };
-
-        var createResult = await _userManager.CreateAsync(user);
-        if (!createResult.Succeeded)
-        {
-            _logger.LogError("Failed to create user via magic link signup for {Email}: {Errors}",
-                email, string.Join(", ", createResult.Errors.Select(e => e.Description)));
+#pragma warning disable CS0618 // result.User is a record field on MagicLinkSignupCompletionResult, not a cross-domain nav read; arch test pattern-matches the literal `.User`.
+        if (result.User is null)
             return View("MagicLinkError");
-        }
 
-        // RequireUniqueEmail = false: Identity no longer rejects partial state,
-        // so if creating the UserEmail row fails we must roll back the User to
-        // avoid an orphan that's unreachable via either OAuth or magic link.
-        try
-        {
-            await _userEmailService.AddVerifiedEmailAsync(user.Id, email);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex,
-                "Failed to create UserEmail for magic-link signup {UserId} ({Email}); rolling back user",
-                user.Id, email);
-            try
-            {
-                await _userManager.DeleteAsync(user);
-            }
-            catch (Exception deleteEx)
-            {
-                _logger.LogError(deleteEx,
-                    "Failed to clean up orphan user {UserId} after AddVerifiedEmailAsync failure",
-                    user.Id);
-            }
-            return View("MagicLinkError");
-        }
-
-        // Issue #635 (§15i): Stub Profile invariant — every User has a Profile.
-        await _profileService.EnsureStubProfileAsync(user.Id);
-
-        await _signInManager.SignInAsync(user, isPersistent: false);
-        _logger.LogInformation("Magic link signup: user {UserId} created account for {Email}", user.Id, email);
+        await _signInManager.SignInAsync(result.User, isPersistent: false);
+#pragma warning restore CS0618
 
         return RedirectToLocal(returnUrl);
     }

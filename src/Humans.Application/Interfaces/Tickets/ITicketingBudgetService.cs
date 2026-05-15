@@ -1,6 +1,7 @@
 using Humans.Application.Interfaces;
 using Humans.Application.DTOs;
 using Humans.Domain.Entities;
+using NodaTime;
 
 namespace Humans.Application.Interfaces.Tickets;
 
@@ -21,6 +22,11 @@ public interface ITicketingBudgetService : IApplicationService
     Task<int> RefreshProjectionsAsync(Guid budgetYearId, CancellationToken ct = default);
 
     /// <summary>
+    /// Saves ticketing projection parameters and refreshes projected line items.
+    /// </summary>
+    Task<int> UpdateProjectionAndRefreshAsync(TicketingProjectionUpdateCommand command, Guid actorUserId, CancellationToken ct = default);
+
+    /// <summary>
     /// Compute projected line items for future weeks based on ticketing projection parameters
     /// and the latest actuals. Returns virtual (non-persisted) entries for display.
     /// </summary>
@@ -33,3 +39,16 @@ public interface ITicketingBudgetService : IApplicationService
     /// </summary>
     int GetActualTicketsSold(BudgetGroup ticketingGroup);
 }
+
+public sealed record TicketingProjectionUpdateCommand(
+    Guid BudgetGroupId,
+    Guid BudgetYearId,
+    LocalDate? StartDate,
+    LocalDate? EventDate,
+    int InitialSalesCount,
+    decimal DailySalesRate,
+    decimal AverageTicketPrice,
+    int VatRate,
+    decimal StripeFeePercent,
+    decimal StripeFeeFixed,
+    decimal TicketTailorFeePercent);

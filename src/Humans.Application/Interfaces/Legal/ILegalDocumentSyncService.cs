@@ -1,5 +1,6 @@
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
+using NodaTime;
 
 namespace Humans.Application.Interfaces.Legal;
 
@@ -35,14 +36,14 @@ public interface ILegalDocumentSyncService : IApplicationService
     /// </summary>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>All active legal documents.</returns>
-    Task<IReadOnlyList<LegalDocument>> GetActiveDocumentsAsync(CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<LegalDocumentSnapshot>> GetActiveDocumentsAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets all document versions that require consent.
     /// </summary>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Current versions of required documents.</returns>
-    Task<IReadOnlyList<DocumentVersion>> GetRequiredVersionsAsync(CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<RequiredDocumentVersionSnapshot>> GetRequiredVersionsAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets a document version by ID.
@@ -50,14 +51,14 @@ public interface ILegalDocumentSyncService : IApplicationService
     /// <param name="versionId">The version ID.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The document version if found.</returns>
-    Task<DocumentVersion?> GetVersionByIdAsync(Guid versionId, CancellationToken cancellationToken = default);
+    Task<LegalDocumentVersionSnapshot?> GetVersionByIdAsync(Guid versionId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets the current required document versions for a specific team.
     /// Returns the latest effective version per required+active document scoped to the team.
     /// Each returned DocumentVersion has its LegalDocument navigation loaded.
     /// </summary>
-    Task<IReadOnlyList<DocumentVersion>> GetRequiredDocumentVersionsForTeamAsync(
+    Task<IReadOnlyList<RequiredDocumentVersionSnapshot>> GetRequiredDocumentVersionsForTeamAsync(
         Guid teamId, CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -68,6 +69,49 @@ public interface ILegalDocumentSyncService : IApplicationService
     /// team" grouping without crossing the section boundary into
     /// <c>DbContext.LegalDocuments</c> from the Application layer.
     /// </summary>
-    Task<IReadOnlyList<LegalDocument>> GetActiveRequiredDocumentsForTeamsAsync(
+    Task<IReadOnlyList<ActiveRequiredLegalDocumentSnapshot>> GetActiveRequiredDocumentsForTeamsAsync(
         IReadOnlyCollection<Guid> teamIds, CancellationToken cancellationToken = default);
 }
+
+public sealed record ActiveRequiredLegalDocumentSnapshot(
+    Guid Id,
+    string Name,
+    Guid TeamId,
+    string TeamName,
+    Instant LastSyncedAt,
+    IReadOnlyList<LegalDocumentVersionSnapshot> Versions);
+
+public sealed record LegalDocumentSnapshot(
+    Guid Id,
+    string Name,
+    Guid TeamId,
+    int GracePeriodDays,
+    string? GitHubFolderPath,
+    string CurrentCommitSha,
+    bool IsRequired,
+    bool IsActive,
+    Instant CreatedAt,
+    Instant LastSyncedAt,
+    IReadOnlyList<LegalDocumentVersionSnapshot> Versions);
+
+public sealed record RequiredDocumentVersionSnapshot(
+    Guid Id,
+    Guid LegalDocumentId,
+    string LegalDocumentName,
+    int LegalDocumentGracePeriodDays,
+    string VersionNumber,
+    Instant EffectiveFrom,
+    bool RequiresReConsent,
+    string? ChangesSummary);
+
+public sealed record LegalDocumentVersionSnapshot(
+    Guid Id,
+    Guid LegalDocumentId,
+    string LegalDocumentName,
+    int LegalDocumentGracePeriodDays,
+    string VersionNumber,
+    IReadOnlyDictionary<string, string> Content,
+    Instant EffectiveFrom,
+    bool RequiresReConsent,
+    Instant CreatedAt,
+    string? ChangesSummary);

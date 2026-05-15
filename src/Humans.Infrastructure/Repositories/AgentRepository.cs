@@ -36,6 +36,7 @@ public sealed class AgentRepository : IAgentRepository
 
     public Task<AgentConversation?> GetConversationByIdAsync(Guid id, CancellationToken cancellationToken) =>
         _db.AgentConversations
+            // arch:db-sort-ok identity-ordered chronological message stream
             .Include(c => c.Messages.OrderBy(m => m.CreatedAt))
             .FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
 
@@ -71,6 +72,7 @@ public sealed class AgentRepository : IAgentRepository
         await _db.AgentConversations
             .AsNoTracking()
             .Where(c => c.UserId == userId)
+            // arch:db-sort-ok top-N conversation history selector
             .OrderByDescending(c => c.LastMessageAt)
             .Take(take)
             .ToListAsync(cancellationToken);
@@ -79,7 +81,9 @@ public sealed class AgentRepository : IAgentRepository
         await _db.AgentConversations
             .AsNoTracking()
             .Where(c => c.UserId == userId)
+            // arch:db-sort-ok identity-ordered chronological message stream
             .Include(c => c.Messages.OrderBy(m => m.CreatedAt))
+            // arch:db-sort-ok user conversation history chronology
             .OrderByDescending(c => c.LastMessageAt)
             .ToListAsync(cancellationToken);
 
@@ -92,6 +96,7 @@ public sealed class AgentRepository : IAgentRepository
         if (userId is Guid u) q = q.Where(c => c.UserId == u);
         if (refusalsOnly) q = q.Where(c => c.Messages.Any(m => m.RefusalReason != null));
 
+        // arch:db-sort-ok admin page window over conversation history
         return await q.OrderByDescending(c => c.LastMessageAt)
             .Skip(skip).Take(take)
             .ToListAsync(cancellationToken);
