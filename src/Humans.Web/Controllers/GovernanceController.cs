@@ -11,6 +11,7 @@ using Humans.Web.Models;
 using Humans.Application.Interfaces.Legal;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Users;
 
 // RoleAssignment cross-domain nav properties (User, CreatedByUser) are [Obsolete] —
 // RoleAssignmentService stitches them in memory from IUserService so controllers can
@@ -26,6 +27,7 @@ public class GovernanceController : HumansControllerBase
 {
     private readonly ILegalDocumentService _legalDocService;
     private readonly IProfileService _profileService;
+    private readonly IUserService _userService;
     private readonly IApplicationDecisionService _applicationDecisionService;
     private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly IClock _clock;
@@ -34,6 +36,7 @@ public class GovernanceController : HumansControllerBase
         UserManager<Domain.Entities.User> userManager,
         ILegalDocumentService legalDocService,
         IProfileService profileService,
+        IUserService userService,
         IApplicationDecisionService applicationDecisionService,
         IRoleAssignmentService roleAssignmentService,
         IClock clock)
@@ -41,6 +44,7 @@ public class GovernanceController : HumansControllerBase
     {
         _legalDocService = legalDocService;
         _profileService = profileService;
+        _userService = userService;
         _applicationDecisionService = applicationDecisionService;
         _roleAssignmentService = roleAssignmentService;
         _clock = clock;
@@ -57,8 +61,10 @@ public class GovernanceController : HumansControllerBase
 
         var statutesContent = await _legalDocService.GetDocumentContentAsync("statutes");
 
-        // Tier member counts for the sidebar
-        var (colaboradorCount, asociadoCount) = await _profileService.GetTierCountsAsync();
+        // Tier member counts for the sidebar — count approved-tier holders off the cached UserInfo snapshot.
+        var snapshot = _userService.GetAllUserInfos();
+        var colaboradorCount = snapshot.Count(u => u.Profile?.MembershipTier == MembershipTier.Colaborador);
+        var asociadoCount = snapshot.Count(u => u.Profile?.MembershipTier == MembershipTier.Asociado);
 
         var isApprovedColaborador = applications.Any(a =>
             a.Status == ApplicationStatus.Approved && a.MembershipTier == MembershipTier.Colaborador);

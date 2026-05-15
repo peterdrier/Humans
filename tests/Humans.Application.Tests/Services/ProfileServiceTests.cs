@@ -405,28 +405,6 @@ public class ProfileServiceTests : IDisposable
         result.Should().BeNull("DB content-type is null after anonymization, so the stale on-disk file must not be served");
     }
 
-    [HumansFact]
-    public async Task GetTierCountsAsync_CorrectCounts()
-    {
-        // 1 Colaborador non-suspended, 1 Colaborador suspended, 1 Asociado non-suspended
-        var u1 = Guid.NewGuid();
-        var u2 = Guid.NewGuid();
-        var u3 = Guid.NewGuid();
-        await SeedUserAsync(u1);
-        await SeedUserAsync(u2);
-        await SeedUserAsync(u3);
-        await _dbContext.Profiles.AddRangeAsync(
-            MakeProfile(u1, MembershipTier.Colaborador, isSuspended: false),
-            MakeProfile(u2, MembershipTier.Colaborador, isSuspended: true),
-            MakeProfile(u3, MembershipTier.Asociado, isSuspended: false));
-        await _dbContext.SaveChangesAsync();
-
-        var (colaboradorCount, asociadoCount) = await _service.GetTierCountsAsync();
-
-        colaboradorCount.Should().Be(1);
-        asociadoCount.Should().Be(1);
-    }
-
     // Profile-index/edit/admin-detail bundling moved to ProfileController in
     // issue nobodies-collective/Humans#685 — composition is now controller
     // concern (Profile + Application data are fetched separately and assembled
@@ -888,67 +866,6 @@ public class ProfileServiceTests : IDisposable
             Guid.NewGuid().ToString(), PersonSearchFields.AdminAll, limit: 50);
 
         results.Should().BeEmpty();
-    }
-
-    // --- DB-backed fallback paths (§15 invariant: base service must work without decorator) ---
-
-    [HumansFact]
-    public async Task GetBirthdayProfilesAsync_BaseService_LoadsFromRepositoryAndFilters()
-    {
-        var u1 = Guid.NewGuid();
-        var u2 = Guid.NewGuid();
-        var u3 = Guid.NewGuid();
-        var user1 = await SeedUserAsync(u1);
-        var user2 = await SeedUserAsync(u2);
-        var user3 = await SeedUserAsync(u3);
-
-        var p1 = MakeProfile(u1, isApproved: true);
-        p1.DateOfBirth = new LocalDate(4, 3, 20);
-        var p2 = MakeProfile(u2, isApproved: true);
-        p2.DateOfBirth = new LocalDate(4, 3, 5);
-        var p3 = MakeProfile(u3, isApproved: true);
-        p3.DateOfBirth = new LocalDate(4, 6, 15);
-        await _dbContext.Profiles.AddRangeAsync(p1, p2, p3);
-        await _dbContext.SaveChangesAsync();
-
-        _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, User> { [u1] = user1, [u2] = user2, [u3] = user3 });
-
-        var result = await _service.GetBirthdayProfilesAsync(3);
-
-        result.Should().HaveCount(2);
-        result[0].Day.Should().Be(5);
-        result[1].Day.Should().Be(20);
-    }
-
-    [HumansFact]
-    public async Task GetApprovedProfilesWithLocationAsync_BaseService_LoadsFromRepositoryAndFilters()
-    {
-        var u1 = Guid.NewGuid();
-        var u2 = Guid.NewGuid();
-        var user1 = await SeedUserAsync(u1);
-        var user2 = await SeedUserAsync(u2);
-
-        // Approved with location
-        var p1 = MakeProfile(u1, isApproved: true);
-        p1.Latitude = 40.0;
-        p1.Longitude = -3.0;
-        p1.City = "Madrid";
-        // Unapproved with location (excluded)
-        var p2 = MakeProfile(u2, isApproved: false);
-        p2.Latitude = 41.0;
-        p2.Longitude = -2.0;
-        await _dbContext.Profiles.AddRangeAsync(p1, p2);
-        await _dbContext.SaveChangesAsync();
-
-        _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, User> { [u1] = user1, [u2] = user2 });
-
-        var result = await _service.GetApprovedProfilesWithLocationAsync();
-
-        result.Should().HaveCount(1);
-        result[0].UserId.Should().Be(u1);
-        result[0].City.Should().Be("Madrid");
     }
 
     // --- GetFullProfileAsync ---

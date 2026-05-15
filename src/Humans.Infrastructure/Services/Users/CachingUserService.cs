@@ -260,11 +260,28 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.GetByIdsWithEmailsAsync(userIds, ct));
 
-    public Task<EventParticipation?> GetParticipationAsync(Guid userId, int year, CancellationToken ct = default) =>
-        WithInnerAsync(inner => inner.GetParticipationAsync(userId, year, ct));
-
-    public Task<List<EventParticipation>> GetAllParticipationsForYearAsync(int year, CancellationToken ct = default) =>
-        WithInnerAsync(inner => inner.GetAllParticipationsForYearAsync(year, ct));
+    public Task<List<EventParticipation>> GetAllParticipationsForYearAsync(int year, CancellationToken ct = default)
+    {
+        var snapshot = Values;
+        var result = new List<EventParticipation>();
+        foreach (var u in snapshot)
+        {
+            foreach (var p in u.EventParticipations)
+            {
+                if (p.Year != year) continue;
+                result.Add(new EventParticipation
+                {
+                    Id = p.Id,
+                    UserId = u.Id,
+                    Year = p.Year,
+                    Status = p.Status,
+                    Source = p.Source,
+                    DeclaredAt = p.DeclaredAt
+                });
+            }
+        }
+        return Task.FromResult(result);
+    }
 
     public Task<IReadOnlyList<User>> GetAllUsersAsync(CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.GetAllUsersAsync(ct));
@@ -272,29 +289,27 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
     public Task<User?> GetByEmailOrAlternateAsync(string email, CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.GetByEmailOrAlternateAsync(email, ct));
 
-    public Task<IReadOnlyList<Instant>> GetLoginTimestampsInWindowAsync(
-        Instant fromInclusive, Instant toExclusive, CancellationToken ct = default) =>
-        WithInnerAsync(inner => inner.GetLoginTimestampsInWindowAsync(fromInclusive, toExclusive, ct));
-
 #pragma warning disable CS0618
     public Task<Guid?> GetOtherUserIdHavingGoogleEmailAsync(
         string email, Guid excludeUserId, CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.GetOtherUserIdHavingGoogleEmailAsync(email, excludeUserId, ct));
 #pragma warning restore CS0618
 
-    public Task<int> GetRejectedGoogleEmailCountAsync(CancellationToken ct = default) =>
-        WithInnerAsync(inner => inner.GetRejectedGoogleEmailCountAsync(ct));
-
-    public Task<int> GetCountByContactSourceAsync(ContactSource source, CancellationToken ct = default) =>
-        WithInnerAsync(inner => inner.GetCountByContactSourceAsync(source, ct));
-
     public Task<IReadOnlyList<Guid>> GetAccountsDueForAnonymizationAsync(
         Instant now, CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.GetAccountsDueForAnonymizationAsync(now, ct));
 
     public Task<IReadOnlySet<Guid>> GetMergedSourceIdsAsync(
-        Guid targetUserId, CancellationToken ct = default) =>
-        WithInnerAsync(inner => inner.GetMergedSourceIdsAsync(targetUserId, ct));
+        Guid targetUserId, CancellationToken ct = default)
+    {
+        var ids = new HashSet<Guid>();
+        foreach (var u in Values)
+        {
+            if (u.MergedToUserId == targetUserId)
+                ids.Add(u.Id);
+        }
+        return Task.FromResult<IReadOnlySet<Guid>>(ids);
+    }
 
     public Task<IReadOnlyList<Guid>> GetUsersWithLoginsButNoEmailsAsync(CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.GetUsersWithLoginsButNoEmailsAsync(ct));

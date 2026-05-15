@@ -152,8 +152,8 @@ public class MailerAdminControllerTests
             .Returns(new MailerLiteAccountSummary(0, 0, 0, 0, 0));
         _mlService.ListGroupsAsync(Arg.Any<CancellationToken>())
             .Returns((IReadOnlyList<MailerLiteGroup>)Array.Empty<MailerLiteGroup>());
-        _userService.GetCountByContactSourceAsync(Arg.Any<ContactSource>(), Arg.Any<CancellationToken>())
-            .Returns(0);
+        _userService.GetAllUserInfos()
+            .Returns(Array.Empty<Humans.Application.UserInfo>());
         _prefs.GetCountByCategoryAndStateAsync(
                 Arg.Any<MessageCategory>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns(0);
@@ -193,9 +193,11 @@ public class MailerAdminControllerTests
                 inner: null,
                 statusCode: System.Net.HttpStatusCode.Unauthorized));
 
-        // Humans-side dependencies still succeed.
-        _userService.GetCountByContactSourceAsync(Arg.Any<ContactSource>(), Arg.Any<CancellationToken>())
-            .Returns(7);
+        // Humans-side dependencies still succeed — 7 users sourced from MailerLite.
+        _userService.GetAllUserInfos()
+            .Returns(Enumerable.Range(0, 7)
+                .Select(_ => MakeUserInfoWithContactSource(ContactSource.MailerLite))
+                .ToList());
         _prefs.GetCountByCategoryAndStateAsync(
                 Arg.Any<MessageCategory>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns(3);
@@ -319,5 +321,28 @@ public class MailerAdminControllerTests
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal(nameof(MailerAdminController.Index), redirect.ActionName);
         await _importService.Received(1).ApplyAsync(freshPlan, 1, Arg.Any<CancellationToken>());
+    }
+
+    private static Humans.Application.UserInfo MakeUserInfoWithContactSource(ContactSource source)
+    {
+        var userId = Guid.NewGuid();
+        return Humans.Application.UserInfo.Create(
+            user: new User
+            {
+                Id = userId,
+                DisplayName = "U",
+                PreferredLanguage = "en",
+                CreatedAt = NodaTime.Instant.FromUtc(2026, 1, 1, 0, 0),
+                ContactSource = source,
+                GoogleEmailStatus = GoogleEmailStatus.Unknown,
+            },
+            userEmails: Array.Empty<UserEmail>(),
+            eventParticipations: Array.Empty<EventParticipation>(),
+            externalLogins: Array.Empty<(string, string)>(),
+            profile: null,
+            contactFields: Array.Empty<ContactField>(),
+            profileLanguages: Array.Empty<ProfileLanguage>(),
+            volunteerHistory: Array.Empty<VolunteerHistoryEntry>(),
+            communicationPreferences: Array.Empty<CommunicationPreference>());
     }
 }

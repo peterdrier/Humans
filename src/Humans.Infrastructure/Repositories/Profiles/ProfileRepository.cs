@@ -134,52 +134,6 @@ public sealed class ProfileRepository : IProfileRepository
             .ToList();
     }
 
-    public async Task<(int ColaboradorCount, int AsociadoCount)> GetTierCountsAsync(
-        CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var colaboradorCount = await ctx.Profiles
-            .CountAsync(p => p.MembershipTier == MembershipTier.Colaborador && !p.IsSuspended, ct);
-        var asociadoCount = await ctx.Profiles
-            .CountAsync(p => p.MembershipTier == MembershipTier.Asociado && !p.IsSuspended, ct);
-
-        return (colaboradorCount, asociadoCount);
-    }
-
-    public async Task<IReadOnlyList<Profile>> GetReviewableAsync(CancellationToken ct = default)
-    {
-        // Exclude Stub profiles (null legal name) from the Consent Coordinator's
-        // queue. Profile.State is nullable during the §15i rollout (legacy rows
-        // are backfilled lazily), so we also include null-state rows whose
-        // identity fields are complete — those are Active-equivalent and would
-        // otherwise disappear from the queue until backfill runs.
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.Profiles
-            .AsNoTracking()
-            .Where(p => !p.IsApproved
-                && p.RejectedAt == null
-                && (p.State == ProfileState.Active
-                    || (p.State == null
-                        && !string.IsNullOrWhiteSpace(p.BurnerName)
-                        && !string.IsNullOrWhiteSpace(p.FirstName)
-                        && !string.IsNullOrWhiteSpace(p.LastName))))
-            .OrderBy(p => p.CreatedAt)
-            .ToListAsync(ct);
-    }
-
-    public async Task<int> GetReviewableCountAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.Profiles
-            .CountAsync(p => !p.IsApproved
-                && p.RejectedAt == null
-                && (p.State == ProfileState.Active
-                    || (p.State == null
-                        && !string.IsNullOrWhiteSpace(p.BurnerName)
-                        && !string.IsNullOrWhiteSpace(p.FirstName)
-                        && !string.IsNullOrWhiteSpace(p.LastName))), ct);
-    }
-
     public async Task<IReadOnlyList<Guid>> GetApprovedUserIdsAsync(CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
@@ -188,34 +142,6 @@ public sealed class ProfileRepository : IProfileRepository
             .Where(p => p.IsApproved && !p.IsSuspended)
             .Select(p => p.UserId)
             .ToListAsync(ct);
-    }
-
-    public async Task<IReadOnlyList<Guid>> GetActiveApprovedUserIdsAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.Profiles
-            .AsNoTracking()
-            .Where(p => p.IsApproved && !p.IsSuspended)
-            .Select(p => p.UserId)
-            .ToListAsync(ct);
-    }
-
-    public async Task<int> GetConsentReviewPendingCountAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.Profiles
-            .CountAsync(p =>
-                p.ConsentCheckStatus != null &&
-                (p.ConsentCheckStatus == ConsentCheckStatus.Pending ||
-                 p.ConsentCheckStatus == ConsentCheckStatus.Flagged) &&
-                p.RejectedAt == null, ct);
-    }
-
-    public async Task<int> GetNotApprovedAndNotSuspendedCountAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.Profiles
-            .CountAsync(p => !p.IsApproved && !p.IsSuspended, ct);
     }
 
     public async Task<IReadOnlyList<ProfileLanguage>> GetLanguagesAsync(

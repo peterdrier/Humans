@@ -165,20 +165,10 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
         return _repo.GetByEmailOrAlternateAsync(normalized, alternate, ct);
     }
 
-    public Task<IReadOnlyList<Instant>> GetLoginTimestampsInWindowAsync(
-        Instant fromInclusive, Instant toExclusive, CancellationToken ct = default) =>
-        _repo.GetLoginTimestampsInWindowAsync(fromInclusive, toExclusive, ct);
-
     [Obsolete("Issue nobodies-collective/Humans#687: User.GoogleEmail is being deprecated. Use IUserEmailService.GetOtherUserIdHavingEmailAsync.")]
     public Task<Guid?> GetOtherUserIdHavingGoogleEmailAsync(
         string email, Guid excludeUserId, CancellationToken ct = default) =>
         _repo.GetOtherUserIdHavingGoogleEmailAsync(email, excludeUserId, ct);
-
-    public Task<int> GetRejectedGoogleEmailCountAsync(CancellationToken ct = default) =>
-        _repo.GetRejectedGoogleEmailCountAsync(ct);
-
-    public Task<int> GetCountByContactSourceAsync(ContactSource source, CancellationToken ct = default) =>
-        _repo.GetCountByContactSourceAsync(source, ct);
 
     public Task<IReadOnlyList<Guid>> GetAccountsDueForAnonymizationAsync(
         Instant now, CancellationToken ct = default) =>
@@ -251,14 +241,11 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
     // EventParticipation reads
     // ==========================================================================
 
-    public Task<EventParticipation?> GetParticipationAsync(Guid userId, int year, CancellationToken ct = default) =>
-        _repo.GetParticipationAsync(userId, year, ct);
-
-    public async Task<List<EventParticipation>> GetAllParticipationsForYearAsync(int year, CancellationToken ct = default)
-    {
-        var list = await _repo.GetAllParticipationsForYearAsync(year, ct);
-        return list.ToList();
-    }
+    public Task<List<EventParticipation>> GetAllParticipationsForYearAsync(int year, CancellationToken ct = default) =>
+        throw new NotSupportedException(
+            "GetAllParticipationsForYearAsync is only meaningful through CachingUserService — " +
+            "projects the year's participations from the cached UserInfo snapshot. If this is " +
+            "being called on the inner UserService it indicates a DI registration mistake.");
 
     // ==========================================================================
     // EventParticipation writes — apply business rules, delegate persistence
@@ -420,12 +407,12 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
         await _repo.ReassignEventParticipationToUserAsync(mergedFromUserId, mergedToUserId, ct);
     }
 
-    public async Task<IReadOnlySet<Guid>> GetMergedSourceIdsAsync(
-        Guid targetUserId, CancellationToken ct = default)
-    {
-        var ids = await _repo.GetMergedSourceIdsAsync(targetUserId, ct);
-        return ids.ToHashSet();
-    }
+    public Task<IReadOnlySet<Guid>> GetMergedSourceIdsAsync(
+        Guid targetUserId, CancellationToken ct = default) =>
+        throw new NotSupportedException(
+            "GetMergedSourceIdsAsync is only meaningful through CachingUserService — " +
+            "scans the cached UserInfo snapshot for MergedToUserId tombstones. If this is " +
+            "being called on the inner UserService it indicates a DI registration mistake.");
 
     public Task<IReadOnlyList<Guid>> GetUsersWithLoginsButNoEmailsAsync(CancellationToken ct = default) =>
         _repo.GetUsersWithLoginsButNoEmailsAsync(ct);

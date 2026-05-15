@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
+using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
@@ -45,14 +46,10 @@ public class OnboardingReviewController : HumansControllerBase
     {
         var data = await _onboardingService.GetReviewQueueAsync(ct);
 
-        // Batch-load users for all profiles (nav property stripped)
-        var allUserIds = data.Pending.Concat(data.Flagged).Select(p => p.UserId).Distinct().ToList();
-        var usersById = await _userService.GetByIdsAsync(allUserIds, ct);
-
         var viewModel = new OnboardingReviewIndexViewModel
         {
-            PendingReviews = data.Pending.Select(p => MapToItem(p, usersById, data.PendingAppUserIds, data.ConsentProgress)).ToList(),
-            FlaggedReviews = data.Flagged.Select(p => MapToItem(p, usersById, data.PendingAppUserIds, data.ConsentProgress)).ToList()
+            PendingReviews = data.Pending.Select(u => MapToItem(u, data.PendingAppUserIds, data.ConsentProgress)).ToList(),
+            FlaggedReviews = data.Flagged.Select(u => MapToItem(u, data.PendingAppUserIds, data.ConsentProgress)).ToList()
         };
 
         return View(viewModel);
@@ -234,23 +231,23 @@ public class OnboardingReviewController : HumansControllerBase
     }
 
     private static OnboardingReviewItemViewModel MapToItem(
-        Profile profile, IReadOnlyDictionary<Guid, User> usersById,
+        UserInfo info,
         HashSet<Guid> pendingAppUserIds,
         Dictionary<Guid, ConsentProgressInfo> consentProgress)
     {
-        var progress = consentProgress.GetValueOrDefault(profile.UserId);
-        var itemUser = usersById.GetValueOrDefault(profile.UserId);
+        var progress = consentProgress.GetValueOrDefault(info.Id);
+        var profile = info.Profile!;
         return new OnboardingReviewItemViewModel
         {
-            UserId = profile.UserId,
-            DisplayName = itemUser?.DisplayName ?? "Unknown",
+            UserId = info.Id,
+            DisplayName = info.DisplayName,
             LegalName = profile.FullName,
-            ProfilePictureUrl = itemUser?.ProfilePictureUrl,
-            Email = itemUser?.Email ?? string.Empty,
+            ProfilePictureUrl = info.ProfilePictureUrl,
+            Email = info.Email ?? string.Empty,
             ConsentCheckStatus = profile.ConsentCheckStatus,
             MembershipTier = profile.MembershipTier,
             ProfileCreatedAt = profile.CreatedAt.ToDateTimeUtc(),
-            HasPendingApplication = pendingAppUserIds.Contains(profile.UserId),
+            HasPendingApplication = pendingAppUserIds.Contains(info.Id),
             ConsentCount = progress?.Signed ?? 0,
             RequiredConsentCount = progress?.Required ?? 0
         };

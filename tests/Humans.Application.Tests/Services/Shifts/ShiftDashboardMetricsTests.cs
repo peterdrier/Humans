@@ -1015,7 +1015,22 @@ public class ShiftDashboardMetricsTests : IDisposable
             => throw new NotSupportedException();
 
         public IReadOnlyCollection<Humans.Application.UserInfo> GetAllUserInfos()
-            => throw new NotSupportedException();
+        {
+            // Build a UserInfo snapshot from the in-memory DB so dashboard-metrics
+            // tests that drive ComputeDashboardTrendsAsync (which now filters
+            // LastLoginAt off the cached snapshot) can observe the fake's data.
+            var users = _db.Users.ToList();
+            return users.Select(u => Humans.Application.UserInfo.Create(
+                u,
+                userEmails: Array.Empty<UserEmail>(),
+                eventParticipations: Array.Empty<Humans.Domain.Entities.EventParticipation>(),
+                externalLogins: Array.Empty<(string, string)>(),
+                profile: null,
+                contactFields: Array.Empty<Humans.Domain.Entities.ContactField>(),
+                profileLanguages: Array.Empty<Humans.Domain.Entities.ProfileLanguage>(),
+                volunteerHistory: Array.Empty<Humans.Domain.Entities.VolunteerHistoryEntry>(),
+                communicationPreferences: Array.Empty<Humans.Domain.Entities.CommunicationPreference>())).ToList();
+        }
 
         public async Task<User?> GetByIdAsync(Guid userId, CancellationToken ct = default)
             => await _db.Users.FirstOrDefaultAsync(u => u.Id == userId, ct);

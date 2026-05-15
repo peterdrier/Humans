@@ -89,48 +89,11 @@ public interface IProfileRepository : IRepository
         GetCustomPictureRowsAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// Returns the count of non-suspended Colaborador and Asociado members.
-    /// </summary>
-    Task<(int ColaboradorCount, int AsociadoCount)> GetTierCountsAsync(CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns the user ids of all profiles that are approved and not
-    /// suspended. Read-only (AsNoTracking). Used by notification fan-out
-    /// that previously read <c>_dbContext.Profiles</c> directly from
-    /// cross-section services (e.g. Legal document sync).
-    /// </summary>
-    Task<IReadOnlyList<Guid>> GetActiveApprovedUserIdsAsync(CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns profiles that are in the onboarding review queue: not approved
-    /// and not rejected. Ordered by <c>CreatedAt</c> ascending. Read-only.
-    /// Used by the onboarding review queue.
-    /// </summary>
-    Task<IReadOnlyList<Profile>> GetReviewableAsync(CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns the count of profiles in the review queue (not approved, not
-    /// rejected). Used by the nav-badge count for Consent Coordinators.
-    /// </summary>
-    Task<int> GetReviewableCountAsync(CancellationToken ct = default);
-
-    /// <summary>
     /// Returns the user ids of every approved, non-suspended profile. Used
     /// by the admin dashboard to compute active-user aggregates without
     /// loading the full Profile graph.
     /// </summary>
     Task<IReadOnlyList<Guid>> GetApprovedUserIdsAsync(CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns the count of profiles whose <c>ConsentCheckStatus</c> is Pending
-    /// or Flagged and whose <c>RejectedAt</c> is null.
-    /// </summary>
-    Task<int> GetConsentReviewPendingCountAsync(CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns the count of profiles that are neither approved nor suspended.
-    /// </summary>
-    Task<int> GetNotApprovedAndNotSuspendedCountAsync(CancellationToken ct = default);
 
     /// <summary>
     /// Returns the languages for a profile, ordered by proficiency descending

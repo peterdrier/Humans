@@ -435,44 +435,33 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         return profile.Id;
     }
 
-    public Task<(int ColaboradorCount, int AsociadoCount)> GetTierCountsAsync(CancellationToken ct = default) =>
-        _profileRepository.GetTierCountsAsync(ct);
-
     public Task<IReadOnlyList<Guid>> GetActiveApprovedUserIdsAsync(CancellationToken ct = default) =>
-        _profileRepository.GetActiveApprovedUserIdsAsync(ct);
+        throw new NotSupportedException(
+            "GetActiveApprovedUserIdsAsync is only meaningful through CachingProfileService — " +
+            "scans the cached UserInfo snapshot. If this is called on the inner ProfileService " +
+            "it indicates a DI registration mistake.");
 
     public Task<int> GetConsentReviewPendingCountAsync(CancellationToken ct = default) =>
-        _profileRepository.GetConsentReviewPendingCountAsync(ct);
+        throw new NotSupportedException(
+            "GetConsentReviewPendingCountAsync is only meaningful through CachingProfileService — " +
+            "counts off the cached UserInfo snapshot. If this is called on the inner " +
+            "ProfileService it indicates a DI registration mistake.");
 
     public Task<int> GetNotApprovedAndNotSuspendedCountAsync(CancellationToken ct = default) =>
-        _profileRepository.GetNotApprovedAndNotSuspendedCountAsync(ct);
+        throw new NotSupportedException(
+            "GetNotApprovedAndNotSuspendedCountAsync is only meaningful through CachingProfileService — " +
+            "counts off the cached UserInfo snapshot. If this is called on the inner " +
+            "ProfileService it indicates a DI registration mistake.");
 
     public Task<IReadOnlyList<(Guid ProfileId, Guid UserId, long UpdatedAtTicks)>>
         GetCustomPictureInfoByUserIdsAsync(IEnumerable<Guid> userIds, CancellationToken ct = default) =>
         _profileRepository.GetCustomPictureInfoByUserIdsAsync(userIds, ct);
 
-    public async Task<IReadOnlyList<BirthdayProfileInfo>>
-        GetBirthdayProfilesAsync(int month, CancellationToken ct = default)
-    {
-        // §15 invariant: the decorator is pure optimization — removing it must
-        // leave the app fully functional (just slower). Base service loads the
-        // snapshot from the DB on every call.
-        var snapshot = await BuildFullProfileSnapshotAsync(ct);
-        return GetBirthdayProfilesFromSnapshot(snapshot, month);
-    }
-
-    public async Task<IReadOnlyList<LocationProfileInfo>>
-        GetApprovedProfilesWithLocationAsync(CancellationToken ct = default)
-    {
-        var snapshot = await BuildFullProfileSnapshotAsync(ct);
-        return GetApprovedProfilesWithLocationFromSnapshot(snapshot);
-    }
-
     /// <summary>
-    /// Builds a <see cref="FullProfile"/> snapshot from repositories.
-    /// Used by the base <see cref="ProfileService"/> so that every read method
-    /// has a DB-backed fallback path. The caching decorator overrides these methods
-    /// to serve the same static helpers from its in-memory dict instead.
+    /// Builds a <see cref="FullProfile"/> snapshot from repositories. Used by the
+    /// base <see cref="ProfileService"/> as the DB-backed fallback for
+    /// <see cref="SearchProfilesAsync"/>; the caching decorator overrides that
+    /// method to read from its in-memory dict instead.
     /// </summary>
     private async Task<IReadOnlyList<FullProfile>> BuildFullProfileSnapshotAsync(CancellationToken ct)
     {
@@ -482,9 +471,6 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         var userIds = profiles.Select(p => p.UserId).ToList();
         var users = await _userService.GetByIdsAsync(userIds, ct);
 
-        // Issue #635 (§15i): bulk-load every UserEmail so FullProfile.Create
-        // can populate PrimaryEmail / AllVerifiedEmails / GoogleEmail without
-        // per-user repo calls. Trivial at ~500-user scale.
         var allUserEmails = await _userEmailRepository.GetAllAsync(ct);
         var emailsByUserId = allUserEmails
             .GroupBy(e => e.UserId)
@@ -503,37 +489,6 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         }
 
         return result;
-    }
-
-    /// <summary>
-    /// Pure filter for <see cref="GetBirthdayProfilesAsync"/>. Called by both the
-    /// base (DB-backed) and decorator (dict-backed) paths with the same output shape.
-    /// </summary>
-    public static IReadOnlyList<BirthdayProfileInfo> GetBirthdayProfilesFromSnapshot(
-        IEnumerable<FullProfile> snapshot, int month)
-    {
-        return snapshot
-            .Where(p => p.IsApproved && !p.IsSuspended && p.BirthdayMonth == month && p.BirthdayDay.HasValue)
-            .OrderBy(p => p.BirthdayDay)
-            .Select(p => new BirthdayProfileInfo(
-                p.UserId, p.DisplayName, p.ProfilePictureUrl,
-                p.HasCustomPicture, p.ProfileId, p.BirthdayDay!.Value, p.BirthdayMonth!.Value))
-            .ToList();
-    }
-
-    /// <summary>
-    /// Pure filter for <see cref="GetApprovedProfilesWithLocationAsync"/>. Called by both the
-    /// base (DB-backed) and decorator (dict-backed) paths with the same output shape.
-    /// </summary>
-    public static IReadOnlyList<LocationProfileInfo> GetApprovedProfilesWithLocationFromSnapshot(
-        IEnumerable<FullProfile> snapshot)
-    {
-        return snapshot
-            .Where(p => p.IsApproved && !p.IsSuspended && p.Latitude.HasValue && p.Longitude.HasValue)
-            .Select(p => new LocationProfileInfo(
-                p.UserId, p.DisplayName, p.ProfilePictureUrl,
-                p.Latitude!.Value, p.Longitude!.Value, p.City, p.CountryCode))
-            .ToList();
     }
 
     public async Task<(bool CanAdd, int MinutesUntilResend, Guid? PendingEmailId)>
@@ -736,12 +691,6 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
     // Cache invalidation (FullProfile refresh, nav-badge, notification meter) is
     // handled by the CachingProfileService decorator's wrappers for these methods.
     // ==========================================================================
-
-    public Task<IReadOnlyList<Domain.Entities.Profile>> GetReviewableProfilesAsync(CancellationToken ct = default) =>
-        _profileRepository.GetReviewableAsync(ct);
-
-    public Task<int> GetPendingReviewCountAsync(CancellationToken ct = default) =>
-        _profileRepository.GetReviewableCountAsync(ct);
 
     public async Task<OnboardingResult> RecordConsentCheckAsync(
         Guid userId, Guid reviewerId, ConsentCheckStatus result, string? notes,

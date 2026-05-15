@@ -115,7 +115,8 @@ public class SendAdminDailyDigestJob : IRecurringJob
             // Google sync outbox counts — already routed through the repo.
             var failedSyncEvents = await _googleSyncOutboxRepository.CountStaleAsync(cancellationToken);
             var transientSyncRetries = await _googleSyncOutboxRepository.CountTransientRetriesAsync(cancellationToken);
-            var permanentSyncFailures = await _userService.GetRejectedGoogleEmailCountAsync(cancellationToken);
+            var permanentSyncFailures = _userService.GetAllUserInfos()
+                .Count(u => u.GoogleEmailStatus == GoogleEmailStatus.Rejected);
 
             // Ticket sync status — routed through ITicketSyncService.
             var ticketSyncStatus = await _ticketSyncService.GetErrorStatusAsync(cancellationToken);

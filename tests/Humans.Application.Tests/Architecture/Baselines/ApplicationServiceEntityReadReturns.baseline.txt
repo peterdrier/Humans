@@ -57,7 +57,6 @@ Humans.Application.Interfaces.Legal.ILegalDocumentSyncService.GetRequiredVersion
 Humans.Application.Interfaces.Legal.ILegalDocumentSyncService.GetVersionByIdAsync:Humans.Domain.Entities.DocumentVersion
 Humans.Application.Interfaces.Onboarding.IOnboardingService.GetReviewDetailAsync:Humans.Domain.Entities.Application
 Humans.Application.Interfaces.Onboarding.IOnboardingService.GetReviewDetailAsync:Humans.Domain.Entities.Profile
-Humans.Application.Interfaces.Onboarding.IOnboardingService.GetReviewQueueAsync:Humans.Domain.Entities.Profile
 Humans.Application.Interfaces.Profiles.IAccountMergeService.GetByIdAsync:Humans.Domain.Entities.AccountMergeRequest
 Humans.Application.Interfaces.Profiles.IAccountMergeService.GetPendingRequestsAsync:Humans.Domain.Entities.AccountMergeRequest
 Humans.Application.Interfaces.Profiles.ICommunicationPreferenceService.GetPreferenceOrNullAsync:Humans.Domain.Entities.CommunicationPreference
@@ -66,7 +65,6 @@ Humans.Application.Interfaces.Profiles.ICommunicationPreferenceService.GetPrefer
 Humans.Application.Interfaces.Profiles.IProfileService.GetByUserIdsAsync:Humans.Domain.Entities.Profile
 Humans.Application.Interfaces.Profiles.IProfileService.GetProfileAsync:Humans.Domain.Entities.Profile
 Humans.Application.Interfaces.Profiles.IProfileService.GetProfileLanguagesAsync:Humans.Domain.Entities.ProfileLanguage
-Humans.Application.Interfaces.Profiles.IProfileService.GetReviewableProfilesAsync:Humans.Domain.Entities.Profile
 Humans.Application.Interfaces.Profiles.IUserEmailService.GetEntitiesByUserIdAsync:Humans.Domain.Entities.UserEmail
 Humans.Application.Interfaces.Profiles.IUserEmailService.GetEntitiesByUserIdsAsync:Humans.Domain.Entities.UserEmail
 Humans.Application.Interfaces.Profiles.IUserEmailService.GetOrphanUserEmailsAsync:Humans.Domain.Entities.UserEmail
@@ -121,4 +119,3 @@ Humans.Application.Interfaces.Users.IUserService.GetByEmailOrAlternateAsync:Huma
 Humans.Application.Interfaces.Users.IUserService.GetByIdAsync:Humans.Domain.Entities.User
 Humans.Application.Interfaces.Users.IUserService.GetByIdsAsync:Humans.Domain.Entities.User
 Humans.Application.Interfaces.Users.IUserService.GetByIdsWithEmailsAsync:Humans.Domain.Entities.User
-Humans.Application.Interfaces.Users.IUserService.GetParticipationAsync:Humans.Domain.Entities.EventParticipation

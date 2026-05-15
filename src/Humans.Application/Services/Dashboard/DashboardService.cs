@@ -216,8 +216,9 @@ public class DashboardService : IDashboardService
         {
             if (activeEvent is not null && activeEvent.Year > 0)
             {
-                var participation = await _userService.GetParticipationAsync(userId, activeEvent.Year, cancellationToken);
-                participationStatus = participation?.Status;
+                var info = await _userService.GetUserInfoAsync(userId, cancellationToken);
+                participationStatus = info?.EventParticipations
+                    .FirstOrDefault(p => p.Year == activeEvent.Year)?.Status;
             }
         }
         catch (OperationCanceledException ex)

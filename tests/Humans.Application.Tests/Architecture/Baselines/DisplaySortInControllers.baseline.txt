@@ -91,7 +91,6 @@ src/Humans.Infrastructure/Repositories/Profiles/ContactFieldRepository.cs:OrderB
 src/Humans.Infrastructure/Repositories/Profiles/ContactFieldRepository.cs:OrderBy#2
 src/Humans.Infrastructure/Repositories/Profiles/ContactFieldRepository.cs:ThenBy#1
 src/Humans.Infrastructure/Repositories/Profiles/ContactFieldRepository.cs:ThenBy#2
-src/Humans.Infrastructure/Repositories/Profiles/ProfileRepository.cs:OrderBy#1
 src/Humans.Infrastructure/Repositories/Profiles/ProfileRepository.cs:OrderByDescending#1
 src/Humans.Infrastructure/Repositories/Profiles/ProfileRepository.cs:ThenBy#1
 src/Humans.Infrastructure/Repositories/Profiles/UserEmailRepository.cs:OrderBy#1
@@ -139,4 +138,3 @@ src/Humans.Infrastructure/Repositories/Tickets/TicketRepository.cs:OrderByDescen
 src/Humans.Infrastructure/Repositories/Tickets/TicketRepository.cs:OrderByDescending#7
 src/Humans.Infrastructure/Repositories/Tickets/TicketRepository.cs:OrderByDescending#8
 src/Humans.Infrastructure/Repositories/Tickets/TicketRepository.cs:OrderByDescending#9
-src/Humans.Infrastructure/Repositories/Users/UserRepository.cs:OrderByDescending#1

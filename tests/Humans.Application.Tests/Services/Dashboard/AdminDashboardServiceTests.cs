@@ -2,7 +2,6 @@ using AwesomeAssertions;
 using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Governance;
-using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Dashboard;
@@ -23,12 +22,11 @@ namespace Humans.Application.Tests.Services.Dashboard;
 public class AdminDashboardServiceTests
 {
     private readonly IUserService _userService = Substitute.For<IUserService>();
-    private readonly IProfileService _profileService = Substitute.For<IProfileService>();
     private readonly IMembershipCalculator _membershipCalculator = Substitute.For<IMembershipCalculator>();
     private readonly IApplicationDecisionService _applicationDecisionService = Substitute.For<IApplicationDecisionService>();
 
     private AdminDashboardService BuildSut() =>
-        new(_userService, _profileService, _membershipCalculator, _applicationDecisionService);
+        new(_userService, _membershipCalculator, _applicationDecisionService);
 
     [HumansFact]
     public async Task GetAdminDashboardAsync_AggregatesPartitionAppStatsAndLanguageDistribution()
@@ -107,15 +105,55 @@ public class AdminDashboardServiceTests
         communicationPreferences: Array.Empty<CommunicationPreference>());
 
     [HumansFact]
-    public async Task GetPendingReviewCountAsync_DelegatesToProfileService()
+    public async Task GetPendingReviewCountAsync_CountsUnapprovedNonRejectedProfilesFromSnapshot()
     {
-        _profileService.GetPendingReviewCountAsync(Arg.Any<CancellationToken>()).Returns(42);
+        var pending1 = MakeUserInfoWithProfile(approved: false, rejected: false);
+        var pending2 = MakeUserInfoWithProfile(approved: false, rejected: false);
+        var rejected = MakeUserInfoWithProfile(approved: false, rejected: true);
+        var approved = MakeUserInfoWithProfile(approved: true, rejected: false);
+        var profileless = MakeUserInfo(Guid.NewGuid(), "en");
+
+        _userService.GetAllUserInfos().Returns(new[] { pending1, pending2, rejected, approved, profileless });
 
         var sut = BuildSut();
 
         var result = await sut.GetPendingReviewCountAsync();
 
-        result.Should().Be(42);
-        await _profileService.Received(1).GetPendingReviewCountAsync(Arg.Any<CancellationToken>());
+        result.Should().Be(2);
+    }
+
+    private static UserInfo MakeUserInfoWithProfile(bool approved, bool rejected)
+    {
+        var userId = Guid.NewGuid();
+        var profile = new Profile
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            FirstName = "F",
+            LastName = "L",
+            BurnerName = "B",
+            IsApproved = approved,
+            RejectedAt = rejected ? Instant.FromUtc(2026, 1, 1, 0, 0) : null,
+            CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+            UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+            State = ProfileState.Active,
+        };
+        return UserInfo.Create(
+            user: new User
+            {
+                Id = userId,
+                DisplayName = "U",
+                PreferredLanguage = "en",
+                CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+                GoogleEmailStatus = GoogleEmailStatus.Unknown,
+            },
+            userEmails: Array.Empty<UserEmail>(),
+            eventParticipations: Array.Empty<EventParticipation>(),
+            externalLogins: Array.Empty<(string, string)>(),
+            profile: profile,
+            contactFields: Array.Empty<ContactField>(),
+            profileLanguages: Array.Empty<ProfileLanguage>(),
+            volunteerHistory: Array.Empty<VolunteerHistoryEntry>(),
+            communicationPreferences: Array.Empty<CommunicationPreference>());
     }
 }

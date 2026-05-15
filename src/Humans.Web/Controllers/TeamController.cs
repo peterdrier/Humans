@@ -20,10 +20,12 @@ using Humans.Web.Helpers;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Identity;
 using NodaTime;
+using Humans.Application.DTOs;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Users;
 
 namespace Humans.Web.Controllers;
 
@@ -34,6 +36,7 @@ public class TeamController : HumansControllerBase
     private readonly ITeamService _teamService;
     private readonly ITeamPageService _teamPageService;
     private readonly IProfileService _profileService;
+    private readonly IUserService _userService;
     private readonly INotificationService _notificationService;
     private readonly IGoogleSyncService _googleSyncService;
     private readonly ITeamResourceService _teamResourceService;
@@ -49,6 +52,7 @@ public class TeamController : HumansControllerBase
         ITeamPageService teamPageService,
         UserManager<User> userManager,
         IProfileService profileService,
+        IUserService userService,
         INotificationService notificationService,
         IGoogleSyncService googleSyncService,
         ITeamResourceService teamResourceService,
@@ -63,6 +67,7 @@ public class TeamController : HumansControllerBase
         _teamService = teamService;
         _teamPageService = teamPageService;
         _profileService = profileService;
+        _userService = userService;
         _notificationService = notificationService;
         _googleSyncService = googleSyncService;
         _teamResourceService = teamResourceService;
@@ -356,8 +361,21 @@ public class TeamController : HumansControllerBase
         if (currentMonth < 1 || currentMonth > 12)
             currentMonth = _clock.GetCurrentInstant().InZone(currentZone).Month;
 
-        // Load all active profiles that have a date of birth
-        var profilesWithBirthdays = await _profileService.GetBirthdayProfilesAsync(currentMonth, ct);
+        // Load all active profiles that have a date of birth — read off the cached UserInfo snapshot.
+        var profilesWithBirthdays = _userService.GetAllUserInfos()
+            .Where(u => u.Profile is { IsApproved: true, State: not ProfileState.Suspended }
+                        && u.Profile.BirthdayMonth == currentMonth
+                        && u.Profile.BirthdayDay.HasValue)
+            .OrderBy(u => u.Profile!.BirthdayDay)
+            .Select(u => new BirthdayProfileInfo(
+                u.Id,
+                u.BurnerName,
+                u.ProfilePictureUrl,
+                u.Profile!.HasCustomPicture,
+                u.Profile.Id,
+                u.Profile.BirthdayDay!.Value,
+                u.Profile.BirthdayMonth!.Value))
+            .ToList();
 
         // Load team memberships for these users
         var userIds = profilesWithBirthdays.Select(p => p.UserId).ToList();
@@ -415,7 +433,17 @@ public class TeamController : HumansControllerBase
     [HttpGet("Map")]
     public async Task<IActionResult> Map(CancellationToken ct)
     {
-        var profiles = await _profileService.GetApprovedProfilesWithLocationAsync(ct);
+        var profiles = _userService.GetAllUserInfos()
+            .Where(u => u.Profile is { IsApproved: true, Latitude: not null, Longitude: not null, State: not ProfileState.Suspended })
+            .Select(u => new LocationProfileInfo(
+                u.Id,
+                u.BurnerName,
+                u.ProfilePictureUrl,
+                u.Profile!.Latitude!.Value,
+                u.Profile.Longitude!.Value,
+                u.Profile.City,
+                u.Profile.CountryCode))
+            .ToList();
 
         var effectiveUrls = await ProfilePictureUrlHelper.BuildEffectiveUrlsAsync(
             _profileService, Url,

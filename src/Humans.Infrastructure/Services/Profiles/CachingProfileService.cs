@@ -336,32 +336,46 @@ public sealed class CachingProfileService : TrackedCache<Guid, FullProfile>, IPr
         return await inner.GetProfilePictureMigrationSnapshotAsync(ct);
     }
 
-    public async Task<(int ColaboradorCount, int AsociadoCount)> GetTierCountsAsync(CancellationToken ct = default)
+    public Task<IReadOnlyList<Guid>> GetActiveApprovedUserIdsAsync(CancellationToken ct = default)
     {
-        await using var scope = _scopeFactory.CreateAsyncScope();
-        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
-        return await inner.GetTierCountsAsync(ct);
+        var ids = UserSnapshot()
+            .Where(u => u.Profile?.IsApproved == true && u.Profile.State != ProfileState.Suspended)
+            .Select(u => u.Id)
+            .ToList();
+        return Task.FromResult<IReadOnlyList<Guid>>(ids);
     }
 
-    public async Task<IReadOnlyList<Guid>> GetActiveApprovedUserIdsAsync(CancellationToken ct = default)
+    public Task<int> GetConsentReviewPendingCountAsync(CancellationToken ct = default)
     {
-        await using var scope = _scopeFactory.CreateAsyncScope();
-        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
-        return await inner.GetActiveApprovedUserIdsAsync(ct);
+        var count = UserSnapshot().Count(u =>
+            u.Profile is not null
+            && (u.Profile.ConsentCheckStatus == Humans.Domain.Enums.ConsentCheckStatus.Pending
+                || u.Profile.ConsentCheckStatus == Humans.Domain.Enums.ConsentCheckStatus.Flagged)
+            && u.Profile.RejectedAt is null);
+        return Task.FromResult(count);
     }
 
-    public async Task<int> GetConsentReviewPendingCountAsync(CancellationToken ct = default)
+    public Task<int> GetNotApprovedAndNotSuspendedCountAsync(CancellationToken ct = default)
     {
-        await using var scope = _scopeFactory.CreateAsyncScope();
-        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
-        return await inner.GetConsentReviewPendingCountAsync(ct);
+        var count = UserSnapshot().Count(u =>
+            u.Profile is not null
+            && !u.Profile.IsApproved
+            && u.Profile.State != ProfileState.Suspended);
+        return Task.FromResult(count);
     }
 
-    public async Task<int> GetNotApprovedAndNotSuspendedCountAsync(CancellationToken ct = default)
+    /// <summary>
+    /// Returns the cached <see cref="UserInfo"/> snapshot via the singleton
+    /// <see cref="IUserService"/>. Resolved per-call via the scope factory because
+    /// the registration is Scoped at the contract level even though the runtime
+    /// implementation is a Singleton decorator; this preserves the captured-scope
+    /// hygiene used elsewhere in this class.
+    /// </summary>
+    private IReadOnlyCollection<UserInfo> UserSnapshot()
     {
-        await using var scope = _scopeFactory.CreateAsyncScope();
-        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
-        return await inner.GetNotApprovedAndNotSuspendedCountAsync(ct);
+        using var scope = _scopeFactory.CreateScope();
+        var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
+        return userService.GetAllUserInfos();
     }
 
     public async Task<IReadOnlyList<(Guid ProfileId, Guid UserId, long UpdatedAtTicks)>>
@@ -370,20 +384,6 @@ public sealed class CachingProfileService : TrackedCache<Guid, FullProfile>, IPr
         await using var scope = _scopeFactory.CreateAsyncScope();
         var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
         return await inner.GetCustomPictureInfoByUserIdsAsync(userIds, ct);
-    }
-
-    public Task<IReadOnlyList<Application.DTOs.BirthdayProfileInfo>>
-        GetBirthdayProfilesAsync(int month, CancellationToken ct = default)
-    {
-        return Task.FromResult(
-            ProfilesProfileService.GetBirthdayProfilesFromSnapshot(Values, month));
-    }
-
-    public Task<IReadOnlyList<Application.DTOs.LocationProfileInfo>>
-        GetApprovedProfilesWithLocationAsync(CancellationToken ct = default)
-    {
-        return Task.FromResult(
-            ProfilesProfileService.GetApprovedProfilesWithLocationFromSnapshot(Values));
     }
 
     public async Task<(bool CanAdd, int MinutesUntilResend, Guid? PendingEmailId)>
@@ -554,20 +554,6 @@ public sealed class CachingProfileService : TrackedCache<Guid, FullProfile>, IPr
     // Onboarding-section writes — delegate to inner, then invalidate cross-cutting
     // caches (nav badge, notification meter) and refresh the FullProfile entry.
     // ==========================================================================
-
-    public async Task<IReadOnlyList<Profile>> GetReviewableProfilesAsync(CancellationToken ct = default)
-    {
-        await using var scope = _scopeFactory.CreateAsyncScope();
-        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
-        return await inner.GetReviewableProfilesAsync(ct);
-    }
-
-    public async Task<int> GetPendingReviewCountAsync(CancellationToken ct = default)
-    {
-        await using var scope = _scopeFactory.CreateAsyncScope();
-        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
-        return await inner.GetPendingReviewCountAsync(ct);
-    }
 
     public async Task<OnboardingResult> RecordConsentCheckAsync(
         Guid userId, Guid reviewerId, ConsentCheckStatus result, string? notes,

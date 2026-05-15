@@ -1,7 +1,6 @@
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Dashboard;
 using Humans.Application.Interfaces.Governance;
-using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
 
 namespace Humans.Application.Services.Dashboard;
@@ -11,27 +10,24 @@ namespace Humans.Application.Services.Dashboard;
 /// joins in tier-application stats, and computes a language distribution
 /// across approved-not-suspended users for the dashboard's chart. Owns no
 /// tables; all reads route through the owning section services
-/// (<see cref="IUserService"/>, <see cref="IProfileService"/>,
-/// <see cref="IMembershipCalculator"/>, <see cref="IApplicationDecisionService"/>).
-/// User identity and preferred-language reads come from the cached
-/// <see cref="UserInfo"/> snapshot — every admin dashboard render previously
-/// did a per-render <c>users</c> SELECT + GROUP BY for the language tile.
+/// (<see cref="IUserService"/>, <see cref="IMembershipCalculator"/>,
+/// <see cref="IApplicationDecisionService"/>). User identity, profile state,
+/// and preferred-language reads come from the cached <see cref="UserInfo"/>
+/// snapshot — every admin dashboard render previously did a per-render
+/// <c>users</c> SELECT + GROUP BY for the language tile.
 /// </summary>
 public sealed class AdminDashboardService : IAdminDashboardService
 {
     private readonly IUserService _userService;
-    private readonly IProfileService _profileService;
     private readonly IMembershipCalculator _membershipCalculator;
     private readonly IApplicationDecisionService _applicationDecisionService;
 
     public AdminDashboardService(
         IUserService userService,
-        IProfileService profileService,
         IMembershipCalculator membershipCalculator,
         IApplicationDecisionService applicationDecisionService)
     {
         _userService = userService;
-        _profileService = profileService;
         _membershipCalculator = membershipCalculator;
         _applicationDecisionService = applicationDecisionService;
     }
@@ -81,6 +77,12 @@ public sealed class AdminDashboardService : IAdminDashboardService
             languageDistribution);
     }
 
-    public Task<int> GetPendingReviewCountAsync(CancellationToken ct = default) =>
-        _profileService.GetPendingReviewCountAsync(ct);
+    public Task<int> GetPendingReviewCountAsync(CancellationToken ct = default)
+    {
+        var count = _userService.GetAllUserInfos().Count(u =>
+            u.Profile is not null
+            && !u.Profile.IsApproved
+            && u.Profile.RejectedAt is null);
+        return Task.FromResult(count);
+    }
 }

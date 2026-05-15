@@ -70,9 +70,16 @@ public sealed class OnboardingService : IOnboardingService
 
     public async Task<ReviewQueueData> GetReviewQueueAsync(CancellationToken ct = default)
     {
-        var reviewableProfiles = (await _profileService.GetReviewableProfilesAsync(ct)).ToList();
+        // Read off the cached UserInfo snapshot — review queue = profiles not
+        // approved and not rejected, oldest profile first.
+        var reviewable = _userService.GetAllUserInfos()
+            .Where(u => u.Profile is not null
+                        && !u.Profile.IsApproved
+                        && u.Profile.RejectedAt is null)
+            .OrderBy(u => u.Profile!.CreatedAt)
+            .ToList();
 
-        var allUserIds = reviewableProfiles.Select(p => p.UserId).ToList();
+        var allUserIds = reviewable.Select(u => u.Id).ToList();
         var pendingAppUserIds = await _applicationDecisionService
             .GetUserIdsWithPendingApplicationAsync(allUserIds, ct);
 
@@ -85,10 +92,10 @@ public sealed class OnboardingService : IOnboardingService
                 snapshot.RequiredConsentCount);
         }
 
-        var flagged = reviewableProfiles
-            .Where(p => p.ConsentCheckStatus == ConsentCheckStatus.Flagged)
+        var flagged = reviewable
+            .Where(u => u.Profile!.ConsentCheckStatus == ConsentCheckStatus.Flagged)
             .ToList();
-        var pending = reviewableProfiles.Except(flagged).ToList();
+        var pending = reviewable.Except(flagged).ToList();
 
         // ReviewQueueData currently types PendingAppUserIds as HashSet<Guid> —
         // materialize from the IReadOnlySet<Guid> returned by Governance.
@@ -156,8 +163,8 @@ public sealed class OnboardingService : IOnboardingService
         var data = await GetReviewQueueAsync(ct);
         var eligibleUserIds = data.Pending
             .Concat(data.Flagged)
-            .Where(p => selected.Contains(p.UserId))
-            .Select(p => p.UserId)
+            .Where(u => selected.Contains(u.Id))
+            .Select(u => u.Id)
             .ToList();
 
         var approved = 0;

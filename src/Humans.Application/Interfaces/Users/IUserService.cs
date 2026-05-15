@@ -13,6 +13,7 @@ namespace Humans.Application.Interfaces.Users;
 /// <remarks>
 /// Surface-budget recent history (newest first):
 /// <list type="bullet">
+///   <item>32→28 — UserInfo snapshot consolidation (PR #553): removed 4 single-caller DB readers (GetRejectedGoogleEmailCountAsync, GetCountByContactSourceAsync, GetLoginTimestampsInWindowAsync, GetParticipationAsync); reimplemented 2 multi-caller readers (GetAllParticipationsForYearAsync, GetMergedSourceIdsAsync) over the cached UserInfo snapshot via the CachingUserService decorator. Inner UserService now throws NotSupportedException on the swapped methods to match the existing GetAllUserInfos pattern. Net effect: 7 DB read paths drained, one cache snapshot.</item>
 ///   <item>33→32 — admin dashboard language tile (PR #553 follow-up): removed GetLanguageDistributionForUserIdsAsync. Sole caller (AdminDashboardService) now groups in memory over the cached UserInfo snapshot rather than a per-render SQL GROUP BY against `users` — eliminates a DB round-trip on every admin dashboard render.</item>
 ///   <item>32→33 — admin stats + /Users/Admin/Debug + /Tickets Venn: added GetAllUserInfos. Snapshot accessor — the cache is the canonical read-model; all aggregate consumers read from it rather than re-querying the underlying tables.</item>
 ///   <item>32→31 — mailer-inbound-import follow-up: removed GetDisplayNamesByIdsAsync. HumanViewComponent already renders the cached DisplayName from a userId Guid; pre-fetching the dictionary was redundant.</item>
@@ -28,7 +29,7 @@ namespace Humans.Application.Interfaces.Users;
 ///   <item>-1 GetContactUsersAsync removed (/Contacts surface deleted in PR 2 of email-identity-decoupling — only ContactService called it).</item>
 /// </list>
 /// </remarks>
-[SurfaceBudget(32)]
+[SurfaceBudget(28)]
 public interface IUserService : IApplicationService, IUserMerge
 {
     /// <summary>
@@ -82,11 +83,6 @@ public interface IUserService : IApplicationService, IUserMerge
     Task<IReadOnlyDictionary<Guid, User>> GetByIdsWithEmailsAsync(
         IReadOnlyCollection<Guid> userIds,
         CancellationToken ct = default);
-
-    /// <summary>
-    /// Get the participation record for a user in a given year. Returns null if no record exists.
-    /// </summary>
-    Task<EventParticipation?> GetParticipationAsync(Guid userId, int year, CancellationToken ct = default);
 
     /// <summary>
     /// Get all participation records for a given year.
@@ -205,17 +201,6 @@ public interface IUserService : IApplicationService, IUserMerge
     Task<User?> GetByEmailOrAlternateAsync(string email, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns the <c>LastLoginAt</c> timestamp of every user whose last login falls
-    /// within the half-open window <c>[fromInclusive, toExclusive)</c>. Used by the
-    /// shift coordinator dashboard to chart distinct logins by day without reading
-    /// the users table directly.
-    /// </summary>
-    Task<IReadOnlyList<Instant>> GetLoginTimestampsInWindowAsync(
-        Instant fromInclusive,
-        Instant toExclusive,
-        CancellationToken ct = default);
-
-    /// <summary>
     /// Returns the id of any user, other than <paramref name="excludeUserId"/>,
     /// whose legacy <c>User.GoogleEmail</c> shadow column matches <paramref name="email"/>
     /// (case-insensitive), or null if no such user exists.
@@ -233,21 +218,6 @@ public interface IUserService : IApplicationService, IUserMerge
     /// </summary>
     Task SetLastConsentReminderSentAsync(
         Guid userId, Instant sentAt, CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns the count of users whose <see cref="User.GoogleEmailStatus"/>
-    /// equals <see cref="Humans.Domain.Enums.GoogleEmailStatus.Rejected"/>.
-    /// Used by the admin daily digest so the job does not read the users
-    /// table directly (design-rules §2c).
-    /// </summary>
-    Task<int> GetRejectedGoogleEmailCountAsync(CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns the count of users whose <see cref="User.ContactSource"/>
-    /// equals <paramref name="source"/>. Used by the admin dashboard to
-    /// show per-source import totals.
-    /// </summary>
-    Task<int> GetCountByContactSourceAsync(ContactSource source, CancellationToken ct = default);
 
     /// <summary>
     /// Returns the user ids of every account with <c>DeletionScheduledFor</c>
