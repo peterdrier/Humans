@@ -172,4 +172,5 @@ public enum AuditAction
     ContainerDeleted,
     ContainerPlacementSaved,
     ContainerPlacementCleared,
+    ContainerPlacementNotesUpdated,
 }

@@ -203,6 +203,52 @@ public sealed class ContainerService : IContainerService
             relatedEntityId: containerId, relatedEntityType: nameof(Container));
     }
 
+    public async Task<ContainerPlacementDto> UpdatePlacementNotesAsync(
+        Guid containerId,
+        int year,
+        string? notes,
+        ContainerImageUpload? image,
+        bool removeImage,
+        Guid actorUserId,
+        CancellationToken ct = default)
+    {
+        ValidateImage(image);
+
+        var placement = await _repo.GetPlacementAsync(containerId, year, ct)
+            ?? throw new InvalidOperationException("Placement not found. Place the container on the map first.");
+
+        placement.PlacementNotes = string.IsNullOrWhiteSpace(notes) ? null : notes;
+
+        if (removeImage && placement.PlacementImageStoragePath is not null)
+        {
+            await _fileStorage.DeleteAsync(placement.PlacementImageStoragePath, ct);
+            placement.PlacementImageStoragePath = null;
+            placement.PlacementImageContentType = null;
+            placement.PlacementImageFileName = null;
+        }
+        else if (image is not null)
+        {
+            if (placement.PlacementImageStoragePath is not null)
+            {
+                await _fileStorage.DeleteAsync(placement.PlacementImageStoragePath, ct);
+            }
+            placement.PlacementImageStoragePath = await SaveImageAsync(containerId, image, ct);
+            placement.PlacementImageContentType = image.ContentType;
+            placement.PlacementImageFileName = image.FileName;
+        }
+
+        placement.UpdatedAt = _clock.GetCurrentInstant();
+        await _repo.UpsertPlacementAsync(placement, ct);
+
+        await _auditLog.LogAsync(
+            AuditAction.ContainerPlacementNotesUpdated, nameof(ContainerPlacement), containerId,
+            $"Updated placement notes for {year}",
+            actorUserId,
+            relatedEntityId: containerId, relatedEntityType: nameof(Container));
+
+        return ToPlacementDto(placement);
+    }
+
     public async Task<ContainerAdminOverview> GetAdminOverviewAsync(int year, CancellationToken ct = default)
     {
         var allContainers = await _repo.GetAllAsync(ct);

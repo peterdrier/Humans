@@ -1,6 +1,7 @@
 // Entry point for the container placement map.
 import { CONFIG }                                          from './config.js';
 import { loadContainers, savePlacement, clearPlacement }   from './api.js';
+import { initPlacementNotes, openPlacementNotes }           from './placement-notes.js';
 import { addBackgroundLayers, addContainerLayers, updateContainerSource } from './layers.js';
 import { initSidebar, setContainers, setActiveId, markPlaced, scrollToPlaced } from './sidebar.js';
 import { initInteraction, activateContainer, selectPlacedContainer, deactivate } from './interaction.js';
@@ -19,6 +20,16 @@ function showToast(msg) {
 function patchContainer(id, locationGeoJson) {
     const c = containers.find(x => x.id === id);
     if (c) c.locationGeoJson = locationGeoJson;
+}
+
+/** Apply notes-update result to the local array and refresh the sidebar. */
+function applyPlacementNotesUpdate(id, fields) {
+    const c = containers.find(x => x.id === id);
+    if (!c) return;
+    c.placementNotes = fields.placementNotes;
+    c.placementImageUrl = fields.placementImageUrl;
+    c.placementImageFileName = fields.placementImageFileName;
+    setContainers(containers);
 }
 
 async function init() {
@@ -102,9 +113,13 @@ async function init() {
             const f = JSON.parse(container.locationGeoJson);
             map.flyTo({ center: [f.properties.center_lng, f.properties.center_lat], duration: 400 });
         },
+        // onInfo: user clicked the placement-notes button on a placed card
+        (container) => openPlacementNotes(container),
         CONFIG.IS_MAP_ADMIN ? null : CONFIG.USER_CAMP_ID || null,
     );
     setContainers(containers);
+
+    initPlacementNotes(applyPlacementNotesUpdate);
 
     // Wire interaction
     initInteraction(

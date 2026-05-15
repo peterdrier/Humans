@@ -122,6 +122,47 @@
     </div>
 </div>
 
+<div class="modal fade" id="placementNotesModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form id="placementNotesForm" enctype="multipart/form-data">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <span data-role="title-prefix">@Localizer["Container_PlacementNotes_Title"]</span> —
+                        <span data-role="container-name"></span>
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-danger d-none" data-role="error"></div>
+                    <fieldset data-role="fields">
+                        <div class="mb-3">
+                            <label class="form-label">@Localizer["Container_FieldPlacementNotes"]</label>
+                            <textarea name="PlacementNotes" class="form-control" rows="5" maxlength="5000"
+                                      placeholder="@Localizer["Container_PlacementNotesPlaceholder"]"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">@Localizer["Container_FieldPlacementImage"]</label>
+                            <div class="mb-2 d-none" data-role="existing-image-wrap">
+                                <img data-role="existing-image" alt="" style="height:96px;object-fit:cover;border-radius:4px;" />
+                            </div>
+                            <div class="form-check mb-2 d-none" data-role="remove-image-wrap">
+                                <input type="checkbox" name="RemovePlacementImage" value="true" class="form-check-input" id="removePlacementImageMap" />
+                                <label class="form-check-label" for="removePlacementImageMap">@Localizer["Container_RemovePlacementImage_Label"]</label>
+                            </div>
+                            <input type="file" name="PlacementImage" class="form-control" accept="image/jpeg,image/png,image/webp" />
+                        </div>
+                    </fieldset>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@Localizer["Common_Cancel"]</button>
+                    <button type="submit" class="btn btn-primary" data-role="save-btn">@Localizer["Common_Save"]</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
     <script src="https://unpkg.com/maplibre-gl@5.20.1/dist/maplibre-gl.js"></script>
     <script src="https://unpkg.com/&#64;turf/turf@7.1.0/turf.min.js"></script>

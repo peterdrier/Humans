@@ -18,6 +18,20 @@ public interface IContainerService : IApplicationService
     Task ClearPlacementAsync(Guid containerId, int year, Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>
+    /// Update a placement's notes and/or sketch image. Requires the placement row
+    /// to already exist (i.e., the container has been placed for the given year).
+    /// Throws <see cref="InvalidOperationException"/> if no placement row exists.
+    /// </summary>
+    Task<ContainerPlacementDto> UpdatePlacementNotesAsync(
+        Guid containerId,
+        int year,
+        string? notes,
+        ContainerImageUpload? image,
+        bool removeImage,
+        Guid actorUserId,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Org-wide admin overview of containers for a year, grouped by camp.
     /// Includes every camp with a season in the year, even if the camp
     /// currently has no containers.

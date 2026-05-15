@@ -216,6 +216,9 @@ public class CityPlanningApiController : ControllerBase
                 c.CampId,
                 campNameById.GetValueOrDefault(c.CampId) ?? string.Empty,
                 placement?.LocationGeoJson,
+                placement?.PlacementNotes,
+                placement?.PlacementImageStoragePath,
+                placement?.PlacementImageFileName,
                 isMapAdmin ||
                     (settings.IsContainerPlacementOpen &&
                      userCampId.HasValue &&
@@ -297,6 +300,48 @@ public class CityPlanningApiController : ControllerBase
         return Ok(new { id = updated.ContainerId, year = updated.Year, locationGeoJson = updated.LocationGeoJson });
     }
 
+    /// <summary>Update placement notes and/or sketch image for a placed container.</summary>
+    [HttpPut("containers/{id:guid}/placement/{year:int}/notes")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UpdateContainerPlacementNotes(
+        Guid id,
+        int year,
+        [FromForm] UpdateContainerPlacementNotesRequest request,
+        CancellationToken cancellationToken)
+    {
+        var container = await _containerService.GetByIdAsync(id, cancellationToken);
+        if (container is null) return NotFound();
+
+        var authResult = await _authorizationService.AuthorizeAsync(
+            User, ContainerAuthorizationTarget.For(container), ContainerOperationRequirement.Place);
+        if (!authResult.Succeeded) return Forbid();
+
+        ContainerImageUpload? imageUpload = null;
+        if (request.PlacementImage is { Length: > 0 } f)
+        {
+            imageUpload = new ContainerImageUpload(f.OpenReadStream(), f.ContentType, f.FileName, f.Length);
+        }
+
+        try
+        {
+            var updated = await _containerService.UpdatePlacementNotesAsync(
+                id, year, request.PlacementNotes, imageUpload, request.RemovePlacementImage,
+                CurrentUserId(), cancellationToken);
+            return Ok(new
+            {
+                id = updated.ContainerId,
+                year = updated.Year,
+                placementNotes = updated.PlacementNotes,
+                placementImageUrl = updated.PlacementImageStoragePath,
+                placementImageFileName = updated.PlacementImageFileName,
+            });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return UnprocessableEntity(ex.Message);
+        }
+    }
+
     /// <summary>Clear the placement GeoJSON for a container in the given year.</summary>
     [HttpDelete("containers/{id:guid}/placement/{year:int}")]
     [ValidateAntiForgeryToken]
@@ -357,4 +402,14 @@ public record ContainerWithPlacementApiDto(
     Guid CampId,
     string CampName,
     string? LocationGeoJson,
+    string? PlacementNotes,
+    string? PlacementImageUrl,
+    string? PlacementImageFileName,
     bool CanEdit);
+
+public class UpdateContainerPlacementNotesRequest
+{
+    public string? PlacementNotes { get; set; }
+    public IFormFile? PlacementImage { get; set; }
+    public bool RemovePlacementImage { get; set; }
+}

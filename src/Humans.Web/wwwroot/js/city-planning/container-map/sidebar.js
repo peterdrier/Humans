@@ -11,12 +11,14 @@ let _onActivate  = null;  // callback(container) when user clicks an unplaced ca
 let _onClear     = null;  // callback(container) when user clicks "Clear placement"
 let _onSelect    = null;  // callback(container) when user clicks a placed card
 let _onLocate    = null;  // callback(container) when user clicks the locate button
+let _onInfo      = null;  // callback(container) when user clicks the notes/info button
 
-export function initSidebar(onActivate, onClear, onSelect, onLocate, filterCampId = null) {
+export function initSidebar(onActivate, onClear, onSelect, onLocate, onInfo, filterCampId = null) {
     _onActivate    = onActivate;
     _onClear       = onClear;
     _onSelect      = onSelect;
     _onLocate      = onLocate;
+    _onInfo        = onInfo;
     _filterCampId  = filterCampId;
 }
 
@@ -119,6 +121,10 @@ function makePlacedCard(c) {
                 data-locate-id="${c.id}" title="Center map on this container">
                 <i class="fa-solid fa-location-dot"></i>
             </button>
+            <button class="btn btn-outline-info btn-sm py-0 px-2" style="font-size:11px;"
+                data-info-id="${c.id}" title="Placement notes">
+                <i class="fa-solid fa-circle-info"></i>
+            </button>
             ${c.canEdit ? `<button class="btn btn-outline-danger btn-sm py-0 px-2" style="font-size:11px;"
                 data-clear-id="${c.id}">Clear placement</button>` : ''}
         </div>
@@ -130,9 +136,18 @@ function makePlacedCard(c) {
             _onLocate?.(c);
         });
     }
+    const infoBtn = card.querySelector('[data-info-id]');
+    if (infoBtn) {
+        infoBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            _onInfo?.(c);
+        });
+    }
     if (c.canEdit) {
         card.addEventListener('click', (e) => {
-            if (e.target.closest('[data-clear-id]') || e.target.closest('[data-locate-id]')) return;
+            if (e.target.closest('[data-clear-id]') ||
+                e.target.closest('[data-locate-id]') ||
+                e.target.closest('[data-info-id]')) return;
             _onSelect?.(c);
         });
         const clearBtn = card.querySelector('[data-clear-id]');
