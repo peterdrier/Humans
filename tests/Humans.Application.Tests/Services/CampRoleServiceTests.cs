@@ -424,6 +424,9 @@ public class CampRoleServiceTests : IDisposable
         };
         _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyDictionary<Guid, User>>(users));
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                users.ToDictionary(kv => kv.Key, kv => kv.Value.ToUserInfo())));
 
         var panel = await _service.BuildPanelAsync(season.Id);
 
@@ -459,6 +462,9 @@ public class CampRoleServiceTests : IDisposable
         };
         _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyDictionary<Guid, User>>(users));
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                users.ToDictionary(kv => kv.Key, kv => kv.Value.ToUserInfo())));
 
         var panel = await _service.BuildPanelAsync(season.Id);
 

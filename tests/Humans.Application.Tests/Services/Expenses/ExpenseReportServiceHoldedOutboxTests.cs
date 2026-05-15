@@ -10,6 +10,7 @@ using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Expenses;
 using Humans.Application.Services.Expenses.Dtos;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging;
@@ -62,11 +63,15 @@ public class ExpenseReportServiceHoldedOutboxTests
         _budgetService.GetCategoryByIdAsync(CategoryId)
             .Returns(_category);
 
+        var submitter = new User { Id = SubmitterId, DisplayName = "Alice Smith" };
         _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, User>
             {
-                [SubmitterId] = new User { Id = SubmitterId, DisplayName = "Alice Smith" },
+                [SubmitterId] = submitter,
             });
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                new Dictionary<Guid, UserInfo> { [SubmitterId] = submitter.ToUserInfo() }));
 
         _sut = new ExpenseReportService(
             _repo,

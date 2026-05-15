@@ -488,13 +488,16 @@ public class CityPlanningServiceTests : IDisposable
         var userId = NewUserId();
 
         // Stub the user service — replaces the old cross-domain .Include(h => h.ModifiedByUser).
+        var testUser = new User { Id = userId, UserName = "test@test.com", Email = "test@test.com", DisplayName = "Test User" };
         _userService.GetByIdsAsync(
             Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
             Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, User>
-            {
-                [userId] = new User { Id = userId, UserName = "test@test.com", Email = "test@test.com", DisplayName = "Test User" }
-            });
+            .Returns(new Dictionary<Guid, User> { [userId] = testUser });
+        _userService.GetUserInfosAsync(
+            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
+            Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                new Dictionary<Guid, UserInfo> { [userId] = testUser.ToUserInfo() }));
 
         _clock.Advance(Duration.FromSeconds(1));
         await _sut.SaveCampPolygonAsync(campSeasonId, """{"type":"Feature"}""", 100.0, userId);
@@ -520,6 +523,10 @@ public class CityPlanningServiceTests : IDisposable
             Arg.Any<IReadOnlyCollection<Guid>>(),
             Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, User>());
+        _userService.GetUserInfosAsync(
+            Arg.Any<IReadOnlyCollection<Guid>>(),
+            Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
 
         await _sut.SaveCampPolygonAsync(campSeasonId, """{"type":"Feature"}""", 100.0, userId);
 

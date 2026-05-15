@@ -9,6 +9,7 @@ using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -51,6 +52,7 @@ public class ProcessGoogleSyncOutboxJobTests : IDisposable
         _userService
             .GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, User>());
+        _userService.StubGetUserInfosFromContext(_dbContext);
         _teamService = Substitute.For<ITeamService>();
         _teamService
             .GetTeamNamesByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())

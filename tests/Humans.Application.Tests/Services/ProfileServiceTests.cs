@@ -83,6 +83,8 @@ public class ProfileServiceTests : IDisposable
                     Suspended: [],
                     PendingDeletion: []));
             });
+
+        _userService.StubGetUserInfosFromContext(_dbContext);
     }
 
     public void Dispose()

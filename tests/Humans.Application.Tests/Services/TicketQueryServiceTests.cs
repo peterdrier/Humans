@@ -70,6 +70,7 @@ public sealed class TicketQueryServiceTests : IDisposable
         _userService.GetByIdsAsync(
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, User>());
+        _userService.StubGetUserInfosFromDb(_options);
 
         _profileService.GetByUserIdsAsync(
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
@@ -601,6 +602,8 @@ public sealed class TicketQueryServiceTests : IDisposable
 
         _userService.GetAllUsersAsync(Arg.Any<CancellationToken>())
             .Returns(allUsers);
+        _userService.GetAllUserInfos()
+            .Returns(allUsers.Select(u => u.ToUserInfo()).ToList());
 
         _teamService.GetTeamAsync(SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
             .Returns(VolunteersTeam(userIds));

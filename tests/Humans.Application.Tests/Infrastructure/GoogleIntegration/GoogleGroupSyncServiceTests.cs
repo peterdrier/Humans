@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Application;
 using Humans.Application.Configuration;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.GoogleIntegration;
@@ -6,6 +7,7 @@ using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.GoogleIntegration;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging;
@@ -42,6 +44,8 @@ public sealed class GoogleGroupSyncServiceTests
             .Returns("service-account@nobodies.team");
         _syncSettingsService.GetModeAsync(SyncServiceType.GoogleGroups, Arg.Any<CancellationToken>())
             .Returns(SyncMode.AddAndRemove);
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
     }
 
     [HumansFact]
@@ -71,7 +75,7 @@ public sealed class GoogleGroupSyncServiceTests
         await _membershipClient.Received(1)
             .DeleteMembershipAsync("groups/group-1/memberships/old", Arg.Any<CancellationToken>());
         await _userService.Received(1)
-            .GetByIdsAsync(Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 2), Arg.Any<CancellationToken>());
+            .GetUserInfosAsync(Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 2), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -292,7 +296,7 @@ public sealed class GoogleGroupSyncServiceTests
 
         result.Diffs.Should().HaveCount(2);
         await _userService.Received(1)
-            .GetByIdsAsync(Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 2), Arg.Any<CancellationToken>());
+            .GetUserInfosAsync(Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 2), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -448,18 +452,30 @@ public sealed class GoogleGroupSyncServiceTests
 
     private void StubUsers(params (Guid UserId, string DisplayName, string Email)[] users)
     {
+        var userEntities = users.ToDictionary(
+            u => u.UserId,
+            u => new User
+            {
+                Id = u.UserId,
+                DisplayName = u.DisplayName,
+                CreatedAt = _clock.GetCurrentInstant()
+            });
         _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(call =>
             {
                 var requested = call.ArgAt<IReadOnlyCollection<Guid>>(0).ToHashSet();
-                return users
-                    .Where(u => requested.Contains(u.UserId))
-                    .ToDictionary(u => u.UserId, u => new User
-                    {
-                        Id = u.UserId,
-                        DisplayName = u.DisplayName,
-                        CreatedAt = _clock.GetCurrentInstant()
-                    });
+                return userEntities
+                    .Where(kv => requested.Contains(kv.Key))
+                    .ToDictionary(kv => kv.Key, kv => kv.Value);
+            });
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                var requested = call.ArgAt<IReadOnlyCollection<Guid>>(0).ToHashSet();
+                IReadOnlyDictionary<Guid, UserInfo> dict = userEntities
+                    .Where(kv => requested.Contains(kv.Key))
+                    .ToDictionary(kv => kv.Key, kv => kv.Value.ToUserInfo());
+                return new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(dict);
             });
 
         _userEmailService.GetEntitiesByUserIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())

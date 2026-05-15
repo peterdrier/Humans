@@ -53,6 +53,7 @@ public class RoleAssignmentServiceTests : IDisposable
                     .ToDictionary(u => u.Id);
                 return Task.FromResult(dict);
             });
+        _userService.StubGetUserInfosFromContext(_dbContext);
 
         _navBadge = Substitute.For<INavBadgeCacheInvalidator>();
         _claimsInvalidator = Substitute.For<IRoleAssignmentClaimsCacheInvalidator>();

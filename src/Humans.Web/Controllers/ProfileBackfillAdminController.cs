@@ -88,7 +88,7 @@ public sealed class ProfileBackfillAdminController : HumansControllerBase
 
     private async Task<IReadOnlyList<MissingProfileRow>> GetUsersMissingProfileAsync(CancellationToken ct)
     {
-        var users = await _userService.GetAllUsersAsync(ct);
+        var users = _userService.GetAllUserInfos();
         var userIds = users.Select(u => u.Id).ToList();
         var profiles = await _profileService.GetByUserIdsAsync(userIds, ct);
 

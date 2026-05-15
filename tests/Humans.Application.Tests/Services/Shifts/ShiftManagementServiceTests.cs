@@ -60,6 +60,7 @@ public class ShiftManagementServiceTests : IDisposable
                         .AsEnumerable()
                         .ToDictionary(u => u.Id));
             });
+        _userService.StubGetUserInfosFromContext(_dbContext);
 
         _teamService.GetByIdsWithParentsAsync(
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())

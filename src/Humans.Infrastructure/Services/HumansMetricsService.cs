@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Application.Interfaces.Teams;
@@ -234,11 +235,15 @@ public sealed class HumansMetricsService : IHumansMetrics, IDisposable
             var membershipCalc = scope.ServiceProvider.GetRequiredService<IMembershipCalculator>();
             var applicationDecisionService = scope.ServiceProvider.GetRequiredService<IApplicationDecisionService>();
             var teamService = scope.ServiceProvider.GetRequiredService<ITeamService>();
+            var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
             var clock = scope.ServiceProvider.GetRequiredService<IClock>();
             var now = clock.GetCurrentInstant();
 
-            // humans_total by status
-            var allUserIds = await db.Users.Select(u => u.Id).ToListAsync();
+            // humans_total by status — read off the cached UserInfo snapshot
+            // instead of issuing two table scans against the users table per
+            // refresh tick.
+            var userInfos = userService.GetAllUserInfos();
+            var allUserIds = userInfos.Select(u => u.Id).ToList();
             var profileData = await db.Profiles
                 .Select(p => new { p.UserId, p.IsApproved, p.IsSuspended })
                 .ToListAsync();
@@ -268,8 +273,8 @@ public sealed class HumansMetricsService : IHumansMetrics, IDisposable
             var usersRequiringUpdate = await membershipCalc.GetUsersRequiringStatusUpdateAsync();
             var consentDeadlineApproaching = usersRequiringUpdate.Count;
 
-            // pending_deletions
-            var pendingDeletions = await db.Users.CountAsync(u => u.DeletionScheduledFor != null);
+            // pending_deletions — same UserInfo snapshot as above.
+            var pendingDeletions = userInfos.Count(u => u.DeletionScheduledFor != null);
 
             // asociados
             var applicationStats = await applicationDecisionService.GetAdminStatsAsync();

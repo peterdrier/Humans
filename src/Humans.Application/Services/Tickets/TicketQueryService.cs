@@ -589,7 +589,7 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
         var matchedUserIds = await GetAllMatchedUserIdsAsync();
 
         // Load Users and Volunteers-team membership via service interfaces.
-        var allUsers = await _userService.GetAllUsersAsync();
+        var allUsers = _userService.GetAllUserInfos();
         var volunteerTeam = await _teamService.GetTeamAsync(SystemTeamIds.Volunteers);
         var volunteerUserIds = volunteerTeam?.Members.Select(m => m.UserId).ToHashSet() ?? [];
 

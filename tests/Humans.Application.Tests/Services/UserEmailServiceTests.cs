@@ -672,6 +672,8 @@ public class UserEmailServiceTests
         _repository.GetAllAsync(Arg.Any<CancellationToken>()).Returns(rows);
         _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, User>());
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
 
         var violations = await _service.GetEmailFlagViolationsAsync();
 
@@ -706,6 +708,8 @@ public class UserEmailServiceTests
         _repository.GetAllAsync(Arg.Any<CancellationToken>()).Returns(rows);
         _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, User>());
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
 
         var violations = await _service.GetEmailFlagViolationsAsync();
 

@@ -540,17 +540,18 @@ public sealed class DevPersonaSeeder
     /// Returns the first 100 users (display name ordered) for the dev user-chooser view.
     /// Filters out ephemeral guest accounts minted by the Guest dev-login button.
     /// </summary>
-    public async Task<IReadOnlyList<(Guid Id, string DisplayName, string Email)>> GetUsersForChooserAsync(
+    public Task<IReadOnlyList<(Guid Id, string DisplayName, string Email)>> GetUsersForChooserAsync(
         CancellationToken ct = default)
     {
-        var users = await _userService.GetAllUsersAsync(ct);
+        var users = _userService.GetAllUserInfos();
 
-        return users
+        IReadOnlyList<(Guid Id, string DisplayName, string Email)> result = users
             .Where(u => !(u.Email ?? string.Empty).StartsWith("dev-guest-", StringComparison.OrdinalIgnoreCase))
             .OrderBy(u => u.DisplayName, StringComparer.Ordinal)
             .Take(100)
             .Select(u => (u.Id, u.DisplayName ?? u.Email ?? "Unknown", u.Email ?? string.Empty))
             .ToList();
+        return Task.FromResult(result);
     }
 
     public static bool IsBarrioLeadSlug(string slug) =>

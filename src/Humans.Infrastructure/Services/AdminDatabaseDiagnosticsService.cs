@@ -33,7 +33,7 @@ public sealed class AdminDatabaseDiagnosticsService : IAdminDatabaseDiagnosticsS
 
     public async Task<AudienceSegmentation> GetAudienceSegmentationAsync(int? year, CancellationToken ct = default)
     {
-        var allUsers = await _userService.GetAllUsersAsync(ct);
+        var allUsers = _userService.GetAllUserInfos();
         var allUserIds = allUsers.Select(u => u.Id).ToArray();
         var profilesByUserId = await _profileService.GetByUserIdsAsync(allUserIds, ct);
         var profileUserIds = profilesByUserId.Keys.ToHashSet();

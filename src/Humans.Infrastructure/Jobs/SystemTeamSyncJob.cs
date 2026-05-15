@@ -250,8 +250,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
         // Flagged + RejectedAt exclusions preserve the CC's existing kick-out
         // levers (FlagConsentCheckAsync and RejectSignupAsync set those fields
         // before calling DeprovisionApprovalGatedSystemTeamsAsync).
-        var allUsers = await _userService.GetAllUsersAsync(cancellationToken);
-        var allUserIds = allUsers.Select(u => u.Id).ToList();
+        var allUserIds = _userService.GetAllUserInfos().Select(u => u.Id).ToList();
         var profiles = await ProfileService.GetByUserIdsAsync(allUserIds, cancellationToken);
         var candidateIds = allUserIds
             .Where(id => profiles.TryGetValue(id, out var p)

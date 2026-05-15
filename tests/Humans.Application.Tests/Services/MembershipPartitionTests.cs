@@ -3,6 +3,7 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using Humans.Application.Services.Governance;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -53,6 +54,15 @@ public class MembershipPartitionTests
                     .Where(_usersById.ContainsKey)
                     .ToDictionary(id => id, id => _usersById[id]);
                 return Task.FromResult<IReadOnlyDictionary<Guid, User>>(map);
+            });
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(ci =>
+            {
+                var ids = ci.Arg<IReadOnlyCollection<Guid>>();
+                IReadOnlyDictionary<Guid, UserInfo> map = ids
+                    .Where(_usersById.ContainsKey)
+                    .ToDictionary(id => id, id => _usersById[id].ToUserInfo());
+                return new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(map);
             });
 
         _profileService.GetByUserIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())

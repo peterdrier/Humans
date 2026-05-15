@@ -1,7 +1,6 @@
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Governance;
 using Humans.Domain.Constants;
-using Humans.Domain.Entities;
 using ProfileEntity = Humans.Domain.Entities.Profile;
 
 namespace Humans.Application.Services.Profiles;
@@ -26,7 +25,7 @@ namespace Humans.Application.Services.Profiles;
 public static class AdminHumanListAssembler
 {
     public static async Task<IReadOnlyList<AdminHumanRow>> AssembleAsync(
-        IReadOnlyList<User> allUsers,
+        IReadOnlyCollection<UserInfo> allUsers,
         IReadOnlyDictionary<Guid, ProfileEntity> profilesByUserId,
         IReadOnlyDictionary<Guid, string> notificationEmailsByUserId,
         IReadOnlySet<Guid>? searchUserIds,
@@ -39,9 +38,9 @@ public static class AdminHumanListAssembler
         ArgumentNullException.ThrowIfNull(notificationEmailsByUserId);
         ArgumentNullException.ThrowIfNull(membershipCalculator);
 
-        var candidates = searchUserIds is null
+        IEnumerable<UserInfo> candidates = searchUserIds is null
             ? allUsers
-            : allUsers.Where(u => searchUserIds.Contains(u.Id)).ToList();
+            : allUsers.Where(u => searchUserIds.Contains(u.Id));
 
         var ids = candidates.Select(u => u.Id).ToList();
         var partition = await membershipCalculator.PartitionUsersAsync(ids, ct);

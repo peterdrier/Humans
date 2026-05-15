@@ -127,6 +127,32 @@ public class TeamServiceTests : IDisposable
                 return Task.FromResult<IReadOnlyDictionary<Guid, User>>(users.ToDictionary(u => u.Id));
             });
         testUserService
+            .GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                var ids = callInfo.Arg<IReadOnlyCollection<Guid>>();
+                if (ids.Count == 0)
+                    return new ValueTask<IReadOnlyDictionary<Guid, Humans.Application.UserInfo>>(
+                        new Dictionary<Guid, Humans.Application.UserInfo>());
+                using var db = new HumansDbContext(options);
+                var users = db.Users.AsNoTracking()
+                    .Include(u => u.UserEmails)
+                    .Where(u => ids.Contains(u.Id))
+                    .ToList();
+                IReadOnlyDictionary<Guid, Humans.Application.UserInfo> dict = users.ToDictionary(
+                    u => u.Id,
+                    u => Humans.Application.UserInfo.Create(
+                        u, u.UserEmails.ToList(),
+                        Array.Empty<Humans.Domain.Entities.EventParticipation>(),
+                        Array.Empty<(string, string)>(),
+                        profile: null,
+                        Array.Empty<Humans.Domain.Entities.ContactField>(),
+                        Array.Empty<Humans.Domain.Entities.ProfileLanguage>(),
+                        Array.Empty<Humans.Domain.Entities.VolunteerHistoryEntry>(),
+                        Array.Empty<Humans.Domain.Entities.CommunicationPreference>()));
+                return new ValueTask<IReadOnlyDictionary<Guid, Humans.Application.UserInfo>>(dict);
+            });
+        testUserService
             .GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(callInfo =>
             {

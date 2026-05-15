@@ -19,6 +19,7 @@ using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
+using Humans.Application.Tests.Infrastructure;
 
 namespace Humans.Application.Tests.Jobs;
 
@@ -150,6 +151,10 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
             Arg.Any<IReadOnlyCollection<Guid>>(),
             Arg.Any<CancellationToken>())
             .Returns((IReadOnlyDictionary<Guid, User>)new Dictionary<Guid, User>());
+        _userService.GetUserInfosAsync(
+            Arg.Any<IReadOnlyCollection<Guid>>(),
+            Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
 
         await _job.ExecuteAsync();
 
@@ -329,6 +334,11 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
             {
                 [userId] = user,
             });
+        _userService.GetUserInfosAsync(
+            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
+            Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                new Dictionary<Guid, UserInfo> { [userId] = user.ToUserInfo() }));
 
         return user;
     }

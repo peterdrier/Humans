@@ -126,7 +126,6 @@ src/Humans.Infrastructure/Data/Configurations/Teams/TeamConfiguration.cs:Team#2
 src/Humans.Infrastructure/Data/Configurations/Teams/TeamConfiguration.cs:Team#3
 src/Humans.Infrastructure/Data/Configurations/Teams/TeamRoleDefinitionConfiguration.cs:Team#1
 src/Humans.Infrastructure/Jobs/TermRenewalReminderJob.cs:User#1
-src/Humans.Infrastructure/Jobs/TermRenewalReminderJob.cs:User#2
 src/Humans.Infrastructure/Repositories/Budget/BudgetRepository.cs:ActorUser#1
 src/Humans.Infrastructure/Repositories/Budget/BudgetRepository.cs:Team#1
 src/Humans.Infrastructure/Repositories/Budget/BudgetRepository.cs:Team#2

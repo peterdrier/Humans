@@ -705,7 +705,7 @@ public sealed class GoogleAdminService : IGoogleAdminService
             // service (design-rules §2c) instead of traversing user.UserEmails
             // cross-domain. The service returns row snapshots so this caller
             // can read per-row IsVerified / IsGoogle / Provider flags.
-            var allUsers = await _userService.GetAllUsersAsync(ct);
+            var allUsers = _userService.GetAllUserInfos();
             var allUserIds = allUsers.Select(u => u.Id).ToList();
             var emailsByUserId = await _userEmailService.GetEntitiesByUserIdsAsync(allUserIds, ct);
 
