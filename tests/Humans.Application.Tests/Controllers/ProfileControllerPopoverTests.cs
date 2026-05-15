@@ -130,20 +130,22 @@ public class ProfileControllerPopoverTests
     }
 
     [HumansFact]
-    public async Task Popover_UserWithoutProfile_RendersFallbackWithVerifiedPrimaryEmail()
+    public async Task Popover_UserWithoutProfile_RendersFallbackWithoutEmail()
     {
+        // The popover is reachable by any authenticated user. Surfacing email
+        // (verified or not) for the imported-no-profile path is a GDPR PII leak.
+        // Admins who need email use /Profile/{id}/Admin.
         var id = Guid.NewGuid();
         var user = new User
         {
             Id = id,
             DisplayName = "Imported Human",
-            Email = null,
+            Email = "stale-legacy@example.com",
             PreferredLanguage = "es",
             ProfilePictureUrl = null,
         };
         var userEmails = new List<UserEmail>
         {
-            new() { Id = Guid.NewGuid(), UserId = id, Email = "secondary@example.com", IsVerified = true, IsPrimary = false },
             new() { Id = Guid.NewGuid(), UserId = id, Email = "primary@example.com", IsVerified = true, IsPrimary = true },
         };
         _userService.GetUserInfoAsync(id, Arg.Any<CancellationToken>())
@@ -156,40 +158,13 @@ public class ProfileControllerPopoverTests
         var vm = partial.Model.Should().BeOfType<ProfileSummaryViewModel>().Subject;
         vm.HasProfile.Should().BeFalse();
         vm.DisplayName.Should().Be("Imported Human");
-        vm.Email.Should().Be("primary@example.com");
+        vm.Email.Should().BeNull();
         vm.PreferredLanguage.Should().Be("es");
         vm.MembershipTier.Should().BeNull();
         vm.MembershipStatus.Should().BeNull();
         vm.City.Should().BeNull();
         vm.Teams.Should().BeEmpty();
         vm.Languages.Should().BeEmpty();
-    }
-
-    [HumansFact]
-    public async Task Popover_UserWithoutProfile_DoesNotSeedFromLegacyUserEmail()
-    {
-        // Regression: UserInfo.Email derives from verified UserEmail rows, not
-        // the legacy Identity column (see User.cs SILENT-FALLBACK FOOTGUN).
-        var id = Guid.NewGuid();
-        var user = new User
-        {
-            Id = id,
-            DisplayName = "Imported Human",
-            Email = "stale-legacy@example.com",
-            PreferredLanguage = "en",
-        };
-        var userEmails = new List<UserEmail>
-        {
-            new() { Id = Guid.NewGuid(), UserId = id, Email = "canonical@example.com", IsVerified = true, IsPrimary = true },
-        };
-        _userService.GetUserInfoAsync(id, Arg.Any<CancellationToken>())
-            .Returns(BuildUserInfo(user, profile: null, userEmails));
-
-        var result = await _controller.Popover(id, CancellationToken.None);
-
-        var partial = result.Should().BeOfType<PartialViewResult>().Subject;
-        var vm = partial.Model.Should().BeOfType<ProfileSummaryViewModel>().Subject;
-        vm.Email.Should().Be("canonical@example.com");
     }
 
     [HumansFact]

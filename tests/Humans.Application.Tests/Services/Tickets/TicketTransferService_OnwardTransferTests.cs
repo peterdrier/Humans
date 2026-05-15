@@ -141,6 +141,7 @@ public sealed class TicketTransferService_OnwardTransferTests
                 TicketOrder = new TicketOrder { Id = OrderId, MatchedUserId = UserA },
             });
         var carol = new User { Id = UserC, DisplayName = "Carol", PreferredLanguage = "en" };
+        var carolProfile = new Profile { BurnerName = "Carol", FirstName = "Carol", LastName = "Cohen" };
         _userService.GetByIdAsync(UserC, Arg.Any<CancellationToken>()).Returns(carol);
         _userService.GetUserInfoAsync(UserC, Arg.Any<CancellationToken>())
             .Returns(UserInfo.Create(
@@ -148,7 +149,7 @@ public sealed class TicketTransferService_OnwardTransferTests
                 userEmails: Array.Empty<UserEmail>(),
                 eventParticipations: Array.Empty<EventParticipation>(),
                 externalLogins: Array.Empty<(string, string)>(),
-                profile: null,
+                profile: carolProfile,
                 contactFields: Array.Empty<ContactField>(),
                 profileLanguages: Array.Empty<ProfileLanguage>(),
                 volunteerHistory: Array.Empty<VolunteerHistoryEntry>(),

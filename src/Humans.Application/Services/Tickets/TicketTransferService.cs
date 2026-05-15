@@ -170,15 +170,14 @@ public sealed class TicketTransferService : ITicketTransferService
 
         var receiverInfo = await _userService.GetUserInfoAsync(dto.ReceiverUserId, ct)
             ?? throw new InvalidOperationException("Receiver user not found.");
-        var receiverProfile = receiverInfo.Profile;
-        // Defense-in-depth: BuildReceiverCardAsync filters suspended/unapproved at
-        // the lookup layer, but Submit accepts a direct POST with a crafted
-        // ReceiverUserId. Mirror the lookup behaviour (treat as not-found) so this
-        // path can't bypass the security gate. Wording matches the not-found case
-        // above so a tampered POST learns nothing about why the recipient was rejected.
-        if (receiverProfile is not null
-            && (receiverInfo.IsSuspended || !receiverProfile.IsApproved))
+        // Defense-in-depth: BuildReceiverCardAsync filters at the lookup layer, but
+        // Submit accepts a direct POST with a crafted ReceiverUserId. Receivers
+        // MUST have a legal name on file — the transfer snapshot records it onto
+        // the reissued ticket. Wording matches the not-found case above so a
+        // tampered POST learns nothing about why the recipient was rejected.
+        if (!receiverInfo.HasRequiredIdentityFields)
             throw new InvalidOperationException("Receiver user not found.");
+        var receiverProfile = receiverInfo.Profile!;
         // No double-submits: refuse if there's already a pending transfer from this
         // sender for this attendee. ToDictionary in GetMyAttendeesAsync would crash
         // on duplicates, and the legitimate UX hides the Send button while pending.
@@ -187,9 +186,7 @@ public sealed class TicketTransferService : ITicketTransferService
                 && r.Status == TicketTransferStatus.Pending);
         if (existingPending)
             throw new InvalidOperationException("There is already a pending transfer request for this ticket.");
-        var receiverLegalName = receiverProfile?.FullName is { Length: > 0 } legal
-            ? legal
-            : receiverInfo.DisplayName;
+        var receiverLegalName = receiverProfile.FullName;
         var receiverEmail = await _userEmailService.GetPrimaryEmailAsync(dto.ReceiverUserId, ct)
             ?? throw new InvalidOperationException("Receiver has no primary email on file.");
 
@@ -648,21 +645,19 @@ public sealed class TicketTransferService : ITicketTransferService
     private async Task<ReceiverLookupResultDto?> BuildReceiverCardAsync(Guid userId, CancellationToken ct)
     {
         var info = await _userService.GetUserInfoAsync(userId, ct);
-        if (info is null) return null;
-        var profile = info.Profile;
-        // Security gate: filter suspended or unapproved profiles at the lookup layer
-        // (per docs/features/tickets/ticket-transfer.md — Receiver Lookup Contract). Gates
-        // both lookup paths (exact-email + burner-name) and the detail-fetch used by
-        // the confirm-card render.
-        if (profile is not null && (info.IsSuspended || !profile.IsApproved))
-            return null;
+        // Receiver Lookup Contract (docs/features/tickets/ticket-transfer.md):
+        // recipients must have a legal name on file — the transfer snapshot records
+        // it onto the reissued ticket. Suspension/approval state isn't relevant
+        // to a transfer recipient.
+        if (info is null || !info.HasRequiredIdentityFields) return null;
+        var profile = info.Profile!;
         var primary = await _userEmailService.GetPrimaryEmailAsync(userId, ct);
         return new ReceiverLookupResultDto(
             UserId: userId,
             DisplayName: info.DisplayName,
-            BurnerName: profile?.BurnerName,
+            BurnerName: profile.BurnerName,
             PreferredEmail: primary,
-            HasCustomProfilePicture: profile?.HasCustomPicture ?? false,
+            HasCustomProfilePicture: profile.HasCustomPicture,
             ProfilePictureUrl: info.ProfilePictureUrl);
     }
 

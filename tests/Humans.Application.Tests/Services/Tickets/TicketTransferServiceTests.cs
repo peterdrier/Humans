@@ -63,11 +63,14 @@ public sealed class TicketTransferServiceTests
             _clock,
             NullLogger<TicketTransferService>.Instance);
 
-        // Default: Receiver user exists
+        // Default: Receiver user exists with a complete profile (BurnerName +
+        // FirstName + LastName populated — required for transfer recipient).
         _userService.GetByIdAsync(_receiverId, Arg.Any<CancellationToken>())
             .Returns(MakeUser(_receiverId, "Alice"));
         _userService.GetUserInfoAsync(_receiverId, Arg.Any<CancellationToken>())
-            .Returns(WrapInUserInfo(MakeUser(_receiverId, "Alice"), null));
+            .Returns(WrapInUserInfo(
+                MakeUser(_receiverId, "Alice"),
+                new Profile { BurnerName = "Alice", FirstName = "Alice", LastName = "Smith" }));
 
         // Default: Receiver has primary email
         _userEmailService.GetPrimaryEmailAsync(_receiverId, Arg.Any<CancellationToken>())
@@ -104,7 +107,9 @@ public sealed class TicketTransferServiceTests
         _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>())
             .Returns(MakeUser(userId, "Alice"));
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(WrapInUserInfo(MakeUser(userId, "Alice"), null));
+            .Returns(WrapInUserInfo(
+                MakeUser(userId, "Alice"),
+                new Profile { BurnerName = "Alice", FirstName = "Alice", LastName = "Smith" }));
         _userEmailService.GetPrimaryEmailAsync(userId, Arg.Any<CancellationToken>())
             .Returns("alice@example.com");
         _profileService.GetProfileAsync(userId, Arg.Any<CancellationToken>())
@@ -149,7 +154,9 @@ public sealed class TicketTransferServiceTests
         _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>())
             .Returns(MakeUser(userId, "Sparkle Person"));
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(WrapInUserInfo(MakeUser(userId, "Sparkle Person"), null));
+            .Returns(WrapInUserInfo(
+                MakeUser(userId, "Sparkle Person"),
+                new Profile { BurnerName = "Sparkle Person", FirstName = "Sparkle", LastName = "Person" }));
         _userEmailService.GetPrimaryEmailAsync(userId, Arg.Any<CancellationToken>())
             .Returns("sp@example.com");
         _profileService.GetProfileAsync(userId, Arg.Any<CancellationToken>())
@@ -176,9 +183,13 @@ public sealed class TicketTransferServiceTests
         _userService.GetByIdAsync(aId, Arg.Any<CancellationToken>()).Returns(MakeUser(aId, "A"));
         _userService.GetByIdAsync(bId, Arg.Any<CancellationToken>()).Returns(MakeUser(bId, "B"));
         _userService.GetUserInfoAsync(aId, Arg.Any<CancellationToken>())
-            .Returns(WrapInUserInfo(MakeUser(aId, "A"), null));
+            .Returns(WrapInUserInfo(
+                MakeUser(aId, "A"),
+                new Profile { BurnerName = "A", FirstName = "Aaa", LastName = "Aaa" }));
         _userService.GetUserInfoAsync(bId, Arg.Any<CancellationToken>())
-            .Returns(WrapInUserInfo(MakeUser(bId, "B"), null));
+            .Returns(WrapInUserInfo(
+                MakeUser(bId, "B"),
+                new Profile { BurnerName = "B", FirstName = "Bbb", LastName = "Bbb" }));
         _userEmailService.GetPrimaryEmailAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns((string?)null);
         _profileService.GetProfileAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
@@ -221,7 +232,7 @@ public sealed class TicketTransferServiceTests
 
         row.Status.Should().Be(TicketTransferStatus.Pending);
         row.ReceiverUserId.Should().Be(_receiverId);
-        row.ReceiverLegalName.Should().Be("Alice");
+        row.ReceiverLegalName.Should().Be("Alice Smith");
         await _transferRepo.Received(1).AddAsync(
             Arg.Is<TicketTransferRequest>(r => r.Status == TicketTransferStatus.Pending),
             Arg.Any<CancellationToken>());
@@ -328,39 +339,18 @@ public sealed class TicketTransferServiceTests
     }
 
     [HumansFact]
-    public async Task CreateRequestAsync_ThrowsWhenReceiverIsSuspended()
+    public async Task CreateRequestAsync_ThrowsWhenReceiverMissingLegalName()
     {
-        // Defense-in-depth: lookup layer filters suspended profiles; submit
-        // accepts a direct POST, so the service must re-check on the way in.
+        // Defense-in-depth: BuildReceiverCardAsync filters at the lookup layer,
+        // but Submit accepts a direct POST. Recipients without a legal name on
+        // file cannot receive transfers — the transfer snapshot writes the name
+        // onto the reissued ticket. Wording matches the not-found case so a
+        // tampered POST learns nothing about why the recipient was rejected.
         var attendee = MakeAttendee(_attendeeId, _orderId, _senderId, TicketAttendeeStatus.Valid);
         _ticketRepo.GetAttendeeByIdAsync(_attendeeId, Arg.Any<CancellationToken>())
             .Returns(attendee);
         _userService.GetUserInfoAsync(_receiverId, Arg.Any<CancellationToken>())
-            .Returns(WrapInUserInfo(
-                MakeUser(_receiverId, "Alice"),
-                new Profile { IsSuspended = true, IsApproved = true, State = ProfileState.Suspended }));
-
-        var dto = new TicketTransferRequestDto(_attendeeId, _receiverId, "test");
-
-        var act = () => _service.CreateRequestAsync(dto, _senderId);
-
-        // Wording mirrors the genuine not-found case so a tampered POST learns nothing.
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*Receiver user not found*");
-        await _transferRepo.DidNotReceive().AddAsync(
-            Arg.Any<TicketTransferRequest>(), Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task CreateRequestAsync_ThrowsWhenReceiverIsUnapproved()
-    {
-        var attendee = MakeAttendee(_attendeeId, _orderId, _senderId, TicketAttendeeStatus.Valid);
-        _ticketRepo.GetAttendeeByIdAsync(_attendeeId, Arg.Any<CancellationToken>())
-            .Returns(attendee);
-        _userService.GetUserInfoAsync(_receiverId, Arg.Any<CancellationToken>())
-            .Returns(WrapInUserInfo(
-                MakeUser(_receiverId, "Alice"),
-                new Profile { IsSuspended = false, IsApproved = false, State = ProfileState.Active }));
+            .Returns(WrapInUserInfo(MakeUser(_receiverId, "Alice"), profile: null));
 
         var dto = new TicketTransferRequestDto(_attendeeId, _receiverId, "test");
 
@@ -381,7 +371,7 @@ public sealed class TicketTransferServiceTests
         _userService.GetUserInfoAsync(_receiverId, Arg.Any<CancellationToken>())
             .Returns(WrapInUserInfo(
                 MakeUser(_receiverId, "Alice"),
-                new Profile { IsSuspended = false, IsApproved = true, State = ProfileState.Active }));
+                new Profile { BurnerName = "Alice", FirstName = "Alice", LastName = "Smith" }));
         _transferRepo.GetBySenderAsync(_senderId, Arg.Any<CancellationToken>())
             .Returns(new[]
             {
@@ -417,7 +407,7 @@ public sealed class TicketTransferServiceTests
         _userService.GetUserInfoAsync(_receiverId, Arg.Any<CancellationToken>())
             .Returns(WrapInUserInfo(
                 MakeUser(_receiverId, "Alice"),
-                new Profile { FirstName = "Alice", LastName = "Smith", IsApproved = true, State = ProfileState.Active }));
+                new Profile { BurnerName = "Alice", FirstName = "Alice", LastName = "Smith" }));
 
         var dto = new TicketTransferRequestDto(_attendeeId, _receiverId, "Going abroad");
 
