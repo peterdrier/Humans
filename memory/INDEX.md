@@ -71,6 +71,7 @@ Atomic rules. Fetch the body when the description's trigger matches your task. S
 - [`search-endpoint-response-shape`](code/search-endpoint-response-shape.md) — search/autocomplete endpoints return typed DTOs/records, not anonymous objects
 - [`string-comparisons-explicit`](code/string-comparisons-explicit.md) — `StringComparison.Ordinal`/`OrdinalIgnoreCase`; user search uses shared `Humans.Web.Extensions` helpers
 - [`stripe-restricted-keys`](code/stripe-restricted-keys.md) — HARD RULE. Production Stripe env vars hold `rk_live_*` RAKs with minimum scopes; never `sk_live_*`. Test mode `sk_test_*` is fine for dev.
+- [`surface-budget-history-trim`](code/surface-budget-history-trim.md) — when bumping `[SurfaceBudget(N)]`, keep ONLY the 3 newest history bullets above the interface; each ≤50 tokens. Older entries dropped (git log is the long-term record).
 - [`time-parsing-standardization`](code/time-parsing-standardization.md) — `TryParseInvariantTimeOnly`/`TryParseInvariantLocalTime` from `TimeParsingExtensions`
 - [`update-source-attribution`](code/update-source-attribution.md) — `CommunicationPreference.UpdateSource` must reflect actor (signed-in/anon) + channel; don't conflate `Guest` (session) with `MagicLink` (token)
 - [`view-components-vs-partials`](code/view-components-vs-partials.md) — View Component when it fetches its own data; Partial View when parent already has the model
