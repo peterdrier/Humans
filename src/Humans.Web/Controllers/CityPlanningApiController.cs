@@ -203,6 +203,8 @@ public class CityPlanningApiController : ControllerBase
         var containers = await _containerService.GetAllAsync(cancellationToken);
         var placements = await _containerService.GetPlacementsByYearAsync(year, cancellationToken);
         var placementByContainerId = placements.ToDictionary(p => p.ContainerId, p => p);
+        var camps = await _campService.GetCampsForYearAsync(year, cancellationToken);
+        var campNameById = camps.ToDictionary(c => c.Id, c => c.Seasons.First(s => s.Year == year).Name);
 
         var result = containers.Select(c =>
         {
@@ -212,6 +214,7 @@ public class CityPlanningApiController : ControllerBase
                 c.Name,
                 c.Description,
                 c.CampId,
+                campNameById.GetValueOrDefault(c.CampId) ?? string.Empty,
                 placement?.LocationGeoJson,
                 isMapAdmin ||
                     (settings.IsContainerPlacementOpen &&
@@ -352,5 +355,6 @@ public record ContainerWithPlacementApiDto(
     string Name,
     string? Description,
     Guid CampId,
+    string CampName,
     string? LocationGeoJson,
     bool CanEdit);

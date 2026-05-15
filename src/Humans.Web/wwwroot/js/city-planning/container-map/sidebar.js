@@ -5,7 +5,6 @@ const unplacedEl = document.getElementById('sidebar-unplaced');
 const placedEl   = document.getElementById('sidebar-placed');
 
 let _containers     = [];    // current container data array
-let _campNames      = {};    // campId → campName
 let _activeId       = null;  // currently active container ID
 let _filterCampId   = null;  // if set, sidebar only shows this barrio's containers
 let _onActivate  = null;  // callback(container) when user clicks an unplaced card
@@ -19,11 +18,6 @@ export function initSidebar(onActivate, onClear, onSelect, onLocate, filterCampI
     _onSelect      = onSelect;
     _onLocate      = onLocate;
     _filterCampId  = filterCampId;
-}
-
-/** Provide the campId → campName lookup used for barrio group headers. */
-export function setCampNames(campNames) {
-    _campNames = campNames;
 }
 
 /** Replace the container list and re-render. */
@@ -71,14 +65,14 @@ function renderSection(sectionEl, items, isPlaced) {
     const groups = groupByCamp(items);
     const showHeaders = groups.size > 1;
 
-    for (const [campId, groupItems] of groups) {
+    for (const [, group] of groups) {
         if (showHeaders) {
             const hdr = document.createElement('div');
             hdr.className = 'list-group-item py-1 px-3 small text-muted bg-body-secondary';
-            hdr.textContent = _campNames[campId] ?? campId;
+            hdr.textContent = group.campName;
             sectionEl.appendChild(hdr);
         }
-        for (const c of groupItems) {
+        for (const c of group.items) {
             sectionEl.appendChild(isPlaced ? makePlacedCard(c) : makeUnplacedCard(c));
         }
     }
@@ -87,12 +81,12 @@ function renderSection(sectionEl, items, isPlaced) {
 function groupByCamp(items) {
     const groups = new Map();
     for (const c of items) {
-        const key = c.campId ?? null;
-        if (!groups.has(key)) groups.set(key, []);
-        groups.get(key).push(c);
+        const key = c.campId ?? '';
+        if (!groups.has(key)) groups.set(key, { campName: c.campName ?? '', items: [] });
+        groups.get(key).items.push(c);
     }
-    return new Map([...groups.entries()].sort(([a], [b]) =>
-        (_campNames[a] ?? '').localeCompare(_campNames[b] ?? '')));
+    return new Map([...groups.entries()].sort(([, a], [, b]) =>
+        a.campName.localeCompare(b.campName)));
 }
 
 function makeUnplacedCard(c) {

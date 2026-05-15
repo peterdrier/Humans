@@ -2,7 +2,7 @@
 import { CONFIG }                                          from './config.js';
 import { loadContainers, savePlacement, clearPlacement }   from './api.js';
 import { addBackgroundLayers, addContainerLayers, updateContainerSource } from './layers.js';
-import { initSidebar, setCampNames, setContainers, setActiveId, markPlaced, scrollToPlaced } from './sidebar.js';
+import { initSidebar, setContainers, setActiveId, markPlaced, scrollToPlaced } from './sidebar.js';
 import { initInteraction, activateContainer, selectPlacedContainer, deactivate } from './interaction.js';
 import { initMeasure, exitMeasureMode, wireMeasureButtons } from './measure.js';
 
@@ -42,14 +42,6 @@ async function init() {
     addBackgroundLayers(map, stateData);
     addContainerLayers(map);
     initMeasure(map);
-
-    // Build campId → campName lookup for sidebar grouping
-    const campNames = Object.fromEntries(
-        (stateData.campPolygons ?? [])
-            .filter(p => p.campId && p.campName)
-            .map(p => [p.campId, p.campName])
-    );
-    setCampNames(campNames);
 
     containers = loadedContainers;
     updateContainerSource(map, containers, null);
