@@ -1187,8 +1187,6 @@ public class ShiftDashboardMetricsTests : IDisposable
         public Task ReassignToUserAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<IReadOnlyCollection<Guid>> GetEffectiveBudgetCoordinatorTeamIdsAsync(Guid userId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<int> GetTotalPendingJoinRequestCountAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
-        public Task<IReadOnlyList<TeamActiveMemberSnapshot>> GetActiveMembersForTeamsAsync(IReadOnlyCollection<Guid> teamIds, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-        public Task<SystemTeamMembershipSnapshot?> GetSystemTeamWithActiveMembersAsync(SystemTeamType type, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<IReadOnlyList<TeamRoleReconciliationMembership>> GetActiveMembershipsForRoleReconciliationAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<int> ApplyMemberRoleChangesAsync(IReadOnlyCollection<(Guid TeamMemberId, TeamMemberRole Role)> changes, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<bool> ApplySystemTeamMembershipDeltaAsync(Guid teamId, IReadOnlyCollection<Guid> userIdsToAdd, IReadOnlyCollection<Guid> userIdsToRemove, Instant now, CancellationToken cancellationToken = default) => throw new NotSupportedException();

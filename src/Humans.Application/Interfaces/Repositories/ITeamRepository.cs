@@ -298,16 +298,6 @@ public interface ITeamRepository : IRepository
         bool clearingIsManagement,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Loads active (<see cref="TeamMember.LeftAt"/> is null) team members
-    /// for every requested team id. Returned rows have <see cref="TeamMember.Team"/>
-    /// hydrated via the aggregate-local nav, but the cross-domain
-    /// <see cref="TeamMember.User"/> nav is left unset — callers stitch via
-    /// <see cref="Users.IUserService"/>. Detached.
-    /// </summary>
-    Task<IReadOnlyList<TeamMember>> GetActiveMembersForTeamsAsync(
-        IReadOnlyCollection<Guid> teamIds, CancellationToken ct = default);
-
     // ==========================================================================
     // TeamJoinRequest reads
     // ==========================================================================
@@ -549,15 +539,6 @@ public interface ITeamRepository : IRepository
     // methods that back SystemTeamSyncJob. Every mutation commits in its own
     // DbContext so the Singleton+IDbContextFactory contract is preserved.
     // ==========================================================================
-
-    /// <summary>
-    /// Load the system team whose <see cref="Team.SystemTeamType"/> matches
-    /// <paramref name="type"/> along with its active
-    /// (<see cref="TeamMember.LeftAt"/> is null) members. Detached. Returns
-    /// null if no team of that system type exists.
-    /// </summary>
-    Task<Team?> GetSystemTeamWithActiveMembersAsync(
-        SystemTeamType type, CancellationToken ct = default);
 
     /// <summary>
     /// Load every active (<see cref="TeamMember.LeftAt"/> is null) team

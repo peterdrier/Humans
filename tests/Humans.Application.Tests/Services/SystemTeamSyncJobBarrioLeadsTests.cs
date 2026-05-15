@@ -73,8 +73,9 @@ public class SystemTeamSyncJobBarrioLeadsTests
 
     private SystemTeamMembershipSnapshot StubBarrioLeadsTeam(IEnumerable<TeamMember>? activeMembers = null)
     {
+        var teamId = Guid.NewGuid();
         var team = new SystemTeamMembershipSnapshot(
-            Guid.NewGuid(),
+            teamId,
             "Barrio Leads",
             "barrio-leads",
             IsHidden: true,
@@ -83,9 +84,18 @@ public class SystemTeamSyncJobBarrioLeadsTests
                 .Where(member => member.LeftAt is null)
                 .Select(member => member.UserId)
                 .ToList() ?? []);
-        _teamService.GetSystemTeamWithActiveMembersAsync(
-            SystemTeamType.BarrioLeads, Arg.Any<CancellationToken>())
-            .Returns(team);
+        var teamInfo = new TeamInfo(
+            teamId, "Barrio Leads", null, "barrio-leads",
+            IsActive: true, IsSystemTeam: true, SystemTeamType: SystemTeamType.BarrioLeads,
+            RequiresApproval: false, IsPublicPage: false, IsHidden: true,
+            IsPromotedToDirectory: false, CreatedAt: Instant.MinValue,
+            Members: team.ActiveMemberUserIds
+                .Select(uid => new TeamMemberInfo(
+                    Guid.NewGuid(), uid, string.Empty, null, null,
+                    TeamMemberRole.Member, Instant.MinValue))
+                .ToList());
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyDictionary<Guid, TeamInfo>)new Dictionary<Guid, TeamInfo> { [teamId] = teamInfo });
         return team;
     }
 

@@ -510,16 +510,6 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
     public Task<int> GetTotalPendingJoinRequestCountAsync(CancellationToken cancellationToken = default) =>
         WithInner(inner => inner.GetTotalPendingJoinRequestCountAsync(cancellationToken));
 
-    public Task<IReadOnlyList<TeamActiveMemberSnapshot>> GetActiveMembersForTeamsAsync(
-        IReadOnlyCollection<Guid> teamIds,
-        CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetActiveMembersForTeamsAsync(teamIds, cancellationToken));
-
-    public Task<SystemTeamMembershipSnapshot?> GetSystemTeamWithActiveMembersAsync(
-        SystemTeamType type,
-        CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetSystemTeamWithActiveMembersAsync(type, cancellationToken));
-
     public Task<IReadOnlyList<TeamRoleReconciliationMembership>> GetActiveMembershipsForRoleReconciliationAsync(
         CancellationToken cancellationToken = default) =>
         WithInner(inner => inner.GetActiveMembershipsForRoleReconciliationAsync(cancellationToken));

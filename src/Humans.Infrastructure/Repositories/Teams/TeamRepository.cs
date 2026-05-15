@@ -311,20 +311,6 @@ public sealed class TeamRepository : ITeamRepository
                 && tm.LeftAt == null, ct);
     }
 
-    public async Task<IReadOnlyList<TeamMember>> GetActiveMembersForTeamsAsync(
-        IReadOnlyCollection<Guid> teamIds, CancellationToken ct = default)
-    {
-        if (teamIds.Count == 0)
-            return [];
-
-        await using var db = await _factory.CreateDbContextAsync(ct);
-        return await db.TeamMembers
-            .AsNoTracking()
-            .Include(tm => tm.Team)
-            .Where(tm => teamIds.Contains(tm.TeamId) && tm.LeftAt == null)
-            .ToListAsync(ct);
-    }
-
     public async Task<IReadOnlyList<Guid>> GetUserCoordinatorTeamIdsAsync(
         Guid userId, CancellationToken ct = default)
     {
@@ -1176,16 +1162,6 @@ public sealed class TeamRepository : ITeamRepository
     // ==========================================================================
     // System team sync support (issue #570 — §15 Google-writing jobs)
     // ==========================================================================
-
-    public async Task<Team?> GetSystemTeamWithActiveMembersAsync(
-        SystemTeamType type, CancellationToken ct = default)
-    {
-        await using var db = await _factory.CreateDbContextAsync(ct);
-        return await db.Teams
-            .AsNoTracking()
-            .Include(t => t.Members.Where(m => m.LeftAt == null))
-            .FirstOrDefaultAsync(t => t.SystemTeamType == type, ct);
-    }
 
     public async Task<IReadOnlyList<TeamMember>> GetActiveMembershipsForRoleReconciliationAsync(
         CancellationToken ct = default)

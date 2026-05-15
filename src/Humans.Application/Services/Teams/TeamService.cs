@@ -1797,36 +1797,6 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
     public Task<int> GetTotalPendingJoinRequestCountAsync(CancellationToken cancellationToken = default) =>
         _repo.GetTotalPendingCountAsync(cancellationToken);
 
-    public async Task<IReadOnlyList<TeamActiveMemberSnapshot>> GetActiveMembersForTeamsAsync(
-        IReadOnlyCollection<Guid> teamIds,
-        CancellationToken cancellationToken = default)
-    {
-        if (teamIds.Count == 0)
-            return [];
-        var members = await _repo.GetActiveMembersForTeamsAsync(teamIds, cancellationToken);
-        var userIds = members.Select(member => member.UserId).Distinct().ToList();
-        var usersById = userIds.Count == 0
-            ? new Dictionary<Guid, User>()
-            : await UserService.GetByIdsAsync(userIds, cancellationToken);
-
-        return members
-            .Select(member =>
-            {
-                usersById.TryGetValue(member.UserId, out var user);
-                return new TeamActiveMemberSnapshot(
-                    member.TeamId,
-                    member.Id,
-                    member.UserId,
-                    user?.DisplayName ?? string.Empty,
-                    user?.Email,
-                    user?.ProfilePictureUrl,
-                    user?.GoogleEmailStatus ?? GoogleEmailStatus.Unknown,
-                    member.Role,
-                    member.JoinedAt);
-            })
-            .ToList();
-    }
-
     public Task<IReadOnlyDictionary<Guid, string>> GetManagementRoleNamesByTeamIdsAsync(
         IEnumerable<Guid> teamIds,
         CancellationToken cancellationToken = default) =>
@@ -2418,24 +2388,6 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
     // ==========================================================================
     // System team sync support (issue #570 — §15 Google-writing jobs)
     // ==========================================================================
-
-    public async Task<SystemTeamMembershipSnapshot?> GetSystemTeamWithActiveMembersAsync(
-        SystemTeamType type, CancellationToken cancellationToken = default)
-    {
-        var team = await _repo.GetSystemTeamWithActiveMembersAsync(type, cancellationToken);
-        return team is null
-            ? null
-            : new SystemTeamMembershipSnapshot(
-                team.Id,
-                team.Name,
-                team.Slug,
-                team.IsHidden,
-                team.SystemTeamType,
-                team.Members
-                    .Where(member => member.LeftAt is null)
-                    .Select(member => member.UserId)
-                    .ToList());
-    }
 
     public async Task<IReadOnlyList<TeamRoleReconciliationMembership>> GetActiveMembershipsForRoleReconciliationAsync(
         CancellationToken cancellationToken = default)

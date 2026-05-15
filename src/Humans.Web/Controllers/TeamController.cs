@@ -213,8 +213,17 @@ public class TeamController : HumansControllerBase
             var childTeamIds = teamPage.ChildTeams.Select(c => c.Id).ToList();
             var managementRolesByTeam = await _teamService.GetManagementRoleNamesByTeamIdsAsync(childTeamIds);
 
-            var allChildMembers = await _teamService.GetActiveMembersForTeamsAsync(childTeamIds);
-            var childMembersByTeam = allChildMembers.GroupBy(m => m.TeamId).ToDictionary(g => g.Key, g => g.ToList());
+            var teamsById = await _teamService.GetTeamsAsync();
+            var childMembersByTeam = childTeamIds
+                .Where(teamsById.ContainsKey)
+                .ToDictionary(
+                    id => id,
+                    id => teamsById[id].Members
+                        .Select(m => new TeamActiveMemberSnapshot(
+                            id, m.TeamMemberId, m.UserId,
+                            m.DisplayName, m.Email, m.ProfilePictureUrl,
+                            m.GoogleEmailStatus, m.Role, m.JoinedAt))
+                        .ToList());
 
             foreach (var child in teamPage.ChildTeams)
             {

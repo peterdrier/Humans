@@ -184,6 +184,7 @@ public record TeamActiveMemberSnapshot(
 /// <remarks>
 /// Surface-budget recent history (newest first):
 /// <list type="bullet">
+///   <item>56→54 — drained GetSystemTeamWithActiveMembersAsync + GetActiveMembersForTeamsAsync onto TeamInfo cache.</item>
 ///   <item>61→56 — drained 5 name-lookup readers (GetTeamNameByGoogleGroupPrefixAsync, GetTeamNamesByIdsAsync, GetNonSystemTeamNamesByUserIdsAsync, GetActiveNonSystemTeamNamesByUserIdsAsync, IsUserMemberOfTeamAsync) onto TeamInfo cache.</item>
 ///   <item>66→61 — drained 5 coordinator readers (GetCoordinatorUserIdsAsync, GetActiveCoordinatorsForTeamsAsync, GetActiveNonSystemTeamCoordinatorUserIdsAsync, GetActiveDepartmentCoordinatorUserIdsAsync, IsActiveDepartmentCoordinatorAsync) onto TeamInfo cache.</item>
 ///   <item>68→66 — drained GetActiveTeamOptionsAsync + GetBudgetableTeamsAsync onto TeamInfo cache; killed TeamOptionDto record (parent: peterdrier/Humans#555 UserInfo migration).</item>
@@ -196,7 +197,7 @@ public record TeamActiveMemberSnapshot(
 ///   <item>71→70 — account-merge fold redesign: removed ReassignToUserAsync from ITeamService (moved to IUserMerge.ReassignAsync, implemented by TeamService and dispatched by AccountMergeService via IEnumerable&lt;IUserMerge&gt; fan-out).</item>
 /// </list>
 /// </remarks>
-[SurfaceBudget(56)]
+[SurfaceBudget(54)]
 public interface ITeamService : IApplicationService
 {
     /// <summary>
@@ -652,19 +653,6 @@ public interface ITeamService : IApplicationService
     /// </summary>
     Task<int> GetTotalPendingJoinRequestCountAsync(CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Returns every active (<see cref="TeamMember.LeftAt"/> is null) team member
-    /// across the given team ids, with <see cref="TeamMember.Team"/> hydrated and
-    /// the cross-domain <see cref="TeamMember.User"/> nav stitched in-memory via
-    /// <see cref="Users.IUserService.GetByIdsAsync"/>. Used by the Google
-    /// Workspace reconciliation flow to resolve the expected membership of every
-    /// Google Drive / Group resource without touching <c>team_members</c>
-    /// directly (design-rules §2c, §6b).
-    /// </summary>
-    Task<IReadOnlyList<TeamActiveMemberSnapshot>> GetActiveMembersForTeamsAsync(
-        IReadOnlyCollection<Guid> teamIds,
-        CancellationToken cancellationToken = default);
-
     // ==========================================================================
     // System team sync support (issue #570 — §15 Google-writing jobs)
     //
@@ -673,14 +661,6 @@ public interface ITeamService : IApplicationService
     // its own repository-owned unit of work; the caller fan-outs Google sync
     // calls externally.
     // ==========================================================================
-
-    /// <summary>
-    /// Loads the system team whose <see cref="Team.SystemTeamType"/> equals
-    /// <paramref name="type"/>, with active members hydrated. Returns null
-    /// when no team is configured for that system type.
-    /// </summary>
-    Task<SystemTeamMembershipSnapshot?> GetSystemTeamWithActiveMembersAsync(
-        SystemTeamType type, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Loads every active membership with enough role-assignment / role-

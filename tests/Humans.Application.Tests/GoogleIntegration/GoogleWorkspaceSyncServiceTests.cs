@@ -216,8 +216,8 @@ public sealed class GoogleWorkspaceSyncServiceTests
 
         // No expected members (empty team) — any permission in Google is "extra".
         _teamService
-            .GetActiveMembersForTeamsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<TeamActiveMemberSnapshot>());
+            .GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyDictionary<Guid, TeamInfo>)new Dictionary<Guid, TeamInfo>());
 
         _userEmailService
             .GetEntitiesByUserIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())

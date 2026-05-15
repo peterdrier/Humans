@@ -1606,11 +1606,23 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         var result = new Dictionary<Guid, IReadOnlyList<TeamActiveMemberSnapshot>>(teamIds.Count);
         if (teamIds.Count == 0) return result;
 
-        var members = await _teamService.GetActiveMembersForTeamsAsync(teamIds, ct);
+        var teamsById = await _teamService.GetTeamsAsync(ct);
         foreach (var teamId in teamIds)
-            result[teamId] = [];
-        foreach (var group in members.GroupBy(m => m.TeamId))
-            result[group.Key] = group.ToList();
+        {
+            if (teamsById.TryGetValue(teamId, out var team))
+            {
+                result[teamId] = team.Members
+                    .Select(m => new TeamActiveMemberSnapshot(
+                        teamId, m.TeamMemberId, m.UserId,
+                        m.DisplayName, m.Email, m.ProfilePictureUrl,
+                        m.GoogleEmailStatus, m.Role, m.JoinedAt))
+                    .ToList();
+            }
+            else
+            {
+                result[teamId] = [];
+            }
+        }
         return result;
     }
 
