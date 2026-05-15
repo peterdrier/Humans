@@ -283,26 +283,17 @@ public class ProfileController : HumansControllerBase
         if (user is null)
             return NotFound();
 
-        var profile = await _profileService.GetProfileAsync(user.Id, ct);
+        var info = await _userService.GetUserInfoAsync(user.Id, ct);
+        if (info is null) return NotFound();
+
         var applications = await _applicationDecisionService.GetUserApplicationsAsync(user.Id, ct);
-        var contactFields = profile is not null
-            ? await _contactFieldService.GetAllContactFieldsAsync(profile.Id, ct)
-            : [];
-        var fullProfile = await _profileService.GetFullProfileAsync(user.Id, ct);
-        var languages = profile is not null
-            ? await _profileService.GetProfileLanguagesAsync(profile.Id, ct)
-            : (IReadOnlyList<ProfileLanguageSnapshot>)[];
         var allShiftTags = await _shiftMgmt.GetTagsAsync();
         var preferredShiftTags = await _shiftMgmt.GetVolunteerTagPreferencesAsync(user.Id);
         var externalLogins = await UserManager.GetLoginsAsync(user);
 
         var viewModel = ProfileEditViewModelBuilder.Build(
-            user,
-            profile,
+            info,
             applications,
-            contactFields,
-            fullProfile?.CVEntries ?? [],
-            languages,
             allShiftTags,
             preferredShiftTags,
             preview,

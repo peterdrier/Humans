@@ -1,63 +1,54 @@
 using Humans.Application;
-using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Governance;
-using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Extensions;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using ProfileEntity = Humans.Domain.Entities.Profile;
 
 namespace Humans.Web.Models;
 
 public static class ProfileEditViewModelBuilder
 {
     public static ProfileViewModel Build(
-        User user,
-        ProfileEntity? profile,
+        UserInfo info,
         IReadOnlyList<UserApplicationSnapshot> applications,
-        IReadOnlyList<ContactFieldEditDto> contactFields,
-        IReadOnlyList<CVEntry> cvEntries,
-        IReadOnlyList<ProfileLanguageSnapshot> languages,
         IReadOnlyList<ShiftTagSummary> allShiftTags,
         IReadOnlyList<ShiftTagPreferenceSummary> preferredShiftTags,
         bool preview,
         bool hasGoogleLogin,
-        Func<ProfileEntity, string?> customPictureUrl)
+        Func<ProfileInfo, string?> customPictureUrl)
     {
-        ArgumentNullException.ThrowIfNull(user);
+        ArgumentNullException.ThrowIfNull(info);
         ArgumentNullException.ThrowIfNull(applications);
-        ArgumentNullException.ThrowIfNull(contactFields);
-        ArgumentNullException.ThrowIfNull(cvEntries);
-        ArgumentNullException.ThrowIfNull(languages);
         ArgumentNullException.ThrowIfNull(allShiftTags);
         ArgumentNullException.ThrowIfNull(preferredShiftTags);
         ArgumentNullException.ThrowIfNull(customPictureUrl);
+
+        var profile = info.Profile;
 
         var isTierLocked = profile is not null && applications.Any(a =>
             a.Status == ApplicationStatus.Submitted || a.Status == ApplicationStatus.Approved);
         var pendingApplication = profile is null || !profile.IsApproved
             ? applications.FirstOrDefault(a => a.Status == ApplicationStatus.Submitted)
             : null;
-        var hasCustomPicture = profile?.HasCustomProfilePicture == true;
+        var hasCustomPicture = profile?.HasCustomPicture == true;
         var isInitialSetup = profile is null || !profile.IsApproved || preview;
         var canImportGooglePicture = hasGoogleLogin
             && !hasCustomPicture
-            && !string.IsNullOrEmpty(user.ProfilePictureUrl);
+            && !string.IsNullOrEmpty(info.ProfilePictureUrl);
 
         return new ProfileViewModel
         {
             Id = profile?.Id ?? Guid.Empty,
-            UserId = user.Id,
-            Email = user.Email ?? string.Empty,
-            DisplayName = user.DisplayName,
-            ProfilePictureUrl = user.ProfilePictureUrl,
+            UserId = info.Id,
+            Email = info.Email ?? string.Empty,
+            DisplayName = info.DisplayName,
+            ProfilePictureUrl = info.ProfilePictureUrl,
             HasCustomProfilePicture = hasCustomPicture,
             CustomProfilePictureUrl = hasCustomPicture && profile is not null
                 ? customPictureUrl(profile)
                 : null,
             CanImportGooglePicture = canImportGooglePicture,
-            BurnerName = profile?.BurnerName ?? user.DisplayName,
+            BurnerName = profile?.BurnerName ?? info.DisplayName,
             FirstName = profile?.FirstName ?? string.Empty,
             LastName = profile?.LastName ?? string.Empty,
             City = profile?.City,
@@ -69,8 +60,8 @@ public static class ProfileEditViewModelBuilder
             Pronouns = profile?.Pronouns,
             ContributionInterests = profile?.ContributionInterests,
             BoardNotes = profile?.BoardNotes,
-            BirthdayMonth = profile?.DateOfBirth?.Month,
-            BirthdayDay = profile?.DateOfBirth?.Day,
+            BirthdayMonth = profile?.BirthdayMonth,
+            BirthdayDay = profile?.BirthdayDay,
             EmergencyContactName = profile?.EmergencyContactName,
             EmergencyContactPhone = profile?.EmergencyContactPhone,
             EmergencyContactRelationship = profile?.EmergencyContactRelationship,
@@ -86,7 +77,7 @@ public static class ProfileEditViewModelBuilder
             ShowPrivateFirst = string.IsNullOrEmpty(profile?.FirstName)
                 && string.IsNullOrEmpty(profile?.LastName)
                 && string.IsNullOrEmpty(profile?.EmergencyContactName),
-            EditableContactFields = contactFields.Select(cf => new ContactFieldEditViewModel
+            EditableContactFields = (profile?.ContactFields ?? []).Select(cf => new ContactFieldEditViewModel
             {
                 Id = cf.Id,
                 FieldType = cf.FieldType,
@@ -95,14 +86,14 @@ public static class ProfileEditViewModelBuilder
                 Visibility = cf.Visibility,
                 DisplayOrder = cf.DisplayOrder
             }).ToList(),
-            EditableVolunteerHistory = cvEntries.Select(cv => new VolunteerHistoryEntryEditViewModel
+            EditableVolunteerHistory = (profile?.VolunteerHistory ?? []).Select(cv => new VolunteerHistoryEntryEditViewModel
             {
                 Id = cv.Id,
                 DateString = cv.Date.ToIsoDateString(),
                 EventName = cv.EventName,
                 Description = cv.Description
             }).ToList(),
-            EditableLanguages = languages.Select(pl => new ProfileLanguageEditViewModel
+            EditableLanguages = (profile?.Languages ?? []).Select(pl => new ProfileLanguageEditViewModel
             {
                 Id = pl.Id,
                 LanguageCode = pl.LanguageCode,
