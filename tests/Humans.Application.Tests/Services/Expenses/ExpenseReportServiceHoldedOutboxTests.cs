@@ -119,7 +119,7 @@ public class ExpenseReportServiceHoldedOutboxTests
     public async Task EmptyQueue_NoClientCalls()
     {
         _repo.GetUnprocessedOutboxAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<HoldedExpenseOutboxEvent>());
+            .Returns([]);
 
         await _sut.DrainHoldedOutboxAsync(BatchSize);
 
@@ -229,11 +229,11 @@ public class ExpenseReportServiceHoldedOutboxTests
         _fileStorage.TryReadAsync(
                 $"uploads/expense-attachments/{attachment1.Id}.pdf",
                 Arg.Any<CancellationToken>())
-            .Returns(new byte[] { 1, 2 });
+            .Returns([1, 2]);
         _fileStorage.TryReadAsync(
                 $"uploads/expense-attachments/{attachment2.Id}.jpg",
                 Arg.Any<CancellationToken>())
-            .Returns(new byte[] { 3, 4 });
+            .Returns([3, 4]);
 
         await _sut.DrainHoldedOutboxAsync(BatchSize);
 

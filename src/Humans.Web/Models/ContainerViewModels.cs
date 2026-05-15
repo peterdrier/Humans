@@ -8,7 +8,7 @@ public class ContainerIndexViewModel
     public string CampSlug { get; set; } = string.Empty;
     public string CampName { get; set; } = string.Empty;
     public Guid CampId { get; set; }
-    public List<ContainerViewModel> Containers { get; set; } = new();
+    public List<ContainerViewModel> Containers { get; set; } = [];
     public Dictionary<Guid, ContainerPlacementViewModel> PlacementsByContainerId { get; set; } = new();
     public bool CanManage { get; set; }
     public int CurrentYear { get; set; }
@@ -71,7 +71,7 @@ public class OrgContainerIndexViewModel
 {
     public int Year { get; set; }
     public bool IsContainerPlacementOpen { get; set; }
-    public List<BarrioContainerGroup> BarrioGroups { get; set; } = new();
+    public List<BarrioContainerGroup> BarrioGroups { get; set; } = [];
 }
 
 public class BarrioContainerGroup
@@ -79,7 +79,7 @@ public class BarrioContainerGroup
     public Guid CampId { get; set; }
     public string CampName { get; set; } = string.Empty;
     public string CampSlug { get; set; } = string.Empty;
-    public List<ContainerWithPlacementViewModel> Containers { get; set; } = new();
+    public List<ContainerWithPlacementViewModel> Containers { get; set; } = [];
 }
 
 public class ContainerMapViewModel
@@ -107,7 +107,8 @@ public class CityPlanningBarrioMapViewModel
     public bool IsMapAdmin { get; set; }
     public string UserCampSeasonId { get; set; } = string.Empty;
     public Guid CurrentUserId { get; set; }
-    public List<Humans.Application.Interfaces.CityPlanning.CampSeasonSummaryDto> SeasonsWithoutCampPolygon { get; set; } = new();
+    public List<Application.Interfaces.CityPlanning.CampSeasonSummaryDto> SeasonsWithoutCampPolygon { get; set; } =
+        [];
     public NodaTime.LocalDateTime? PlacementOpensAt { get; set; }
     public NodaTime.LocalDateTime? PlacementClosesAt { get; set; }
 }

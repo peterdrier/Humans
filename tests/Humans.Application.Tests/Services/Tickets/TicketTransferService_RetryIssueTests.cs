@@ -86,7 +86,7 @@ public sealed class TicketTransferService_RetryIssueTests
 
     private static readonly JsonSerializerOptions WebOptions =
         new JsonSerializerOptions(JsonSerializerDefaults.Web)
-            .ConfigureForNodaTime(NodaTime.DateTimeZoneProviders.Tzdb);
+            .ConfigureForNodaTime(DateTimeZoneProviders.Tzdb);
 
     private static IReadOnlyList<TicketTransferVendorStep> StepsOf(TicketTransferRequest r) =>
         JsonSerializer.Deserialize<List<TicketTransferVendorStep>>(r.VendorStepsJson, WebOptions)!;

@@ -37,13 +37,13 @@
     <h4>Messages</h4>
     @foreach (var msg in conv.Messages.OrderBy(m => m.CreatedAt))
     {
-        <div class="card mb-2 @(msg.Role == Humans.Domain.Enums.AgentRole.User ? "border-primary" : "border-secondary")">
+        <div class="card mb-2 @(msg.Role == AgentRole.User ? "border-primary" : "border-secondary")">
             <div class="card-header d-flex justify-content-between">
                 <span><strong>@msg.Role</strong></span>
                 <span class="text-muted small">@msg.CreatedAt.ToAuditTimestamp() UTC</span>
             </div>
             <div class="card-body">
-                @if (msg.Role == Humans.Domain.Enums.AgentRole.Assistant)
+                @if (msg.Role == AgentRole.Assistant)
                 {
                     <div class="agent-assistant-content mb-1">@Html.SanitizedMarkdown(msg.Content)</div>
                 }

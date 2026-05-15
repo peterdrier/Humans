@@ -84,7 +84,7 @@ public class ShiftSignupServiceFilterIncompleteOnboardingTests : IDisposable
     [HumansFact]
     public async Task Filter_EmptyList_ReturnsEmptyWithoutMembershipCall()
     {
-        var result = await _service.FilterToIncompleteOnboardingAsync(Array.Empty<ShiftSignup>());
+        var result = await _service.FilterToIncompleteOnboardingAsync([]);
 
         result.Should().BeEmpty();
         await _membership.DidNotReceiveWithAnyArgs()

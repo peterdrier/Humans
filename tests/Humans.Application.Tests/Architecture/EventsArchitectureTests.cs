@@ -140,7 +140,7 @@ public class EventsArchitectureTests
         // AddEventsSection is internal to Humans.Web — invoke it via reflection
         // to verify the filter's DI lifetime without leaking internal surface.
         var services = new ServiceCollection();
-        var sectionExtensionsType = typeof(Humans.Web.Controllers.EventsController).Assembly
+        var sectionExtensionsType = typeof(EventsController).Assembly
             .GetType("Humans.Web.Extensions.Sections.EventsSectionExtensions", throwOnError: true)!;
         var addMethod = sectionExtensionsType.GetMethod("AddEventsSection",
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!;
@@ -198,7 +198,7 @@ public class EventsArchitectureTests
 
             var rel = RatchetTestRunner.ToRelativePath(repoRoot, path);
             var ordinal = 0;
-            foreach (var match in EventWriteRegex.Matches(content).Cast<System.Text.RegularExpressions.Match>())
+            foreach (var match in EventWriteRegex.Matches(content).Cast<Match>())
             {
                 ordinal++;
                 var line = RatchetTestRunner.LineNumberAt(content, match.Index);

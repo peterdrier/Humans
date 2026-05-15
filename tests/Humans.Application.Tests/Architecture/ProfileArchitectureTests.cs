@@ -22,23 +22,23 @@ namespace Humans.Application.Tests.Architecture;
 /// </summary>
 public class ProfileArchitectureTests
 {
-    public static TheoryData<Type> ApplicationProfileServices => new()
-    {
+    public static TheoryData<Type> ApplicationProfileServices =>
+    [
         typeof(ProfileService),
         typeof(ContactFieldService),
         typeof(UserEmailService),
         typeof(CommunicationPreferenceService),
         typeof(AccountMergeService),
-        typeof(DuplicateAccountService),
-    };
+        typeof(DuplicateAccountService)
+    ];
 
-    public static TheoryData<Type> ServicesWithoutMemoryCache => new()
-    {
+    public static TheoryData<Type> ServicesWithoutMemoryCache =>
+    [
         typeof(ProfileService),
         typeof(ContactFieldService),
         typeof(UserEmailService),
-        typeof(CommunicationPreferenceService),
-    };
+        typeof(CommunicationPreferenceService)
+    ];
 
     public static TheoryData<Type, Type> RequiredRepositoryEdges => new()
     {

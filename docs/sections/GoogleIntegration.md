@@ -99,6 +99,10 @@ All Google integration management is consolidated in `GoogleController` (`[Route
 - Only direct permissions are managed by the system. Inherited Shared Drive permissions are excluded from drift detection and sync.
 - Drive folders with `RestrictInheritedAccess = true` have `inheritedPermissionsDisabled` enforced by the reconciliation job. Drift (manual re-enablement of inheritance) is detected and corrected automatically, with an audit trail entry.
 - Sync settings are per-service (Google Drive, Google Groups, Discord). Setting a service to None disables sync without redeploying.
+<!-- wheat: docs/plans/2026-03-09-google-groups-sync-modes-design.md §Design Principles -->
+- **Sync mode guards automation, not operators.** Per-service `SyncMode` controls what scheduled jobs do; manual actions from the Admin UI always execute the requested `SyncAction` regardless of the stored mode (an operator escape hatch when automation is set to `None` or `AddOnly`).
+- **App is source of truth for expected membership.** Reconciliation computes expected members from team membership in the database; anyone present in Google but absent from the DB is classified as "extra" and shows as a removal candidate.
+- **One sync code path for preview / scheduled / manual.** Diff computation is shared; the `SyncAction` parameter (`Preview` / `AddOnly` / `AddAndRemove`) is the only variable controlling which mutations execute.
 - A human's Google service email is their @nobodies.team email if provisioned, otherwise their OAuth login email.
 - Each human has a `GoogleEmailStatus` (`Unknown`, `Valid`, `Rejected`). When Google permanently rejects an email (HTTP 400/403/404), the status is set to `Rejected` and new outbox events are not enqueued for that human. When a human changes their Google email, the status resets to `Unknown` and fresh sync events are enqueued.
 - Permanent Google API errors (HTTP 400, 403, 404) mark outbox events as `FailedPermanently` and stop retrying immediately. Transient errors (5xx, 429, etc.) continue retrying up to the configured limit.

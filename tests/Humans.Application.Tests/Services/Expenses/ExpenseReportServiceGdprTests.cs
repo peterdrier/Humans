@@ -70,14 +70,14 @@ public class ExpenseReportServiceGdprTests
             CreatedAt = FakeNow,
             GoogleEmailStatus = GoogleEmailStatus.Unknown,
         },
-        userEmails: Array.Empty<UserEmail>(),
-        eventParticipations: Array.Empty<EventParticipation>(),
-        externalLogins: Array.Empty<(string, string)>(),
+        userEmails: [],
+        eventParticipations: [],
+        externalLogins: [],
         profile: profile,
-        contactFields: Array.Empty<ContactField>(),
-        profileLanguages: Array.Empty<ProfileLanguage>(),
-        volunteerHistory: Array.Empty<VolunteerHistoryEntry>(),
-        communicationPreferences: Array.Empty<CommunicationPreference>());
+        contactFields: [],
+        profileLanguages: [],
+        volunteerHistory: [],
+        communicationPreferences: []);
 
     // ─── helpers ──────────────────────────────────────────────────────────────
 

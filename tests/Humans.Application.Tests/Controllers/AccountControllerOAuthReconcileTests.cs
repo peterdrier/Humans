@@ -32,8 +32,8 @@ public class AccountControllerOAuthReconcileTests
 {
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly IMagicLinkService _magicLinkService = Substitute.For<IMagicLinkService>();
-    private readonly IStringLocalizer<Humans.Web.SharedResource> _localizer =
-        Substitute.For<IStringLocalizer<Humans.Web.SharedResource>>();
+    private readonly IStringLocalizer<Web.SharedResource> _localizer =
+        Substitute.For<IStringLocalizer<Web.SharedResource>>();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 5, 11, 12, 0));
     private readonly UserManager<User> _userManager;
     private readonly SignInManager<User> _signInManager;
@@ -179,10 +179,9 @@ public class AccountControllerOAuthReconcileTests
         _signInManager.ExternalLoginSignInAsync(Provider, ProviderKey, false, true)
             .Returns(SignInResult.Failed);
 
-        var identity = new ClaimsIdentity(new[]
-        {
-            new Claim(ClaimTypes.NameIdentifier, currentUserId.ToString()),
-        }, authenticationType: "TestAuth");
+        var identity = new ClaimsIdentity([
+            new Claim(ClaimTypes.NameIdentifier, currentUserId.ToString())
+        ], authenticationType: "TestAuth");
         var principal = new ClaimsPrincipal(identity);
         _controller.ControllerContext = new ControllerContext
         {

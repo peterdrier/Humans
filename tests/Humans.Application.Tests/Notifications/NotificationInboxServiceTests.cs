@@ -327,7 +327,7 @@ public class NotificationInboxServiceTests : IDisposable
     public async Task ResolveAsync_InvalidatesBadgeCache()
     {
         var notification = await CreateNotification(NotificationClass.Actionable);
-        var cacheKey = Application.CacheKeys.NotificationBadgeCounts(_userId);
+        var cacheKey = CacheKeys.NotificationBadgeCounts(_userId);
         _cache.Set(cacheKey, 5);
 
         await _service.ResolveAsync(notification.Id, _userId);
@@ -339,7 +339,7 @@ public class NotificationInboxServiceTests : IDisposable
     public async Task MarkReadAsync_InvalidatesBadgeCache()
     {
         var notification = await CreateNotification();
-        var cacheKey = Application.CacheKeys.NotificationBadgeCounts(_userId);
+        var cacheKey = CacheKeys.NotificationBadgeCounts(_userId);
         _cache.Set(cacheKey, 3);
 
         await _service.MarkReadAsync(notification.Id, _userId);
@@ -351,7 +351,7 @@ public class NotificationInboxServiceTests : IDisposable
     public async Task MarkAllReadAsync_InvalidatesBadgeCache()
     {
         await CreateNotification();
-        var cacheKey = Application.CacheKeys.NotificationBadgeCounts(_userId);
+        var cacheKey = CacheKeys.NotificationBadgeCounts(_userId);
         _cache.Set(cacheKey, 2);
 
         await _service.MarkAllReadAsync(_userId);

@@ -33,20 +33,20 @@ file sealed class StubAuditLogService : IAuditLogService
         Guid? relatedEntityId = null, string? relatedEntityType = null) => Task.CompletedTask;
 
     public Task<IReadOnlyList<AuditLogEntrySnapshot>> GetByResourceAsync(Guid resourceId) =>
-        Task.FromResult<IReadOnlyList<AuditLogEntrySnapshot>>(Array.Empty<AuditLogEntrySnapshot>());
+        Task.FromResult<IReadOnlyList<AuditLogEntrySnapshot>>([]);
 
     public Task<IReadOnlyList<AuditLogEntrySnapshot>> GetGoogleSyncByUserAsync(Guid userId) =>
-        Task.FromResult<IReadOnlyList<AuditLogEntrySnapshot>>(Array.Empty<AuditLogEntrySnapshot>());
+        Task.FromResult<IReadOnlyList<AuditLogEntrySnapshot>>([]);
 
     public Task<IReadOnlyList<AuditLogEntrySnapshot>> GetRecentAsync(int count, CancellationToken ct = default) =>
-        Task.FromResult<IReadOnlyList<AuditLogEntrySnapshot>>(Array.Empty<AuditLogEntrySnapshot>());
+        Task.FromResult<IReadOnlyList<AuditLogEntrySnapshot>>([]);
 
     public Task<(IReadOnlyList<AuditLogEntrySnapshot> Items, int TotalCount, int AnomalyCount)> GetFilteredAsync(
         string? actionFilter, int page, int pageSize, CancellationToken ct = default) =>
-        Task.FromResult<(IReadOnlyList<AuditLogEntrySnapshot>, int, int)>((Array.Empty<AuditLogEntrySnapshot>(), 0, 0));
+        Task.FromResult<(IReadOnlyList<AuditLogEntrySnapshot>, int, int)>(([], 0, 0));
 
     public Task<IReadOnlyList<AuditLogEntrySnapshot>> GetByUserAsync(Guid userId, int count, CancellationToken ct = default) =>
-        Task.FromResult<IReadOnlyList<AuditLogEntrySnapshot>>(Array.Empty<AuditLogEntrySnapshot>());
+        Task.FromResult<IReadOnlyList<AuditLogEntrySnapshot>>([]);
 
     public Task<IReadOnlyList<AuditLogEntrySnapshot>> GetFilteredEntriesAsync(
         string? entityType = null,
@@ -55,11 +55,11 @@ file sealed class StubAuditLogService : IAuditLogService
         IReadOnlyList<AuditAction>? actions = null,
         int limit = 20,
         CancellationToken ct = default) =>
-        Task.FromResult<IReadOnlyList<AuditLogEntrySnapshot>>(Array.Empty<AuditLogEntrySnapshot>());
+        Task.FromResult<IReadOnlyList<AuditLogEntrySnapshot>>([]);
 
     public Task<IReadOnlyList<Guid>> GetEntityIdsForActionInWindowAsync(
-        NodaTime.Instant windowStart, NodaTime.Instant windowEnd, AuditAction action, CancellationToken ct = default) =>
-        Task.FromResult((IReadOnlyList<Guid>)Array.Empty<Guid>());
+        Instant windowStart, Instant windowEnd, AuditAction action, CancellationToken ct = default) =>
+        Task.FromResult((IReadOnlyList<Guid>)[]);
 
     public Task<IReadOnlySet<Guid>> GetEntityIdsForEntityTypeActionsAsync(
         string entityType, IReadOnlyList<AuditAction> actions, CancellationToken ct = default) =>
@@ -89,7 +89,7 @@ public class CommunicationPreferenceServiceTests : IDisposable
         });
 
         var repository = new CommunicationPreferenceRepository(
-            new Humans.Application.Tests.Infrastructure.TestDbContextFactory(options));
+            new Infrastructure.TestDbContextFactory(options));
 
         var tokenProvider = new UnsubscribeTokenProvider(
             dataProtectionProvider, emailSettings,

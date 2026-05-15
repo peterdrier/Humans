@@ -127,7 +127,7 @@ public sealed partial class TeamResourceService : ITeamResourceService
         var memberships = await _teamService.GetUserTeamsAsync(userId, ct);
         if (memberships.Count == 0)
         {
-            return Array.Empty<UserTeamGoogleResource>();
+            return [];
         }
 
         var teamIds = memberships
@@ -137,7 +137,7 @@ public sealed partial class TeamResourceService : ITeamResourceService
             .ToList();
         if (teamIds.Count == 0)
         {
-            return Array.Empty<UserTeamGoogleResource>();
+            return [];
         }
 
         var resourcesByTeam = await _repository.GetActiveByTeamIdsAsync(teamIds, ct);

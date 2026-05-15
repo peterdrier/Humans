@@ -22,7 +22,7 @@ public sealed class TicketTransferRequestPageViewModel
     /// return 0..10. View renders accordingly: 0 → not-found message, 1 →
     /// confirm + reason form, &gt;1 → picker with "Choose" buttons.
     /// </summary>
-    public List<ReceiverCardViewModel> Receivers { get; set; } = new();
+    public List<ReceiverCardViewModel> Receivers { get; set; } = [];
 
     public string? LookupError { get; set; }
 

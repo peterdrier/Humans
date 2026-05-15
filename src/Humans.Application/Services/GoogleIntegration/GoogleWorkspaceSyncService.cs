@@ -408,7 +408,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         }
 
         var userEmails = user is null
-            ? (IReadOnlyList<UserEmailRowSnapshot>)Array.Empty<UserEmailRowSnapshot>()
+            ? (IReadOnlyList<UserEmailRowSnapshot>)[]
             : await _userEmailService.GetEntitiesByUserIdAsync(userId, cancellationToken);
 
         var googleEmail = userEmails
@@ -1817,7 +1817,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
 
         var emails = emailsByUserId.TryGetValue(tm.UserId, out var list)
             ? list
-            : Array.Empty<UserEmailRowSnapshot>();
+            : [];
 
         return emails
             .Where(e => e.IsVerified && e.IsGoogle)
@@ -1854,7 +1854,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
 
         var emails = emailsByUserId.TryGetValue(tm.UserId, out var list)
             ? list
-            : Array.Empty<UserEmailRowSnapshot>();
+            : [];
 
         return emails
             .Where(e => e.IsVerified && e.IsGoogle)

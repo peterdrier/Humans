@@ -68,12 +68,10 @@ public class TicketsContactsAdminControllerTests
     {
         var import = Substitute.For<IAttendeeContactImportService>();
         var attendeeId = Guid.NewGuid();
-        var plan = new AttendeeImportPlan(
-            new[]
-            {
-                new AttendeeImportDecision(attendeeId, "a@x.com", "A", "tkt_a",
-                    AttendeeImportOutcome.CreateNewUser, null, null, null, null),
-            }, 1);
+        var plan = new AttendeeImportPlan([
+            new AttendeeImportDecision(attendeeId, "a@x.com", "A", "tkt_a",
+                    AttendeeImportOutcome.CreateNewUser, null, null, null, null)
+        ], 1);
         import.BuildPlanAsync(Arg.Any<CancellationToken>()).Returns(plan);
 
         var (controller, _, _) = NewController(import);
@@ -91,7 +89,7 @@ public class TicketsContactsAdminControllerTests
     public async Task Apply_PassesSelectedIdsAndActorToService_AndRedirectsWithInfoMessage()
     {
         var import = Substitute.For<IAttendeeContactImportService>();
-        var plan = new AttendeeImportPlan(Array.Empty<AttendeeImportDecision>(), 0);
+        var plan = new AttendeeImportPlan([], 0);
         import.BuildPlanAsync(Arg.Any<CancellationToken>()).Returns(plan);
         import.ApplyAsync(Arg.Any<AttendeeImportPlan>(),
                 Arg.Any<IReadOnlySet<Guid>>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
@@ -104,7 +102,7 @@ public class TicketsContactsAdminControllerTests
         var (controller, currentUser, _) = NewController(import);
 
         var selectedId = Guid.NewGuid();
-        var result = await controller.Apply(new[] { selectedId }, default);
+        var result = await controller.Apply([selectedId], default);
 
         result.Should().BeOfType<RedirectToActionResult>()
             .Which.ActionName.Should().Be(nameof(TicketsContactsAdminController.Index));
@@ -123,7 +121,7 @@ public class TicketsContactsAdminControllerTests
         var import = Substitute.For<IAttendeeContactImportService>();
         var (controller, _, _) = NewController(import);
 
-        var result = await controller.Apply(Array.Empty<Guid>(), default);
+        var result = await controller.Apply([], default);
 
         result.Should().BeOfType<RedirectToActionResult>();
         controller.TempData[TempDataKeys.ErrorMessage].Should().NotBeNull();

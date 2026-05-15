@@ -391,7 +391,7 @@ public class AuditLogServiceTests : IDisposable
         throwingRepo.AddAsync(Arg.Any<AuditLogEntry>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("DB unavailable"));
 
-        using var loggerFactory = new Microsoft.Extensions.Logging.LoggerFactory();
+        using var loggerFactory = new LoggerFactory();
         var logger = loggerFactory.CreateLogger<AuditLogService>();
 
         var svc = new AuditLogService(
@@ -425,7 +425,7 @@ public class AuditLogServiceTests : IDisposable
 
         // Assert: at least one Error-level message was emitted.
         capturing.Entries.Should().Contain(
-            e => e.Level == Microsoft.Extensions.Logging.LogLevel.Error,
+            e => e.Level == LogLevel.Error,
             because: "a repo save failure must be logged at Error level per design-rules §7a");
     }
 
@@ -495,7 +495,7 @@ internal sealed class CapturingLogger<T> : ILogger<T>
 {
     public sealed record LogEntry(LogLevel Level, string Message, Exception? Exception);
 
-    public List<LogEntry> Entries { get; } = new();
+    public List<LogEntry> Entries { get; } = [];
 
     public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
 

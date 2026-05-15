@@ -18,7 +18,7 @@ public class WebRepositoryInjectionAnalyzerTests
         """;
 
     private static bool IsHum0014(Microsoft.CodeAnalysis.Diagnostic d) =>
-        string.Equals(d.Id, WebRepositoryInjectionAnalyzer.DiagnosticId, System.StringComparison.Ordinal);
+        string.Equals(d.Id, WebRepositoryInjectionAnalyzer.DiagnosticId, StringComparison.Ordinal);
 
     [HumansFact]
     public async Task Fires_when_controller_injects_repository()

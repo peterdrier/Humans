@@ -24,10 +24,10 @@ public class SurfaceBudgetAnalyzerTests
         """;
 
     private static bool IsHum0015(Microsoft.CodeAnalysis.Diagnostic d) =>
-        string.Equals(d.Id, SurfaceBudgetAnalyzer.OverBudgetDiagnosticId, System.StringComparison.Ordinal);
+        string.Equals(d.Id, SurfaceBudgetAnalyzer.OverBudgetDiagnosticId, StringComparison.Ordinal);
 
     private static bool IsHum0016(Microsoft.CodeAnalysis.Diagnostic d) =>
-        string.Equals(d.Id, SurfaceBudgetAnalyzer.SlackDiagnosticId, System.StringComparison.Ordinal);
+        string.Equals(d.Id, SurfaceBudgetAnalyzer.SlackDiagnosticId, StringComparison.Ordinal);
 
     [HumansFact]
     public async Task At_budget_interface_emits_no_diagnostic()

@@ -92,8 +92,7 @@ public sealed class ExpiresOnAnalyzer : DiagnosticAnalyzer
             "warning for graceDays (default 7), then an error. Delete the symbol " +
             "during the grace period.");
 
-    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
-        ImmutableArray.Create(UsageRule, DeclarationRule);
+    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [UsageRule, DeclarationRule];
 
     public override void Initialize(AnalysisContext context)
     {
@@ -173,7 +172,7 @@ public sealed class ExpiresOnAnalyzer : DiagnosticAnalyzer
             effectiveSeverity: severity,
             additionalLocations: null,
             properties: null,
-            messageArgs: new object[] { message }));
+            messageArgs: [message]));
     }
 
     private static void AnalyzeOperation(
@@ -223,7 +222,7 @@ public sealed class ExpiresOnAnalyzer : DiagnosticAnalyzer
                 effectiveSeverity: severity,
                 additionalLocations: null,
                 properties: null,
-                messageArgs: new object[] { message }));
+                messageArgs: [message]));
 
             // Report once per usage even if both the member and the
             // containing type are decorated.

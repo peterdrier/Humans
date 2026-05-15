@@ -80,15 +80,15 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
 
         var userEmails = await _userEmailRepo.GetByUserIdReadOnlyAsync(userId, ct);
         var participations = await _repo.GetEventParticipationsByUserIdAsync(userId, ct);
-        var externalLoginsMap = await _repo.GetExternalLoginsByUserIdsAsync(new[] { userId }, ct);
+        var externalLoginsMap = await _repo.GetExternalLoginsByUserIdsAsync([userId], ct);
         var externalLogins = externalLoginsMap.TryGetValue(userId, out var logins)
             ? logins
-            : Array.Empty<(string Provider, string ProviderKey)>();
+            : [];
 
         var profile = await _profileRepo.GetByUserIdReadOnlyAsync(userId, ct);
-        IReadOnlyList<ContactField> contactFields = Array.Empty<ContactField>();
-        IReadOnlyList<ProfileLanguage> languages = Array.Empty<ProfileLanguage>();
-        IReadOnlyList<VolunteerHistoryEntry> volunteerHistory = Array.Empty<VolunteerHistoryEntry>();
+        IReadOnlyList<ContactField> contactFields = [];
+        IReadOnlyList<ProfileLanguage> languages = [];
+        IReadOnlyList<VolunteerHistoryEntry> volunteerHistory = [];
         if (profile is not null)
         {
             contactFields = await _contactFieldRepo.GetByProfileIdReadOnlyAsync(profile.Id, ct);

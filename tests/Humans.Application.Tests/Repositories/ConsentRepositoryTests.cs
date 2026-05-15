@@ -240,7 +240,7 @@ public sealed class ConsentRepositoryTests : IDisposable
     [HumansFact]
     public async Task GetExplicitlyConsentedVersionIdsForUsersAsync_EmptyInput_ReturnsEmpty()
     {
-        var map = await _repo.GetExplicitlyConsentedVersionIdsForUsersAsync(Array.Empty<Guid>());
+        var map = await _repo.GetExplicitlyConsentedVersionIdsForUsersAsync([]);
 
         map.Should().BeEmpty();
     }
@@ -286,7 +286,7 @@ public sealed class ConsentRepositoryTests : IDisposable
     public async Task GetPairsForUsersAndVersionsAsync_EmptyUsers_ReturnsEmpty()
     {
         var pairs = await _repo.GetPairsForUsersAndVersionsAsync(
-            Array.Empty<Guid>(), new[] { Guid.NewGuid() });
+            [], [Guid.NewGuid()]);
 
         pairs.Should().BeEmpty();
     }
@@ -294,8 +294,7 @@ public sealed class ConsentRepositoryTests : IDisposable
     [HumansFact]
     public async Task GetPairsForUsersAndVersionsAsync_EmptyVersions_ReturnsEmpty()
     {
-        var pairs = await _repo.GetPairsForUsersAndVersionsAsync(
-            new[] { Guid.NewGuid() }, Array.Empty<Guid>());
+        var pairs = await _repo.GetPairsForUsersAndVersionsAsync([Guid.NewGuid()], []);
 
         pairs.Should().BeEmpty();
     }
@@ -315,8 +314,7 @@ public sealed class ConsentRepositoryTests : IDisposable
         await _repo.AddAsync(BuildRecord(userA, versionOutside));
         await _repo.AddAsync(BuildRecord(Guid.NewGuid(), versionX)); // different user
 
-        var pairs = await _repo.GetPairsForUsersAndVersionsAsync(
-            new[] { userA, userB }, new[] { versionX, versionY });
+        var pairs = await _repo.GetPairsForUsersAndVersionsAsync([userA, userB], [versionX, versionY]);
 
         pairs.Should().HaveCount(3);
         pairs.Should().Contain((userA, versionX));

@@ -40,7 +40,7 @@ public class GuideRolePrivilegeMapTests
     {
         var result = GuideRolePrivilegeMap.ParseParenthetical("Camp Admin, Finance Admin");
 
-        result.Should().BeEquivalentTo([RoleNames.CampAdmin, RoleNames.FinanceAdmin]);
+        result.Should().BeEquivalentTo(RoleNames.CampAdmin, RoleNames.FinanceAdmin);
     }
 
     [HumansFact]
@@ -48,7 +48,7 @@ public class GuideRolePrivilegeMapTests
     {
         var result = GuideRolePrivilegeMap.ParseParenthetical("Camp Admin, Gibberish");
 
-        result.Should().BeEquivalentTo([RoleNames.CampAdmin]);
+        result.Should().BeEquivalentTo(RoleNames.CampAdmin);
     }
 
     [HumansFact]

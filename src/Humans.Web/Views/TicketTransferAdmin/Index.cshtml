@@ -87,9 +87,9 @@ else
                     <td>@r.SenderReason</td>
                     <td>
                         <span class="badge bg-secondary">@r.Status</span>
-                        @if (r.Status == Humans.Domain.Enums.TicketTransferStatus.Approved
-                             && (r.VendorResult == Humans.Domain.Enums.TicketTransferVendorResult.Failed
-                              || r.VendorResult == Humans.Domain.Enums.TicketTransferVendorResult.VoidSucceededIssueFailed))
+                        @if (r.Status == TicketTransferStatus.Approved
+                             && (r.VendorResult == TicketTransferVendorResult.Failed
+                              || r.VendorResult == TicketTransferVendorResult.VoidSucceededIssueFailed))
                         {
                             <span class="badge bg-warning text-dark ms-1">@r.VendorResult</span>
                         }

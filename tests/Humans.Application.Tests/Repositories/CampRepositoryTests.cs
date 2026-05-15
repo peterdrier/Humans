@@ -188,7 +188,7 @@ public sealed class CampRepositoryTests : IDisposable
         var result = await _repo.GetAllCampsForYearAsync(2026);
 
         result.Where(c => c.HasPublicSeasonForYear(2026)).Select(c => c.Slug)
-            .Should().BeEquivalentTo(["active", "full"]);
+            .Should().BeEquivalentTo("active", "full");
     }
 
     // ==========================================================================
@@ -235,7 +235,7 @@ public sealed class CampRepositoryTests : IDisposable
         {
             Id = Guid.NewGuid(),
             PublicYear = 2026,
-            OpenSeasons = new List<int> { 2026 }
+            OpenSeasons = [2026]
         });
         await _dbContext.SaveChangesAsync();
 
@@ -306,7 +306,7 @@ public sealed class CampRepositoryTests : IDisposable
         {
             Id = Guid.NewGuid(),
             PublicYear = 2026,
-            OpenSeasons = new List<int> { 2026 }
+            OpenSeasons = [2026]
         });
         await _dbContext.SaveChangesAsync();
     }
@@ -336,7 +336,7 @@ public sealed class CampRepositoryTests : IDisposable
         KidsWelcome = YesNoMaybe.No,
         KidsVisiting = KidsVisitingPolicy.DaytimeOnly,
         HasPerformanceSpace = PerformanceSpaceStatus.No,
-        Vibes = new List<CampVibe>(),
+        Vibes = [],
         AdultPlayspace = AdultPlayspacePolicy.No,
         MemberCount = 10,
         CreatedAt = _clock.GetCurrentInstant(),

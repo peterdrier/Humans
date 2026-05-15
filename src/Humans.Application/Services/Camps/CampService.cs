@@ -287,7 +287,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         // Pull the user's currently-led camps once so we can both (a) pin them to the
         // top of the public listing and (b) build the "my pending camps" panel below.
         var leadCampIds = new HashSet<Guid>();
-        IReadOnlyList<Camp> leadCamps = Array.Empty<Camp>();
+        IReadOnlyList<Camp> leadCamps = [];
         if (userId.HasValue)
         {
             leadCamps = await _repo.GetCampsByLeadUserIdAsync(userId.Value, cancellationToken);
@@ -337,7 +337,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
                 return await _repo.GetAllCampsForYearAsync(year, cancellationToken);
             });
 
-        return cached is null ? new List<Camp>() : cached.ToList();
+        return cached is null ? [] : cached.ToList();
     }
 
     public async Task<IReadOnlyList<(Guid CampId, string CampName, string CampSlug, Guid CampSeasonId)>>
@@ -746,7 +746,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             KidsAreaDescription = previousSeason.KidsAreaDescription,
             HasPerformanceSpace = previousSeason.HasPerformanceSpace,
             PerformanceTypes = previousSeason.PerformanceTypes,
-            Vibes = new List<CampVibe>(previousSeason.Vibes),
+            Vibes = [.. previousSeason.Vibes],
             AdultPlayspace = previousSeason.AdultPlayspace,
             MemberCount = previousSeason.MemberCount,
             SpaceRequirement = previousSeason.SpaceRequirement,
@@ -1484,7 +1484,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             KidsAreaDescription = data.KidsAreaDescription,
             HasPerformanceSpace = data.HasPerformanceSpace,
             PerformanceTypes = data.PerformanceTypes,
-            Vibes = new List<CampVibe>(data.Vibes),
+            Vibes = [.. data.Vibes],
             AdultPlayspace = data.AdultPlayspace,
             MemberCount = data.MemberCount,
             SpaceRequirement = data.SpaceRequirement,
@@ -1847,7 +1847,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         // lands, delete this whole union block and drop `IsLead` from the
         // CampMemberRow record.
         var camp = await _repo.GetByIdAsync(season.CampId, cancellationToken);
-        var activeLeads = camp?.Leads.Where(l => l.LeftAt is null).ToList() ?? new List<CampLead>();
+        var activeLeads = camp?.Leads.Where(l => l.LeftAt is null).ToList() ?? [];
         var leadUserIds = activeLeads.Select(l => l.UserId).ToHashSet();
 
         var userIds = members.Select(m => m.UserId)

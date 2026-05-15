@@ -51,7 +51,7 @@ public class AttendeeContactImportServicePlanTests
             Status = TicketAttendeeStatus.Valid,
         });
         harness.UserEmails.GetDistinctVerifiedUserIdsAsync("jane@x.com", Arg.Any<CancellationToken>())
-            .Returns(new[] { userId });
+            .Returns([userId]);
         harness.Users.GetByIdAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new User { Id = userId, MergedToUserId = null });
 
@@ -78,7 +78,7 @@ public class AttendeeContactImportServicePlanTests
             Status = TicketAttendeeStatus.Valid,
         });
         harness.UserEmails.GetDistinctVerifiedUserIdsAsync("jane@x.com", Arg.Any<CancellationToken>())
-            .Returns(new[] { deadId });
+            .Returns([deadId]);
         harness.Users.GetByIdAsync(deadId, Arg.Any<CancellationToken>())
             .Returns(new User { Id = deadId, MergedToUserId = liveId });
         harness.Users.GetByIdAsync(liveId, Arg.Any<CancellationToken>())
@@ -104,7 +104,7 @@ public class AttendeeContactImportServicePlanTests
             Status = TicketAttendeeStatus.Valid,
         });
         harness.UserEmails.GetDistinctVerifiedUserIdsAsync("victim@x.com", Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<Guid>());
+            .Returns([]);
         harness.UserEmails.FindAnyEmailRowByAddressAsync("victim@x.com", Arg.Any<CancellationToken>())
             .Returns((squatterUserId, unverifiedRowId));
 
@@ -129,7 +129,7 @@ public class AttendeeContactImportServicePlanTests
             Status = TicketAttendeeStatus.Valid,
         });
         harness.UserEmails.GetDistinctVerifiedUserIdsAsync("fresh@x.com", Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<Guid>());
+            .Returns([]);
         harness.UserEmails.FindAnyEmailRowByAddressAsync("fresh@x.com", Arg.Any<CancellationToken>())
             .Returns(((Guid, Guid)?)null);
 
@@ -154,13 +154,13 @@ public class AttendeeContactImportServicePlanTests
             Status = TicketAttendeeStatus.Valid,
         });
         harness.UserEmails.GetDistinctVerifiedUserIdsAsync("shared@x.com", Arg.Any<CancellationToken>())
-            .Returns(new[] { u1, u2 });
+            .Returns([u1, u2]);
 
         var plan = await harness.Service.BuildPlanAsync();
 
         var decision = plan.Decisions.Single();
         decision.Outcome.Should().Be(AttendeeImportOutcome.AmbiguousMultipleVerified);
-        decision.AmbiguousUserIds.Should().BeEquivalentTo(new[] { u1, u2 });
+        decision.AmbiguousUserIds.Should().BeEquivalentTo([u1, u2]);
     }
 }
 
@@ -175,7 +175,7 @@ internal sealed class PlanHarness
     public IAuditLogService Audit { get; } = Substitute.For<IAuditLogService>();
     public FakeClock Clock { get; } = new(Instant.FromUtc(2026, 5, 13, 12, 0));
 
-    private readonly List<TicketAttendee> _unmatched = new();
+    private readonly List<TicketAttendee> _unmatched = [];
 
     public PlanHarness()
     {

@@ -32,14 +32,12 @@ public class AttendeeContactImportServiceSquatterTests
                 "victim@x.com", Arg.Any<string?>(), ContactSource.TicketTailor, Arg.Any<CancellationToken>())
             .Returns(new AccountProvisioningResult(new User { Id = newVictimUserId }, Created: true));
 
-        var plan = new AttendeeImportPlan(
-            new[]
-            {
-                new AttendeeImportDecision(
+        var plan = new AttendeeImportPlan([
+            new AttendeeImportDecision(
                     attendeeId, "victim@x.com", "Victim", "tkt_v",
                     AttendeeImportOutcome.DeleteUnverifiedThenCreate,
-                    null, squatterRowId, squatterUserId, null),
-            }, 1);
+                    null, squatterRowId, squatterUserId, null)
+        ], 1);
 
         await harness.Service.ApplyAsync(plan, new HashSet<Guid> { attendeeId }, Guid.NewGuid());
 

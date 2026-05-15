@@ -93,14 +93,14 @@ public class AdminDashboardServiceTests
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             GoogleEmailStatus = GoogleEmailStatus.Unknown,
         },
-        userEmails: Array.Empty<UserEmail>(),
-        eventParticipations: Array.Empty<EventParticipation>(),
-        externalLogins: Array.Empty<(string, string)>(),
+        userEmails: [],
+        eventParticipations: [],
+        externalLogins: [],
         profile: null,
-        contactFields: Array.Empty<ContactField>(),
-        profileLanguages: Array.Empty<ProfileLanguage>(),
-        volunteerHistory: Array.Empty<VolunteerHistoryEntry>(),
-        communicationPreferences: Array.Empty<CommunicationPreference>());
+        contactFields: [],
+        profileLanguages: [],
+        volunteerHistory: [],
+        communicationPreferences: []);
 
     [HumansFact]
     public async Task GetPendingReviewCountAsync_CountsUnapprovedNonRejectedProfilesFromSnapshot()
@@ -111,7 +111,7 @@ public class AdminDashboardServiceTests
         var approved = MakeUserInfoWithProfile(approved: true, rejected: false);
         var profileless = MakeUserInfo(Guid.NewGuid(), "en");
 
-        _userService.GetAllUserInfos().Returns(new[] { pending1, pending2, rejected, approved, profileless });
+        _userService.GetAllUserInfos().Returns([pending1, pending2, rejected, approved, profileless]);
 
         var sut = BuildSut();
 
@@ -145,13 +145,13 @@ public class AdminDashboardServiceTests
                 CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
                 GoogleEmailStatus = GoogleEmailStatus.Unknown,
             },
-            userEmails: Array.Empty<UserEmail>(),
-            eventParticipations: Array.Empty<EventParticipation>(),
-            externalLogins: Array.Empty<(string, string)>(),
+            userEmails: [],
+            eventParticipations: [],
+            externalLogins: [],
             profile: profile,
-            contactFields: Array.Empty<ContactField>(),
-            profileLanguages: Array.Empty<ProfileLanguage>(),
-            volunteerHistory: Array.Empty<VolunteerHistoryEntry>(),
-            communicationPreferences: Array.Empty<CommunicationPreference>());
+            contactFields: [],
+            profileLanguages: [],
+            volunteerHistory: [],
+            communicationPreferences: []);
     }
 }

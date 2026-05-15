@@ -42,6 +42,6 @@ public sealed record ShiftUserView(
         Profile: null,
         Availability: null,
         BuildStatus: null,
-        TagPreferences: Array.Empty<VolunteerTagPreference>(),
-        Signups: Array.Empty<ShiftSignup>());
+        TagPreferences: [],
+        Signups: []);
 }

@@ -134,7 +134,7 @@ public class GdprExportDependencyInjectionTests
         // so the test doesn't need a live DbContext, Postgres, or config.
         var services = new ServiceCollection();
         var config = BuildMinimalConfiguration();
-        Humans.Web.Extensions.InfrastructureServiceCollectionExtensions
+        Web.Extensions.InfrastructureServiceCollectionExtensions
             .AddHumansInfrastructure(
                 services,
                 config,
@@ -163,7 +163,7 @@ public class GdprExportDependencyInjectionTests
     public void GdprExportServiceIsRegistered()
     {
         var services = new ServiceCollection();
-        Humans.Web.Extensions.InfrastructureServiceCollectionExtensions
+        Web.Extensions.InfrastructureServiceCollectionExtensions
             .AddHumansInfrastructure(
                 services,
                 BuildMinimalConfiguration(),
@@ -186,7 +186,7 @@ public class GdprExportDependencyInjectionTests
         // `ExpectedContributorTypes`.
         var services = new ServiceCollection();
         var config = BuildMinimalConfiguration();
-        Humans.Web.Extensions.InfrastructureServiceCollectionExtensions
+        Web.Extensions.InfrastructureServiceCollectionExtensions
             .AddHumansInfrastructure(
                 services,
                 config,

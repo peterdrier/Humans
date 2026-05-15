@@ -314,7 +314,7 @@ public class AccountDeletionServiceTests
         _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
         _shiftSignupService.CancelActiveSignupsForUserAsync(
             userId, Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(new[] { (signupId, shiftId) });
+            .Returns([(signupId, shiftId)]);
         _userService.ApplyExpiredDeletionAnonymizationAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ExpiredDeletionAnonymizationResult(
                 OriginalEmail: "expired@example.com",

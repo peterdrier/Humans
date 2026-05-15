@@ -76,7 +76,7 @@ public class NoStartupGuardsRule
 
     private static IEnumerable<string> EnumerateOptional(string dir)
     {
-        if (!Directory.Exists(dir)) return Array.Empty<string>();
+        if (!Directory.Exists(dir)) return [];
         return Directory.EnumerateFiles(dir, "*.cs", SearchOption.AllDirectories);
     }
 }

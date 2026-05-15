@@ -65,10 +65,9 @@ public class ProfileAdminControllerTests
             _teamService,
             _roleAssignmentService);
 
-        var identity = new ClaimsIdentity(new[]
-        {
-            new Claim(ClaimTypes.NameIdentifier, _adminUserId.ToString()),
-        }, authenticationType: "TestAuth");
+        var identity = new ClaimsIdentity([
+            new Claim(ClaimTypes.NameIdentifier, _adminUserId.ToString())
+        ], authenticationType: "TestAuth");
         var principal = new ClaimsPrincipal(identity);
 
         var services = new ServiceCollection();
@@ -105,7 +104,7 @@ public class ProfileAdminControllerTests
     {
         _emailProblems.ScanAsync(Arg.Any<CancellationToken>())
             .Returns(new EmailProblemsReport(NodaTime.SystemClock.Instance.GetCurrentInstant(),
-                Array.Empty<EmailProblem>()));
+                []));
         _users.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, User>());
 

@@ -43,7 +43,7 @@ public class AuthorizationPolicyTests : IDisposable
         // IsAnyTeamManagerOrCoordinatorHandler reads team-coord ids through this service
         // (cached path); register a single shared substitute so per-test setups stick.
         _shiftManagement = Substitute.For<IShiftManagementService>();
-        _shiftManagement.GetCoordinatorTeamIdsAsync(Arg.Any<Guid>()).Returns(Array.Empty<Guid>());
+        _shiftManagement.GetCoordinatorTeamIdsAsync(Arg.Any<Guid>()).Returns([]);
         services.AddSingleton(_shiftManagement);
         services.AddSingleton<IClock>(SystemClock.Instance);
         services.AddHumansAuthorizationPolicies();
@@ -185,12 +185,12 @@ public class AuthorizationPolicyTests : IDisposable
         { PolicyNames.IsActiveMember, "SomeNonAdminRole", false },
     };
 
-    public static TheoryData<string> AnonymousPolicyCases => new()
-    {
+    public static TheoryData<string> AnonymousPolicyCases =>
+    [
         PolicyNames.AdminOnly,
         PolicyNames.AnyAdminRole,
-        PolicyNames.BoardOnly,
-    };
+        PolicyNames.BoardOnly
+    ];
 
     public static TheoryData<string[], bool> HumanAdminOnlyCases => new()
     {
@@ -468,7 +468,7 @@ public class AuthorizationPolicyTests : IDisposable
     public async Task ShiftDepartmentManager_AllowsUserWithCoordinatedTeams()
     {
         var userId = Guid.NewGuid();
-        _shiftManagement.GetCoordinatorTeamIdsAsync(userId).Returns(new[] { Guid.NewGuid() });
+        _shiftManagement.GetCoordinatorTeamIdsAsync(userId).Returns([Guid.NewGuid()]);
 
         var user = CreateUserWithIdAndRoles(userId, "SomeNonAdminRole");
         var result = await _authorizationService.AuthorizeAsync(user, PolicyNames.ShiftDepartmentManager);
@@ -480,7 +480,7 @@ public class AuthorizationPolicyTests : IDisposable
     public async Task ShiftDepartmentManager_DeniesUserWithNoRoleAndNoCoordinatedTeams()
     {
         var userId = Guid.NewGuid();
-        _shiftManagement.GetCoordinatorTeamIdsAsync(userId).Returns(Array.Empty<Guid>());
+        _shiftManagement.GetCoordinatorTeamIdsAsync(userId).Returns([]);
 
         var user = CreateUserWithIdAndRoles(userId, "SomeNonAdminRole");
         var result = await _authorizationService.AuthorizeAsync(user, PolicyNames.ShiftDepartmentManager);

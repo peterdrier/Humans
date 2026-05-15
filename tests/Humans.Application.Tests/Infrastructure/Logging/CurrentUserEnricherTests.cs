@@ -105,8 +105,8 @@ public class CurrentUserEnricherTests
         timestamp: DateTimeOffset.UtcNow,
         level: LogEventLevel.Information,
         exception: null,
-        messageTemplate: new MessageTemplate("test", Array.Empty<MessageTemplateToken>()),
-        properties: Array.Empty<LogEventProperty>());
+        messageTemplate: new MessageTemplate("test", []),
+        properties: []);
 
     private sealed class SimplePropertyFactory : ILogEventPropertyFactory
     {

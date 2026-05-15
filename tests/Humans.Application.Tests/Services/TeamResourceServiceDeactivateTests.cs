@@ -155,7 +155,7 @@ public class TeamResourceServiceDeactivateTests : IDisposable
     [HumansFact]
     public async Task GetResourceNamesByIdsAsync_EmptyInput_ReturnsEmptyDict()
     {
-        var result = await _service.GetResourceNamesByIdsAsync(Array.Empty<Guid>());
+        var result = await _service.GetResourceNamesByIdsAsync([]);
         result.Should().BeEmpty();
     }
 
@@ -191,8 +191,7 @@ public class TeamResourceServiceDeactivateTests : IDisposable
         });
         await _dbContext.SaveChangesAsync();
 
-        var result = await _service.GetResourceNamesByIdsAsync(
-            new[] { knownId1, knownId2, unknownId });
+        var result = await _service.GetResourceNamesByIdsAsync([knownId1, knownId2, unknownId]);
 
         result.Should().HaveCount(2);
         result[knownId1].Should().Be("Folder One");

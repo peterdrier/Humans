@@ -167,7 +167,7 @@ public class PromoteWidgetPendingSignupsAfterAdmissionTests : IDisposable
     public async Task Promote_PublicBuildRangeBlock_AllShiftsConfirmed()
     {
         var blockId = Guid.NewGuid();
-        var ids = SeedPendingBlock(blockId, SignupPolicy.Public, dayOffsets: new[] { -3, -2, -1 });
+        var ids = SeedPendingBlock(blockId, SignupPolicy.Public, dayOffsets: [-3, -2, -1]);
 
         await _service.PromoteWidgetPendingSignupsAfterAdmissionAsync(_userId);
 

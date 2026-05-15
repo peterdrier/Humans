@@ -61,7 +61,7 @@ public class ProfileApiControllerTests
         // helper returns null URLs for every result row.
         _profileService
             .GetCustomPictureInfoByUserIdsAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<(Guid ProfileId, Guid UserId, long UpdatedAtTicks)>());
+            .Returns([]);
     }
 
     private ProfileApiController BuildSut(User? currentUser)
@@ -79,8 +79,8 @@ public class ProfileApiControllerTests
         var http = new DefaultHttpContext();
         if (currentUser is not null)
         {
-            http.User = new ClaimsPrincipal(new ClaimsIdentity(
-                new[] { new Claim(ClaimTypes.NameIdentifier, currentUser.Id.ToString()) },
+            http.User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, currentUser.Id.ToString())
+                ],
                 "test"));
         }
 
@@ -157,14 +157,14 @@ public class ProfileApiControllerTests
         };
         return UserInfo.Create(
             user: user,
-            userEmails: Array.Empty<UserEmail>(),
-            eventParticipations: Array.Empty<EventParticipation>(),
-            externalLogins: Array.Empty<(string, string)>(),
+            userEmails: [],
+            eventParticipations: [],
+            externalLogins: [],
             profile: profile,
-            contactFields: Array.Empty<ContactField>(),
-            profileLanguages: Array.Empty<ProfileLanguage>(),
-            volunteerHistory: Array.Empty<VolunteerHistoryEntry>(),
-            communicationPreferences: Array.Empty<CommunicationPreference>());
+            contactFields: [],
+            profileLanguages: [],
+            volunteerHistory: [],
+            communicationPreferences: []);
     }
 
     // ==========================================================================
@@ -199,22 +199,21 @@ public class ProfileApiControllerTests
 
         _userService.SearchUsersAsync(Arg.Any<string>(),
                 Arg.Any<PersonSearchFields>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(new[] { MakeSearchResult(targetUserId, targetProfileId, "David") });
+            .Returns([MakeSearchResult(targetUserId, targetProfileId, "David")]);
 
         _contactFieldService.GetViewerAccessLevelAsync(targetUserId, viewer.Id, Arg.Any<CancellationToken>())
             .Returns(ContactFieldVisibility.AllActiveProfiles);
 
         _userEmailService.GetVisibleEmailsAsync(targetUserId,
                 ContactFieldVisibility.AllActiveProfiles, Arg.Any<CancellationToken>())
-            .Returns(new[]
-            {
+            .Returns([
                 new UserEmailDto(Guid.NewGuid(), "alt@example.com",
                     IsVerified: true, IsGoogle: false, Provider: null, ProviderKey: null,
                     IsPrimary: false, Visibility: ContactFieldVisibility.AllActiveProfiles),
                 new UserEmailDto(Guid.NewGuid(), "primary@example.com",
                     IsVerified: true, IsGoogle: false, Provider: null, ProviderKey: null,
-                    IsPrimary: true, Visibility: ContactFieldVisibility.AllActiveProfiles),
-            });
+                    IsPrimary: true, Visibility: ContactFieldVisibility.AllActiveProfiles)
+            ]);
 
         var sut = BuildSut(viewer);
 
@@ -238,22 +237,21 @@ public class ProfileApiControllerTests
 
         _userService.SearchUsersAsync(Arg.Any<string>(),
                 Arg.Any<PersonSearchFields>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(new[] { MakeSearchResult(targetUserId, targetProfileId, "David") });
+            .Returns([MakeSearchResult(targetUserId, targetProfileId, "David")]);
 
         _contactFieldService.GetViewerAccessLevelAsync(targetUserId, viewer.Id, Arg.Any<CancellationToken>())
             .Returns(ContactFieldVisibility.AllActiveProfiles);
         _userEmailService.GetVisibleEmailsAsync(targetUserId, Arg.Any<ContactFieldVisibility>(), Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<UserEmailDto>());
+            .Returns([]);
 
         // Mix of types — Phone must win over Signal regardless of insert order.
         _contactFieldService.GetVisibleContactFieldsAsync(targetProfileId, viewer.Id, Arg.Any<CancellationToken>())
-            .Returns(new[]
-            {
+            .Returns([
                 new ContactFieldDto(Guid.NewGuid(), ContactFieldType.Signal, "Signal", "signal-handle",
                     ContactFieldVisibility.AllActiveProfiles),
                 new ContactFieldDto(Guid.NewGuid(), ContactFieldType.Phone, "Phone", "+1-555-0100",
-                    ContactFieldVisibility.AllActiveProfiles),
-            });
+                    ContactFieldVisibility.AllActiveProfiles)
+            ]);
 
         var sut = BuildSut(viewer);
 
@@ -273,14 +271,14 @@ public class ProfileApiControllerTests
 
         _userService.SearchUsersAsync(Arg.Any<string>(),
                 Arg.Any<PersonSearchFields>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(new[] { MakeSearchResult(targetUserId, targetProfileId, "David") });
+            .Returns([MakeSearchResult(targetUserId, targetProfileId, "David")]);
 
         _contactFieldService.GetViewerAccessLevelAsync(targetUserId, viewer.Id, Arg.Any<CancellationToken>())
             .Returns(ContactFieldVisibility.AllActiveProfiles);
         _userEmailService.GetVisibleEmailsAsync(targetUserId, Arg.Any<ContactFieldVisibility>(), Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<UserEmailDto>());
+            .Returns([]);
         _contactFieldService.GetVisibleContactFieldsAsync(targetProfileId, viewer.Id, Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<ContactFieldDto>());
+            .Returns([]);
 
         var sut = BuildSut(viewer);
 
@@ -300,22 +298,21 @@ public class ProfileApiControllerTests
 
         _userService.SearchUsersAsync(Arg.Any<string>(),
                 Arg.Any<PersonSearchFields>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(new[] { MakeSearchResult(targetUserId, targetProfileId, "David") });
+            .Returns([MakeSearchResult(targetUserId, targetProfileId, "David")]);
 
         _contactFieldService.GetViewerAccessLevelAsync(targetUserId, viewer.Id, Arg.Any<CancellationToken>())
             .Returns(ContactFieldVisibility.AllActiveProfiles);
         _userEmailService.GetVisibleEmailsAsync(targetUserId, Arg.Any<ContactFieldVisibility>(), Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<UserEmailDto>());
+            .Returns([]);
 
 #pragma warning disable CS0618 // Verifying the controller skips the obsolete Email enum value.
         _contactFieldService.GetVisibleContactFieldsAsync(targetProfileId, viewer.Id, Arg.Any<CancellationToken>())
-            .Returns(new[]
-            {
+            .Returns([
                 new ContactFieldDto(Guid.NewGuid(), ContactFieldType.Email, "Email", "obsolete@example.com",
                     ContactFieldVisibility.AllActiveProfiles),
                 new ContactFieldDto(Guid.NewGuid(), ContactFieldType.Discord, "Discord", "user#1234",
-                    ContactFieldVisibility.AllActiveProfiles),
-            });
+                    ContactFieldVisibility.AllActiveProfiles)
+            ]);
 #pragma warning restore CS0618
 
         var sut = BuildSut(viewer);
@@ -374,12 +371,11 @@ public class ProfileApiControllerTests
         _contactFieldService.GetViewerAccessLevelAsync(targetUserId, viewer.Id, Arg.Any<CancellationToken>())
             .Returns(ContactFieldVisibility.AllActiveProfiles);
         _userEmailService.GetVisibleEmailsAsync(targetUserId, Arg.Any<ContactFieldVisibility>(), Arg.Any<CancellationToken>())
-            .Returns(new[]
-            {
+            .Returns([
                 new UserEmailDto(Guid.NewGuid(), "shared@example.com",
                     IsVerified: true, IsGoogle: false, Provider: null, ProviderKey: null,
-                    IsPrimary: true, Visibility: ContactFieldVisibility.AllActiveProfiles),
-            });
+                    IsPrimary: true, Visibility: ContactFieldVisibility.AllActiveProfiles)
+            ]);
 
         var sut = BuildSut(viewer);
 

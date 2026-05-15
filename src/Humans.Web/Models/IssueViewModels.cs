@@ -59,7 +59,7 @@ public enum IssueViewMode
 
 public class IssuePageViewModel
 {
-    public List<IssueListItemViewModel> Issues { get; set; } = new();
+    public List<IssueListItemViewModel> Issues { get; set; } = [];
 
     public IssueViewMode View { get; set; } = IssueViewMode.All;
     public IssueCategory? CategoryFilter { get; set; }
@@ -73,10 +73,10 @@ public class IssuePageViewModel
     public Guid? SelectedIssueId { get; set; }
 
     /// <summary>Sections this viewer is allowed to filter on (Admin sees all, others see their owned sections).</summary>
-    public List<SectionOption> SectionOptions { get; set; } = new();
+    public List<SectionOption> SectionOptions { get; set; } = [];
 
     /// <summary>Reporter dropdown (Admin only — non-admins only see their own queue).</summary>
-    public List<ReporterDropdownItem> Reporters { get; set; } = new();
+    public List<ReporterDropdownItem> Reporters { get; set; } = [];
 
     /// <summary>All status enum values, exposed so the view doesn't reach into Domain.</summary>
     public IssueStatus[] StatusValues => Enum.GetValues<IssueStatus>();
@@ -140,14 +140,14 @@ public class IssueDetailViewModel
     public bool IsHandler { get; set; }
     public bool IsReporter { get; set; }
 
-    public List<IssueThreadEventViewModel> Thread { get; set; } = new();
+    public List<IssueThreadEventViewModel> Thread { get; set; } = [];
 
     /// <summary>
     /// Active humans the handler can assign this issue to. Empty for non-handlers.
     /// Reuses <see cref="AssigneeOption"/> from the Feedback view models so the
     /// shape stays consistent across triage UIs.
     /// </summary>
-    public List<AssigneeOption> AssigneeOptions { get; set; } = new();
+    public List<AssigneeOption> AssigneeOptions { get; set; } = [];
 }
 
 public class IssueThreadEventViewModel

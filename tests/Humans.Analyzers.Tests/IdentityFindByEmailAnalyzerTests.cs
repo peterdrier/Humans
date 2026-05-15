@@ -25,7 +25,7 @@ public class IdentityFindByEmailAnalyzerTests
         """;
 
     private static bool IsHum0003(Microsoft.CodeAnalysis.Diagnostic d) =>
-        string.Equals(d.Id, IdentityFindByEmailAnalyzer.DiagnosticId, System.StringComparison.Ordinal);
+        string.Equals(d.Id, IdentityFindByEmailAnalyzer.DiagnosticId, StringComparison.Ordinal);
 
     [HumansFact]
     public async Task Fires_on_FindByEmailAsync_in_Application()

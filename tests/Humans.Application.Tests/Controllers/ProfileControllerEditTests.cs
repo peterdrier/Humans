@@ -126,10 +126,9 @@ public class ProfileControllerEditTests
                 Substitute.For<IUserConfirmation<User>>()),
             Options.Create(new GoogleWorkspaceOptions()));
 
-        var identity = new ClaimsIdentity(new[]
-        {
-            new Claim(ClaimTypes.NameIdentifier, _userId.ToString()),
-        }, authenticationType: "TestAuth");
+        var identity = new ClaimsIdentity([
+            new Claim(ClaimTypes.NameIdentifier, _userId.ToString())
+        ], authenticationType: "TestAuth");
         var httpContext = new DefaultHttpContext { User = new ClaimsPrincipal(identity) };
         _controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
         _controller.TempData = new TempDataDictionary(httpContext, Substitute.For<ITempDataProvider>());
@@ -176,7 +175,7 @@ public class ProfileControllerEditTests
     {
         _profileService.GetProfileAsync(_userId, Arg.Any<CancellationToken>()).Returns((Profile?)null);
         _applicationDecisionService.GetUserApplicationsAsync(_userId, Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<UserApplicationSnapshot>());
+            .Returns([]);
 
         var model = MakeValidModel(MembershipTier.Colaborador, motivation: "to help");
 
@@ -209,7 +208,7 @@ public class ProfileControllerEditTests
             _userId,
             ApplicationStatus.Submitted,
             MembershipTier.Colaborador,
-            NodaTime.SystemClock.Instance.GetCurrentInstant(),
+            SystemClock.Instance.GetCurrentInstant(),
             ResolvedAt: null,
             TermExpiresAt: null,
             Motivation: "old motivation",
@@ -217,7 +216,7 @@ public class ProfileControllerEditTests
             SignificantContribution: null,
             RoleUnderstanding: null);
         _applicationDecisionService.GetUserApplicationsAsync(_userId, Arg.Any<CancellationToken>())
-            .Returns(new[] { existingDraft });
+            .Returns([existingDraft]);
 
         var model = MakeValidModel(MembershipTier.Colaborador, motivation: "updated motivation");
 
@@ -268,7 +267,7 @@ public class ProfileControllerEditTests
     {
         _profileService.GetProfileAsync(_userId, Arg.Any<CancellationToken>()).Returns((Profile?)null);
         _applicationDecisionService.GetUserApplicationsAsync(_userId, Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<UserApplicationSnapshot>());
+            .Returns([]);
 
         var tagId1 = Guid.NewGuid();
         var tagId2 = Guid.NewGuid();
@@ -287,7 +286,7 @@ public class ProfileControllerEditTests
     {
         _profileService.GetProfileAsync(_userId, Arg.Any<CancellationToken>()).Returns((Profile?)null);
         _applicationDecisionService.GetUserApplicationsAsync(_userId, Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<UserApplicationSnapshot>());
+            .Returns([]);
 
         var model = MakeValidModel(MembershipTier.Volunteer);
         model.EditableShiftTagIds = [];
@@ -339,12 +338,12 @@ public class ProfileControllerEditTests
 
     private UserInfo BuildUserInfo(Profile? profile) => UserInfo.Create(
         user: new User { Id = _userId, DisplayName = "Test Human", PreferredLanguage = "en" },
-        userEmails: Array.Empty<UserEmail>(),
-        eventParticipations: Array.Empty<EventParticipation>(),
-        externalLogins: Array.Empty<(string, string)>(),
+        userEmails: [],
+        eventParticipations: [],
+        externalLogins: [],
         profile: profile,
-        contactFields: Array.Empty<ContactField>(),
-        profileLanguages: Array.Empty<ProfileLanguage>(),
-        volunteerHistory: Array.Empty<VolunteerHistoryEntry>(),
-        communicationPreferences: Array.Empty<CommunicationPreference>());
+        contactFields: [],
+        profileLanguages: [],
+        volunteerHistory: [],
+        communicationPreferences: []);
 }

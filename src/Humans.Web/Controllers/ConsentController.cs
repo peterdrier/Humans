@@ -1,10 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
-using Humans.Domain.Entities;
 using Humans.Web.Models;
 using Humans.Application.Interfaces.Consent;
+using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Users;
 
 namespace Humans.Web.Controllers;
@@ -13,6 +12,7 @@ namespace Humans.Web.Controllers;
 public class ConsentController : HumansControllerBase
 {
     private readonly IConsentService _consentService;
+    private readonly IOnboardingService _onboardingService;
     private readonly IUserService _userService;
     private readonly IStringLocalizer<SharedResource> _localizer;
     private readonly ILogger<ConsentController> _logger;
@@ -20,11 +20,13 @@ public class ConsentController : HumansControllerBase
     public ConsentController(
         IUserService userService,
         IConsentService consentService,
+        IOnboardingService onboardingService,
         IStringLocalizer<SharedResource> localizer,
         ILogger<ConsentController> logger)
         : base(userService)
     {
         _consentService = consentService;
+        _onboardingService = onboardingService;
         _userService = userService;
         _localizer = localizer;
         _logger = logger;
@@ -132,6 +134,10 @@ public class ConsentController : HumansControllerBase
                 SetConsentSubmitFailureFlash(result);
                 return RedirectToAction(nameof(Index));
             }
+
+            // Peer-call the director threshold check. ConsentService deliberately
+            // does not call into Onboarding directly — that was the inverted arrow.
+            await _onboardingService.SetConsentCheckPendingIfEligibleAsync(user.Id);
 
             SetConsentSubmitSuccessFlash(result);
         }

@@ -313,7 +313,7 @@ public class AdminController : HumansControllerBase
             ProviderRowsUpdated: 0,
             IsGoogleRowsUpdated: 0,
             AmbiguousMatchesWarned: 0,
-            Warnings: Array.Empty<string>()));
+            Warnings: []));
     }
 
     [HttpPost("BackfillUserEmailProviders")]

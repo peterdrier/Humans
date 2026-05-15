@@ -104,7 +104,7 @@ public class NotificationEmitterTests : IDisposable
         stored.Should().HaveCount(2);
         stored.Should().OnlyContain(n => n.Recipients.Count == 1);
         stored.SelectMany(n => n.Recipients).Select(r => r.UserId)
-            .Should().BeEquivalentTo(new[] { user1, user2 });
+            .Should().BeEquivalentTo([user1, user2]);
     }
 
     [HumansFact]

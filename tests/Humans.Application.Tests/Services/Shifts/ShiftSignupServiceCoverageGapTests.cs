@@ -248,9 +248,10 @@ public class ShiftSignupServiceCoverageGapTests : IDisposable
             IsActive: true, IsSystemTeam: false, SystemTeamType: SystemTeamType.None,
             RequiresApproval: false, IsPublicPage: false, IsHidden: false,
             IsPromotedToDirectory: false, CreatedAt: Instant.MinValue,
-            Members: new List<TeamMemberInfo>
-            {
-                new(Guid.NewGuid(), coordinatorUserId, string.Empty, null, null,
-                    TeamMemberRole.Coordinator, Instant.MinValue),
-            });
+            Members:
+            [
+                new(Guid.NewGuid(), coordinatorUserId, string.Empty, null, null, TeamMemberRole.Coordinator,
+                    Instant.MinValue)
+
+            ]);
 }

@@ -37,17 +37,15 @@ public class AttendeeContactImportServiceApplyTests
         harness.WithUnmatched(attendee);
         harness.WithActiveYear(2026);
 
-        var plan = new AttendeeImportPlan(
-            new[]
-            {
+        var plan = new AttendeeImportPlan([
                 new AttendeeImportDecision(
                     attendeeId, "jane@x.com", "Jane Doe", "tkt_v",
                     AttendeeImportOutcome.AttachVerified,
                     TargetUserId: targetUserId,
                     UnverifiedEmailIdToDelete: null,
                     UnverifiedRowUserId: null,
-                    AmbiguousUserIds: null),
-            },
+                    AmbiguousUserIds: null)
+            ],
             TotalUnmatched: 1);
 
         var actorId = Guid.NewGuid();
@@ -94,14 +92,12 @@ public class AttendeeContactImportServiceApplyTests
             .Returns(new AccountProvisioningResult(
                 new User { Id = newUserId }, Created: true));
 
-        var plan = new AttendeeImportPlan(
-            new[]
-            {
+        var plan = new AttendeeImportPlan([
                 new AttendeeImportDecision(
                     attendeeId, "fresh@x.com", "Fresh Face", "tkt_v",
                     AttendeeImportOutcome.CreateNewUser,
-                    null, null, null, null),
-            },
+                    null, null, null, null)
+            ],
             1);
 
         var result = await harness.Service.ApplyAsync(plan, new HashSet<Guid> { attendeeId }, Guid.NewGuid());
@@ -138,17 +134,15 @@ public class AttendeeContactImportServiceApplyTests
                 "victim@x.com", "Victim", ContactSource.TicketTailor, Arg.Any<CancellationToken>())
             .Returns(new AccountProvisioningResult(new User { Id = newUserId }, true));
 
-        var plan = new AttendeeImportPlan(
-            new[]
-            {
+        var plan = new AttendeeImportPlan([
                 new AttendeeImportDecision(
                     attendeeId, "victim@x.com", "Victim", "tkt_v",
                     AttendeeImportOutcome.DeleteUnverifiedThenCreate,
                     TargetUserId: null,
                     UnverifiedEmailIdToDelete: squatterEmailId,
                     UnverifiedRowUserId: squatterId,
-                    AmbiguousUserIds: null),
-            },
+                    AmbiguousUserIds: null)
+            ],
             1);
 
         var result = await harness.Service.ApplyAsync(plan, new HashSet<Guid> { attendeeId }, Guid.NewGuid());
@@ -194,14 +188,12 @@ public class AttendeeContactImportServiceApplyTests
                 Arg.Any<string>(), Arg.Any<string?>(), ContactSource.TicketTailor, Arg.Any<CancellationToken>())
             .Returns(_ => new AccountProvisioningResult(new User { Id = Guid.NewGuid() }, true));
 
-        var plan = new AttendeeImportPlan(
-            new[]
-            {
-                new AttendeeImportDecision(pickedId, "p@x.com", "P", "tkt_p",
+        var plan = new AttendeeImportPlan([
+            new AttendeeImportDecision(pickedId, "p@x.com", "P", "tkt_p",
                     AttendeeImportOutcome.CreateNewUser, null, null, null, null),
                 new AttendeeImportDecision(skippedId, "s@x.com", "S", "tkt_s",
-                    AttendeeImportOutcome.CreateNewUser, null, null, null, null),
-            }, 2);
+                    AttendeeImportOutcome.CreateNewUser, null, null, null, null)
+        ], 2);
 
         var result = await harness.Service.ApplyAsync(plan, new HashSet<Guid> { pickedId }, Guid.NewGuid());
 
@@ -219,12 +211,10 @@ public class AttendeeContactImportServiceApplyTests
         // No call to harness.WithUnmatched — the re-query returns empty.
         harness.WithActiveYear(2026);
 
-        var plan = new AttendeeImportPlan(
-            new[]
-            {
-                new AttendeeImportDecision(goneId, "g@x.com", "G", "tkt_g",
-                    AttendeeImportOutcome.CreateNewUser, null, null, null, null),
-            }, 1);
+        var plan = new AttendeeImportPlan([
+            new AttendeeImportDecision(goneId, "g@x.com", "G", "tkt_g",
+                    AttendeeImportOutcome.CreateNewUser, null, null, null, null)
+        ], 1);
 
         var result = await harness.Service.ApplyAsync(plan, new HashSet<Guid> { goneId }, Guid.NewGuid());
 
@@ -265,14 +255,12 @@ public class AttendeeContactImportServiceApplyTests
                 "o@x.com", Arg.Any<string?>(), ContactSource.TicketTailor, Arg.Any<CancellationToken>())
             .Returns(new AccountProvisioningResult(new User { Id = Guid.NewGuid() }, true));
 
-        var plan = new AttendeeImportPlan(
-            new[]
-            {
-                new AttendeeImportDecision(failId, "f@x.com", "F", "tkt_f",
+        var plan = new AttendeeImportPlan([
+            new AttendeeImportDecision(failId, "f@x.com", "F", "tkt_f",
                     AttendeeImportOutcome.CreateNewUser, null, null, null, null),
                 new AttendeeImportDecision(okId, "o@x.com", "O", "tkt_o",
-                    AttendeeImportOutcome.CreateNewUser, null, null, null, null),
-            }, 2);
+                    AttendeeImportOutcome.CreateNewUser, null, null, null, null)
+        ], 2);
 
         var result = await harness.Service.ApplyAsync(plan, new HashSet<Guid> { failId, okId }, Guid.NewGuid());
 
@@ -292,7 +280,7 @@ internal sealed class ApplyHarness
     public IAuditLogService Audit { get; } = Substitute.For<IAuditLogService>();
     public FakeClock Clock { get; } = new(Instant.FromUtc(2026, 5, 13, 12, 0));
 
-    private readonly List<TicketAttendee> _unmatched = new();
+    private readonly List<TicketAttendee> _unmatched = [];
 
     public ApplyHarness()
     {

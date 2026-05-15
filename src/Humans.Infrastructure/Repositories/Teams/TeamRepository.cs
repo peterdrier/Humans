@@ -52,7 +52,7 @@ public sealed class TeamRepository : ITeamRepository
     public async Task<Team?> FindForMutationAsync(Guid teamId, CancellationToken ct = default)
     {
         await using var db = await _factory.CreateDbContextAsync(ct);
-        return await db.Teams.FindAsync(new object[] { teamId }, ct);
+        return await db.Teams.FindAsync([teamId], ct);
     }
 
     public async Task<Team?> GetBySlugWithRelationsAsync(string normalizedSlug, CancellationToken ct = default)
@@ -95,6 +95,43 @@ public sealed class TeamRepository : ITeamRepository
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyDictionary<Guid, IReadOnlySet<Guid>>> GetActiveManagementRoleHolderUserIdsByTeamAsync(
+        CancellationToken ct = default)
+    {
+        await using var db = await _factory.CreateDbContextAsync(ct);
+        var rows = await db.TeamRoleAssignments
+            .AsNoTracking()
+            .Where(tra =>
+                tra.TeamMember.LeftAt == null &&
+                tra.TeamRoleDefinition.IsManagement)
+            .Select(tra => new { TeamId = tra.TeamMember.TeamId, UserId = tra.TeamMember.UserId })
+            .ToListAsync(ct);
+
+        return rows
+            .GroupBy(r => r.TeamId)
+            .ToDictionary(
+                g => g.Key,
+                g => (IReadOnlySet<Guid>)new HashSet<Guid>(g.Select(r => r.UserId)));
+    }
+
+    public async Task<IReadOnlyDictionary<Guid, IReadOnlyList<TeamRoleDefinition>>> GetAllRoleDefinitionsByTeamAsync(
+        CancellationToken ct = default)
+    {
+        await using var db = await _factory.CreateDbContextAsync(ct);
+        var definitions = await db.Set<TeamRoleDefinition>()
+            .AsNoTracking()
+            .Include(d => d.Assignments)
+                .ThenInclude(a => a.TeamMember)
+            .OrderBy(d => d.SortOrder).ThenBy(d => d.Name) // arch:db-sort-ok
+            .ToListAsync(ct);
+
+        return definitions
+            .GroupBy(d => d.TeamId)
+            .ToDictionary(
+                g => g.Key,
+                g => (IReadOnlyList<TeamRoleDefinition>)g.ToList());
+    }
+
     private static string EscapeLikePattern(string value)
         => value
             .Replace("\\", "\\\\")
@@ -105,7 +142,7 @@ public sealed class TeamRepository : ITeamRepository
         string query, bool includeHidden, int max, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(query) || max <= 0)
-            return Array.Empty<Team>();
+            return [];
 
         var pattern = "%" + EscapeLikePattern(query.Trim()) + "%";
 
@@ -168,7 +205,7 @@ public sealed class TeamRepository : ITeamRepository
             .ToList();
 
         var parents = parentIds.Count == 0
-            ? new List<Team>()
+            ? []
             : await db.Teams
                 .AsNoTracking()
                 .Where(t => parentIds.Contains(t.Id))
@@ -253,7 +290,7 @@ public sealed class TeamRepository : ITeamRepository
     public async Task<int> DeactivateTeamAsync(Guid teamId, Instant now, CancellationToken ct = default)
     {
         await using var db = await _factory.CreateDbContextAsync(ct);
-        var team = await db.Teams.FindAsync(new object[] { teamId }, ct)
+        var team = await db.Teams.FindAsync([teamId], ct)
             ?? throw new InvalidOperationException($"Team {teamId} not found");
 
         var activeMembers = await db.TeamMembers
@@ -274,7 +311,7 @@ public sealed class TeamRepository : ITeamRepository
         Guid teamId, string? prefix, CancellationToken ct = default)
     {
         await using var db = await _factory.CreateDbContextAsync(ct);
-        var team = await db.Teams.FindAsync(new object[] { teamId }, ct);
+        var team = await db.Teams.FindAsync([teamId], ct);
         if (team is null)
             return (false, null);
 
@@ -1062,11 +1099,11 @@ public sealed class TeamRepository : ITeamRepository
 
         foreach (var membership in memberships)
         {
-            var dedupeKey = $"{membership.Id}:{Humans.Domain.Constants.GoogleSyncOutboxEventTypes.AddUserToTeamResources}:resync:{now}";
+            var dedupeKey = $"{membership.Id}:{Domain.Constants.GoogleSyncOutboxEventTypes.AddUserToTeamResources}:resync:{now}";
             db.GoogleSyncOutboxEvents.Add(new GoogleSyncOutboxEvent
             {
                 Id = Guid.NewGuid(),
-                EventType = Humans.Domain.Constants.GoogleSyncOutboxEventTypes.AddUserToTeamResources,
+                EventType = Domain.Constants.GoogleSyncOutboxEventTypes.AddUserToTeamResources,
                 TeamId = membership.TeamId,
                 UserId = userId,
                 OccurredAt = now,

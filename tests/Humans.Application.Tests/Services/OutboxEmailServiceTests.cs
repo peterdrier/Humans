@@ -195,12 +195,12 @@ public sealed class OutboxEmailServiceTests : IDisposable
             .Returns("https://example.com/unsubscribe/token");
 
         _renderer.RenderAddedToTeam(
-                "Charlie", "Alpha Team", "alpha", Arg.Any<System.Collections.Generic.List<(string Name, string? Url)>>(), null)
+                "Charlie", "Alpha Team", "alpha", Arg.Any<List<(string Name, string? Url)>>(), null)
             .Returns(new EmailContent("Added to Alpha Team", "<p>You joined Alpha Team</p>"));
 
         await _service.SendAddedToTeamAsync(
             "charlie@example.com", "Charlie", "Alpha Team", "alpha",
-            Array.Empty<(string Name, string? Url)>());
+            []);
 
         var messages = await _dbContext.EmailOutboxMessages.ToListAsync();
         messages.Should().BeEmpty("the email should have been suppressed because the user opted out of TeamUpdates");
@@ -221,12 +221,12 @@ public sealed class OutboxEmailServiceTests : IDisposable
             .Returns("https://example.com/unsubscribe/token");
 
         _renderer.RenderAddedToTeam(
-                "Dana", "Beta Team", "beta", Arg.Any<System.Collections.Generic.List<(string Name, string? Url)>>(), null)
+                "Dana", "Beta Team", "beta", Arg.Any<List<(string Name, string? Url)>>(), null)
             .Returns(new EmailContent("Added to Beta Team", "<p>You joined Beta Team</p>"));
 
         await _service.SendAddedToTeamAsync(
             "dana@example.com", "Dana", "Beta Team", "beta",
-            Array.Empty<(string Name, string? Url)>());
+            []);
 
         var messages = await _dbContext.EmailOutboxMessages.ToListAsync();
         messages.Should().HaveCount(1, "opted-in user should receive the email");

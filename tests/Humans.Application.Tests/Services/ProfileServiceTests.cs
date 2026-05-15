@@ -5,7 +5,6 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using Humans.Application.DTOs;
-using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -30,9 +29,7 @@ public class ProfileServiceTests : IDisposable
     private readonly IUserEmailRepository _userEmailRepository;
     private readonly IContactFieldRepository _contactFieldRepository;
     private readonly ICommunicationPreferenceRepository _communicationPreferenceRepository = Substitute.For<ICommunicationPreferenceRepository>();
-    private readonly IOnboardingService _onboardingService = Substitute.For<IOnboardingService>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
-    private readonly IMembershipCalculator _membershipCalculator = Substitute.For<IMembershipCalculator>();
     private readonly InMemoryFileStorage _fileStorage = new();
 
     // Delegate to the production helper (made internal for test access)
@@ -50,7 +47,7 @@ public class ProfileServiceTests : IDisposable
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
 
         // Real repositories backed by an IDbContextFactory wrapping the in-memory store.
-        var factory = new Infrastructure.TestDbContextFactory(options);
+        var factory = new TestDbContextFactory(options);
         _profileRepository = new ProfileRepository(factory, _clock);
         _userEmailRepository = new UserEmailRepository(factory);
         _contactFieldRepository = new ContactFieldRepository(factory);
@@ -59,26 +56,10 @@ public class ProfileServiceTests : IDisposable
             _profileRepository, _userService,
             _userEmailRepository,
             _contactFieldRepository, _communicationPreferenceRepository,
-            _onboardingService, _auditLogService,
-            _membershipCalculator,
+            _auditLogService,
             _fileStorage,
             _clock,
             NullLogger<ProfileService>.Instance);
-
-        // Default: return all input IDs as Active (sufficient for most tests that don't filter by status)
-        _membershipCalculator
-            .PartitionUsersAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(callInfo =>
-            {
-                var ids = callInfo.Arg<IEnumerable<Guid>>().ToHashSet();
-                return Task.FromResult(new MembershipPartition(
-                    IncompleteSignup: [],
-                    PendingApproval: [],
-                    Active: ids,
-                    MissingConsents: [],
-                    Suspended: [],
-                    PendingDeletion: []));
-            });
 
         _userService.StubGetUserInfosFromContext(_dbContext);
     }
@@ -240,7 +221,7 @@ public class ProfileServiceTests : IDisposable
         // Pre-seed the filesystem side at the same content-type the seeded
         // profile uses (image/png — see SeedUserWithProfileAsync) so we can
         // assert deletion.
-        await _fileStorage.SaveAsync(PicKey(profileId, "image/png"), new byte[] { 1 });
+        await _fileStorage.SaveAsync(PicKey(profileId, "image/png"), [1]);
 
         var request = MakeRequest(removeProfilePicture: true);
         await _service.SaveProfileAsync(userId, "Test", request, "en");
@@ -251,17 +232,10 @@ public class ProfileServiceTests : IDisposable
         _fileStorage.Files.Should().NotContainKey(PicKey(profile.Id, "image/png"));
     }
 
-    [HumansFact]
-    public async Task SaveProfileAsync_CallsSetConsentCheckPending()
-    {
-        var userId = Guid.NewGuid();
-        await SeedUserWithProfileAsync(userId);
-        var request = MakeRequest();
-
-        await _service.SaveProfileAsync(userId, "Test", request, "en");
-
-        await _onboardingService.Received().SetConsentCheckPendingIfEligibleAsync(userId, Arg.Any<CancellationToken>());
-    }
+    // Threshold check (formerly SaveProfileAsync_CallsSetConsentCheckPending)
+    // moved out of ProfileService entirely — it's a director method on
+    // IOnboardingService now, invoked by controllers as a peer call after
+    // SaveProfileAsync. ProfileService has no dep on Onboarding.
 
     // --- Profile save flow: tier application during initial setup ---
 
@@ -385,7 +359,7 @@ public class ProfileServiceTests : IDisposable
         var profile = await _dbContext.Profiles.FirstAsync(p => p.UserId == userId);
 
         // Seed a stale on-disk file as if a prior anonymization left it behind.
-        await _fileStorage.SaveAsync(PicKey(profile.Id, "image/png"), new byte[] { 7, 7, 7 });
+        await _fileStorage.SaveAsync(PicKey(profile.Id, "image/png"), [7, 7, 7]);
 
         // Now anonymize via the service and force the FS delete to fail by
         // pre-removing the entry, then re-add it AFTER the anonymize call.
@@ -420,7 +394,7 @@ public class ProfileServiceTests : IDisposable
         await SeedUserWithProfileAsync(u2, isApproved: true, withPicture: true);
         await SeedUserWithProfileAsync(u3, isApproved: true, withPicture: false);
 
-        var result = await _service.GetCustomPictureInfoByUserIdsAsync(new[] { u1, u2, u3 });
+        var result = await _service.GetCustomPictureInfoByUserIdsAsync([u1, u2, u3]);
 
         result.Should().HaveCount(2);
     }
@@ -428,7 +402,7 @@ public class ProfileServiceTests : IDisposable
     [HumansFact]
     public async Task GetCustomPictureInfoByUserIdsAsync_EmptyInput_ReturnsEmpty()
     {
-        var result = await _service.GetCustomPictureInfoByUserIdsAsync(Array.Empty<Guid>());
+        var result = await _service.GetCustomPictureInfoByUserIdsAsync([]);
 
         result.Should().BeEmpty();
     }
@@ -574,8 +548,7 @@ public class ProfileServiceTests : IDisposable
         profileRepository, _userService,
         _userEmailRepository,
         _contactFieldRepository, _communicationPreferenceRepository,
-        _onboardingService, _auditLogService,
-        _membershipCalculator,
+        _auditLogService,
         _fileStorage,
         _clock,
         NullLogger<ProfileService>.Instance);
@@ -616,7 +589,7 @@ public class ProfileServiceTests : IDisposable
         };
         if (withPicture)
         {
-            profile.ProfilePictureData = new byte[] { 1, 2, 3 };
+            profile.ProfilePictureData = [1, 2, 3];
             profile.ProfilePictureContentType = "image/png";
         }
         _dbContext.Profiles.Add(profile);
@@ -691,7 +664,7 @@ public class ProfileServiceTests : IDisposable
         var slices = await _service.ContributeForUserAsync(userId, CancellationToken.None);
 
         var userEmailsSlice = slices.Single(s =>
-            string.Equals(s.SectionName, Humans.Application.Interfaces.Gdpr.GdprExportSections.UserEmails, StringComparison.Ordinal));
+            string.Equals(s.SectionName, Interfaces.Gdpr.GdprExportSections.UserEmails, StringComparison.Ordinal));
         var json = System.Text.Json.JsonSerializer.Serialize(userEmailsSlice.Data);
         json.Should().Contain("\"IsOAuth\":true");
         // Legacy JSON key preserved for the C# IsPrimary rename
@@ -721,8 +694,7 @@ public class ProfileServiceTests : IDisposable
             fakeRepo, _userService,
             _userEmailRepository,
             _contactFieldRepository, _communicationPreferenceRepository,
-            _onboardingService, _auditLogService,
-            _membershipCalculator,
+            _auditLogService,
             _fileStorage,
             _clock,
             NullLogger<ProfileService>.Instance);

@@ -17,11 +17,11 @@ namespace Humans.Application.Tests.Architecture;
 /// </summary>
 public class AuthArchitectureTests
 {
-    public static TheoryData<Type> AuthServices => new()
-    {
+    public static TheoryData<Type> AuthServices =>
+    [
         typeof(RoleAssignmentService),
-        typeof(MagicLinkService),
-    };
+        typeof(MagicLinkService)
+    ];
 
     public static TheoryData<Type, Type> RequiredConstructorEdges => new()
     {

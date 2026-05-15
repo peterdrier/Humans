@@ -62,7 +62,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
         // Default: ITeamService.GetUserTeamsAsync returns empty list so tests
         // that don't care about team fan-out don't need to stub it.
         _teamService.GetUserTeamsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<TeamMember>());
+            .Returns([]);
 
         _job = new SuspendNonCompliantMembersJob(
             _userService, _profileService, _teamService, _membershipCalculator,

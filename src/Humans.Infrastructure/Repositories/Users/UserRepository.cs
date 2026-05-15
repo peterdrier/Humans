@@ -338,7 +338,7 @@ public sealed class UserRepository : IUserRepository
             .Distinct()
             .ToListAsync(ct);
 
-        if (loginUserIds.Count == 0) return Array.Empty<Guid>();
+        if (loginUserIds.Count == 0) return [];
 
         // UserIds that DO have a user_emails row
         var withEmail = await ctx.UserEmails

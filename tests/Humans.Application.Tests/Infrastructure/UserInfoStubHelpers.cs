@@ -18,14 +18,14 @@ internal static class UserInfoStubHelpers
     public static UserInfo ToUserInfo(this User user, IReadOnlyList<UserEmail>? userEmails = null)
         => UserInfo.Create(
             user,
-            userEmails ?? user.UserEmails?.ToList() ?? new List<UserEmail>(),
-            Array.Empty<EventParticipation>(),
-            Array.Empty<(string, string)>(),
+            userEmails ?? user.UserEmails?.ToList() ?? [],
+            [],
+            [],
             profile: null,
-            Array.Empty<ContactField>(),
-            Array.Empty<ProfileLanguage>(),
-            Array.Empty<VolunteerHistoryEntry>(),
-            Array.Empty<CommunicationPreference>());
+            [],
+            [],
+            [],
+            []);
 
     /// <summary>
     /// Stubs GetUserInfosAsync to read from the provided DbContext options (new context per call,

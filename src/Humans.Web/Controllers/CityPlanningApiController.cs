@@ -254,7 +254,7 @@ public class CityPlanningApiController : ControllerBase
 
         var features = placed.Select(t =>
         {
-            var f = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.Nodes.JsonObject>(t.Placement.LocationGeoJson!);
+            var f = JsonSerializer.Deserialize<System.Text.Json.Nodes.JsonObject>(t.Placement.LocationGeoJson!);
             var props = f?["properties"]?.AsObject();
             if (props != null)
             {

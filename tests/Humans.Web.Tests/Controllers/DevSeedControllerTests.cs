@@ -102,8 +102,8 @@ public class DevSeedControllerTests
         services.AddSingleton<ILoggerFactory>(NullLoggerFactory.Instance);
         var http = new DefaultHttpContext
         {
-            User = new ClaimsPrincipal(new ClaimsIdentity(
-                new[] { new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString()) },
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString())
+                ],
                 "test")),
             RequestServices = services.BuildServiceProvider(),
         };

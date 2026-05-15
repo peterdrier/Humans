@@ -235,7 +235,7 @@ public sealed class ApplicationRepositoryTests : IDisposable
 
         var ids = await _repo.GetVoterIdsForApplicationAsync(app.Id);
 
-        ids.Should().BeEquivalentTo(new[] { voter1, voter2 });
+        ids.Should().BeEquivalentTo([voter1, voter2]);
     }
 
     [HumansFact]

@@ -437,6 +437,10 @@ public class ProfileController : HumansControllerBase
             user.Id, model.BurnerName, saveRequest,
             CultureInfo.CurrentUICulture.TwoLetterISOLanguageName);
 
+        // Peer-call the director threshold check. ProfileService deliberately
+        // does not call into Onboarding directly — that was the inverted arrow.
+        await _onboardingService.SetConsentCheckPendingIfEligibleAsync(user.Id);
+
         // Initial-setup tier-application orchestration. Same form submission
         // as profile fields, by design — onboarding efficiency. The form
         // disables the radios when a Submitted/Approved Application already
@@ -1951,8 +1955,7 @@ public class ProfileController : HumansControllerBase
         // Issue #635 (§15i): bulk-fetch sender + recipient with UserEmails
         // hydrated through the section-owned service instead of a raw
         // `.Include(u => u.UserEmails)` over the cross-domain nav.
-        var participants = await _userService.GetUserInfosAsync(
-            new[] { id, currentUser.Id });
+        var participants = await _userService.GetUserInfosAsync([id, currentUser.Id]);
         if (!participants.TryGetValue(id, out var targetUser))
             return NotFound();
 
@@ -2393,13 +2396,12 @@ public class ProfileController : HumansControllerBase
         // store-disagreement flags. Self contexts skip the lookup (the section
         // is admin-only).
         IReadOnlyList<(string Provider, string ProviderKey)> userLogins =
-            Array.Empty<(string, string)>();
+            [];
         IReadOnlyList<UserEmailRowSnapshot> rawUserEmails =
-            Array.Empty<UserEmailRowSnapshot>();
+            [];
         if (isAdminContext)
         {
-            var loginsByUser = await _userService.GetExternalLoginsByUserIdsAsync(
-                new[] { user.Id }, ct);
+            var loginsByUser = await _userService.GetExternalLoginsByUserIdsAsync([user.Id], ct);
             if (loginsByUser.TryGetValue(user.Id, out var list))
                 userLogins = list;
             rawUserEmails = await _userEmailService.GetEntitiesByUserIdAsync(user.Id, ct);
@@ -2459,7 +2461,7 @@ public class ProfileController : HumansControllerBase
             IsAdminContext = isAdminContext,
             WorkspaceLockedEmailId = workspaceLockedEmail?.Id,
             LegacyIdentityEmailColumn = isAdminContext
-                && User.IsInRole(Humans.Domain.Constants.RoleNames.Admin)
+                && User.IsInRole(Domain.Constants.RoleNames.Admin)
                 ? user.IdentityEmailColumn
                 : null,
         };

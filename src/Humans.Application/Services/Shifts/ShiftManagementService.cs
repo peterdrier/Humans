@@ -315,13 +315,13 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         CancellationToken cancellationToken = default)
     {
         var settings = await _repo.GetActiveEventSettingsAsync(cancellationToken);
-        if (settings is null) return Array.Empty<RotaSearchHit>();
+        if (settings is null) return [];
 
         var rotas = await _repo.SearchRotasAsync(
             query, settings.Id,
             onlyVolunteerVisible: true,
             max, cancellationToken);
-        if (rotas.Count == 0) return Array.Empty<RotaSearchHit>();
+        if (rotas.Count == 0) return [];
 
         // Stitch owning team names via ITeamService — the rota's team
         // navigation is cross-domain (design-rules §6) so the repo never
@@ -1143,7 +1143,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
     }
 
     private static DashboardOverview EmptyOverview() => new(
-        0, 0, 0, 0, new PeriodBreakdown(0, 0, 0), 0, 0, 0, 0, Array.Empty<DepartmentStaffingRow>());
+        0, 0, 0, 0, new PeriodBreakdown(0, 0, 0), 0, 0, 0, 0, []);
 
     private static List<DepartmentStaffingRow> BuildDepartmentRows(
         IReadOnlyList<Shift> shifts,
@@ -1295,7 +1295,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         if (period is not null)
         {
             var es = await _repo.GetEventSettingsByIdAsync(eventSettingsId);
-            if (es is null) return Array.Empty<CoordinatorActivityRow>();
+            if (es is null) return [];
             (minDayOffset, maxDayOffset) = GetDayOffsetBounds(period, subPeriod, es);
         }
 
@@ -1303,7 +1303,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
             eventSettingsId, minDayOffset, maxDayOffset);
 
         if (pendingCounts.Count == 0)
-            return Array.Empty<CoordinatorActivityRow>();
+            return [];
 
         // Load team metadata for pending teams and walk up through parents until we
         // have every ancestor in our working set. GetByIdsWithParentsAsync includes
@@ -1370,7 +1370,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         {
             var t = teamMeta[teamId];
             var ownPending = pendingCounts.GetValueOrDefault(teamId, 0);
-            var coords = coordsByTeam.GetValueOrDefault(teamId, Array.Empty<CoordinatorLogin>());
+            var coords = coordsByTeam.GetValueOrDefault(teamId, []);
 
             var childIds = relevantTeamIds
                 .Where(id => teamMeta[id].ParentTeamId == teamId);
@@ -1437,7 +1437,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         Guid eventSettingsId, TrendWindow window, ShiftPeriod? period, BuildSubPeriod? subPeriod)
     {
         var es = await _repo.GetEventSettingsByIdAsync(eventSettingsId);
-        if (es is null) return Array.Empty<DashboardTrendPoint>();
+        if (es is null) return [];
 
         var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(es.TimeZoneId) ?? DateTimeZone.Utc;
         var now = _clock.GetCurrentInstant();
@@ -1494,10 +1494,10 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         // Only meaningful for Set-up (Build) and Strike. Event planning has a different
         // day-over-day dynamic (per-rota shift-time coverage), so we intentionally skip it.
         if (period is not (ShiftPeriod.Build or ShiftPeriod.Strike))
-            return Array.Empty<DailyDepartmentStaffing>();
+            return [];
 
         var es = await _repo.GetEventSettingsByIdAsync(eventSettingsId);
-        if (es is null) return Array.Empty<DailyDepartmentStaffing>();
+        if (es is null) return [];
 
         var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(es.TimeZoneId) ?? DateTimeZone.Utc;
 
@@ -1513,7 +1513,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
             dayOffsets = dayOffsets.Where(d => d >= start && d < end).ToList();
         }
 
-        if (dayOffsets.Count == 0) return Array.Empty<DailyDepartmentStaffing>();
+        if (dayOffsets.Count == 0) return [];
 
         var shifts = await _repo.GetVisibleShiftsForEventAsync(eventSettingsId);
         var shiftIds = shifts.Select(s => s.Id).ToList();
@@ -1573,8 +1573,8 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         Guid eventSettingsId, ShiftPeriod? period, BuildSubPeriod? subPeriod = null)
     {
         var empty = new CoverageHeatmap(
-            Array.Empty<CoverageHeatmapDay>(),
-            Array.Empty<CoverageHeatmapRotaRow>());
+            [],
+            []);
 
         var es = await _repo.GetEventSettingsByIdAsync(eventSettingsId);
         if (es is null) return empty;
@@ -1713,10 +1713,10 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
     public async Task<IReadOnlyList<ShiftDurationBreakdownRow>> GetShiftDurationBreakdownAsync(
         Guid eventSettingsId, ShiftPeriod? period, BuildSubPeriod? subPeriod = null)
     {
-        if (period is null) return Array.Empty<ShiftDurationBreakdownRow>();
+        if (period is null) return [];
 
         var es = await _repo.GetEventSettingsByIdAsync(eventSettingsId);
-        if (es is null) return Array.Empty<ShiftDurationBreakdownRow>();
+        if (es is null) return [];
 
         var allShifts = await _repo.GetVisibleShiftsForEventAsync(eventSettingsId);
         var periodShifts = allShifts.Where(s => s.GetShiftPeriod(es) == period.Value).ToList();

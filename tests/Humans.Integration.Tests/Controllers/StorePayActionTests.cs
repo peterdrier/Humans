@@ -120,7 +120,7 @@ public class StorePayActionTests : IntegrationTestBase
         {
             Id = orderId,
             CampSeasonId = seasonId,
-            State = Humans.Domain.Enums.StoreOrderState.Open,
+            State = Domain.Enums.StoreOrderState.Open,
             Lines = new List<StoreOrderLine>
             {
                 new()

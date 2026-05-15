@@ -116,7 +116,7 @@ public interface IUserEmailRepository : IRepository
     /// Used by <c>AccountMergeService.AcceptAsync</c> to complete a merge.
     /// </summary>
     Task<bool> MarkVerifiedAsync(
-        Guid emailId, NodaTime.Instant now, CancellationToken ct = default);
+        Guid emailId, Instant now, CancellationToken ct = default);
 
     /// <summary>
     /// Removes a single email by id. Returns false if the email does not

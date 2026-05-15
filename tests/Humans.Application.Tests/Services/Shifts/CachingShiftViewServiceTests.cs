@@ -38,8 +38,8 @@ public class CachingShiftViewServiceTests
         var userId = Guid.NewGuid();
         var view = new ShiftUserView(
             userId, Profile: null, Availability: null, BuildStatus: null,
-            TagPreferences: Array.Empty<VolunteerTagPreference>(),
-            Signups: Array.Empty<ShiftSignup>());
+            TagPreferences: [],
+            Signups: []);
         _inner.GetUserAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<ShiftUserView>(view));
 
@@ -61,8 +61,8 @@ public class CachingShiftViewServiceTests
         var userId = Guid.NewGuid();
         var view1 = new ShiftUserView(
             userId, null, null, null,
-            Array.Empty<VolunteerTagPreference>(), Array.Empty<ShiftSignup>());
-        var view2 = view1 with { Signups = new[] { new ShiftSignup { Id = Guid.NewGuid(), UserId = userId } } };
+            [], []);
+        var view2 = view1 with { Signups = [new ShiftSignup { Id = Guid.NewGuid(), UserId = userId }] };
 
         _inner.GetUserAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<ShiftUserView>(view1), new ValueTask<ShiftUserView>(view2));
@@ -82,9 +82,9 @@ public class CachingShiftViewServiceTests
         var u1 = Guid.NewGuid();
         var u2 = Guid.NewGuid();
         var v1 = new ShiftUserView(u1, null, null, null,
-            Array.Empty<VolunteerTagPreference>(), Array.Empty<ShiftSignup>());
+            [], []);
         var v2 = new ShiftUserView(u2, null, null, null,
-            Array.Empty<VolunteerTagPreference>(), Array.Empty<ShiftSignup>());
+            [], []);
         _inner.GetUserAsync(u1, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<ShiftUserView>(v1));
         _inner.GetUserAsync(u2, Arg.Any<CancellationToken>())
@@ -92,7 +92,7 @@ public class CachingShiftViewServiceTests
 
         var sut = CreateSut();
 
-        var batch = await sut.GetUsersAsync(new[] { u1, u2 });
+        var batch = await sut.GetUsersAsync([u1, u2]);
         batch.Should().ContainKeys(u1, u2);
         batch[u1].Should().BeSameAs(v1);
         batch[u2].Should().BeSameAs(v2);
@@ -112,9 +112,9 @@ public class CachingShiftViewServiceTests
         var rotaId = Guid.NewGuid();
         var view = new ShiftRotaView(
             rotaId, Rota: null,
-            Shifts: Array.Empty<Shift>(),
-            Tags: Array.Empty<ShiftTag>(),
-            Signups: Array.Empty<ShiftSignup>());
+            Shifts: [],
+            Tags: [],
+            Signups: []);
         _inner.GetRotaAsync(rotaId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<ShiftRotaView>(view));
 
@@ -134,10 +134,10 @@ public class CachingShiftViewServiceTests
         _inner.GetUserAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<ShiftUserView>(new ShiftUserView(
                 userId, null, null, null,
-                Array.Empty<VolunteerTagPreference>(), Array.Empty<ShiftSignup>())));
+                [], [])));
         _inner.GetRotaAsync(rotaId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<ShiftRotaView>(new ShiftRotaView(
-                rotaId, null, Array.Empty<Shift>(), Array.Empty<ShiftTag>(), Array.Empty<ShiftSignup>())));
+                rotaId, null, [], [], [])));
 
         var sut = CreateSut();
         await sut.GetUserAsync(userId);
@@ -166,19 +166,19 @@ public class CachingShiftViewServiceTests
 
         var rotaView = new ShiftRotaView(
             rotaId, Rota: null,
-            Shifts: new[] { shiftOnRota },
-            Tags: Array.Empty<ShiftTag>(),
-            Signups: Array.Empty<ShiftSignup>());
+            Shifts: [shiftOnRota],
+            Tags: [],
+            Signups: []);
 
         var userOnRotaView = new ShiftUserView(
             userOnRota, null, null, null,
-            Array.Empty<VolunteerTagPreference>(),
-            new[] { new ShiftSignup { Id = Guid.NewGuid(), UserId = userOnRota, ShiftId = shiftOnRota.Id, Shift = shiftOnRota } });
+            [], [new ShiftSignup { Id = Guid.NewGuid(), UserId = userOnRota, ShiftId = shiftOnRota.Id, Shift = shiftOnRota }
+            ]);
 
         var unrelatedUserView = new ShiftUserView(
             unrelatedUser, null, null, null,
-            Array.Empty<VolunteerTagPreference>(),
-            new[] { new ShiftSignup { Id = Guid.NewGuid(), UserId = unrelatedUser, ShiftId = unrelatedShift.Id, Shift = unrelatedShift } });
+            [], [new ShiftSignup { Id = Guid.NewGuid(), UserId = unrelatedUser, ShiftId = unrelatedShift.Id, Shift = unrelatedShift }
+            ]);
 
         _inner.GetRotaAsync(rotaId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<ShiftRotaView>(rotaView));
@@ -218,19 +218,17 @@ public class CachingShiftViewServiceTests
         var shift = new Shift { Id = shiftId, RotaId = rotaId };
         var rotaView = new ShiftRotaView(
             rotaId, Rota: null,
-            Shifts: new[] { shift },
-            Tags: Array.Empty<ShiftTag>(),
-            Signups: Array.Empty<ShiftSignup>());
+            Shifts: [shift],
+            Tags: [],
+            Signups: []);
 
         var userView = new ShiftUserView(
             userId, null, null, null,
-            Array.Empty<VolunteerTagPreference>(),
-            new[] { new ShiftSignup { Id = Guid.NewGuid(), UserId = userId, ShiftId = shiftId } });
+            [], [new ShiftSignup { Id = Guid.NewGuid(), UserId = userId, ShiftId = shiftId }]);
 
         var unrelatedUserView = new ShiftUserView(
             unrelatedUserId, null, null, null,
-            Array.Empty<VolunteerTagPreference>(),
-            new[] { new ShiftSignup { Id = Guid.NewGuid(), UserId = unrelatedUserId, ShiftId = Guid.NewGuid() } });
+            [], [new ShiftSignup { Id = Guid.NewGuid(), UserId = unrelatedUserId, ShiftId = Guid.NewGuid() }]);
 
         _inner.GetRotaAsync(rotaId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<ShiftRotaView>(rotaView));

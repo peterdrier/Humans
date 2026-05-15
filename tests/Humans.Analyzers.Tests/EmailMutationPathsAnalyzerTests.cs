@@ -23,10 +23,10 @@ public class EmailMutationPathsAnalyzerTests
         """;
 
     private static bool IsHum0005(Microsoft.CodeAnalysis.Diagnostic d) =>
-        string.Equals(d.Id, EmailMutationPathsAnalyzer.ServiceCallerDiagnosticId, System.StringComparison.Ordinal);
+        string.Equals(d.Id, EmailMutationPathsAnalyzer.ServiceCallerDiagnosticId, StringComparison.Ordinal);
 
     private static bool IsHum0006(Microsoft.CodeAnalysis.Diagnostic d) =>
-        string.Equals(d.Id, EmailMutationPathsAnalyzer.RepositoryCallerDiagnosticId, System.StringComparison.Ordinal);
+        string.Equals(d.Id, EmailMutationPathsAnalyzer.RepositoryCallerDiagnosticId, StringComparison.Ordinal);
 
     [HumansFact]
     public async Task Fires_HUM0005_when_service_called_from_non_AccountController()

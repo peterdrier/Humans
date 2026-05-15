@@ -136,7 +136,7 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
         string query, PersonSearchFields fields, int limit = 10, CancellationToken ct = default)
     {
         if (fields == PersonSearchFields.None || string.IsNullOrWhiteSpace(query) || limit <= 0)
-            return Task.FromResult<IReadOnlyList<HumanSearchResult>>(Array.Empty<HumanSearchResult>());
+            return Task.FromResult<IReadOnlyList<HumanSearchResult>>([]);
 
         var includeAdmin = (fields & PersonSearchFields.Admin) != PersonSearchFields.None;
 
@@ -147,8 +147,7 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
         {
             if (TryGet(idGuid, out var byId) && byId.Profile is not null && byId.Profile.RejectedAt is null)
             {
-                return Task.FromResult<IReadOnlyList<HumanSearchResult>>(new[]
-                {
+                return Task.FromResult<IReadOnlyList<HumanSearchResult>>([
                     new HumanSearchResult(
                         UserId: byId.Id,
                         ProfileId: byId.Profile.Id,
@@ -157,9 +156,9 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
                         MatchField: "User ID",
                         MatchSnippet: null,
                         MatchedEmail: null)
-                });
+                ]);
             }
-            return Task.FromResult<IReadOnlyList<HumanSearchResult>>(Array.Empty<HumanSearchResult>());
+            return Task.FromResult<IReadOnlyList<HumanSearchResult>>([]);
         }
 
         var results = new List<HumanSearchResult>();
@@ -303,15 +302,15 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
 
         var userEmails = await _userEmailRepository.GetByUserIdReadOnlyAsync(userId, ct);
         var participations = await _userRepository.GetEventParticipationsByUserIdAsync(userId, ct);
-        var loginsMap = await _userRepository.GetExternalLoginsByUserIdsAsync(new[] { userId }, ct);
+        var loginsMap = await _userRepository.GetExternalLoginsByUserIdsAsync([userId], ct);
         var externalLogins = loginsMap.TryGetValue(userId, out var logins)
             ? logins
-            : Array.Empty<(string Provider, string ProviderKey)>();
+            : [];
 
         var profile = await _profileRepository.GetByUserIdReadOnlyAsync(userId, ct);
-        IReadOnlyList<ContactField> contactFields = Array.Empty<ContactField>();
-        IReadOnlyList<ProfileLanguage> languages = Array.Empty<ProfileLanguage>();
-        IReadOnlyList<VolunteerHistoryEntry> volunteerHistory = Array.Empty<VolunteerHistoryEntry>();
+        IReadOnlyList<ContactField> contactFields = [];
+        IReadOnlyList<ProfileLanguage> languages = [];
+        IReadOnlyList<VolunteerHistoryEntry> volunteerHistory = [];
         if (profile is not null)
         {
             contactFields = await _contactFieldRepository.GetByProfileIdReadOnlyAsync(profile.Id, ct);
@@ -367,26 +366,26 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
         foreach (var user in users)
         {
             var emails = emailsByUser.TryGetValue(user.Id, out var es)
-                ? es : Array.Empty<UserEmail>();
+                ? es : [];
             var logins = loginsByUser.TryGetValue(user.Id, out var ls)
-                ? ls : Array.Empty<(string Provider, string ProviderKey)>();
+                ? ls : [];
             var participations = participationsByUser.TryGetValue(user.Id, out var ps)
-                ? ps : (IReadOnlyList<EventParticipation>)Array.Empty<EventParticipation>();
+                ? ps : (IReadOnlyList<EventParticipation>)[];
 
             profileByUser.TryGetValue(user.Id, out var profile);
-            IReadOnlyList<ContactField> contactFields = Array.Empty<ContactField>();
-            IReadOnlyList<ProfileLanguage> languages = Array.Empty<ProfileLanguage>();
-            IReadOnlyList<VolunteerHistoryEntry> volunteerHistory = Array.Empty<VolunteerHistoryEntry>();
+            IReadOnlyList<ContactField> contactFields = [];
+            IReadOnlyList<ProfileLanguage> languages = [];
+            IReadOnlyList<VolunteerHistoryEntry> volunteerHistory = [];
             if (profile is not null)
             {
                 contactFields = contactFieldsByProfile.TryGetValue(profile.Id, out var cf)
-                    ? cf : Array.Empty<ContactField>();
+                    ? cf : [];
                 languages = profile.Languages.ToList();
                 volunteerHistory = profile.VolunteerHistory.ToList();
             }
 
             var preferences = preferencesByUser.TryGetValue(user.Id, out var pp)
-                ? pp : Array.Empty<CommunicationPreference>();
+                ? pp : [];
 
             Set(user.Id, UserInfo.Create(
                 user, emails, participations, logins,
@@ -408,7 +407,7 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
     {
         _logger.LogDebug(
             "UserInfo invalidate userId={UserId} caller={CallerMember} file={CallerFile}",
-            userId, memberName, System.IO.Path.GetFileName(filePath));
+            userId, memberName, Path.GetFileName(filePath));
 
         return RefreshEntryAsync(userId, ct);
     }

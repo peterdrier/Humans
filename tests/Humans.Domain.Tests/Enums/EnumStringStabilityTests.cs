@@ -42,33 +42,25 @@ public class EnumStringStabilityTests
     public static TheoryData<Type, string[]> StringStoredEnumData => new()
     {
         {
-            typeof(TeamMemberRole),
-            new[] { "Member", "Coordinator" }
+            typeof(TeamMemberRole), ["Member", "Coordinator"]
         },
         {
-            typeof(TeamJoinRequestStatus),
-            new[] { "Pending", "Approved", "Rejected", "Withdrawn" }
+            typeof(TeamJoinRequestStatus), ["Pending", "Approved", "Rejected", "Withdrawn"]
         },
         {
-            typeof(SystemTeamType),
-            new[] { "None", "Volunteers", "Coordinators", "Board", "Asociados", "Colaboradors" }
+            typeof(SystemTeamType), ["None", "Volunteers", "Coordinators", "Board", "Asociados", "Colaboradors"]
         },
         {
-            typeof(GoogleResourceType),
-            new[] { "DriveFolder", "SharedDrive", "Group", "DriveFile" }
+            typeof(GoogleResourceType), ["DriveFolder", "SharedDrive", "Group", "DriveFile"]
         },
         {
-            typeof(ContactFieldType),
-            new[] { "Email", "Phone", "Signal", "Telegram", "WhatsApp", "Discord", "Other" }
+            typeof(ContactFieldType), ["Email", "Phone", "Signal", "Telegram", "WhatsApp", "Discord", "Other"]
         },
         {
-            typeof(ContactFieldVisibility),
-            new[] { "BoardOnly", "CoordinatorsAndBoard", "MyTeams", "AllActiveProfiles" }
+            typeof(ContactFieldVisibility), ["BoardOnly", "CoordinatorsAndBoard", "MyTeams", "AllActiveProfiles"]
         },
         {
-            typeof(AuditAction),
-            new[]
-            {
+            typeof(AuditAction), [
                 "TeamMemberAdded", "TeamMemberRemoved", "MemberSuspended", "MemberUnsuspended",
                 "AccountAnonymized", "RoleAssigned", "RoleEnded", "VolunteerApproved",
                 "GoogleResourceAccessGranted", "GoogleResourceAccessRevoked", "GoogleResourceProvisioned",
@@ -86,87 +78,67 @@ public class EnumStringStabilityTests
                 "CampImageUploaded", "CampImageDeleted",
                 "ShiftSignupCreated", "ShiftSignupConfirmed", "ShiftSignupRefused", "ShiftSignupVoluntold",
                 "ShiftSignupBailed", "ShiftSignupNoShow", "ShiftSignupCancelled", "ShiftSignupReassigned"
-            }
+            ]
         },
         {
-            typeof(ApplicationStatus),
-            new[] { "Submitted", "Approved", "Rejected", "Withdrawn" }
+            typeof(ApplicationStatus), ["Submitted", "Approved", "Rejected", "Withdrawn"]
         },
         {
-            typeof(MembershipTier),
-            new[] { "Volunteer", "Colaborador", "Asociado" }
+            typeof(MembershipTier), ["Volunteer", "Colaborador", "Asociado"]
         },
         {
-            typeof(ConsentCheckStatus),
-            new[] { "Pending", "Cleared", "Flagged" }
+            typeof(ConsentCheckStatus), ["Pending", "Cleared", "Flagged"]
         },
         {
-            typeof(VoteChoice),
-            new[] { "Yay", "Maybe", "No", "Abstain" }
+            typeof(VoteChoice), ["Yay", "Maybe", "No", "Abstain"]
         },
         {
-            typeof(SyncMode),
-            new[] { "None", "AddOnly", "AddAndRemove" }
+            typeof(SyncMode), ["None", "AddOnly", "AddAndRemove"]
         },
         {
-            typeof(SyncServiceType),
-            new[] { "GoogleDrive", "GoogleGroups", "Discord" }
+            typeof(SyncServiceType), ["GoogleDrive", "GoogleGroups", "Discord"]
         },
         {
-            typeof(SyncAction),
-            new[] { "Preview", "Execute" }
+            typeof(SyncAction), ["Preview", "Execute"]
         },
         {
-            typeof(TicketSyncStatus),
-            new[] { "Idle", "Running", "Error" }
+            typeof(TicketSyncStatus), ["Idle", "Running", "Error"]
         },
         {
-            typeof(TicketPaymentStatus),
-            new[] { "Paid", "Pending", "Refunded" }
+            typeof(TicketPaymentStatus), ["Paid", "Pending", "Refunded"]
         },
         {
-            typeof(TicketAttendeeStatus),
-            new[] { "Valid", "Void", "CheckedIn" }
+            typeof(TicketAttendeeStatus), ["Valid", "Void", "CheckedIn"]
         },
         {
-            typeof(ShiftPriority),
-            new[] { "Normal", "Important", "Essential" }
+            typeof(ShiftPriority), ["Normal", "Important", "Essential"]
         },
         {
-            typeof(SignupPolicy),
-            new[] { "Public", "RequireApproval" }
+            typeof(SignupPolicy), ["Public", "RequireApproval"]
         },
         {
-            typeof(SignupStatus),
-            new[] { "Pending", "Confirmed", "Refused", "Bailed", "Cancelled", "NoShow" }
+            typeof(SignupStatus), ["Pending", "Confirmed", "Refused", "Bailed", "Cancelled", "NoShow"]
         },
         {
-            typeof(RotaPeriod),
-            new[] { "Build", "Event", "Strike", "All" }
+            typeof(RotaPeriod), ["Build", "Event", "Strike", "All"]
         },
         {
-            typeof(RolePeriod),
-            new[] { "YearRound", "Build", "Event", "Strike" }
+            typeof(RolePeriod), ["YearRound", "Build", "Event", "Strike"]
         },
         {
-            typeof(DrivePermissionLevel),
-            new[] { "None", "Viewer", "Commenter", "Contributor", "ContentManager", "Manager" }
+            typeof(DrivePermissionLevel), ["None", "Viewer", "Commenter", "Contributor", "ContentManager", "Manager"]
         },
         {
-            typeof(BudgetYearStatus),
-            new[] { "Draft", "Active", "Closed" }
+            typeof(BudgetYearStatus), ["Draft", "Active", "Closed"]
         },
         {
-            typeof(ExpenditureType),
-            new[] { "CapEx", "OpEx" }
+            typeof(ExpenditureType), ["CapEx", "OpEx"]
         },
         {
-            typeof(MessageCategory),
-            new[]
-            {
+            typeof(MessageCategory), [
                 "System", "EventOperations", "CommunityUpdates", "Marketing", "Governance",
                 "CampaignCodes", "FacilitatedMessages", "Ticketing", "VolunteerUpdates", "TeamUpdates"
-            }
+            ]
         }
     };
 }

@@ -40,9 +40,10 @@ public class OnboardingWidgetControllerConsentsTests
     private readonly IShiftSignupService _signups = Substitute.For<IShiftSignupService>();
     private readonly IShiftManagementService _shiftMgmt = Substitute.For<IShiftManagementService>();
     private readonly IConsentService _consents = Substitute.For<IConsentService>();
+    private readonly IOnboardingService _onboardingService = Substitute.For<IOnboardingService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
-    private readonly IStringLocalizer<Humans.Web.SharedResource> _localizer =
-        Substitute.For<IStringLocalizer<Humans.Web.SharedResource>>();
+    private readonly IStringLocalizer<SharedResource> _localizer =
+        Substitute.For<IStringLocalizer<SharedResource>>();
     private readonly DefaultHttpContext _http = new();
 
     public OnboardingWidgetControllerConsentsTests()
@@ -58,8 +59,7 @@ public class OnboardingWidgetControllerConsentsTests
     {
         var user = new User { Id = userId };
         _userManager.GetUserAsync(Arg.Any<ClaimsPrincipal>()).Returns(user);
-        _http.User = new ClaimsPrincipal(new ClaimsIdentity(
-            new[] { new Claim(ClaimTypes.NameIdentifier, userId.ToString()) },
+        _http.User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.ToString())],
             "test"));
         // SetError on HumansControllerBase resolves ILoggerFactory from RequestServices.
         var services = new ServiceCollection();
@@ -69,7 +69,7 @@ public class OnboardingWidgetControllerConsentsTests
         // doesn't divert tests that exercise the consent flow itself.
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(isStub ? StubUserInfo(userId) : NonStubUserInfo(userId));
-        var ctrl = new OnboardingWidgetController(_userService, _state, _profile, _signups, _shiftMgmt, _consents, _localizer);
+        var ctrl = new OnboardingWidgetController(_userService, _state, _profile, _signups, _shiftMgmt, _consents, _onboardingService, _localizer);
         ctrl.ControllerContext = new ControllerContext
         {
             HttpContext = _http,
@@ -112,14 +112,14 @@ public class OnboardingWidgetControllerConsentsTests
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             GoogleEmailStatus = GoogleEmailStatus.Unknown,
         },
-        userEmails: Array.Empty<UserEmail>(),
-        eventParticipations: Array.Empty<EventParticipation>(),
-        externalLogins: Array.Empty<(string, string)>(),
+        userEmails: [],
+        eventParticipations: [],
+        externalLogins: [],
         profile: profile,
-        contactFields: Array.Empty<ContactField>(),
-        profileLanguages: Array.Empty<ProfileLanguage>(),
-        volunteerHistory: Array.Empty<VolunteerHistoryEntry>(),
-        communicationPreferences: Array.Empty<CommunicationPreference>());
+        contactFields: [],
+        profileLanguages: [],
+        volunteerHistory: [],
+        communicationPreferences: []);
 
     [HumansFact]
     public async Task SignConsent_Post_CallsConsentService_AndRedirectsThroughIndexDispatcher()
@@ -271,7 +271,7 @@ public class OnboardingWidgetControllerConsentsTests
                 "Privacy Policy",
                 "1.2",
                 new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "# Politica", ["en"] = "# Policy" },
-                NodaTime.Instant.FromUnixTimeSeconds(0),
+                Instant.FromUnixTimeSeconds(0),
                 "Updated section 4",
                 HasAlreadyConsented: false,
                 ConsentedAt: null,

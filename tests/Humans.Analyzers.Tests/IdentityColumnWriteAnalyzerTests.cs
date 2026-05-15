@@ -20,7 +20,7 @@ public class IdentityColumnWriteAnalyzerTests
         """;
 
     private static bool IsHum0002(Microsoft.CodeAnalysis.Diagnostic d) =>
-        string.Equals(d.Id, IdentityColumnWriteAnalyzer.DiagnosticId, System.StringComparison.Ordinal);
+        string.Equals(d.Id, IdentityColumnWriteAnalyzer.DiagnosticId, StringComparison.Ordinal);
 
     [HumansFact]
     public async Task Fires_on_User_Email_direct_assignment_in_Application()

@@ -97,7 +97,7 @@ public class AuditLogArchitectureTests
 
             var rel = RatchetTestRunner.ToRelativePath(repoRoot, path);
             var ordinal = 0;
-            foreach (var match in AuditLogWriteRegex.Matches(content).Cast<System.Text.RegularExpressions.Match>())
+            foreach (var match in AuditLogWriteRegex.Matches(content).Cast<Match>())
             {
                 ordinal++;
                 var line = RatchetTestRunner.LineNumberAt(content, match.Index);

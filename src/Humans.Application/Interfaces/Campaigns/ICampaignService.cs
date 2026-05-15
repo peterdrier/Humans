@@ -103,7 +103,7 @@ public interface ICampaignService : IApplicationService
     /// </summary>
     Task<bool> UpdateGrantEmailStatusAsync(
         Guid grantId,
-        Humans.Domain.Enums.EmailOutboxStatus status,
+        EmailOutboxStatus status,
         Instant latestEmailAt,
         CancellationToken ct = default);
 }

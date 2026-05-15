@@ -56,7 +56,7 @@ public class StubGoogleGroupMembershipClientTests
 
         result.Memberships.Should().NotBeNull();
         result.Memberships!.Select(m => m.MemberEmail)
-            .Should().BeEquivalentTo(["alice@nobodies.team", "bob@nobodies.team"]);
+            .Should().BeEquivalentTo("alice@nobodies.team", "bob@nobodies.team");
         result.Memberships!.Should().AllSatisfy(m =>
             m.ResourceName.Should().StartWith("groups/group-1/memberships/",
                 because: "the stub's resource-name shape mirrors the real client so deletes flow through unchanged"));
@@ -95,7 +95,7 @@ public class StubGoogleGroupMembershipClientTests
         var g1 = await _client.ListMembershipsAsync("group-1");
         var g2 = await _client.ListMembershipsAsync("group-2");
 
-        g1.Memberships!.Select(m => m.MemberEmail).Should().BeEquivalentTo(["alice@nobodies.team"]);
-        g2.Memberships!.Select(m => m.MemberEmail).Should().BeEquivalentTo(["bob@nobodies.team"]);
+        g1.Memberships!.Select(m => m.MemberEmail).Should().BeEquivalentTo("alice@nobodies.team");
+        g2.Memberships!.Select(m => m.MemberEmail).Should().BeEquivalentTo("bob@nobodies.team");
     }
 }

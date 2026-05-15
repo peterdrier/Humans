@@ -46,8 +46,8 @@ else
     <div class="agent-transcript">
         @foreach (var msg in orderedMessages)
         {
-            var isUser = msg.Role == Humans.Domain.Enums.AgentRole.User;
-            var isAssistant = msg.Role == Humans.Domain.Enums.AgentRole.Assistant;
+            var isUser = msg.Role == AgentRole.User;
+            var isAssistant = msg.Role == AgentRole.Assistant;
             var isRefusal = !string.IsNullOrEmpty(msg.RefusalReason);
 
             <div class="agent-transcript-row @(isUser ? "agent-transcript-row-user" : "agent-transcript-row-assistant")">

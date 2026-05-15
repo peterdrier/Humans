@@ -37,7 +37,7 @@ public class ContactFieldServiceTests : IDisposable
         _roleAssignmentService = Substitute.For<IRoleAssignmentService>();
         _clock = new FakeClock(Instant.FromUtc(2024, 1, 15, 12, 0, 0));
 
-        var factory = new Humans.Application.Tests.Infrastructure.TestDbContextFactory(options);
+        var factory = new Infrastructure.TestDbContextFactory(options);
         var repository = new ContactFieldRepository(factory);
         _profileRepository = new ProfileRepository(factory, _clock);
 

@@ -78,7 +78,7 @@ public class MembershipPartitionTests
             .Returns(ci =>
             {
                 var teamId = ci.Arg<Guid>();
-                var versions = _requiredVersionsByTeam.GetValueOrDefault(teamId) ?? new();
+                var versions = _requiredVersionsByTeam.GetValueOrDefault(teamId) ?? [];
                 return Task.FromResult<IReadOnlyList<RequiredDocumentVersionSnapshot>>(
                     versions.Select(ToRequiredVersionSnapshot).ToList());
             });
@@ -90,7 +90,7 @@ public class MembershipPartitionTests
                 var userIds = ci.Arg<IReadOnlyList<Guid>>();
                 var result = userIds.ToDictionary(
                     id => id,
-                    id => (IReadOnlySet<Guid>)(_consentedVersionsByUser.GetValueOrDefault(id) ?? new HashSet<Guid>()));
+                    id => (IReadOnlySet<Guid>)(_consentedVersionsByUser.GetValueOrDefault(id) ?? []));
                 return Task.FromResult<IReadOnlyDictionary<Guid, IReadOnlySet<Guid>>>(result);
             });
     }
@@ -114,7 +114,7 @@ public class MembershipPartitionTests
         var versionId = SeedRequiredVersion(SystemTeamIds.Volunteers);
         SeedConsent(userId, versionId);
 
-        var result = await _service.PartitionUsersAsync(new[] { userId });
+        var result = await _service.PartitionUsersAsync([userId]);
 
         result.Active.Should().Contain(userId);
         result.PendingApproval.Should().NotContain(userId);
@@ -130,7 +130,7 @@ public class MembershipPartitionTests
         var userId = SeedUser();
         SeedProfile(userId, isApproved: false, isSuspended: false);
 
-        var result = await _service.PartitionUsersAsync(new[] { userId });
+        var result = await _service.PartitionUsersAsync([userId]);
 
         result.PendingApproval.Should().Contain(userId);
         result.Active.Should().NotContain(userId);
@@ -142,7 +142,7 @@ public class MembershipPartitionTests
         var userId = SeedUser();
         SeedProfile(userId, isApproved: true, isSuspended: true);
 
-        var result = await _service.PartitionUsersAsync(new[] { userId });
+        var result = await _service.PartitionUsersAsync([userId]);
 
         result.Suspended.Should().Contain(userId);
         result.Active.Should().NotContain(userId);
@@ -154,7 +154,7 @@ public class MembershipPartitionTests
         var userId = SeedUser();
         // No profile seeded
 
-        var result = await _service.PartitionUsersAsync(new[] { userId });
+        var result = await _service.PartitionUsersAsync([userId]);
 
         result.IncompleteSignup.Should().Contain(userId);
         result.Active.Should().NotContain(userId);
@@ -166,7 +166,7 @@ public class MembershipPartitionTests
         var userId = SeedUser(deletionRequestedAt: _clock.GetCurrentInstant());
         SeedProfile(userId, isApproved: true, isSuspended: false);
 
-        var result = await _service.PartitionUsersAsync(new[] { userId });
+        var result = await _service.PartitionUsersAsync([userId]);
 
         result.PendingDeletion.Should().Contain(userId);
         result.Active.Should().NotContain(userId);
@@ -179,7 +179,7 @@ public class MembershipPartitionTests
         SeedProfile(userId, isApproved: true, isSuspended: false);
         SeedRequiredVersion(SystemTeamIds.Volunteers); // required doc, no consent record
 
-        var result = await _service.PartitionUsersAsync(new[] { userId });
+        var result = await _service.PartitionUsersAsync([userId]);
 
         result.MissingConsents.Should().Contain(userId);
         result.Active.Should().NotContain(userId);
@@ -271,7 +271,7 @@ public class MembershipPartitionTests
         var userId = SeedUser(deletionRequestedAt: _clock.GetCurrentInstant());
         SeedProfile(userId, isApproved: true, isSuspended: true);
 
-        var result = await _service.PartitionUsersAsync(new[] { userId });
+        var result = await _service.PartitionUsersAsync([userId]);
 
         result.PendingDeletion.Should().Contain(userId);
         result.Suspended.Should().NotContain(userId);
@@ -314,7 +314,7 @@ public class MembershipPartitionTests
     {
         if (!_consentedVersionsByUser.TryGetValue(userId, out var set))
         {
-            set = new HashSet<Guid>();
+            set = [];
             _consentedVersionsByUser[userId] = set;
         }
         set.Add(versionId);
@@ -350,7 +350,7 @@ public class MembershipPartitionTests
         };
         if (!_requiredVersionsByTeam.TryGetValue(teamId, out var list))
         {
-            list = new List<DocumentVersion>();
+            list = [];
             _requiredVersionsByTeam[teamId] = list;
         }
         list.Add(version);

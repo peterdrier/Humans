@@ -12,7 +12,6 @@ using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
 using ConsentService = Humans.Application.Services.Consent.ConsentService;
 using Humans.Application.Interfaces.Legal;
-using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.GoogleIntegration;
@@ -28,7 +27,6 @@ public class ConsentServiceTests : IDisposable
     private readonly HumansDbContext _dbContext;
     private readonly FakeClock _clock;
     private readonly ConsentService _service;
-    private readonly IOnboardingService _onboardingService = Substitute.For<IOnboardingService>();
     private readonly IMembershipCalculator _membershipCalculator = Substitute.For<IMembershipCalculator>();
     private readonly ILegalDocumentSyncService _legalDocumentSyncService = Substitute.For<ILegalDocumentSyncService>();
     private readonly INotificationInboxService _notificationInboxService = Substitute.For<INotificationInboxService>();
@@ -74,7 +72,7 @@ public class ConsentServiceTests : IDisposable
             {
                 var teamIds = callInfo.ArgAt<IReadOnlyCollection<Guid>>(0);
                 if (teamIds.Count == 0)
-                    return (IReadOnlyList<ActiveRequiredLegalDocumentSnapshot>)Array.Empty<ActiveRequiredLegalDocumentSnapshot>();
+                    return (IReadOnlyList<ActiveRequiredLegalDocumentSnapshot>)[];
 
                 var documents = await _dbContext.LegalDocuments
                     .AsNoTracking()
@@ -113,7 +111,6 @@ public class ConsentServiceTests : IDisposable
 
         _service = new ConsentService(
             consentRepository,
-            _onboardingService,
             _legalDocumentSyncService,
             _notificationInboxService,
             _syncJob,
@@ -139,14 +136,14 @@ public class ConsentServiceTests : IDisposable
             CreatedAt = profile.CreatedAt,
             GoogleEmailStatus = GoogleEmailStatus.Unknown,
         },
-        userEmails: Array.Empty<UserEmail>(),
-        eventParticipations: Array.Empty<EventParticipation>(),
-        externalLogins: Array.Empty<(string, string)>(),
+        userEmails: [],
+        eventParticipations: [],
+        externalLogins: [],
         profile: profile,
-        contactFields: Array.Empty<ContactField>(),
-        profileLanguages: Array.Empty<ProfileLanguage>(),
-        volunteerHistory: Array.Empty<VolunteerHistoryEntry>(),
-        communicationPreferences: Array.Empty<CommunicationPreference>());
+        contactFields: [],
+        profileLanguages: [],
+        volunteerHistory: [],
+        communicationPreferences: []);
 
     [HumansFact]
     public async Task SubmitConsentAsync_ValidConsent_CreatesRecord()
@@ -230,17 +227,10 @@ public class ConsentServiceTests : IDisposable
         record.UserAgent.Should().HaveLength(500);
     }
 
-    [HumansFact]
-    public async Task SubmitConsentAsync_CallsSetConsentCheckPending()
-    {
-        var userId = Guid.NewGuid();
-        var versionId = Guid.NewGuid();
-        SeedDocumentVersion(versionId, "Test Doc", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "text" });
-
-        await _service.SubmitConsentAsync(userId, versionId, true, "127.0.0.1", "Agent");
-
-        await _onboardingService.Received().SetConsentCheckPendingIfEligibleAsync(userId, Arg.Any<CancellationToken>());
-    }
+    // Threshold check (formerly SubmitConsentAsync_CallsSetConsentCheckPending)
+    // moved out of ConsentService entirely — it's a director method on
+    // IOnboardingService now, invoked by controllers as a peer call after
+    // SubmitConsentAsync. ConsentService has no dep on Onboarding or Profile.
 
     [HumansFact]
     public async Task SubmitConsentAsync_CallsSyncJobs()
@@ -669,7 +659,7 @@ public class ConsentServiceTests : IDisposable
             .Returns((IReadOnlySet<Guid>)new HashSet<Guid>());
 
         // Input contains both source and target — duplicate-id risk path.
-        var result = await _service.GetConsentMapForUsersAsync(new[] { sourceId, targetId, unrelatedId });
+        var result = await _service.GetConsentMapForUsersAsync([sourceId, targetId, unrelatedId]);
 
         result.Should().ContainKey(targetId);
         result[targetId].Should().Contain(versionId, "target's chain-follow includes the source's explicit consent");

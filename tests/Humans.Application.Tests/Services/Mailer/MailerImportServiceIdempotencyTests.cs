@@ -61,7 +61,7 @@ internal sealed class IdempotencyHarness
     private static readonly MailerLiteSubscriber ActiveSubscriber =
         new("ml-id", Email, "active", "api",
             Instant.FromUtc(2026, 1, 1, 0, 0), null, Instant.FromUtc(2026, 1, 1, 0, 0),
-            null, null, Array.Empty<string>());
+            null, null, []);
 
     private readonly Guid _userId = Guid.NewGuid();
 
@@ -82,7 +82,7 @@ internal sealed class IdempotencyHarness
         // Pass 1: no verified human match → CreateContact path.
         _userEmails
             .GetDistinctVerifiedUserIdsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<Guid>>(Array.Empty<Guid>()));
+            .Returns(Task.FromResult<IReadOnlyList<Guid>>([]));
 
         _userEmails
             .FindAnyEmailRowByAddressAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
@@ -122,7 +122,7 @@ internal sealed class IdempotencyHarness
     {
         _userEmails
             .GetDistinctVerifiedUserIdsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<Guid>>(new[] { _userId }));
+            .Returns(Task.FromResult<IReadOnlyList<Guid>>([_userId]));
     }
 
     private void WirePrefsAlreadyMatching()

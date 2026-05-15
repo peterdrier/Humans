@@ -46,7 +46,7 @@
                         <label asp-for="Section" class="form-label">@Localizer["Issue_Area"]</label>
                         <select asp-for="Section" class="form-select">
                             <option value="">@Localizer["Issue_Area_Auto"]</option>
-                            @foreach (var kvp in Humans.Web.Models.AreaLabelMap.Map)
+                            @foreach (var kvp in AreaLabelMap.Map)
                             {
                                 if (string.Equals(Model.Section, kvp.Key, StringComparison.Ordinal))
                                 {

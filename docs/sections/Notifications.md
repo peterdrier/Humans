@@ -131,6 +131,15 @@ Inbound (other sections → Notifications):
 - **Camps:** `CampService` and `CampRoleService` inject `INotificationEmitter` to emit `CampMembershipApproved`, `CampMembershipRejected`, `CampMembershipSeasonClosed`, and `CampRoleAssigned` notifications.
 - **Issues:** `IssuesService` injects `INotificationService` to emit `IssueComment`, `IssueStatusChanged`, `IssueAssigned`, and `IssueSubmitted` notifications.
 
+## Design Rationale
+
+<!-- wheat: docs/specs/2026-03-31-notification-inbox-design.md §4 ADR-1, ADR-5; §Decisions Log -->
+
+- **Materialized recipients at dispatch time.** Each `NotificationRecipient` row is created when the alert fires. The membership of a target group ("Coordinators of Geeks") is resolved *then*, not at query time. This captures "who was responsible when the alert fired" — late-added team members do not retroactively see older notifications, which is the intended behavior. Same pattern as the email outbox.
+- **Caller decides resolution scope.** Group-targeted notifications (team/role) create one `Notification` shared by all recipients — "any one of you handle this" — so the resolved state collapses to a single row. Individual-targeted notifications create one `Notification` per user — "each of you needs to see this" — so per-user dismissal is real. No `GroupKey` concept; the choice is explicit at the dispatch call site.
+- **Page-load badge refresh, not real-time push.** At ~500 users with a 2-minute cache, a WebSocket / SSE channel is overengineered. The badge re-computes when the user navigates. The existing `NavBadgesViewComponent` works this way for every other queue.
+- **Daily digests stay as email.** `SendBoardDailyDigestAsync` / `SendAdminDailyDigestAsync` are *summaries*, not individual work items, and don't map onto the resolve/dismiss model. Don't migrate them.
+
 ## Architecture
 
 **Owning services:** `NotificationService`, `NotificationEmitter`, `NotificationRecipientResolver`, `NotificationInboxService`, `NotificationMeterProvider`

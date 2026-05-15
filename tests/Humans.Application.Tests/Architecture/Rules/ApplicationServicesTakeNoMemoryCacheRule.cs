@@ -51,8 +51,8 @@ public class ApplicationServicesTakeNoMemoryCacheRule
     /// Audited 2026-05-12. Add to this set only when a new cache usage is
     /// intentional and reviewed.
     /// </summary>
-    private static readonly HashSet<Type> Allowlist = new()
-    {
+    private static readonly HashSet<Type> Allowlist =
+    [
         typeof(CalendarService),
         typeof(CampContactService),
         typeof(CampService),
@@ -64,8 +64,8 @@ public class ApplicationServicesTakeNoMemoryCacheRule
         typeof(NotificationService),
         typeof(ShiftManagementService),
         typeof(TicketQueryService),
-        typeof(TicketSyncService),
-    };
+        typeof(TicketSyncService)
+    ];
 
     [HumansFact]
     public void Application_services_do_not_take_IMemoryCache_unless_allowlisted()

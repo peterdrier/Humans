@@ -69,7 +69,7 @@ public class MembershipCalculatorTests
             .Returns(ci =>
             {
                 var userId = ci.Arg<Guid>();
-                var memberships = _teamMembershipsByUserId.GetValueOrDefault(userId) ?? new();
+                var memberships = _teamMembershipsByUserId.GetValueOrDefault(userId) ?? [];
                 return Task.FromResult<IReadOnlyList<MembershipTeamSnapshot>>(memberships
                     .Select(m => new MembershipTeamSnapshot(m.TeamId, m.Role, m.Team.SystemTeamType))
                     .ToList());
@@ -80,7 +80,7 @@ public class MembershipCalculatorTests
             {
                 var teamId = ci.ArgAt<Guid>(0);
                 var userId = ci.ArgAt<Guid>(1);
-                var memberships = _teamMembershipsByUserId.GetValueOrDefault(userId) ?? new();
+                var memberships = _teamMembershipsByUserId.GetValueOrDefault(userId) ?? [];
                 return Task.FromResult(memberships.Any(m => m.TeamId == teamId && m.LeftAt == null));
             });
 
@@ -95,7 +95,7 @@ public class MembershipCalculatorTests
             .Returns(ci =>
             {
                 var teamId = ci.Arg<Guid>();
-                var versions = _requiredVersionsByTeam.GetValueOrDefault(teamId) ?? new();
+                var versions = _requiredVersionsByTeam.GetValueOrDefault(teamId) ?? [];
                 return Task.FromResult<IReadOnlyList<RequiredDocumentVersionSnapshot>>(
                     versions.Select(ToRequiredVersionSnapshot).ToList());
             });
@@ -104,7 +104,7 @@ public class MembershipCalculatorTests
             .Returns(ci =>
             {
                 var userId = ci.Arg<Guid>();
-                var set = _consentedVersionsByUser.GetValueOrDefault(userId) ?? new();
+                var set = _consentedVersionsByUser.GetValueOrDefault(userId) ?? [];
                 return Task.FromResult<IReadOnlySet<Guid>>(set);
             });
 
@@ -115,7 +115,7 @@ public class MembershipCalculatorTests
                 var userIds = ci.Arg<IReadOnlyList<Guid>>();
                 var result = userIds.ToDictionary(
                     id => id,
-                    id => (IReadOnlySet<Guid>)(_consentedVersionsByUser.GetValueOrDefault(id) ?? new HashSet<Guid>()));
+                    id => (IReadOnlySet<Guid>)(_consentedVersionsByUser.GetValueOrDefault(id) ?? []));
                 return Task.FromResult<IReadOnlyDictionary<Guid, IReadOnlySet<Guid>>>(result);
             });
     }
@@ -659,7 +659,7 @@ public class MembershipCalculatorTests
         SeedRequiredVersion(SystemTeamIds.Volunteers, versionId);
         SeedConsent(userId, versionId);
 
-        var result = await _service.GetUsersWithAllRequiredConsentsAsync(new[] { userId });
+        var result = await _service.GetUsersWithAllRequiredConsentsAsync([userId]);
 
         result.Should().Contain(userId);
     }
@@ -670,7 +670,7 @@ public class MembershipCalculatorTests
         var userId = Guid.NewGuid();
         SeedRequiredVersion(SystemTeamIds.Volunteers, Guid.NewGuid()); // unsigned
 
-        var result = await _service.GetUsersWithAllRequiredConsentsAsync(new[] { userId });
+        var result = await _service.GetUsersWithAllRequiredConsentsAsync([userId]);
 
         result.Should().NotContain(userId);
     }
@@ -680,7 +680,7 @@ public class MembershipCalculatorTests
     {
         SeedRequiredVersion(SystemTeamIds.Volunteers, Guid.NewGuid());
 
-        var result = await _service.GetUsersWithAllRequiredConsentsAsync(Array.Empty<Guid>());
+        var result = await _service.GetUsersWithAllRequiredConsentsAsync([]);
 
         result.Should().BeEmpty();
     }
@@ -694,7 +694,7 @@ public class MembershipCalculatorTests
         SeedRequiredVersion(SystemTeamIds.Volunteers, Guid.NewGuid(), gracePeriodDays: 0,
             effectiveFrom: _clock.GetCurrentInstant() - Duration.FromDays(10));
 
-        var result = await _service.GetUsersWithAnyExpiredConsentsAsync(new[] { userId });
+        var result = await _service.GetUsersWithAnyExpiredConsentsAsync([userId]);
 
         result.Should().Contain(userId);
     }
@@ -707,7 +707,7 @@ public class MembershipCalculatorTests
         SeedRequiredVersion(SystemTeamIds.Volunteers, Guid.NewGuid(), gracePeriodDays: 365,
             effectiveFrom: _clock.GetCurrentInstant() - Duration.FromDays(10));
 
-        var result = await _service.GetUsersWithAnyExpiredConsentsAsync(new[] { userId });
+        var result = await _service.GetUsersWithAnyExpiredConsentsAsync([userId]);
 
         result.Should().BeEmpty();
     }
@@ -718,7 +718,7 @@ public class MembershipCalculatorTests
         SeedRequiredVersion(SystemTeamIds.Volunteers, Guid.NewGuid(), gracePeriodDays: 0,
             effectiveFrom: _clock.GetCurrentInstant() - Duration.FromDays(10));
 
-        var result = await _service.GetUsersWithAnyExpiredConsentsAsync(Array.Empty<Guid>());
+        var result = await _service.GetUsersWithAnyExpiredConsentsAsync([]);
 
         result.Should().BeEmpty();
     }
@@ -758,7 +758,7 @@ public class MembershipCalculatorTests
         };
         if (!_teamMembershipsByUserId.TryGetValue(userId, out var list))
         {
-            list = new List<TeamMember>();
+            list = [];
             _teamMembershipsByUserId[userId] = list;
         }
         list.Add(tm);
@@ -796,7 +796,7 @@ public class MembershipCalculatorTests
             .Returns(Task.FromResult(true));
     }
 
-    private readonly List<Guid> _activeRoleUserIds = new();
+    private readonly List<Guid> _activeRoleUserIds = [];
 
     private void SeedActiveRoleInList(Guid userId)
     {
@@ -809,7 +809,7 @@ public class MembershipCalculatorTests
     {
         if (!_consentedVersionsByUser.TryGetValue(userId, out var set))
         {
-            set = new HashSet<Guid>();
+            set = [];
             _consentedVersionsByUser[userId] = set;
         }
         set.Add(versionId);
@@ -844,7 +844,7 @@ public class MembershipCalculatorTests
         };
         if (!_requiredVersionsByTeam.TryGetValue(teamId, out var list))
         {
-            list = new List<DocumentVersion>();
+            list = [];
             _requiredVersionsByTeam[teamId] = list;
         }
         list.Add(version);
@@ -859,12 +859,12 @@ public class MembershipCalculatorTests
             CreatedAt = profile.CreatedAt,
             GoogleEmailStatus = GoogleEmailStatus.Unknown,
         },
-        userEmails: Array.Empty<UserEmail>(),
-        eventParticipations: Array.Empty<EventParticipation>(),
-        externalLogins: Array.Empty<(string, string)>(),
+        userEmails: [],
+        eventParticipations: [],
+        externalLogins: [],
         profile: profile,
-        contactFields: Array.Empty<ContactField>(),
-        profileLanguages: Array.Empty<ProfileLanguage>(),
-        volunteerHistory: Array.Empty<VolunteerHistoryEntry>(),
-        communicationPreferences: Array.Empty<CommunicationPreference>());
+        contactFields: [],
+        profileLanguages: [],
+        volunteerHistory: [],
+        communicationPreferences: []);
 }

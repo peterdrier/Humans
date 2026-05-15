@@ -23,7 +23,7 @@ public class AccountMergeServiceAdminMergeTests
     private readonly ITeamService _team = Substitute.For<ITeamService>();
     private readonly IRoleAssignmentService _roles = Substitute.For<IRoleAssignmentService>();
     private readonly INotificationService _notify = Substitute.For<INotificationService>();
-    private readonly List<IUserMerge> _userMerges = new();
+    private readonly List<IUserMerge> _userMerges = [];
     private readonly FakeClock _clock = new(NodaTime.Instant.FromUtc(2026, 5, 5, 12, 0));
 
     private AccountMergeService BuildSut() =>

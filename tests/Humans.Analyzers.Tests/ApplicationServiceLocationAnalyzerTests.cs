@@ -22,7 +22,7 @@ public class ApplicationServiceLocationAnalyzerTests
         """;
 
     private static bool IsHum0012(Microsoft.CodeAnalysis.Diagnostic d) =>
-        string.Equals(d.Id, ApplicationServiceLocationAnalyzer.DiagnosticId, System.StringComparison.Ordinal);
+        string.Equals(d.Id, ApplicationServiceLocationAnalyzer.DiagnosticId, StringComparison.Ordinal);
 
     [HumansFact]
     public async Task Does_not_fire_when_service_lives_under_matching_section()

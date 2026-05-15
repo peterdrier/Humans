@@ -193,7 +193,7 @@ public class RoleAssignmentRepositoryTests : IDisposable
         var result = await _repo.GetActiveForUserForMutationAsync(userId, now);
 
         result.Should().HaveCount(2);
-        result.Select(r => r.Id).Should().Contain(new[] { active1.Id, active2.Id });
+        result.Select(r => r.Id).Should().Contain([active1.Id, active2.Id]);
 
         foreach (var ra in result)
         {

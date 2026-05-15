@@ -76,9 +76,9 @@ public class ShiftSignupRepositoryTests : IDisposable
         await _dbContext.SaveChangesAsync();
 
         var result = await _repo.GetActiveShiftIdsForUserAsync(
-            userId, new[] { active, bailed, otherUserShift });
+            userId, [active, bailed, otherUserShift]);
 
-        result.Should().BeEquivalentTo(new[] { active });
+        result.Should().BeEquivalentTo([active]);
     }
 
     [HumansFact(Timeout = 10000)]
@@ -93,7 +93,7 @@ public class ShiftSignupRepositoryTests : IDisposable
         _dbContext.ShiftSignups.Add(MakeSignup(Guid.NewGuid(), shiftB, SignupStatus.Cancelled));
         await _dbContext.SaveChangesAsync();
 
-        var counts = await _repo.GetConfirmedCountsByShiftAsync(new[] { shiftA, shiftB });
+        var counts = await _repo.GetConfirmedCountsByShiftAsync([shiftA, shiftB]);
 
         counts[shiftA].Should().Be(2);
         counts.ContainsKey(shiftB).Should().BeFalse();
@@ -102,7 +102,7 @@ public class ShiftSignupRepositoryTests : IDisposable
     [HumansFact]
     public async Task GetConfirmedCountsByShiftAsync_EmptyInputReturnsEmpty()
     {
-        var counts = await _repo.GetConfirmedCountsByShiftAsync(Array.Empty<Guid>());
+        var counts = await _repo.GetConfirmedCountsByShiftAsync([]);
         counts.Should().BeEmpty();
     }
 

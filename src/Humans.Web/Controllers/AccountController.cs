@@ -404,7 +404,7 @@ public class AccountController : HumansControllerBase
     /// whether to roll back, so it calls reconcile inline rather than via
     /// this helper.
     /// </summary>
-    private async Task TryReconcileOAuthIdentityAsync(Guid userId, Microsoft.AspNetCore.Identity.ExternalLoginInfo info)
+    private async Task TryReconcileOAuthIdentityAsync(Guid userId, ExternalLoginInfo info)
     {
         var claimEmail = info.Principal.FindFirstValue(ClaimTypes.Email);
         if (string.IsNullOrEmpty(claimEmail))
@@ -471,7 +471,7 @@ public class AccountController : HumansControllerBase
     /// unparseable — the displacement gate in the service treats this as
     /// "don't displace another user".
     /// </summary>
-    private static bool ReadEmailVerifiedClaim(Microsoft.AspNetCore.Identity.ExternalLoginInfo info)
+    private static bool ReadEmailVerifiedClaim(ExternalLoginInfo info)
     {
         var raw = info.Principal.FindFirstValue("email_verified");
         return bool.TryParse(raw, out var verified) && verified;

@@ -222,9 +222,9 @@ public sealed class WidgetGalleryController : HumansControllerBase
     {
         public static readonly ShiftsSamples Empty = new(
             null, null,
-            Array.Empty<DailyStaffingData>(),
-            Array.Empty<DailyStaffingHours>(),
-            Array.Empty<ShiftDisplayItem>(),
+            [],
+            [],
+            [],
             new HashSet<Guid>());
     }
 }

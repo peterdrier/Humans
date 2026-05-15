@@ -88,7 +88,7 @@ public class TermRenewalReminderJob : IRecurringJob
                 .Distinct()
                 .ToList();
             var applicantsById = applicantIds.Count == 0
-                ? new Dictionary<Guid, Humans.Application.UserInfo>()
+                ? new Dictionary<Guid, Application.UserInfo>()
                 : (await _userService.GetUserInfosAsync(applicantIds, cancellationToken))
                     .ToDictionary(kv => kv.Key, kv => kv.Value);
 

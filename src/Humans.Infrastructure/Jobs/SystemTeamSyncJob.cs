@@ -623,7 +623,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
 
         // When syncing a single user, only evaluate that user (don't remove others).
         var scopeIds = singleUserSync.HasValue
-            ? new HashSet<Guid> { singleUserSync.Value }
+            ? [singleUserSync.Value]
             : currentMemberIds.Union(eligibleSet).ToHashSet();
 
         // Users to add (in eligible but not current members).

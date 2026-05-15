@@ -167,7 +167,7 @@ public class CampServiceEarlyEntryTests : IDisposable
             {
                 Id = Guid.Parse("00000000-0000-0000-0010-000000000001"),
                 PublicYear = 2026,
-                OpenSeasons = new List<int> { 2026 }
+                OpenSeasons = [2026]
             });
             await _dbContext.SaveChangesAsync();
         }
@@ -201,7 +201,7 @@ public class CampServiceEarlyEntryTests : IDisposable
             KidsVisiting = KidsVisitingPolicy.DaytimeOnly,
             HasPerformanceSpace = PerformanceSpaceStatus.Yes,
             PerformanceTypes = "Music, dance",
-            Vibes = new List<CampVibe> { CampVibe.LiveMusic, CampVibe.ChillOut },
+            Vibes = [CampVibe.LiveMusic, CampVibe.ChillOut],
             AdultPlayspace = AdultPlayspacePolicy.No,
             MemberCount = 25,
             SpaceRequirement = SpaceSize.Sqm600,

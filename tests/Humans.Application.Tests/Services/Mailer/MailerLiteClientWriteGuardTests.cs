@@ -58,7 +58,7 @@ public class MailerLiteClientWriteGuardTests
         var client = NewClient(handler);
 
         var act = async () => await client.BulkImportSubscribersToGroupAsync(
-            "99", new[] { "a@example.com" }, CancellationToken.None);
+            "99", ["a@example.com"], CancellationToken.None);
 
         await act.Should().ThrowAsync<InvalidOperationException>();
     }

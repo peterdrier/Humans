@@ -86,8 +86,8 @@ public interface IAuditLogService : IApplicationService
     /// <c>audit_log_entries</c> directly (design-rules §2c).
     /// </summary>
     Task<IReadOnlyList<Guid>> GetEntityIdsForActionInWindowAsync(
-        NodaTime.Instant windowStart,
-        NodaTime.Instant windowEnd,
+        Instant windowStart,
+        Instant windowEnd,
         AuditAction action,
         CancellationToken ct = default);
 

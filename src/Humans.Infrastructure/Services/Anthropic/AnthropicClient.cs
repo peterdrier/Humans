@@ -215,7 +215,7 @@ public sealed class AnthropicClient : IAnthropicClient
 
         foreach (var msg in messages)
         {
-            var role = string.Equals(msg.Role, "assistant", System.StringComparison.OrdinalIgnoreCase)
+            var role = string.Equals(msg.Role, "assistant", StringComparison.OrdinalIgnoreCase)
                 ? Role.Assistant
                 : Role.User;
 

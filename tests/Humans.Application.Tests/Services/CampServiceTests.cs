@@ -187,7 +187,7 @@ public class CampServiceTests : IDisposable
 
         // Open 2027 season in settings
         var settings = await _dbContext.CampSettings.FirstAsync();
-        settings.OpenSeasons = new List<int> { 2026, 2027 };
+        settings.OpenSeasons = [2026, 2027];
         await _dbContext.SaveChangesAsync();
 
         var newSeason = await _service.OptInToSeasonAsync(camp.Id, 2027);
@@ -206,7 +206,7 @@ public class CampServiceTests : IDisposable
         await _service.RejectSeasonAsync(season.Id, Guid.NewGuid(), "nope");
 
         var settings = await _dbContext.CampSettings.FirstAsync();
-        settings.OpenSeasons = new List<int> { 2026, 2027 };
+        settings.OpenSeasons = [2026, 2027];
         await _dbContext.SaveChangesAsync();
 
         var newSeason = await _service.OptInToSeasonAsync(camp.Id, 2027);
@@ -222,7 +222,7 @@ public class CampServiceTests : IDisposable
         // Don't approve or reject — season stays Pending
 
         var settings = await _dbContext.CampSettings.FirstAsync();
-        settings.OpenSeasons = new List<int> { 2026, 2027 };
+        settings.OpenSeasons = [2026, 2027];
         await _dbContext.SaveChangesAsync();
 
         var newSeason = await _service.OptInToSeasonAsync(camp.Id, 2027);
@@ -1172,7 +1172,7 @@ public class CampServiceTests : IDisposable
         KidsAreaDescription: null,
         HasPerformanceSpace: PerformanceSpaceStatus.Yes,
         PerformanceTypes: "Music, dance",
-        Vibes: new List<CampVibe> { CampVibe.LiveMusic, CampVibe.ChillOut },
+        Vibes: [CampVibe.LiveMusic, CampVibe.ChillOut],
         AdultPlayspace: AdultPlayspacePolicy.No,
         MemberCount: 25,
         SpaceRequirement: SpaceSize.Sqm600,
@@ -1204,7 +1204,7 @@ public class CampServiceTests : IDisposable
             {
                 Id = Guid.Parse("00000000-0000-0000-0010-000000000001"),
                 PublicYear = 2026,
-                OpenSeasons = new List<int> { 2026 }
+                OpenSeasons = [2026]
             });
             await _dbContext.SaveChangesAsync();
         }

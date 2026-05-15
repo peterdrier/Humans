@@ -12,7 +12,7 @@ public class RepositoryInterfaceLocationAnalyzerTests
         """;
 
     private static bool IsHum0013(Microsoft.CodeAnalysis.Diagnostic d) =>
-        string.Equals(d.Id, RepositoryInterfaceLocationAnalyzer.DiagnosticId, System.StringComparison.Ordinal);
+        string.Equals(d.Id, RepositoryInterfaceLocationAnalyzer.DiagnosticId, StringComparison.Ordinal);
 
     [HumansFact]
     public async Task Fires_when_repository_interface_lives_outside_Repositories_namespace()

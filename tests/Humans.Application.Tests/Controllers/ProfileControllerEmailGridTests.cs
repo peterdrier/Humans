@@ -111,10 +111,9 @@ public class ProfileControllerEmailGridTests
             _signInManager,
             Options.Create(new GoogleWorkspaceOptions()));
 
-        var identity = new ClaimsIdentity(new[]
-        {
-            new Claim(ClaimTypes.NameIdentifier, _userId.ToString()),
-        }, authenticationType: "TestAuth");
+        var identity = new ClaimsIdentity([
+            new Claim(ClaimTypes.NameIdentifier, _userId.ToString())
+        ], authenticationType: "TestAuth");
         var principal = new ClaimsPrincipal(identity);
 
         var httpContext = new DefaultHttpContext { User = principal };
@@ -297,7 +296,7 @@ public class ProfileControllerEmailGridTests
         _userManager.FindByIdAsync(targetUserId.ToString())
             .Returns(new User { Id = targetUserId, DisplayName = "Target User", PreferredLanguage = "en" });
         _userEmailService.AddEmailAsync(targetUserId, newEmail, Arg.Any<CancellationToken>())
-            .Returns(new Humans.Application.DTOs.AddEmailResult(Guid.NewGuid(), "token", IsConflict: false));
+            .Returns(new DTOs.AddEmailResult(Guid.NewGuid(), "token", IsConflict: false));
 
         var result = await _controller.AdminAddEmail(targetUserId, newEmail, CancellationToken.None);
 
@@ -315,7 +314,7 @@ public class ProfileControllerEmailGridTests
         _userManager.FindByIdAsync(targetUserId.ToString())
             .Returns(new User { Id = targetUserId, DisplayName = "Target User", PreferredLanguage = "en" });
         _userEmailService.AddEmailAsync(targetUserId, newEmail, Arg.Any<CancellationToken>())
-            .Returns(new Humans.Application.DTOs.AddEmailResult(Guid.NewGuid(), "token", IsConflict: false));
+            .Returns(new DTOs.AddEmailResult(Guid.NewGuid(), "token", IsConflict: false));
 
         var result = await _controller.AdminAddEmail(targetUserId, newEmail, CancellationToken.None);
 
@@ -353,7 +352,7 @@ public class ProfileControllerEmailGridTests
         _userManager.FindByIdAsync(targetUserId.ToString())
             .Returns(new User { Id = targetUserId, DisplayName = "Target User", PreferredLanguage = "es" });
         _userEmailService.AddEmailAsync(targetUserId, newEmail, Arg.Any<CancellationToken>())
-            .Returns(new Humans.Application.DTOs.AddEmailResult(Guid.NewGuid(), token, IsConflict: false));
+            .Returns(new DTOs.AddEmailResult(Guid.NewGuid(), token, IsConflict: false));
 
         var result = await _controller.AdminAddEmail(targetUserId, newEmail, CancellationToken.None);
 

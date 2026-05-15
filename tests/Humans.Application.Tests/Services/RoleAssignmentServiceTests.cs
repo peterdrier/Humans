@@ -222,7 +222,7 @@ public class RoleAssignmentServiceTests : IDisposable
 
         items.Should().HaveCount(2);
         total.Should().Be(2);
-        items.Select(ra => ra.UserDisplayName).Should().BeEquivalentTo(["Alice", "Bob"]);
+        items.Select(ra => ra.UserDisplayName).Should().BeEquivalentTo("Alice", "Bob");
         items.All(ra => string.Equals(ra.CreatedByDisplayName, "Creator", StringComparison.Ordinal)).Should().BeTrue();
     }
 
@@ -280,7 +280,7 @@ public class RoleAssignmentServiceTests : IDisposable
 
         slices.Should().ContainSingle();
         slices[0].SectionName.Should().Be(
-            Humans.Application.Interfaces.Gdpr.GdprExportSections.RoleAssignments);
+            Interfaces.Gdpr.GdprExportSections.RoleAssignments);
     }
 
     private async Task<User> SeedUserAsync(Guid userId, string displayName)

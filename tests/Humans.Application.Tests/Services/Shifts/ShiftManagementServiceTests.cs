@@ -178,7 +178,7 @@ public class ShiftManagementServiceTests : IDisposable
             s.StartTime.Should().Be(LocalTime.Midnight);
             s.Duration.Should().Be(Duration.FromHours(24));
         });
-        shifts.Select(s => s.DayOffset).Should().BeEquivalentTo(new[] { -3, -2, -1 });
+        shifts.Select(s => s.DayOffset).Should().BeEquivalentTo([-3, -2, -1]);
     }
 
     [HumansFact]
@@ -395,7 +395,7 @@ public class ShiftManagementServiceTests : IDisposable
         shifts.Should().AllSatisfy(s => s.IsAllDay.Should().BeFalse());
 
         // Verify correct day offsets
-        shifts.Select(s => s.DayOffset).Distinct().Should().BeEquivalentTo(new[] { 0, 1, 2 });
+        shifts.Select(s => s.DayOffset).Distinct().Should().BeEquivalentTo([0, 1, 2]);
 
         // Verify correct start times
         var startTimes = shifts.Select(s => s.StartTime).Distinct().ToList();
@@ -456,7 +456,7 @@ public class ShiftManagementServiceTests : IDisposable
         results.Should().HaveCount(1);
         var signups = results[0].Signups;
         signups.Should().HaveCount(2);
-        signups.Select(s => s.DisplayName).Should().BeEquivalentTo(["Alice", "Bob"]);
+        signups.Select(s => s.DisplayName).Should().BeEquivalentTo("Alice", "Bob");
     }
 
     [HumansFact]
@@ -560,11 +560,10 @@ public class ShiftManagementServiceTests : IDisposable
         var results = await _service.GetBrowseShiftsAsync(es.Id, priorityOnly: true);
 
         // Assert: only the Important rota's shift and the understaffed Normal rota's shift remain.
-        results.Select(r => r.Shift.RotaId).Should().BeEquivalentTo(new[]
-        {
+        results.Select(r => r.Shift.RotaId).Should().BeEquivalentTo([
             importantRota.Id,
             understaffedRota.Id
-        });
+        ]);
     }
 
     // ============================================================

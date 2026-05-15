@@ -162,7 +162,7 @@ public class NotificationsArchitectureTests
 
             var rel = RatchetTestRunner.ToRelativePath(repoRoot, path);
             var ordinal = 0;
-            foreach (var match in NotificationWriteRegex.Matches(content).Cast<System.Text.RegularExpressions.Match>())
+            foreach (var match in NotificationWriteRegex.Matches(content).Cast<Match>())
             {
                 ordinal++;
                 var line = RatchetTestRunner.LineNumberAt(content, match.Index);

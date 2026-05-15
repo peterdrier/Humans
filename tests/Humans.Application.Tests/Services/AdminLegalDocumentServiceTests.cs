@@ -239,7 +239,7 @@ public class AdminLegalDocumentServiceTests : IDisposable
         public string? SyncResult { get; set; }
 
         public Task<IReadOnlyList<LegalDocument>> SyncAllDocumentsAsync(CancellationToken cancellationToken = default)
-            => Task.FromResult<IReadOnlyList<LegalDocument>>(Array.Empty<LegalDocument>());
+            => Task.FromResult<IReadOnlyList<LegalDocument>>([]);
 
         public Task<string?> SyncDocumentAsync(Guid documentId, CancellationToken cancellationToken = default)
         {
@@ -248,26 +248,26 @@ public class AdminLegalDocumentServiceTests : IDisposable
         }
 
         public Task<IReadOnlyList<LegalDocument>> CheckForUpdatesAsync(CancellationToken cancellationToken = default)
-            => Task.FromResult<IReadOnlyList<LegalDocument>>(Array.Empty<LegalDocument>());
+            => Task.FromResult<IReadOnlyList<LegalDocument>>([]);
 
         public Task<IReadOnlyList<LegalDocumentSnapshot>> GetActiveDocumentsAsync(CancellationToken cancellationToken = default)
-            => Task.FromResult<IReadOnlyList<LegalDocumentSnapshot>>(Array.Empty<LegalDocumentSnapshot>());
+            => Task.FromResult<IReadOnlyList<LegalDocumentSnapshot>>([]);
 
         public Task<IReadOnlyList<RequiredDocumentVersionSnapshot>> GetRequiredVersionsAsync(CancellationToken cancellationToken = default)
-            => Task.FromResult<IReadOnlyList<RequiredDocumentVersionSnapshot>>(Array.Empty<RequiredDocumentVersionSnapshot>());
+            => Task.FromResult<IReadOnlyList<RequiredDocumentVersionSnapshot>>([]);
 
         public Task<LegalDocumentVersionSnapshot?> GetVersionByIdAsync(Guid versionId, CancellationToken cancellationToken = default)
             => Task.FromResult<LegalDocumentVersionSnapshot?>(null);
 
         public Task<IReadOnlyList<RequiredDocumentVersionSnapshot>> GetRequiredDocumentVersionsForTeamAsync(Guid teamId, CancellationToken cancellationToken = default)
         {
-            return Task.FromResult<IReadOnlyList<RequiredDocumentVersionSnapshot>>(Array.Empty<RequiredDocumentVersionSnapshot>());
+            return Task.FromResult<IReadOnlyList<RequiredDocumentVersionSnapshot>>([]);
         }
 
         public Task<IReadOnlyList<ActiveRequiredLegalDocumentSnapshot>> GetActiveRequiredDocumentsForTeamsAsync(
             IReadOnlyCollection<Guid> teamIds, CancellationToken cancellationToken = default)
         {
-            return Task.FromResult<IReadOnlyList<ActiveRequiredLegalDocumentSnapshot>>(Array.Empty<ActiveRequiredLegalDocumentSnapshot>());
+            return Task.FromResult<IReadOnlyList<ActiveRequiredLegalDocumentSnapshot>>([]);
         }
     }
 }

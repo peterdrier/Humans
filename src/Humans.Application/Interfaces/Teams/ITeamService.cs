@@ -15,7 +15,9 @@ public record TeamInfo(
     bool HasBudget = false,
     bool IsSensitive = false,
     Instant? UpdatedAt = null,
-    string? CustomSlug = null);
+    string? CustomSlug = null,
+    IReadOnlySet<Guid>? ManagementRoleHolderUserIds = null,
+    IReadOnlyList<TeamRoleDefinitionSnapshot>? RoleDefinitions = null);
 
 public record TeamMemberInfo(
     Guid TeamMemberId, Guid UserId, string DisplayName,
@@ -183,6 +185,7 @@ public record TeamActiveMemberSnapshot(
 /// <remarks>
 /// Surface-budget recent history (newest first):
 /// <list type="bullet">
+///   <item>54→54 — added <c>TeamInfo.ManagementRoleHolderUserIds</c> + <c>TeamInfo.RoleDefinitions</c> projections; drained 6 readers off DB onto the team cache (<c>IsUserCoordinatorOfTeamAsync</c>, <c>GetUserCoordinatedTeamIdsAsync</c>, <c>GetEffectiveBudgetCoordinatorTeamIdsAsync</c>, <c>GetRoleDefinitionsAsync</c>, <c>GetAllRoleDefinitionsAsync</c>, <c>GetManagementRoleNamesByTeamIdsAsync</c>). Surface unchanged (external boundaries kept).</item>
 ///   <item>56→54 — drained GetSystemTeamWithActiveMembersAsync + GetActiveMembersForTeamsAsync onto TeamInfo cache.</item>
 ///   <item>61→56 — drained 5 name-lookup readers (GetTeamNameByGoogleGroupPrefixAsync, GetTeamNamesByIdsAsync, GetNonSystemTeamNamesByUserIdsAsync, GetActiveNonSystemTeamNamesByUserIdsAsync, IsUserMemberOfTeamAsync) onto TeamInfo cache.</item>
 ///   <item>66→61 — drained 5 coordinator readers (GetCoordinatorUserIdsAsync, GetActiveCoordinatorsForTeamsAsync, GetActiveNonSystemTeamCoordinatorUserIdsAsync, GetActiveDepartmentCoordinatorUserIdsAsync, IsActiveDepartmentCoordinatorAsync) onto TeamInfo cache.</item>
@@ -557,7 +560,7 @@ public interface ITeamService : IApplicationService
     /// <c>.Select(m =&gt; m.TeamName)</c>. Display ordering is the caller's
     /// responsibility (rendering layer).
     /// </summary>
-    Task<IReadOnlyList<Humans.Application.Models.TeamMembership>> GetActiveTeamMembershipsForUserAsync(
+    Task<IReadOnlyList<Models.TeamMembership>> GetActiveTeamMembershipsForUserAsync(
         Guid userId, CancellationToken cancellationToken = default);
 
     /// <summary>

@@ -293,7 +293,10 @@ public sealed class OnboardingService : IOnboardingService
     }
 
     // ==========================================================================
-    // Consent-check pending (shared: ConsentService + ProfileService call this)
+    // Consent-check pending threshold (peer-called from controllers after a
+    // ProfileService.SaveProfileAsync or ConsentService.SubmitConsentAsync write
+    // completes — the leaves do not invoke this directly; that was the inverted
+    // arrow that produced the DI cycle this PR removes).
     // ==========================================================================
 
     public async Task<bool> SetConsentCheckPendingIfEligibleAsync(

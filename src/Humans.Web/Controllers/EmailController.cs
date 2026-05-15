@@ -142,7 +142,7 @@ public class EmailController : HumansControllerBase
             var c4 = renderer.RenderSignupRejected(name, "Incomplete profile information", culture);
             items.Add(new EmailPreviewItem { Id = "signup-rejected", Name = "Signup Rejected", Recipient = email, Subject = c4.Subject, Body = c4.HtmlBody });
 
-            var c5 = renderer.RenderReConsentsRequired(name, new[] { sampleDocs[0] }, culture);
+            var c5 = renderer.RenderReConsentsRequired(name, [sampleDocs[0]], culture);
             items.Add(new EmailPreviewItem { Id = "reconsent-required", Name = "Re-Consent Required (single doc)", Recipient = email, Subject = c5.Subject, Body = c5.HtmlBody });
 
             var c6 = renderer.RenderReConsentsRequired(name, sampleDocs, culture);

@@ -48,14 +48,14 @@ public class CachingUserServiceTests
     private static UserInfo SampleUserInfo(Guid userId, string displayName = "Alice") =>
         UserInfo.Create(
             new User { Id = userId, DisplayName = displayName, PreferredLanguage = "en" },
-            userEmails: Array.Empty<UserEmail>(),
-            eventParticipations: Array.Empty<EventParticipation>(),
-            externalLogins: Array.Empty<(string, string)>(),
+            userEmails: [],
+            eventParticipations: [],
+            externalLogins: [],
             profile: null,
-            contactFields: Array.Empty<ContactField>(),
-            profileLanguages: Array.Empty<ProfileLanguage>(),
-            volunteerHistory: Array.Empty<VolunteerHistoryEntry>(),
-            communicationPreferences: Array.Empty<CommunicationPreference>());
+            contactFields: [],
+            profileLanguages: [],
+            volunteerHistory: [],
+            communicationPreferences: []);
 
     [HumansFact]
     public async Task GetUserInfoAsync_DictMiss_DelegatesToInnerAndCaches()
@@ -106,9 +106,9 @@ public class CachingUserServiceTests
         freshUser.DisplayName = "After";
         _userRepo.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(freshUser);
         _userEmailRepo.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<UserEmail>());
+            .Returns([]);
         _userRepo.GetEventParticipationsByUserIdAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<EventParticipation>());
+            .Returns([]);
         _userRepo.GetExternalLoginsByUserIdsAsync(
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, IReadOnlyList<(string Provider, string ProviderKey)>>());
@@ -163,9 +163,9 @@ public class CachingUserServiceTests
         freshUser.DisplayName = "After";
         _userRepo.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(freshUser);
         _userEmailRepo.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<UserEmail>());
+            .Returns([]);
         _userRepo.GetEventParticipationsByUserIdAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<EventParticipation>());
+            .Returns([]);
         _userRepo.GetExternalLoginsByUserIdsAsync(
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, IReadOnlyList<(string Provider, string ProviderKey)>>());
@@ -215,7 +215,7 @@ public class CachingUserServiceTests
         _userRepo.GetAllAsync(Arg.Any<CancellationToken>())
             .Returns(new List<User> { userA, userB });
         _userEmailRepo.GetAllAsync(Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<UserEmail>());
+            .Returns([]);
         _userRepo.GetExternalLoginsByUserIdsAsync(
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, IReadOnlyList<(string Provider, string ProviderKey)>>());
@@ -223,9 +223,9 @@ public class CachingUserServiceTests
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, IReadOnlyList<EventParticipation>>());
         _profileRepo.GetAllAsync(Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<Profile>());
+            .Returns([]);
         _contactFieldRepo.GetAllAsync(Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<ContactField>());
+            .Returns([]);
 
         var sut = CreateSut();
         await sut.WarmAllAsync();
@@ -328,15 +328,12 @@ public class CachingUserServiceTests
             };
 
         var fullInfo = UserInfo.Create(
-            user,
-            new[] { userEmail },
-            new[] { participation },
+            user, [userEmail], [participation],
             externalLogins,
-            profile,
-            new[] { contactField },
+            profile, [contactField],
             profile.Languages.ToList(),
             profile.VolunteerHistory.ToList(),
-            Array.Empty<CommunicationPreference>());
+            []);
 
         _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(fullInfo));
@@ -403,7 +400,7 @@ public class CachingUserServiceTests
         await sut.GetUserInfoAsync(u1);
         await sut.GetUserInfoAsync(u2);
 
-        var deleted = await sut.DeleteUsersAsync(new[] { u1, u2 });
+        var deleted = await sut.DeleteUsersAsync([u1, u2]);
 
         deleted.Should().Be(2);
 
@@ -444,7 +441,7 @@ public class CachingUserServiceTests
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
         };
 
-        var userEmails = (emails ?? Array.Empty<(string, bool, bool)>())
+        var userEmails = (emails ?? [])
             .Select(e => new UserEmail
             {
                 Id = Guid.NewGuid(),
@@ -473,7 +470,7 @@ public class CachingUserServiceTests
             RejectedAt = isRejected ? (Instant?)Instant.FromUtc(2026, 1, 1, 0, 0) : null,
         };
 
-        var cfRows = (contactFields ?? Array.Empty<(ContactFieldType, string, ContactFieldVisibility)>())
+        var cfRows = (contactFields ?? [])
             .Select((cf, i) => new ContactField
             {
                 Id = Guid.NewGuid(),
@@ -485,7 +482,7 @@ public class CachingUserServiceTests
             })
             .ToList();
 
-        var vhRows = (volunteerHistory ?? Array.Empty<(string, string?)>())
+        var vhRows = (volunteerHistory ?? [])
             .Select(v => new VolunteerHistoryEntry
             {
                 Id = Guid.NewGuid(),
@@ -498,12 +495,12 @@ public class CachingUserServiceTests
 
         return UserInfo.Create(
             user, userEmails,
-            eventParticipations: Array.Empty<EventParticipation>(),
-            externalLogins: Array.Empty<(string, string)>(),
+            eventParticipations: [],
+            externalLogins: [],
             profile, cfRows,
-            profileLanguages: Array.Empty<ProfileLanguage>(),
+            profileLanguages: [],
             volunteerHistory: vhRows,
-            communicationPreferences: Array.Empty<CommunicationPreference>());
+            communicationPreferences: []);
     }
 
     private async Task PrimeAsync(CachingUserService sut, UserInfo info)
@@ -661,7 +658,7 @@ public class CachingUserServiceTests
         await PrimeAsync(sut, BuildSearchableUserInfo(
             Guid.NewGuid(),
             burnerName: "Alice",
-            emails: new[] { ("alice@example.com", true, true) }));
+            emails: [("alice@example.com", true, true)]));
 
         var results = await sut.SearchUsersAsync("alice@example.com", PersonSearchFields.AdminAll);
 

@@ -16,7 +16,7 @@ public static class CalendarGridLayout
         // Determine each occurrence's local start/end dates (inclusive end for display).
         var multiDay = new List<BannerPlacement>();
         var singleDayByDow = new List<CalendarOccurrence>[7];
-        for (var i = 0; i < 7; i++) singleDayByDow[i] = new List<CalendarOccurrence>();
+        for (var i = 0; i < 7; i++) singleDayByDow[i] = [];
 
         // Sort: earliest-start, longest-duration first so banners stack deterministically.
         var ordered = weekOccurrences
@@ -84,7 +84,7 @@ public static class CalendarGridLayout
             if (!assigned && slots.Count < MaxBannerSlots)
             {
                 var idx = slots.Count;
-                slots.Add(new List<BannerPlacement> { b });
+                slots.Add([b]);
                 placed.Add(b with { SlotIndex = idx });
                 assigned = true;
             }

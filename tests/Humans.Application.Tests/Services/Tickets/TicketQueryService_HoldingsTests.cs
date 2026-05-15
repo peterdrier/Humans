@@ -43,9 +43,9 @@ public sealed class TicketQueryService_HoldingsTests
 
         // Default: no orders, no visible attendees
         _ticketRepo.GetOrdersMatchedToUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<TicketOrder>());
+            .Returns([]);
         _ticketRepo.GetAttendeesVisibleToUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<TicketAttendee>());
+            .Returns([]);
     }
 
     [HumansFact]
@@ -69,7 +69,7 @@ public sealed class TicketQueryService_HoldingsTests
         var order3 = new TicketOrder { Id = order3Id, MatchedUserId = UserB };
 
         _ticketRepo.GetOrdersMatchedToUserAsync(UserA, Arg.Any<CancellationToken>())
-            .Returns(new[] { order1, order2 });
+            .Returns([order1, order2]);
 
         // Order 1: attendee matched to UserA (counts), attendee unmatched (cascades to order buyer = UserA, counts)
         // Order 2: attendee matched to UserB (does NOT count for UserA)
@@ -108,13 +108,12 @@ public sealed class TicketQueryService_HoldingsTests
         };
 
         _ticketRepo.GetAttendeesVisibleToUserAsync(UserA, Arg.Any<CancellationToken>())
-            .Returns(new[]
-            {
+            .Returns([
                 attendeeMatchedA_Order1,
                 attendeeUnmatched_Order1,
                 attendeeMatchedB_Order2,
-                attendeeMatchedA_Order3,
-            });
+                attendeeMatchedA_Order3
+            ]);
 
         var result = await Service.GetUserTicketHoldingsAsync(UserA);
 
@@ -148,7 +147,7 @@ public sealed class TicketQueryService_HoldingsTests
         };
 
         _ticketRepo.GetAttendeesVisibleToUserAsync(UserA, Arg.Any<CancellationToken>())
-            .Returns(new[] { voided, active });
+            .Returns([voided, active]);
 
         var result = await Service.GetUserTicketHoldingsAsync(UserA);
 

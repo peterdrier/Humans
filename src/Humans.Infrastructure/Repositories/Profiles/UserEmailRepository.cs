@@ -211,7 +211,7 @@ public sealed class UserEmailRepository : IUserEmailRepository
     }
 
     public async Task<bool> MarkVerifiedAsync(
-        Guid emailId, NodaTime.Instant now, CancellationToken ct = default)
+        Guid emailId, Instant now, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         var email = await ctx.UserEmails.FirstOrDefaultAsync(e => e.Id == emailId, ct);

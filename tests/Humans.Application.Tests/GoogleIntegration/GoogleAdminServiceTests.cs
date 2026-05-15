@@ -98,7 +98,7 @@ public class GoogleAdminServiceTests
                     userId,
                     IsPrimary: true,
                     IsVerified: true,
-                    UpdatedAt: NodaTime.SystemClock.Instance.GetCurrentInstant())
+                    UpdatedAt: SystemClock.Instance.GetCurrentInstant())
             ]);
 
         var testUser = new User { Id = userId, DisplayName = "Test User" };
@@ -157,7 +157,7 @@ public class GoogleAdminServiceTests
         // collapse them rather than throw on the duplicate key.
         var verifiedUserId = Guid.NewGuid();
         var unverifiedUserId = Guid.NewGuid();
-        var now = NodaTime.SystemClock.Instance.GetCurrentInstant();
+        var now = SystemClock.Instance.GetCurrentInstant();
 
         _workspaceUserService.ListAccountsAsync(Arg.Any<CancellationToken>())
             .Returns([
@@ -177,7 +177,7 @@ public class GoogleAdminServiceTests
                     "dup@nobodies.team", verifiedUserId,
                     IsPrimary: true,
                     IsVerified: true,
-                    UpdatedAt: now - NodaTime.Duration.FromHours(1)),
+                    UpdatedAt: now - Duration.FromHours(1)),
             ]);
 
         var verifiedUser = new User { Id = verifiedUserId, DisplayName = "Verified User" };
@@ -285,7 +285,7 @@ public class GoogleAdminServiceTests
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
             Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
         await _auditLogService.DidNotReceive().LogAsync(
-            Arg.Any<Humans.Domain.Enums.AuditAction>(),
+            Arg.Any<AuditAction>(),
             Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<Guid?>(), Arg.Any<string?>());
@@ -521,7 +521,7 @@ public class GoogleAdminServiceTests
         // must not write a misleading "generated 0 codes" audit entry.
         _workspaceUserService.GenerateBackupCodesAsync(
                 Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<string>());
+            .Returns([]);
 
         var result = await _service.ResetPasswordAndGenerate2FaAsync(
             "alice@nobodies.team", _actorUserId);

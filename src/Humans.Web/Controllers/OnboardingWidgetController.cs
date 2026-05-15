@@ -29,6 +29,7 @@ public class OnboardingWidgetController : HumansControllerBase
     private readonly IShiftSignupService _signupService;
     private readonly IShiftManagementService _shiftMgmt;
     private readonly IConsentService _consents;
+    private readonly IOnboardingService _onboardingService;
     private readonly IUserService _userService;
     private readonly IStringLocalizer<SharedResource> _localizer;
 
@@ -39,6 +40,7 @@ public class OnboardingWidgetController : HumansControllerBase
         IShiftSignupService signupService,
         IShiftManagementService shiftMgmt,
         IConsentService consents,
+        IOnboardingService onboardingService,
         IStringLocalizer<SharedResource> localizer)
         : base(userService)
     {
@@ -47,6 +49,7 @@ public class OnboardingWidgetController : HumansControllerBase
         _signupService = signupService;
         _shiftMgmt = shiftMgmt;
         _consents = consents;
+        _onboardingService = onboardingService;
         _userService = userService;
         _localizer = localizer;
     }
@@ -112,6 +115,7 @@ public class OnboardingWidgetController : HumansControllerBase
             ProfilePictureData: null, ProfilePictureContentType: null, RemoveProfilePicture: false);
 
         await _profileService.SaveProfileAsync(userId, vm.BurnerName, request, language, ct);
+        await _onboardingService.SetConsentCheckPendingIfEligibleAsync(userId, ct);
 
         return RedirectToAction(nameof(Shifts));
     }
@@ -234,6 +238,10 @@ public class OnboardingWidgetController : HumansControllerBase
 
         var result = await _consents.SubmitConsentAsync(
             userId, documentVersionId, explicitConsent: true, ipAddress, userAgent, ct);
+
+        // Peer-call the director threshold check after a consent grant.
+        if (result.Success)
+            await _onboardingService.SetConsentCheckPendingIfEligibleAsync(userId, ct);
 
         if (!result.Success)
         {

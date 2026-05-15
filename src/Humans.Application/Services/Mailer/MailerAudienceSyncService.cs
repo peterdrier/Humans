@@ -55,7 +55,7 @@ public sealed class MailerAudienceSyncService(
 
         // Single audit-log read covering every audience; map by audience_key in memory.
         var auditEntries = await audit.GetFilteredEntriesAsync(
-            actions: new[] { AuditAction.MailerLiteAudienceSyncCompleted },
+            actions: [AuditAction.MailerLiteAudienceSyncCompleted],
             limit: 200,
             ct: ct);
 

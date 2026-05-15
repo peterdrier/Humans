@@ -193,9 +193,9 @@ public class ExpenseRepositoryTests
         var c = MakeReport(status: ExpenseReportStatus.Submitted); // not in batch
         await Seed(a, b, c);
 
-        var flipped = await _sut.MarkSepaSentAsync(new[] { a.Id, b.Id },
+        var flipped = await _sut.MarkSepaSentAsync([a.Id, b.Id],
             Instant.FromUtc(2026, 5, 4, 10, 0));
-        flipped.Should().BeEquivalentTo(new[] { a.Id, b.Id });
+        flipped.Should().BeEquivalentTo([a.Id, b.Id]);
 
         (await _sut.GetByIdAsync(a.Id))!.Status.Should().Be(ExpenseReportStatus.SepaSent);
         (await _sut.GetByIdAsync(b.Id))!.Status.Should().Be(ExpenseReportStatus.SepaSent);
@@ -213,7 +213,7 @@ public class ExpenseRepositoryTests
 
         var got = await _sut.GetUnprocessedOutboxAsync(limit: 10);
         got.Should().HaveCount(2);
-        got.Select(e => e.Id).Should().BeEquivalentTo(new[] { ev1.Id, ev4.Id });
+        got.Select(e => e.Id).Should().BeEquivalentTo([ev1.Id, ev4.Id]);
     }
 
     [HumansFact]

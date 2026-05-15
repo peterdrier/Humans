@@ -3,14 +3,13 @@ using NodaTime;
 using Humans.Application.DTOs;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Gdpr;
-using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Domain.Helpers;
 using Humans.Application.Interfaces.AuditLog;
-using Humans.Application.Interfaces.Users;
 using Humans.Application.Interfaces.Onboarding;
+using Humans.Application.Interfaces.Users;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Profiles;
 
@@ -28,9 +27,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
     private readonly IUserEmailRepository _userEmailRepository;
     private readonly IContactFieldRepository _contactFieldRepository;
     private readonly ICommunicationPreferenceRepository _communicationPreferenceRepository;
-    private readonly IOnboardingEligibilityQuery _onboardingEligibilityQuery;
     private readonly IAuditLogService _auditLogService;
-    private readonly IMembershipCalculator _membershipCalculator;
     private readonly IFileStorage _fileStorage;
     private readonly IClock _clock;
     private readonly ILogger<ProfileService> _logger;
@@ -55,9 +52,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         IUserEmailRepository userEmailRepository,
         IContactFieldRepository contactFieldRepository,
         ICommunicationPreferenceRepository communicationPreferenceRepository,
-        IOnboardingEligibilityQuery onboardingEligibilityQuery,
         IAuditLogService auditLogService,
-        IMembershipCalculator membershipCalculator,
         IFileStorage fileStorage,
         IClock clock,
         ILogger<ProfileService> logger)
@@ -67,20 +62,18 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         _userEmailRepository = userEmailRepository;
         _contactFieldRepository = contactFieldRepository;
         _communicationPreferenceRepository = communicationPreferenceRepository;
-        _onboardingEligibilityQuery = onboardingEligibilityQuery;
         _auditLogService = auditLogService;
-        _membershipCalculator = membershipCalculator;
         _fileStorage = fileStorage;
         _clock = clock;
         _logger = logger;
     }
 
-    public async Task<Domain.Entities.Profile?> GetProfileAsync(Guid userId, CancellationToken ct = default)
+    public async Task<Profile?> GetProfileAsync(Guid userId, CancellationToken ct = default)
     {
         return await _profileRepository.GetByUserIdReadOnlyAsync(userId, ct);
     }
 
-    public async Task<IReadOnlyDictionary<Guid, Domain.Entities.Profile>> GetByUserIdsAsync(
+    public async Task<IReadOnlyDictionary<Guid, Profile>> GetByUserIdsAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
         await _profileRepository.GetByUserIdsAsync(userIds, ct);
 
@@ -112,7 +105,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
             if (existing is not null) return;
 
             var now = _clock.GetCurrentInstant();
-            var profile = new Domain.Entities.Profile
+            var profile = new Profile
             {
                 Id = Guid.NewGuid(),
                 UserId = userId,
@@ -230,7 +223,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         var rows = await _profileRepository.GetCustomPictureRowsAsync(ct);
         if (rows.Count == 0)
         {
-            return new ProfilePictureMigrationSnapshot(0, 0, Array.Empty<ProfilePictureMigrationRow>());
+            return new ProfilePictureMigrationSnapshot(0, 0, []);
         }
 
         var users = await _userService.GetUserInfosAsync(rows.Select(r => r.UserId).ToList(), ct);
@@ -291,7 +284,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
             // populated (BurnerName/FirstName/LastName), giving the
             // ProfileService_UpdateProfileAsync_TransitionsStubToActive
             // behavior contract a single home.
-            profile = new Domain.Entities.Profile
+            profile = new Profile
             {
                 Id = Guid.NewGuid(),
                 UserId = userId,
@@ -405,9 +398,6 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         await _userService.UpdateDisplayNameAsync(userId, displayName, ct);
 
         // Cache invalidation and store update handled by CachingUserService decorator
-
-        // Check consent eligibility
-        await _onboardingEligibilityQuery.SetConsentCheckPendingIfEligibleAsync(userId, ct);
 
         _logger.LogInformation("User {UserId} updated their profile", userId);
 
@@ -596,7 +586,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         if (result is not ConsentCheckStatus.Cleared and not ConsentCheckStatus.Flagged)
         {
             throw new ArgumentException(
-                $"RecordConsentCheckAsync only accepts Cleared or Flagged; use SetConsentCheckPendingAsync for the system-driven Pending transition.",
+                "RecordConsentCheckAsync only accepts Cleared or Flagged; use SetConsentCheckPendingAsync for the system-driven Pending transition.",
                 nameof(result));
         }
 
@@ -622,7 +612,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
 
         await _auditLogService.LogAsync(
             cleared ? AuditAction.ConsentCheckCleared : AuditAction.ConsentCheckFlagged,
-            nameof(Domain.Entities.Profile), userId,
+            nameof(Profile), userId,
             cleared ? "Consent check cleared" : $"Consent check flagged: {notes}",
             reviewerId);
 
@@ -654,7 +644,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         await _profileRepository.UpdateAsync(profile, ct);
 
         await _auditLogService.LogAsync(
-            AuditAction.SignupRejected, nameof(Domain.Entities.Profile), userId,
+            AuditAction.SignupRejected, nameof(Profile), userId,
             $"Signup rejected{(string.IsNullOrWhiteSpace(reason) ? "" : $": {reason}")}",
             reviewerId);
 
@@ -848,7 +838,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
 
         await _auditLogService.LogAsync(
             isClearing ? AuditAction.IbanRemove : AuditAction.IbanSet,
-            nameof(Domain.Entities.Profile), userId,
+            nameof(Profile), userId,
             isClearing ? "IBAN removed" : "IBAN set",
             userId);
 

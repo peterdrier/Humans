@@ -491,6 +491,6 @@ public sealed class TicketRepositoryTests : IDisposable
 
         var result = await _repo.GetVendorTicketIdsForOrderAsync(orderId);
 
-        result.Should().BeEquivalentTo(new[] { "tkt_a", "tkt_b" });
+        result.Should().BeEquivalentTo("tkt_a", "tkt_b");
     }
 }

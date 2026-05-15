@@ -31,6 +31,6 @@
     }
     else
     {
-        @await Html.PartialAsync("_HumanSearchResults", (IReadOnlyList<Humans.Web.Models.HumanSearchResultViewModel>)Model.Results)
+        @await Html.PartialAsync("_HumanSearchResults", (IReadOnlyList<HumanSearchResultViewModel>)Model.Results)
     }
 }

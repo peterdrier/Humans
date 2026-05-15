@@ -1086,7 +1086,7 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
             var coordinatorIds = team?.Members
                 .Where(m => m.Role == TeamMemberRole.Coordinator)
                 .Select(m => m.UserId)
-                .ToList() ?? new List<Guid>();
+                .ToList() ?? [];
 
             if (coordinatorIds.Count == 0)
                 return;
@@ -1131,7 +1131,7 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
             var coordinatorIds = team?.Members
                 .Where(m => m.Role == TeamMemberRole.Coordinator)
                 .Select(m => m.UserId)
-                .ToList() ?? new List<Guid>();
+                .ToList() ?? [];
 
             if (coordinatorIds.Count == 0)
                 return;

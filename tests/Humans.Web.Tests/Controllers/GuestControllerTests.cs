@@ -69,8 +69,7 @@ public class GuestControllerTests
 
         var http = new DefaultHttpContext
         {
-            User = new ClaimsPrincipal(new ClaimsIdentity(
-                new[] { new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()) },
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, user.Id.ToString())],
                 "test")),
             RequestServices = new ServiceCollection()
                 .AddSingleton<ILoggerFactory>(NullLoggerFactory.Instance)

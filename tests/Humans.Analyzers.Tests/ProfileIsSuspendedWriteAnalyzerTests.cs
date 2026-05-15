@@ -16,7 +16,7 @@ public class ProfileIsSuspendedWriteAnalyzerTests
         """;
 
     private static bool IsHum0004(Microsoft.CodeAnalysis.Diagnostic d) =>
-        string.Equals(d.Id, ProfileIsSuspendedWriteAnalyzer.DiagnosticId, System.StringComparison.Ordinal);
+        string.Equals(d.Id, ProfileIsSuspendedWriteAnalyzer.DiagnosticId, StringComparison.Ordinal);
 
     [HumansFact]
     public async Task Fires_on_write_from_arbitrary_application_type()

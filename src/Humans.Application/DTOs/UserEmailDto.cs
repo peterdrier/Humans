@@ -60,5 +60,5 @@ public record VerifyEmailResult(string Email, bool MergeRequestCreated);
 public record UserEmailWithUser(
     Guid UserId,
     string Email,
-    Humans.Domain.Enums.ContactSource? ContactSource,
+    ContactSource? ContactSource,
     NodaTime.Instant? LastLoginAt);

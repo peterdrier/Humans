@@ -88,7 +88,7 @@ public class ProfileAdminController : HumansControllerBase
         var info2 = await _users.GetUserInfoAsync(userId2, ct);
 
         IReadOnlyList<UserEmailInfo> Emails(UserInfo? info) =>
-            info?.UserEmails ?? Array.Empty<UserEmailInfo>();
+            info?.UserEmails ?? [];
 
         var sharedEmail = Emails(info1)
             .Select(e => e.Email)
