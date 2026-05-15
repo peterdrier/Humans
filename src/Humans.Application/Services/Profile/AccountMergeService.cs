@@ -149,6 +149,7 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
         Guid? RelatedEntityId = null,
         string? RelatedEntityType = null);
 
+#pragma warning disable CS0618 // Cross-domain nav read: AccountMergeRequest.{TargetUser,SourceUser,ResolvedByUser} are included on this read path; resolving via IUserService here would be N+1 across the admin list view.
     private static AccountMergeRequestSnapshot ToSnapshot(AccountMergeRequest request) =>
         new(
             request.Id,
@@ -160,6 +161,7 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
             request.ResolvedAt,
             request.ResolvedByUser?.DisplayName,
             request.AdminNotes);
+#pragma warning restore CS0618
 
     private static AccountMergeUserSnapshot ToUserSnapshot(User user) =>
         new(

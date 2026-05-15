@@ -106,7 +106,7 @@ public interface IExpenseReportService : IApplicationService
     Task<bool> WithdrawAsync(
         Guid reportId, Guid submitterUserId, CancellationToken ct = default);
 
-    
+
     Task<ExpenseMutationResult> WithdrawWithResultAsync(
         Guid reportId, Guid submitterUserId, CancellationToken ct = default);
 

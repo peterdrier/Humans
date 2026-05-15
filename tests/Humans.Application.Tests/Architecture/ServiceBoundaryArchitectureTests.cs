@@ -19,6 +19,7 @@ public class ServiceBoundaryArchitectureTests
         new Dictionary<Type, string>
         {
             [typeof(IAccountMergeRepository)] = "Humans",
+            [typeof(IAdminDatabaseDiagnosticsRepository)] = "Admin",
             [typeof(IAgentRepository)] = "Agent",
             [typeof(IApplicationRepository)] = "Governance",
             [typeof(IAuditLogRepository)] = "AuditLog",

@@ -278,7 +278,7 @@ public class ConsentServiceTests : IDisposable
             _ = _syncJob.SyncMembershipForUserAsync(userId, SystemTeamType.Volunteers, Arg.Any<CancellationToken>());
             _ = _shiftSignupService.PromoteWidgetPendingSignupsAfterAdmissionAsync(userId, Arg.Any<CancellationToken>());
             _ = _syncJob.SyncMembershipForUserAsync(userId, SystemTeamType.Coordinators, Arg.Any<CancellationToken>());
-            });
+        });
     }
 
     private static ActiveRequiredLegalDocumentSnapshot ToActiveRequiredDocumentSnapshot(LegalDocument document) =>

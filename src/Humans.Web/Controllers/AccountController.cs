@@ -575,10 +575,12 @@ public class AccountController : HumansControllerBase
             displayName,
             HttpContext.RequestAborted);
 
+#pragma warning disable CS0618 // result.User is a record field on MagicLinkSignupCompletionResult, not a cross-domain nav read; arch test pattern-matches the literal `.User`.
         if (result.User is null)
             return View("MagicLinkError");
 
         await _signInManager.SignInAsync(result.User, isPersistent: false);
+#pragma warning restore CS0618
 
         return RedirectToLocal(returnUrl);
     }

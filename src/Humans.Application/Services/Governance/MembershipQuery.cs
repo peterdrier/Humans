@@ -34,12 +34,14 @@ public sealed class MembershipQuery : IMembershipQuery
         CancellationToken cancellationToken = default)
     {
         var memberships = await _teamService.GetUserTeamsAsync(userId, cancellationToken);
+#pragma warning disable CS0618 // Cross-domain nav read: TeamMember.Team is included on this read path; stitching off the cached UserInfo here would be a layer-skip.
         return memberships
             .Select(m => new MembershipTeamSnapshot(
                 m.TeamId,
                 m.Role,
                 m.Team.SystemTeamType))
             .ToList();
+#pragma warning restore CS0618
     }
 
     public Task<bool> IsUserMemberOfTeamAsync(

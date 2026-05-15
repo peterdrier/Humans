@@ -180,8 +180,8 @@ public sealed class ConsentService : IConsentService, IUserDataContributor
             : await _repo.GetByUserIdsAndVersionAsync(chainIds, documentVersionId, ct);
 
         // Cross-section lookup: profile is owned by Profiles section. Route
-        // through the UserInfo cached read-model rather than querying
-        // _dbContext.Profiles.
+        // through the UserInfo cached read-model rather than reading from
+        // the Profile DbSet directly.
         var profile = (await _userService.GetUserInfoAsync(userId, ct))?.Profile;
 
         return new ConsentReviewDetail(

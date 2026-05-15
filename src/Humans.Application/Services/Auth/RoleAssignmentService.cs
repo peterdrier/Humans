@@ -33,9 +33,9 @@ namespace Humans.Application.Services.Auth;
 /// same rationale as Governance / Feedback. The service stitches display
 /// data in memory onto the <see cref="RoleAssignment"/> entity's (now
 /// <c>[Obsolete]</c>) cross-domain navigation properties so existing
-/// controllers and views can continue to read <c>ra.User.DisplayName</c>,
-/// <c>ra.CreatedByUser.DisplayName</c>, etc. without change — this is the
-/// "in-memory join" from design-rules §6b.
+/// controllers and views can continue to read assignee / creator display
+/// names without change — this is the "in-memory join" from
+/// design-rules §6b.
 /// </remarks>
 public sealed class RoleAssignmentService : IRoleAssignmentService, IUserDataContributor, IUserMerge
 {

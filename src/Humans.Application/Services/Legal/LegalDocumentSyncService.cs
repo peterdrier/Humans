@@ -200,6 +200,7 @@ public sealed class LegalDocumentSyncService : ILegalDocumentSyncService
         return documents.Select(ToActiveRequiredDocumentSnapshot).ToList();
     }
 
+#pragma warning disable CS0618 // Cross-domain nav read: LegalDocument.Team is included on this read path; stitching off the cached UserInfo here would be a layer-skip.
     private static ActiveRequiredLegalDocumentSnapshot ToActiveRequiredDocumentSnapshot(LegalDocument document) =>
         new(
             document.Id,
@@ -208,6 +209,7 @@ public sealed class LegalDocumentSyncService : ILegalDocumentSyncService
             document.Team.Name,
             document.LastSyncedAt,
             document.Versions.Select(ToVersionSnapshot).ToList());
+#pragma warning restore CS0618
 
     private static LegalDocumentSnapshot ToDocumentSnapshot(LegalDocument document) =>
         new(

@@ -266,7 +266,7 @@ public class OnboardingWidgetControllerConsentsTests
         };
         _consents.GetRequiredConsentRowsForUserAsync(
                 userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
-            .Returns(rows);        _consents.GetConsentReviewDetailAsync(unsignedId, userId, Arg.Any<CancellationToken>())
+            .Returns(rows); _consents.GetConsentReviewDetailAsync(unsignedId, userId, Arg.Any<CancellationToken>())
             .Returns(new ConsentReviewDetail(
                 unsignedId,
                 "Privacy Policy",

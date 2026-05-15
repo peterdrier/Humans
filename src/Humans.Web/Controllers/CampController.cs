@@ -311,7 +311,7 @@ public class CampController : HumansCampControllerBase
                 model.Name,
                 model.ContactEmail,
                 model.ContactPhone,
-                null, // WebOrSocialUrl legacy — new registrations/edits use Links
+                null, // WebOrSocialUrl legacy ï¿½ new registrations/edits use Links
                 campLinks,
                 model.IsSwissCamp,
                 model.TimesAtNowhere,
@@ -523,7 +523,8 @@ public class CampController : HumansCampControllerBase
         }
 
         SetSuccess("Camp updated successfully.");
-        return RedirectToAction(nameof(Edit), new { slug });    }
+        return RedirectToAction(nameof(Edit), new { slug });
+    }
 
     // ======================================================================
     // Season opt-in
@@ -908,7 +909,7 @@ public class CampController : HumansCampControllerBase
 
         try
         {
-            // Scope by the authorized camp.Id — service rejects cross-camp member ids.
+            // Scope by the authorized camp.Id ï¿½ service rejects cross-camp member ids.
             await _campService.ApproveCampMemberAsync(camp.Id, campMemberId, user.Id);
             SetSuccess("Membership approved.");
         }
@@ -990,7 +991,7 @@ public class CampController : HumansCampControllerBase
             SetError("Cannot grant Early Entry: slot cap reached for this camp.");
         else if (outcome == SetEarlyEntryOutcome.MemberNotActive)
             SetError("Only Active camp members can hold Early Entry.");
-        // NoChange: silent — UI already reflected the state.
+        // NoChange: silent ï¿½ UI already reflected the state.
     }
 
     [Authorize]
@@ -1046,7 +1047,7 @@ public class CampController : HumansCampControllerBase
     /// Search-driven assign: takes a userId from the human-search typeahead. If the
     /// human isn't yet a camp member, they're added as Active first (idempotent), then
     /// the role is assigned. One UI action covers both "assign existing member" and
-    /// "add this human and assign them" — see issue request from Frank, May 2026.
+    /// "add this human and assign them" ï¿½ see issue request from Frank, May 2026.
     /// </summary>
     [Authorize]
     [HttpPost("{slug}/Roles/AssignByUser")]

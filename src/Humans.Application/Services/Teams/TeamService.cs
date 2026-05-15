@@ -2013,6 +2013,7 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
             })
         }).ToList());
 
+#pragma warning disable CS0618 // TeamJoinRequest.Team is included on this read path; in-section nav read for the GDPR export projection.
         var joinRequestSlice = new UserDataSlice(GdprExportSections.TeamJoinRequests, joinRequests.Select(tjr => new
         {
             TeamName = tjr.Team.Name,
@@ -2021,6 +2022,7 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
             RequestedAt = tjr.RequestedAt.ToInvariantInstantString(),
             ResolvedAt = tjr.ResolvedAt.ToInvariantInstantString()
         }).ToList());
+#pragma warning restore CS0618
 
         return [membershipSlice, joinRequestSlice];
     }
@@ -2097,9 +2099,11 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
     private static bool IsShiftAuthorizationAssignment(TeamRoleAssignment assignment) =>
         IsShiftAuthorizationDefinition(assignment.TeamRoleDefinition);
 
+#pragma warning disable CS0618 // TeamRoleDefinition.Team is included on this read path; in-section nav read.
     private static bool IsShiftAuthorizationDefinition(TeamRoleDefinition definition) =>
         definition.IsManagement &&
         definition.Team.SystemTeamType == SystemTeamType.None;
+#pragma warning restore CS0618
 
     // ==========================================================================
     // Internal helpers — user stitching
@@ -2417,6 +2421,7 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
         Role: member.Role,
         JoinedAt: member.JoinedAt);
 
+#pragma warning disable CS0618 // TeamJoinRequest.Team is included on this read path; in-section nav read for snapshot projections.
     private static TeamJoinRequestSnapshot ToJoinRequestSnapshot(TeamJoinRequest request) => new(
         request.Id,
         request.TeamId,
@@ -2450,6 +2455,7 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
             request.ResolvedAt,
             request.ReviewNotes);
     }
+#pragma warning restore CS0618
 
     private static string GetMemberDisplayName(
         TeamMember member,
@@ -2509,6 +2515,7 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
         CancellationToken cancellationToken = default)
     {
         var memberships = await _repo.GetActiveMembershipsForRoleReconciliationAsync(cancellationToken);
+#pragma warning disable CS0618 // TeamMember.Team is included on this read path; in-section nav read for the reconciliation snapshot.
         return memberships
             .Select(member => new TeamRoleReconciliationMembership(
                 member.Id,
@@ -2519,6 +2526,7 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
                 member.Team.SystemTeamType,
                 member.RoleAssignments.Any(assignment => assignment.TeamRoleDefinition.IsManagement)))
             .ToList();
+#pragma warning restore CS0618
     }
 
     public async Task<int> ApplyMemberRoleChangesAsync(

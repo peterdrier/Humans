@@ -1537,7 +1537,7 @@ public class ProfileController : HumansControllerBase
         {
             var user = await GetCurrentUserAsync();
             if (user is null)
-                return NotFound();            var profile = await _shiftMgmt.GetShiftProfileAsync(user.Id, includeMedical: false);
+                return NotFound(); var profile = await _shiftMgmt.GetShiftProfileAsync(user.Id, includeMedical: false);
             return View(ShiftInfoViewModel.FromProfile(profile));
         }
         catch (Exception ex)

@@ -422,12 +422,12 @@ public sealed class ExpensesController : HumansControllerBase
 
         var report = await _service.GetAsync(id);
         if (report is null) return NotFound();
-        if (report.SubmitterUserId != user.Id) return Forbid();        var result = await _service.WithdrawWithResultAsync(id, user.Id);
+        if (report.SubmitterUserId != user.Id) return Forbid(); var result = await _service.WithdrawWithResultAsync(id, user.Id);
         if (result.Succeeded)
             SetSuccess("Report withdrawn.");
         else
             SetError(result.ErrorMessage ?? "Could not withdraw this report.");
-return RedirectToAction(nameof(Detail), new { id });
+        return RedirectToAction(nameof(Detail), new { id });
     }
 
     // ───────────────────────────── 6.7  IBAN modal ───────────────────────────
