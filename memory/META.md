@@ -27,6 +27,12 @@ Two goals drive the structure, and both are non-negotiable:
 
 **The mental model:** `design-rules.md` is the constitution. `memory/*.md` are the case law. `CLAUDE.md` is the table of contents.
 
+### What `memory/` is NOT for
+
+- **Not ADRs / design decisions / narrative-history.** Atoms are "when doing X, do Y." Decision rationale ("we chose X over Y because Z") is a different genre — it belongs in `design-rules.md` (architecture-level) or `conventions.md` (pattern-level), and either way it carries weight that needs human review before landing. Don't auto-create memory atoms that are really ADRs in disguise.
+- **Not session ephemera.** In-flight investigation notes, current task state, "what we tried today" — those die at end of conversation. Atoms are durable across sessions and machines.
+- **Not the dumping ground for "this might be useful someday."** Every atom pays a small attention tax via `INDEX.md`. If you can't say in one line when a future-you would need this rule to fire, it doesn't belong here yet.
+
 ## Buckets
 
 Atoms live under one of four buckets. Pick by *primary* purpose:

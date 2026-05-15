@@ -94,7 +94,11 @@ Goal: every sweep shrinks the historical-doc pile by ~5% (soft target, hard cap 
 2. **Identify wheat** — durable signal: design decisions with rationale, rejected alternatives that explain why current behavior is the way it is, gotchas, negative-space rules, vendor/library selection rationale, external-system quirks.
 3. **Identify chaff** — data model tables (code is the spec), implementation task lists, code samples already in src/, status/date markers, restatements of obvious behavior, glossary etymology, "we will/might do X" speculation.
 4. **De-duplicate against target.** If the wheat is already in the target doc, drop it.
-5. **Genre-check.** `docs/sections/*.md` follows `SECTION-TEMPLATE.md`: invariants only, no rationale narrative. Rationale goes in `docs/architecture/design-rules.md` (architecture-level decisions), `docs/architecture/conventions.md` (pattern definitions), or a memory atom under `memory/decisions/` (single-decision ADRs). Pick the destination that matches the wheat's genre.
+5. **Genre-check against EXISTING destinations only.** Allowed:
+   - `docs/sections/*.md` — section invariants only, no rationale narrative (per `SECTION-TEMPLATE.md`)
+   - `docs/architecture/design-rules.md` — architecture-level decisions that extend the constitution
+   - `docs/architecture/conventions.md` — pattern definitions (when to use X, naming, etc.)
+   - **Never** create new design docs, ADR files, or `memory/` atoms during a sweep. `memory/` is for **atomic task-fires rules**, not for narrative-history-of-decisions, and design docs carry weight that needs Peter's review. If wheat doesn't fit one of the three allowed destinations, **flag for Peter** in the report's "Proposed for review" section with the proposed text — do not invent a destination.
 6. **Migrate** the wheat with a `<!-- wheat: <source path> §<section> -->` provenance comment. Preserve original prose voice.
 7. **Scan for inbound refs** to the historical doc across all `.md` files. For each ref:
    - If from a living doc (sections, features, guide, architecture): retarget to the destination of the migrated wheat.
