@@ -11,6 +11,8 @@ using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using static Humans.Web.Helpers.EventsLookupHelpers;
 
+using Humans.Application.Interfaces.Users;
+
 namespace Humans.Web.Controllers;
 
 [Authorize(Roles = RoleGroups.EventsAdminOrAdmin)]
@@ -21,8 +23,8 @@ public class EventsDashboardController : HumansControllerBase
     private readonly IEventService _guide;
     private readonly ICampService _camps;
 
-    public EventsDashboardController(IEventService guide, ICampService camps, UserManager<User> userManager)
-        : base(userManager)
+    public EventsDashboardController(IEventService guide, ICampService camps, IUserService userService)
+        : base(userService)
     {
         _guide = guide;
         _camps = camps;

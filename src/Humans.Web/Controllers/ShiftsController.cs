@@ -42,11 +42,10 @@ public class ShiftsController : HumansControllerBase
         IAuditLogService auditLogService,
         IUserService userService,
         IStringLocalizer<SharedResource> localizer,
-        UserManager<User> userManager,
         IClock clock,
         ShiftBrowsePageBuilder browsePageBuilder,
         ILogger<ShiftsController> logger)
-        : base(userManager)
+        : base(userService)
     {
         _shiftMgmt = shiftMgmt;
         _signupService = signupService;
@@ -296,14 +295,13 @@ public class ShiftsController : HumansControllerBase
             model.AvailableDayOffsets = availability.AvailableDayOffsets.ToList();
     }
 
-    private async Task EnsureICalUrlAsync(MyShiftsViewModel model, User user)
+    private async Task EnsureICalUrlAsync(MyShiftsViewModel model, UserInfo user)
     {
         var token = user.ICalToken;
         if (token is null)
         {
             token = Guid.NewGuid();
             await _userService.SetICalTokenAsync(user.Id, token.Value);
-            user.ICalToken = token;
         }
 
         model.ICalUrl = $"{Request.Scheme}://{Request.Host}/ICal/{token}.ics";

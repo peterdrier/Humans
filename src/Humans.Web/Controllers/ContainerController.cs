@@ -8,6 +8,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
+using Humans.Application.Interfaces.Users;
+
 namespace Humans.Web.Controllers;
 
 [Authorize]
@@ -25,9 +27,9 @@ public class ContainerController : HumansControllerBase
         IContainerService containerService,
         ICityPlanningService cityPlanningService,
         IAuthorizationService authorizationService,
-        UserManager<User> userManager,
+        IUserService userService,
         ILogger<ContainerController> logger)
-        : base(userManager)
+        : base(userService)
     {
         _campService = campService;
         _containerService = containerService;

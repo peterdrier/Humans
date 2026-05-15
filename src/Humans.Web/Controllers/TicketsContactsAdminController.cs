@@ -7,6 +7,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
+using Humans.Application.Interfaces.Users;
+
 namespace Humans.Web.Controllers;
 
 [Authorize(Policy = PolicyNames.TicketAdminOrAdmin)]
@@ -18,9 +20,9 @@ public sealed class TicketsContactsAdminController : HumansControllerBase
 
     public TicketsContactsAdminController(
         IAttendeeContactImportService import,
-        UserManager<User> userManager,
+        IUserService userService,
         ILogger<TicketsContactsAdminController> logger)
-        : base(userManager)
+        : base(userService)
     {
         _import = import;
         _logger = logger;
@@ -54,7 +56,7 @@ public sealed class TicketsContactsAdminController : HumansControllerBase
             return RedirectToAction(nameof(Index));
         }
 
-        var actor = await GetCurrentUserAsync();
+        var actor = await GetCurrentUserInfoAsync();
         if (actor is null)
         {
             SetError("Could not resolve current user.");

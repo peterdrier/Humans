@@ -7,6 +7,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
+using Humans.Application.Interfaces.Users;
+
 namespace Humans.Web.Controllers;
 
 [Authorize]
@@ -24,9 +26,9 @@ public class DevSeedController : HumansControllerBase
         IConfiguration configuration,
         ConfigurationRegistry configRegistry,
         IServiceProvider serviceProvider,
-        UserManager<User> userManager,
+        IUserService userService,
         ILogger<DevSeedController> logger)
-        : base(userManager)
+        : base(userService)
     {
         _environment = environment;
         _configuration = configuration;

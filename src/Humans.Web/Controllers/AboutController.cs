@@ -1,12 +1,11 @@
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
-using Humans.Domain.Entities;
 using Humans.Web.Helpers;
 using Humans.Web.Models;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Users;
 
 // RoleAssignment cross-domain nav properties (User, CreatedByUser) are [Obsolete] —
 // RoleAssignmentService stitches them in memory from IUserService so controllers can
@@ -25,12 +24,12 @@ public class AboutController : HumansControllerBase
     private readonly ILogger<AboutController> _logger;
 
     public AboutController(
-        UserManager<User> userManager,
+        IUserService userService,
         IRoleAssignmentService roleAssignmentService,
         IProfileService profileService,
         IClock clock,
         ILogger<AboutController> logger)
-        : base(userManager)
+        : base(userService)
     {
         _roleAssignmentService = roleAssignmentService;
         _profileService = profileService;

@@ -8,6 +8,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
+using Humans.Application.Interfaces.Users;
+
 namespace Humans.Web.Controllers;
 
 [Authorize(Policy = PolicyNames.TicketAdminOrAdmin)]
@@ -21,9 +23,9 @@ public sealed class TicketTransferAdminController : HumansControllerBase
     public TicketTransferAdminController(
         ITicketTransferService service,
         ITicketQueryService ticketQueryService,
-        UserManager<User> userManager,
+        IUserService userService,
         ILogger<TicketTransferAdminController> logger)
-        : base(userManager)
+        : base(userService)
     {
         _service = service;
         _ticketQueryService = ticketQueryService;

@@ -48,7 +48,6 @@ public class TeamController : HumansControllerBase
     public TeamController(
         ITeamService teamService,
         ITeamPageService teamPageService,
-        UserManager<User> userManager,
         IProfileService profileService,
         IUserService userService,
         INotificationService notificationService,
@@ -59,7 +58,7 @@ public class TeamController : HumansControllerBase
         ConfigurationRegistry configRegistry,
         IClock clock,
         ILogger<TeamController> logger)
-        : base(userManager)
+        : base(userService)
     {
         _teamService = teamService;
         _teamPageService = teamPageService;
@@ -79,7 +78,7 @@ public class TeamController : HumansControllerBase
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken ct)
     {
-        var user = await GetCurrentUserAsync();
+        var user = await GetCurrentUserInfoAsync(ct);
         var hasProfile = User.HasClaim(
             RoleAssignmentClaimsTransformation.HasProfileClaimType,
             RoleAssignmentClaimsTransformation.ActiveClaimValue);
@@ -135,7 +134,7 @@ public class TeamController : HumansControllerBase
     [HttpGet("{slug}")]
     public async Task<IActionResult> Details(string slug, CancellationToken ct)
     {
-        var user = await GetCurrentUserAsync();
+        var user = await GetCurrentUserInfoAsync(ct);
         var hasProfile = User.HasClaim(
             RoleAssignmentClaimsTransformation.HasProfileClaimType,
             RoleAssignmentClaimsTransformation.ActiveClaimValue);
@@ -733,7 +732,7 @@ public class TeamController : HumansControllerBase
         try
         {
             var team = await _teamService.CreateTeamAsync(model.Name, model.Description, model.RequiresApproval, model.ParentTeamId, model.GoogleGroupPrefix, model.IsHidden);
-            var currentUser = await GetCurrentUserAsync();
+            var currentUser = await GetCurrentUserInfoAsync();
             _logger.LogInformation("Admin {AdminId} created team {TeamId} ({TeamName})", currentUser?.Id, team.Id, team.Name);
 
             if (!string.IsNullOrEmpty(model.GoogleGroupPrefix))
@@ -830,7 +829,7 @@ public class TeamController : HumansControllerBase
         try
         {
             await _teamService.UpdateTeamAsync(id, model.Name, model.Description, model.RequiresApproval, model.IsActive, model.ParentTeamId, model.GoogleGroupPrefix, model.CustomSlug, model.HasBudget, model.IsHidden, model.IsSensitive, model.IsPromotedToDirectory);
-            var currentUser = await GetCurrentUserAsync();
+            var currentUser = await GetCurrentUserInfoAsync();
             _logger.LogInformation("Admin {AdminId} updated team {TeamId}", currentUser?.Id, id);
 
             // Handles prefix set, changed, or cleared (deactivates old resource if needed)
@@ -893,7 +892,7 @@ public class TeamController : HumansControllerBase
         try
         {
             await _teamService.DeleteTeamAsync(id);
-            var currentUser = await GetCurrentUserAsync();
+            var currentUser = await GetCurrentUserInfoAsync();
             _logger.LogInformation("Admin {AdminId} deactivated team {TeamId}", currentUser?.Id, id);
 
             SetSuccess(_localizer["Admin_TeamDeactivated"].Value);

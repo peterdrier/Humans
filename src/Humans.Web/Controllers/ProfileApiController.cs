@@ -2,13 +2,11 @@ using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Profiles;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Extensions;
 using Humans.Web.Helpers;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Web.Controllers;
@@ -29,9 +27,8 @@ public class ProfileApiController : ApiControllerBase
         IProfileService profileService,
         IUserService userService,
         IContactFieldService contactFieldService,
-        IUserEmailService userEmailService,
-        UserManager<User> userManager)
-        : base(userManager)
+        IUserEmailService userEmailService)
+        : base(userService)
     {
         _profileService = profileService;
         _userService = userService;

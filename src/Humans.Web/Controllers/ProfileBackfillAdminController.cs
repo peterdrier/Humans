@@ -40,11 +40,10 @@ public sealed class ProfileBackfillAdminController : HumansControllerBase
     private readonly ILogger<ProfileBackfillAdminController> _logger;
 
     public ProfileBackfillAdminController(
-        UserManager<User> userManager,
         IUserService userService,
         IProfileService profileService,
         ILogger<ProfileBackfillAdminController> logger)
-        : base(userManager)
+        : base(userService)
     {
         _userService = userService;
         _profileService = profileService;

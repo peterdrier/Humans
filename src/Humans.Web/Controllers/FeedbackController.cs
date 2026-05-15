@@ -29,10 +29,9 @@ public class FeedbackController : HumansControllerBase
         ITeamService teamService,
         IProfileService profileService,
         IUserService userService,
-        UserManager<User> userManager,
         IStringLocalizer<SharedResource> localizer,
         ILogger<FeedbackController> logger)
-        : base(userManager)
+        : base(userService)
     {
         _feedbackService = feedbackService;
         _teamService = teamService;
@@ -199,7 +198,10 @@ public class FeedbackController : HumansControllerBase
 
         try
         {
-            var roles = await UserManager.GetRolesAsync(user);
+            var roles = User.Claims
+                .Where(c => string.Equals(c.Type, System.Security.Claims.ClaimTypes.Role, StringComparison.Ordinal))
+                .Select(c => c.Value)
+                .ToList();
 
             await _feedbackService.SubmitUserFeedbackAsync(
                 user.Id, model.Category, model.Description,

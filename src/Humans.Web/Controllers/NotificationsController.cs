@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
 
+using Humans.Application.Interfaces.Users;
+
 namespace Humans.Web.Controllers;
 
 [Authorize]
@@ -18,10 +20,10 @@ public class NotificationsController : HumansControllerBase
 
     public NotificationsController(
         INotificationInboxService inboxService,
-        UserManager<User> userManager,
+        IUserService userService,
         INotificationMeterProvider meterProvider,
         IStringLocalizer<SharedResource> localizer)
-        : base(userManager)
+        : base(userService)
     {
         _inboxService = inboxService;
         _meterProvider = meterProvider;

@@ -9,6 +9,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 
+using Humans.Application.Interfaces.Users;
+
 namespace Humans.Web.Controllers;
 
 [Authorize(Policy = PolicyNames.CampAdminOrAdmin)]
@@ -29,9 +31,9 @@ public class CampAdminController : HumansControllerBase
         ICityPlanningService cityPlanningService,
         CampAdminPageBuilder campAdminPageBuilder,
         CampCsvExportBuilder campCsvExportBuilder,
-        UserManager<User> userManager,
+        IUserService userService,
         ILogger<CampAdminController> logger)
-        : base(userManager)
+        : base(userService)
     {
         _campService = campService;
         _campRoleService = campRoleService;
@@ -60,7 +62,7 @@ public class CampAdminController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Approve(Guid seasonId, string? notes)
     {
-        var user = await GetCurrentUserAsync();
+        var user = await GetCurrentUserInfoAsync();
         if (user is null) return Unauthorized();
 
         try
@@ -81,7 +83,7 @@ public class CampAdminController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Reject(Guid seasonId, string notes)
     {
-        var user = await GetCurrentUserAsync();
+        var user = await GetCurrentUserInfoAsync();
         if (user is null) return Unauthorized();
 
         if (string.IsNullOrWhiteSpace(notes))
@@ -184,7 +186,7 @@ public class CampAdminController : HumansControllerBase
     public async Task<IActionResult> SetCampSeasonEeSlotCount(
         Guid seasonId, int slotCount, CancellationToken cancellationToken)
     {
-        var user = await GetCurrentUserAsync();
+        var user = await GetCurrentUserInfoAsync();
         if (user is null) return Unauthorized();
 
         try
@@ -215,7 +217,7 @@ public class CampAdminController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SetEeStartDate(string? eeStartDate, CancellationToken cancellationToken)
     {
-        var user = await GetCurrentUserAsync();
+        var user = await GetCurrentUserInfoAsync();
         if (user is null) return Unauthorized();
 
         var (ok, parsed, parseError) = TryParseEeStartDate(eeStartDate);
@@ -351,7 +353,7 @@ public class CampAdminController : HumansControllerBase
         if (!ModelState.IsValid)
             return View("RoleForm", form);
 
-        var user = await GetCurrentUserAsync();
+        var user = await GetCurrentUserInfoAsync();
         if (user is null) return Unauthorized();
 
         try
@@ -399,7 +401,7 @@ public class CampAdminController : HumansControllerBase
         if (!ModelState.IsValid)
             return View("RoleForm", form);
 
-        var user = await GetCurrentUserAsync();
+        var user = await GetCurrentUserInfoAsync();
         if (user is null) return Unauthorized();
 
         try
@@ -431,7 +433,7 @@ public class CampAdminController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeactivateRole(Guid id, CancellationToken ct)
     {
-        var user = await GetCurrentUserAsync();
+        var user = await GetCurrentUserInfoAsync();
         if (user is null) return Unauthorized();
 
         try
@@ -452,7 +454,7 @@ public class CampAdminController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ReactivateRole(Guid id, CancellationToken ct)
     {
-        var user = await GetCurrentUserAsync();
+        var user = await GetCurrentUserInfoAsync();
         if (user is null) return Unauthorized();
 
         try

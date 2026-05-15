@@ -11,6 +11,9 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 
+using Humans.Application.Interfaces.Users;
+using Humans.Application;
+
 namespace Humans.Web.Controllers;
 
 [Authorize]
@@ -20,6 +23,7 @@ public class ShiftAdminController : HumansTeamControllerBase
     private readonly IShiftManagementService _shiftMgmt;
     private readonly IShiftSignupService _signupService;
     private readonly IGeneralAvailabilityService _availabilityService;
+    private readonly UserManager<User> _userManager;
     private readonly IClock _clock;
     private readonly ShiftAdminPageBuilder _pageBuilder;
     private readonly ILogger<ShiftAdminController> _logger;
@@ -29,16 +33,18 @@ public class ShiftAdminController : HumansTeamControllerBase
         IShiftManagementService shiftMgmt,
         IShiftSignupService signupService,
         IGeneralAvailabilityService availabilityService,
+        IUserService userService,
         UserManager<User> userManager,
         IAuthorizationService authorizationService,
         IClock clock,
         ShiftAdminPageBuilder pageBuilder,
         ILogger<ShiftAdminController> logger)
-        : base(userManager, teamService, authorizationService)
+        : base(userService, teamService, authorizationService)
     {
         _shiftMgmt = shiftMgmt;
         _signupService = signupService;
         _availabilityService = availabilityService;
+        _userManager = userManager;
         _clock = clock;
         _pageBuilder = pageBuilder;
         _logger = logger;
@@ -549,7 +555,7 @@ public class ShiftAdminController : HumansTeamControllerBase
                 query,
                 _shiftMgmt.GetActiveAsync,
                 ShiftRoleChecks.CanViewMedical(User),
-                UserManager,
+                _userManager,
                 _shiftMgmt,
                 _signupService,
                 _availabilityService);
@@ -619,7 +625,7 @@ public class ShiftAdminController : HumansTeamControllerBase
         return RedirectToAction(nameof(Index), new { slug });
     }
 
-    private async Task<(IActionResult? ErrorResult, User User, Team Team)> ResolveDepartmentManagementAsync(string slug)
+    private async Task<(IActionResult? ErrorResult, UserInfo User, Team Team)> ResolveDepartmentManagementAsync(string slug)
     {
         return await ResolveDepartmentAccessAsync(
             slug,
@@ -653,7 +659,7 @@ public class ShiftAdminController : HumansTeamControllerBase
         return Json(new { tag.Id, tag.Name });
     }
 
-    private async Task<(IActionResult? ErrorResult, User User, Team Team)> ResolveDepartmentApprovalAsync(string slug)
+    private async Task<(IActionResult? ErrorResult, UserInfo User, Team Team)> ResolveDepartmentApprovalAsync(string slug)
     {
         return await ResolveDepartmentAccessAsync(
             slug,
@@ -696,7 +702,7 @@ public class ShiftAdminController : HumansTeamControllerBase
             .ToList();
     }
 
-    private async Task<bool> CanManageDepartmentAsync(User user, Team team)
+    private async Task<bool> CanManageDepartmentAsync(UserInfo user, Team team)
     {
         // Management: Admin + VolunteerCoordinator + dept coordinator
         // Explicitly excludes NoInfoAdmin — they can approve signups but not manage rotas/shifts
@@ -704,7 +710,7 @@ public class ShiftAdminController : HumansTeamControllerBase
                await _shiftMgmt.IsDeptCoordinatorAsync(user.Id, team.Id);
     }
 
-    private async Task<bool> CanApproveDepartmentAsync(User user, Team team)
+    private async Task<bool> CanApproveDepartmentAsync(UserInfo user, Team team)
     {
         // Approval: Admin + NoInfoAdmin + VolunteerCoordinator + dept coordinator
         return ShiftRoleChecks.CanManageDepartment(User) ||

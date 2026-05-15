@@ -51,13 +51,12 @@ public class TeamAdminController : HumansTeamControllerBase
         IUserService userService,
         IEmailProvisioningService emailProvisioningService,
         INotificationService notificationService,
-        UserManager<User> userManager,
         IAuthorizationService authorizationService,
         ISystemTeamSync systemTeamSyncJob,
         IMemoryCache cache,
         ILogger<TeamAdminController> logger,
         IStringLocalizer<SharedResource> localizer)
-        : base(userManager, teamService, authorizationService)
+        : base(userService, teamService, authorizationService)
     {
         _teamService = teamService;
         _teamResourceService = teamResourceService;

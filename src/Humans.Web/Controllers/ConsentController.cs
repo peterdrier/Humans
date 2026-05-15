@@ -18,12 +18,11 @@ public class ConsentController : HumansControllerBase
     private readonly ILogger<ConsentController> _logger;
 
     public ConsentController(
-        UserManager<User> userManager,
-        IConsentService consentService,
         IUserService userService,
+        IConsentService consentService,
         IStringLocalizer<SharedResource> localizer,
         ILogger<ConsentController> logger)
-        : base(userManager)
+        : base(userService)
     {
         _consentService = consentService;
         _userService = userService;
@@ -33,7 +32,7 @@ public class ConsentController : HumansControllerBase
 
     public async Task<IActionResult> Index()
     {
-        var user = await GetCurrentUserAsync();
+        var user = await GetCurrentUserInfoAsync();
         if (user is null)
             return NotFound();
 
@@ -86,7 +85,7 @@ public class ConsentController : HumansControllerBase
     [HttpGet]
     public async Task<IActionResult> Review(Guid id)
     {
-        var user = await GetCurrentUserAsync();
+        var user = await GetCurrentUserInfoAsync();
         if (user is null)
             return NotFound();
 
@@ -107,7 +106,7 @@ public class ConsentController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Submit(ConsentSubmitModel model)
     {
-        var user = await GetCurrentUserAsync();
+        var user = await GetCurrentUserInfoAsync();
         if (user is null)
             return NotFound();
 

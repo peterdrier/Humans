@@ -10,6 +10,9 @@ using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using NodaTime.Text;
 
+using Humans.Application;
+using Humans.Application.Interfaces.Users;
+
 namespace Humans.Web.Controllers;
 
 [Authorize]
@@ -25,9 +28,9 @@ public class CityPlanningController : HumansControllerBase
         ICityPlanningService cityPlanningService,
         ICampService campService,
         IContainerService containerService,
-        UserManager<User> userManager,
+        IUserService userService,
         ILogger<CityPlanningController> logger)
-        : base(userManager)
+        : base(userService)
     {
         _cityPlanningService = cityPlanningService;
         _campService = campService;
@@ -46,7 +49,7 @@ public class CityPlanningController : HumansControllerBase
     /// Returns the user or an error result. Centralizing the preamble keeps
     /// every admin action one line shorter and ensures the gate never drifts.
     /// </summary>
-    private async Task<(IActionResult? Error, User? User)> RequireMapAdminAsync(CancellationToken ct)
+    private async Task<(IActionResult? Error, UserInfo? User)> RequireMapAdminAsync(CancellationToken ct)
     {
         var (userError, user) = await RequireCurrentUserAsync();
         if (userError is not null) return (userError, null);

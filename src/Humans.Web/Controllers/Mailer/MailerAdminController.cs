@@ -36,9 +36,8 @@ public sealed class MailerAdminController : HumansControllerBase
         IUserService users,
         ICommunicationPreferenceService prefs,
         IAuditLogService audit,
-        ILogger<MailerAdminController> logger,
-        UserManager<User> userManager)
-        : base(userManager)
+        ILogger<MailerAdminController> logger)
+        : base(users)
     {
         _ml = ml;
         _import = import;
@@ -118,7 +117,7 @@ public sealed class MailerAdminController : HumansControllerBase
 
         try
         {
-            var actor = await GetCurrentUserAsync();
+            var actor = await GetCurrentUserInfoAsync();
             var result = await _audienceSync.SyncAsync(audience, actor?.Id, ct);
             TempData["Banner"] = $"{audience.DisplayName}: {result.FormatSummary()}";
         }

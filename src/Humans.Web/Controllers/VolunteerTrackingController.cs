@@ -37,9 +37,8 @@ public sealed class VolunteerTrackingController : HumansControllerBase
         IVolunteerTrackingService service,
         IUserService userService,
         IAuditLogService auditLogService,
-        UserManager<User> userManager,
         IStringLocalizer<SharedResource> localizer)
-        : base(userManager)
+        : base(userService)
     {
         _service = service;
         _userService = userService;
@@ -128,7 +127,7 @@ public sealed class VolunteerTrackingController : HumansControllerBase
         }
         var parsed = parseResult.Value;
 
-        var current = await GetCurrentUserAsync();
+        var current = await GetCurrentUserInfoAsync();
         if (current is null) return Forbid();
 
         var result = await _service.SetCampSetupAsync(form.UserId, parsed, form.Notes, current.Id, ct);
@@ -179,7 +178,7 @@ public sealed class VolunteerTrackingController : HumansControllerBase
             return RedirectToAction(nameof(Index));
         }
 
-        var current = await GetCurrentUserAsync();
+        var current = await GetCurrentUserInfoAsync();
         if (current is null) return Forbid();
 
         await _service.ClearCampSetupAsync(userId, current.Id, ct);
@@ -206,7 +205,7 @@ public sealed class VolunteerTrackingController : HumansControllerBase
             return RedirectToAction(nameof(Index));
         }
 
-        var current = await GetCurrentUserAsync();
+        var current = await GetCurrentUserInfoAsync();
         if (current is null) return Forbid();
 
         var result = await _service.SetDayOffAsync(form.UserId, form.DayOffset, form.Reason, current.Id, ct);
@@ -238,7 +237,7 @@ public sealed class VolunteerTrackingController : HumansControllerBase
             return RedirectToAction(nameof(Index));
         }
 
-        var current = await GetCurrentUserAsync();
+        var current = await GetCurrentUserInfoAsync();
         if (current is null) return Forbid();
 
         var result = await _service.ClearDayOffAsync(form.UserId, form.DayOffset, current.Id, ct);

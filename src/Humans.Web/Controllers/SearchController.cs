@@ -7,6 +7,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
+using Humans.Application.Interfaces.Users;
+
 namespace Humans.Web.Controllers;
 
 /// <summary>
@@ -26,9 +28,9 @@ public sealed class SearchController : HumansControllerBase
 
     public SearchController(
         ISearchService searchService,
-        UserManager<User> userManager,
+        IUserService userService,
         ILogger<SearchController> logger)
-        : base(userManager)
+        : base(userService)
     {
         _searchService = searchService;
         _logger = logger;

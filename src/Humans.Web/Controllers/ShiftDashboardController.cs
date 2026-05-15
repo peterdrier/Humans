@@ -12,6 +12,8 @@ using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using NodaTime.Text;
 
+using Humans.Application.Interfaces.Users;
+
 namespace Humans.Web.Controllers;
 
 // Page entry uses the WIDER policy so any team coordinator / sub-team manager
@@ -33,10 +35,11 @@ public class ShiftDashboardController : HumansControllerBase
         IShiftManagementService shiftMgmt,
         IShiftSignupService signupService,
         IGeneralAvailabilityService availabilityService,
+        IUserService userService,
         UserManager<User> userManager,
         ShiftDashboardPageBuilder pageBuilder,
         ILogger<ShiftDashboardController> logger)
-        : base(userManager)
+        : base(userService)
     {
         _shiftMgmt = shiftMgmt;
         _signupService = signupService;

@@ -24,6 +24,7 @@ public class AccountController : HumansControllerBase
 
     public AccountController(
         SignInManager<User> signInManager,
+        IUserService userService,
         UserManager<User> userManager,
         IClock clock,
         ILogger<AccountController> logger,
@@ -32,7 +33,7 @@ public class AccountController : HumansControllerBase
         IAccountProvisioningService accountProvisioningService,
         IProfileService profileService,
         IStringLocalizer<SharedResource> localizer)
-        : base(userManager)
+        : base(userService)
     {
         _signInManager = signInManager;
         _userManager = userManager;
@@ -128,7 +129,7 @@ public class AccountController : HumansControllerBase
         // so a fresh OAuth email never spawns a duplicate account.
         if (User.Identity?.IsAuthenticated == true)
         {
-            var currentUser = await GetCurrentUserAsync();
+            var currentUser = await _userManager.GetUserAsync(User);
             if (currentUser is not null)
             {
                 var addLinkResult = await _userManager.AddLoginAsync(currentUser, info);

@@ -33,15 +33,14 @@ public class OnboardingWidgetController : HumansControllerBase
     private readonly IStringLocalizer<SharedResource> _localizer;
 
     public OnboardingWidgetController(
-        UserManager<User> userManager,
+        IUserService userService,
         IOnboardingWidgetState state,
         IProfileService profileService,
         IShiftSignupService signupService,
         IShiftManagementService shiftMgmt,
         IConsentService consents,
-        IUserService userService,
         IStringLocalizer<SharedResource> localizer)
-        : base(userManager)
+        : base(userService)
     {
         _state = state;
         _profileService = profileService;

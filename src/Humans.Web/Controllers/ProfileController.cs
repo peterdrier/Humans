@@ -108,6 +108,7 @@ public class ProfileController : HumansControllerBase
     };
 
     public ProfileController(
+        IUserService userService,
         UserManager<User> userManager,
         IProfileService profileService,
         IContactFieldService contactFieldService,
@@ -132,7 +133,6 @@ public class ProfileController : HumansControllerBase
         IMemoryCache cache,
         IClock clock,
         IAuthorizationService authorizationService,
-        IUserService userService,
         IConsentService consentService,
         IApplicationDecisionService applicationDecisionService,
         IAccountDeletionService accountDeletionService,
@@ -140,7 +140,7 @@ public class ProfileController : HumansControllerBase
         IHttpClientFactory httpClientFactory,
         SignInManager<User> signInManager,
         IOptions<GoogleWorkspaceOptions> googleWorkspaceOptions)
-        : base(userManager)
+        : base(userService)
     {
         _userManager = userManager;
         _profileService = profileService;
@@ -275,7 +275,7 @@ public class ProfileController : HumansControllerBase
     [HttpGet("Me/Edit")]
     public async Task<IActionResult> Edit([FromQuery] bool preview = false, CancellationToken ct = default)
     {
-        var user = await GetCurrentUserAsync();
+        var user = await _userManager.GetUserAsync(User);
         if (user is null)
             return NotFound();
 
@@ -285,7 +285,7 @@ public class ProfileController : HumansControllerBase
         var applications = await _applicationDecisionService.GetUserApplicationsAsync(user.Id, ct);
         var allShiftTags = await _shiftMgmt.GetTagsAsync();
         var preferredShiftTags = await _shiftMgmt.GetVolunteerTagPreferencesAsync(user.Id);
-        var externalLogins = await UserManager.GetLoginsAsync(user);
+        var externalLogins = await _userManager.GetLoginsAsync(user);
 
         var viewModel = ProfileEditViewModelBuilder.Build(
             info,
@@ -594,7 +594,7 @@ public class ProfileController : HumansControllerBase
     [HttpGet("Me/Emails")]
     public async Task<IActionResult> Emails()
     {
-        var user = await GetCurrentUserAsync();
+        var user = await _userManager.GetUserAsync(User);
         if (user is null)
             return NotFound();
 
@@ -606,7 +606,7 @@ public class ProfileController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AddEmail(EmailsViewModel model)
     {
-        var user = await GetCurrentUserAsync();
+        var user = await _userManager.GetUserAsync(User);
         if (user is null)
             return NotFound();
 
@@ -1034,7 +1034,7 @@ public class ProfileController : HumansControllerBase
         if (!authz.Succeeded)
             return Forbid();
 
-        var targetUser = await FindUserByIdAsync(id);
+        var targetUser = await _userManager.FindByIdAsync(id.ToString());
         if (targetUser is null)
             return NotFound();
 
@@ -1172,7 +1172,7 @@ public class ProfileController : HumansControllerBase
         if (actor is null)
             return Forbid();
 
-        var targetUser = await FindUserByIdAsync(id);
+        var targetUser = await _userManager.FindByIdAsync(id.ToString());
         if (targetUser is null)
             return NotFound();
 
@@ -1242,8 +1242,8 @@ public class ProfileController : HumansControllerBase
             return RedirectToAction(nameof(AdminEmails), new { id });
         }
 
-        var actor = await GetCurrentUserAsync();
-        var targetUser = await FindUserByIdAsync(id);
+        var actor = await _userManager.GetUserAsync(User);
+        var targetUser = await _userManager.FindByIdAsync(id.ToString());
 
         return await AdminAddVerifiedEmailAsync(id, email.Trim(), actor, targetUser, ct);
     }
@@ -1670,13 +1670,13 @@ public class ProfileController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ImportGooglePhoto(CancellationToken ct)
     {
-        var user = await GetCurrentUserAsync();
+        var user = await _userManager.GetUserAsync(User);
         if (user is null)
         {
             return NotFound();
         }
 
-        var externalLogins = await UserManager.GetLoginsAsync(user);
+        var externalLogins = await _userManager.GetLoginsAsync(user);
         if (!HasGoogleAvatarSource(user, externalLogins))
         {
             SetError(_localizer["Profile_ImportGooglePhoto_Unavailable"].Value);
@@ -1918,7 +1918,7 @@ public class ProfileController : HumansControllerBase
         if (currentUser.Id == id)
             return RedirectToAction(nameof(ViewProfile), new { id });
 
-        var targetUser = await FindUserByIdAsync(id);
+        var targetUser = await _userManager.FindByIdAsync(id.ToString());
         if (targetUser is null)
             return NotFound();
 
@@ -2216,7 +2216,7 @@ public class ProfileController : HumansControllerBase
     [HttpGet("{id:guid}/Admin/Roles/Add")]
     public async Task<IActionResult> AddRole(Guid id)
     {
-        var user = await FindUserByIdAsync(id);
+        var user = await _userManager.FindByIdAsync(id.ToString());
         if (user is null)
         {
             return NotFound();
@@ -2237,7 +2237,7 @@ public class ProfileController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AddRole(Guid id, CreateRoleAssignmentViewModel model)
     {
-        var user = await FindUserByIdAsync(id);
+        var user = await _userManager.FindByIdAsync(id.ToString());
         if (user is null)
         {
             return NotFound();
@@ -2339,23 +2339,6 @@ public class ProfileController : HumansControllerBase
         SetError(_localizer["Admin_RoleNotActive"].Value);
     }
     // ─── Helpers ─────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Cache-resident counterpart to <c>GetCurrentUserAsync</c>. Resolves the
-    /// current user's id from the <see cref="System.Security.Claims.ClaimsPrincipal"/>
-    /// (no DB hit) and returns the cached <see cref="UserInfo"/> projection.
-    /// Prefer this over <c>GetCurrentUserAsync</c> in actions that only read
-    /// display/profile fields — the entity load is only needed when calling
-    /// <see cref="UserManager{TUser}"/> mutators or otherwise passing the
-    /// EF-tracked user across an Identity boundary.
-    /// </summary>
-    private async Task<UserInfo?> GetCurrentUserInfoAsync(CancellationToken ct = default)
-    {
-        var idString = UserManager.GetUserId(User);
-        if (idString is null || !Guid.TryParse(idString, out var id))
-            return null;
-        return await _userService.GetUserInfoAsync(id, ct);
-    }
 
     private (byte[] Data, string ContentType)? ResizeProfilePicture(byte[] imageData, string contentType) =>
         Helpers.ProfilePictureProcessor.ResizeProfilePicture(imageData, _logger);

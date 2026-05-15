@@ -9,6 +9,8 @@ using Humans.Domain.Enums;
 using Humans.Web.Authorization;
 using Humans.Web.Models;
 
+using Humans.Application.Interfaces.Users;
+
 namespace Humans.Web.Controllers;
 
 [Authorize(Policy = PolicyNames.BoardOrAdmin)]
@@ -20,11 +22,11 @@ public class GovernanceBoardVotingController : HumansControllerBase
     private readonly IStringLocalizer<SharedResource> _localizer;
 
     public GovernanceBoardVotingController(
-        UserManager<User> userManager,
+        IUserService userService,
         IApplicationDecisionService applicationDecisionService,
         ILogger<GovernanceBoardVotingController> logger,
         IStringLocalizer<SharedResource> localizer)
-        : base(userManager)
+        : base(userService)
     {
         _applicationDecisionService = applicationDecisionService;
         _logger = logger;
@@ -80,7 +82,7 @@ public class GovernanceBoardVotingController : HumansControllerBase
         if (application is null)
             return NotFound();
 
-        var currentUser = await GetCurrentUserAsync();
+        var currentUser = await GetCurrentUserInfoAsync();
         if (currentUser is null)
             return NotFound();
 
@@ -129,7 +131,7 @@ public class GovernanceBoardVotingController : HumansControllerBase
     [Authorize(Policy = PolicyNames.BoardOnly)]
     public async Task<IActionResult> Vote(Guid applicationId, VoteChoice vote, string? note)
     {
-        var currentUser = await GetCurrentUserAsync();
+        var currentUser = await GetCurrentUserInfoAsync();
         if (currentUser is null)
             return NotFound();
 
@@ -164,7 +166,7 @@ public class GovernanceBoardVotingController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Finalize(BoardVotingFinalizeModel model)
     {
-        var currentUser = await GetCurrentUserAsync();
+        var currentUser = await GetCurrentUserInfoAsync();
         if (currentUser is null)
             return NotFound();
 

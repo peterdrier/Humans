@@ -9,6 +9,8 @@ using Humans.Web.Authorization;
 using Humans.Web.Models;
 using Humans.Application.Interfaces.Email;
 
+using Humans.Application.Interfaces.Users;
+
 namespace Humans.Web.Controllers;
 
 [Authorize(Policy = PolicyNames.AdminOnly)]
@@ -19,10 +21,10 @@ public class EmailController : HumansControllerBase
     private readonly ILogger<EmailController> _logger;
 
     public EmailController(
-        UserManager<User> userManager,
+        IUserService userService,
         IEmailOutboxService outboxService,
         ILogger<EmailController> logger)
-        : base(userManager)
+        : base(userService)
     {
         _outboxService = outboxService;
         _logger = logger;

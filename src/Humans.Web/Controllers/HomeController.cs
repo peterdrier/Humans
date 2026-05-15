@@ -24,16 +24,15 @@ public class HomeController : HumansControllerBase
     private readonly ITicketTransferService _ticketTransferService;
 
     public HomeController(
-        UserManager<User> userManager,
+        IUserService userService,
         IDashboardService dashboardService,
         IShiftManagementService shiftMgmt,
-        IUserService userService,
         IOnboardingWidgetState widgetState,
         IConfiguration configuration,
         ConfigurationRegistry configRegistry,
         ILogger<HomeController> logger,
         ITicketTransferService ticketTransferService)
-        : base(userManager)
+        : base(userService)
     {
         _dashboardService = dashboardService;
         _shiftMgmt = shiftMgmt;
@@ -53,7 +52,7 @@ public class HomeController : HumansControllerBase
         }
 
         // Show dashboard for logged in users
-        var user = await GetCurrentUserAsync();
+        var user = await GetCurrentUserInfoAsync();
         if (user is null)
         {
             return View();
