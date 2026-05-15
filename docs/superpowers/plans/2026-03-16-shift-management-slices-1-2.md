@@ -8,7 +8,7 @@
 
 **Tech Stack:** ASP.NET Core MVC, EF Core + PostgreSQL, NodaTime, Hangfire, xUnit + AwesomeAssertions, Bootstrap 5.3, Font Awesome 6
 
-**Spec:** `docs/specs/2026-03-16-shift-management-design.md` (v1.2)
+**Spec (historical):** `docs/specs/2026-03-16-shift-management-design.md` (v1.2) — deleted; current shift invariants live in [`docs/sections/Shifts.md`](../../sections/Shifts.md).
 
 ---
 

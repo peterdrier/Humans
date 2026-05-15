@@ -134,6 +134,17 @@ The auth surface is mid-transition per `docs/plans/2026-04-03-first-class-author
 - **Notifications:** `INotificationEmitter` (the narrow per-user dispatch surface — `INotificationService` extends it but Auth only needs the emitter) — best-effort in-app notifications on role changes.
 - **Profiles:** Called by `IAccountMergeService` (Profiles section) — `IRoleAssignmentService.ReassignToUserAsync` re-FKs `role_assignments` from source to target during account merge fold.
 
+## Access Matrix UI (per-section)
+
+<!-- wheat: docs/specs/2026-03-18-access-matrix-card-design.md §Overview, §Sections & Matrices, §Maintenance -->
+
+Each section's landing page exposes an info-icon button (`AccessMatrixViewComponent`, invoked as `<vc:access-matrix section="…" />`) that opens a modal showing which roles can do what in that section. Definitions live in `src/Humans.Web/Models/AccessMatrixDefinitions.cs` as **static data, not DB-driven** — there is intentionally no `access_matrix` table.
+
+- **Admin is excluded from every matrix.** Admin can do everything everywhere; including the column would be visual noise.
+- **"Volunteer" is the baseline, not a formal role.** It means "any active member" — the absence of an elevated role, not an entry in `role_assignments`.
+- **Admin-only sections have no matrix.** Sections gated entirely to Admin would have no non-Admin columns to show, so they don't render the component.
+- **Maintenance hazard — the matrix can drift from the code.** The dictionary is hand-maintained and is not derived from `[Authorize]` attributes or `PolicyNames`. When you change a policy, update the matrix in the same commit.
+
 ## Architecture
 
 **Owning services:** `RoleAssignmentService`, `MagicLinkService`

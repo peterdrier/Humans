@@ -1,7 +1,7 @@
 # Shift Management Slice 3 — NoInfo & Coordination Design
 
 **Date:** 2026-03-17
-**Parent spec:** `docs/specs/2026-03-16-shift-management-design.md` (sections 6.4, 6.5, 4.7, 12, 2.9 visibility, 6.1)
+**Parent spec (historical):** `docs/specs/2026-03-16-shift-management-design.md` (sections 6.4, 6.5, 4.7, 12, 2.9 visibility, 6.1) — deleted; current shift invariants live in [`docs/sections/Shifts.md`](../../sections/Shifts.md).
 
 ---
 

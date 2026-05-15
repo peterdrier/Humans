@@ -84,6 +84,14 @@ Controller code should talk in product language, not vendor API language.
 
 Non-production stub implementations are preferred over scattered environment checks in business logic.
 
+## Versioning
+
+<!-- wheat: docs/plans/2026-03-08-semantic-versioning-design.md -->
+
+Version strings are derived from git tags via [MinVer](https://github.com/adamralph/minver) at build time — there is no hardcoded `Version` / `FileVersion` / `AssemblyVersion` in `Directory.Build.props`. Tag prefix is `v` (e.g., `v0.8.0`). Between tags MinVer emits `0.8.1-alpha.0.N` where N is commits-since-tag. The `+<hash>` suffix on `InformationalVersion` comes from the existing `SourceRevisionId` MSBuild target.
+
+The `_Layout.cshtml` footer renders the version differently for tagged-release builds (links to `github.com/.../releases/tag/v0.8.0`) vs dev/QA builds (shows the short commit hash, links to the commit). Production releases must be cut as GitHub Releases — `gh release create vX.Y.Z -R nobodies-collective/Humans --generate-notes` after merging to upstream creates both the tag *and* the release page the footer links to. A bare `git tag` is not enough.
+
 ## Time and Configuration
 
 For time:
@@ -114,6 +122,31 @@ Razor provides:
 - automatic HTML encoding (no manual `escapeHtml`)
 - localization via `IStringLocalizer`
 - view components for reusable data-fetching UI
+
+### View Components vs Partials
+
+<!-- wheat: docs/specs/view-components.md §1, §4 -->
+
+A **view component fetches its own data**. A **partial is pure presentation** and takes a typed model. Choose by data-source ownership, not by reuse count.
+
+Promote a partial to a view component when any of these apply:
+
+- The controller has to fetch data *solely* to pass it through to the partial (the partial's data fetch is a controller concern leaking upward).
+- The same data assembly is duplicated across two or more controllers that render the partial.
+- The partial embeds an inline `<script>` block that would duplicate if rendered twice on one page.
+- The partial needs to be reusable on pages whose controllers have no reason to know about its data domain (e.g. shift cards on the homepage *and* on the dedicated shifts page).
+
+Keep as a partial when the rendering is genuinely pure (badges, alerts, validation script tags, language chooser, role/dietary badges driven from a model already loaded by the page).
+
+**Caching at this scale:** view components that query aggregate data may use `IMemoryCache` with 1–2 minute expiry; the owning service is still responsible for invalidation on writes that affect the aggregate.
+
+**Conventions:**
+
+- Class: `{Name}ViewComponent.cs` under `ViewComponents/`
+- View: `Views/Shared/Components/{Name}/Default.cshtml`
+- ViewModel: `{Name}ViewModel.cs` under `Models/`
+- Invocation: `@await Component.InvokeAsync("{Name}", new { param = value })`
+- Responsive table+card pairs render both layouts and toggle via `d-none d-md-block` / `d-md-none` rather than branching per device.
 - authorization tag helpers for role-based visibility
 
 Do not use client-side `fetch()` + JavaScript DOM construction to build page content when Razor can render the same output. That pattern requires manual HTML escaping, duplicated rendering logic, projection DTOs solely for JSON serialization, and string-based URL construction that breaks on route constraint changes.
