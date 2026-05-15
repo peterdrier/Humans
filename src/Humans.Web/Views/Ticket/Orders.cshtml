@@ -150,24 +150,8 @@
         </table>
     </div>
 
-    <!-- Pagination -->
-    @if (Model.TotalPages > 1)
-    {
-        <nav>
-            <ul class="pagination">
-                <li class="page-item @(Model.Page <= 1 ? "disabled" : "")">
-                    <a class="page-link" asp-action="Orders" asp-route-page="@(Model.Page - 1)" asp-route-search="@Model.Search" asp-route-sortBy="@Model.SortBy" asp-route-sortDesc="@Model.SortDesc" asp-route-pageSize="@Model.PageSize" asp-route-filterPaymentStatus="@Model.FilterPaymentStatus" asp-route-filterTicketType="@Model.FilterTicketType" asp-route-filterMatched="@Model.FilterMatched">Previous</a>
-                </li>
-                @for (var i = 1; i <= Model.TotalPages; i++)
-                {
-                    <li class="page-item @(i == Model.Page ? "active" : "")">
-                        <a class="page-link" asp-action="Orders" asp-route-page="@i" asp-route-search="@Model.Search" asp-route-sortBy="@Model.SortBy" asp-route-sortDesc="@Model.SortDesc" asp-route-pageSize="@Model.PageSize" asp-route-filterPaymentStatus="@Model.FilterPaymentStatus" asp-route-filterTicketType="@Model.FilterTicketType" asp-route-filterMatched="@Model.FilterMatched">@i</a>
-                    </li>
-                }
-                <li class="page-item @(Model.Page >= Model.TotalPages ? "disabled" : "")">
-                    <a class="page-link" asp-action="Orders" asp-route-page="@(Model.Page + 1)" asp-route-search="@Model.Search" asp-route-sortBy="@Model.SortBy" asp-route-sortDesc="@Model.SortDesc" asp-route-pageSize="@Model.PageSize" asp-route-filterPaymentStatus="@Model.FilterPaymentStatus" asp-route-filterTicketType="@Model.FilterTicketType" asp-route-filterMatched="@Model.FilterMatched">Next</a>
-                </li>
-            </ul>
-        </nav>
+    @{
+        var pagerModel = new PagerViewModel { TotalPages = Model.TotalPages, CurrentPage = Model.Page, Action = "Orders" };
     }
+    <partial name="_Pager" model="pagerModel" />
 </div>

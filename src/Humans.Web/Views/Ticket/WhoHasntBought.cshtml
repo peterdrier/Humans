@@ -87,24 +87,8 @@
         </table>
     </div>
 
-    <!-- Pagination -->
-    @if (Model.TotalPages > 1)
-    {
-        <nav>
-            <ul class="pagination">
-                <li class="page-item @(Model.Page <= 1 ? "disabled" : "")">
-                    <a class="page-link" asp-action="WhoHasntBought" asp-route-page="@(Model.Page - 1)" asp-route-search="@Model.Search" asp-route-filterTeam="@Model.FilterTeam" asp-route-filterTier="@Model.FilterTier" asp-route-filterTicketStatus="@Model.FilterTicketStatus" asp-route-pageSize="@Model.PageSize">Previous</a>
-                </li>
-                @for (var i = 1; i <= Model.TotalPages; i++)
-                {
-                    <li class="page-item @(i == Model.Page ? "active" : "")">
-                        <a class="page-link" asp-action="WhoHasntBought" asp-route-page="@i" asp-route-search="@Model.Search" asp-route-filterTeam="@Model.FilterTeam" asp-route-filterTier="@Model.FilterTier" asp-route-filterTicketStatus="@Model.FilterTicketStatus" asp-route-pageSize="@Model.PageSize">@i</a>
-                    </li>
-                }
-                <li class="page-item @(Model.Page >= Model.TotalPages ? "disabled" : "")">
-                    <a class="page-link" asp-action="WhoHasntBought" asp-route-page="@(Model.Page + 1)" asp-route-search="@Model.Search" asp-route-filterTeam="@Model.FilterTeam" asp-route-filterTier="@Model.FilterTier" asp-route-filterTicketStatus="@Model.FilterTicketStatus" asp-route-pageSize="@Model.PageSize">Next</a>
-                </li>
-            </ul>
-        </nav>
+    @{
+        var pagerModel = new PagerViewModel { TotalPages = Model.TotalPages, CurrentPage = Model.Page, Action = "WhoHasntBought" };
     }
+    <partial name="_Pager" model="pagerModel" />
 </div>

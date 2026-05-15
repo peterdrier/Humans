@@ -274,19 +274,17 @@ else
     </div>
 }
 
-@if (Model.TotalPages > 1)
-{
-    <nav class="mt-4">
-        <ul class="pagination justify-content-center">
-            @for (var i = 1; i <= Model.TotalPages && i <= 10; i++)
-            {
-                <li class="page-item @(i == Model.PageNumber ? "active" : "")">
-                    <a class="page-link" asp-action="Members" asp-route-slug="@Model.TeamSlug" asp-route-page="@i">@i</a>
-                </li>
-            }
-        </ul>
-    </nav>
+@{
+    var pagerModel = new PagerViewModel
+    {
+        TotalPages = Model.TotalPages,
+        CurrentPage = Model.PageNumber,
+        Action = "Members",
+        NavCssClass = "mt-4",
+        PaginationCssClass = "justify-content-center",
+    };
 }
+<partial name="_Pager" model="pagerModel" />
 
 <div class="mt-4">
     <vc:audit-log entity-type="Team" entity-id="@Model.TeamId"
