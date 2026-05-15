@@ -2,7 +2,6 @@ using Humans.Application.DTOs;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Gdpr;
-using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Profiles;
@@ -23,11 +22,9 @@ namespace Humans.Application.Services.Users;
 /// <remarks>
 /// <para>
 /// Cross-section invalidation: writes that change fields exposed by
-/// <see cref="FullProfile"/> (DisplayName, GoogleEmail) call
-/// <see cref="IFullProfileInvalidator.InvalidateAsync"/> so the Profile cache
-/// reloads the affected entry. Writes to deletion state and event
-/// participation do not invalidate — those fields are not included in the
-/// FullProfile projection.
+/// <see cref="UserInfo"/> (DisplayName, UserEmails, ProfilePictureUrl) call
+/// <see cref="IUserInfoInvalidator.InvalidateAsync"/> so the cache reloads
+/// the affected entry.
 /// </para>
 /// <para>
 /// No outbound edges to higher-level sections (Teams, RoleAssignments,
@@ -40,7 +37,7 @@ namespace Humans.Application.Services.Users;
 public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
 {
     private readonly IUserRepository _repo;
-    private readonly IFullProfileInvalidator _fullProfileInvalidator;
+    private readonly IUserInfoInvalidator _userInfoInvalidator;
     private readonly IAdminAuthorizationService _adminAuthorization;
     private readonly IClock _clock;
     private readonly ILogger<UserService> _logger;
@@ -56,7 +53,7 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
         IProfileRepository profileRepo,
         IContactFieldRepository contactFieldRepo,
         ICommunicationPreferenceRepository communicationPreferenceRepo,
-        IFullProfileInvalidator fullProfileInvalidator,
+        IUserInfoInvalidator userInfoInvalidator,
         IAdminAuthorizationService adminAuthorization,
         IClock clock,
         ILogger<UserService> logger)
@@ -66,7 +63,7 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
         _profileRepo = profileRepo;
         _contactFieldRepo = contactFieldRepo;
         _communicationPreferenceRepo = communicationPreferenceRepo;
-        _fullProfileInvalidator = fullProfileInvalidator;
+        _userInfoInvalidator = userInfoInvalidator;
         _adminAuthorization = adminAuthorization;
         _clock = clock;
         _logger = logger;
@@ -146,7 +143,7 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
         // cache entry must refresh so downstream consumers see the purged view.
         // Cross-section invalidations (ActiveTeams cache, etc.) belong to the
         // orchestrator — see IAccountDeletionService.PurgeAsync.
-        await _fullProfileInvalidator.InvalidateAsync(userId, ct);
+        await _userInfoInvalidator.InvalidateAsync(userId, ct);
 
         _logger.LogWarning("Purged human {DisplayName} ({HumanId})", displayName, userId);
 
@@ -164,7 +161,7 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
         // directly on fields owned here).
         var result = await _repo.ApplyExpiredDeletionAnonymizationAsync(userId, ct);
         if (result is not null)
-            await _fullProfileInvalidator.InvalidateAsync(userId, ct);
+            await _userInfoInvalidator.InvalidateAsync(userId, ct);
         return result;
     }
 
@@ -213,7 +210,7 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
     {
         var set = await _repo.SetGoogleEmailStatusAsync(userId, status, ct);
         if (set)
-            await _fullProfileInvalidator.InvalidateAsync(userId, ct);
+            await _userInfoInvalidator.InvalidateAsync(userId, ct);
         return set;
     }
 
@@ -221,7 +218,7 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
     {
         var updated = await _repo.UpdateDisplayNameAsync(userId, displayName, ct);
         if (updated)
-            await _fullProfileInvalidator.InvalidateAsync(userId, ct);
+            await _userInfoInvalidator.InvalidateAsync(userId, ct);
     }
 
     public async Task<bool> SetDeletionPendingAsync(
@@ -231,7 +228,7 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
         var updated = await _repo.SetDeletionPendingAsync(
             userId, requestedAt, scheduledFor, eligibleAfter, ct);
         if (updated)
-            await _fullProfileInvalidator.InvalidateAsync(userId, ct);
+            await _userInfoInvalidator.InvalidateAsync(userId, ct);
         return updated;
     }
 
@@ -239,7 +236,7 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
     {
         var updated = await _repo.ClearDeletionAsync(userId, ct);
         if (updated)
-            await _fullProfileInvalidator.InvalidateAsync(userId, ct);
+            await _userInfoInvalidator.InvalidateAsync(userId, ct);
         return updated;
     }
 
@@ -434,7 +431,7 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
         await _adminAuthorization.RequireCurrentUserIsAdminAsync(ct);
         var deleted = await _repo.DeleteUsersAsync(userIds, ct);
         foreach (var userId in userIds)
-            await _fullProfileInvalidator.InvalidateAsync(userId, ct);
+            await _userInfoInvalidator.InvalidateAsync(userId, ct);
         return deleted;
     }
 

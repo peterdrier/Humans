@@ -30,7 +30,7 @@ public class UserEmailServiceReconcileOAuthTests
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly UserManager<User> _userManager;
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 5, 11, 12, 0));
-    private readonly IFullProfileInvalidator _fullProfileInvalidator = Substitute.For<IFullProfileInvalidator>();
+    private readonly IUserInfoInvalidator _userInfoInvalidator = Substitute.For<IUserInfoInvalidator>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
     private readonly IServiceProvider _serviceProvider = Substitute.For<IServiceProvider>();
     private readonly UserEmailService _service;
@@ -50,7 +50,7 @@ public class UserEmailServiceReconcileOAuthTests
             _userService,
             _userManager,
             _clock,
-            _fullProfileInvalidator,
+            _userInfoInvalidator,
             _auditLogService,
             _serviceProvider,
             NullLogger<UserEmailService>.Instance);
@@ -127,7 +127,7 @@ public class UserEmailServiceReconcileOAuthTests
             rowToUpdate: Arg.Is<UserEmail?>(r => r != null && r.Id == rowId),
             rowToInsert: Arg.Is<UserEmail?>(r => r == null),
             Arg.Any<CancellationToken>());
-        await _fullProfileInvalidator
+        await _userInfoInvalidator
             .Received(Quantity.AtLeastOne())
             .InvalidateAsync(userId, Arg.Any<CancellationToken>(),
                 Arg.Any<string>(), Arg.Any<string>());
@@ -280,7 +280,7 @@ public class UserEmailServiceReconcileOAuthTests
             Arg.Any<string>(), userId,
             Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<Guid?>(), Arg.Any<string?>());
-        await _fullProfileInvalidator
+        await _userInfoInvalidator
             .Received(Quantity.AtLeastOne())
             .InvalidateAsync(userId, Arg.Any<CancellationToken>(),
                 Arg.Any<string>(), Arg.Any<string>());
@@ -352,11 +352,11 @@ public class UserEmailServiceReconcileOAuthTests
             Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<Guid?>(), Arg.Any<string?>());
         // Both affected users get their cache invalidated.
-        await _fullProfileInvalidator
+        await _userInfoInvalidator
             .Received(Quantity.AtLeastOne())
             .InvalidateAsync(signingUserId, Arg.Any<CancellationToken>(),
                 Arg.Any<string>(), Arg.Any<string>());
-        await _fullProfileInvalidator
+        await _userInfoInvalidator
             .Received(Quantity.AtLeastOne())
             .InvalidateAsync(displacedUserId, Arg.Any<CancellationToken>(),
                 Arg.Any<string>(), Arg.Any<string>());

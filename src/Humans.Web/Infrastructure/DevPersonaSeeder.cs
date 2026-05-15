@@ -39,7 +39,7 @@ public sealed class DevPersonaSeeder
     private readonly IUserEmailService _userEmailService;
     private readonly IContactFieldService _contactFieldService;
     private readonly IRoleAssignmentService _roleAssignmentService;
-    private readonly IFullProfileInvalidator _fullProfileInvalidator;
+    private readonly IUserInfoInvalidator _userInfoInvalidator;
     private readonly ITeamService _teamService;
     private readonly ISystemTeamSync _systemTeamSync;
     private readonly IUserService _userService;
@@ -55,7 +55,7 @@ public sealed class DevPersonaSeeder
         IUserEmailService userEmailService,
         IContactFieldService contactFieldService,
         IRoleAssignmentService roleAssignmentService,
-        IFullProfileInvalidator fullProfileInvalidator,
+        IUserInfoInvalidator userInfoInvalidator,
         ITeamService teamService,
         ISystemTeamSync systemTeamSync,
         IUserService userService,
@@ -70,7 +70,7 @@ public sealed class DevPersonaSeeder
         _userEmailService = userEmailService;
         _contactFieldService = contactFieldService;
         _roleAssignmentService = roleAssignmentService;
-        _fullProfileInvalidator = fullProfileInvalidator;
+        _userInfoInvalidator = userInfoInvalidator;
         _teamService = teamService;
         _systemTeamSync = systemTeamSync;
         _userService = userService;
@@ -221,7 +221,7 @@ public sealed class DevPersonaSeeder
         }
 
         _cache.InvalidateUserAccess(id);
-        await _fullProfileInvalidator.InvalidateAsync(id);
+        await _userInfoInvalidator.InvalidateAsync(id);
 
         _logger.LogInformation(
             "DEV: seeded persona {Email} with roles [{Roles}]",
@@ -465,7 +465,7 @@ public sealed class DevPersonaSeeder
             _teamService.InvalidateActiveTeamsCache();
             _cache.InvalidateUserAccess(coordinatorUserId);
             // Team membership changes ripple into FullProfile (active-teams shape)
-            await _fullProfileInvalidator.InvalidateAsync(coordinatorUserId);
+            await _userInfoInvalidator.InvalidateAsync(coordinatorUserId);
             _logger.LogInformation(
                 "DEV: ensured coordinator teams — department {DeptId}, sub-team {SubTeamId}",
                 department.Id, subTeam.Id);
@@ -532,7 +532,7 @@ public sealed class DevPersonaSeeder
             _teamService.InvalidateActiveTeamsCache();
             _cache.InvalidateUserAccess(userId);
             // Team membership changes ripple into FullProfile (active-teams shape)
-            await _fullProfileInvalidator.InvalidateAsync(userId);
+            await _userInfoInvalidator.InvalidateAsync(userId);
         }
     }
 

@@ -31,7 +31,7 @@ public sealed class DuplicateAccountService : IDuplicateAccountService
     private readonly IUserEmailRepository _userEmailRepository;
     private readonly IProfileRepository _profileRepository;
     private readonly IAuditLogService _auditLogService;
-    private readonly IFullProfileInvalidator _fullProfileInvalidator;
+    private readonly IUserInfoInvalidator _userInfoInvalidator;
     private readonly ITeamService _teamService;
     private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly ILogger<DuplicateAccountService> _logger;
@@ -43,7 +43,7 @@ public sealed class DuplicateAccountService : IDuplicateAccountService
         IUserEmailRepository userEmailRepository,
         IProfileRepository profileRepository,
         IAuditLogService auditLogService,
-        IFullProfileInvalidator fullProfileInvalidator,
+        IUserInfoInvalidator userInfoInvalidator,
         ITeamService teamService,
         IRoleAssignmentService roleAssignmentService,
         ILogger<DuplicateAccountService> logger,
@@ -54,7 +54,7 @@ public sealed class DuplicateAccountService : IDuplicateAccountService
         _userEmailRepository = userEmailRepository;
         _profileRepository = profileRepository;
         _auditLogService = auditLogService;
-        _fullProfileInvalidator = fullProfileInvalidator;
+        _userInfoInvalidator = userInfoInvalidator;
         _teamService = teamService;
         _roleAssignmentService = roleAssignmentService;
         _logger = logger;
@@ -309,8 +309,8 @@ public sealed class DuplicateAccountService : IDuplicateAccountService
             // Cache invalidation runs AFTER the transaction commits, so
             // cache-aside readers don't re-populate from rows that might
             // still roll back.
-            await _fullProfileInvalidator.InvalidateAsync(sourceUserId, ct);
-            await _fullProfileInvalidator.InvalidateAsync(targetUserId, ct);
+            await _userInfoInvalidator.InvalidateAsync(sourceUserId, ct);
+            await _userInfoInvalidator.InvalidateAsync(targetUserId, ct);
             _teamService.RemoveMemberFromAllTeamsCache(sourceUserId);
 
             _logger.LogInformation(
