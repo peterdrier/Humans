@@ -40,7 +40,7 @@ public sealed class ProfileIsSuspendedWriteAnalyzer : DiagnosticAnalyzer
 
     private static readonly ImmutableHashSet<string> AllowedWriterTypes =
         ImmutableHashSet.Create(System.StringComparer.Ordinal,
-            "Humans.Application.Services.Profile.ProfileService",
+            "Humans.Application.Services.Profiles.ProfileService",
             "Humans.Infrastructure.Repositories.Profiles.ProfileRepository");
 
     public override void Initialize(AnalysisContext context)

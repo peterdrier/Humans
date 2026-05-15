@@ -356,7 +356,7 @@ public sealed class MembershipCalculator : IMembershipCalculator
 
         // Pull users and profiles through their owning services — no direct
         // DbContext access. Missing entities are simply absent from the maps.
-        var usersById = await _userService.GetByIdsAsync(allIds, ct);
+        var usersById = await _userService.GetUserInfosAsync(allIds, ct);
         var profilesByUserId = await _profileService.GetByUserIdsAsync(allIds, ct);
 
         // 1. PendingDeletion — DeletionRequestedAt is not null (highest priority)

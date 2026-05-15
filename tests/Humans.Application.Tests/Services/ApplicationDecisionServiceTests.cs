@@ -60,6 +60,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             .Returns(Task.FromResult<IReadOnlyDictionary<Guid, User>>(new Dictionary<Guid, User>()));
         _userService.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<User?>(null));
+        _userService.StubGetUserInfosFromContext(_dbContext);
         _userEmailService.GetNotificationTargetEmailsAsync(
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyDictionary<Guid, string>>(new Dictionary<Guid, string>()));
@@ -631,6 +632,11 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(reviewerId)),
             Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyDictionary<Guid, User>>(users));
+        _userService.GetUserInfosAsync(
+            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(reviewerId)),
+            Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                new Dictionary<Guid, UserInfo> { [reviewerId] = reviewer.ToUserInfo() }));
 
         var app = await SeedSubmittedApplicationAsync(userId);
         app.Approve(reviewerId, "Good", _clock);
@@ -751,6 +757,11 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyDictionary<Guid, User>>(
                 new Dictionary<Guid, User> { [userId] = user }));
+        _userService.GetUserInfosAsync(
+            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
+            Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                new Dictionary<Guid, UserInfo> { [userId] = user.ToUserInfo() }));
 
         var (items, _) = await _service.GetFilteredApplicationsAsync(null, null, 1, 10);
 
@@ -789,6 +800,15 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
                 {
                     [applicantId] = applicant,
                     [reviewerId] = reviewer
+                }));
+        _userService.GetUserInfosAsync(
+            Arg.Any<IReadOnlyCollection<Guid>>(),
+            Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                new Dictionary<Guid, UserInfo>
+                {
+                    [applicantId] = applicant.ToUserInfo(),
+                    [reviewerId] = reviewer.ToUserInfo()
                 }));
 
         var app = await SeedSubmittedApplicationAsync(applicantId);

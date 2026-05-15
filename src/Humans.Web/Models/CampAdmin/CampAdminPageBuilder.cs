@@ -1,5 +1,5 @@
 using Humans.Application.Interfaces.Camps;
-using Humans.Application.Interfaces.CitiPlanning;
+using Humans.Application.Interfaces.CityPlanning;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Enums;
 

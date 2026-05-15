@@ -13,7 +13,7 @@ using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Auth;
 using Humans.Application.Services.Email;
-using Humans.Application.Services.Profile;
+using Humans.Application.Services.Profiles;
 using Humans.Application.Services.Shifts;
 using Humans.Application.Services.Teams;
 using Humans.Application.Services.Users;
@@ -49,7 +49,7 @@ public class DependencyCycleResolutionTests
         services.AddScoped<IProfileRepository>(_ => Substitute.For<IProfileRepository>());
         services.AddScoped<IContactFieldRepository>(_ => Substitute.For<IContactFieldRepository>());
         services.AddScoped<ICommunicationPreferenceRepository>(_ => Substitute.For<ICommunicationPreferenceRepository>());
-        services.AddScoped<IFullProfileInvalidator>(_ => Substitute.For<IFullProfileInvalidator>());
+        services.AddScoped<IUserInfoInvalidator>(_ => Substitute.For<IUserInfoInvalidator>());
         services.AddScoped<IRoleAssignmentRepository>(_ => Substitute.For<IRoleAssignmentRepository>());
         services.AddScoped<IShiftManagementRepository>(_ => Substitute.For<IShiftManagementRepository>());
         services.AddScoped<IAuditLogService>(_ => Substitute.For<IAuditLogService>());
@@ -109,7 +109,7 @@ public class DependencyCycleResolutionTests
         services.AddScoped<IProfileRepository>(_ => Substitute.For<IProfileRepository>());
         services.AddScoped<IContactFieldRepository>(_ => Substitute.For<IContactFieldRepository>());
         services.AddScoped<ICommunicationPreferenceRepository>(_ => Substitute.For<ICommunicationPreferenceRepository>());
-        services.AddScoped<IFullProfileInvalidator>(_ => Substitute.For<IFullProfileInvalidator>());
+        services.AddScoped<IUserInfoInvalidator>(_ => Substitute.For<IUserInfoInvalidator>());
         services.AddScoped<IRoleAssignmentRepository>(_ => Substitute.For<IRoleAssignmentRepository>());
         services.AddScoped<IShiftManagementRepository>(_ => Substitute.For<IShiftManagementRepository>());
         services.AddScoped<IAuditLogService>(_ => Substitute.For<IAuditLogService>());

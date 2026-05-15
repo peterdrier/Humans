@@ -6,6 +6,7 @@ using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -102,11 +103,12 @@ public class GoogleAdminServiceTests
                     UpdatedAt: NodaTime.SystemClock.Instance.GetCurrentInstant())
             ]);
 
+        var testUser = new User { Id = userId, DisplayName = "Test User" };
         _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, User>
-            {
-                [userId] = new User { Id = userId, DisplayName = "Test User" }
-            });
+            .Returns(new Dictionary<Guid, User> { [userId] = testUser });
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                new Dictionary<Guid, UserInfo> { [userId] = testUser.ToUserInfo() }));
 
         var result = await _service.GetWorkspaceAccountListAsync();
 
@@ -180,11 +182,12 @@ public class GoogleAdminServiceTests
                     UpdatedAt: now - NodaTime.Duration.FromHours(1)),
             ]);
 
+        var verifiedUser = new User { Id = verifiedUserId, DisplayName = "Verified User" };
         _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, User>
-            {
-                [verifiedUserId] = new User { Id = verifiedUserId, DisplayName = "Verified User" }
-            });
+            .Returns(new Dictionary<Guid, User> { [verifiedUserId] = verifiedUser });
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                new Dictionary<Guid, UserInfo> { [verifiedUserId] = verifiedUser.ToUserInfo() }));
 
         var result = await _service.GetWorkspaceAccountListAsync();
 

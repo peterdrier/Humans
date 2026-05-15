@@ -869,7 +869,7 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
                 var category = await _budgetService.GetCategoryByIdAsync(report.BudgetCategoryId);
                 var tag = BuildHoldedTag(category?.BudgetGroup?.Name, category?.Name);
 
-                var users = await _userService.GetByIdsAsync(
+                var users = await _userService.GetUserInfosAsync(
                     [report.SubmitterUserId], ct);
                 var submitterName = users.TryGetValue(report.SubmitterUserId, out var user)
                     ? user.DisplayName

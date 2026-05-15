@@ -59,6 +59,7 @@ public class CampServiceEarlyEntryTests : IDisposable
                 return Task.FromResult<IReadOnlyDictionary<Guid, User>>(
                     users.ToDictionary(u => u.Id));
             });
+        _userService.StubGetUserInfosFromDb(options);
 
         _notificationEmitter = Substitute.For<INotificationEmitter>();
 

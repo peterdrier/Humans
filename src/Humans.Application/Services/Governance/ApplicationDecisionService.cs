@@ -473,7 +473,7 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
         }
 
         var userIds = apps.Select(a => a.UserId).Distinct().ToList();
-        var users = await _userService.GetByIdsAsync(userIds, ct);
+        var users = await _userService.GetUserInfosAsync(userIds, ct);
 
         var rows = apps.Select(a =>
         {
@@ -507,7 +507,7 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
         foreach (var row in application.StateHistory)
             userIds.Add(row.ChangedByUserId);
 
-        var users = await _userService.GetByIdsAsync(userIds, ct);
+        var users = await _userService.GetUserInfosAsync(userIds, ct);
 
         var applicant = users.GetValueOrDefault(application.UserId);
         var reviewer = application.ReviewedByUserId is { } rid
@@ -578,7 +578,7 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
 
         // Stitch applicant display info in memory (cross-domain nav stripped).
         var applicantIds = applications.Select(a => a.UserId).Distinct().ToList();
-        var applicantsById = await _userService.GetByIdsAsync(applicantIds, ct);
+        var applicantsById = await _userService.GetUserInfosAsync(applicantIds, ct);
 
         var rows = applications.Select(a =>
         {
@@ -604,7 +604,7 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
 
         var boardMemberIds = await _roleAssignmentService.GetActiveUserIdsInRoleAsync(
             RoleNames.Board, ct);
-        var boardUsersById = await _userService.GetByIdsAsync(boardMemberIds, ct);
+        var boardUsersById = await _userService.GetUserInfosAsync(boardMemberIds, ct);
         var boardMembers = boardUsersById.Values
             .Select(u => new BoardMemberInfo(u.Id, u.DisplayName))
             .OrderBy(m => m.DisplayName, StringComparer.OrdinalIgnoreCase)
@@ -627,7 +627,7 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
             .Select(v => v.BoardMemberUserId)
             .Distinct()
             .ToList();
-        var votersById = await _userService.GetByIdsAsync(voterIds, ct);
+        var votersById = await _userService.GetUserInfosAsync(voterIds, ct);
 
         var voteRows = application.BoardVotes
             .Select(v => new BoardVoteRow(
@@ -824,9 +824,9 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
         foreach (var row in application.StateHistory)
             userIds.Add(row.ChangedByUserId);
 
-        IReadOnlyDictionary<Guid, User> users = userIds.Count == 0
-            ? new Dictionary<Guid, User>()
-            : await _userService.GetByIdsAsync(userIds, ct);
+        IReadOnlyDictionary<Guid, UserInfo> users = userIds.Count == 0
+            ? new Dictionary<Guid, UserInfo>()
+            : await _userService.GetUserInfosAsync(userIds, ct);
 
         var reviewerName = application.ReviewedByUserId is { } rid
             ? users.GetValueOrDefault(rid)?.DisplayName

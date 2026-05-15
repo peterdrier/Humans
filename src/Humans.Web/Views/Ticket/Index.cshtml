@@ -100,14 +100,20 @@
         </div>
     </div>
 
-    <!-- User set membership — Venn (Profiles ∩ Tickets within Users) + UpSet -->
+    <!-- User set membership — Venn + UpSet over Profile / Ticket / Shift -->
     @if (Model.SetMembership is { TotalUsers: > 0 } sm)
     {
+        var profileTicket = sm.ProfileTicket + sm.All;
+        var profileShift  = sm.ProfileShift + sm.All;
+        var ticketShift   = sm.TicketShift + sm.All;
         <div class="card mb-4">
             <div class="card-header">
                 <i class="fa-solid fa-chart-pie"></i> User set membership
                 <small class="text-muted">
-                    @sm.TotalUsers total users · @sm.ProfilesCount with profile · @sm.TicketsCount with ticket
+                    @sm.TotalUsers total users ·
+                    @sm.ProfilesCount with profile ·
+                    @sm.TicketsCount with ticket ·
+                    @sm.ShiftsCount with shift
                 </small>
             </div>
             <div class="card-body">
@@ -115,31 +121,34 @@
                     <div class="col-md-6">
                         <h6 class="text-center">Proportional Venn</h6>
                         <div id="userVenn"
-                             data-users="@sm.TotalUsers"
-                             data-profiles="@sm.ProfilesCount"
-                             data-tickets="@sm.TicketsCount"
-                             data-users-profiles="@sm.ProfilesCount"
-                             data-users-tickets="@sm.TicketsCount"
-                             data-profiles-tickets="@sm.AllThree"
-                             data-all-three="@sm.AllThree"
+                             data-profile="@sm.ProfilesCount"
+                             data-ticket="@sm.TicketsCount"
+                             data-shift="@sm.ShiftsCount"
+                             data-profile-ticket="@profileTicket"
+                             data-profile-shift="@profileShift"
+                             data-ticket-shift="@ticketShift"
+                             data-all="@sm.All"
                              style="height: 500px; width: 100%;"></div>
                     </div>
                     <div class="col-md-6">
                         <h6 class="text-center">UpSet plot</h6>
                         <div id="userUpset"
-                             data-users-only="@sm.UsersOnly"
-                             data-profile-only="@sm.UsersAndProfileOnly"
-                             data-ticket-only="@sm.UsersAndTicketOnly"
-                             data-all-three="@sm.AllThree"
+                             data-profile-only="@sm.ProfileOnly"
+                             data-ticket-only="@sm.TicketOnly"
+                             data-shift-only="@sm.ShiftOnly"
+                             data-profile-ticket="@sm.ProfileTicket"
+                             data-profile-shift="@sm.ProfileShift"
+                             data-ticket-shift="@sm.TicketShift"
+                             data-all="@sm.All"
                              style="height: 500px; width: 100%;"></div>
                     </div>
                 </div>
                 <p class="text-muted small mt-2 mb-0">
-                    Users is the universe — every cached user is in it. Profiles ⊆ Users, Tickets ⊆ Users.
+                    Profile = active profile (not rejected). Ticket = Ticketed/Attended in active event year.
+                    Shift = active signup (Pending/Confirmed) in active event.
                 </p>
             </div>
         </div>
-        @* TODO: extend to Shifts set when IShiftManager caching lands. *@
     }
 
     <!-- Daily Sales Chart -->
@@ -398,18 +407,18 @@
     <script src="https://cdn.jsdelivr.net/npm/@@upsetjs/bundle@1.11.0/dist/upsetjs.umd.production.min.js" crossorigin="anonymous"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            // ---- Venn: 3 sets (Users / Profiles / Tickets) ----
+            // ---- Venn: 3 sets (Profile / Ticket / Shift) ----
             var venn = document.getElementById('userVenn');
             if (venn && window.venn && window.d3) {
                 var d = venn.dataset;
                 var sets = [
-                    { sets: ['Users'], size: +d.users, label: 'Users (' + d.users + ')' },
-                    { sets: ['Profiles'], size: +d.profiles, label: 'Profiles (' + d.profiles + ')' },
-                    { sets: ['Tickets'], size: +d.tickets, label: 'Tickets (' + d.tickets + ')' },
-                    { sets: ['Users', 'Profiles'], size: +d.usersProfiles },
-                    { sets: ['Users', 'Tickets'], size: +d.usersTickets },
-                    { sets: ['Profiles', 'Tickets'], size: +d.profilesTickets },
-                    { sets: ['Users', 'Profiles', 'Tickets'], size: +d.allThree }
+                    { sets: ['Profile'], size: +d.profile, label: 'Profile (' + d.profile + ')' },
+                    { sets: ['Ticket'],  size: +d.ticket,  label: 'Ticket (' + d.ticket + ')' },
+                    { sets: ['Shift'],   size: +d.shift,   label: 'Shift (' + d.shift + ')' },
+                    { sets: ['Profile', 'Ticket'], size: +d.profileTicket },
+                    { sets: ['Profile', 'Shift'],  size: +d.profileShift },
+                    { sets: ['Ticket', 'Shift'],   size: +d.ticketShift },
+                    { sets: ['Profile', 'Ticket', 'Shift'], size: +d.all }
                 ];
                 var chart = window.venn.VennDiagram().width(400).height(360);
                 window.d3.select('#userVenn').datum(sets).call(chart);
@@ -419,15 +428,21 @@
             var upset = document.getElementById('userUpset');
             if (upset && window.UpSetJS) {
                 var u = upset.dataset;
-                var usersOnly = +u.usersOnly;
-                var profileOnly = +u.profileOnly;
-                var ticketOnly = +u.ticketOnly;
-                var allThree = +u.allThree;
+                var profileOnly   = +u.profileOnly;
+                var ticketOnly    = +u.ticketOnly;
+                var shiftOnly     = +u.shiftOnly;
+                var profileTicket = +u.profileTicket;
+                var profileShift  = +u.profileShift;
+                var ticketShift   = +u.ticketShift;
+                var allThree      = +u.all;
                 var elems = [];
-                for (var i = 0; i < usersOnly; i++)    elems.push({ name: 'u' + i, sets: ['Users'] });
-                for (var i = 0; i < profileOnly; i++)  elems.push({ name: 'p' + i, sets: ['Users', 'Profiles'] });
-                for (var i = 0; i < ticketOnly; i++)   elems.push({ name: 't' + i, sets: ['Users', 'Tickets'] });
-                for (var i = 0; i < allThree; i++)     elems.push({ name: 'a' + i, sets: ['Users', 'Profiles', 'Tickets'] });
+                for (var i = 0; i < profileOnly; i++)   elems.push({ name: 'p' + i,  sets: ['Profile'] });
+                for (var i = 0; i < ticketOnly; i++)    elems.push({ name: 't' + i,  sets: ['Ticket'] });
+                for (var i = 0; i < shiftOnly; i++)     elems.push({ name: 's' + i,  sets: ['Shift'] });
+                for (var i = 0; i < profileTicket; i++) elems.push({ name: 'pt' + i, sets: ['Profile', 'Ticket'] });
+                for (var i = 0; i < profileShift; i++)  elems.push({ name: 'ps' + i, sets: ['Profile', 'Shift'] });
+                for (var i = 0; i < ticketShift; i++)   elems.push({ name: 'ts' + i, sets: ['Ticket', 'Shift'] });
+                for (var i = 0; i < allThree; i++)      elems.push({ name: 'a' + i,  sets: ['Profile', 'Ticket', 'Shift'] });
                 var sets = window.UpSetJS.extractSets(elems);
                 var combinations = window.UpSetJS.generateCombinations(sets);
                 window.UpSetJS.render(upset, {

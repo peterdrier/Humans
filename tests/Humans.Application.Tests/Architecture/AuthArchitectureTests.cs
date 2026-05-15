@@ -93,8 +93,6 @@ public class AuthArchitectureTests
     [HumansFact]
     public void RoleAssignment_repository_has_expected_application_interface_and_sealed_implementation()
     {
-        typeof(IRoleAssignmentRepository).Namespace
-            .Should().Be("Humans.Application.Interfaces.Repositories");
         typeof(RoleAssignmentRepository).IsSealed.Should().BeTrue(
             because: "repository implementations are sealed to prevent ad-hoc extension");
     }

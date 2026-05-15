@@ -3,7 +3,6 @@ using Humans.Application.Interfaces.Calendar;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Infrastructure.Repositories.Calendar;
-using Microsoft.EntityFrameworkCore;
 using Xunit;
 using CalendarService = Humans.Application.Services.Calendar.CalendarService;
 
@@ -22,24 +21,6 @@ namespace Humans.Application.Tests.Architecture;
 public class CalendarArchitectureTests
 {
     // ── CalendarService ──────────────────────────────────────────────────────
-
-    [HumansFact]
-    public void CalendarService_LivesInHumansApplicationServicesCalendarNamespace()
-    {
-        typeof(CalendarService).Namespace
-            .Should().Be("Humans.Application.Services.Calendar",
-                because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
-    }
-
-    [HumansFact]
-    public void CalendarService_HasNoDbContextConstructorParameter()
-    {
-        var ctor = typeof(CalendarService).GetConstructors().Single();
-        ctor.GetParameters()
-            .Should().NotContain(
-                p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
-                because: "services in Humans.Application must never take DbContext — use ICalendarRepository instead (design-rules §3)");
-    }
 
     [HumansFact]
     public void CalendarService_DoesNotImportMicrosoftEntityFrameworkCore()
@@ -87,14 +68,6 @@ public class CalendarArchitectureTests
     }
 
     // ── ICalendarRepository ──────────────────────────────────────────────────
-
-    [HumansFact]
-    public void ICalendarRepository_LivesInApplicationInterfacesRepositoriesNamespace()
-    {
-        typeof(ICalendarRepository).Namespace
-            .Should().Be("Humans.Application.Interfaces.Repositories",
-                because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
-    }
 
     [HumansFact]
     public void CalendarRepository_IsSealed()

@@ -12,7 +12,7 @@ using Humans.Domain.Helpers;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Interfaces.Profiles;
 
-namespace Humans.Application.Services.Profile;
+namespace Humans.Application.Services.Profiles;
 
 /// <summary>
 /// Service for managing user email addresses. Business logic only —
@@ -25,7 +25,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
     private readonly IUserService _userService;
     private readonly UserManager<User> _userManager;
     private readonly IClock _clock;
-    private readonly IFullProfileInvalidator _fullProfileInvalidator;
+    private readonly IUserInfoInvalidator _userInfoInvalidator;
     private readonly IAuditLogService _auditLogService;
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<UserEmailService> _logger;
@@ -37,7 +37,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         IUserService userService,
         UserManager<User> userManager,
         IClock clock,
-        IFullProfileInvalidator fullProfileInvalidator,
+        IUserInfoInvalidator userInfoInvalidator,
         IAuditLogService auditLogService,
         IServiceProvider serviceProvider,
         ILogger<UserEmailService> logger)
@@ -46,7 +46,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         _userService = userService;
         _userManager = userManager;
         _clock = clock;
-        _fullProfileInvalidator = fullProfileInvalidator;
+        _userInfoInvalidator = userInfoInvalidator;
         _auditLogService = auditLogService;
         _serviceProvider = serviceProvider;
         _logger = logger;
@@ -150,7 +150,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
 
         // Issue nobodies-collective/Humans#687: every UserEmail-add path goes
         // through AddRowWithInvariantsAsync — adds the row, runs the Primary +
-        // Google invariants, and invalidates FullProfile.
+        // Google invariants, and invalidates UserInfo.
         await AddRowWithInvariantsAsync(userEmail, cancellationToken);
 
         // Generate verification token via Identity
@@ -228,7 +228,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         // verified). Run the invariant here in addition to the
         // creation-time call inside AddRowWithInvariantsAsync.
         await EnsureGoogleInvariantAsync(userId, cancellationToken);
-        await _fullProfileInvalidator.InvalidateAsync(userId, cancellationToken);
+        await _userInfoInvalidator.InvalidateAsync(userId, cancellationToken);
 
         return new VerifyEmailResult(pendingEmail.Email, MergeRequestCreated: false);
     }
@@ -280,7 +280,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
 
         // Issue nobodies-collective/Humans#687: see VerifyEmailAsync.
         await EnsureGoogleInvariantAsync(userId, cancellationToken);
-        await _fullProfileInvalidator.InvalidateAsync(userId, cancellationToken);
+        await _userInfoInvalidator.InvalidateAsync(userId, cancellationToken);
 
         await _auditLogService.LogAsync(
             AuditAction.UserEmailManuallyVerified,
@@ -321,8 +321,8 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
 
         await _repository.UpdateBatchAsync(changed, cancellationToken);
 
-        // FullProfile.NotificationEmail derives from the row with IsPrimary=true.
-        await _fullProfileInvalidator.InvalidateAsync(userId, cancellationToken);
+        // UserInfo.PrimaryEmail derives from the row with IsPrimary=true.
+        await _userInfoInvalidator.InvalidateAsync(userId, cancellationToken);
     }
 
     public async Task SetVisibilityAsync(
@@ -335,7 +335,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         email.Visibility = visibility;
         email.UpdatedAt = _clock.GetCurrentInstant();
         await _repository.UpdateAsync(email, cancellationToken);
-        await _fullProfileInvalidator.InvalidateAsync(userId, cancellationToken);
+        await _userInfoInvalidator.InvalidateAsync(userId, cancellationToken);
     }
 
     public async Task<bool> DeleteEmailAsync(
@@ -383,9 +383,9 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         // zero-IsGoogle state.
         await EnsureGoogleInvariantAsync(userId, cancellationToken);
 
-        // FullProfile.NotificationEmail derives from user_emails; drop the stale entry so
+        // UserInfo.PrimaryEmail derives from user_emails; drop the stale entry so
         // admin/search/profile surfaces stop showing the removed address.
-        await _fullProfileInvalidator.InvalidateAsync(userId, cancellationToken);
+        await _userInfoInvalidator.InvalidateAsync(userId, cancellationToken);
 
         return true;
     }
@@ -521,7 +521,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         var missing = userIds.Where(id => !result.ContainsKey(id)).ToList();
         if (missing.Count > 0)
         {
-            var users = await _userService.GetByIdsAsync(missing, cancellationToken);
+            var users = await _userService.GetUserInfosAsync(missing, cancellationToken);
             foreach (var userId in missing)
             {
                 if (users.TryGetValue(userId, out var user) && !string.IsNullOrEmpty(user.Email))
@@ -756,7 +756,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
             return;
 
         await _repository.UpdateBatchAsync(changed, cancellationToken);
-        await _fullProfileInvalidator.InvalidateAsync(userId, cancellationToken);
+        await _userInfoInvalidator.InvalidateAsync(userId, cancellationToken);
     }
 
     /// <summary>
@@ -818,13 +818,13 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
             return;
 
         await _repository.UpdateBatchAsync(changed, cancellationToken);
-        await _fullProfileInvalidator.InvalidateAsync(userId, cancellationToken);
+        await _userInfoInvalidator.InvalidateAsync(userId, cancellationToken);
     }
 
     /// <summary>
     /// Issue nobodies-collective/Humans#687: single orchestrator for every
     /// UserEmail-add path. Adds the row, then runs the Primary and Google
-    /// invariants and invalidates the FullProfile cache. The four call sites
+    /// invariants and invalidates the UserInfo cache. The four call sites
     /// (<see cref="AddEmailAsync"/>, <see cref="AddVerifiedEmailAsync"/>,
     /// <see cref="LinkAsync"/>, <see cref="AddProvisionedEmailAsync"/>) all
     /// route through here so no path can silently skip an invariant.
@@ -835,7 +835,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         await _repository.AddAsync(row, cancellationToken);
         await EnsurePrimaryInvariantAsync(row.UserId, cancellationToken);
         await EnsureGoogleInvariantAsync(row.UserId, cancellationToken);
-        await _fullProfileInvalidator.InvalidateAsync(row.UserId, cancellationToken);
+        await _userInfoInvalidator.InvalidateAsync(row.UserId, cancellationToken);
     }
 
     /// <inheritdoc />
@@ -905,7 +905,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
 
         var now = _clock.GetCurrentInstant();
         await _repository.SetGoogleExclusiveAsync(userId, row.Id, now, cancellationToken);
-        await _fullProfileInvalidator.InvalidateAsync(userId, cancellationToken);
+        await _userInfoInvalidator.InvalidateAsync(userId, cancellationToken);
 
         var description = previousGoogle is null
             ? $"Set Google identity to {row.Email}"
@@ -939,7 +939,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         row.IsGoogle = false;
         row.UpdatedAt = _clock.GetCurrentInstant();
         await _repository.UpdateAsync(row, cancellationToken);
-        await _fullProfileInvalidator.InvalidateAsync(userId, cancellationToken);
+        await _userInfoInvalidator.InvalidateAsync(userId, cancellationToken);
 
         await _auditLogService.LogAsync(
             AuditAction.UserEmailGoogleCleared,
@@ -975,7 +975,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         // Don't auto-promote a successor — the admin is resolving a
         // duplicate-IsPrimary state and may want to pick the new primary
         // deliberately.
-        await _fullProfileInvalidator.InvalidateAsync(userId, cancellationToken);
+        await _userInfoInvalidator.InvalidateAsync(userId, cancellationToken);
 
         await _auditLogService.LogAsync(
             AuditAction.UserEmailPrimaryCleared,
@@ -1022,7 +1022,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         if (perUser.Count == 0)
             return [];
 
-        var users = await _userService.GetByIdsAsync(
+        var users = await _userService.GetUserInfosAsync(
             perUser.Select(x => x.UserId).ToList(),
             cancellationToken);
 
@@ -1043,8 +1043,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
     public async Task<IReadOnlyList<UserEmailOrphan>> GetOrphanUserEmailsAsync(CancellationToken ct = default)
     {
         var allEmails = await _repository.GetAllAsync(ct);
-        var allUsers = await _userService.GetAllUsersAsync(ct);
-        var liveUserIds = allUsers
+        var liveUserIds = _userService.GetAllUserInfos()
             .Where(u => u.MergedToUserId is null)
             .Select(u => u.Id)
             .ToHashSet();
@@ -1063,7 +1062,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
 
         var deleted = await _repository.RemoveByIdAsync(emailId, ct);
         if (deleted)
-            await _fullProfileInvalidator.InvalidateAsync(row.UserId, ct);
+            await _userInfoInvalidator.InvalidateAsync(row.UserId, ct);
         return deleted;
     }
 
@@ -1113,7 +1112,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         // zero-IsGoogle state.
         await EnsureGoogleInvariantAsync(userId, cancellationToken);
 
-        await _fullProfileInvalidator.InvalidateAsync(userId, cancellationToken);
+        await _userInfoInvalidator.InvalidateAsync(userId, cancellationToken);
 
         await _auditLogService.LogAsync(
             AuditAction.UserEmailUnlinked,
@@ -1356,11 +1355,11 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         {
             await EnsurePrimaryInvariantAsync(blocker!.UserId, cancellationToken);
             await EnsureGoogleInvariantAsync(blocker.UserId, cancellationToken);
-            await _fullProfileInvalidator.InvalidateAsync(blocker.UserId, cancellationToken);
+            await _userInfoInvalidator.InvalidateAsync(blocker.UserId, cancellationToken);
         }
         await EnsurePrimaryInvariantAsync(userId, cancellationToken);
         await EnsureGoogleInvariantAsync(userId, cancellationToken);
-        await _fullProfileInvalidator.InvalidateAsync(userId, cancellationToken);
+        await _userInfoInvalidator.InvalidateAsync(userId, cancellationToken);
 
         // 7. Audit. The cross-user-displaced path writes the OAuthRename-
         //    Collision pair as the audit for this callback; we don't also

@@ -97,6 +97,7 @@ public class TeamRoleServiceTests : IDisposable
                 using var db = new HumansDbContext(options);
                 return Task.FromResult(db.Users.AsNoTracking().FirstOrDefault(u => u.Id == id));
             });
+        testUserService.StubGetUserInfosFromDb(options);
         serviceProvider.GetService(typeof(IUserService)).Returns(testUserService);
         _shiftAuthInvalidator = Substitute.For<IShiftAuthorizationInvalidator>();
         _service = new TeamService(

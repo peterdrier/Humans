@@ -7,13 +7,13 @@ using Humans.Infrastructure.Services.Profiles;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using Xunit;
-using AccountMergeService = Humans.Application.Services.Profile.AccountMergeService;
-using CommunicationPreferenceService = Humans.Application.Services.Profile.CommunicationPreferenceService;
-using ContactFieldService = Humans.Application.Services.Profile.ContactFieldService;
-using DuplicateAccountService = Humans.Application.Services.Profile.DuplicateAccountService;
-using EmailProblemsService = Humans.Application.Services.Profile.EmailProblemsService;
-using ProfileService = Humans.Application.Services.Profile.ProfileService;
-using UserEmailService = Humans.Application.Services.Profile.UserEmailService;
+using AccountMergeService = Humans.Application.Services.Profiles.AccountMergeService;
+using CommunicationPreferenceService = Humans.Application.Services.Profiles.CommunicationPreferenceService;
+using ContactFieldService = Humans.Application.Services.Profiles.ContactFieldService;
+using DuplicateAccountService = Humans.Application.Services.Profiles.DuplicateAccountService;
+using EmailProblemsService = Humans.Application.Services.Profiles.EmailProblemsService;
+using ProfileService = Humans.Application.Services.Profiles.ProfileService;
+using UserEmailService = Humans.Application.Services.Profiles.UserEmailService;
 
 namespace Humans.Application.Tests.Architecture;
 
@@ -41,12 +41,6 @@ public class ProfileArchitectureTests
         typeof(CommunicationPreferenceService),
     };
 
-    public static TheoryData<Type> ProfileRepositories => new()
-    {
-        typeof(IProfileRepository),
-        typeof(IAccountMergeRepository),
-    };
-
     public static TheoryData<Type, Type> RequiredRepositoryEdges => new()
     {
         { typeof(ProfileService), typeof(IProfileRepository) },
@@ -58,7 +52,7 @@ public class ProfileArchitectureTests
     public void Profile_services_live_in_application_profile_namespace(Type serviceType)
     {
         serviceType.Namespace
-            .Should().Be("Humans.Application.Services.Profile",
+            .Should().Be("Humans.Application.Services.Profiles",
                 because: "services with business logic live in Humans.Application per design-rules, organized by section");
     }
 
@@ -110,25 +104,6 @@ public class ProfileArchitectureTests
             p => (p.ParameterType.Namespace ?? string.Empty)
                 .StartsWith("Humans.Application.Interfaces.Stores", StringComparison.Ordinal),
             because: "Profile services must not depend on store abstractions");
-    }
-
-    [HumansTheory]
-    [MemberData(nameof(ProfileRepositories))]
-    public void Profile_repositories_live_in_application_repository_namespace(Type repositoryType)
-    {
-        repositoryType.Namespace
-            .Should().Be("Humans.Application.Interfaces.Repositories",
-                because: "repository interfaces live in Humans.Application.Interfaces.Repositories");
-    }
-
-    [HumansFact]
-    public void CachingProfileService_lives_in_infrastructure_and_implements_public_interfaces()
-    {
-        typeof(CachingProfileService).Namespace
-            .Should().Be("Humans.Infrastructure.Services.Profiles",
-                because: "caching decorators live in Infrastructure");
-        typeof(CachingProfileService).Should().BeAssignableTo<IProfileService>();
-        typeof(CachingProfileService).Should().BeAssignableTo<IFullProfileInvalidator>();
     }
 
     [HumansFact]

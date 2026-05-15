@@ -4,7 +4,7 @@ using Humans.Application.Interfaces.Users;
 using Humans.Domain.Helpers;
 using NodaTime;
 
-namespace Humans.Application.Services.Profile;
+namespace Humans.Application.Services.Profiles;
 
 public sealed class EmailProblemsService : IEmailProblemsService
 {

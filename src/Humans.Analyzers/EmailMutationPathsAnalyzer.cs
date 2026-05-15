@@ -59,7 +59,7 @@ public sealed class EmailMutationPathsAnalyzer : DiagnosticAnalyzer
     private const string ServiceMethodName = "ReconcileOAuthIdentityAsync";
     private const string RepositoryMethodName = "ApplyReconcilePlanAsync";
     private const string AllowedServiceCaller = "Humans.Web.Controllers.AccountController";
-    private const string AllowedRepositoryCaller = "Humans.Application.Services.Profile.UserEmailService";
+    private const string AllowedRepositoryCaller = "Humans.Application.Services.Profiles.UserEmailService";
 
     public override void Initialize(AnalysisContext context)
     {

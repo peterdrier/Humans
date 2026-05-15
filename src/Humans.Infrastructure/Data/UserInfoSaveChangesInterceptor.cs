@@ -31,7 +31,7 @@ namespace Humans.Infrastructure.Data;
 /// Profile-section tables (<c>profiles</c>, <c>contact_fields</c>,
 /// <c>profile_languages</c>, <c>volunteer_history_entries</c>) are
 /// intentionally NOT handled here. Every write to those flows through
-/// <c>CachingProfileService</c>, whose <c>RefreshEntryAsync</c> already
+/// <c>CachingUserService</c>, whose <c>RefreshEntryAsync</c> already
 /// invalidates UserInfo via <c>IUserInfoInvalidator</c>. Handling them here
 /// too would require resolving the owning userId from a child entity's
 /// ProfileId, which (a) the decorator already knows for free, and (b) means
@@ -149,7 +149,7 @@ public sealed class UserInfoSaveChangesInterceptor : SaveChangesInterceptor
         // Deleted→Detached and disappear, which is why we snapshot here.
         // Scope: User-section tables that bypass IUserService (Identity machinery,
         // OAuth pipeline, direct-repo calls). Profile-section types are handled
-        // by CachingProfileService.RefreshEntryAsync — see the class remarks.
+        // by CachingUserService.RefreshEntryAsync — see the class remarks.
         foreach (var entry in context.ChangeTracker.Entries())
         {
             if (entry.State == EntityState.Unchanged || entry.State == EntityState.Detached)

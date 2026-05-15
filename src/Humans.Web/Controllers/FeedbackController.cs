@@ -48,9 +48,9 @@ public class FeedbackController : HumansControllerBase
     /// rows for the assignee dropdowns. Replaces the deleted
     /// <c>IProfileService.GetFilteredHumansAsync(null, "Active")</c> path:
     /// person-search consolidation moved that surface to
-    /// <c>SearchProfilesAsync</c>, which is for text search, not population
-    /// queries. Population goes through the existing
-    /// the UserInfo snapshot + <c>IUserService.GetByIdsAsync</c> primitives.
+    /// <c>IUserService.SearchUsersAsync</c>, which is for text search, not
+    /// population queries. Population goes through the UserInfo snapshot +
+    /// <c>IUserService.GetByIdsAsync</c> primitives.
     /// </summary>
     private async Task<List<AssigneeOption>> GetActiveAssigneeOptionsAsync(CancellationToken ct = default)
     {

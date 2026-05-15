@@ -37,16 +37,18 @@ public sealed class ShiftViewService : IShiftView
 
         var profile = await _management.GetVolunteerEventProfileAsync(userId, ct).ConfigureAwait(false);
         var tagPrefs = await _signups.GetVolunteerTagPreferencesForUserAsync(userId, ct).ConfigureAwait(false);
-        var allSignups = await _signups.GetByUserAsync(userId, eventSettingsId: null, ct).ConfigureAwait(false);
 
         GeneralAvailability? availability = null;
         VolunteerBuildStatus? buildStatus = null;
+        IReadOnlyList<ShiftSignup> signups = Array.Empty<ShiftSignup>();
         if (activeEvent is not null)
         {
             availability = await _availability
                 .GetByUserAndEventAsync(userId, activeEvent.Id, ct).ConfigureAwait(false);
             buildStatus = await _tracking
                 .GetAsync(userId, activeEvent.Id, ct).ConfigureAwait(false);
+            signups = await _signups
+                .GetByUserAsync(userId, activeEvent.Id, ct).ConfigureAwait(false);
         }
 
         return new ShiftUserView(
@@ -55,7 +57,7 @@ public sealed class ShiftViewService : IShiftView
             availability,
             buildStatus,
             tagPrefs,
-            allSignups);
+            signups);
     }
 
     public async ValueTask<IReadOnlyDictionary<Guid, ShiftUserView>> GetUsersAsync(

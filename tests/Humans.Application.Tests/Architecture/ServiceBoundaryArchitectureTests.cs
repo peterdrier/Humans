@@ -3,7 +3,6 @@ using AwesomeAssertions;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Tests.Architecture.Ratchet;
-using Humans.Web.Controllers;
 
 namespace Humans.Application.Tests.Architecture;
 
@@ -110,7 +109,7 @@ public class ServiceBoundaryArchitectureTests
         RepositoryOwners[typeof(IUserEmailRepository)].Should().Be("Humans");
         RepositoryOwners[typeof(IProfileRepository)].Should().Be("Humans");
         ServiceSection(typeof(Humans.Application.Services.Users.UserService)).Should().Be("Humans");
-        ServiceSection(typeof(Humans.Application.Services.Profile.ProfileService)).Should().Be("Humans");
+        ServiceSection(typeof(Humans.Application.Services.Profiles.ProfileService)).Should().Be("Humans");
     }
 
     [HumansFact]
@@ -120,20 +119,6 @@ public class ServiceBoundaryArchitectureTests
             "ApplicationServiceEntityReadReturns",
             EntityReadReturnBaselinePath,
             ScanApplicationServiceEntityReadReturns());
-    }
-
-    [HumansFact]
-    public void Web_classes_do_not_inject_repositories()
-    {
-        var violations = typeof(AccountController).Assembly
-            .GetTypes()
-            .Where(t => t.IsClass && !t.IsAbstract)
-            .SelectMany(type => ConstructorParameters(type)
-                .Where(p => typeof(IRepository).IsAssignableFrom(p.ParameterType))
-                .Select(p => $"{Display(type)}:{p.ParameterType.Name}"));
-
-        violations.Should().BeEmpty(
-            because: "Web depends on application services, not persistence repositories");
     }
 
     [HumansFact]

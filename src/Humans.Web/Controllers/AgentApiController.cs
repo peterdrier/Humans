@@ -1,3 +1,4 @@
+using Humans.Application;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
@@ -79,16 +80,16 @@ public class AgentApiController : ControllerBase
         return Ok(conv.Messages.OrderBy(m => m.CreatedAt).Select(ToMessageDto));
     }
 
-    private async Task<IReadOnlyDictionary<Guid, User>> ResolveUsersAsync(
+    private async Task<IReadOnlyDictionary<Guid, UserInfo>> ResolveUsersAsync(
         IEnumerable<Guid> ids, CancellationToken ct)
     {
         var distinct = ids.Distinct().ToArray();
         if (distinct.Length == 0)
-            return new Dictionary<Guid, User>();
-        return await _users.GetByIdsAsync(distinct, ct);
+            return new Dictionary<Guid, UserInfo>();
+        return await _users.GetUserInfosAsync(distinct, ct);
     }
 
-    private static object ToSummary(AgentConversationTranscriptSnapshot c, IReadOnlyDictionary<Guid, User> users)
+    private static object ToSummary(AgentConversationTranscriptSnapshot c, IReadOnlyDictionary<Guid, UserInfo> users)
     {
         // Most-recent user message preview is useful at-a-glance triage signal —
         // matches the listing UX in the admin web view but stays JSON-clean for

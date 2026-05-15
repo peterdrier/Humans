@@ -52,7 +52,7 @@ public class ProfileConfiguration : IEntityTypeConfiguration<Profile>
             .HasConversion<string>();
 
         // Issue #635 (§15i): nullable string column. Existing rows hold NULL
-        // until CachingProfileService lazily computes and writes back. A
+        // until CachingUserService lazily computes and writes back. A
         // follow-up PR promotes to NOT NULL after every row is populated.
         builder.Property(p => p.State)
             .HasConversion<string>()

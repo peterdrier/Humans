@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Infrastructure.Repositories.CitiPlanning;
-using Microsoft.EntityFrameworkCore;
+using Humans.Infrastructure.Repositories.CityPlanning;
 using Xunit;
 using CityPlanningService = Humans.Application.Services.CityPlanning.CityPlanningService;
 
@@ -24,24 +23,6 @@ namespace Humans.Application.Tests.Architecture;
 public class CityPlanningArchitectureTests
 {
     // ── CityPlanningService ──────────────────────────────────────────────────
-
-    [HumansFact]
-    public void CityPlanningService_LivesInHumansApplicationServicesCityPlanningNamespace()
-    {
-        typeof(CityPlanningService).Namespace
-            .Should().Be("Humans.Application.Services.CityPlanning",
-                because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
-    }
-
-    [HumansFact]
-    public void CityPlanningService_HasNoDbContextConstructorParameter()
-    {
-        var ctor = typeof(CityPlanningService).GetConstructors().Single();
-        ctor.GetParameters()
-            .Should().NotContain(
-                p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
-                because: "services in Humans.Application must never take DbContext — use ICityPlanningRepository instead (design-rules §3)");
-    }
 
     [HumansFact]
     public void CityPlanningService_HasNoIMemoryCacheConstructorParameter()
@@ -77,14 +58,6 @@ public class CityPlanningArchitectureTests
     }
 
     // ── ICityPlanningRepository ──────────────────────────────────────────────
-
-    [HumansFact]
-    public void ICityPlanningRepository_LivesInApplicationInterfacesRepositoriesNamespace()
-    {
-        typeof(ICityPlanningRepository).Namespace
-            .Should().Be("Humans.Application.Interfaces.Repositories",
-                because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
-    }
 
     [HumansFact]
     public void CityPlanningRepository_IsSealed()

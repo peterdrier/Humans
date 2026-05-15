@@ -4,6 +4,7 @@ using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.GoogleIntegration;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -81,6 +82,11 @@ public sealed class GoogleRemovalNotificationServiceTests
             Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
             Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, User> { [userId] = user });
+        _userService.GetUserInfosAsync(
+            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
+            Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                new Dictionary<Guid, UserInfo> { [userId] = user.ToUserInfo(user.UserEmails.ToList()) }));
 
         await _service.NotifyRemovalAsync(
             "old@nobodies.team",
@@ -120,6 +126,11 @@ public sealed class GoogleRemovalNotificationServiceTests
             Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
             Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, User> { [userId] = user });
+        _userService.GetUserInfosAsync(
+            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
+            Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                new Dictionary<Guid, UserInfo> { [userId] = user.ToUserInfo(user.UserEmails.ToList()) }));
 
         await _service.NotifyRemovalAsync(
             "old@nobodies.team",
@@ -160,6 +171,11 @@ public sealed class GoogleRemovalNotificationServiceTests
             Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
             Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, User> { [userId] = user });
+        _userService.GetUserInfosAsync(
+            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
+            Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                new Dictionary<Guid, UserInfo> { [userId] = user.ToUserInfo(user.UserEmails.ToList()) }));
 
         await _service.NotifyRemovalAsync(
             "primary@nobodies.team",
@@ -196,6 +212,11 @@ public sealed class GoogleRemovalNotificationServiceTests
             Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
             Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, User> { [userId] = user });
+        _userService.GetUserInfosAsync(
+            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
+            Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                new Dictionary<Guid, UserInfo> { [userId] = user.ToUserInfo(user.UserEmails.ToList()) }));
 
         await _service.NotifyRemovalAsync(
             "only@nobodies.team",
@@ -231,6 +252,11 @@ public sealed class GoogleRemovalNotificationServiceTests
             Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
             Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, User> { [userId] = user });
+        _userService.GetUserInfosAsync(
+            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
+            Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                new Dictionary<Guid, UserInfo> { [userId] = user.ToUserInfo(user.UserEmails.ToList()) }));
 
         await _service.NotifyRemovalAsync(
             "dee@nobodies.team",

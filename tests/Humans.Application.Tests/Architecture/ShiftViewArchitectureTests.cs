@@ -3,7 +3,6 @@ using Humans.Application.DTOs.Shifts;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Infrastructure.Services.Shifts;
-using Microsoft.EntityFrameworkCore;
 using Xunit;
 using GeneralAvailabilityService = Humans.Application.Services.Shifts.GeneralAvailabilityService;
 using ShiftManagementService = Humans.Application.Services.Shifts.ShiftManagementService;
@@ -49,16 +48,6 @@ public class ShiftViewArchitectureTests
     {
         typeof(ShiftViewService).IsSealed.Should().BeTrue(
             because: "Application services are sealed (design-rules §15)");
-    }
-
-    [HumansFact]
-    public void ShiftViewService_HasNoDbContextConstructorParameter()
-    {
-        var ctor = typeof(ShiftViewService).GetConstructors().Single();
-        ctor.GetParameters()
-            .Should().NotContain(
-                p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
-                because: "the inner view service must use repositories, not DbContext directly");
     }
 
     [HumansFact]

@@ -7,7 +7,6 @@ using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Repositories.Tickets;
-using Microsoft.EntityFrameworkCore;
 using Xunit;
 using TicketQueryService = Humans.Application.Services.Tickets.TicketQueryService;
 
@@ -32,28 +31,10 @@ public class TicketQueryArchitectureTests
     // ── TicketQueryService ───────────────────────────────────────────────────
 
     [HumansFact]
-    public void TicketQueryService_LivesInHumansApplicationServicesTicketsNamespace()
-    {
-        typeof(TicketQueryService).Namespace
-            .Should().Be("Humans.Application.Services.Tickets",
-                because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
-    }
-
-    [HumansFact]
     public void TicketQueryService_IsSealed()
     {
         typeof(TicketQueryService).IsSealed.Should().BeTrue(
             because: "Application-layer services are sealed to prevent ad-hoc subclassing; new behavior belongs on the interface");
-    }
-
-    [HumansFact]
-    public void TicketQueryService_HasNoDbContextConstructorParameter()
-    {
-        var ctor = typeof(TicketQueryService).GetConstructors().Single();
-        ctor.GetParameters()
-            .Should().NotContain(
-                p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
-                because: "services in Humans.Application must never take DbContext — use ITicketRepository (design-rules §3)");
     }
 
     [HumansFact]
@@ -98,14 +79,6 @@ public class TicketQueryArchitectureTests
     }
 
     // ── ITicketRepository ────────────────────────────────────────────────────
-
-    [HumansFact]
-    public void ITicketRepository_LivesInApplicationInterfacesRepositoriesNamespace()
-    {
-        typeof(ITicketRepository).Namespace
-            .Should().Be("Humans.Application.Interfaces.Repositories",
-                because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
-    }
 
     [HumansFact]
     public void TicketRepository_IsSealed()

@@ -4,7 +4,6 @@ using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Repositories.Camps;
-using Microsoft.EntityFrameworkCore;
 using Xunit;
 using CampService = Humans.Application.Services.Camps.CampService;
 
@@ -21,24 +20,6 @@ namespace Humans.Application.Tests.Architecture;
 public class CampsArchitectureTests
 {
     // ── CampService ──────────────────────────────────────────────────────────
-
-    [HumansFact]
-    public void CampService_LivesInHumansApplicationServicesCampsNamespace()
-    {
-        typeof(CampService).Namespace
-            .Should().Be("Humans.Application.Services.Camps",
-                because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
-    }
-
-    [HumansFact]
-    public void CampService_HasNoDbContextConstructorParameter()
-    {
-        var ctor = typeof(CampService).GetConstructors().Single();
-        ctor.GetParameters()
-            .Should().NotContain(
-                p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
-                because: "services in Humans.Application must never take DbContext — use ICampRepository instead (design-rules §3)");
-    }
 
     [HumansFact]
     public void CampService_TakesRepository()
@@ -82,14 +63,6 @@ public class CampsArchitectureTests
     }
 
     // ── ICampRepository ──────────────────────────────────────────────────────
-
-    [HumansFact]
-    public void ICampRepository_LivesInApplicationInterfacesRepositoriesNamespace()
-    {
-        typeof(ICampRepository).Namespace
-            .Should().Be("Humans.Application.Interfaces.Repositories",
-                because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
-    }
 
     [HumansFact]
     public void CampRepository_IsSealed()

@@ -259,7 +259,9 @@ public class GoogleController : HumansControllerBase
         try
         {
             var result = await _googleSyncService.GetAllDomainGroupsAsync();
-            var teams = await _googleAdminService.GetActiveTeamsAsync();
+            var teams = (await _googleAdminService.GetActiveTeamsAsync())
+                .OrderBy(t => t.Name, StringComparer.Ordinal)
+                .ToList();
             ViewBag.Teams = teams;
             return View(result);
         }

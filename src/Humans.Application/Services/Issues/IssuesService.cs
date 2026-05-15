@@ -263,7 +263,7 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
                 userIds.Add(issue.AssigneeUserId.Value);
         }
 
-        var users = await _users.GetByIdsAsync(userIds.ToList(), ct);
+        var users = await _users.GetUserInfosAsync(userIds.ToList(), ct);
         return issues.Select(issue => new IssueListSnapshot(
             issue.Id,
             issue.Status,
@@ -321,9 +321,9 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
             .Select(a => a.ActorUserId!.Value)
             .Distinct()
             .ToList();
-        IReadOnlyDictionary<Guid, User> actorUsers = actorIds.Count == 0
-            ? new Dictionary<Guid, User>()
-            : await _users.GetByIdsAsync(actorIds, ct);
+        IReadOnlyDictionary<Guid, Humans.Application.UserInfo> actorUsers = actorIds.Count == 0
+            ? new Dictionary<Guid, Humans.Application.UserInfo>()
+            : await _users.GetUserInfosAsync(actorIds, ct);
 
 #pragma warning disable CS0618 // Cross-domain nav populated in memory
         var commentEvents = issue.Comments.Select(c => (IssueThreadEvent)new IssueCommentEvent(
@@ -498,7 +498,7 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
 
         var users = idsToResolve.Count == 0
             ? null
-            : await _users.GetByIdsAsync(idsToResolve, ct);
+            : await _users.GetUserInfosAsync(idsToResolve, ct);
 
         var oldName = oldAssigneeId.HasValue
             ? (users!.TryGetValue(oldAssigneeId.Value, out var ou) ? ou.DisplayName : oldAssigneeId.Value.ToString())
@@ -694,7 +694,7 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
         var rows = await _repo.GetReporterCountsAsync(ct);
         if (rows.Count == 0) return [];
 
-        var users = await _users.GetByIdsAsync(rows.Select(r => r.UserId).ToList(), ct);
+        var users = await _users.GetUserInfosAsync(rows.Select(r => r.UserId).ToList(), ct);
         return rows
             .Select(r => new DistinctReporterRow(
                 r.UserId,

@@ -191,7 +191,7 @@ public class ProfileController : HumansControllerBase
     private async Task<IReadOnlyList<AdminHumanRow>> BuildAdminHumansAsync(
         string? search, string? statusFilter, CancellationToken ct)
     {
-        var allUsers = await _userService.GetAllUsersAsync(ct);
+        var allUsers = _userService.GetAllUserInfos();
         var allUserIds = allUsers.Select(u => u.Id).ToList();
         var profilesByUserId = await _profileService.GetByUserIdsAsync(allUserIds, ct);
         var notificationEmails =
@@ -204,7 +204,7 @@ public class ProfileController : HumansControllerBase
             // PersonSearchFields.AdminAll is appropriate here. Limit large
             // enough that "show me every match" is the practical effect at
             // ~500-user scale; the controller paginates afterward.
-            var searchResults = await _profileService.SearchProfilesAsync(
+            var searchResults = await _userService.SearchUsersAsync(
                 search, PersonSearchFields.AdminAll, limit: 500, ct);
 
             // Email-direct match isn't covered by the matcher's verified-emails
@@ -481,7 +481,7 @@ public class ProfileController : HumansControllerBase
 
         // Cancel any pending deletion request when creating a profile.
         // Routes through IAccountDeletionService so the deletion-fields
-        // write + FullProfile invalidation goes through the orchestrator,
+        // write + UserInfo invalidation goes through the orchestrator,
         // not raw UserManager.UpdateAsync.
         if (isInitialSetup && user.IsDeletionPending)
         {
@@ -1868,8 +1868,8 @@ public class ProfileController : HumansControllerBase
             .Distinct()
             .ToList();
         var reviewers = reviewerIds.Count == 0
-            ? (IReadOnlyDictionary<Guid, User>)new Dictionary<Guid, User>()
-            : await _userService.GetByIdsAsync(reviewerIds, ct);
+            ? (IReadOnlyDictionary<Guid, UserInfo>)new Dictionary<Guid, UserInfo>()
+            : await _userService.GetUserInfosAsync(reviewerIds, ct);
 
         return (true, noShows.Select(s =>
         {
@@ -1955,7 +1955,7 @@ public class ProfileController : HumansControllerBase
         // Issue #635 (§15i): bulk-fetch sender + recipient with UserEmails
         // hydrated through the section-owned service instead of a raw
         // `.Include(u => u.UserEmails)` over the cross-domain nav.
-        var participants = await _userService.GetByIdsWithEmailsAsync(
+        var participants = await _userService.GetUserInfosAsync(
             new[] { id, currentUser.Id });
         if (!participants.TryGetValue(id, out var targetUser))
             return NotFound();
@@ -2018,7 +2018,7 @@ public class ProfileController : HumansControllerBase
 
         // PublicAll = name + bio + public ContactFields. Admin bit is gated
         // by code review — never set on a public endpoint.
-        var results = await _profileService.SearchProfilesAsync(
+        var results = await _userService.SearchUsersAsync(
             q!, PersonSearchFields.PublicAll, limit: 50, ct);
 
         // Display ordering at the controller per

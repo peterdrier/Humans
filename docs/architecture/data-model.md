@@ -35,18 +35,22 @@ This file is the **index and cross-cutting rule sheet** for the data model. Per-
 | Camp / CampSeason / CampLead / CampImage / CampHistoricalName / CampSettings | [Camps](../sections/Camps.md) | |
 | CampMember | [Camps](../sections/Camps.md) | Per-season, post-hoc human/camp affiliation (Pending/Active/Removed). Partial unique on `(CampSeasonId, UserId) WHERE Status <> 'Removed'`. |
 | CampRoleDefinition / CampRoleAssignment | [Camps](../sections/Camps.md) | Per-camp role catalogue + per-season assignments. Owned by `CampRoleService`. Unique on `(CampSeasonId, CampRoleDefinitionId, CampMemberId)`. |
-| Container | [Containers](../sections/Containers.md) | Camp-owned (`CampId` → `camps.Id`, non-nullable). |
+| Container / ContainerPlacement | [Containers](../sections/Containers.md) | Camp-owned (`CampId` → `camps.Id`, non-nullable). |
 | CityPlanningSettings | [City Planning](../sections/CityPlanning.md) | |
 | CampPolygon | [City Planning](../sections/CityPlanning.md) | |
 | CampPolygonHistory | [City Planning](../sections/CityPlanning.md) | Append-only (§12). |
 | CalendarEvent / CalendarEventException | [Calendar](../sections/Calendar.md) | |
 | EmailOutboxMessage | [Email](../sections/Email.md) | |
 | Campaign / CampaignCode / CampaignGrant | [Campaigns](../sections/Campaigns.md) | |
-| TicketOrder / TicketAttendee / TicketSyncState | [Tickets](../sections/Tickets.md) | |
-| EventSettings / Rota / Shift / ShiftSignup / GeneralAvailability / VolunteerEventProfile / ShiftTag / VolunteerTagPreference | [Shifts](../sections/Shifts.md) | |
+| TicketOrder / TicketAttendee / TicketSyncState / TicketTransferRequest | [Tickets](../sections/Tickets.md) | |
+| EventSettings / Rota / Shift / ShiftSignup / GeneralAvailability / VolunteerEventProfile / VolunteerBuildStatus / ShiftTag / VolunteerTagPreference | [Shifts](../sections/Shifts.md) | |
+| Event / EventCategory / EventVenue / EventGuideSettings / EventModerationAction / EventFavourite / EventPreference | [Events](../sections/Events.md) | Event Guide submissions, moderation, categories, shared venues, per-user favourites/preferences. `EventModerationAction` append-only (§12 — Restrict on delete). |
 | FeedbackReport / FeedbackMessage | [Feedback](../sections/Feedback.md) | |
 | BudgetYear / BudgetGroup / BudgetCategory / BudgetLineItem / BudgetAuditLog / TicketingProjection | [Budget](../sections/Budget.md) | `BudgetAuditLog` append-only (§12). `BudgetGroup.Slug` and `BudgetCategory.Slug` are the Holded-tag-safe identifiers consumed by Finance. |
-| HoldedTransaction / HoldedSyncState | [Finance](../sections/Finance.md) | Holded purchase invoices and sync singleton. `HoldedTransaction.BudgetCategoryId` → `BudgetCategory` (Budget) — FK only, no nav. |
+| ExpenseReport / ExpenseLine / ExpenseAttachment / HoldedExpenseOutboxEvent | [Expenses](../sections/Expenses.md) | Expense reports and Holded sync outbox. |
+| StoreProduct / StoreOrder / StoreOrderLine / StorePayment / StoreInvoice / StoreTreasurySyncState | [Store](../sections/Store.md) | |
+| Issue / IssueComment | [Issues](../sections/Issues.md) | |
+| AgentConversation / AgentMessage / AgentSettings | [Agent](../sections/Agent.md) | |
 | SyncServiceSettings / GoogleSyncOutboxEvent | [Google Integration](../sections/GoogleIntegration.md) | |
 | SystemSetting | per-key ownership | Each key belongs to its consuming section's repository. See [SystemSetting below](#systemsetting-per-key-ownership). |
 | AuditLogEntry | [Audit Log](../sections/AuditLog.md) | Append-only (§12). |

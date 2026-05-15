@@ -484,112 +484,59 @@ This is the Microsoft-endorsed pattern for Singleton services that need DB acces
 
 ### 15c. Application Service (Inner) Rules
 
-The application service (`ProfileService`, `ContactFieldService`, etc.) lives in `Humans.Application.Services.Profile`. It:
+The application service (`UserService`, `ProfileService`, `ContactFieldService`, etc.) lives in its section's `Humans.Application.Services.*` namespace. It:
 
 - Injects repository interfaces, never `DbContext`.
 - Never imports `IMemoryCache` or any caching abstraction — it is completely cache-unaware.
-- Is registered as **Scoped** and **keyed** under `CachingProfileService.InnerServiceKey` (`"profile-inner"`) so the Singleton decorator can resolve fresh instances per-call without self-resolution.
-- Implements **every** read method against the DB, including snapshot-based search/filter methods that the decorator may accelerate from its dict. Removing the decorator must leave the system fully functional. The base service must **never** return empty results for a method "so the decorator can override" — that would make correctness depend on the decorator being present.
-- Shared filter/search logic lives as **`public static`** helpers on the service class (e.g., `ProfileService.SearchApprovedUsersFromSnapshot`, `ProfileService.GetFilteredHumansFromSnapshotAsync`). The base service builds its snapshot from the repository; the decorator passes `_byUserId.Values`. Same output, two speeds.
-- Sub-aggregates belong to the parent section. CV entries are in `FullProfile.CVEntries` and are written through `IProfileService.SaveCVEntriesAsync`. There is no separate `IVolunteerHistoryService`. The parent repository owns the reconcile logic (`IProfileRepository.ReconcileCVEntriesAsync`).
-
-DI registration for the inner service:
-
-```csharp
-// Inner: Scoped + keyed, so the Singleton decorator can resolve it per-call.
-services.AddKeyedScoped<IProfileService, ProfileService>(CachingProfileService.InnerServiceKey);
-
-// Forward the concrete type for IUserDataContributor resolution.
-services.AddScoped<ProfileService>(sp =>
-    (ProfileService)sp.GetRequiredKeyedService<IProfileService>(CachingProfileService.InnerServiceKey));
-services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<ProfileService>());
-```
+- When the section has a caching decorator: registered as **Scoped** and **keyed** under that decorator's `InnerServiceKey` (e.g., `CachingUserService.InnerServiceKey` = `"user-inner"`) so the Singleton decorator can resolve fresh instances per-call without self-resolution.
+- Implements **every** read method against the DB. Removing the decorator must leave the system fully functional — the base service must **never** return empty results for a method "so the decorator can override."
+- Sub-aggregates belong to the parent section (CV entries are written through `IProfileService.SaveCVEntriesAsync`; the parent repository owns the reconcile logic).
 
 ### 15d. Caching Decorator Rules
 
-`CachingProfileService` is a **Singleton** that owns a private `ConcurrentDictionary<Guid, FullProfile> _byUserId`. The dict persists across HTTP requests. There is no separate `IProfileStore` interface, no store class, no `IMemoryCache` for canonical domain data. A narrow `FullProfileWarmupHostedService` populates the dict once at startup — see **Warming** below.
+A section's caching decorator is a **Singleton** that owns a private `ConcurrentDictionary<Guid, TInfo>` keyed by the aggregate's identity. The dict persists across HTTP requests. There is no separate store interface, no store class, no `IMemoryCache` for canonical domain data. A narrow `*WarmupHostedService` populates the dict once at startup.
 
-**Constructor:**
+**Live example:** `CachingUserService` — Singleton, holds `ConcurrentDictionary<Guid, UserInfo>`, owns the unified User+Profile read-model spanning 8 contributing tables. See `src/Humans.Infrastructure/Services/Users/CachingUserService.cs` for the canonical pattern (constructor, scope-factory-resolved inner, `RefreshEntryAsync`, `WarmAllAsync`, `IUserInfoInvalidator` aliasing).
 
-```csharp
-public sealed class CachingProfileService : IProfileService, IFullProfileInvalidator
-{
-    public const string InnerServiceKey = "profile-inner";
+Key rules the example demonstrates:
 
-    private readonly IProfileRepository _profileRepository;
-    private readonly IUserEmailRepository _userEmailRepository;
-    private readonly IServiceScopeFactory _scopeFactory;
+- Repositories used by the decorator must themselves be Singleton (`IDbContextFactory`-based) so they can be injected directly without scope plumbing.
+- Scoped dependencies (the inner service) are resolved per-call via `IServiceScopeFactory.CreateAsyncScope()` — never captured in a Singleton field.
+- Reads: dict hit returns synchronously (`ValueTask.FromResult`); miss wraps the inner call and populates the dict.
+- Writes: delegate to the inner service, then call a private `RefreshEntryAsync` that reloads from repositories and upserts. If the row no longer exists, evict.
+- Warming: eager at startup via a `*WarmupHostedService`. Failures log + swallow; lazy population on miss still works.
 
-    private readonly ConcurrentDictionary<Guid, FullProfile> _byUserId = new();
+### 15e. Invalidator — One-Way Cross-Section Signal
 
-    public CachingProfileService(
-        IProfileRepository profileRepository,
-        IUserEmailRepository userEmailRepository,
-        IServiceScopeFactory scopeFactory) { ... }
-}
-```
-
-`IProfileRepository` and `IUserEmailRepository` are injected directly because they are also Singleton (`IDbContextFactory`-based). All Scoped dependencies (inner `IProfileService`, `IUserService`, `INavBadgeCacheInvalidator`, `INotificationMeterCacheInvalidator`) are resolved per-call via `IServiceScopeFactory` to avoid the captured-scoped-dependency anti-pattern:
-
-```csharp
-await using var scope = _scopeFactory.CreateAsyncScope();
-var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
-```
-
-**Reads:** `ValueTask<FullProfile?> GetFullProfileAsync(Guid userId, CancellationToken ct = default)`. Dict hit completes synchronously with zero allocation; cold path wraps the inner call and populates the dict.
-
-**Writes:** delegate to the inner service, then call `RefreshEntryAsync(userId, ct)`. `RefreshEntryAsync` reloads directly from repositories, re-stitches the `FullProfile`, and upserts the dict. If the profile or user no longer exists, the dict entry is removed.
-
-**Warming:** eager at startup. `FullProfileWarmupHostedService` (registered via `AddHostedService`) calls `CachingProfileService.WarmAllAsync` during host start, enumerating all users and populating `_byUserId` before the app takes traffic. Bulk reads (`GetBirthdayProfilesAsync`, `GetApprovedProfilesWithLocationAsync`, `SearchProfilesAsync`) then read the warm dict directly — no runtime gate, no fully-warm flag. If warmup fails (e.g., DB unreachable at startup) the hosted service logs at Error and the host continues to start; individual per-user reads will lazy-populate the dict via `GetFullProfileAsync`. Warmup is an optimization, not a correctness requirement.
-
-**Static helpers:** methods like `GetBirthdayProfilesAsync` are served synchronously from `_byUserId.Values` via `ProfileService.GetBirthdayProfilesFromSnapshot` / `ProfileService.GetApprovedProfilesWithLocationFromSnapshot` — no inner call, no scope. The person-search bit-flag matcher (`PersonSearchMatcher`) follows the same pattern: shared static called from both base service and decorator.
-
-DI registration for the decorator:
-
-```csharp
-// Singleton decorator — dict persists across requests.
-services.AddSingleton<CachingProfileService>();
-services.AddSingleton<IProfileService>(sp => sp.GetRequiredService<CachingProfileService>());
-
-// CRITICAL: IFullProfileInvalidator must alias the same Singleton instance.
-// Two separate instances would split the dict and cause divergence.
-services.AddSingleton<IFullProfileInvalidator>(sp =>
-    sp.GetRequiredService<CachingProfileService>());
-```
-
-### 15e. IFullProfileInvalidator — One-Way Cross-Section Signal
-
-`IFullProfileInvalidator` (defined in `Humans.Application/Interfaces/`) exposes a single method:
+Each cached section exposes a one-method invalidator interface (e.g., `IUserInfoInvalidator`):
 
 ```csharp
 Task InvalidateAsync(Guid userId, CancellationToken ct = default);
 ```
 
-Implemented by `CachingProfileService`. External sections inject `IFullProfileInvalidator` when their writes make the cached FullProfile view stale. The decorator reloads-or-removes the entry via `RefreshEntryAsync`. External code never mutates the dict directly.
+Implemented by the section's caching decorator. External sections inject the invalidator when their writes make the cached view stale. The decorator reloads-or-removes the entry. External code never mutates the dict directly.
 
-**CRITICAL:** `IFullProfileInvalidator` must resolve to the **same Singleton instance** as `IProfileService`. Both registrations point to the single `CachingProfileService` instance. If two instances were created, the dict would diverge and invalidations would be silently lost.
+**CRITICAL:** the invalidator must resolve to the **same Singleton instance** as the section's read interface. Both registrations point to the single decorator. If two instances were created, the dict would diverge and invalidations would be silently lost.
 
 ### 15f. Canonical Read-Model Naming
 
 | Type | Name |
 |------|------|
-| Canonical section read model | Prefer `<Section>Info` for section-owned read models (e.g., `TeamInfo`). `Full<Section>` remains valid for established stitched models (e.g., `FullProfile`). |
-| Read method | Match the read model name when returning one item (e.g., `GetTeamAsync` for `TeamInfo`, `GetFullProfileAsync` for `FullProfile`). Plural collection methods may use the natural plural (e.g., `GetTeamsAsync`). |
-| Invalidator interface | Name the canonical model being invalidated when one exists (e.g., `IFullProfileInvalidator`). |
-| Sub-aggregate collections | Natural plural on the DTO (e.g., `CVEntries` — not `VolunteerHistory`) |
+| Canonical section read model | `<Section>Info` (e.g., `UserInfo`, `TeamInfo`). |
+| Read method | Match the read model name when returning one item (e.g., `GetUserInfoAsync`, `GetTeamAsync`). Plural collection methods may use the natural plural (e.g., `GetTeamsAsync`). |
+| Invalidator interface | `I<SectionInfo>Invalidator` (e.g., `IUserInfoInvalidator`). |
+| Sub-aggregate collections | Natural plural on the DTO (e.g., `VolunteerHistory`, `ContactFields`). |
 
-Do not force every section into `Full<Section>`. The name should make the
-service boundary obvious without implying EF entity identity. For Teams,
-`TeamInfo` is the canonical read model; `Team` remains the EF/domain entity and
-should not be exposed by new `ITeamService` read APIs.
+Do not expose EF entity types from section service read APIs — the canonical
+`Info` projection is the boundary.
 
-Old names that no longer exist: `CachedProfile`, `IProfileStore`, `ProfileStore`, `ProfileStoreWarmupHostedService`, `IVolunteerHistoryService`, `VolunteerHistoryService`.
+Old names that no longer exist: `CachedProfile`, `IProfileStore`, `ProfileStore`, `ProfileStoreWarmupHostedService`, `IVolunteerHistoryService`, `VolunteerHistoryService`, `FullProfile`, `IFullProfileInvalidator`, `CachingProfileService`, `FullProfileWarmupHostedService`, `PersonSearchMatcher`.
 
 ### 15g. Known Deferrals
 
-**§15 NEW-B — Cross-section ShiftAuthorization cache staleness.** ~~`RequestDeletionAsync` on Profile no longer invalidates the `ShiftAuthorization` cache (`shift-auth:{userId}`, 60s TTL) that the old `InvalidateUserCaches(userId)` bundle covered. This is tolerable at ~500-user scale given the short TTL and the context (the user is being deleted). Resolution: when Shifts migrates to the §15 pattern, it should subscribe to `IFullProfileInvalidator` (or an equivalent `IShiftAuthorizationInvalidator`) to clear its own cache on profile changes.~~ **Resolved 2026-04-24** — `ShiftManagementService` now implements `IShiftAuthorizationInvalidator`, exposed so Profile / User / Team writes call `Invalidate(userId)` directly. `UserService.AnonymizeExpiredAccountAsync` invalidates on account anonymization, and `TeamService` invalidates on role-assignment changes that toggle shift-coordinator privilege. Cross-section dependency direction is Shifts → (nothing); callers push the signal, the cache owner stays decoupled.
+**§15 NEW-B — Cross-section ShiftAuthorization cache staleness.** **Resolved 2026-04-24** — `ShiftManagementService` implements `IShiftAuthorizationInvalidator`, exposed so Profile / User / Team writes call `Invalidate(userId)` directly. Cross-section dependency direction is Shifts → (nothing); callers push the signal, the cache owner stays decoupled.
 
-**`OnboardingService.SetConsentCheckPendingIfEligibleAsync`** does not invalidate the `FullProfile` dict. Pre-existing behavior (it did not invalidate the old cache either). To be addressed after the §15 migration settles. (`OnboardingService.PurgeHumanAsync` was removed in issue nobodies-collective/Humans#582 and replaced by `IAccountDeletionService.PurgeAsync`, which invokes `IUserService.PurgeOwnDataAsync` — that in turn invalidates `FullProfile`.)
+**`OnboardingService.SetConsentCheckPendingIfEligibleAsync`** does not invalidate the `UserInfo` dict. Pre-existing behavior. To be addressed after the section merge settles.
 
 ### 15h. Migration Rules During the Transition
 

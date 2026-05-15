@@ -7,7 +7,7 @@ using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Interfaces.Profiles;
 
-namespace Humans.Application.Services.Profile;
+namespace Humans.Application.Services.Profiles;
 
 /// <summary>
 /// Service for managing communication opt-in/opt-out preferences.

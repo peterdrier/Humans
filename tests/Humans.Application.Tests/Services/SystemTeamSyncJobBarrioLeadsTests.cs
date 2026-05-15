@@ -147,6 +147,9 @@ public class SystemTeamSyncJobBarrioLeadsTests
         _userService.GetByIdsAsync(
             Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns((IReadOnlyDictionary<Guid, User>)new Dictionary<Guid, User>());
+        _userService.GetUserInfosAsync(
+            Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
 
         var job = CreateJob();
 

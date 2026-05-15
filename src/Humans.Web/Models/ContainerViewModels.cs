@@ -108,7 +108,7 @@ public class CityPlanningBarrioMapViewModel
     public bool IsMapAdmin { get; set; }
     public string UserCampSeasonId { get; set; } = string.Empty;
     public Guid CurrentUserId { get; set; }
-    public List<Humans.Application.Interfaces.CitiPlanning.CampSeasonSummaryDto> SeasonsWithoutCampPolygon { get; set; } = new();
+    public List<Humans.Application.Interfaces.CityPlanning.CampSeasonSummaryDto> SeasonsWithoutCampPolygon { get; set; } = new();
     public NodaTime.LocalDateTime? PlacementOpensAt { get; set; }
     public NodaTime.LocalDateTime? PlacementClosesAt { get; set; }
 }

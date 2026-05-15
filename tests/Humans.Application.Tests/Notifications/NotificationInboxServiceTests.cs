@@ -39,6 +39,7 @@ public class NotificationInboxServiceTests : IDisposable
         _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyDictionary<Guid, User>>(
                 new Dictionary<Guid, User>()));
+        _userService.StubGetUserInfosFromContext(_dbContext);
 
         _service = new NotificationInboxService(_repo, _userService, _clock, _cache);
     }

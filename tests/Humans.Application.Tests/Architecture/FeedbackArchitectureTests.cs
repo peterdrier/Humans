@@ -5,7 +5,6 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Repositories.Feedback;
-using Microsoft.EntityFrameworkCore;
 using Xunit;
 using FeedbackService = Humans.Application.Services.Feedback.FeedbackService;
 
@@ -22,24 +21,6 @@ namespace Humans.Application.Tests.Architecture;
 public class FeedbackArchitectureTests
 {
     // ── FeedbackService ──────────────────────────────────────────────────────
-
-    [HumansFact]
-    public void FeedbackService_LivesInHumansApplicationServicesFeedbackNamespace()
-    {
-        typeof(FeedbackService).Namespace
-            .Should().Be("Humans.Application.Services.Feedback",
-                because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
-    }
-
-    [HumansFact]
-    public void FeedbackService_HasNoDbContextConstructorParameter()
-    {
-        var ctor = typeof(FeedbackService).GetConstructors().Single();
-        ctor.GetParameters()
-            .Should().NotContain(
-                p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
-                because: "services in Humans.Application must never take DbContext — use IFeedbackRepository instead (design-rules §3)");
-    }
 
     [HumansFact]
     public void FeedbackService_HasNoIMemoryCacheConstructorParameter()
@@ -101,14 +82,6 @@ public class FeedbackArchitectureTests
     }
 
     // ── IFeedbackRepository ──────────────────────────────────────────────────
-
-    [HumansFact]
-    public void IFeedbackRepository_LivesInApplicationInterfacesRepositoriesNamespace()
-    {
-        typeof(IFeedbackRepository).Namespace
-            .Should().Be("Humans.Application.Interfaces.Repositories",
-                because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
-    }
 
     [HumansFact]
     public void FeedbackRepository_IsSealed()

@@ -1,6 +1,6 @@
 using System.Text;
 using Humans.Application.Interfaces.Camps;
-using Humans.Application.Interfaces.CitiPlanning;
+using Humans.Application.Interfaces.CityPlanning;
 using Humans.Application.Services.Camps;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;

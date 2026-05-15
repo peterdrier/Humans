@@ -188,7 +188,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
             .Concat(shouldBeMember.Select(tm => tm.UserId))
             .Distinct()
             .ToList();
-        var userNamesById = await _userService.GetByIdsAsync(affectedUserIds, cancellationToken);
+        var userNamesById = await _userService.GetUserInfosAsync(affectedUserIds, cancellationToken);
 
         var changes = new List<(Guid TeamMemberId, TeamMemberRole Role)>(
             shouldBeCoordinator.Count + shouldBeMember.Count);
@@ -254,6 +254,12 @@ public class SystemTeamSyncJob : ISystemTeamSync
         // Flagged + RejectedAt exclusions preserve the CC's existing kick-out
         // levers (FlagConsentCheckAsync and RejectSignupAsync set those fields
         // before calling DeprovisionApprovalGatedSystemTeamsAsync).
+        // Read straight from the DB rather than the UserInfo cache: this is a
+        // destructive reconciliation that removes every Volunteers-team member
+        // not in candidateIds. UserInfoWarmupHostedService is explicitly
+        // non-fatal, so a startup warmup failure leaves GetAllUserInfos() empty
+        // and would deprovision the entire team. The hourly cost of one
+        // users-table scan is trivial next to that risk.
         var allUsers = await _userService.GetAllUsersAsync(cancellationToken);
         var allUserIds = allUsers.Select(u => u.Id).ToList();
         var profiles = await ProfileService.GetByUserIdsAsync(allUserIds, cancellationToken);
@@ -406,7 +412,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
         if (downgrades.Count > 0)
         {
             var downgradeUserIds = downgrades.Select(d => d.UserId).ToList();
-            var downgradeUsersById = await _userService.GetByIdsAsync(downgradeUserIds, cancellationToken);
+            var downgradeUsersById = await _userService.GetUserInfosAsync(downgradeUserIds, cancellationToken);
 
             foreach (var (downgradeUserId, newTier) in downgrades)
             {
@@ -633,7 +639,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
 
         // Batch-load display names for affected users via IUserService.
         var affectedUserIds = toAdd.Concat(toRemove).ToList();
-        var usersById = await _userService.GetByIdsAsync(affectedUserIds, cancellationToken);
+        var usersById = await _userService.GetUserInfosAsync(affectedUserIds, cancellationToken);
         var userNames = usersById.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.DisplayName);
 
         // Apply the bulk membership delta in a single save through the Teams
@@ -700,7 +706,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
             var resourceTuples = resources.Select(r => (r.Name, r.Url)).ToList();
 
             var addedUsersWithEmails = await _userService
-                .GetByIdsWithEmailsAsync(toAdd, cancellationToken);
+                .GetUserInfosAsync(toAdd, cancellationToken);
 
             foreach (var userId in toAdd)
             {

@@ -1,6 +1,6 @@
 using Humans.Application.Configuration;
 using Humans.Application.Interfaces.Camps;
-using Humans.Application.Interfaces.CitiPlanning;
+using Humans.Application.Interfaces.CityPlanning;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
@@ -155,7 +155,7 @@ public sealed class CityPlanningService : ICityPlanningService
 
         // Resolve display names through IUserService — no cross-domain .Include().
         var userIds = rows.Select(r => r.ModifiedByUserId).Distinct().ToList();
-        var users = await _userService.GetByIdsAsync(userIds, cancellationToken);
+        var users = await _userService.GetUserInfosAsync(userIds, cancellationToken);
 
         return rows.Select(h =>
         {

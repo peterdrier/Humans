@@ -356,7 +356,7 @@ public sealed class GoogleGroupSyncService : IGoogleGroupSync
         if (userIds.Count == 0)
             return [];
 
-        var users = await _userService.GetByIdsAsync(userIds, ct);
+        var users = await _userService.GetUserInfosAsync(userIds, ct);
         var emailsByUserId = await _userEmailService.GetEntitiesByUserIdsAsync(userIds, ct);
         var profilesByUserId = await _profileService.GetByUserIdsAsync(userIds, ct);
 

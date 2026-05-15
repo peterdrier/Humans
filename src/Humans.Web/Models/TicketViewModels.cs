@@ -39,26 +39,36 @@ public class TicketDashboardViewModel
     // Who hasn't bought count (for dashboard link)
     public int WhoHasntBoughtCount { get; set; }
 
-    // Set membership across UserInfo cache (Users, Profiles, Tickets).
-    // Used by the Venn + UpSet diagrams. Each user is bucketed into one of
-    // the four (HasProfile, HasTicket) combinations.
+    // Set membership across UserInfo cache for the Venn + UpSet diagrams.
+    // Three subsets: Profile (IsActive), Ticket (active event year),
+    // Shift (active signup in active event). Each user falls into exactly
+    // one of the eight (P, T, S) buckets.
     public UserSetMembership? SetMembership { get; set; }
 }
 
 /// <summary>
-/// User-set bucketing for the Tickets dashboard Venn + UpSet diagrams.
-/// Users is the universe (every UserInfo); Profiles and Tickets are subsets.
-/// Each user falls into exactly one of the four buckets defined here.
+/// User-set bucketing for the Tickets dashboard Venn + UpSet diagrams. The
+/// cached <c>UserInfo</c> set is the universe; <c>Profile</c>, <c>Ticket</c>,
+/// and <c>Shift</c> are three subsets over it. Each user falls into exactly
+/// one of the eight disjoint buckets defined here.
 /// </summary>
 public sealed record UserSetMembership(
-    int UsersOnly,              // !HasProfile && !HasTicket
-    int UsersAndProfileOnly,    //  HasProfile && !HasTicket
-    int UsersAndTicketOnly,     // !HasProfile &&  HasTicket
-    int AllThree)               //  HasProfile &&  HasTicket
+    int None,            // !P && !T && !S
+    int ProfileOnly,     //  P && !T && !S
+    int TicketOnly,      // !P &&  T && !S
+    int ShiftOnly,       // !P && !T &&  S
+    int ProfileTicket,   //  P &&  T && !S
+    int ProfileShift,    //  P && !T &&  S
+    int TicketShift,     // !P &&  T &&  S
+    int All)             //  P &&  T &&  S
 {
-    public int TotalUsers => UsersOnly + UsersAndProfileOnly + UsersAndTicketOnly + AllThree;
-    public int ProfilesCount => UsersAndProfileOnly + AllThree;
-    public int TicketsCount => UsersAndTicketOnly + AllThree;
+    public int TotalUsers =>
+        None + ProfileOnly + TicketOnly + ShiftOnly
+        + ProfileTicket + ProfileShift + TicketShift + All;
+
+    public int ProfilesCount => ProfileOnly + ProfileTicket + ProfileShift + All;
+    public int TicketsCount => TicketOnly + ProfileTicket + TicketShift + All;
+    public int ShiftsCount => ShiftOnly + ProfileShift + TicketShift + All;
 }
 
 public class PaymentMethodFeeBreakdown

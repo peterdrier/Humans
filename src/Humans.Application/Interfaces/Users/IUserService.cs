@@ -1,6 +1,7 @@
-using Humans.Application.Architecture;
+using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Services.Profiles;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
@@ -11,25 +12,11 @@ namespace Humans.Application.Interfaces.Users;
 /// Service owning user-level concerns. Currently focused on event participation.
 /// </summary>
 /// <remarks>
-/// Surface-budget recent history (newest first):
-/// <list type="bullet">
-///   <item>32→28 — UserInfo snapshot consolidation (PR #553): removed 4 single-caller DB readers (GetRejectedGoogleEmailCountAsync, GetCountByContactSourceAsync, GetLoginTimestampsInWindowAsync, GetParticipationAsync); reimplemented 2 multi-caller readers (GetAllParticipationsForYearAsync, GetMergedSourceIdsAsync) over the cached UserInfo snapshot via the CachingUserService decorator. Inner UserService now throws NotSupportedException on the swapped methods to match the existing GetAllUserInfos pattern. Net effect: 7 DB read paths drained, one cache snapshot.</item>
-///   <item>33→32 — admin dashboard language tile (PR #553 follow-up): removed GetLanguageDistributionForUserIdsAsync. Sole caller (AdminDashboardService) now groups in memory over the cached UserInfo snapshot rather than a per-render SQL GROUP BY against `users` — eliminates a DB round-trip on every admin dashboard render.</item>
-///   <item>32→33 — admin stats + /Users/Admin/Debug + /Tickets Venn: added GetAllUserInfos. Snapshot accessor — the cache is the canonical read-model; all aggregate consumers read from it rather than re-querying the underlying tables.</item>
-///   <item>32→31 — mailer-inbound-import follow-up: removed GetDisplayNamesByIdsAsync. HumanViewComponent already renders the cached DisplayName from a userId Guid; pre-fetching the dictionary was redundant.</item>
-///   <item>33→32 — merge with main: issue-695 HUM0009 service-DbContext analyzer PR landed on main with net -1 (removed two [Obsolete] Google-email methods TrySetGoogleEmailAsync + SetGoogleEmailAsync; added DeleteUsersAsync for admin dev-reset).</item>
-///   <item>32→33 — mailer-inbound-import: added GetDisplayNamesByIdsAsync for import preview — batch DisplayName lookup keyed by user id.</item>
-///   <item>31→32 — mailer-inbound-import: added GetCountByContactSourceAsync for admin dashboard per-source import totals.</item>
-///   <item>2026-05-11 — InterfaceMethodBudgetTests retired; budget migrated to [SurfaceBudget(31)] (issue nobodies-collective/Humans#700).</item>
-///   <item>30→31 — issue-660 EmailProblems case 8 cleanup: added DeleteAllExternalLoginsForUserAsync — service surface for the admin "Delete ghost logins" action. Auth-table cleanup; no expiable substitute (only the User section can write to AspNetUserLogins).</item>
-///   <item>29→30 — issue-660 EmailProblems case 8: added GetUsersWithLoginsButNoEmailsAsync to surface ghost AspNetUserLogins rows. Authorized by repo owner — no expiable substitute exists at the service surface (UserLogins is auth-internal).</item>
-///   <item>31→29 — account-merge fold final consolidation: removed ReassignLoginsToUserAsync and ReassignEventParticipationToUserAsync from IUserService. Both moves now happen through IUserMerge.ReassignAsync on UserService; DuplicateAccountService routes the logins move directly via IUserRepository.</item>
-///   <item>31→31 — account-merge fold redesign Phase 4.1: added GetMergedSourceIdsAsync (the chain-follow service primitive AuditLog/Consent/BudgetAuditLog reads call to surface rows still attributed to merged source tombstones); removed GetPendingDeletionCountAsync. Three callers derive the count in-memory from the full user list per design-rules in-memory caching guidance.</item>
-///   <item>31→31 — account-merge fold redesign Phase 3.4: added 3 fold primitives (AnonymizeForMergeAsync, ReassignLoginsToUserAsync, ReassignEventParticipationToUserAsync); removed 3 to match: SetGoogleEmailStatusAsync (interface-surface-dead), BackfillNobodiesTeamGoogleEmailsAsync (sole caller now iterates per-user via IUserEmailService.TryBackfillGoogleEmailAsync), GetAllUserIdsAsync (callers derive ids from GetAllUsersAsync).</item>
-///   <item>-1 GetContactUsersAsync removed (/Contacts surface deleted in PR 2 of email-identity-decoupling — only ContactService called it).</item>
-/// </list>
+/// SurfaceBudget intentionally removed for the duration of the Users+Profile
+/// section merge — the interface is absorbing IProfileService methods over the
+/// next several PRs and per-PR budget churn is not useful while that is in
+/// flight. Re-add [SurfaceBudget(N)] once the merged surface stabilizes.
 /// </remarks>
-[SurfaceBudget(28)]
 public interface IUserService : IApplicationService, IUserMerge
 {
     /// <summary>
@@ -52,6 +39,42 @@ public interface IUserService : IApplicationService, IUserMerge
     /// iterate without locking.
     /// </summary>
     IReadOnlyCollection<UserInfo> GetAllUserInfos();
+
+    /// <summary>
+    /// Batched <see cref="UserInfo"/> lookup. Returns a dictionary keyed by
+    /// user id; ids without a corresponding user are absent. Served from the
+    /// caching decorator's in-memory dict for any id already cached; missing
+    /// ids are refilled through the same per-user load path used by
+    /// <see cref="GetUserInfoAsync"/>. The canonical replacement for
+    /// <c>GetByIdsAsync</c> / <c>GetByIdsWithEmailsAsync</c> at reader call
+    /// sites — those still exist for the rare consumer that needs a real
+    /// <see cref="User"/> entity (Identity machinery, in-place mutations).
+    /// </summary>
+    ValueTask<IReadOnlyDictionary<Guid, UserInfo>> GetUserInfosAsync(
+        IReadOnlyCollection<Guid> userIds,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Single canonical person-search method. Matches <paramref name="query"/>
+    /// against the buckets named by <paramref name="fields"/> over the cached
+    /// <see cref="UserInfo"/> snapshot and returns up to <paramref name="limit"/>
+    /// matches in unspecified order — callers sort + take(N) at the presentation
+    /// layer per <c>memory/architecture/display-sort-in-controllers.md</c>.
+    ///
+    /// <para>Implicit scope: rows are filtered to "not rejected, has a
+    /// profile" — the only population anyone is searching. Emergency-contact
+    /// data is never reachable regardless of which bits are set.</para>
+    ///
+    /// <para>Auth boundary is the controller per design-rules §6: services
+    /// are auth-free, so a non-admin endpoint passing
+    /// <see cref="PersonSearchFields.Admin"/> is a programmer error caught
+    /// in code review, not a runtime check.</para>
+    /// </summary>
+    Task<IReadOnlyList<HumanSearchResult>> SearchUsersAsync(
+        string query,
+        PersonSearchFields fields,
+        int limit = 10,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Fetches a single user by id. Returns null if the user does not exist.
@@ -130,7 +153,7 @@ public interface IUserService : IApplicationService, IUserMerge
     /// Purges a human at the User aggregate — removes all UserEmail rows for
     /// the user, anonymizes the email/display name, and permanently locks out
     /// the account. Returns the prior display name on success, or <c>null</c>
-    /// if the user did not exist. Invalidates the FullProfile cache on
+    /// if the user did not exist. Invalidates the UserInfo cache on
     /// success so downstream consumers see the purged view. Cross-section
     /// invalidation (ActiveTeams cache, etc.) is owned by the caller —
     /// <see cref="IAccountDeletionService.PurgeAsync"/> is the orchestrator
@@ -145,7 +168,7 @@ public interface IUserService : IApplicationService, IUserMerge
     /// clears phone/picture/iCal/deletion fields, sets the security stamp,
     /// and permanently locks out the account. Returns the pre-write identity
     /// slice or <c>null</c> if the user does not exist. Invalidates the
-    /// FullProfile cache on success. Cross-section cascade (team
+    /// UserInfo cache on success. Cross-section cascade (team
     /// memberships, role assignments, profile anonymization, shift cleanup)
     /// is owned by <see cref="IAccountDeletionService.AnonymizeExpiredAccountAsync"/>.
     /// </summary>
@@ -237,7 +260,7 @@ public interface IUserService : IApplicationService, IUserMerge
     /// (<c>LockoutEnd</c> far future), and applies the existing per-user
     /// anonymization fields (display name, picture, phone, security stamp,
     /// iCal token). Returns true if the source row existed; false if it
-    /// was missing. Invalidates the FullProfile cache for the source on
+    /// was missing. Invalidates the UserInfo cache for the source on
     /// success. Used by <c>AccountMergeService.AcceptAsync</c> as the
     /// final step of the fold-into-target flow.
     /// </summary>

@@ -1032,6 +1032,10 @@ public class ShiftDashboardMetricsTests : IDisposable
                 communicationPreferences: Array.Empty<Humans.Domain.Entities.CommunicationPreference>())).ToList();
         }
 
+        public Task<IReadOnlyList<Humans.Application.DTOs.HumanSearchResult>> SearchUsersAsync(
+            string query, Humans.Application.Services.Profiles.PersonSearchFields fields,
+            int limit = 10, CancellationToken ct = default) => throw new NotSupportedException();
+
         public async Task<User?> GetByIdAsync(Guid userId, CancellationToken ct = default)
             => await _db.Users.FirstOrDefaultAsync(u => u.Id == userId, ct);
 
@@ -1040,6 +1044,17 @@ public class ShiftDashboardMetricsTests : IDisposable
             if (userIds.Count == 0) return new Dictionary<Guid, User>();
             var users = await _db.Users.Where(u => userIds.Contains(u.Id)).ToListAsync(ct);
             return users.ToDictionary(u => u.Id);
+        }
+
+        public ValueTask<IReadOnlyDictionary<Guid, Humans.Application.UserInfo>> GetUserInfosAsync(
+            IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
+        {
+            var snapshot = GetAllUserInfos().ToDictionary(u => u.Id);
+            var dict = new Dictionary<Guid, Humans.Application.UserInfo>();
+            foreach (var id in userIds)
+                if (snapshot.TryGetValue(id, out var info))
+                    dict[id] = info;
+            return new ValueTask<IReadOnlyDictionary<Guid, Humans.Application.UserInfo>>(dict);
         }
 
         public async Task<IReadOnlyDictionary<Guid, User>> GetByIdsWithEmailsAsync(IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)

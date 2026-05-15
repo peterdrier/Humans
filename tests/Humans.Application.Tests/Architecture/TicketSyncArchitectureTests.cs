@@ -5,7 +5,6 @@ using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Repositories.Tickets;
-using Microsoft.EntityFrameworkCore;
 using Xunit;
 using TicketSyncService = Humans.Application.Services.Tickets.TicketSyncService;
 
@@ -28,24 +27,6 @@ namespace Humans.Application.Tests.Architecture;
 public class TicketSyncArchitectureTests
 {
     // ── TicketSyncService ────────────────────────────────────────────────────
-
-    [HumansFact]
-    public void TicketSyncService_LivesInHumansApplicationServicesTicketsNamespace()
-    {
-        typeof(TicketSyncService).Namespace
-            .Should().Be("Humans.Application.Services.Tickets",
-                because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
-    }
-
-    [HumansFact]
-    public void TicketSyncService_HasNoDbContextConstructorParameter()
-    {
-        var ctor = typeof(TicketSyncService).GetConstructors().Single();
-        ctor.GetParameters()
-            .Should().NotContain(
-                p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
-                because: "services in Humans.Application must never take DbContext — use ITicketRepository instead (design-rules §3)");
-    }
 
     [HumansFact]
     public void TicketSyncService_TakesRepository()
@@ -110,14 +91,6 @@ public class TicketSyncArchitectureTests
     }
 
     // ── ITicketRepository ────────────────────────────────────────────────────
-
-    [HumansFact]
-    public void ITicketRepository_LivesInApplicationInterfacesRepositoriesNamespace()
-    {
-        typeof(ITicketRepository).Namespace
-            .Should().Be("Humans.Application.Interfaces.Repositories",
-                because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
-    }
 
     [HumansFact]
     public void TicketRepository_IsSealed()

@@ -23,6 +23,7 @@ using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Profiles;
 
 namespace Humans.Web.Controllers;
@@ -35,6 +36,7 @@ public class TeamAdminController : HumansTeamControllerBase
     private readonly ITeamResourceService _teamResourceService;
     private readonly IGoogleSyncService _googleSyncService;
     private readonly IProfileService _profileService;
+    private readonly IUserService _userService;
     private readonly IEmailProvisioningService _emailProvisioningService;
     private readonly INotificationService _notificationService;
     private readonly ISystemTeamSync _systemTeamSyncJob;
@@ -47,6 +49,7 @@ public class TeamAdminController : HumansTeamControllerBase
         ITeamResourceService teamResourceService,
         IGoogleSyncService googleSyncService,
         IProfileService profileService,
+        IUserService userService,
         IEmailProvisioningService emailProvisioningService,
         INotificationService notificationService,
         UserManager<User> userManager,
@@ -61,6 +64,7 @@ public class TeamAdminController : HumansTeamControllerBase
         _teamResourceService = teamResourceService;
         _googleSyncService = googleSyncService;
         _profileService = profileService;
+        _userService = userService;
         _emailProvisioningService = emailProvisioningService;
         _notificationService = notificationService;
         _systemTeamSyncJob = systemTeamSyncJob;
@@ -376,7 +380,7 @@ public class TeamAdminController : HumansTeamControllerBase
         // Name-only narrows the picker to display name + burner name; admin
         // bit is intentionally NOT set here (the callers are team admins, not
         // global admins, so they don't get to search by hidden contact data).
-        var results = await _profileService.SearchProfilesAsync(
+        var results = await _userService.SearchUsersAsync(
             q, PersonSearchFields.Name, limit: 50);
 
         // Exclude existing team members.
@@ -1044,7 +1048,7 @@ public class TeamAdminController : HumansTeamControllerBase
         // Also search all approved humans for non-members. Name-only is the
         // appropriate scope for the role-picker (no bio / contact data); admin
         // bit is not set because team admins are not global admins.
-        var allResults = await _profileService.SearchProfilesAsync(
+        var allResults = await _userService.SearchUsersAsync(
             q, PersonSearchFields.Name, limit: 50);
         var nonMembers = allResults
             .Where(r => !teamMemberUserIds.Contains(r.UserId))

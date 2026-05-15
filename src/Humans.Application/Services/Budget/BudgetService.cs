@@ -274,7 +274,6 @@ public sealed class BudgetService : IBudgetService, IUserDataContributor
 
         var teams = (await _teamService.GetTeamsAsync()).Values
             .Where(t => t.IsActive)
-            .OrderBy(t => t.Name, StringComparer.Ordinal)
             .ToList();
         return new CoordinatorCategoryDetailViewData(category, ShouldForbid: false, Teams: teams);
     }

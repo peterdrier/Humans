@@ -3,7 +3,6 @@ using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Infrastructure.Repositories.GoogleIntegration;
-using Microsoft.EntityFrameworkCore;
 using Xunit;
 using TeamResourceService = Humans.Application.Services.Teams.TeamResourceService;
 
@@ -40,29 +39,11 @@ public class TeamResourceArchitectureTests
     // ── TeamResourceService ──────────────────────────────────────────────────
 
     [HumansFact]
-    public void TeamResourceService_LivesInHumansApplicationServicesTeamsNamespace()
-    {
-        typeof(TeamResourceService).Namespace
-            .Should().Be("Humans.Application.Services.Teams",
-                because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
-    }
-
-    [HumansFact]
     public void TeamResourceService_IsSealed()
     {
         typeof(TeamResourceService).IsSealed
             .Should().BeTrue(
                 because: "application services are terminal — extension happens via a caching decorator when warranted (§15d), not subclassing");
-    }
-
-    [HumansFact]
-    public void TeamResourceService_HasNoDbContextConstructorParameter()
-    {
-        var ctor = typeof(TeamResourceService).GetConstructors().Single();
-        ctor.GetParameters()
-            .Should().NotContain(
-                p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
-                because: "services in Humans.Application must never take DbContext — use IGoogleResourceRepository instead (design-rules §3)");
     }
 
     [HumansFact]
@@ -105,14 +86,6 @@ public class TeamResourceArchitectureTests
     }
 
     // ── IGoogleResourceRepository ────────────────────────────────────────────
-
-    [HumansFact]
-    public void IGoogleResourceRepository_LivesInApplicationInterfacesRepositoriesNamespace()
-    {
-        typeof(IGoogleResourceRepository).Namespace
-            .Should().Be("Humans.Application.Interfaces.Repositories",
-                because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
-    }
 
     [HumansFact]
     public void GoogleResourceRepository_IsSealed()

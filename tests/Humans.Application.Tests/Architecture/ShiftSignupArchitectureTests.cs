@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Infrastructure.Repositories.Shifts;
-using Microsoft.EntityFrameworkCore;
 using Xunit;
 using ShiftSignupService = Humans.Application.Services.Shifts.ShiftSignupService;
 
@@ -22,24 +21,6 @@ namespace Humans.Application.Tests.Architecture;
 public class ShiftSignupArchitectureTests
 {
     // ── ShiftSignupService ──────────────────────────────────────────────────
-
-    [HumansFact]
-    public void ShiftSignupService_LivesInHumansApplicationServicesShiftsNamespace()
-    {
-        typeof(ShiftSignupService).Namespace
-            .Should().Be("Humans.Application.Services.Shifts",
-                because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
-    }
-
-    [HumansFact]
-    public void ShiftSignupService_HasNoDbContextConstructorParameter()
-    {
-        var ctor = typeof(ShiftSignupService).GetConstructors().Single();
-        ctor.GetParameters()
-            .Should().NotContain(
-                p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
-                because: "services in Humans.Application must never take DbContext — use IShiftSignupRepository instead (design-rules §3)");
-    }
 
     [HumansFact]
     public void ShiftSignupService_HasNoIMemoryCacheConstructorParameter()
@@ -82,14 +63,6 @@ public class ShiftSignupArchitectureTests
     }
 
     // ── IShiftSignupRepository ──────────────────────────────────────────────
-
-    [HumansFact]
-    public void IShiftSignupRepository_LivesInApplicationInterfacesRepositoriesNamespace()
-    {
-        typeof(IShiftSignupRepository).Namespace
-            .Should().Be("Humans.Application.Interfaces.Repositories",
-                because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
-    }
 
     [HumansFact]
     public void ShiftSignupRepository_IsSealed()

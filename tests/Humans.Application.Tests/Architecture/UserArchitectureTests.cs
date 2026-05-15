@@ -5,6 +5,7 @@ using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Repositories.Users;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
@@ -92,8 +93,8 @@ public class UserArchitectureTests
 
         cachingParam.Should().BeNull(
             because: "canonical User data is not IMemoryCache-backed");
-        paramTypes.Should().Contain(typeof(IFullProfileInvalidator),
-            because: "User writes that change FullProfile-visible fields must invalidate the Profile cache");
+        paramTypes.Should().Contain(typeof(IUserInfoInvalidator),
+            because: "User writes that change UserInfo-visible fields must invalidate the UserInfo cache");
     }
 
     [HumansFact]
@@ -119,9 +120,6 @@ public class UserArchitectureTests
     [HumansFact]
     public void User_repository_has_expected_application_interface_and_sealed_implementation()
     {
-        typeof(IUserRepository).Namespace
-            .Should().Be("Humans.Application.Interfaces.Repositories");
-
         var repoType = typeof(IUserRepository).Assembly
             .GetExportedTypes()
             .Concat(typeof(UserRepository).Assembly.GetExportedTypes())

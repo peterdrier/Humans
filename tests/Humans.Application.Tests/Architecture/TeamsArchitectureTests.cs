@@ -3,7 +3,6 @@ using AwesomeAssertions;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Infrastructure.Repositories.Teams;
-using Microsoft.EntityFrameworkCore;
 using Xunit;
 using TeamService = Humans.Application.Services.Teams.TeamService;
 
@@ -29,36 +28,6 @@ namespace Humans.Application.Tests.Architecture;
 public class TeamsArchitectureTests
 {
     // ── TeamService ──────────────────────────────────────────────────────────
-
-    [HumansFact]
-    public void TeamService_LivesInHumansApplicationServicesTeamsNamespace()
-    {
-        typeof(TeamService).Namespace
-            .Should().Be("Humans.Application.Services.Teams",
-                because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
-    }
-
-    [HumansFact]
-    public void TeamService_HasNoDbContextConstructorParameter()
-    {
-        var ctor = typeof(TeamService).GetConstructors().Single();
-        ctor.GetParameters()
-            .Should().NotContain(
-                p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
-                because: "services in Humans.Application must never take DbContext — use ITeamRepository instead (design-rules §3)");
-    }
-
-    [HumansFact]
-    public void TeamService_HasNoIDbContextFactoryConstructorParameter()
-    {
-        var ctor = typeof(TeamService).GetConstructors().Single();
-        var factoryParam = ctor.GetParameters()
-            .FirstOrDefault(p => (p.ParameterType.FullName ?? string.Empty)
-                .StartsWith("Microsoft.EntityFrameworkCore.IDbContextFactory", StringComparison.Ordinal));
-
-        factoryParam.Should().BeNull(
-            because: "IDbContextFactory is a repository concern (design-rules §15b) — services go through repositories, not straight to the factory");
-    }
 
     [HumansFact]
     public void TeamService_TakesRepository()
@@ -94,14 +63,6 @@ public class TeamsArchitectureTests
     }
 
     // ── ITeamRepository + TeamRepository ─────────────────────────────────────
-
-    [HumansFact]
-    public void ITeamRepository_LivesInApplicationInterfacesRepositoriesNamespace()
-    {
-        typeof(ITeamRepository).Namespace
-            .Should().Be("Humans.Application.Interfaces.Repositories",
-                because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
-    }
 
     [HumansFact]
     public void TeamRepository_IsSealed()

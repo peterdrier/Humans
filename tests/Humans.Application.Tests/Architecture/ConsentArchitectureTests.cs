@@ -2,7 +2,6 @@ using System.Reflection;
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Infrastructure.Repositories.Consent;
-using Microsoft.EntityFrameworkCore;
 using Xunit;
 using ConsentService = Humans.Application.Services.Consent.ConsentService;
 
@@ -33,24 +32,6 @@ namespace Humans.Application.Tests.Architecture;
 public class ConsentArchitectureTests
 {
     // ── ConsentService ───────────────────────────────────────────────────────
-
-    [HumansFact]
-    public void ConsentService_LivesInHumansApplicationServicesConsentNamespace()
-    {
-        typeof(ConsentService).Namespace
-            .Should().Be("Humans.Application.Services.Consent",
-                because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
-    }
-
-    [HumansFact]
-    public void ConsentService_HasNoDbContextConstructorParameter()
-    {
-        var ctor = typeof(ConsentService).GetConstructors().Single();
-        ctor.GetParameters()
-            .Should().NotContain(
-                p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
-                because: "services in Humans.Application must never take DbContext — use IConsentRepository instead (design-rules §3)");
-    }
 
     [HumansFact]
     public void ConsentService_HasNoIMemoryCacheConstructorParameter()
@@ -86,14 +67,6 @@ public class ConsentArchitectureTests
     }
 
     // ── IConsentRepository ───────────────────────────────────────────────────
-
-    [HumansFact]
-    public void IConsentRepository_LivesInApplicationInterfacesRepositoriesNamespace()
-    {
-        typeof(IConsentRepository).Namespace
-            .Should().Be("Humans.Application.Interfaces.Repositories",
-                because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
-    }
 
     [HumansFact]
     public void ConsentRepository_IsSealed()

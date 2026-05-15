@@ -1,6 +1,6 @@
 using System.Security.Claims;
 using Humans.Application.Interfaces.Camps;
-using Humans.Application.Interfaces.CitiPlanning;
+using Humans.Application.Interfaces.CityPlanning;
 using Microsoft.AspNetCore.Authorization;
 
 namespace Humans.Web.Authorization.Requirements;

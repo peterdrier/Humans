@@ -72,7 +72,7 @@ public class AdminController : HumansControllerBase
         var firstName = User.Identity?.Name?.Split(' ').FirstOrDefault() ?? "";
         var snapshot = userService.GetAllUserInfos();
         var totalUsers = snapshot.Count;
-        var activeProfileUsers = snapshot.Count(u => u.Profile is not null);
+        var activeProfileUsers = snapshot.Count(u => u.IsActive);
         var activeEvent = await shifts.GetActiveAsync();
         var ticketHolders = activeEvent is { Year: > 0 }
             ? snapshot.Count(u => u.HasTicketForYear(activeEvent.Year))

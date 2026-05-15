@@ -3,7 +3,6 @@ using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
-using Microsoft.EntityFrameworkCore;
 using Xunit;
 using TeamPageService = Humans.Application.Services.Teams.TeamPageService;
 
@@ -25,28 +24,10 @@ namespace Humans.Application.Tests.Architecture;
 public class TeamPageArchitectureTests
 {
     [HumansFact]
-    public void TeamPageService_LivesInHumansApplicationServicesTeamsNamespace()
-    {
-        typeof(TeamPageService).Namespace
-            .Should().Be("Humans.Application.Services.Teams",
-                because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
-    }
-
-    [HumansFact]
     public void TeamPageService_ImplementsITeamPageService()
     {
         typeof(ITeamPageService).IsAssignableFrom(typeof(TeamPageService))
             .Should().BeTrue();
-    }
-
-    [HumansFact]
-    public void TeamPageService_HasNoDbContextConstructorParameter()
-    {
-        var ctor = typeof(TeamPageService).GetConstructors().Single();
-        ctor.GetParameters()
-            .Should().NotContain(
-                p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
-                because: "services in Humans.Application must never take DbContext — cross-domain reads route through sibling service interfaces (design-rules §2c, §3)");
     }
 
     [HumansFact]

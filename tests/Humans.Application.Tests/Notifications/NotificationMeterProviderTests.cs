@@ -8,6 +8,7 @@ using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -109,12 +110,14 @@ public class NotificationMeterProviderTests : IDisposable
     [HumansFact]
     public async Task GetMetersForUserAsync_Admin_SeesFailedSyncAndDeletionsAndTeamsAndTicketError()
     {
-        _userService.GetAllUserInfos().Returns(Array.Empty<UserInfo>());
-        _userService.GetAllUsersAsync(Arg.Any<CancellationToken>()).Returns((IReadOnlyList<Humans.Domain.Entities.User>)new[]
+        var usersForDeletion = new[]
         {
             new Humans.Domain.Entities.User { Id = Guid.NewGuid(), DeletionRequestedAt = NodaTime.Instant.FromUtc(2026, 4, 1, 0, 0) },
             new Humans.Domain.Entities.User { Id = Guid.NewGuid(), DeletionRequestedAt = NodaTime.Instant.FromUtc(2026, 4, 2, 0, 0) },
-        });
+        };
+        _userService.GetAllUserInfos().Returns(usersForDeletion.Select(u => u.ToUserInfo()).ToList());
+        _userService.GetAllUsersAsync(Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyList<Humans.Domain.Entities.User>)usersForDeletion);
         _googleSyncService.GetFailedSyncEventCountAsync(Arg.Any<CancellationToken>()).Returns(5);
         _teamService.GetTotalPendingJoinRequestCountAsync(Arg.Any<CancellationToken>()).Returns(7);
         _ticketSyncService.IsInErrorStateAsync(Arg.Any<CancellationToken>()).Returns(true);

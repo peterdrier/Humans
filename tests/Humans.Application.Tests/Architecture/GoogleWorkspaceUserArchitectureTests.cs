@@ -1,7 +1,6 @@
 using System.Reflection;
 using AwesomeAssertions;
 using Humans.Application.Interfaces.GoogleIntegration;
-using Microsoft.EntityFrameworkCore;
 using Xunit;
 using GoogleWorkspaceUserService = Humans.Application.Services.GoogleIntegration.GoogleWorkspaceUserService;
 
@@ -20,37 +19,6 @@ namespace Humans.Application.Tests.Architecture;
 public class GoogleWorkspaceUserArchitectureTests
 {
     // ── GoogleWorkspaceUserService ───────────────────────────────────────────
-
-    [HumansFact]
-    public void GoogleWorkspaceUserService_LivesInHumansApplicationServicesGoogleIntegrationNamespace()
-    {
-        typeof(GoogleWorkspaceUserService).Namespace
-            .Should().Be("Humans.Application.Services.GoogleIntegration",
-                because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
-    }
-
-    [HumansFact]
-    public void GoogleWorkspaceUserService_HasNoDbContextConstructorParameter()
-    {
-        var ctor = typeof(GoogleWorkspaceUserService).GetConstructors().Single();
-        ctor.GetParameters()
-            .Should().NotContain(
-                p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
-                because: "services in Humans.Application must never take DbContext (design-rules §3) — this service has no DB, only a connector");
-    }
-
-    [HumansFact]
-    public void GoogleWorkspaceUserService_HasNoDbContextFactoryConstructorParameter()
-    {
-        var ctor = typeof(GoogleWorkspaceUserService).GetConstructors().Single();
-        var factoryParam = ctor.GetParameters()
-            .FirstOrDefault(p =>
-                p.ParameterType.IsGenericType &&
-                p.ParameterType.GetGenericTypeDefinition() == typeof(IDbContextFactory<>));
-
-        factoryParam.Should().BeNull(
-            because: "IDbContextFactory belongs behind the repository boundary, not in an Application-layer service");
-    }
 
     [HumansFact]
     public void GoogleWorkspaceUserService_TakesConnectorClient()

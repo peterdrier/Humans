@@ -564,7 +564,7 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
     }
 
     // Resolves display names using the BurnerName-first rule (memory/architecture/burnername-is-the-display-name.md):
-    // Profile.BurnerName when present, else User.DisplayName. Mirrors FullProfile.ResolveDisplayName.
+    // Profile.BurnerName when present, else User.DisplayName. Mirrors the BurnerName-or-DisplayName fallback used everywhere else.
     private async Task<IReadOnlyDictionary<Guid, string>> BuildDisplayNamesAsync(
         IReadOnlyCollection<Guid> userIds,
         IReadOnlyDictionary<Guid, User>? users,

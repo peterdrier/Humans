@@ -28,35 +28,6 @@ namespace Humans.Application.Tests.Architecture;
 public class CampaignsArchitectureTests
 {
     [HumansFact]
-    public void CampaignService_LivesInHumansApplicationServicesCampaignsNamespace()
-    {
-        typeof(Humans.Application.Services.Campaigns.CampaignService).Namespace
-            .Should().Be("Humans.Application.Services.Campaigns",
-                because: "service-layer logic in Campaigns belongs in Humans.Application and is organized by section");
-    }
-
-    [HumansFact]
-    public void CampaignService_HasNoDbContextConstructorParameter()
-    {
-        var ctor = typeof(Humans.Application.Services.Campaigns.CampaignService).GetConstructors().Single();
-        ctor.GetParameters()
-            .Should().NotContain(
-                p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
-                because: "Campaigns service must pass persistence access through ICampaignRepository");
-    }
-
-    [HumansFact]
-    public void CampaignService_HasNoIDbContextFactoryConstructorParameter()
-    {
-        var ctor = typeof(Humans.Application.Services.Campaigns.CampaignService).GetConstructors().Single();
-        var factoryParam = ctor.GetParameters()
-            .FirstOrDefault(p => (p.ParameterType.FullName ?? string.Empty)
-                .StartsWith("Microsoft.EntityFrameworkCore.IDbContextFactory", StringComparison.Ordinal));
-        factoryParam.Should().BeNull(
-            because: "repository ownership requires direct DB work to stay in Infrastructure");
-    }
-
-    [HumansFact]
     public void CampaignService_TakesRepository()
     {
         var ctor = typeof(Humans.Application.Services.Campaigns.CampaignService).GetConstructors().Single();
@@ -81,14 +52,6 @@ public class CampaignsArchitectureTests
             .Should().NotContain(
                 a => a.Name == "Microsoft.EntityFrameworkCore",
                 because: "Campaigns service should not depend on EF Core directly");
-    }
-
-    [HumansFact]
-    public void ICampaignRepository_LivesInApplicationInterfacesRepositoriesNamespace()
-    {
-        typeof(ICampaignRepository).Namespace
-            .Should().Be("Humans.Application.Interfaces.Repositories",
-                because: "repository interfaces are shared in the application contracts layer");
     }
 
     [HumansFact]

@@ -22,24 +22,6 @@ namespace Humans.Application.Tests.Architecture;
 public class GovernanceArchitectureTests
 {
     [HumansFact]
-    public void ApplicationDecisionService_LivesInHumansApplicationServicesGovernanceNamespace()
-    {
-        typeof(ApplicationDecisionService).Namespace
-            .Should().Be("Humans.Application.Services.Governance",
-                because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
-    }
-
-    [HumansFact]
-    public void ApplicationDecisionService_HasNoDbContextConstructorParameter()
-    {
-        var ctor = typeof(ApplicationDecisionService).GetConstructors().Single();
-        ctor.GetParameters()
-            .Should().NotContain(
-                p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
-                because: "services in Humans.Application must never take DbContext — use IApplicationRepository instead (design-rules §3)");
-    }
-
-    [HumansFact]
     public void ApplicationDecisionService_HasNoIMemoryCacheConstructorParameter()
     {
         var ctor = typeof(ApplicationDecisionService).GetConstructors().Single();
@@ -83,14 +65,6 @@ public class GovernanceArchitectureTests
         referenced.Should().NotContain(
             name => name.StartsWith("Microsoft.EntityFrameworkCore", StringComparison.Ordinal),
             because: "Humans.Application must not reference EF Core — repositories live in Infrastructure (design-rules §1, §3)");
-    }
-
-    [HumansFact]
-    public void IApplicationRepository_LivesInApplicationInterfacesRepositoriesNamespace()
-    {
-        typeof(IApplicationRepository).Namespace
-            .Should().Be("Humans.Application.Interfaces.Repositories",
-                because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
     }
 
     [HumansFact]

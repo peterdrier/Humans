@@ -582,7 +582,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         }
 
         var userIds = activeLeads.Select(l => l.UserId).Distinct().ToList();
-        var users = await _userService.GetByIdsAsync(userIds, cancellationToken);
+        var users = await _userService.GetUserInfosAsync(userIds, cancellationToken);
 
         return activeLeads
             .Select(l => new CampLeadSummary(
@@ -1855,7 +1855,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             .Concat(activeLeads.Select(l => l.UserId))
             .Distinct()
             .ToList();
-        var users = await _userService.GetByIdsAsync(userIds, cancellationToken);
+        var users = await _userService.GetUserInfosAsync(userIds, cancellationToken);
         var userMap = users.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.DisplayName);
 
         static string DisplayName(Guid userId, IReadOnlyDictionary<Guid, string> names) =>
