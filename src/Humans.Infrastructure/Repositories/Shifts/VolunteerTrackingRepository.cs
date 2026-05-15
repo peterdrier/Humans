@@ -49,7 +49,7 @@ public sealed class VolunteerTrackingRepository : IVolunteerTrackingRepository
         row.SetByUserId = setByUserId;
         row.SetAt = setAt;
 
-        IReadOnlyList<int> trimmed = Array.Empty<int>();
+        IReadOnlyList<int> trimmed = [];
         if (setupOffsetThreshold is { } threshold)
         {
             // DayOffs is persisted sorted (see UpsertDayOffAsync), so the
@@ -133,7 +133,7 @@ public sealed class VolunteerTrackingRepository : IVolunteerTrackingRepository
             .Select(x => new { x.BuildStartOffset })
             .FirstOrDefaultAsync(ct);
 
-        if (es is null) return Array.Empty<EligibleBuildSignup>();
+        if (es is null) return [];
 
         // SignupStatus and RotaPeriod are stored as strings via
         // HasConversion<string>(). Per memory/code/no-enum-compare-in-ef.md, we

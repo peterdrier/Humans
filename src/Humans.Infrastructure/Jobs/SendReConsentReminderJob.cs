@@ -2,7 +2,6 @@ using Hangfire;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NodaTime;
-using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
 using Humans.Infrastructure.Configuration;
 using Humans.Application.Interfaces.Email;

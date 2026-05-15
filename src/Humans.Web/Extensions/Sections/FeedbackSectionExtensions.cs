@@ -2,7 +2,6 @@ using Humans.Application.Interfaces.Feedback;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
-using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Repositories.Feedback;
 using Humans.Web.Filters;
 using FeedbackApplicationService = Humans.Application.Services.Feedback.FeedbackService;

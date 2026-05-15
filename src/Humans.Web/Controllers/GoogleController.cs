@@ -259,7 +259,9 @@ public class GoogleController : HumansControllerBase
         try
         {
             var result = await _googleSyncService.GetAllDomainGroupsAsync();
-            var teams = await _googleAdminService.GetActiveTeamsAsync();
+            var teams = (await _googleAdminService.GetActiveTeamsAsync())
+                .OrderBy(t => t.Name, StringComparer.Ordinal)
+                .ToList();
             ViewBag.Teams = teams;
             return View(result);
         }
@@ -670,8 +672,10 @@ public class GoogleController : HumansControllerBase
             googleEmailLookup[userId] = info?.GoogleEmail ?? info?.Email ?? "unknown";
             displayNameLookup[userId] = info?.BurnerName ?? "(unknown)";
         }
-        var teamLookup = (await teamService.GetTeamNamesByIdsAsync(teamIds))
-            .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+        var teamsById = await teamService.GetTeamsAsync();
+        var teamLookup = teamIds
+            .Where(teamsById.ContainsKey)
+            .ToDictionary(id => id, id => teamsById[id].Name);
         var resourcesByTeam = await _teamResourceService.GetResourcesByTeamIdsAsync(teamIds);
         var resourceLookup = resourcesByTeam.ToDictionary(
             kvp => kvp.Key,

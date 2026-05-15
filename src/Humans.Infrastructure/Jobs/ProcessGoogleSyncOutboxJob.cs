@@ -24,7 +24,7 @@ namespace Humans.Infrastructure.Jobs;
 /// user-GoogleEmailStatus mutation goes through <see cref="IUserService"/>.
 /// User/team display-name lookups for the error log go through
 /// <see cref="IUserService.GetByIdsAsync"/> and
-/// <see cref="ITeamService.GetTeamNamesByIdsAsync"/>.
+/// <see cref="ITeamService.GetTeamsAsync"/>.
 /// </remarks>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 public class ProcessGoogleSyncOutboxJob : IRecurringJob
@@ -89,8 +89,10 @@ public class ProcessGoogleSyncOutboxJob : IRecurringJob
             var users = await _userService.GetUserInfosAsync(userIds, cancellationToken);
             var userEmailLookup = users.ToDictionary(
                 kvp => kvp.Key, kvp => kvp.Value.Email ?? "unknown");
-            var teamNameLookup = await _teamService.GetTeamNamesByIdsAsync(
-                teamIds, cancellationToken);
+            var teamsById = await _teamService.GetTeamsAsync(cancellationToken);
+            var teamNameLookup = teamIds
+                .Where(teamsById.ContainsKey)
+                .ToDictionary(id => id, id => teamsById[id].Name);
 
             foreach (var outboxEvent in pendingEvents)
             {

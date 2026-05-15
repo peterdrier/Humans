@@ -53,7 +53,7 @@ public class AgentApiController : ControllerBase
         var conv = await _agent.GetConversationForAdminAsync(id, ct);
         if (conv is null) return NotFound();
 
-        var users = await ResolveUsersAsync(new[] { conv.UserId }, ct);
+        var users = await ResolveUsersAsync([conv.UserId], ct);
         var displayName = users.TryGetValue(conv.UserId, out var u) ? u.DisplayName : null;
 
         return Ok(new

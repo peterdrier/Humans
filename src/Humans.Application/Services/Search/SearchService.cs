@@ -59,10 +59,10 @@ public sealed class SearchService : ISearchService
         {
             return new GlobalSearchResults(
                 trimmed,
-                Array.Empty<HumanSearchResult>(),
-                Array.Empty<GlobalSearchResult>(),
-                Array.Empty<GlobalSearchResult>(),
-                Array.Empty<GlobalSearchResult>());
+                [],
+                [],
+                [],
+                []);
         }
 
         var humans = onlyType is null or SearchResultType.Human

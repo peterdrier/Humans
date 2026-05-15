@@ -7,7 +7,6 @@ using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
-using Humans.Web.Models;
 using Humans.Web.Models.OnboardingWidget;
 using Humans.Web.Services.Onboarding;
 using Microsoft.AspNetCore.Authorization;

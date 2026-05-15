@@ -71,9 +71,10 @@ public sealed class CalendarService : ICalendarService
         // In-memory join (§6b): resolve owning-team display names up front
         // via ITeamService instead of .Include(e => e.OwningTeam).
         var teamIds = events.Select(e => e.OwningTeamId).Distinct().ToList();
-        var teamNames = teamIds.Count == 0
-            ? (IReadOnlyDictionary<Guid, string>)new Dictionary<Guid, string>()
-            : await _teamService.GetTeamNamesByIdsAsync(teamIds, ct);
+        var teamsById = await _teamService.GetTeamsAsync(ct);
+        var teamNames = teamIds
+            .Where(teamsById.ContainsKey)
+            .ToDictionary(id => id, id => teamsById[id].Name);
 
         var results = new List<CalendarOccurrence>();
 

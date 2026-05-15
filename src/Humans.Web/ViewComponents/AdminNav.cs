@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using Humans.Web.Authorization;
 
 namespace Humans.Web.ViewComponents;
 

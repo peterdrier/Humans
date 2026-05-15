@@ -50,9 +50,18 @@ public class ShiftSignupsViewComponent : ViewComponent
             model.EventSettings = es;
 
             var componentTeamIds = ShiftSignupBucketer.GetTeamIds(signups);
-            var componentTeamNames = componentTeamIds.Count == 0
-                ? (IReadOnlyDictionary<Guid, string>)new Dictionary<Guid, string>()
-                : await _teamService.GetTeamNamesByIdsAsync(componentTeamIds);
+            IReadOnlyDictionary<Guid, string> componentTeamNames;
+            if (componentTeamIds.Count == 0)
+            {
+                componentTeamNames = new Dictionary<Guid, string>();
+            }
+            else
+            {
+                var teamsById = await _teamService.GetTeamsAsync();
+                componentTeamNames = componentTeamIds
+                    .Where(teamsById.ContainsKey)
+                    .ToDictionary(id => id, id => teamsById[id].Name);
+            }
 
             var buckets = ShiftSignupBucketer.Build(
                 signups,

@@ -10,7 +10,6 @@ using Humans.Application.Services.Tickets;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Testing;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Serialization.SystemTextJson;
@@ -87,7 +86,7 @@ public sealed class TicketTransferService_RetryIssueTests
 
     private static readonly JsonSerializerOptions WebOptions =
         new JsonSerializerOptions(JsonSerializerDefaults.Web)
-            .ConfigureForNodaTime(NodaTime.DateTimeZoneProviders.Tzdb);
+            .ConfigureForNodaTime(DateTimeZoneProviders.Tzdb);
 
     private static IReadOnlyList<TicketTransferVendorStep> StepsOf(TicketTransferRequest r) =>
         JsonSerializer.Deserialize<List<TicketTransferVendorStep>>(r.VendorStepsJson, WebOptions)!;

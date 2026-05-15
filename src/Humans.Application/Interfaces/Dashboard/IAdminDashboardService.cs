@@ -1,4 +1,3 @@
-using Humans.Application.Interfaces;
 using Humans.Application.DTOs;
 
 namespace Humans.Application.Interfaces.Dashboard;

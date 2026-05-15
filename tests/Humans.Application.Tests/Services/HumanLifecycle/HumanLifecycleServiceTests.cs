@@ -7,7 +7,6 @@ using Humans.Application.Services.HumanLifecycle;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
-using Xunit;
 
 namespace Humans.Application.Tests.Services.HumanLifecycle;
 

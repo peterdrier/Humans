@@ -10,7 +10,6 @@ using Humans.Infrastructure.Repositories.Teams;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using NodaTime.Testing;
-using Xunit;
 
 namespace Humans.Application.Tests.Repositories;
 
@@ -111,29 +110,6 @@ public sealed class TeamRepositoryTests : IDisposable
         var all = await _repo.GetAllActiveAsync();
 
         all.Should().ContainSingle(t => t.Name == "Active");
-    }
-
-    [HumansFact]
-    public async Task GetActiveOptionsAsync_ReturnsIdNamePairs()
-    {
-        await SeedTeamAsync("A");
-        await SeedTeamAsync("B");
-
-        var options = await _repo.GetActiveOptionsAsync();
-
-        options.Select(o => o.Name).Should().Contain(["A", "B"]);
-    }
-
-    [HumansFact]
-    public async Task GetNamesByIdsAsync_IncludesInactive_ForGdprHistory()
-    {
-        var active = await SeedTeamAsync("Active", isActive: true);
-        var inactive = await SeedTeamAsync("Inactive", isActive: false);
-
-        var names = await _repo.GetNamesByIdsAsync(new[] { active.Id, inactive.Id });
-
-        names[active.Id].Should().Be("Active");
-        names[inactive.Id].Should().Be("Inactive");
     }
 
     // ==========================================================================

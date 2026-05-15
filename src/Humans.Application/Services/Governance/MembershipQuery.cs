@@ -44,11 +44,14 @@ public sealed class MembershipQuery : IMembershipQuery
 #pragma warning restore CS0618
     }
 
-    public Task<bool> IsUserMemberOfTeamAsync(
+    public async Task<bool> IsUserMemberOfTeamAsync(
         Guid teamId,
         Guid userId,
-        CancellationToken cancellationToken = default) =>
-        _teamService.IsUserMemberOfTeamAsync(teamId, userId, cancellationToken);
+        CancellationToken cancellationToken = default)
+    {
+        var t = await _teamService.GetTeamAsync(teamId, cancellationToken);
+        return t is { IsActive: true } && t.Members.Any(m => m.UserId == userId);
+    }
 
     public Task<bool> HasAnyActiveAssignmentAsync(
         Guid userId,

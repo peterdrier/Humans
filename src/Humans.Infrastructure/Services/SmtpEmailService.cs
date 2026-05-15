@@ -1,4 +1,3 @@
-using Humans.Application.DTOs;
 using Humans.Domain.Enums;
 using MailKit.Net.Smtp;
 using MailKit.Security;
@@ -74,7 +73,7 @@ public class SmtpEmailService : IEmailService
         string? culture = null,
         CancellationToken cancellationToken = default)
     {
-        await SendReConsentsRequiredAsync(userEmail, userName, new[] { documentName }, culture, cancellationToken);
+        await SendReConsentsRequiredAsync(userEmail, userName, [documentName], culture, cancellationToken);
     }
 
     /// <inheritdoc />

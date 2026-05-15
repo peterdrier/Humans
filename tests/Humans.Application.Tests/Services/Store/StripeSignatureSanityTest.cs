@@ -3,7 +3,6 @@ using System.Security.Cryptography;
 using System.Text;
 using AwesomeAssertions;
 using Stripe;
-using Xunit;
 
 namespace Humans.Application.Tests.Services.Store;
 

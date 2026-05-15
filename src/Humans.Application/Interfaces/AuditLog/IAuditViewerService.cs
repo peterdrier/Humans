@@ -1,4 +1,3 @@
-using Humans.Application.Interfaces;
 using Humans.Application.Services.AuditLog;
 
 namespace Humans.Application.Interfaces.AuditLog;

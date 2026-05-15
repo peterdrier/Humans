@@ -1,7 +1,5 @@
 using System.ComponentModel.DataAnnotations;
 using Humans.Application.Services.Expenses.Dtos;
-using Humans.Domain.Entities;
-using Humans.Domain.Enums;
 
 namespace Humans.Web.Models;
 

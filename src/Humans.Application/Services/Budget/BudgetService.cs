@@ -99,7 +99,9 @@ public sealed class BudgetService : IBudgetService, IUserDataContributor
         // Resolve budgetable teams via the Teams section before calling the
         // repository — the repository never crosses the Teams section's
         // ownership boundary (design-rules §2c).
-        var teams = await _teamService.GetBudgetableTeamsAsync();
+        var teams = (await _teamService.GetTeamsAsync()).Values
+            .Where(t => t.IsActive && t.HasBudget)
+            .OrderBy(t => t.Name, StringComparer.Ordinal);
         var teamRefs = teams
             .Select(t => new BudgetableTeamRef(t.Id, t.Name))
             .ToList();
@@ -175,7 +177,9 @@ public sealed class BudgetService : IBudgetService, IUserDataContributor
     {
         var now = _clock.GetCurrentInstant();
 
-        var teams = await _teamService.GetBudgetableTeamsAsync();
+        var teams = (await _teamService.GetTeamsAsync()).Values
+            .Where(t => t.IsActive && t.HasBudget)
+            .OrderBy(t => t.Name, StringComparer.Ordinal);
         var teamRefs = teams
             .Select(t => new BudgetableTeamRef(t.Id, t.Name))
             .ToList();
@@ -268,7 +272,9 @@ public sealed class BudgetService : IBudgetService, IUserDataContributor
         if (!isFinanceAdmin && coordinatorTeamIds.Count == 0)
             return new CoordinatorCategoryDetailViewData(category, ShouldForbid: true, Teams: []);
 
-        var teams = await _teamService.GetActiveTeamOptionsAsync();
+        var teams = (await _teamService.GetTeamsAsync()).Values
+            .Where(t => t.IsActive)
+            .ToList();
         return new CoordinatorCategoryDetailViewData(category, ShouldForbid: false, Teams: teams);
     }
 

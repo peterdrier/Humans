@@ -1,7 +1,6 @@
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Infrastructure.Caching;
 using Humans.Infrastructure.Services.Profiles;
 using ProfilesProfileService = Humans.Application.Services.Profiles.ProfileService;
 using ProfilesContactFieldService = Humans.Application.Services.Profiles.ContactFieldService;

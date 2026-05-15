@@ -43,6 +43,6 @@ public static class BuildSubPeriodClassifier
             BuildSubPeriod.SetupWeek => (settings.SetupWeekStartOffset, settings.PreEventWeekStartOffset),
             BuildSubPeriod.PreEventWeek => (settings.PreEventWeekStartOffset, settings.FinishingWeekendStartOffset),
             BuildSubPeriod.FinishingWeekend => (settings.FinishingWeekendStartOffset, 0),
-            _ => throw new System.ArgumentOutOfRangeException(nameof(subPeriod)),
+            _ => throw new ArgumentOutOfRangeException(nameof(subPeriod)),
         };
 }

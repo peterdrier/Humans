@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Users;
-using Xunit;
 using AccountDeletionService = Humans.Application.Services.Users.AccountLifecycle.AccountDeletionService;
 
 namespace Humans.Application.Tests.Architecture;

@@ -18,7 +18,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Xunit;
 
 namespace Humans.Application.Tests.Services.Shifts;
 
@@ -85,7 +84,7 @@ public class ShiftSignupServiceFilterIncompleteOnboardingTests : IDisposable
     [HumansFact]
     public async Task Filter_EmptyList_ReturnsEmptyWithoutMembershipCall()
     {
-        var result = await _service.FilterToIncompleteOnboardingAsync(Array.Empty<ShiftSignup>());
+        var result = await _service.FilterToIncompleteOnboardingAsync([]);
 
         result.Should().BeEmpty();
         await _membership.DidNotReceiveWithAnyArgs()

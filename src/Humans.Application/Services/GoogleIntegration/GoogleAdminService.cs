@@ -5,11 +5,8 @@ using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
-using Humans.Domain.Constants;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging;
-using NodaTime;
 
 namespace Humans.Application.Services.GoogleIntegration;
 
@@ -101,7 +98,7 @@ public sealed class GoogleAdminService : IGoogleAdminService
             // Batch-load users for matched emails
             var matchedUserIds = matchByEmail.Values.Select(m => m.UserId).Distinct().ToList();
             var usersById = matchedUserIds.Count == 0
-                ? new Dictionary<Guid, Humans.Application.UserInfo>()
+                ? new Dictionary<Guid, UserInfo>()
                 : (await _userService.GetUserInfosAsync(matchedUserIds, ct))
                     .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
@@ -217,8 +214,9 @@ public sealed class GoogleAdminService : IGoogleAdminService
         // Reject if the prefix collides with a team's Google Group. Team groups live on
         // the same domain (@nobodies.team), so provisioning a user account with the same
         // address would cause mail-routing chaos and break group membership.
-        var conflictingTeamName = await _teamService.GetTeamNameByGoogleGroupPrefixAsync(
-            normalizedPrefix, ct);
+        var conflictingTeamName = (await _teamService.GetTeamsAsync(ct)).Values
+            .FirstOrDefault(t => string.Equals(t.GoogleGroupPrefix, normalizedPrefix, StringComparison.OrdinalIgnoreCase))
+            ?.Name;
         if (!string.IsNullOrEmpty(conflictingTeamName))
         {
             _logger.LogWarning(
@@ -690,7 +688,8 @@ public sealed class GoogleAdminService : IGoogleAdminService
     public async Task<IReadOnlyList<TeamSummary>> GetActiveTeamsAsync(
         CancellationToken ct = default)
     {
-        var options = await _teamService.GetActiveTeamOptionsAsync(ct);
+        var options = (await _teamService.GetTeamsAsync(ct)).Values
+            .Where(t => t.IsActive);
         return options
             .Select(o => new TeamSummary(o.Id, o.Name))
             .ToList();
@@ -714,7 +713,7 @@ public sealed class GoogleAdminService : IGoogleAdminService
                 {
                     var emails = emailsByUserId.TryGetValue(u.Id, out var list)
                         ? list
-                        : Array.Empty<UserEmailRowSnapshot>();
+                        : [];
                     var googleEmail = emails
                         .Where(e => e.IsVerified && e.IsGoogle)
                         .Select(e => e.Email)

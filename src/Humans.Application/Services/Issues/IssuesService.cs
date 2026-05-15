@@ -3,7 +3,6 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using NodaTime;
-using Humans.Application;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
@@ -321,8 +320,8 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
             .Select(a => a.ActorUserId!.Value)
             .Distinct()
             .ToList();
-        IReadOnlyDictionary<Guid, Humans.Application.UserInfo> actorUsers = actorIds.Count == 0
-            ? new Dictionary<Guid, Humans.Application.UserInfo>()
+        IReadOnlyDictionary<Guid, UserInfo> actorUsers = actorIds.Count == 0
+            ? new Dictionary<Guid, UserInfo>()
             : await _users.GetUserInfosAsync(actorIds, ct);
 
 #pragma warning disable CS0618 // Cross-domain nav populated in memory

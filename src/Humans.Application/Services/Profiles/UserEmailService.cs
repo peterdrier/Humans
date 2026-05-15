@@ -1438,10 +1438,9 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         bool displacedUserLeftWithoutVerifiedEmail,
         CancellationToken ct)
     {
-        var loginsByUser = await _userService.GetExternalLoginsByUserIdsAsync(
-            new[] { signingUserId, displaced.UserId }, ct);
-        var signingLogins = loginsByUser.TryGetValue(signingUserId, out var sl) ? sl : Array.Empty<(string, string)>();
-        var displacedLogins = loginsByUser.TryGetValue(displaced.UserId, out var dl) ? dl : Array.Empty<(string, string)>();
+        var loginsByUser = await _userService.GetExternalLoginsByUserIdsAsync([signingUserId, displaced.UserId], ct);
+        var signingLogins = loginsByUser.TryGetValue(signingUserId, out var sl) ? sl : [];
+        var displacedLogins = loginsByUser.TryGetValue(displaced.UserId, out var dl) ? dl : [];
 
         var inv = System.Globalization.CultureInfo.InvariantCulture;
         var sb = new System.Text.StringBuilder();

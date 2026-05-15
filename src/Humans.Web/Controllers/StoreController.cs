@@ -1,4 +1,3 @@
-using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Store;
 using Humans.Application.Services.Store.Dtos;

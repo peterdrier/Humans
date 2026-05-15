@@ -105,8 +105,9 @@ public sealed class EmailProvisioningService : IEmailProvisioningService
             // Reject if the prefix collides with a team's Google Group. Team groups
             // live on the same domain (@nobodies.team), so a user account with the
             // same address would cause mail-routing chaos and break group membership.
-            var conflictingTeamName =
-                await _teamService.GetTeamNameByGoogleGroupPrefixAsync(sanitizedPrefix);
+            var conflictingTeamName = (await _teamService.GetTeamsAsync()).Values
+                .FirstOrDefault(t => string.Equals(t.GoogleGroupPrefix, sanitizedPrefix, StringComparison.OrdinalIgnoreCase))
+                ?.Name;
             if (!string.IsNullOrEmpty(conflictingTeamName))
             {
                 _logger.LogWarning(

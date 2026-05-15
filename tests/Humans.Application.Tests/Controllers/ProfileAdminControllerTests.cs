@@ -8,7 +8,6 @@ using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Testing;
 using Humans.Web.Authorization;
 using Humans.Web.Controllers;
 using Humans.Web.Models.EmailProblems;
@@ -17,7 +16,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Controllers;
-using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
@@ -63,10 +61,9 @@ public class ProfileAdminControllerTests
             _teamService,
             _roleAssignmentService);
 
-        var identity = new ClaimsIdentity(new[]
-        {
-            new Claim(ClaimTypes.NameIdentifier, _adminUserId.ToString()),
-        }, authenticationType: "TestAuth");
+        var identity = new ClaimsIdentity([
+            new Claim(ClaimTypes.NameIdentifier, _adminUserId.ToString())
+        ], authenticationType: "TestAuth");
         var principal = new ClaimsPrincipal(identity);
 
         var services = new ServiceCollection();
@@ -103,7 +100,7 @@ public class ProfileAdminControllerTests
     {
         _emailProblems.ScanAsync(Arg.Any<CancellationToken>())
             .Returns(new EmailProblemsReport(NodaTime.SystemClock.Instance.GetCurrentInstant(),
-                Array.Empty<EmailProblem>()));
+                []));
         _users.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, User>());
 

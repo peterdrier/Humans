@@ -115,8 +115,7 @@ public class ProfileApiController : ApiControllerBase
 
         var pictureUrls = await ProfilePictureUrlHelper.BuildEffectiveUrlsAsync(
             _profileService,
-            Url,
-            new[] { userId },
+            Url, [userId],
             ct);
 
         var detail = await GetSharedDetailAsync(

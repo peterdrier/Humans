@@ -6,14 +6,12 @@ using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Profiles;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Testing;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using NSubstitute.ReceivedExtensions;
-using Xunit;
 
 namespace Humans.Application.Tests.Services;
 

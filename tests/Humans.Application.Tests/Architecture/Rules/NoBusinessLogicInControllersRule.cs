@@ -1,6 +1,5 @@
 using System.Text.RegularExpressions;
 using Humans.Application.Tests.Architecture.Ratchet;
-using Humans.Testing;
 
 namespace Humans.Application.Tests.Architecture.Rules;
 
@@ -59,10 +58,10 @@ public class NoBusinessLogicInControllersRule
         TimeSpan.FromSeconds(2));
 
     private static readonly string[] BranchTokens =
-    {
+    [
         @"\bif\b", @"\bcase\b", @"&&", @"\|\|", @"\bwhile\b", @"\bfor\b",
-        @"\bforeach\b", @"\bcatch\b",
-    };
+        @"\bforeach\b", @"\bcatch\b"
+    ];
     private static readonly Regex TernaryRegex = new(@"\?[^?:]*:",
         RegexOptions.Compiled | RegexOptions.ExplicitCapture,
         TimeSpan.FromSeconds(2));

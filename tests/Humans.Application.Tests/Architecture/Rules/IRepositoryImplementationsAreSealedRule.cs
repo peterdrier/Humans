@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Infrastructure.Repositories.AuditLog;
-using Humans.Testing;
 
 namespace Humans.Application.Tests.Architecture.Rules;
 

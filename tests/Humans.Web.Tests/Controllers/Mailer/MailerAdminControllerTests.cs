@@ -7,7 +7,6 @@ using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Testing;
 using Humans.Web.Controllers.Mailer;
 using Humans.Web.Models.Mailer;
 using Microsoft.AspNetCore.Http;
@@ -48,14 +47,14 @@ public class MailerAdminControllerTests
     private MailerAdminController BuildSut(ImportPlanCounts? snapshotCounts = null)
     {
         var ctrl = new MailerAdminController(
-            _mlService, _importService, _audienceSync, Array.Empty<IMailerAudience>(),
+            _mlService, _importService, _audienceSync, [],
             _userService, _prefs, _audit,
             NullLogger<MailerAdminController>.Instance, _userManager);
 
         var http = new DefaultHttpContext
         {
-            User = new ClaimsPrincipal(new ClaimsIdentity(
-                new[] { new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString()) },
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString())
+                ],
                 "test")),
         };
         ctrl.ControllerContext = new ControllerContext { HttpContext = http };
@@ -151,9 +150,9 @@ public class MailerAdminControllerTests
         _mlService.GetAccountSummaryAsync(Arg.Any<CancellationToken>())
             .Returns(new MailerLiteAccountSummary(0, 0, 0, 0, 0));
         _mlService.ListGroupsAsync(Arg.Any<CancellationToken>())
-            .Returns((IReadOnlyList<MailerLiteGroup>)Array.Empty<MailerLiteGroup>());
+            .Returns((IReadOnlyList<MailerLiteGroup>)[]);
         _userService.GetAllUserInfos()
-            .Returns(Array.Empty<Humans.Application.UserInfo>());
+            .Returns([]);
         _prefs.GetCountByCategoryAndStateAsync(
                 Arg.Any<MessageCategory>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns(0);
@@ -164,7 +163,7 @@ public class MailerAdminControllerTests
                 actions: Arg.Any<IReadOnlyList<AuditAction>?>(),
                 limit: Arg.Any<int>(),
                 ct: Arg.Any<CancellationToken>())
-            .Returns((IReadOnlyList<AuditLogEntrySnapshot>)Array.Empty<AuditLogEntrySnapshot>());
+            .Returns((IReadOnlyList<AuditLogEntrySnapshot>)[]);
 
         var ctrl = BuildSut();
 
@@ -208,7 +207,7 @@ public class MailerAdminControllerTests
                 actions: Arg.Any<IReadOnlyList<AuditAction>?>(),
                 limit: Arg.Any<int>(),
                 ct: Arg.Any<CancellationToken>())
-            .Returns((IReadOnlyList<AuditLogEntrySnapshot>)Array.Empty<AuditLogEntrySnapshot>());
+            .Returns((IReadOnlyList<AuditLogEntrySnapshot>)[]);
 
         var ctrl = BuildSut();
 
@@ -323,26 +322,26 @@ public class MailerAdminControllerTests
         await _importService.Received(1).ApplyAsync(freshPlan, 1, Arg.Any<CancellationToken>());
     }
 
-    private static Humans.Application.UserInfo MakeUserInfoWithContactSource(ContactSource source)
+    private static Application.UserInfo MakeUserInfoWithContactSource(ContactSource source)
     {
         var userId = Guid.NewGuid();
-        return Humans.Application.UserInfo.Create(
+        return Application.UserInfo.Create(
             user: new User
             {
                 Id = userId,
                 DisplayName = "U",
                 PreferredLanguage = "en",
-                CreatedAt = NodaTime.Instant.FromUtc(2026, 1, 1, 0, 0),
+                CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
                 ContactSource = source,
                 GoogleEmailStatus = GoogleEmailStatus.Unknown,
             },
-            userEmails: Array.Empty<UserEmail>(),
-            eventParticipations: Array.Empty<EventParticipation>(),
-            externalLogins: Array.Empty<(string, string)>(),
+            userEmails: [],
+            eventParticipations: [],
+            externalLogins: [],
             profile: null,
-            contactFields: Array.Empty<ContactField>(),
-            profileLanguages: Array.Empty<ProfileLanguage>(),
-            volunteerHistory: Array.Empty<VolunteerHistoryEntry>(),
-            communicationPreferences: Array.Empty<CommunicationPreference>());
+            contactFields: [],
+            profileLanguages: [],
+            volunteerHistory: [],
+            communicationPreferences: []);
     }
 }

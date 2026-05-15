@@ -58,8 +58,7 @@ public sealed class SurfaceBudgetAnalyzer : DiagnosticAnalyzer
         isEnabledByDefault: true,
         description: SlackDescription);
 
-    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
-        ImmutableArray.Create(OverBudgetRule, SlackRule);
+    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [OverBudgetRule, SlackRule];
 
     public override void Initialize(AnalysisContext context)
     {

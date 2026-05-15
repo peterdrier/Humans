@@ -1,9 +1,6 @@
-using System.Collections.Generic;
-using System.Linq;
 using AwesomeAssertions;
 using Humans.Application.Configuration;
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Stores;
 using Humans.Application.Models;
 using Humans.Application.Services.Agent;
@@ -18,7 +15,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using NSubstitute;
-using Xunit;
 
 namespace Humans.Application.Tests.Agent;
 
@@ -213,11 +209,11 @@ public class AgentServiceTests
         var snapshots = Substitute.For<IAgentUserSnapshotProvider>();
         snapshots.LoadAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(
             new AgentUserSnapshot(Guid.NewGuid(), "Test User", "es", "Volunteer", true,
-                Array.Empty<(string, string)>(),
-                Array.Empty<Humans.Application.Models.TeamMembership>(),
-                Array.Empty<string>(),
-                Array.Empty<Guid>(), Array.Empty<Guid>(),
-                Array.Empty<Humans.Application.Models.UpcomingShiftEntry>()));
+                [],
+                [],
+                [],
+                [], [],
+                []));
         var preload = Substitute.For<IAgentPreloadCorpusBuilder>();
         preload.BuildAsync(Arg.Any<AgentPreloadConfig>(), Arg.Any<CancellationToken>()).Returns("");
         var assembler = new AgentPromptAssembler();

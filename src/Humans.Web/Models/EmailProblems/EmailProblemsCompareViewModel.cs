@@ -1,5 +1,4 @@
 using Humans.Application;
-using Humans.Domain.Entities;
 using NodaTime;
 
 namespace Humans.Web.Models.EmailProblems;

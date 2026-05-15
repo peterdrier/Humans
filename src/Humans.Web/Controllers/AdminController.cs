@@ -8,7 +8,6 @@ using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Dashboard;
 using Humans.Application.Interfaces.Feedback;
-using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
@@ -314,7 +313,7 @@ public class AdminController : HumansControllerBase
             ProviderRowsUpdated: 0,
             IsGoogleRowsUpdated: 0,
             AmbiguousMatchesWarned: 0,
-            Warnings: Array.Empty<string>()));
+            Warnings: []));
     }
 
     [HttpPost("BackfillUserEmailProviders")]

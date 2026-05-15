@@ -1,4 +1,3 @@
-using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NodaTime;
@@ -8,7 +7,6 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Services;
-using Xunit;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Email;
@@ -64,7 +62,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
         // Default: ITeamService.GetUserTeamsAsync returns empty list so tests
         // that don't care about team fan-out don't need to stub it.
         _teamService.GetUserTeamsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<TeamMember>());
+            .Returns([]);
 
         _job = new SuspendNonCompliantMembersJob(
             _userService, _profileService, _teamService, _membershipCalculator,

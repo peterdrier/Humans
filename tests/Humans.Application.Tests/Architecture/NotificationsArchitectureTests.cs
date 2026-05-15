@@ -2,11 +2,9 @@ using System.Text.RegularExpressions;
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Tests.Architecture.Ratchet;
-using Xunit;
 using NotificationService = Humans.Application.Services.Notifications.NotificationService;
 using NotificationInboxService = Humans.Application.Services.Notifications.NotificationInboxService;
 using NotificationMeterProvider = Humans.Application.Services.Notifications.NotificationMeterProvider;
-using Humans.Infrastructure.Repositories.Notifications;
 
 namespace Humans.Application.Tests.Architecture;
 
@@ -164,7 +162,7 @@ public class NotificationsArchitectureTests
 
             var rel = RatchetTestRunner.ToRelativePath(repoRoot, path);
             var ordinal = 0;
-            foreach (var match in NotificationWriteRegex.Matches(content).Cast<System.Text.RegularExpressions.Match>())
+            foreach (var match in NotificationWriteRegex.Matches(content).Cast<Match>())
             {
                 ordinal++;
                 var line = RatchetTestRunner.LineNumberAt(content, match.Index);

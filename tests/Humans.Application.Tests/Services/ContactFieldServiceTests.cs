@@ -8,11 +8,9 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
-using Xunit;
 using ContactFieldService = Humans.Application.Services.Profiles.ContactFieldService;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Auth;
-using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Repositories.Profiles;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -39,7 +37,7 @@ public class ContactFieldServiceTests : IDisposable
         _roleAssignmentService = Substitute.For<IRoleAssignmentService>();
         _clock = new FakeClock(Instant.FromUtc(2024, 1, 15, 12, 0, 0));
 
-        var factory = new Humans.Application.Tests.Infrastructure.TestDbContextFactory(options);
+        var factory = new Infrastructure.TestDbContextFactory(options);
         var repository = new ContactFieldRepository(factory);
         _profileRepository = new ProfileRepository(factory, _clock);
 

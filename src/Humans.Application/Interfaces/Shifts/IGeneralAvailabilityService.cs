@@ -1,6 +1,4 @@
 using Humans.Application.Architecture;
-using Humans.Application.Interfaces;
-using Humans.Domain.Entities;
 
 namespace Humans.Application.Interfaces.Shifts;
 

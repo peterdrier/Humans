@@ -85,7 +85,7 @@ public sealed class AuditViewerService : IAuditViewerService
         IReadOnlyList<AuditLogEntry> entries, CancellationToken ct)
     {
         if (entries.Count == 0)
-            return Array.Empty<AuditEvent>();
+            return [];
 
         var (userIds, teamIds, resourceIds) = CollectIds(entries);
         var users = userIds.Count == 0
@@ -108,7 +108,7 @@ public sealed class AuditViewerService : IAuditViewerService
         IReadOnlyList<AuditLogEntrySnapshot> entries, CancellationToken ct)
     {
         if (entries.Count == 0)
-            return Array.Empty<AuditEvent>();
+            return [];
 
         var (userIds, teamIds, resourceIds) = CollectIds(entries);
         var users = userIds.Count == 0

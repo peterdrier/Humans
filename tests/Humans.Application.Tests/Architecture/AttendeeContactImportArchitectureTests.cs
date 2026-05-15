@@ -6,7 +6,6 @@ using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Tickets;
-using Humans.Testing;
 
 namespace Humans.Application.Tests.Architecture;
 

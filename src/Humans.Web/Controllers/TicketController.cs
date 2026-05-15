@@ -3,7 +3,6 @@ using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
-using Humans.Domain.Enums;
 using Humans.Infrastructure.Jobs;
 using Humans.Web.Authorization;
 using Humans.Web.Extensions;

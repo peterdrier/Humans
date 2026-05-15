@@ -7,7 +7,6 @@ using Humans.Infrastructure.Services.Agent;
 using Humans.Infrastructure.Stores;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
-using Xunit;
 
 namespace Humans.Application.Tests.Agent;
 

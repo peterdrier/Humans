@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Email;
@@ -132,14 +131,14 @@ public class EmailProvisioningServiceTests
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             GoogleEmailStatus = GoogleEmailStatus.Unknown,
         },
-        userEmails: Array.Empty<UserEmail>(),
-        eventParticipations: Array.Empty<EventParticipation>(),
-        externalLogins: Array.Empty<(string, string)>(),
+        userEmails: [],
+        eventParticipations: [],
+        externalLogins: [],
         profile: profile,
-        contactFields: Array.Empty<ContactField>(),
-        profileLanguages: Array.Empty<ProfileLanguage>(),
-        volunteerHistory: Array.Empty<VolunteerHistoryEntry>(),
-        communicationPreferences: Array.Empty<CommunicationPreference>());
+        contactFields: [],
+        profileLanguages: [],
+        volunteerHistory: [],
+        communicationPreferences: []);
 
     private static void StubTargetUser(ProvisioningFixture f, Guid userId, string? oauthEmail = "target@example.com")
     {
@@ -195,9 +194,16 @@ public class EmailProvisioningServiceTests
 
         var userId = Guid.NewGuid();
         StubTargetUser(f, userId);
-        f.TeamService.GetTeamNameByGoogleGroupPrefixAsync(
-                "comms", Arg.Any<CancellationToken>())
-            .Returns("Communications");
+        var teamId = Guid.NewGuid();
+        var teamInfo = new TeamInfo(
+            teamId, "Communications", null, "communications",
+            IsActive: true, IsSystemTeam: false, SystemTeamType: SystemTeamType.None,
+            RequiresApproval: false, IsPublicPage: false, IsHidden: false,
+            IsPromotedToDirectory: false, CreatedAt: Instant.MinValue,
+            Members: [],
+            GoogleGroupPrefix: "comms");
+        f.TeamService.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyDictionary<Guid, TeamInfo>)new Dictionary<Guid, TeamInfo> { [teamId] = teamInfo });
 
         var result = await f.Service.ProvisionNobodiesEmailAsync(userId, "comms", userId);
 

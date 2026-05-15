@@ -37,7 +37,7 @@ public sealed class StubGoogleDrivePermissionsClient : IGoogleDrivePermissionsCl
         {
             var id = $"stubfolder-{_nextFileId++}";
             _filesById[id] = new StubFile(id, folderName, parentFolderId, DriveId: null, InheritedPermissionsDisabled: null);
-            _permissionsByFile[id] = new List<DrivePermission>();
+            _permissionsByFile[id] = [];
             var link = $"https://drive.google.com/drive/folders/{id}";
             return Task.FromResult(new DriveFolderCreateResult(
                 new DriveFolder(id, folderName, link),
@@ -67,7 +67,7 @@ public sealed class StubGoogleDrivePermissionsClient : IGoogleDrivePermissionsCl
             if (!_permissionsByFile.TryGetValue(fileId, out var perms))
             {
                 return Task.FromResult(new DrivePermissionListResult(
-                    Permissions: Array.Empty<DrivePermission>(),
+                    Permissions: [],
                     Error: null));
             }
 
@@ -99,7 +99,7 @@ public sealed class StubGoogleDrivePermissionsClient : IGoogleDrivePermissionsCl
 
             if (!_permissionsByFile.TryGetValue(fileId, out var perms))
             {
-                perms = new List<DrivePermission>();
+                perms = [];
                 _permissionsByFile[fileId] = perms;
             }
 

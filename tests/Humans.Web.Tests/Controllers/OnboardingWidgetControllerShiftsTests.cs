@@ -5,7 +5,6 @@ using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
-using Humans.Testing;
 using Humans.Web.Constants;
 using Humans.Web.Controllers;
 using Humans.Web.Services.Onboarding;
@@ -36,8 +35,8 @@ public class OnboardingWidgetControllerShiftsTests
     private readonly IShiftManagementService _shiftMgmt = Substitute.For<IShiftManagementService>();
     private readonly IConsentService _consents = Substitute.For<IConsentService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
-    private readonly IStringLocalizer<Humans.Web.SharedResource> _localizer =
-        Substitute.For<IStringLocalizer<Humans.Web.SharedResource>>();
+    private readonly IStringLocalizer<SharedResource> _localizer =
+        Substitute.For<IStringLocalizer<SharedResource>>();
     private readonly DefaultHttpContext _http = new();
 
     public OnboardingWidgetControllerShiftsTests()
@@ -54,8 +53,7 @@ public class OnboardingWidgetControllerShiftsTests
         var user = new User { Id = userId };
         _userManager.GetUserAsync(Arg.Any<ClaimsPrincipal>()).Returns(user);
         _http.Session = new TestSession();
-        _http.User = new ClaimsPrincipal(new ClaimsIdentity(
-            new[] { new Claim(ClaimTypes.NameIdentifier, userId.ToString()) },
+        _http.User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.ToString())],
             "test"));
         // SetError on HumansControllerBase resolves ILoggerFactory from RequestServices.
         var services = new ServiceCollection();
@@ -135,7 +133,7 @@ public class OnboardingWidgetControllerShiftsTests
         public bool TryGetValue(string key, out byte[] value)
         {
             if (_store.TryGetValue(key, out var v)) { value = v; return true; }
-            value = Array.Empty<byte>();
+            value = [];
             return false;
         }
     }

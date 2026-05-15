@@ -9,7 +9,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Xunit;
 using NotificationService = Humans.Application.Services.Notifications.NotificationService;
 using NotificationEmitter = Humans.Application.Services.Notifications.NotificationEmitter;
 using Humans.Application.Interfaces.Notifications;

@@ -40,7 +40,7 @@ public sealed class ShiftViewService : IShiftView
 
         GeneralAvailability? availability = null;
         VolunteerBuildStatus? buildStatus = null;
-        IReadOnlyList<ShiftSignup> signups = Array.Empty<ShiftSignup>();
+        IReadOnlyList<ShiftSignup> signups = [];
         if (activeEvent is not null)
         {
             availability = await _availability

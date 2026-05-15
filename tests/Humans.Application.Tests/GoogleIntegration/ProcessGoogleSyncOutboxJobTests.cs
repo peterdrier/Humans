@@ -18,7 +18,6 @@ using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Repositories.GoogleIntegration;
 using Humans.Infrastructure.Services;
 using Microsoft.Extensions.DependencyInjection;
-using Xunit;
 
 namespace Humans.Application.Tests.GoogleIntegration;
 
@@ -47,7 +46,7 @@ public class ProcessGoogleSyncOutboxJobTests : IDisposable
         _resourceRepository = Substitute.For<IGoogleResourceRepository>();
         _resourceRepository
             .GetActiveByTeamIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<GoogleResource>());
+            .Returns([]);
         _userService = Substitute.For<IUserService>();
         _userService
             .GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
@@ -55,8 +54,8 @@ public class ProcessGoogleSyncOutboxJobTests : IDisposable
         _userService.StubGetUserInfosFromContext(_dbContext);
         _teamService = Substitute.For<ITeamService>();
         _teamService
-            .GetTeamNamesByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, string>());
+            .GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyDictionary<Guid, TeamInfo>)new Dictionary<Guid, TeamInfo>());
         _googleSyncService = Substitute.For<IGoogleSyncService>();
         _notificationService = Substitute.For<INotificationService>();
         _clock = new FakeClock(Instant.FromUtc(2026, 2, 15, 20, 0));

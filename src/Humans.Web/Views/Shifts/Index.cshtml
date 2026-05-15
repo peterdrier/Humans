@@ -176,7 +176,7 @@
                     var isPreferred = Model.UserPreferredTagIds.Contains(tag.Id);
                     var newTagIds = isActive
                         ? Model.FilterTagIds.Where(id => id != tag.Id).ToList()
-                        : Model.FilterTagIds.Concat(new[] { tag.Id }).ToList();
+                        : Model.FilterTagIds.Concat([tag.Id]).ToList();
                     var routeValues = new Dictionary<string, string?>();
                     if (Model.FilterDepartmentId.HasValue)
                         routeValues["departmentId"] = Model.FilterDepartmentId.Value.ToString();

@@ -32,8 +32,7 @@ public sealed class ProfileIsSuspendedWriteAnalyzer : DiagnosticAnalyzer
             "Profile.IsSuspended is dual-written by ProfileService / ProfileRepository " +
             "until the lazy-State-backfill follow-up drops the column.");
 
-    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
-        ImmutableArray.Create(Rule);
+    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
 
     private const string ProfileFullName = "Humans.Domain.Entities.Profile";
     private const string IsSuspendedPropertyName = "IsSuspended";

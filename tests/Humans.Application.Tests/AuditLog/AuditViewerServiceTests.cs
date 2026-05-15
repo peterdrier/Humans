@@ -7,7 +7,6 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
 using NSubstitute;
-using Xunit;
 
 namespace Humans.Application.Tests.AuditLog;
 
@@ -31,7 +30,7 @@ public class AuditViewerServiceTests
 
         var auditLog = Substitute.For<IAuditLogService>();
         auditLog.GetByUserAsync(viewer, 10, Arg.Any<CancellationToken>())
-            .Returns(new[] { ToSnapshot(entry) });
+            .Returns([ToSnapshot(entry)]);
 
         var profileService = Substitute.For<IProfileService>();
         profileService.GetByUserIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
@@ -65,7 +64,7 @@ public class AuditViewerServiceTests
     {
         var auditLog = Substitute.For<IAuditLogService>();
         auditLog.GetByUserAsync(Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<AuditLogEntrySnapshot>());
+            .Returns([]);
 
         var profileService = Substitute.For<IProfileService>();
         var teamService = Substitute.For<ITeamService>();
@@ -122,7 +121,7 @@ public class AuditViewerServiceTests
             resourceId: resourceId);
 
         var auditLog = Substitute.For<IAuditLogService>();
-        auditLog.GetByResourceAsync(resourceId).Returns(new[] { ToSnapshot(entry) });
+        auditLog.GetByResourceAsync(resourceId).Returns([ToSnapshot(entry)]);
 
         var profileService = Substitute.For<IProfileService>();
         profileService.GetByUserIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
@@ -161,7 +160,7 @@ public class AuditViewerServiceTests
 
         var auditLog = Substitute.For<IAuditLogService>();
         auditLog.GetFilteredAsync(null, 1, 50, Arg.Any<CancellationToken>())
-            .Returns((new[] { ToSnapshot(entry) }, 1, 0));
+            .Returns(([ToSnapshot(entry)], 1, 0));
 
         var profileService = Substitute.For<IProfileService>();
         profileService.GetByUserIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
@@ -189,7 +188,7 @@ public class AuditViewerServiceTests
     {
         var auditLog = Substitute.For<IAuditLogService>();
         auditLog.GetByUserAsync(viewer, Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(new[] { ToSnapshot(entry) });
+            .Returns([ToSnapshot(entry)]);
 
         var profileService = Substitute.For<IProfileService>();
         profileService.GetByUserIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())

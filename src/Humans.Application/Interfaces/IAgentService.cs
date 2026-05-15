@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-using System.Threading;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Models;
 using Humans.Domain.Enums;

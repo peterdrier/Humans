@@ -1,5 +1,4 @@
 using Humans.Application.DTOs;
-using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Services.Profiles;
 using Humans.Domain.Entities;

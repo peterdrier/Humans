@@ -20,7 +20,6 @@ using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Xunit;
 
 namespace Humans.Application.Tests.Services;
 
@@ -65,7 +64,7 @@ public class TicketSyncServiceNullOrderTests : IDisposable
         _stripeService = Substitute.For<IStripeService>();
         _userService = Substitute.For<IUserService>();
         _userService.GetAllParticipationsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(new List<EventParticipation>());
+            .Returns([]);
         _campaignService = Substitute.For<ICampaignService>();
         _shiftManagementService = Substitute.For<IShiftManagementService>();
 

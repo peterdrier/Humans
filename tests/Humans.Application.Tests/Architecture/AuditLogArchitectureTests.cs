@@ -2,8 +2,6 @@ using System.Text.RegularExpressions;
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Tests.Architecture.Ratchet;
-using Humans.Infrastructure.Repositories.AuditLog;
-using Xunit;
 
 namespace Humans.Application.Tests.Architecture;
 
@@ -99,7 +97,7 @@ public class AuditLogArchitectureTests
 
             var rel = RatchetTestRunner.ToRelativePath(repoRoot, path);
             var ordinal = 0;
-            foreach (var match in AuditLogWriteRegex.Matches(content).Cast<System.Text.RegularExpressions.Match>())
+            foreach (var match in AuditLogWriteRegex.Matches(content).Cast<Match>())
             {
                 ordinal++;
                 var line = RatchetTestRunner.LineNumberAt(content, match.Index);

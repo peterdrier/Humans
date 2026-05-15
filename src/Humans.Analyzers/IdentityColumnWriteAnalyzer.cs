@@ -34,8 +34,7 @@ public sealed class IdentityColumnWriteAnalyzer : DiagnosticAnalyzer
             "that compute from UserEmails / Id. Writes from Application/Web are stale or " +
             "throw NotSupportedException at runtime.");
 
-    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
-        ImmutableArray.Create(Rule);
+    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
 
     private static readonly ImmutableHashSet<string> ForbiddenSetters =
         ImmutableHashSet.Create(System.StringComparer.Ordinal,

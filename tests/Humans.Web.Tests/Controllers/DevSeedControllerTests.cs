@@ -2,7 +2,6 @@ using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Application.Configuration;
 using Humans.Domain.Entities;
-using Humans.Testing;
 using Humans.Web.Controllers;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -12,9 +11,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Primitives;
 using NSubstitute;
-using Xunit;
 
 namespace Humans.Web.Tests.Controllers;
 
@@ -107,8 +104,8 @@ public class DevSeedControllerTests
         services.AddSingleton<ILoggerFactory>(NullLoggerFactory.Instance);
         var http = new DefaultHttpContext
         {
-            User = new ClaimsPrincipal(new ClaimsIdentity(
-                new[] { new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString()) },
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString())
+                ],
                 "test")),
             RequestServices = services.BuildServiceProvider(),
         };

@@ -4,7 +4,6 @@ using Humans.Domain.Enums;
 using Humans.Infrastructure.Services.Preload;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Hosting;
-using Xunit;
 
 namespace Humans.Application.Tests.Agent;
 

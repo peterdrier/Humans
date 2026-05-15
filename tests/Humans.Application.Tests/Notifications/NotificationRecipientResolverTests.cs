@@ -1,11 +1,9 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Teams;
-using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Enums;
 using NodaTime;
 using NSubstitute;
-using Xunit;
 using NotificationRecipientResolver = Humans.Application.Services.Notifications.NotificationRecipientResolver;
 
 namespace Humans.Application.Tests.Notifications;
@@ -67,7 +65,7 @@ public class NotificationRecipientResolverTests
         info.Should().NotBeNull();
         info!.Id.Should().Be(teamId);
         info.Name.Should().Be("Build Team");
-        info.MemberUserIds.Should().BeEquivalentTo(new[] { u1, u2 });
+        info.MemberUserIds.Should().BeEquivalentTo([u1, u2]);
     }
 
     [HumansFact]
@@ -102,7 +100,7 @@ public class NotificationRecipientResolverTests
 
         var ids = await _resolver.GetActiveUserIdsForRoleAsync("Board");
 
-        ids.Should().BeEquivalentTo(new[] { u1, u2 });
+        ids.Should().BeEquivalentTo([u1, u2]);
         await _roleAssignmentService.Received(1)
             .GetActiveUserIdsInRoleAsync("Board", Arg.Any<CancellationToken>());
     }

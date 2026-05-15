@@ -1029,8 +1029,15 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
                 var tz = DateTimeZoneProviders.Tzdb[existingEs.TimeZoneId];
                 var dateStr = existingStart.InZone(tz).ToString("ddd MMM d HH:mm", null);
 
-                teamNames ??= await TeamService.GetTeamNamesByIdsAsync(
-                    userSignups.Select(s => s.Shift.Rota.TeamId).Distinct().ToList());
+                if (teamNames is null)
+                {
+                    var teamsById = await TeamService.GetTeamsAsync();
+                    teamNames = userSignups
+                        .Select(s => s.Shift.Rota.TeamId)
+                        .Distinct()
+                        .Where(teamsById.ContainsKey)
+                        .ToDictionary(id => id, id => teamsById[id].Name);
+                }
                 var teamName = teamNames.GetValueOrDefault(existing.Shift.Rota.TeamId, "Unknown");
 
                 return $"Time conflict with '{existing.Shift.Rota.Name}' ({teamName}, {dateStr}).";
@@ -1075,7 +1082,11 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
                 return;
 
             var teamId = shift.Rota.TeamId;
-            var coordinatorIds = await TeamService.GetCoordinatorUserIdsAsync(teamId);
+            var team = await TeamService.GetTeamAsync(teamId);
+            var coordinatorIds = team?.Members
+                .Where(m => m.Role == TeamMemberRole.Coordinator)
+                .Select(m => m.UserId)
+                .ToList() ?? [];
 
             if (coordinatorIds.Count == 0)
                 return;
@@ -1116,7 +1127,11 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
             var enrichedDescription = $"{changeDescription} ({rotaName}, {FormatShiftDate(shiftDate)})";
 
             // Find coordinators for this department team
-            var coordinatorIds = await TeamService.GetCoordinatorUserIdsAsync(teamId);
+            var team = await TeamService.GetTeamAsync(teamId);
+            var coordinatorIds = team?.Members
+                .Where(m => m.Role == TeamMemberRole.Coordinator)
+                .Select(m => m.UserId)
+                .ToList() ?? [];
 
             if (coordinatorIds.Count == 0)
                 return;
@@ -1153,15 +1168,17 @@ public sealed class ShiftSignupService : IShiftSignupService, IUserDataContribut
         var signups = await _repo.GetForGdprExportAsync(userId, ct);
 
         // Resolve TeamId → Team.Name through the owning section's service.
-        // Explicitly NOT GetAllTeamsAsync — that filters to IsActive, which
-        // would drop the Department name for historical signups whose rota
-        // points at a deactivated team (GDPR data-loss regression). The
-        // dedicated GetTeamNamesByIdsAsync includes deactivated teams.
+        // GetTeamsAsync includes deactivated teams (no IsActive filter), so
+        // historical signups whose rota points at a deactivated team still
+        // resolve a name (GDPR data-loss prevention).
         var referencedTeamIds = signups
             .Select(ss => ss.Shift.Rota.TeamId)
             .Distinct()
             .ToList();
-        var teamNamesById = await TeamService.GetTeamNamesByIdsAsync(referencedTeamIds, ct);
+        var teamsByIdLookup = await TeamService.GetTeamsAsync(ct);
+        var teamNamesById = referencedTeamIds
+            .Where(teamsByIdLookup.ContainsKey)
+            .ToDictionary(id => id, id => teamsByIdLookup[id].Name);
 
         var volunteerEventProfiles = await _repo.GetVolunteerEventProfilesForUserAsync(userId, ct);
         var generalAvailability = await _repo.GetGeneralAvailabilityForUserAsync(userId, ct);

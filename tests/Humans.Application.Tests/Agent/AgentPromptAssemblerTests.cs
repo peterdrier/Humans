@@ -3,7 +3,6 @@ using Humans.Application.Models;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Services.Agent;
 using NodaTime;
-using Xunit;
 
 namespace Humans.Application.Tests.Agent;
 
@@ -18,16 +17,16 @@ public class AgentPromptAssemblerTests
             PreferredLocale: "es",
             Tier: "Volunteer",
             IsApproved: true,
-            RoleAssignments: new[] { ("TeamsAdmin", "2027-12-31") },
-            Teams: new[]
-            {
+            RoleAssignments: [("TeamsAdmin", "2027-12-31")],
+            Teams:
+            [
                 new TeamMembership("Volunteers", TeamMemberRole.Member),
                 new TeamMembership("Tech", TeamMemberRole.Coordinator)
-            },
-            PendingConsentDocs: new[] { "Privacy Policy" },
-            OpenTicketIds: Array.Empty<Guid>(),
-            OpenFeedbackIds: Array.Empty<Guid>(),
-            UpcomingShifts: Array.Empty<UpcomingShiftEntry>());
+            ],
+            PendingConsentDocs: ["Privacy Policy"],
+            OpenTicketIds: [],
+            OpenFeedbackIds: [],
+            UpcomingShifts: []);
 
         var assembler = new AgentPromptAssembler();
         var tail = assembler.BuildUserContextTail(snapshot);
@@ -47,16 +46,16 @@ public class AgentPromptAssemblerTests
             PreferredLocale: "es",
             Tier: "Volunteer",
             IsApproved: true,
-            RoleAssignments: Array.Empty<(string, string)>(),
-            Teams: new[]
-            {
+            RoleAssignments: [],
+            Teams:
+            [
                 new TeamMembership("Build", TeamMemberRole.Coordinator),
                 new TeamMembership("Cantina", TeamMemberRole.Member)
-            },
-            PendingConsentDocs: Array.Empty<string>(),
-            OpenTicketIds: Array.Empty<Guid>(),
-            OpenFeedbackIds: Array.Empty<Guid>(),
-            UpcomingShifts: Array.Empty<UpcomingShiftEntry>());
+            ],
+            PendingConsentDocs: [],
+            OpenTicketIds: [],
+            OpenFeedbackIds: [],
+            UpcomingShifts: []);
 
         var assembler = new AgentPromptAssembler();
         var tail = assembler.BuildUserContextTail(snapshot);
@@ -138,16 +137,16 @@ public class AgentPromptAssemblerTests
             PreferredLocale: "es",
             Tier: "Volunteer",
             IsApproved: true,
-            RoleAssignments: Array.Empty<(string, string)>(),
-            Teams: new[]
-            {
+            RoleAssignments: [],
+            Teams:
+            [
                 new TeamMembership("Zebra", TeamMemberRole.Member),
-                new TeamMembership("Apple", TeamMemberRole.Coordinator),
-            },
-            PendingConsentDocs: Array.Empty<string>(),
-            OpenTicketIds: Array.Empty<Guid>(),
-            OpenFeedbackIds: Array.Empty<Guid>(),
-            UpcomingShifts: Array.Empty<UpcomingShiftEntry>());
+                new TeamMembership("Apple", TeamMemberRole.Coordinator)
+            ],
+            PendingConsentDocs: [],
+            OpenTicketIds: [],
+            OpenFeedbackIds: [],
+            UpcomingShifts: []);
 
         var tail = new AgentPromptAssembler().BuildUserContextTail(snapshot);
 
@@ -203,10 +202,10 @@ public class AgentPromptAssemblerTests
             PreferredLocale: "es",
             Tier: "Volunteer",
             IsApproved: true,
-            RoleAssignments: Array.Empty<(string, string)>(),
-            Teams: Array.Empty<TeamMembership>(),
-            PendingConsentDocs: Array.Empty<string>(),
-            OpenTicketIds: Array.Empty<Guid>(),
-            OpenFeedbackIds: Array.Empty<Guid>(),
+            RoleAssignments: [],
+            Teams: [],
+            PendingConsentDocs: [],
+            OpenTicketIds: [],
+            OpenFeedbackIds: [],
             UpcomingShifts: upcoming);
 }

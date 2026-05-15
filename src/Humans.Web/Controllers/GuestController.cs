@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Application.Extensions;
-using Humans.Web.Extensions;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Users;

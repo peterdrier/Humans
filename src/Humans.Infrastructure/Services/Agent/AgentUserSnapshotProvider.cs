@@ -85,11 +85,11 @@ public sealed class AgentUserSnapshotProvider : IAgentUserSnapshotProvider
     {
         var activeEvent = await _shiftManagement.GetActiveAsync();
         if (activeEvent is null)
-            return Array.Empty<UpcomingShiftEntry>();
+            return [];
 
         var signups = await _shiftSignups.GetByUserAsync(userId, activeEvent.Id);
         if (signups.Count == 0)
-            return Array.Empty<UpcomingShiftEntry>();
+            return [];
 
         var now = _clock.GetCurrentInstant();
         var upcoming = signups
@@ -98,7 +98,7 @@ public sealed class AgentUserSnapshotProvider : IAgentUserSnapshotProvider
                 && s.Status is SignupStatus.Pending or SignupStatus.Confirmed)
             .ToList();
         if (upcoming.Count == 0)
-            return Array.Empty<UpcomingShiftEntry>();
+            return [];
 
         var entries = new List<UpcomingShiftEntry>();
 

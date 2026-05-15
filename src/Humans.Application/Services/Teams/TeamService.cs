@@ -207,11 +207,6 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
         CancellationToken cancellationToken = default) =>
         await LoadTeamsByIdAsync(cancellationToken);
 
-    public Task<IReadOnlyDictionary<Guid, string>> GetTeamNamesByIdsAsync(
-        IReadOnlyCollection<Guid> teamIds,
-        CancellationToken cancellationToken = default) =>
-        _repo.GetNamesByIdsAsync(teamIds, cancellationToken);
-
     public async Task<IReadOnlyList<Team>> GetAllTeamsAsync(CancellationToken cancellationToken = default)
     {
         var teams = await _repo.GetAllActiveAsync(cancellationToken);
@@ -227,20 +222,6 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
         return teams
             .Select(t => new TeamSearchHit(t.Name, t.Slug))
             .ToList();
-    }
-
-    public async Task<IReadOnlyList<TeamOptionDto>> GetActiveTeamOptionsAsync(
-        CancellationToken cancellationToken = default)
-    {
-        var teams = await _repo.GetActiveOptionsAsync(cancellationToken);
-        return teams.ToList();
-    }
-
-    public async Task<IReadOnlyList<TeamOptionDto>> GetBudgetableTeamsAsync(
-        CancellationToken cancellationToken = default)
-    {
-        var teams = await _repo.GetBudgetableOptionsAsync(cancellationToken);
-        return teams.ToList();
     }
 
     public async Task<IReadOnlyCollection<Guid>> GetEffectiveBudgetCoordinatorTeamIdsAsync(
@@ -265,10 +246,6 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
         var (updated, previous) = await _repo.SetGoogleGroupPrefixAsync(teamId, prefix, cancellationToken);
         return (updated, previous);
     }
-
-    public Task<string?> GetTeamNameByGoogleGroupPrefixAsync(
-        string prefix, CancellationToken cancellationToken = default) =>
-        _repo.GetNameByGoogleGroupPrefixAsync(prefix, cancellationToken);
 
     public async Task<TeamDirectoryResult> GetTeamDirectoryAsync(
         Guid? userId,
@@ -300,7 +277,7 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
             .Where(m => m.LeftAt is null)
             .ToList();
         var usersById = activeMembers.Count == 0
-            ? new Dictionary<Guid, Humans.Application.UserInfo>()
+            ? new Dictionary<Guid, UserInfo>()
             : await UserService.GetUserInfosAsync(
                 activeMembers.Select(m => m.UserId).Distinct().ToList(),
                 cancellationToken);
@@ -675,7 +652,8 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
         if (existingRequest is not null)
             throw new InvalidOperationException("User already has a pending request for this team");
 
-        var isMember = await IsUserMemberOfTeamAsync(teamId, userId, cancellationToken);
+        var teamInfo = await GetTeamAsync(teamId, cancellationToken);
+        var isMember = teamInfo is { IsActive: true } && teamInfo.Members.Any(m => m.UserId == userId);
         if (isMember)
             throw new InvalidOperationException("User is already a member of this team");
 
@@ -1079,17 +1057,6 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
         return await IsUserCoordinatorOfTeamAsync(teamId, userId, cancellationToken);
     }
 
-    public async Task<bool> IsUserMemberOfTeamAsync(
-        Guid teamId,
-        Guid userId,
-        CancellationToken cancellationToken = default)
-    {
-        var teamsById = await LoadTeamsByIdAsync(cancellationToken);
-        return teamsById.TryGetValue(teamId, out var team)
-            && team.IsActive
-            && team.Members.Any(m => m.UserId == userId);
-    }
-
     public async Task<bool> IsUserCoordinatorOfTeamAsync(
         Guid teamId,
         Guid userId,
@@ -1302,11 +1269,6 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
             actorUserId,
             relatedEntityId: userId, relatedEntityType: nameof(User));
     }
-
-    public Task<IReadOnlyDictionary<Guid, IReadOnlyList<string>>> GetActiveNonSystemTeamNamesByUserIdsAsync(
-        IReadOnlyCollection<Guid> userIds,
-        CancellationToken cancellationToken = default) =>
-        _repo.GetActiveNonSystemTeamNamesByUserIdsAsync(userIds, cancellationToken);
 
     // ==========================================================================
     // Team Role Definitions
@@ -1730,16 +1692,11 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
         CancellationToken cancellationToken = default) =>
         _repo.GetUserCoordinatorTeamIdsAsync(userId, cancellationToken);
 
-    public Task<IReadOnlyList<Guid>> GetCoordinatorUserIdsAsync(
-        Guid teamId,
-        CancellationToken cancellationToken = default) =>
-        _repo.GetCoordinatorUserIdsAsync(teamId, cancellationToken);
-
-    public async Task<IReadOnlyList<Humans.Application.Models.TeamMembership>> GetActiveTeamMembershipsForUserAsync(
+    public async Task<IReadOnlyList<Models.TeamMembership>> GetActiveTeamMembershipsForUserAsync(
         Guid userId, CancellationToken cancellationToken = default)
     {
         var teamsById = await LoadTeamsByIdAsync(cancellationToken);
-        var rows = new List<Humans.Application.Models.TeamMembership>();
+        var rows = new List<Models.TeamMembership>();
         foreach (var team in teamsById.Values.Where(t => t.IsActive))
         {
             if (team.SystemTeamType == SystemTeamType.Volunteers)
@@ -1747,7 +1704,7 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
             var membership = team.Members.FirstOrDefault(m => m.UserId == userId);
             if (membership is null)
                 continue;
-            rows.Add(new Humans.Application.Models.TeamMembership(team.Name, membership.Role)
+            rows.Add(new Models.TeamMembership(team.Name, membership.Role)
             {
                 IsHidden = team.IsHidden,
             });
@@ -1774,11 +1731,6 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
         IReadOnlyCollection<Guid> teamIds,
         CancellationToken cancellationToken = default) =>
         _repo.GetByIdsWithParentsAsync(teamIds, cancellationToken);
-
-    public Task<IReadOnlyList<TeamCoordinatorRef>> GetActiveCoordinatorsForTeamsAsync(
-        IReadOnlyCollection<Guid> teamIds,
-        CancellationToken cancellationToken = default) =>
-        _repo.GetActiveCoordinatorsForTeamsAsync(teamIds, cancellationToken);
 
     public async Task<TeamMember> AddSeededMemberAsync(
         Guid teamId,
@@ -1845,71 +1797,10 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
     public Task<int> GetTotalPendingJoinRequestCountAsync(CancellationToken cancellationToken = default) =>
         _repo.GetTotalPendingCountAsync(cancellationToken);
 
-    public Task<IReadOnlyList<Guid>> GetActiveNonSystemTeamCoordinatorUserIdsAsync(
-        CancellationToken cancellationToken = default) =>
-        _repo.GetActiveNonSystemTeamCoordinatorUserIdsAsync(cancellationToken);
-
-    public async Task<IReadOnlyList<TeamActiveMemberSnapshot>> GetActiveMembersForTeamsAsync(
-        IReadOnlyCollection<Guid> teamIds,
-        CancellationToken cancellationToken = default)
-    {
-        if (teamIds.Count == 0)
-            return [];
-        var members = await _repo.GetActiveMembersForTeamsAsync(teamIds, cancellationToken);
-        var userIds = members.Select(member => member.UserId).Distinct().ToList();
-        var usersById = userIds.Count == 0
-            ? new Dictionary<Guid, UserInfo>()
-            : await UserService.GetUserInfosAsync(userIds, cancellationToken);
-
-        return members
-            .Select(member =>
-            {
-                usersById.TryGetValue(member.UserId, out var user);
-                return new TeamActiveMemberSnapshot(
-                    member.TeamId,
-                    member.Id,
-                    member.UserId,
-                    user?.DisplayName ?? string.Empty,
-                    user?.Email,
-                    user?.ProfilePictureUrl,
-                    user?.GoogleEmailStatus ?? GoogleEmailStatus.Unknown,
-                    member.Role,
-                    member.JoinedAt);
-            })
-            .ToList();
-    }
-
     public Task<IReadOnlyDictionary<Guid, string>> GetManagementRoleNamesByTeamIdsAsync(
         IEnumerable<Guid> teamIds,
         CancellationToken cancellationToken = default) =>
         _repo.GetPublicManagementRoleNamesByTeamIdsAsync(teamIds.ToList(), cancellationToken);
-
-    public async Task<IReadOnlyDictionary<Guid, List<string>>> GetNonSystemTeamNamesByUserIdsAsync(
-        IEnumerable<Guid> userIds,
-        CancellationToken cancellationToken = default)
-    {
-        var userIdSet = userIds.ToHashSet();
-        if (userIdSet.Count == 0)
-            return new Dictionary<Guid, List<string>>();
-
-        var teamsById = await LoadTeamsByIdAsync(cancellationToken);
-        var result = new Dictionary<Guid, List<string>>();
-
-        foreach (var team in teamsById.Values.Where(t => t.IsActive && t.SystemTeamType == SystemTeamType.None && !t.IsHidden))
-        {
-            foreach (var member in team.Members.Where(m => userIdSet.Contains(m.UserId)))
-            {
-                if (!result.TryGetValue(member.UserId, out var names))
-                {
-                    names = [];
-                    result[member.UserId] = names;
-                }
-                names.Add(team.Name);
-            }
-        }
-
-        return result;
-    }
 
     public async Task<AdminTeamListResult> GetAdminTeamListAsync(
         int page,
@@ -2038,13 +1929,13 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
             .Distinct()
             .ToList();
         var users = allUserIds.Count == 0
-            ? new Dictionary<Guid, Humans.Application.UserInfo>()
+            ? new Dictionary<Guid, UserInfo>()
             : await UserService.GetUserInfosAsync(allUserIds, ct);
 
         return teams.ToDictionary(t => t.Id, t => BuildTeamInfo(t, users));
     }
 
-    private static TeamInfo BuildTeamInfo(Team team, IReadOnlyDictionary<Guid, Humans.Application.UserInfo> users) => new(
+    private static TeamInfo BuildTeamInfo(Team team, IReadOnlyDictionary<Guid, UserInfo> users) => new(
         Id: team.Id,
         Name: team.Name,
         Description: team.Description,
@@ -2069,10 +1960,16 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
                     Email: u?.Email,
                     ProfilePictureUrl: u?.ProfilePictureUrl,
                     Role: m.Role,
-                    JoinedAt: m.JoinedAt);
+                    JoinedAt: m.JoinedAt,
+                    GoogleEmailStatus: u?.GoogleEmailStatus ?? GoogleEmailStatus.Unknown);
             })
             .ToList(),
-        ParentTeamId: team.ParentTeamId);
+        ParentTeamId: team.ParentTeamId,
+        GoogleGroupPrefix: team.GoogleGroupPrefix,
+        HasBudget: team.HasBudget,
+        IsSensitive: team.IsSensitive,
+        UpdatedAt: team.UpdatedAt,
+        CustomSlug: team.CustomSlug);
 
     // ==========================================================================
     // Internal helpers — shift authorization invalidation
@@ -2281,7 +2178,7 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
 
         try
         {
-            var users = await UserService.GetUserInfosAsync(new[] { userId }, cancellationToken);
+            var users = await UserService.GetUserInfosAsync([userId], cancellationToken);
             if (!users.TryGetValue(userId, out var user))
                 return;
 
@@ -2413,7 +2310,7 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
 
     private static TeamDetailMemberSummary MapTeamDetailMemberSummary(
         TeamMember member,
-        IReadOnlyDictionary<Guid, Humans.Application.UserInfo> usersById) => new(
+        IReadOnlyDictionary<Guid, UserInfo> usersById) => new(
         UserId: member.UserId,
         DisplayName: GetMemberDisplayName(member, usersById),
         Email: usersById.GetValueOrDefault(member.UserId)?.Email,
@@ -2459,7 +2356,7 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
 
     private static string GetMemberDisplayName(
         TeamMember member,
-        IReadOnlyDictionary<Guid, Humans.Application.UserInfo> usersById) =>
+        IReadOnlyDictionary<Guid, UserInfo> usersById) =>
         usersById.GetValueOrDefault(member.UserId)?.DisplayName ?? string.Empty;
 
     private static string GetPriorityBadgeClass(SlotPriority priority) =>
@@ -2493,24 +2390,6 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
     // System team sync support (issue #570 — §15 Google-writing jobs)
     // ==========================================================================
 
-    public async Task<SystemTeamMembershipSnapshot?> GetSystemTeamWithActiveMembersAsync(
-        SystemTeamType type, CancellationToken cancellationToken = default)
-    {
-        var team = await _repo.GetSystemTeamWithActiveMembersAsync(type, cancellationToken);
-        return team is null
-            ? null
-            : new SystemTeamMembershipSnapshot(
-                team.Id,
-                team.Name,
-                team.Slug,
-                team.IsHidden,
-                team.SystemTeamType,
-                team.Members
-                    .Where(member => member.LeftAt is null)
-                    .Select(member => member.UserId)
-                    .ToList());
-    }
-
     public async Task<IReadOnlyList<TeamRoleReconciliationMembership>> GetActiveMembershipsForRoleReconciliationAsync(
         CancellationToken cancellationToken = default)
     {
@@ -2537,14 +2416,6 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
             return 0;
         return await _repo.ApplyMemberRoleChangesAsync(changes, cancellationToken);
     }
-
-    public Task<IReadOnlyList<Guid>> GetActiveDepartmentCoordinatorUserIdsAsync(
-        CancellationToken cancellationToken = default) =>
-        _repo.GetActiveDepartmentCoordinatorUserIdsAsync(cancellationToken);
-
-    public Task<bool> IsActiveDepartmentCoordinatorAsync(
-        Guid userId, CancellationToken cancellationToken = default) =>
-        _repo.IsActiveDepartmentCoordinatorAsync(userId, cancellationToken);
 
     public async Task<bool> ApplySystemTeamMembershipDeltaAsync(
         Guid teamId,
@@ -2615,7 +2486,7 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
                 .Select(m => m.UserId);
 
             var childUserIds = childMemberUserIdsByParentTeam.GetValueOrDefault(team.Id)
-                ?? Array.Empty<Guid>();
+                ?? [];
 
             result[team.GoogleGroupEmail!] = directUserIds
                 .Concat(childUserIds)

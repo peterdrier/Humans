@@ -24,7 +24,6 @@ public sealed class CampRoleDefinitionFormViewModel : IValidatableObject
     {
         if (MinimumRequired > SlotCount)
             yield return new ValidationResult(
-                "Minimum required must be less than or equal to slot count.",
-                new[] { nameof(MinimumRequired) });
+                "Minimum required must be less than or equal to slot count.", [nameof(MinimumRequired)]);
     }
 }

@@ -1,4 +1,3 @@
-using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 
 namespace Humans.Application.Interfaces.Auth;

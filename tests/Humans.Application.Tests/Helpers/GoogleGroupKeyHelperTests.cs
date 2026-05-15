@@ -2,7 +2,6 @@ using AwesomeAssertions;
 using Humans.Application.Helpers;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Xunit;
 
 namespace Humans.Application.Tests.Helpers;
 

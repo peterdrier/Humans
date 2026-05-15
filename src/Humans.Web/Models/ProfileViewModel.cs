@@ -2,9 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using NodaTime;
 using Humans.Application.Interfaces.Campaigns;
 using Humans.Application.Interfaces.Shifts;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Web.Helpers;
 
 namespace Humans.Web.Models;
 

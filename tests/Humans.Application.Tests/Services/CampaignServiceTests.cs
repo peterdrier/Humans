@@ -9,7 +9,6 @@ using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
-using Xunit;
 using CampaignServiceImpl = Humans.Application.Services.Campaigns.CampaignService;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Teams;
@@ -82,15 +81,26 @@ public class CampaignServiceTests : IDisposable
             });
 
         _teamService
-            .GetActiveTeamOptionsAsync(Arg.Any<CancellationToken>())
+            .GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(async _ =>
             {
                 var list = await _dbContext.Teams
-                    .Where(t => t.IsActive)
-                    .OrderBy(t => t.Name)
-                    .Select(t => new TeamOptionDto(t.Id, t.Name))
+                    .Include(t => t.Members)
                     .ToListAsync();
-                return (IReadOnlyList<TeamOptionDto>)list;
+                var dict = list.ToDictionary(
+                    t => t.Id,
+                    t => new TeamInfo(
+                        t.Id, t.Name, t.Description, t.Slug,
+                        t.IsActive, t.IsSystemTeam, t.SystemTeamType, t.RequiresApproval,
+                        t.IsPublicPage, t.IsHidden, t.IsPromotedToDirectory,
+                        t.CreatedAt,
+                        t.Members
+                            .Where(m => m.LeftAt is null)
+                            .Select(m => new TeamMemberInfo(
+                                m.Id, m.UserId, string.Empty, null, null, m.Role, m.JoinedAt))
+                            .ToList(),
+                        t.ParentTeamId));
+                return (IReadOnlyDictionary<Guid, TeamInfo>)dict;
             });
 
         _userService
@@ -201,13 +211,13 @@ public class CampaignServiceTests : IDisposable
     {
         var campaign = await SeedCampaignAsync();
 
-        await _service.ImportCodesAsync(campaign.Id, new[] { "CODE1", "CODE2", "CODE1", "CODE3" });
+        await _service.ImportCodesAsync(campaign.Id, ["CODE1", "CODE2", "CODE1", "CODE3"]);
 
         var codes = await _dbContext.CampaignCodes
             .Where(c => c.CampaignId == campaign.Id)
             .ToListAsync();
         codes.Should().HaveCount(3);
-        codes.Select(c => c.Code).Should().BeEquivalentTo(new[] { "CODE1", "CODE2", "CODE3" });
+        codes.Select(c => c.Code).Should().BeEquivalentTo("CODE1", "CODE2", "CODE3");
     }
 
     [HumansFact]
@@ -216,9 +226,9 @@ public class CampaignServiceTests : IDisposable
         var campaign = await SeedCampaignAsync();
 
         // First import
-        await _service.ImportCodesAsync(campaign.Id, new[] { "CODE1", "CODE2" });
+        await _service.ImportCodesAsync(campaign.Id, ["CODE1", "CODE2"]);
         // Second import with overlap
-        await _service.ImportCodesAsync(campaign.Id, new[] { "CODE2", "CODE3" });
+        await _service.ImportCodesAsync(campaign.Id, ["CODE2", "CODE3"]);
 
         var codes = await _dbContext.CampaignCodes
             .Where(c => c.CampaignId == campaign.Id)
@@ -249,7 +259,7 @@ public class CampaignServiceTests : IDisposable
             .Where(c => c.CampaignId == campaign.Id)
             .Select(c => c.Code)
             .ToListAsync();
-        codes.Should().BeEquivalentTo(["CODE-A", "CODE-B"]);
+        codes.Should().BeEquivalentTo("CODE-A", "CODE-B");
     }
 
     [HumansFact]
@@ -274,7 +284,7 @@ public class CampaignServiceTests : IDisposable
     public async Task ActivateAsync_DraftWithCodes_TransitionsToActive()
     {
         var campaign = await SeedCampaignAsync();
-        await _service.ImportCodesAsync(campaign.Id, new[] { "CODE1" });
+        await _service.ImportCodesAsync(campaign.Id, ["CODE1"]);
 
         await _service.ActivateAsync(campaign.Id);
 
@@ -348,7 +358,7 @@ public class CampaignServiceTests : IDisposable
     [HumansFact]
     public async Task GetDetailPageAsync_ReturnsComputedStats()
     {
-        var campaign = await SeedActiveCampaignWithCodesAsync(new[] { "A", "B", "C" });
+        var campaign = await SeedActiveCampaignWithCodesAsync(["A", "B", "C"]);
         var user = SeedUser(displayName: "Stats User");
         var grantedCode = await _dbContext.CampaignCodes
             .FirstAsync(c => c.CampaignId == campaign.Id && c.Code == "A");
@@ -380,7 +390,7 @@ public class CampaignServiceTests : IDisposable
     [HumansFact]
     public async Task GetSendWavePageAsync_ReturnsTeamsAndSelectedPreview()
     {
-        var campaign = await SeedActiveCampaignWithCodesAsync(new[] { "A1", "A2" });
+        var campaign = await SeedActiveCampaignWithCodesAsync(["A1", "A2"]);
         var user = SeedUser(displayName: "Wave User");
         var beta = SeedTeam("Beta Team");
         var alpha = SeedTeam("Alpha Team");
@@ -400,7 +410,7 @@ public class CampaignServiceTests : IDisposable
     [HumansFact]
     public async Task GetCampaignIdForGrantAsync_ReturnsCampaignId()
     {
-        var campaign = await SeedActiveCampaignWithCodesAsync(new[] { "RESEND-CODE" });
+        var campaign = await SeedActiveCampaignWithCodesAsync(["RESEND-CODE"]);
         var user = SeedUser(displayName: "Grant User");
         var team = SeedTeam("Grant Team");
         SeedTeamMember(team.Id, user.Id);
@@ -446,8 +456,7 @@ public class CampaignServiceTests : IDisposable
     [HumansFact]
     public async Task SendWaveAsync_AssignsCodeToTeamMember_CreatesGrantAndEnqueuesEmail()
     {
-        var campaign = await SeedActiveCampaignWithCodesAsync(
-            new[] { "CODE-A", "CODE-B" },
+        var campaign = await SeedActiveCampaignWithCodesAsync(["CODE-A", "CODE-B"],
             emailSubject: "Hi {{Name}}, here is your code",
             emailBodyTemplate: "<p>Hi {{Name}}, your code is {{Code}}</p>");
 
@@ -480,8 +489,7 @@ public class CampaignServiceTests : IDisposable
     [HumansFact]
     public async Task SendWaveAsync_PassesTemplateBodyAndSubjectToEmailService()
     {
-        var campaign = await SeedActiveCampaignWithCodesAsync(
-            new[] { "CODE-1" },
+        var campaign = await SeedActiveCampaignWithCodesAsync(["CODE-1"],
             emailSubject: "Hi {{Name}}, your code",
             emailBodyTemplate: "<p>Hi {{Name}}, your code is {{Code}}</p>");
 
@@ -506,7 +514,7 @@ public class CampaignServiceTests : IDisposable
     [HumansFact]
     public async Task SendWaveAsync_DuplicatePrevention_ExcludesAlreadyGranted()
     {
-        var campaign = await SeedActiveCampaignWithCodesAsync(new[] { "CODE-1", "CODE-2", "CODE-3" });
+        var campaign = await SeedActiveCampaignWithCodesAsync(["CODE-1", "CODE-2", "CODE-3"]);
 
         var user1 = SeedUser(displayName: "Alice");
         var user2 = SeedUser(displayName: "Bob");
@@ -527,7 +535,7 @@ public class CampaignServiceTests : IDisposable
     [HumansFact]
     public async Task SendWaveAsync_InsufficientCodes_Throws()
     {
-        var campaign = await SeedActiveCampaignWithCodesAsync(new[] { "ONLY-ONE" });
+        var campaign = await SeedActiveCampaignWithCodesAsync(["ONLY-ONE"]);
 
         var user1 = SeedUser(displayName: "Alice");
         var user2 = SeedUser(displayName: "Bob");
@@ -548,8 +556,7 @@ public class CampaignServiceTests : IDisposable
         // HTML-encoding of values happens inside OutboxEmailService (owner of the
         // outbox table) — CampaignService must forward raw values to it so that
         // encoding is applied consistently across all email templates.
-        var campaign = await SeedActiveCampaignWithCodesAsync(
-            new[] { "A<B>C" },
+        var campaign = await SeedActiveCampaignWithCodesAsync(["A<B>C"],
             emailBodyTemplate: "<p>Code: {{Code}}, Name: {{Name}}</p>");
 
         var user = SeedUser(displayName: "O'Brien & Co");
@@ -573,7 +580,7 @@ public class CampaignServiceTests : IDisposable
     [HumansFact]
     public async Task ResendToGrantAsync_EnqueuesNewEmailAndResetsGrantStatus()
     {
-        var campaign = await SeedActiveCampaignWithCodesAsync(new[] { "RESEND-CODE" });
+        var campaign = await SeedActiveCampaignWithCodesAsync(["RESEND-CODE"]);
 
         var user = SeedUser(displayName: "Dave");
         var team = SeedTeam("Theta");
@@ -605,7 +612,7 @@ public class CampaignServiceTests : IDisposable
     [HumansFact]
     public async Task RetryAllFailedAsync_EnqueuesEmailsForFailedGrantsOnly()
     {
-        var campaign = await SeedActiveCampaignWithCodesAsync(new[] { "FAIL-1", "FAIL-2" });
+        var campaign = await SeedActiveCampaignWithCodesAsync(["FAIL-1", "FAIL-2"]);
 
         var user1 = SeedUser(displayName: "FailUser1");
         var user2 = SeedUser(displayName: "FailUser2");
@@ -641,7 +648,7 @@ public class CampaignServiceTests : IDisposable
     [HumansFact]
     public async Task PreviewWaveSendAsync_ReturnsCorrectCounts()
     {
-        var campaign = await SeedActiveCampaignWithCodesAsync(new[] { "P1", "P2", "P3", "P4", "P5" });
+        var campaign = await SeedActiveCampaignWithCodesAsync(["P1", "P2", "P3", "P4", "P5"]);
 
         var eligible = SeedUser(displayName: "Eligible");
         var alreadyGranted = SeedUser(displayName: "Granted");

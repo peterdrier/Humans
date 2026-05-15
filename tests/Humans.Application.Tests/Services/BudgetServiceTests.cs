@@ -216,7 +216,8 @@ public class BudgetServiceTests : IAsyncLifetime
     [HumansFact]
     public async Task GetCoordinatorBudgetViewDataAsync_LoadsActiveYearForFinanceAdmin()
     {
-        _teamService.GetBudgetableTeamsAsync().Returns(Array.Empty<TeamOptionDto>());
+        _teamService.GetTeamsAsync().Returns(
+            (IReadOnlyDictionary<Guid, TeamInfo>)new Dictionary<Guid, TeamInfo>());
         var year = await _service.CreateYearAsync("2026", "Budget 2026", Guid.NewGuid());
         await _service.UpdateYearStatusAsync(year.Id, BudgetYearStatus.Active, Guid.NewGuid());
 
@@ -231,14 +232,23 @@ public class BudgetServiceTests : IAsyncLifetime
     public async Task GetCoordinatorCategoryDetailViewDataAsync_ReturnsCategoryAndTeamsForFinanceAdmin()
     {
         var category = await SeedCategoryAsync();
-        IReadOnlyList<TeamOptionDto> teams = [new(Guid.NewGuid(), "Kitchen")];
-        _teamService.GetActiveTeamOptionsAsync().Returns(teams);
+        var teamId = Guid.NewGuid();
+        var teamInfo = new TeamInfo(
+            teamId, "Kitchen", null, "kitchen",
+            IsActive: true, IsSystemTeam: false, SystemTeamType: SystemTeamType.None,
+            RequiresApproval: false, IsPublicPage: false, IsHidden: false,
+            IsPromotedToDirectory: false, CreatedAt: Instant.MinValue,
+            Members: []);
+        _teamService.GetTeamsAsync().Returns(
+            (IReadOnlyDictionary<Guid, TeamInfo>)new Dictionary<Guid, TeamInfo> { [teamId] = teamInfo });
 
         var result = await _service.GetCoordinatorCategoryDetailViewDataAsync(category.Id, Guid.NewGuid(), isFinanceAdmin: true);
 
         result.ShouldForbid.Should().BeFalse();
         result.Category!.Id.Should().Be(category.Id);
-        result.Teams.Should().BeEquivalentTo(teams);
+        result.Teams.Should().HaveCount(1);
+        result.Teams[0].Id.Should().Be(teamId);
+        result.Teams[0].Name.Should().Be("Kitchen");
     }
 
     [HumansFact]
@@ -256,12 +266,26 @@ public class BudgetServiceTests : IAsyncLifetime
     [HumansFact]
     public async Task CreateYearAsync_seeds_department_and_ticketing_groups_atomically()
     {
-        IReadOnlyList<TeamOptionDto> teams =
-        [
-            new(Guid.NewGuid(), "Kitchen"),
-            new(Guid.NewGuid(), "Site Ops")
-        ];
-        _teamService.GetBudgetableTeamsAsync().Returns(teams);
+        var kitchenId = Guid.NewGuid();
+        var siteOpsId = Guid.NewGuid();
+        var teams = new Dictionary<Guid, TeamInfo>
+        {
+            [kitchenId] = new(
+                kitchenId, "Kitchen", null, "kitchen",
+                IsActive: true, IsSystemTeam: false, SystemTeamType: SystemTeamType.None,
+                RequiresApproval: false, IsPublicPage: false, IsHidden: false,
+                IsPromotedToDirectory: false, CreatedAt: Instant.MinValue,
+                Members: [],
+                HasBudget: true),
+            [siteOpsId] = new(
+                siteOpsId, "Site Ops", null, "site-ops",
+                IsActive: true, IsSystemTeam: false, SystemTeamType: SystemTeamType.None,
+                RequiresApproval: false, IsPublicPage: false, IsHidden: false,
+                IsPromotedToDirectory: false, CreatedAt: Instant.MinValue,
+                Members: [],
+                HasBudget: true),
+        };
+        _teamService.GetTeamsAsync().Returns((IReadOnlyDictionary<Guid, TeamInfo>)teams);
 
         var year = await _service.CreateYearAsync("2026", "Budget 2026", Guid.NewGuid());
 

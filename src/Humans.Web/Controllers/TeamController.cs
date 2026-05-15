@@ -11,7 +11,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using Humans.Application.Configuration;
-using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Authorization;
@@ -213,8 +212,17 @@ public class TeamController : HumansControllerBase
             var childTeamIds = teamPage.ChildTeams.Select(c => c.Id).ToList();
             var managementRolesByTeam = await _teamService.GetManagementRoleNamesByTeamIdsAsync(childTeamIds);
 
-            var allChildMembers = await _teamService.GetActiveMembersForTeamsAsync(childTeamIds);
-            var childMembersByTeam = allChildMembers.GroupBy(m => m.TeamId).ToDictionary(g => g.Key, g => g.ToList());
+            var teamsById = await _teamService.GetTeamsAsync();
+            var childMembersByTeam = childTeamIds
+                .Where(teamsById.ContainsKey)
+                .ToDictionary(
+                    id => id,
+                    id => teamsById[id].Members
+                        .Select(m => new TeamActiveMemberSnapshot(
+                            id, m.TeamMemberId, m.UserId,
+                            m.DisplayName, m.Email, m.ProfilePictureUrl,
+                            m.GoogleEmailStatus, m.Role, m.JoinedAt))
+                        .ToList());
 
             foreach (var child in teamPage.ChildTeams)
             {
@@ -381,7 +389,22 @@ public class TeamController : HumansControllerBase
 
         // Load team memberships for these users
         var userIds = profilesWithBirthdays.Select(p => p.UserId).ToList();
-        var teamsByUser = await _teamService.GetNonSystemTeamNamesByUserIdsAsync(userIds, ct);
+        var userIdSet = userIds.ToHashSet();
+        var teamsById = await _teamService.GetTeamsAsync(ct);
+        var teamsByUser = new Dictionary<Guid, List<string>>();
+        foreach (var team in teamsById.Values
+            .Where(t => t.IsActive && t.SystemTeamType == SystemTeamType.None && !t.IsHidden))
+        {
+            foreach (var member in team.Members.Where(m => userIdSet.Contains(m.UserId)))
+            {
+                if (!teamsByUser.TryGetValue(member.UserId, out var names))
+                {
+                    names = [];
+                    teamsByUser[member.UserId] = names;
+                }
+                names.Add(team.Name);
+            }
+        }
 
         var monthName = new DateTime(2000, currentMonth, 1).ToString("MMMM", CultureInfo.CurrentCulture);
 
@@ -529,7 +552,8 @@ public class TeamController : HumansControllerBase
             return NotFound();
         }
 
-        var isMember = await _teamService.IsUserMemberOfTeamAsync(team.Id, user.Id);
+        var teamInfo = await _teamService.GetTeamAsync(team.Id);
+        var isMember = teamInfo is { IsActive: true } && teamInfo.Members.Any(m => m.UserId == user.Id);
         if (isMember)
         {
             SetError(_localizer["Team_AlreadyMember"].Value);

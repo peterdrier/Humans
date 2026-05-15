@@ -9,13 +9,11 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Camps;
-using Humans.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Xunit;
 
 namespace Humans.Application.Tests.Services;
 
@@ -487,7 +485,7 @@ public class CampRoleServiceTests : IDisposable
         await _dbContext.SaveChangesAsync();
 
         _campService.GetCampSeasonsForComplianceAsync(2026, default)
-            .Returns(new[] { (camp.Id, season.Name, camp.Slug, season.Id) });
+            .Returns([(camp.Id, season.Name, camp.Slug, season.Id)]);
 
         var report = await _service.GetComplianceReportAsync(2026);
 
@@ -504,7 +502,7 @@ public class CampRoleServiceTests : IDisposable
         await SeedDefinitionAsync("LNT", slotCount: 1, minimumRequired: 1);
 
         _campService.GetCampSeasonsForComplianceAsync(2026, default)
-            .Returns(new[] { (camp.Id, season.Name, camp.Slug, season.Id) });
+            .Returns([(camp.Id, season.Name, camp.Slug, season.Id)]);
 
         var report = await _service.GetComplianceReportAsync(2026);
 
@@ -520,7 +518,7 @@ public class CampRoleServiceTests : IDisposable
         await SeedDefinitionAsync("Power", slotCount: 1, minimumRequired: 0);
 
         _campService.GetCampSeasonsForComplianceAsync(2026, default)
-            .Returns(new[] { (camp.Id, season.Name, camp.Slug, season.Id) });
+            .Returns([(camp.Id, season.Name, camp.Slug, season.Id)]);
 
         var report = await _service.GetComplianceReportAsync(2026);
 

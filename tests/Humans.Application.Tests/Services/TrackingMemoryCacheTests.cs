@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Humans.Infrastructure.Services;
 using Microsoft.Extensions.Caching.Memory;
-using Xunit;
 
 namespace Humans.Application.Tests.Services;
 

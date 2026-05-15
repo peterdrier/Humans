@@ -1,10 +1,8 @@
 using System.Diagnostics.Metrics;
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Metering;
 using Humans.Application.Metering;
 using Humans.Infrastructure.Services.Metering;
 using Microsoft.Extensions.Logging.Abstractions;
-using Xunit;
 
 namespace Humans.Application.Tests.Services;
 

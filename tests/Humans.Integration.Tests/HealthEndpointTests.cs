@@ -1,7 +1,6 @@
 using System.Net;
 using AwesomeAssertions;
 using Humans.Integration.Tests.Infrastructure;
-using Xunit;
 
 namespace Humans.Integration.Tests;
 

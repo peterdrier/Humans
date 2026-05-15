@@ -1,4 +1,3 @@
-using System.ComponentModel.DataAnnotations;
 using Humans.Application.DTOs.Calendar;
 using Humans.Application.Interfaces.Calendar;
 using Humans.Application.Interfaces.Teams;
@@ -138,7 +137,7 @@ public class CalendarController : HumansControllerBase
             Month: ym,
             Occurrences: occ,
             FilterTeamId: teamId,
-            TeamOptions: Array.Empty<TeamOption>(),
+            TeamOptions: [],
             ViewerTimezoneLabel: zone.Id));
     }
 
@@ -160,10 +159,8 @@ public class CalendarController : HumansControllerBase
         // CalendarEvent.OwningTeam nav is [Obsolete] and no longer .Include()d.
         // Use the lightweight name-only lookup so we don't hydrate the entire
         // team aggregate (members + users) just to render a display string.
-        var teamNames = await _teams.GetTeamNamesByIdsAsync([ev.OwningTeamId], ct);
-        var owningTeamName = teamNames.TryGetValue(ev.OwningTeamId, out var name)
-            ? name
-            : string.Empty;
+        var owningTeam = await _teams.GetTeamAsync(ev.OwningTeamId, ct);
+        var owningTeamName = owningTeam?.Name ?? string.Empty;
 
         // Any authenticated human can edit; changes are audited.
         return View(new CalendarEventViewModel(ev, owningTeamName, upcoming, CanEdit: true, zone.Id));

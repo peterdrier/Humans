@@ -5,7 +5,6 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Repositories.Feedback;
-using Xunit;
 using FeedbackService = Humans.Application.Services.Feedback.FeedbackService;
 
 namespace Humans.Application.Tests.Architecture;

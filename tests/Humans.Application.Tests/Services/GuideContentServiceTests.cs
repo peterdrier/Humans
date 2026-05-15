@@ -5,8 +5,6 @@ using Microsoft.Extensions.Options;
 using Humans.Application.Interfaces;
 using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Services;
-using Humans.Testing;
-using Xunit;
 
 namespace Humans.Application.Tests.Services;
 

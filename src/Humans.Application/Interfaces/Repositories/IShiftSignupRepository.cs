@@ -48,7 +48,7 @@ public interface IShiftSignupRepository : IRepository
     /// Returns every <see cref="ShiftSignup"/> the user owns, optionally
     /// filtered to a single event. Includes <c>Shift.Rota.EventSettings</c> for
     /// display. Ordered by <c>Shift.DayOffset</c>, then <c>Shift.StartTime</c>.
-    /// Team display name is resolved via <c>ITeamService.GetTeamNamesByIdsAsync</c>.
+    /// Team display name is resolved via <c>ITeamService.GetTeamsAsync</c>.
     /// Read-only.
     /// </summary>
     Task<IReadOnlyList<ShiftSignup>> GetByUserAsync(
@@ -107,7 +107,7 @@ public interface IShiftSignupRepository : IRepository
     /// Returns all no-show signups for a user with <c>Shift.Rota.EventSettings</c>.
     /// Ordered by <c>ReviewedAt</c> descending. Read-only. Caller resolves
     /// reviewer display fields via <c>IUserService.GetByIdsAsync</c> and the
-    /// team name via <c>ITeamService.GetTeamNamesByIdsAsync</c>.
+    /// team name via <c>ITeamService.GetTeamsAsync</c>.
     /// </summary>
     Task<IReadOnlyList<ShiftSignup>> GetNoShowHistoryAsync(Guid userId, CancellationToken ct = default);
 

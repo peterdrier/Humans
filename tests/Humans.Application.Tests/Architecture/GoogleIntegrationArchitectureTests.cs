@@ -4,7 +4,6 @@ using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
-using Xunit;
 using EmailProvisioningService = Humans.Application.Services.GoogleIntegration.EmailProvisioningService;
 using GoogleGroupSyncService = Humans.Application.Services.GoogleIntegration.GoogleGroupSyncService;
 using GoogleRemovalNotificationService = Humans.Application.Services.GoogleIntegration.GoogleRemovalNotificationService;

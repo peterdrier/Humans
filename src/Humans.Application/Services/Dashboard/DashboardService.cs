@@ -12,7 +12,6 @@ using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NodaTime;
-using MemberApplication = Humans.Domain.Entities.Application;
 
 namespace Humans.Application.Services.Dashboard;
 
@@ -172,9 +171,10 @@ public class DashboardService : IDashboardService
                     .Select(s => s.Shift.Rota.TeamId)
                     .Distinct()
                     .ToList();
-                var teamNames = dashboardTeamIds.Count == 0
-                    ? (IReadOnlyDictionary<Guid, string>)new Dictionary<Guid, string>()
-                    : await _teamService.GetTeamNamesByIdsAsync(dashboardTeamIds);
+                var teamsById = await _teamService.GetTeamsAsync();
+                var teamNames = dashboardTeamIds
+                    .Where(teamsById.ContainsKey)
+                    .ToDictionary(id => id, id => teamsById[id].Name);
 
                 foreach (var s in confirmedSignups)
                 {

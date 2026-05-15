@@ -234,8 +234,12 @@ public class SystemTeamSyncJob : ISystemTeamSync
         _logger.LogDebug("Syncing Volunteers team");
         var step = new SyncStepResult("Volunteers");
 
-        var team = await _teamService.GetSystemTeamWithActiveMembersAsync(
-            SystemTeamType.Volunteers, cancellationToken);
+        var team = (await _teamService.GetTeamsAsync(cancellationToken)).Values
+            .Where(t => t.SystemTeamType == SystemTeamType.Volunteers)
+            .Select(t => new SystemTeamMembershipSnapshot(
+                t.Id, t.Name, t.Slug, t.IsHidden, t.SystemTeamType,
+                t.Members.Select(m => m.UserId).ToList()))
+            .FirstOrDefault();
         if (team is null)
         {
             _logger.LogWarning("Volunteers system team not found");
@@ -282,8 +286,12 @@ public class SystemTeamSyncJob : ISystemTeamSync
         _logger.LogDebug("Syncing Coordinators team");
         var step = new SyncStepResult("Coordinators");
 
-        var team = await _teamService.GetSystemTeamWithActiveMembersAsync(
-            SystemTeamType.Coordinators, cancellationToken);
+        var team = (await _teamService.GetTeamsAsync(cancellationToken)).Values
+            .Where(t => t.SystemTeamType == SystemTeamType.Coordinators)
+            .Select(t => new SystemTeamMembershipSnapshot(
+                t.Id, t.Name, t.Slug, t.IsHidden, t.SystemTeamType,
+                t.Members.Select(m => m.UserId).ToList()))
+            .FirstOrDefault();
         if (team is null)
         {
             _logger.LogWarning("Coordinators system team not found");
@@ -292,7 +300,12 @@ public class SystemTeamSyncJob : ISystemTeamSync
         }
 
         // Department-level coordinators only (sub-team managers excluded).
-        var leadUserIds = await _teamService.GetActiveDepartmentCoordinatorUserIdsAsync(cancellationToken);
+        var teamsById = await _teamService.GetTeamsAsync(cancellationToken);
+        var leadUserIds = teamsById.Values
+            .Where(t => t.IsActive && !t.IsSystemTeam && t.ParentTeamId is null)
+            .SelectMany(t => t.Members.Where(m => m.Role == TeamMemberRole.Coordinator).Select(m => m.UserId))
+            .Distinct()
+            .ToList();
 
         // Additionally filter by Coordinators-team-required consents.
         var eligibleSet = await MembershipCalculator.GetUsersWithAllRequiredConsentsForTeamAsync(
@@ -311,8 +324,12 @@ public class SystemTeamSyncJob : ISystemTeamSync
         _logger.LogDebug("Syncing Board team");
         var step = new SyncStepResult("Board");
 
-        var team = await _teamService.GetSystemTeamWithActiveMembersAsync(
-            SystemTeamType.Board, cancellationToken);
+        var team = (await _teamService.GetTeamsAsync(cancellationToken)).Values
+            .Where(t => t.SystemTeamType == SystemTeamType.Board)
+            .Select(t => new SystemTeamMembershipSnapshot(
+                t.Id, t.Name, t.Slug, t.IsHidden, t.SystemTeamType,
+                t.Members.Select(m => m.UserId).ToList()))
+            .FirstOrDefault();
         if (team is null)
         {
             _logger.LogWarning("Board system team not found");
@@ -352,7 +369,12 @@ public class SystemTeamSyncJob : ISystemTeamSync
         _logger.LogDebug("Syncing {TeamType} team", teamType);
         var step = new SyncStepResult(teamType.ToString());
 
-        var team = await _teamService.GetSystemTeamWithActiveMembersAsync(teamType, cancellationToken);
+        var team = (await _teamService.GetTeamsAsync(cancellationToken)).Values
+            .Where(t => t.SystemTeamType == teamType)
+            .Select(t => new SystemTeamMembershipSnapshot(
+                t.Id, t.Name, t.Slug, t.IsHidden, t.SystemTeamType,
+                t.Members.Select(m => m.UserId).ToList()))
+            .FirstOrDefault();
         if (team is null)
         {
             _logger.LogWarning("{TeamType} system team not found", teamType);
@@ -430,8 +452,12 @@ public class SystemTeamSyncJob : ISystemTeamSync
     /// </summary>
     private async Task SyncVolunteersMembershipForUserAsync(Guid userId, CancellationToken cancellationToken = default)
     {
-        var team = await _teamService.GetSystemTeamWithActiveMembersAsync(
-            SystemTeamType.Volunteers, cancellationToken);
+        var team = (await _teamService.GetTeamsAsync(cancellationToken)).Values
+            .Where(t => t.SystemTeamType == SystemTeamType.Volunteers)
+            .Select(t => new SystemTeamMembershipSnapshot(
+                t.Id, t.Name, t.Slug, t.IsHidden, t.SystemTeamType,
+                t.Members.Select(m => m.UserId).ToList()))
+            .FirstOrDefault();
         if (team is null)
         {
             _logger.LogWarning("Volunteers system team not found");
@@ -462,15 +488,22 @@ public class SystemTeamSyncJob : ISystemTeamSync
     /// </summary>
     private async Task SyncCoordinatorsMembershipForUserAsync(Guid userId, CancellationToken cancellationToken = default)
     {
-        var team = await _teamService.GetSystemTeamWithActiveMembersAsync(
-            SystemTeamType.Coordinators, cancellationToken);
+        var team = (await _teamService.GetTeamsAsync(cancellationToken)).Values
+            .Where(t => t.SystemTeamType == SystemTeamType.Coordinators)
+            .Select(t => new SystemTeamMembershipSnapshot(
+                t.Id, t.Name, t.Slug, t.IsHidden, t.SystemTeamType,
+                t.Members.Select(m => m.UserId).ToList()))
+            .FirstOrDefault();
         if (team is null)
         {
             _logger.LogWarning("Coordinators system team not found");
             return;
         }
 
-        var isCoordinatorAnywhere = await _teamService.IsActiveDepartmentCoordinatorAsync(userId, cancellationToken);
+        var teamsById = await _teamService.GetTeamsAsync(cancellationToken);
+        var isCoordinatorAnywhere = teamsById.Values
+            .Where(t => t.IsActive && !t.IsSystemTeam && t.ParentTeamId is null)
+            .Any(t => t.Members.Any(m => m.UserId == userId && m.Role == TeamMemberRole.Coordinator));
 
         var isEligible = isCoordinatorAnywhere
             && await MembershipCalculator.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Coordinators, cancellationToken);
@@ -486,7 +519,12 @@ public class SystemTeamSyncJob : ISystemTeamSync
     private async Task SyncTierMembershipForUserAsync(Guid userId, MembershipTier tier,
         SystemTeamType teamType, Guid teamId, CancellationToken cancellationToken)
     {
-        var team = await _teamService.GetSystemTeamWithActiveMembersAsync(teamType, cancellationToken);
+        var team = (await _teamService.GetTeamsAsync(cancellationToken)).Values
+            .Where(t => t.SystemTeamType == teamType)
+            .Select(t => new SystemTeamMembershipSnapshot(
+                t.Id, t.Name, t.Slug, t.IsHidden, t.SystemTeamType,
+                t.Members.Select(m => m.UserId).ToList()))
+            .FirstOrDefault();
         if (team is null)
         {
             _logger.LogWarning("{TeamType} system team not found", teamType);
@@ -518,8 +556,12 @@ public class SystemTeamSyncJob : ISystemTeamSync
         _logger.LogDebug("Syncing Barrio Leads team");
         var step = new SyncStepResult("Barrio Leads");
 
-        var team = await _teamService.GetSystemTeamWithActiveMembersAsync(
-            SystemTeamType.BarrioLeads, cancellationToken);
+        var team = (await _teamService.GetTeamsAsync(cancellationToken)).Values
+            .Where(t => t.SystemTeamType == SystemTeamType.BarrioLeads)
+            .Select(t => new SystemTeamMembershipSnapshot(
+                t.Id, t.Name, t.Slug, t.IsHidden, t.SystemTeamType,
+                t.Members.Select(m => m.UserId).ToList()))
+            .FirstOrDefault();
         if (team is null)
         {
             _logger.LogWarning("Barrio Leads system team not found");
@@ -540,8 +582,12 @@ public class SystemTeamSyncJob : ISystemTeamSync
     /// </summary>
     private async Task SyncBarrioLeadsMembershipForUserAsync(Guid userId, CancellationToken cancellationToken = default)
     {
-        var team = await _teamService.GetSystemTeamWithActiveMembersAsync(
-            SystemTeamType.BarrioLeads, cancellationToken);
+        var team = (await _teamService.GetTeamsAsync(cancellationToken)).Values
+            .Where(t => t.SystemTeamType == SystemTeamType.BarrioLeads)
+            .Select(t => new SystemTeamMembershipSnapshot(
+                t.Id, t.Name, t.Slug, t.IsHidden, t.SystemTeamType,
+                t.Members.Select(m => m.UserId).ToList()))
+            .FirstOrDefault();
         if (team is null)
         {
             _logger.LogWarning("Barrio Leads system team not found");
@@ -577,7 +623,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
 
         // When syncing a single user, only evaluate that user (don't remove others).
         var scopeIds = singleUserSync.HasValue
-            ? new HashSet<Guid> { singleUserSync.Value }
+            ? [singleUserSync.Value]
             : currentMemberIds.Union(eligibleSet).ToHashSet();
 
         // Users to add (in eligible but not current members).

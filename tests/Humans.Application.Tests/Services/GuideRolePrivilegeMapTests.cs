@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.Services;
 using Humans.Domain.Constants;
-using Humans.Testing;
 using Xunit;
 
 namespace Humans.Application.Tests.Services;
@@ -41,7 +40,7 @@ public class GuideRolePrivilegeMapTests
     {
         var result = GuideRolePrivilegeMap.ParseParenthetical("Camp Admin, Finance Admin");
 
-        result.Should().BeEquivalentTo([RoleNames.CampAdmin, RoleNames.FinanceAdmin]);
+        result.Should().BeEquivalentTo(RoleNames.CampAdmin, RoleNames.FinanceAdmin);
     }
 
     [HumansFact]
@@ -49,7 +48,7 @@ public class GuideRolePrivilegeMapTests
     {
         var result = GuideRolePrivilegeMap.ParseParenthetical("Camp Admin, Gibberish");
 
-        result.Should().BeEquivalentTo([RoleNames.CampAdmin]);
+        result.Should().BeEquivalentTo(RoleNames.CampAdmin);
     }
 
     [HumansFact]

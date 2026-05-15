@@ -1,6 +1,5 @@
 using System.Globalization;
 using System.Text.Json;
-using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Profiles;
@@ -94,7 +93,7 @@ public sealed class OutboxEmailService : IEmailService
         string? culture = null,
         CancellationToken cancellationToken = default)
     {
-        await SendReConsentsRequiredAsync(userEmail, userName, new[] { documentName }, culture, cancellationToken);
+        await SendReConsentsRequiredAsync(userEmail, userName, [documentName], culture, cancellationToken);
     }
 
     /// <inheritdoc />

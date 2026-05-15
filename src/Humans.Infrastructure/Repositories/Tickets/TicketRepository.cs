@@ -698,8 +698,8 @@ public sealed class TicketRepository : ITicketRepository
                 VipDonations = o.Attendees
                     .Where(a =>
                         (a.Status == TicketAttendeeStatus.Valid || a.Status == TicketAttendeeStatus.CheckedIn) &&
-                        a.Price > Humans.Domain.Constants.TicketConstants.VipThresholdEuros)
-                    .Sum(a => a.Price - Humans.Domain.Constants.TicketConstants.VipThresholdEuros),
+                        a.Price > Domain.Constants.TicketConstants.VipThresholdEuros)
+                    .Sum(a => a.Price - Domain.Constants.TicketConstants.VipThresholdEuros),
             })
             .ToListAsync(ct);
     }

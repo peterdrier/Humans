@@ -1,6 +1,5 @@
 using NodaTime;
 using Humans.Domain.Enums;
-using Humans.Web.Helpers;
 using Humans.Web.ViewComponents;
 
 namespace Humans.Web.Models;

@@ -1,4 +1,3 @@
-using Humans.Application;
 using Humans.Application.Interfaces.Consent;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Onboarding;
@@ -32,7 +31,7 @@ public class OnboardingWidgetStateTests
         // override this when exercising the returning-member path.
         _consents.GetRequiredConsentRowsForUserAsync(
                 Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<RequiredConsentRow>());
+            .Returns([]);
     }
 
     private OnboardingWidgetState BuildSut() =>
@@ -71,14 +70,14 @@ public class OnboardingWidgetStateTests
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             GoogleEmailStatus = GoogleEmailStatus.Unknown,
         },
-        userEmails: Array.Empty<UserEmail>(),
-        eventParticipations: Array.Empty<EventParticipation>(),
-        externalLogins: Array.Empty<(string, string)>(),
+        userEmails: [],
+        eventParticipations: [],
+        externalLogins: [],
         profile: profile,
-        contactFields: Array.Empty<ContactField>(),
-        profileLanguages: Array.Empty<ProfileLanguage>(),
-        volunteerHistory: Array.Empty<VolunteerHistoryEntry>(),
-        communicationPreferences: Array.Empty<CommunicationPreference>());
+        contactFields: [],
+        profileLanguages: [],
+        volunteerHistory: [],
+        communicationPreferences: []);
 
     [HumansFact]
     public async Task ConsentsComplete_ShortCircuitsToComplete_EvenWithoutSignup()
@@ -193,11 +192,10 @@ public class OnboardingWidgetStateTests
         _users.GetUserInfoAsync(userId, default).Returns(NonStubUserInfo(userId));
         _consents.GetRequiredConsentRowsForUserAsync(
                 userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
-            .Returns(new[]
-            {
+            .Returns([
                 new RequiredConsentRow(signedDocId, "Code of Conduct", Signed: true),
-                new RequiredConsentRow(unsignedDocId, "Privacy Policy", Signed: false),
-            });
+                new RequiredConsentRow(unsignedDocId, "Privacy Policy", Signed: false)
+            ]);
         _shiftMgmt.GetActiveAsync()
             .Returns(new EventSettings { Id = eventId });
         _signups.GetActiveSignupStatusesAsync(userId, eventId)

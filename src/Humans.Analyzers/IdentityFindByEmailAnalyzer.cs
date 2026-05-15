@@ -35,8 +35,7 @@ public sealed class IdentityFindByEmailAnalyzer : DiagnosticAnalyzer
             "Identity's FindByEmailAsync / FindByNameAsync silently return null " +
             "for users created post-PR 1.");
 
-    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
-        ImmutableArray.Create(Rule);
+    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
 
     private static readonly ImmutableHashSet<string> ForbiddenMethods =
         ImmutableHashSet.Create(System.StringComparer.Ordinal,

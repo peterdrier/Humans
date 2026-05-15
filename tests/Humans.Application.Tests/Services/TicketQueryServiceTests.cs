@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Campaigns;
 using Humans.Application.Interfaces.Profiles;
@@ -17,7 +16,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using NodaTime;
 using NSubstitute;
-using Xunit;
 
 namespace Humans.Application.Tests.Services;
 
@@ -61,11 +59,11 @@ public sealed class TicketQueryServiceTests : IDisposable
             .Returns(VolunteersTeam([]));
 
         _userService.GetAllUsersAsync(Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<User>());
+            .Returns([]);
 
         _userService.GetAllParticipationsForYearAsync(
                 Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(new List<EventParticipation>());
+            .Returns([]);
 
         _userService.GetByIdsAsync(
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
@@ -82,11 +80,10 @@ public sealed class TicketQueryServiceTests : IDisposable
 
         _userEmailService.GetVerifiedEmailsForUserAsync(
                 Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<string>());
+            .Returns([]);
 
-        _teamService.GetActiveNonSystemTeamNamesByUserIdsAsync(
-                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, IReadOnlyList<string>>());
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyDictionary<Guid, TeamInfo>)new Dictionary<Guid, TeamInfo>());
     }
 
     public void Dispose()
@@ -212,7 +209,7 @@ public sealed class TicketQueryServiceTests : IDisposable
 
         var types = await _service.GetAvailableTicketTypesAsync();
 
-        types.Should().BeEquivalentTo(["Full Week", "VIP", "Weekend"]);
+        types.Should().BeEquivalentTo("Full Week", "VIP", "Weekend");
     }
 
     [HumansFact]
@@ -625,9 +622,8 @@ public sealed class TicketQueryServiceTests : IDisposable
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(users.ToDictionary(u => u.Id, u => u.Email ?? string.Empty));
 
-        _teamService.GetActiveNonSystemTeamNamesByUserIdsAsync(
-                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, IReadOnlyList<string>>());
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyDictionary<Guid, TeamInfo>)new Dictionary<Guid, TeamInfo>());
 
         _shiftManagementService.GetActiveAsync()
             .Returns((EventSettings?)null);

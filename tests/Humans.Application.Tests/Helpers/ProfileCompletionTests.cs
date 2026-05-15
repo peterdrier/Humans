@@ -43,7 +43,7 @@ public class ProfileCompletionTests
             BurnerName = "x",
             FirstName = "y",
             LastName = "z",
-            ProfilePictureData = new byte[] { 1, 2, 3 },
+            ProfilePictureData = [1, 2, 3],
         };
 
         var delta = ProfileCompletion.ComputePercent(withPicture)
@@ -79,7 +79,7 @@ public class ProfileCompletionTests
             BurnerName = "x",
             FirstName = "y",
             LastName = "z",
-            ProfilePictureData = new byte[] { 1 },
+            ProfilePictureData = [1],
             Pronouns = "they/them",
             Bio = "About me",
             City = "Madrid",

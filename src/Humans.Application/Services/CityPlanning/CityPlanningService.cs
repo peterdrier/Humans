@@ -223,10 +223,12 @@ public sealed class CityPlanningService : ICityPlanningService
     public async Task<bool> IsCityPlanningTeamMemberAsync(
         Guid userId, CancellationToken cancellationToken = default)
     {
-        var team = await _teamService.GetTeamBySlugAsync(_options.Value.CityPlanningTeamSlug, cancellationToken);
-        if (team is null) return false;
-
-        return await _teamService.IsUserMemberOfTeamAsync(team.Id, userId, cancellationToken);
+        var normalizedSlug = _options.Value.CityPlanningTeamSlug.ToLowerInvariant();
+        var team = (await _teamService.GetTeamsAsync(cancellationToken)).Values
+            .FirstOrDefault(t =>
+                string.Equals(t.Slug, normalizedSlug, StringComparison.Ordinal) ||
+                string.Equals(t.CustomSlug, normalizedSlug, StringComparison.Ordinal));
+        return team is { IsActive: true } && team.Members.Any(m => m.UserId == userId);
     }
 
     public async Task<bool> CanUserEditAsync(
@@ -489,13 +491,13 @@ public sealed class CityPlanningService : ICityPlanningService
 
         var polygons = await _repo.GetPolygonsByCampSeasonIdsAsync(seasonIds, cancellationToken);
 
-        var docs = new List<System.Text.Json.JsonDocument>();
+        var docs = new List<JsonDocument>();
         try
         {
             var features = polygons.Select(p =>
             {
                 var data = displayData[p.CampSeasonId];
-                var doc = System.Text.Json.JsonDocument.Parse(p.GeoJson);
+                var doc = JsonDocument.Parse(p.GeoJson);
                 docs.Add(doc);
                 var geom = doc.RootElement.TryGetProperty("geometry", out var g) ? g : doc.RootElement;
                 return new
@@ -512,9 +514,9 @@ public sealed class CityPlanningService : ICityPlanningService
                 };
             }).ToList();
 
-            return System.Text.Json.JsonSerializer.Serialize(
+            return JsonSerializer.Serialize(
                 new { type = "FeatureCollection", features },
-                new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+                new JsonSerializerOptions { WriteIndented = true });
         }
         finally
         {

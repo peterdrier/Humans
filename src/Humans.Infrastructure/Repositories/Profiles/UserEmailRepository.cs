@@ -4,7 +4,6 @@ using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
-using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 
 namespace Humans.Infrastructure.Repositories.Profiles;
@@ -212,7 +211,7 @@ public sealed class UserEmailRepository : IUserEmailRepository
     }
 
     public async Task<bool> MarkVerifiedAsync(
-        Guid emailId, NodaTime.Instant now, CancellationToken ct = default)
+        Guid emailId, Instant now, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         var email = await ctx.UserEmails.FirstOrDefaultAsync(e => e.Id == emailId, ct);

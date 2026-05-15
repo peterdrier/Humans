@@ -95,8 +95,8 @@ public class IssuesController : HumansControllerBase
 
         var filter = new IssueListFilter(
             Statuses: statuses,
-            Categories: category.HasValue ? new[] { category.Value } : null,
-            Sections: !string.IsNullOrWhiteSpace(section) ? new string?[] { section } : null,
+            Categories: category.HasValue ? [category.Value] : null,
+            Sections: !string.IsNullOrWhiteSpace(section) ? [section] : null,
             ReporterUserId: reporterFilter,
             AssigneeUserId: null,
             SearchText: !string.IsNullOrWhiteSpace(search) ? search : null,
@@ -263,7 +263,7 @@ public class IssuesController : HumansControllerBase
             .ToList();
         if (activeIds.Count == 0)
         {
-            vm.AssigneeOptions = new List<AssigneeOption>();
+            vm.AssigneeOptions = [];
         }
         else
         {

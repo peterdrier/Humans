@@ -1,6 +1,5 @@
 using System.Text.RegularExpressions;
 using Humans.Application.Tests.Architecture.Ratchet;
-using Humans.Testing;
 
 namespace Humans.Application.Tests.Architecture.Rules;
 

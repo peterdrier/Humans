@@ -8,7 +8,6 @@ using Humans.Application.Services.HumanLifecycle;
 using Humans.Infrastructure.Caching;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Repositories.Governance;
-using Humans.Infrastructure.Services;
 using GovernanceApplicationDecisionService = Humans.Application.Services.Governance.ApplicationDecisionService;
 using GovernanceIndexService = Humans.Application.Services.Governance.GovernanceIndexService;
 using GovernanceMembershipCalculator = Humans.Application.Services.Governance.MembershipCalculator;

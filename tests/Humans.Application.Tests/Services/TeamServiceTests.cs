@@ -16,13 +16,11 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Domain.ValueObjects;
 using Humans.Application.Interfaces.Caching;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Services.Shifts;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Teams;
-using Xunit;
 using RoleAssignmentService = Humans.Application.Services.Auth.RoleAssignmentService;
 using TeamService = Humans.Application.Services.Teams.TeamService;
 using Humans.Application.Interfaces.AuditLog;
@@ -132,25 +130,25 @@ public class TeamServiceTests : IDisposable
             {
                 var ids = callInfo.Arg<IReadOnlyCollection<Guid>>();
                 if (ids.Count == 0)
-                    return new ValueTask<IReadOnlyDictionary<Guid, Humans.Application.UserInfo>>(
-                        new Dictionary<Guid, Humans.Application.UserInfo>());
+                    return new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                        new Dictionary<Guid, UserInfo>());
                 using var db = new HumansDbContext(options);
                 var users = db.Users.AsNoTracking()
                     .Include(u => u.UserEmails)
                     .Where(u => ids.Contains(u.Id))
                     .ToList();
-                IReadOnlyDictionary<Guid, Humans.Application.UserInfo> dict = users.ToDictionary(
+                IReadOnlyDictionary<Guid, UserInfo> dict = users.ToDictionary(
                     u => u.Id,
-                    u => Humans.Application.UserInfo.Create(
+                    u => UserInfo.Create(
                         u, u.UserEmails.ToList(),
-                        Array.Empty<Humans.Domain.Entities.EventParticipation>(),
-                        Array.Empty<(string, string)>(),
+                        [],
+                        [],
                         profile: null,
-                        Array.Empty<Humans.Domain.Entities.ContactField>(),
-                        Array.Empty<Humans.Domain.Entities.ProfileLanguage>(),
-                        Array.Empty<Humans.Domain.Entities.VolunteerHistoryEntry>(),
-                        Array.Empty<Humans.Domain.Entities.CommunicationPreference>()));
-                return new ValueTask<IReadOnlyDictionary<Guid, Humans.Application.UserInfo>>(dict);
+                        [],
+                        [],
+                        [],
+                        []));
+                return new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(dict);
             });
         testUserService
             .GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
@@ -539,12 +537,10 @@ public class TeamServiceTests : IDisposable
 
         var result = await _service.UpdateTeamPageContentAsync(
             team.Id,
-            "Welcome",
-            new[]
-            {
+            "Welcome", [
                 new TeamPageCallToActionInput(" Join ", " /join ", CallToActionStyle.Primary),
                 new TeamPageCallToActionInput("", "/ignored", CallToActionStyle.Secondary)
-            },
+            ],
             isPublicPage: true,
             showCoordinatorsOnPublicPage: true,
             user.Id);
@@ -562,48 +558,6 @@ public class TeamServiceTests : IDisposable
             });
         stored.IsPublicPage.Should().BeTrue();
         stored.ShowCoordinatorsOnPublicPage.Should().BeTrue();
-    }
-
-    // ==========================================================================
-    // IsUserMemberOfTeamAsync
-    // ==========================================================================
-
-    [HumansFact]
-    public async Task IsUserMemberOfTeamAsync_ActiveMember_ReturnsTrue()
-    {
-        var user = SeedUser();
-        var team = SeedTeam("Alpha");
-        SeedTeamMember(team.Id, user.Id);
-        await _dbContext.SaveChangesAsync();
-
-        var result = await _service.IsUserMemberOfTeamAsync(team.Id, user.Id);
-
-        result.Should().BeTrue();
-    }
-
-    [HumansFact]
-    public async Task IsUserMemberOfTeamAsync_LeftTeam_ReturnsFalse()
-    {
-        var user = SeedUser();
-        var team = SeedTeam("Alpha");
-        SeedTeamMember(team.Id, user.Id, leftAt: _clock.GetCurrentInstant() - Duration.FromDays(1));
-        await _dbContext.SaveChangesAsync();
-
-        var result = await _service.IsUserMemberOfTeamAsync(team.Id, user.Id);
-
-        result.Should().BeFalse();
-    }
-
-    [HumansFact]
-    public async Task IsUserMemberOfTeamAsync_NotMember_ReturnsFalse()
-    {
-        var user = SeedUser();
-        var team = SeedTeam("Alpha");
-        await _dbContext.SaveChangesAsync();
-
-        var result = await _service.IsUserMemberOfTeamAsync(team.Id, user.Id);
-
-        result.Should().BeFalse();
     }
 
     // ==========================================================================
@@ -706,7 +660,7 @@ public class TeamServiceTests : IDisposable
 
         var result = await _service.GetAllTeamsAsync();
 
-        result.Select(t => t.Name).Should().BeEquivalentTo(["Alpha", "Bravo", "Charlie"]);
+        result.Select(t => t.Name).Should().BeEquivalentTo("Alpha", "Bravo", "Charlie");
     }
 
     [HumansFact]
@@ -1149,67 +1103,6 @@ public class TeamServiceTests : IDisposable
         var result = await _service.GetPendingRequestCountsByTeamIdsAsync([team.Id]);
 
         result[team.Id].Should().Be(0);
-    }
-
-    // ==========================================================================
-    // GetNonSystemTeamNamesByUserIdsAsync
-    // ==========================================================================
-
-    [HumansFact]
-    public async Task GetNonSystemTeamNamesByUserIdsAsync_ReturnsTeamNamesGroupedByUser()
-    {
-        var u1 = SeedUser(displayName: "U1");
-        var u2 = SeedUser(displayName: "U2");
-        var teamA = SeedTeam("Alpha");
-        var teamB = SeedTeam("Beta");
-        SeedTeamMember(teamA.Id, u1.Id);
-        SeedTeamMember(teamB.Id, u1.Id);
-        SeedTeamMember(teamA.Id, u2.Id);
-        await _dbContext.SaveChangesAsync();
-
-        var result = await _service.GetNonSystemTeamNamesByUserIdsAsync([u1.Id, u2.Id]);
-
-        result[u1.Id].Should().HaveCount(2);
-        result[u1.Id].Should().Contain("Alpha");
-        result[u1.Id].Should().Contain("Beta");
-        result[u2.Id].Should().ContainSingle("Alpha");
-    }
-
-    [HumansFact]
-    public async Task GetNonSystemTeamNamesByUserIdsAsync_ExcludesSystemTeams()
-    {
-        var user = SeedUser();
-        var userTeam = SeedTeam("User Team");
-        var sysTeam = SeedTeam("Volunteers", type: SystemTeamType.Volunteers);
-        SeedTeamMember(userTeam.Id, user.Id);
-        SeedTeamMember(sysTeam.Id, user.Id);
-        await _dbContext.SaveChangesAsync();
-
-        var result = await _service.GetNonSystemTeamNamesByUserIdsAsync([user.Id]);
-
-        result[user.Id].Should().ContainSingle("User Team");
-    }
-
-    [HumansFact]
-    public async Task GetNonSystemTeamNamesByUserIdsAsync_ExcludesLeftMembers()
-    {
-        var user = SeedUser();
-        var team = SeedTeam("Alpha");
-        SeedTeamMember(team.Id, user.Id,
-            leftAt: _clock.GetCurrentInstant() - Duration.FromDays(1));
-        await _dbContext.SaveChangesAsync();
-
-        var result = await _service.GetNonSystemTeamNamesByUserIdsAsync([user.Id]);
-
-        result.Should().BeEmpty();
-    }
-
-    [HumansFact]
-    public async Task GetNonSystemTeamNamesByUserIdsAsync_EmptyInput_ReturnsEmptyDict()
-    {
-        var result = await _service.GetNonSystemTeamNamesByUserIdsAsync([]);
-
-        result.Should().BeEmpty();
     }
 
     // ==========================================================================

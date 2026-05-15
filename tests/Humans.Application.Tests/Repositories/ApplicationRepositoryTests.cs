@@ -5,7 +5,6 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Infrastructure.Data;
-using Xunit;
 using MemberApplication = Humans.Domain.Entities.Application;
 using Humans.Infrastructure.Repositories.Governance;
 
@@ -236,7 +235,7 @@ public sealed class ApplicationRepositoryTests : IDisposable
 
         var ids = await _repo.GetVoterIdsForApplicationAsync(app.Id);
 
-        ids.Should().BeEquivalentTo(new[] { voter1, voter2 });
+        ids.Should().BeEquivalentTo([voter1, voter2]);
     }
 
     [HumansFact]

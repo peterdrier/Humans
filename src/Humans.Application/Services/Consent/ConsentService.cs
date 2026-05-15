@@ -402,7 +402,7 @@ public sealed class ConsentService : IConsentService, IUserDataContributor
         var now = _clock.GetCurrentInstant();
 
         var documents = await _legalDocumentSyncService
-            .GetActiveRequiredDocumentsForTeamsAsync(new[] { teamId }, ct);
+            .GetActiveRequiredDocumentsForTeamsAsync([teamId], ct);
 
         // Chain-follow merge tombstones so a fold-target's signed set
         // transparently includes versions consented to by merged source ids.
@@ -437,7 +437,7 @@ public sealed class ConsentService : IConsentService, IUserDataContributor
         var missingVersionIds = await membershipCalculator.GetMissingConsentVersionsAsync(userId, ct);
 
         if (missingVersionIds.Count == 0)
-            return Array.Empty<string>();
+            return [];
 
         var names = new HashSet<string>(StringComparer.Ordinal);
         foreach (var versionId in missingVersionIds)

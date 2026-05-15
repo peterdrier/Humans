@@ -1,9 +1,7 @@
 using AwesomeAssertions;
-using Humans.Application;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
-using Xunit;
 
 namespace Humans.Application.Tests;
 
@@ -50,13 +48,13 @@ public class UserInfoTests
 
         var info = UserInfo.Create(
             user: MinimalUser(userId),
-            userEmails: Array.Empty<UserEmail>(),
-            eventParticipations: Array.Empty<EventParticipation>(),
-            externalLogins: Array.Empty<(string, string)>(),
+            userEmails: [],
+            eventParticipations: [],
+            externalLogins: [],
             profile: null,
-            contactFields: Array.Empty<ContactField>(),
-            profileLanguages: Array.Empty<ProfileLanguage>(),
-            volunteerHistory: Array.Empty<VolunteerHistoryEntry>(),
+            contactFields: [],
+            profileLanguages: [],
+            volunteerHistory: [],
             communicationPreferences: prefs);
 
         // Marketing (3) sorts before Governance (4) by enum value ascending.
@@ -72,14 +70,14 @@ public class UserInfoTests
     {
         var info = UserInfo.Create(
             MinimalUser(),
-            Array.Empty<UserEmail>(),
-            Array.Empty<EventParticipation>(),
-            Array.Empty<(string, string)>(),
+            [],
+            [],
+            [],
             profile: null,
-            Array.Empty<ContactField>(),
-            Array.Empty<ProfileLanguage>(),
-            Array.Empty<VolunteerHistoryEntry>(),
-            Array.Empty<CommunicationPreference>());
+            [],
+            [],
+            [],
+            []);
 
         info.MarketingOptedOut.Should().BeNull();
     }
@@ -104,13 +102,13 @@ public class UserInfoTests
 
         var info = UserInfo.Create(
             MinimalUser(userId),
-            Array.Empty<UserEmail>(),
-            Array.Empty<EventParticipation>(),
-            Array.Empty<(string, string)>(),
+            [],
+            [],
+            [],
             profile: null,
-            Array.Empty<ContactField>(),
-            Array.Empty<ProfileLanguage>(),
-            Array.Empty<VolunteerHistoryEntry>(),
+            [],
+            [],
+            [],
             prefs);
 
         info.MarketingOptedOut.Should().BeTrue();
@@ -133,14 +131,14 @@ public class UserInfoTests
 
         var info = UserInfo.Create(
             MinimalUser(),
-            Array.Empty<UserEmail>(),
+            [],
             participations,
-            Array.Empty<(string, string)>(),
+            [],
             profile: null,
-            Array.Empty<ContactField>(),
-            Array.Empty<ProfileLanguage>(),
-            Array.Empty<VolunteerHistoryEntry>(),
-            Array.Empty<CommunicationPreference>());
+            [],
+            [],
+            [],
+            []);
 
         info.HasTicket.Should().BeTrue();
     }
@@ -162,14 +160,14 @@ public class UserInfoTests
 
         var info = UserInfo.Create(
             MinimalUser(),
-            Array.Empty<UserEmail>(),
+            [],
             participations,
-            Array.Empty<(string, string)>(),
+            [],
             profile: null,
-            Array.Empty<ContactField>(),
-            Array.Empty<ProfileLanguage>(),
-            Array.Empty<VolunteerHistoryEntry>(),
-            Array.Empty<CommunicationPreference>());
+            [],
+            [],
+            [],
+            []);
 
         info.HasTicketForYear(2025).Should().BeTrue();
         info.HasTicketForYear(2026).Should().BeFalse();
@@ -194,14 +192,14 @@ public class UserInfoTests
 
         var info = UserInfo.Create(
             MinimalUser(),
-            Array.Empty<UserEmail>(),
+            [],
             participations,
-            Array.Empty<(string, string)>(),
+            [],
             profile: null,
-            Array.Empty<ContactField>(),
-            Array.Empty<ProfileLanguage>(),
-            Array.Empty<VolunteerHistoryEntry>(),
-            Array.Empty<CommunicationPreference>());
+            [],
+            [],
+            [],
+            []);
 
         info.HasTicket.Should().BeFalse();
     }

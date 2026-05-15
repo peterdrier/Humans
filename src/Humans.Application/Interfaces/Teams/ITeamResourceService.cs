@@ -1,6 +1,4 @@
-using Humans.Application.Interfaces;
 using Humans.Application.DTOs;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
 

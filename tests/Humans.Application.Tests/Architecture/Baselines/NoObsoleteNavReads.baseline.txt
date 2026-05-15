@@ -38,12 +38,8 @@ src/Humans.Application/Interfaces/Repositories/ITeamRepository.cs:Team#1
 src/Humans.Application/Interfaces/Repositories/ITeamRepository.cs:Team#2
 src/Humans.Application/Interfaces/Repositories/ITeamRepository.cs:Team#3
 src/Humans.Application/Interfaces/Repositories/ITeamRepository.cs:Team#4
-src/Humans.Application/Interfaces/Repositories/ITeamRepository.cs:Team#5
 src/Humans.Application/Interfaces/Repositories/ITeamRepository.cs:User#1
 src/Humans.Application/Interfaces/Repositories/ITeamRepository.cs:User#2
-src/Humans.Application/Interfaces/Repositories/ITeamRepository.cs:User#3
-src/Humans.Application/Interfaces/Teams/ITeamService.cs:Team#1
-src/Humans.Application/Interfaces/Teams/ITeamService.cs:User#1
 src/Humans.Application/Interfaces/Users/IUserService.cs:User#1
 src/Humans.Application/Services/Agent/AgentService.cs:User#1
 src/Humans.Application/Services/Agent/AgentService.cs:User#2
@@ -149,14 +145,6 @@ src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:Team#18
 src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:Team#19
 src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:Team#2
 src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:Team#20
-src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:Team#21
-src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:Team#22
-src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:Team#23
-src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:Team#24
-src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:Team#25
-src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:Team#26
-src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:Team#27
-src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:Team#28
 src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:Team#3
 src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:Team#4
 src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:Team#5

@@ -3,7 +3,6 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Services.Shifts;
 using Humans.Domain.Entities;
 using NSubstitute;
-using Xunit;
 
 namespace Humans.Application.Tests.Services.Shifts;
 
@@ -31,9 +30,9 @@ public class ShiftViewServiceTests
         _management.GetVolunteerEventProfileAsync(userId, Arg.Any<CancellationToken>())
             .Returns((VolunteerEventProfile?)null);
         _signups.GetVolunteerTagPreferencesForUserAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<VolunteerTagPreference>());
+            .Returns([]);
         _signups.GetByUserAsync(userId, Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<ShiftSignup>());
+            .Returns([]);
 
         var sut = CreateSut();
         var view = await sut.GetUserAsync(userId);
@@ -60,9 +59,9 @@ public class ShiftViewServiceTests
         _management.GetVolunteerEventProfileAsync(userId, Arg.Any<CancellationToken>())
             .Returns((VolunteerEventProfile?)null);
         _signups.GetVolunteerTagPreferencesForUserAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<VolunteerTagPreference>());
+            .Returns([]);
         _signups.GetByUserAsync(userId, Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<ShiftSignup>());
+            .Returns([]);
         _availability.GetByUserAndEventAsync(userId, eventId, Arg.Any<CancellationToken>())
             .Returns(availability);
         _tracking.GetAsync(userId, eventId, Arg.Any<CancellationToken>())
@@ -84,7 +83,7 @@ public class ShiftViewServiceTests
         _management.GetVolunteerEventProfileAsync(userId, Arg.Any<CancellationToken>())
             .Returns((VolunteerEventProfile?)null);
         _signups.GetVolunteerTagPreferencesForUserAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<VolunteerTagPreference>());
+            .Returns([]);
 
         var sut = CreateSut();
         var view = await sut.GetUserAsync(userId);
@@ -106,7 +105,7 @@ public class ShiftViewServiceTests
         _management.GetVolunteerEventProfileAsync(userId, Arg.Any<CancellationToken>())
             .Returns((VolunteerEventProfile?)null);
         _signups.GetVolunteerTagPreferencesForUserAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<VolunteerTagPreference>());
+            .Returns([]);
         _signups.GetByUserAsync(userId, eventId, Arg.Any<CancellationToken>()).Returns(scoped);
 
         var sut = CreateSut();
@@ -172,12 +171,12 @@ public class ShiftViewServiceTests
         _management.GetVolunteerEventProfileAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns((VolunteerEventProfile?)null);
         _signups.GetVolunteerTagPreferencesForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<VolunteerTagPreference>());
+            .Returns([]);
         _signups.GetByUserAsync(Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<ShiftSignup>());
+            .Returns([]);
 
         var sut = CreateSut();
-        var batch = await sut.GetUsersAsync(new[] { userA, userA, userB });
+        var batch = await sut.GetUsersAsync([userA, userA, userB]);
 
         batch.Should().ContainKey(userA);
         batch.Should().ContainKey(userB);

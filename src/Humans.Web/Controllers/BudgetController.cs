@@ -140,6 +140,8 @@ public class BudgetController : HumansControllerBase
                 CanEdit = canEdit,
                 IsFinanceAdmin = isFinanceAdmin,
                 Teams = detail.Teams
+                    .OrderBy(t => t.Name, StringComparer.Ordinal)
+                    .ToList()
             };
             return View(model);
         }

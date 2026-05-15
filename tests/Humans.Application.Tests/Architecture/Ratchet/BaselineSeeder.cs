@@ -1,5 +1,4 @@
 using Humans.Application.Tests.Architecture.Rules;
-using Humans.Testing;
 
 namespace Humans.Application.Tests.Architecture.Ratchet;
 

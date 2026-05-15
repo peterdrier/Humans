@@ -1,5 +1,3 @@
-using Humans.Application.Interfaces;
-using Humans.Domain.Entities;
 using NodaTime;
 
 namespace Humans.Application.Interfaces.Consent;

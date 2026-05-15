@@ -44,8 +44,7 @@ public sealed class RepositoryInterfaceLocationAnalyzer : DiagnosticAnalyzer
             "shared marker namespace so the Application layer reaches every repository the " +
             "same way.");
 
-    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
-        ImmutableArray.Create(Rule);
+    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
 
     public override void Initialize(AnalysisContext context)
     {
@@ -98,7 +97,7 @@ public sealed class RepositoryInterfaceLocationAnalyzer : DiagnosticAnalyzer
             effectiveSeverity: severity,
             additionalLocations: null,
             properties: null,
-            messageArgs: new object[] { type.Name, ns, ExpectedNamespace }));
+            messageArgs: [type.Name, ns, ExpectedNamespace]));
     }
 
     private static bool ExtendsMarker(INamedTypeSymbol type, INamedTypeSymbol marker)

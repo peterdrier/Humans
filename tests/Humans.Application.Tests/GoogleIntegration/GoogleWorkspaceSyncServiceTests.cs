@@ -1,4 +1,3 @@
-using AwesomeAssertions;
 using Humans.Application.Configuration;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.GoogleIntegration;
@@ -15,7 +14,6 @@ using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Xunit;
 // UserEmailMatch lives in the Profiles interface namespace, not DTOs.
 using UserEmailMatch = Humans.Application.Interfaces.Profiles.UserEmailMatch;
 
@@ -173,7 +171,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
         _teamService.GetTeamByIdAsync(TestTeamId, Arg.Any<CancellationToken>())
             .Returns((Team?)null);
         _teamService.GetUserTeamsAsync(TestUserId, Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<TeamMember>());
+            .Returns([]);
 
         await _syncService.AddUserToTeamResourcesAsync(TestTeamId, TestUserId);
 
@@ -216,8 +214,8 @@ public sealed class GoogleWorkspaceSyncServiceTests
 
         // No expected members (empty team) — any permission in Google is "extra".
         _teamService
-            .GetActiveMembersForTeamsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<TeamActiveMemberSnapshot>());
+            .GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyDictionary<Guid, TeamInfo>)new Dictionary<Guid, TeamInfo>());
 
         _userEmailService
             .GetEntitiesByUserIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
@@ -241,7 +239,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
 
         _userEmailService
             .MatchByEmailsAsync(Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<UserEmailMatch>());
+            .Returns([]);
 
         await _syncService.SyncSingleResourceAsync(TestDriveFolderResourceId, SyncAction.Execute);
 

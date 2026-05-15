@@ -3,7 +3,6 @@ using Humans.Application.DTOs;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Profiles;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Tests.Infrastructure;
@@ -13,7 +12,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
-using Xunit;
 using GoogleAdminService = Humans.Application.Services.GoogleIntegration.GoogleAdminService;
 
 namespace Humans.Application.Tests.GoogleIntegration;
@@ -100,7 +98,7 @@ public class GoogleAdminServiceTests
                     userId,
                     IsPrimary: true,
                     IsVerified: true,
-                    UpdatedAt: NodaTime.SystemClock.Instance.GetCurrentInstant())
+                    UpdatedAt: SystemClock.Instance.GetCurrentInstant())
             ]);
 
         var testUser = new User { Id = userId, DisplayName = "Test User" };
@@ -159,7 +157,7 @@ public class GoogleAdminServiceTests
         // collapse them rather than throw on the duplicate key.
         var verifiedUserId = Guid.NewGuid();
         var unverifiedUserId = Guid.NewGuid();
-        var now = NodaTime.SystemClock.Instance.GetCurrentInstant();
+        var now = SystemClock.Instance.GetCurrentInstant();
 
         _workspaceUserService.ListAccountsAsync(Arg.Any<CancellationToken>())
             .Returns([
@@ -179,7 +177,7 @@ public class GoogleAdminServiceTests
                     "dup@nobodies.team", verifiedUserId,
                     IsPrimary: true,
                     IsVerified: true,
-                    UpdatedAt: now - NodaTime.Duration.FromHours(1)),
+                    UpdatedAt: now - Duration.FromHours(1)),
             ]);
 
         var verifiedUser = new User { Id = verifiedUserId, DisplayName = "Verified User" };
@@ -287,7 +285,7 @@ public class GoogleAdminServiceTests
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
             Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
         await _auditLogService.DidNotReceive().LogAsync(
-            Arg.Any<Humans.Domain.Enums.AuditAction>(),
+            Arg.Any<AuditAction>(),
             Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<Guid?>(), Arg.Any<string?>());
@@ -331,9 +329,16 @@ public class GoogleAdminServiceTests
         _userService.GetByEmailOrAlternateAsync(
                 Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns((User?)null);
-        _teamService.GetTeamNameByGoogleGroupPrefixAsync(
-                "comms", Arg.Any<CancellationToken>())
-            .Returns("Communications");
+        var commsTeamId = Guid.NewGuid();
+        var commsTeam = new TeamInfo(
+            commsTeamId, "Communications", null, "communications",
+            IsActive: true, IsSystemTeam: false, SystemTeamType: SystemTeamType.None,
+            RequiresApproval: false, IsPublicPage: false, IsHidden: false,
+            IsPromotedToDirectory: false, CreatedAt: Instant.MinValue,
+            Members: [],
+            GoogleGroupPrefix: "comms");
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyDictionary<Guid, TeamInfo>)new Dictionary<Guid, TeamInfo> { [commsTeamId] = commsTeam });
 
         var result = await _service.ProvisionStandaloneAccountAsync(
             "comms", "Any", "Name", _actorUserId);
@@ -516,7 +521,7 @@ public class GoogleAdminServiceTests
         // must not write a misleading "generated 0 codes" audit entry.
         _workspaceUserService.GenerateBackupCodesAsync(
                 Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<string>());
+            .Returns([]);
 
         var result = await _service.ResetPasswordAndGenerate2FaAsync(
             "alice@nobodies.team", _actorUserId);
@@ -881,11 +886,25 @@ public class GoogleAdminServiceTests
     [HumansFact]
     public async Task GetActiveTeamsAsync_ReturnsOnlyActiveTeamsOrdered()
     {
-        _teamService.GetActiveTeamOptionsAsync(Arg.Any<CancellationToken>())
-            .Returns([
-                new TeamOptionDto(Guid.NewGuid(), "Alpha"),
-                new TeamOptionDto(Guid.NewGuid(), "Zebra")
-            ]);
+        var alphaId = Guid.NewGuid();
+        var zebraId = Guid.NewGuid();
+        var teams = new Dictionary<Guid, TeamInfo>
+        {
+            [alphaId] = new(
+                alphaId, "Alpha", null, "alpha",
+                IsActive: true, IsSystemTeam: false, SystemTeamType: SystemTeamType.None,
+                RequiresApproval: false, IsPublicPage: false, IsHidden: false,
+                IsPromotedToDirectory: false, CreatedAt: Instant.MinValue,
+                Members: []),
+            [zebraId] = new(
+                zebraId, "Zebra", null, "zebra",
+                IsActive: true, IsSystemTeam: false, SystemTeamType: SystemTeamType.None,
+                RequiresApproval: false, IsPublicPage: false, IsHidden: false,
+                IsPromotedToDirectory: false, CreatedAt: Instant.MinValue,
+                Members: []),
+        };
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyDictionary<Guid, TeamInfo>)teams);
 
         var result = await _service.GetActiveTeamsAsync();
 

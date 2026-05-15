@@ -75,8 +75,8 @@ public static class MessageCategoryExtensions
     /// <summary>
     /// The active categories shown in the Communication Preferences UI, in display order.
     /// </summary>
-    public static IReadOnlyList<MessageCategory> ActiveCategories { get; } = new[]
-    {
+    public static IReadOnlyList<MessageCategory> ActiveCategories { get; } =
+    [
         MessageCategory.System,
         MessageCategory.CampaignCodes,
         MessageCategory.FacilitatedMessages,
@@ -84,8 +84,8 @@ public static class MessageCategoryExtensions
         MessageCategory.VolunteerUpdates,
         MessageCategory.TeamUpdates,
         MessageCategory.Governance,
-        MessageCategory.Marketing,
-    };
+        MessageCategory.Marketing
+    ];
 
     public static string ToDisplayName(this MessageCategory category) => category switch
     {

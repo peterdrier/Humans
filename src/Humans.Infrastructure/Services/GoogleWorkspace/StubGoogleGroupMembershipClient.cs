@@ -35,7 +35,7 @@ public sealed class StubGoogleGroupMembershipClient : IGoogleGroupMembershipClie
             if (!_membersByGroup.TryGetValue(groupGoogleId, out var members))
             {
                 return Task.FromResult(new GroupMembershipListResult(
-                    Memberships: Array.Empty<GroupMembership>(),
+                    Memberships: [],
                     Error: null));
             }
 

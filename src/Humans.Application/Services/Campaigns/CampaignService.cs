@@ -237,7 +237,9 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
         if (campaign is null)
             return null;
 
-        var teams = await _teamService.GetActiveTeamOptionsAsync(ct);
+        var teams = (await _teamService.GetTeamsAsync(ct)).Values
+            .Where(t => t.IsActive)
+            .OrderBy(t => t.Name, StringComparer.Ordinal);
         var teamOptions = teams
             .Select(t => new CampaignTeamOptionDto(t.Id, t.Name))
             .ToList();

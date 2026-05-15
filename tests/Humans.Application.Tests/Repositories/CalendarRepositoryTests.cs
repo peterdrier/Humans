@@ -5,7 +5,6 @@ using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Calendar;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
-using Xunit;
 
 namespace Humans.Application.Tests.Repositories;
 

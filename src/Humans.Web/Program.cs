@@ -23,7 +23,6 @@ using Humans.Application.Configuration;
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Web.Extensions;
-using Humans.Web.Extensions.Sections;
 using Microsoft.Extensions.Caching.Memory;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Services;
@@ -139,7 +138,7 @@ builder.Services.AddDbContext<HumansDbContext>((sp, options) =>
     options.AddInterceptors(sp.GetRequiredService<QueryMonitoringInterceptor>());
     // Issue #703: SaveChanges interceptor that signals UserInfo cache
     // invalidation for every persisted mutation to the 8 contributing tables.
-    options.AddInterceptors(sp.GetRequiredService<Humans.Infrastructure.Data.UserInfoSaveChangesInterceptor>());
+    options.AddInterceptors(sp.GetRequiredService<UserInfoSaveChangesInterceptor>());
     // Suppress "First/FirstOrDefault without OrderBy" warning — the codebase universally uses
     // .FirstOrDefaultAsync(e => e.Id == id) for PK lookups which are deterministic by definition.
     options.ConfigureWarnings(w => w.Ignore(CoreEventId.FirstWithoutOrderByAndFilterWarning));
@@ -164,7 +163,7 @@ builder.Services.AddDbContextFactory<HumansDbContext>((sp, options) =>
         npgsqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
     });
     // Issue #703: same SaveChanges interceptor for the IDbContextFactory pipeline.
-    options.AddInterceptors(sp.GetRequiredService<Humans.Infrastructure.Data.UserInfoSaveChangesInterceptor>());
+    options.AddInterceptors(sp.GetRequiredService<UserInfoSaveChangesInterceptor>());
     options.ConfigureWarnings(w => w.Ignore(CoreEventId.FirstWithoutOrderByAndFilterWarning));
 });
 

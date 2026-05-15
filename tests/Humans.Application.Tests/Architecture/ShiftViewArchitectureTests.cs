@@ -19,13 +19,13 @@ namespace Humans.Application.Tests.Architecture;
 /// </summary>
 public class ShiftViewArchitectureTests
 {
-    public static TheoryData<Type> ShiftsServicesThatInvalidate => new()
-    {
+    public static TheoryData<Type> ShiftsServicesThatInvalidate =>
+    [
         typeof(ShiftSignupService),
         typeof(ShiftManagementService),
         typeof(GeneralAvailabilityService),
-        typeof(VolunteerTrackingService),
-    };
+        typeof(VolunteerTrackingService)
+    ];
 
     // ── ShiftViewService (inner, Scoped) ─────────────────────────────────────
 
