@@ -1,4 +1,3 @@
-using Humans.Application.Architecture;
 using Humans.Application.Interfaces;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Onboarding;
@@ -14,14 +13,11 @@ namespace Humans.Application.Interfaces.Profiles;
 /// Service for managing profile data and profile-side merge fan-out.
 /// </summary>
 /// <remarks>
-/// Surface-budget recent history (newest first, last 3 only — see memory/code/surface-budget-history-trim.md):
-/// <list type="bullet">
-///   <item>27→24 — PR #553 follow-up: dropped 3 cross-section accessors (GetConsentReviewPendingCountAsync, GetNotApprovedAndNotSuspendedCountAsync, GetActiveApprovedUserIdsAsync). Callers now read UserInfo via IUserService.</item>
-///   <item>32→27 — PR #553: drained 5 single-caller DB readers + reimplemented 3 multi-caller readers over the cached UserInfo snapshot. ReviewQueueData retyped to carry UserInfo.</item>
-///   <item>2026-05-13 — 31→32 (issue #702): added GetProfilePictureMigrationSnapshotAsync for the DB→FS picture migration verification page.</item>
-/// </list>
+/// SurfaceBudget intentionally removed for the duration of the Users+Profile
+/// section merge — the interface is shrinking as its surface migrates onto
+/// IUserService over the next several PRs and is slated for deletion when the
+/// merge completes. Per-PR budget churn is not useful while that is in flight.
 /// </remarks>
-[SurfaceBudget(24)]
 public interface IProfileService : IApplicationService, IUserMerge
 {
     Task<Profile?> GetProfileAsync(Guid userId, CancellationToken ct = default);
