@@ -280,27 +280,6 @@ public sealed class OutboxEmailServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task SendAdminDailyDigestAsync_WhenOptedOutOfGovernance_DoesNotCreateOutboxRow()
-    {
-        var userId = Guid.NewGuid();
-        _userEmailService.GetUserIdByVerifiedEmailAsync("admin@example.com", Arg.Any<CancellationToken>())
-            .Returns(userId);
-        _commPrefService.IsOptedOutAsync(userId, MessageCategory.Governance, Arg.Any<CancellationToken>())
-            .Returns(true);
-
-        var counts = new AdminDigestCounts(0, 0, 0, 0, 0, 0, 0, 0, 0, false, null);
-        _renderer.RenderAdminDailyDigest("Admin", "2026-05-01", counts, "en")
-            .Returns(new EmailContent("Admin Digest", "<p>Today</p>"));
-
-        await _service.SendAdminDailyDigestAsync(
-            "admin@example.com", "Admin", "2026-05-01", counts, "en");
-
-        var messages = await _dbContext.EmailOutboxMessages.ToListAsync();
-        messages.Should().BeEmpty(
-            "AdminDailyDigest is now Governance-categorized and must be suppressed when opted out.");
-    }
-
-    [HumansFact]
     public async Task SendApplicationApprovedAsync_WhenOptedIn_StampsUnsubscribeUrlIntoBody()
     {
         var userId = Guid.NewGuid();

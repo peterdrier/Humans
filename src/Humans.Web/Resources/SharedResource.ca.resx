@@ -1200,22 +1200,6 @@
 &lt;p&gt;Si no renoves, continuaràs sent un human actiu però ja no tindràs accés de nivell {1}.&lt;/p&gt;
 &lt;p&gt;Gràcies per la teva participació!&lt;br/&gt;L’equip de Humans&lt;/p&gt;</value><comment>{0} = user name, {1} = tier name, {2} = expiry date, {3} = base URL</comment></data>
 
-  <data name="Email_BoardDailyDigest_Subject" xml:space="preserve"><value>Resum de la Junta: {0}</value><comment>{0} = date (YYYY-MM-DD)</comment></data>
-
-  <data name="Email_BoardDailyDigest_Body" xml:space="preserve"><value>&lt;h2&gt;Resum de la Junta &amp;mdash; {1}&lt;/h2&gt;
-&lt;p&gt;Hola {0},&lt;/p&gt;
-{3}
-{2}
-&lt;p&gt;L’equip de Humans&lt;/p&gt;</value><comment>{0} = board member name, {1} = date, {2} = approvals HTML, {3} = outstanding HTML</comment></data>
-
-  <data name="Email_BoardDigest_OutstandingHeader" xml:space="preserve"><value>Elements pendents</value></data>
-  <data name="Email_BoardDigest_NoApprovals" xml:space="preserve"><value>Ahir no hi va haver cap aprovació nova.</value></data>
-  <data name="Email_BoardDigest_OnboardingReview" xml:space="preserve"><value>{0} en espera de revisió d’incorporació</value><comment>{0} = count</comment></data>
-  <data name="Email_BoardDigest_StillOnboarding" xml:space="preserve"><value>{0} encara completant la incorporació</value><comment>{0} = count</comment></data>
-  <data name="Email_BoardDigest_BoardVoting" xml:space="preserve"><value>{0} sol·licituds de nivell pendents de votació ({1} necessiten la teva)</value><comment>{0} = total count, {1} = member's unvoted count</comment></data>
-  <data name="Email_BoardDigest_TeamJoinRequests" xml:space="preserve"><value>{0} sol·licituds d’equip pendents</value><comment>{0} = count</comment></data>
-  <data name="Email_BoardDigest_PendingConsents" xml:space="preserve"><value>{0} amb requisits de consentiment pendents</value><comment>{0} = count</comment></data>
-  <data name="Email_BoardDigest_PendingDeletions" xml:space="preserve"><value>{0} eliminacions de compte pendents</value><comment>{0} = count</comment></data>
 
   <!-- Navigation restructure -->
   <data name="Nav_Review" xml:space="preserve"><value>Revisió</value></data>

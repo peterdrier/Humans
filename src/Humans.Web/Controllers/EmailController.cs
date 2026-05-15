@@ -175,22 +175,6 @@ public class EmailController : HumansControllerBase
             var c14 = renderer.RenderTermRenewalReminder(name, "Colaborador", "April 1, 2026", culture);
             items.Add(new EmailPreviewItem { Id = "term-renewal-reminder", Name = "Term Renewal Reminder", Recipient = email, Subject = c14.Subject, Body = c14.HtmlBody });
 
-            var sampleDigestGroups = new List<BoardDigestTierGroup>
-            {
-                new("Volunteer", new[] { "Alice Johnson", "Bob Smith" }),
-                new("Colaborador", new[] { "Carlos Garc\u00eda" })
-            };
-            var sampleOutstanding = new BoardDigestOutstandingCounts(
-                OnboardingReview: 3,
-                StillOnboarding: 5,
-                BoardVotingTotal: 7,
-                BoardVotingYours: 4,
-                TeamJoinRequests: 2,
-                PendingConsents: 12,
-                PendingDeletions: 1);
-            var c15 = renderer.RenderBoardDailyDigest(name, "2026-02-22", sampleDigestGroups, sampleOutstanding, culture);
-            items.Add(new EmailPreviewItem { Id = "board-daily-digest", Name = "Board Daily Digest", Recipient = email, Subject = c15.Subject, Body = c15.HtmlBody });
-
             var cMsg1 = renderer.RenderFacilitatedMessage(name, "Alex Firestone", "Hi! I'm organizing the next community event and would love your help. Let me know if you're interested!", true, "alex@example.com", culture);
             items.Add(new EmailPreviewItem { Id = "facilitated-message", Name = "Facilitated Message (with contact info)", Recipient = email, Subject = cMsg1.Subject, Body = cMsg1.HtmlBody });
 

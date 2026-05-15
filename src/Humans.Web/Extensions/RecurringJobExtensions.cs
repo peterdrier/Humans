@@ -55,14 +55,6 @@ public static class RecurringJobExtensions
             ("term-renewal-reminder", () => RecurringJob.AddOrUpdate<TermRenewalReminderJob>(
                 "term-renewal-reminder", job => job.ExecuteAsync(CancellationToken.None), "0 5 * * 1")),
 
-            // Send Board digest of new approvals — every other day (odd days of month) at 02:00 UTC.
-            ("send-board-daily-digest", () => RecurringJob.AddOrUpdate<SendBoardDailyDigestJob>(
-                "send-board-daily-digest", job => job.ExecuteAsync(CancellationToken.None), "0 2 1-31/2 * *")),
-
-            // Send Admin daily digest of system health and pending actions at 02:30 UTC.
-            ("send-admin-daily-digest", () => RecurringJob.AddOrUpdate<SendAdminDailyDigestJob>(
-                "send-admin-daily-digest", job => job.ExecuteAsync(CancellationToken.None), "30 2 * * *")),
-
             ("process-email-outbox", () => RecurringJob.AddOrUpdate<ProcessEmailOutboxJob>(
                 "process-email-outbox", job => job.ExecuteAsync(CancellationToken.None), "*/1 * * * *")),
 
@@ -112,6 +104,17 @@ public static class RecurringJobExtensions
             catch (Exception ex)
             {
                 logger.LogWarning(ex, "Failed to remove mailer-audience-sync recurring job entry");
+            }
+        }
+
+        // Retired job entries — best-effort cleanup so old Hangfire records
+        // referencing deleted job types don't try to instantiate them.
+        foreach (var retired in new[] { "send-board-daily-digest", "send-admin-daily-digest" })
+        {
+            try { RecurringJob.RemoveIfExists(retired); }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to remove retired recurring job '{JobId}'", retired);
             }
         }
 

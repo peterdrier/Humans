@@ -345,15 +345,6 @@ public sealed class CachingProfileService : TrackedCache<Guid, FullProfile>, IPr
         return Task.FromResult<IReadOnlyList<Guid>>(ids);
     }
 
-    public Task<int> GetNotApprovedAndNotSuspendedCountAsync(CancellationToken ct = default)
-    {
-        var count = UserSnapshot().Count(u =>
-            u.Profile is not null
-            && !u.Profile.IsApproved
-            && u.Profile.State != ProfileState.Suspended);
-        return Task.FromResult(count);
-    }
-
     /// <summary>
     /// Returns the cached <see cref="UserInfo"/> snapshot via the singleton
     /// <see cref="IUserService"/>. Resolved per-call via the scope factory because

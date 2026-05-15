@@ -81,16 +81,6 @@ public interface IEmailRenderer
     EmailContent RenderTermRenewalReminder(string userName, string tierName, string expiresAt, string? culture = null);
 
     /// <summary>
-    /// Board daily digest of new approvals and outstanding items.
-    /// </summary>
-    EmailContent RenderBoardDailyDigest(string boardMemberName, string date, IReadOnlyList<BoardDigestTierGroup> tierGroups, BoardDigestOutstandingCounts? outstandingCounts = null, string? culture = null);
-
-    /// <summary>
-    /// Admin daily digest of system health and pending actions.
-    /// </summary>
-    EmailContent RenderAdminDailyDigest(string adminName, string date, AdminDigestCounts counts, string? culture = null);
-
-    /// <summary>
     /// Feedback response notification.
     /// </summary>
     EmailContent RenderFeedbackResponse(string userName, string originalDescription, string responseMessage, string reportLink, string? culture = null);

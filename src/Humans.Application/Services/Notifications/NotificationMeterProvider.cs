@@ -268,13 +268,9 @@ public sealed class NotificationMeterProvider : INotificationMeterProvider
 
         var failedSyncEvents = await _googleSyncService.GetFailedSyncEventCountAsync(cancellationToken);
 
-        // Onboarding profiles pending excludes consent-review items, matching
-        // the board digest "still onboarding" queue semantics.
-        var totalNotApproved = await _profileService
-            .GetNotApprovedAndNotSuspendedCountAsync(cancellationToken);
-        var onboardingPending = totalNotApproved - consentReviewsPending;
-        if (onboardingPending < 0)
-            onboardingPending = 0;
+        // Board / VolunteerCoordinator see the same review queue under a
+        // different label — same predicate as consentReviewsPending.
+        var onboardingPending = consentReviewsPending;
 
         var teamJoinRequestsPending = await _teamService
             .GetTotalPendingJoinRequestCountAsync(cancellationToken);

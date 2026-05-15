@@ -12,8 +12,6 @@ internal static class AdminSectionExtensions
     {
         services.AddScoped<ProcessAccountDeletionsJob>();
         services.AddScoped<SuspendNonCompliantMembersJob>();
-        services.AddScoped<SendAdminDailyDigestJob>();
-        services.AddScoped<SendBoardDailyDigestJob>();
         services.AddScoped<IAdminDatabaseDiagnosticsService, AdminDatabaseDiagnosticsService>();
 
         // Log API key (separate credential from feedback)

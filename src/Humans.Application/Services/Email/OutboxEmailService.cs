@@ -231,35 +231,6 @@ public sealed class OutboxEmailService : IEmailService
     }
 
     /// <inheritdoc />
-    public async Task SendBoardDailyDigestAsync(
-        string email,
-        string name,
-        string date,
-        IReadOnlyList<BoardDigestTierGroup> groups,
-        BoardDigestOutstandingCounts? outstandingCounts = null,
-        string? culture = null,
-        CancellationToken cancellationToken = default)
-    {
-        var content = _renderer.RenderBoardDailyDigest(name, date, groups, outstandingCounts, culture);
-        await EnqueueAsync(email, name, content, "board_daily_digest", cancellationToken,
-            category: MessageCategory.Governance);
-    }
-
-    /// <inheritdoc />
-    public async Task SendAdminDailyDigestAsync(
-        string email,
-        string name,
-        string date,
-        AdminDigestCounts counts,
-        string? culture = null,
-        CancellationToken cancellationToken = default)
-    {
-        var content = _renderer.RenderAdminDailyDigest(name, date, counts, culture);
-        await EnqueueAsync(email, name, content, "admin_daily_digest", cancellationToken,
-            category: MessageCategory.Governance);
-    }
-
-    /// <inheritdoc />
     public async Task SendFeedbackResponseAsync(
         string userEmail, string userName, string originalDescription,
         string responseMessage, string reportLink, string? culture = null,
