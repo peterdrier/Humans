@@ -340,7 +340,6 @@ public sealed class CampRepositoryTests : IDisposable
         Vibes = new List<CampVibe>(),
         AdultPlayspace = AdultPlayspacePolicy.No,
         MemberCount = 10,
-        ContainerCount = 0,
         CreatedAt = _clock.GetCurrentInstant(),
         UpdatedAt = _clock.GetCurrentInstant()
     };

@@ -3,6 +3,7 @@ using AwesomeAssertions;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Camps;
+using Humans.Application.Interfaces.CitiPlanning;
 using Humans.Application.Interfaces.Expenses;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Stores;
@@ -34,6 +35,7 @@ public class AuthorizationPolicyTests : IDisposable
         services.AddLogging();
         services.AddScoped(_ => Substitute.For<IBudgetService>());
         services.AddScoped(_ => Substitute.For<ICampService>());
+        services.AddScoped(_ => Substitute.For<ICityPlanningService>());
         services.AddScoped(_ => Substitute.For<ITeamService>());
         services.AddScoped(_ => Substitute.For<IAgentRateLimitStore>());
         services.AddScoped(_ => Substitute.For<IAgentSettingsService>());

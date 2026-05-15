@@ -40,8 +40,6 @@ public class CampSeason
     public int MemberCount { get; set; }
     public SpaceSize? SpaceRequirement { get; set; }
     public SoundZone? SoundZone { get; set; }
-    public int ContainerCount { get; set; }
-    public string? ContainerNotes { get; set; }
     public ElectricalGrid? ElectricalGrid { get; set; }
 
     // Review

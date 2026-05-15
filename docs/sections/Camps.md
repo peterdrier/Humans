@@ -256,6 +256,7 @@ Admin pages live under `/Camps/Admin/*` — never `/Admin/Camps/*` (per `docs/ar
 - **Users/Identity:** `IUserService.GetByIdsAsync` — lead and assignee display names (stitched in memory after `CampLead.User` strip; `CampRoleAssignment.AssignedByUserId` is scalar-only).
 - **Admin:** Camp settings management is restricted to CampAdmin and Admin (resource-based auth handler).
 - **City Planning:** CampSeason is the anchor for `camp_polygons`; City Planning reads camp data via `ICampService` but writes its own tables only.
+- **Containers:** `Camp` is read by the Containers section via FK (`Container.CampId → camps.Id`) and via `ICampService` (`IsUserCampLeadAsync`, `GetCampBySlugAsync`, `GetCampsForYearAsync`, `GetCampsWithLeadsForYearAsync`, etc.) for authorization and display. Containers are year-agnostic and have no `CampSeasonId`. Camps does not depend on Containers — this is a downstream dependency only.
 - **Camps internal — `CampRoleService` ↔ `CampService`:** `CampRoleService` calls `ICampService` for camp/season lookup and active-membership verification, and is called back by `ICampService` from the Leave/Withdraw/Remove paths via `ICampRoleService.RemoveAllForMemberAsync`. Both services live within the Camps section.
 - **Audit Log:** `IAuditLogService` — definition CRUD, role assign/unassign, and `CampMemberAddedByLead` actions.
 - **Notifications:** `INotificationService` — `CampRoleAssigned` notification on assign (best-effort, try/catch in controller).

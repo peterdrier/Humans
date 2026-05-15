@@ -405,7 +405,7 @@ public sealed class CampRepository : ICampRepository
             .FirstOrDefaultAsync(s => s.Id == campSeasonId, ct);
     }
 
-    public async Task<IReadOnlyDictionary<Guid, (string Name, string CampSlug, SoundZone? SoundZone, SpaceSize? SpaceRequirement)>>
+    public async Task<IReadOnlyDictionary<Guid, (string Name, string CampSlug, SoundZone? SoundZone, SpaceSize? SpaceRequirement, Guid CampId)>>
         GetSeasonDisplayDataForYearAsync(int year, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
@@ -413,12 +413,12 @@ public sealed class CampRepository : ICampRepository
             .AsNoTracking()
             .Include(s => s.Camp)
             .Where(s => s.Year == year)
-            .Select(s => new { s.Id, s.Name, s.Camp.Slug, s.SoundZone, s.SpaceRequirement })
+            .Select(s => new { s.Id, s.Name, s.Camp.Slug, s.SoundZone, s.SpaceRequirement, s.CampId })
             .ToListAsync(ct);
 
         return rows.ToDictionary(
             r => r.Id,
-            r => (r.Name, r.Slug, r.SoundZone, r.SpaceRequirement));
+            r => (r.Name, r.Slug, r.SoundZone, r.SpaceRequirement, r.CampId));
     }
 
     public async Task<IReadOnlyList<(Guid Id, string Name, string CampSlug, SpaceSize? SpaceRequirement)>>

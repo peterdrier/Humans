@@ -1195,13 +1195,6 @@ namespace Humans.Infrastructure.Migrations
                     b.Property<Guid>("CampId")
                         .HasColumnType("uuid");
 
-                    b.Property<int>("ContainerCount")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("ContainerNotes")
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)");
-
                     b.Property<Instant>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -1452,6 +1445,15 @@ namespace Humans.Infrastructure.Migrations
                     b.Property<Instant?>("ClosedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Instant?>("ContainerPlacementClosedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Instant?>("ContainerPlacementOpenedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsContainerPlacementOpen")
+                        .HasColumnType("boolean");
+
                     b.Property<bool>("IsPlacementOpen")
                         .HasColumnType("boolean");
 
@@ -1624,6 +1626,89 @@ namespace Humans.Infrastructure.Migrations
                     b.HasIndex("ProfileId", "Visibility");
 
                     b.ToTable("contact_fields", (string)null);
+                });
+
+            modelBuilder.Entity("Humans.Domain.Entities.Container", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CampId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Instant>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("ImageContentType")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("ImageFileName")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("ImageStoragePath")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<Instant>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CampId");
+
+                    b.ToTable("containers", (string)null);
+                });
+
+            modelBuilder.Entity("Humans.Domain.Entities.ContainerPlacement", b =>
+                {
+                    b.Property<Guid>("ContainerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("integer");
+
+                    b.Property<Instant>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LocationGeoJson")
+                        .HasColumnType("text");
+
+                    b.Property<string>("PlacementImageContentType")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("PlacementImageFileName")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("PlacementImageStoragePath")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<string>("PlacementNotes")
+                        .HasMaxLength(5000)
+                        .HasColumnType("character varying(5000)");
+
+                    b.Property<Instant>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("ContainerId", "Year");
+
+                    b.HasIndex("Year");
+
+                    b.ToTable("container_placements", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.DocumentVersion", b =>

@@ -35,6 +35,7 @@ This file is the **index and cross-cutting rule sheet** for the data model. Per-
 | Camp / CampSeason / CampLead / CampImage / CampHistoricalName / CampSettings | [Camps](../sections/Camps.md) | |
 | CampMember | [Camps](../sections/Camps.md) | Per-season, post-hoc human/camp affiliation (Pending/Active/Removed). Partial unique on `(CampSeasonId, UserId) WHERE Status <> 'Removed'`. |
 | CampRoleDefinition / CampRoleAssignment | [Camps](../sections/Camps.md) | Per-camp role catalogue + per-season assignments. Owned by `CampRoleService`. Unique on `(CampSeasonId, CampRoleDefinitionId, CampMemberId)`. |
+| Container | [Containers](../sections/Containers.md) | Camp-owned (`CampId` → `camps.Id`, non-nullable). |
 | CityPlanningSettings | [City Planning](../sections/CityPlanning.md) | |
 | CampPolygon | [City Planning](../sections/CityPlanning.md) | |
 | CampPolygonHistory | [City Planning](../sections/CityPlanning.md) | Append-only (§12). |
@@ -92,6 +93,9 @@ BudgetCategory (Budget)
 
 CampSeason (Camps)
   ← CampPolygon, CampPolygonHistory (City Planning)
+
+Camp (Camps)
+  ← Container.CampId (Containers — bare Guid FK, non-nullable)
 
 DocumentVersion (Legal & Consent)
   ← ConsentRecord (Legal & Consent, sibling aggregate — join by DocumentVersionId)

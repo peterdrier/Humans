@@ -229,13 +229,14 @@
                                 <option value="">Unknown</option>
                             </select>
                         </div>
-                        <div class="col-md-4">
-                            <label asp-for="ContainerCount" class="form-label">Number of Containers</label>
-                            <input asp-for="ContainerCount" class="form-control" type="number" min="0" />
-                        </div>
-                        <div class="col-md-8">
-                            <label asp-for="ContainerNotes" class="form-label">Container Notes</label>
-                            <input asp-for="ContainerNotes" class="form-control" />
+                        <div class="col-12">
+                            <div class="alert alert-info mb-0">
+                                <i class="fa-solid fa-box me-1"></i>
+                                Containers are now managed separately.
+                                <a asp-controller="Container" asp-action="Index"
+                                   asp-route-slug="@Model.Slug" asp-route-year="@Model.Year"
+                                   class="alert-link">Manage containers →</a>
+                            </div>
                         </div>
                     </div>
                 </div>

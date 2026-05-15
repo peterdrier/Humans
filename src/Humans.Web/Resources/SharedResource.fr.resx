@@ -39,11 +39,14 @@
   <data name="Common_Status" xml:space="preserve"><value>Statut</value></data>
   <data name="Common_EditProfile" xml:space="preserve"><value>Modifier le profil</value></data>
   <data name="Common_Cancel" xml:space="preserve"><value>Annuler</value></data>
+  <data name="Common_Close" xml:space="preserve"><value>Fermer</value></data>
+  <data name="Common_General" xml:space="preserve"><value>Général</value></data>
   <data name="Common_Save" xml:space="preserve"><value>Enregistrer</value></data>
   <data name="Common_Edit" xml:space="preserve"><value>Modifier</value></data>
   <data name="Common_Add" xml:space="preserve"><value>Ajouter</value></data>
   <data name="Common_Delete" xml:space="preserve"><value>Supprimer</value></data>
   <data name="Common_Back" xml:space="preserve"><value>Retour</value></data>
+  <data name="Common_ExportGeoJson" xml:space="preserve"><value>Export GeoJSON</value></data>
   <data name="Common_Submit" xml:space="preserve"><value>Envoyer</value></data>
   <data name="Common_NotProvided" xml:space="preserve"><value>Non renseign&#xE9;</value></data>
   <data name="Common_Error" xml:space="preserve"><value>Une erreur est survenue. Veuillez réessayer plus tard.</value></data>
@@ -1450,6 +1453,7 @@
   <!-- ======================== -->
   <!-- CityPlanning                -->
   <!-- ======================== -->
+  <data name="CityPlanning_BarrioMapTitle" xml:space="preserve"><value>Carte de placement des barrios</value></data>
   <data name="CityPlanning_PlacementPhase" xml:space="preserve"><value>Phase de placement</value></data>
   <data name="CityPlanning_StatusOpen" xml:space="preserve"><value>Ouverte</value></data>
   <data name="CityPlanning_StatusClosed" xml:space="preserve"><value>Fermée</value></data>
@@ -1459,8 +1463,13 @@
   <data name="CityPlanning_SaveButton" xml:space="preserve"><value>Enregistrer</value></data>
   <data name="CityPlanning_HistoryButton" xml:space="preserve"><value>Historique</value></data>
   <data name="CityPlanning_MeasureButton" xml:space="preserve"><value>Mesurer</value></data>
+  <data name="CityPlanning_ClearMeasurementsButton" xml:space="preserve"><value>Effacer toutes les mesures</value></data>
+  <data name="CityPlanning_CampLimits" xml:space="preserve"><value>Limites du camp</value></data>
+  <data name="CityPlanning_BarrioZones" xml:space="preserve"><value>Zones de barrio</value></data>
+  <data name="CityPlanning_Layers" xml:space="preserve"><value>Couches</value></data>
   <data name="CityPlanning_AdminLink" xml:space="preserve"><value>Admin</value></data>
-  <data name="CityPlanning_GoToPlacementMap" xml:space="preserve"><value>Aller à la carte de placement</value></data>
+  <data name="CityPlanning_GoToPlacementMap" xml:space="preserve"><value>Aller au placement des barrios</value></data>
+  <data name="CityPlanning_GoToContainerMap" xml:space="preserve"><value>Aller au placement des conteneurs</value></data>
   <data name="CityPlanning_Admin_Title" xml:space="preserve"><value>Admin Carte des Barrios</value></data>
   <data name="CityPlanning_Admin_ViewMap" xml:space="preserve"><value>Voir la carte</value></data>
   <data name="CityPlanning_Admin_PlacementPhaseCard" xml:space="preserve"><value>Phase de Placement</value></data>
@@ -1491,6 +1500,16 @@
   <data name="CityPlanning_Admin_ExportCard" xml:space="preserve"><value>Exporter</value></data>
   <data name="CityPlanning_Admin_ExportDescription" xml:space="preserve"><value>Télécharger tous les polygones de barrios pour {0} en tant que GeoJSON FeatureCollection.</value></data>
   <data name="CityPlanning_Admin_DownloadGeoJson" xml:space="preserve"><value>Télécharger GeoJSON ({0})</value></data>
+  <!-- Containers admin sub-page -->
+  <data name="CityPlanning_Admin_ContainersCard" xml:space="preserve"><value>Conteneurs ({0})</value></data>
+  <data name="CityPlanning_Admin_ContainersDesc" xml:space="preserve"><value>Gérer tous les conteneurs — de l'organisation et des barrios.</value></data>
+  <data name="CityPlanning_Admin_ManageContainers" xml:space="preserve"><value>Gérer les Conteneurs</value></data>
+  <data name="CityPlanning_Admin_ContainerPlacement" xml:space="preserve"><value>Placement des conteneurs</value></data>
+  <data name="CityPlanning_Admin_OpenContainerPlacement" xml:space="preserve"><value>Ouvrir</value></data>
+  <data name="CityPlanning_Admin_CloseContainerPlacement" xml:space="preserve"><value>Fermer</value></data>
+  <data name="CityPlanning_Admin_BarrioContainersEmpty" xml:space="preserve"><value>Pas encore de conteneurs pour {0}.</value></data>
+  <data name="CityPlanning_Admin_AddBarrioContainer" xml:space="preserve"><value>Ajouter Conteneur — {0}</value></data>
+  <!-- Import polygons -->
   <data name="CityPlanning_Admin_ImportCard" xml:space="preserve"><value>Importer des polygones</value></data>
   <data name="CityPlanning_Admin_ImportDescription" xml:space="preserve"><value>Téléversez une FeatureCollection GeoJSON pour mettre à jour en bloc les polygones des barrios pour {0}. Les entités sont associées par la propriété campName ou campSlug.</value></data>
   <data name="CityPlanning_Admin_ImportFileLabel" xml:space="preserve"><value>Fichier GeoJSON</value></data>
@@ -1540,6 +1559,38 @@
   <data name="CityPlanning_Help_ColorsBody" xml:space="preserve"><value>Chaque barrio est coloré selon sa zone sonore préférée (modifiable depuis la page de ton barrio).</value></data>
 
 
+  <!-- ======================== -->
+  <!-- Containers               -->
+  <!-- ======================== -->
+  <data name="Container_Breadcrumb" xml:space="preserve"><value>Conteneurs</value></data>
+  <data name="Container_PlacementClosed" xml:space="preserve"><value>Le placement des conteneurs est actuellement fermé. Vous pouvez gérer vos conteneurs, mais pas encore les placer sur la carte.</value></data>
+  <data name="Container_Empty" xml:space="preserve"><value>Pas encore de conteneurs enregistrés pour cette saison.</value></data>
+  <data name="Container_AddModal_Title" xml:space="preserve"><value>Ajouter Conteneur</value></data>
+  <data name="Container_EditModal_Title" xml:space="preserve"><value>Modifier Conteneur</value></data>
+  <data name="Container_FieldName" xml:space="preserve"><value>Nom</value></data>
+  <data name="Container_FieldDescription" xml:space="preserve"><value>Description</value></data>
+  <data name="Container_NamePlaceholder" xml:space="preserve"><value>ex. Conteneur #1</value></data>
+  <data name="Container_DescPlaceholder" xml:space="preserve"><value>Taille, type, exigences spéciales…</value></data>
+  <data name="Container_FieldMainImage" xml:space="preserve"><value>Image principale (JPEG, PNG ou WebP — max 10 Mo)</value></data>
+  <data name="Container_FieldPlacementImage" xml:space="preserve"><value>Croquis de placement (JPEG, PNG ou WebP — max 10 Mo)</value></data>
+  <data name="Container_RemoveMainImage_Label" xml:space="preserve"><value>Supprimer l'image principale</value></data>
+  <data name="Container_UploadMainImageModal_Title" xml:space="preserve"><value>Image principale — {0}</value></data>
+  <data name="Container_RemoveMainImageConfirm" xml:space="preserve"><value>Supprimer l'image principale de {0} ?</value></data>
+  <data name="Container_RemovePlacementImage_Label" xml:space="preserve"><value>Supprimer l'image de placement</value></data>
+  <data name="Container_FieldPlacementNotes" xml:space="preserve"><value>Notes de placement</value></data>
+  <data name="Container_PlacementNotesPlaceholder" xml:space="preserve"><value>Contraintes, accès requis, orientation…</value></data>
+  <data name="Container_PlacementNotes_ButtonLabel" xml:space="preserve"><value>Notes de placement</value></data>
+  <data name="Container_PlacementNotes_Title" xml:space="preserve"><value>Notes de placement</value></data>
+  <data name="Container_DeleteConfirm" xml:space="preserve"><value>Supprimer le conteneur {0} ?</value></data>
+  <data name="ContainerMap_Unplaced" xml:space="preserve"><value>Non placé</value></data>
+  <data name="ContainerMap_Placed" xml:space="preserve"><value>Placé</value></data>
+  <data name="ContainerMap_Placing" xml:space="preserve"><value>En cours…</value></data>
+  <data name="ContainerMap_ClearPlacement" xml:space="preserve"><value>Retirer le placement</value></data>
+  <data name="ContainerMap_PlaceOnMap" xml:space="preserve"><value>Placer sur la carte</value></data>
+  <data name="ContainerMap_ConfirmClear" xml:space="preserve"><value>Retirer le placement de «{0}» ? Cette action est irréversible.</value></data>
+  <data name="ContainerMap_Legend_Title" xml:space="preserve"><value>Légende des conteneurs</value></data>
+  <data name="ContainerMap_Legend_Body" xml:space="preserve"><value>Corps 6 m × 2,4 m</value></data>
+  <data name="ContainerMap_Legend_Door" xml:space="preserve"><value>Triangle = côté porte</value></data>
   <!-- ======================== -->
   <!-- User-Facing Views        -->
   <!-- ======================== -->

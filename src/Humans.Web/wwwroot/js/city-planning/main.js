@@ -1,145 +1,115 @@
-// Entry point: map init, draw setup, overlay sources, and button handlers.
-import { appState } from './state.js';
+// Read-only overview map for CityPlanning/Index.
+// Shows official zones and camps always; containers and camp limits are togglable.
+
 import { CONFIG } from './config.js';
-import { parseLimitZoneGeom } from './geometry.js';
-import { DRAW_STYLES, generateRainbowPattern, generateCrosshatchPattern, generateDashedHorizontalPattern, renderMap } from './layers.js';
-import {
-    onCampPolygonClick, exitEditMode, onDrawChange, onDrawDelete,
-    setEditingControlsVisible, updateAddMyBarrioVisibility,
-} from './edit.js';
-import { initSignalR } from './signalr.js';
-import { MarqueeDirectSelectMode } from './marquee-direct-select.js';
-import { initMeasure, enterMeasureMode, exitMeasureMode } from './measure.js';
+import { initMeasure, wireMeasureButtons } from './shared/measure.js';
+import { addOfficialZonesLayers } from './shared/official-zones-layer.js';
+import { SOUND_ZONE_FILL_EXPR, SOUND_ZONE_LINE_EXPR } from './shared/sound-zone-colors.js';
+
+const LAYER_GROUPS = {
+    containers:  ['containers-fill', 'containers-active-fill', 'containers-labels'],
+    campLimits:  [], // populated after limit zone is added
+};
 
 async function init() {
-    appState.map = new maplibregl.Map({
+    const map = new maplibregl.Map({
         container: 'map',
         style: {
             version: 8,
-            sources: { esri: { type: 'raster', tiles: [CONFIG.ESRI_TILES], tileSize: 256, attribution: '© Esri' } },
-            layers: [{ id: 'esri-layer', type: 'raster', source: 'esri' }],
+            sources: { esri: { type: 'raster', tiles: [CONFIG.ESRI_TILES], tileSize: 256, maxzoom: 19, attribution: '© Esri' } },
+            layers:  [{ id: 'esri-layer', type: 'raster', source: 'esri' }],
         },
         bounds: CONFIG.MAP_BOUNDS,
     });
 
-    appState.draw = new MapboxDraw({
-        displayControlsDefault: false,
-        styles: DRAW_STYLES,
-        modes: { ...MapboxDraw.modes, direct_select: MarqueeDirectSelectMode },
-    });
-    appState.map.addControl(appState.draw);
+    await new Promise(resolve => map.on('load', resolve));
+    initMeasure(map);
 
-    appState.map.on('draw.create', onDrawChange);
-    appState.map.on('draw.update', onDrawChange);
-    appState.map.on('draw.render', onDrawChange);
-    appState.map.on('draw.delete', onDrawDelete);
+    const state = await fetch('/api/city-planning/state').then(r => r.json());
 
-    await new Promise(resolve => appState.map.on('load', resolve));
+    // ── Official zones (always visible) ──────────────────────────────────────
+    addOfficialZonesLayers(map, state.officialZonesGeoJson);
 
-    const { map } = appState;
-    map.addImage('rainbow-pattern',        generateRainbowPattern());
-    map.addImage('error-stripe-pattern',   generateCrosshatchPattern('#ff2222'));
-    map.addImage('overlap-stripe-pattern', generateDashedHorizontalPattern('#ff8800'));
+    // ── Camps (always visible) ────────────────────────────────────────────────
+    const campFeatures = (state.campPolygons ?? [])
+        .filter(p => p.geoJson)
+        .map(p => {
+            const f = JSON.parse(p.geoJson);
+            if (!f.properties) f.properties = {};
+            f.properties.campName  = p.campName;
+            f.properties.soundZone = p.soundZone;
+            return f;
+        });
 
-    map.addSource('draw-label', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+    map.addSource('camp-polygons', { type: 'geojson', data: { type: 'FeatureCollection', features: campFeatures } });
     map.addLayer({
-        id: 'draw-label', type: 'symbol', source: 'draw-label',
-        layout: { 'text-field': ['get', 'label'], 'text-size': 13, 'text-anchor': 'center', 'text-allow-overlap': true },
+        id: 'camp-polygons-fill', type: 'fill', source: 'camp-polygons',
+        paint: { 'fill-color': SOUND_ZONE_FILL_EXPR, 'fill-opacity': 0.25 },
+    });
+    map.addLayer({
+        id: 'camp-polygons-outline', type: 'line', source: 'camp-polygons',
+        paint: { 'line-color': SOUND_ZONE_LINE_EXPR, 'line-width': 1.5 },
+    });
+    map.addLayer({
+        id: 'camp-polygons-labels', type: 'symbol', source: 'camp-polygons',
+        layout: { 'text-field': ['get', 'campName'], 'text-size': 12, 'text-anchor': 'center', 'text-allow-overlap': false },
         paint: { 'text-color': '#000000', 'text-halo-color': '#ffffff', 'text-halo-width': 2 },
     });
 
-    map.addSource('draw-edge-labels', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+    // ── Camp limits (togglable, off by default) ───────────────────────────────
+    if (state.limitZoneGeoJson) {
+        let limitData = JSON.parse(state.limitZoneGeoJson);
+        if (limitData.type === 'Feature') limitData = { type: 'FeatureCollection', features: [limitData] };
+        map.addSource('limit-zone', { type: 'geojson', data: limitData });
+        map.addLayer({ id: 'limit-zone-fill', type: 'fill', source: 'limit-zone', layout: { visibility: 'none' }, paint: { 'fill-color': '#ffffff', 'fill-opacity': 0.06 } });
+        map.addLayer({ id: 'limit-zone-line', type: 'line', source: 'limit-zone', layout: { visibility: 'none' }, paint: { 'line-color': '#ffffff', 'line-width': 2, 'line-dasharray': [4, 2] } });
+        LAYER_GROUPS.campLimits = ['limit-zone-fill', 'limit-zone-line'];
+    }
+
+    // ── Containers (togglable, off by default) ────────────────────────────────
+    const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+    const containerColor = css('--container-fill') || '#8b7355';
+
+    const containersResp = await fetch(`/api/city-planning/containers/${CONFIG.YEAR}`).then(r => r.json());
+    const placedFeatures = containersResp
+        .filter(c => c.locationGeoJson)
+        .map(c => {
+            const f = JSON.parse(c.locationGeoJson);
+            if (!f.properties) f.properties = {};
+            f.properties.name = c.name;
+            return f;
+        });
+
+    map.addSource('containers', { type: 'geojson', data: { type: 'FeatureCollection', features: placedFeatures } });
+    map.addLayer({ id: 'containers-fill', type: 'fill', source: 'containers', layout: { visibility: 'none' }, paint: { 'fill-color': containerColor, 'fill-opacity': 0.7 } });
     map.addLayer({
-        id: 'draw-edge-labels', type: 'symbol', source: 'draw-edge-labels',
-        layout: { 'text-field': ['get', 'label'], 'text-size': 11, 'text-anchor': 'center', 'text-allow-overlap': true },
-        paint: { 'text-color': '#444444', 'text-halo-color': '#ffffff', 'text-halo-width': 2 },
+        id: 'containers-labels', type: 'symbol', source: 'containers',
+        minzoom: 17,
+        layout: { visibility: 'none', 'text-field': ['get', 'name'], 'text-size': 10, 'text-anchor': 'center', 'text-allow-overlap': false },
+        paint: { 'text-color': '#ffffff', 'text-halo-color': '#000000', 'text-halo-width': 1 },
     });
 
-    map.addSource('draw-warning-error', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-    map.addLayer({
-        id: 'draw-warning-error', type: 'fill', source: 'draw-warning-error',
-        paint: { 'fill-pattern': 'error-stripe-pattern' },
-    });
+    // ── Toggle buttons ────────────────────────────────────────────────────────
+    wireToggle('toggle-containers',  LAYER_GROUPS.containers,  map);
+    wireToggle('toggle-camp-limits', LAYER_GROUPS.campLimits,  map);
 
-    map.addSource('draw-warning-overlap', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-    map.addLayer({
-        id: 'draw-warning-overlap', type: 'fill', source: 'draw-warning-overlap',
-        paint: { 'fill-pattern': 'overlap-stripe-pattern' },
-    });
-
-    initMeasure(map);
-
-    appState.campMap = await (await fetch('/api/city-planning/state')).json();
-    appState.limitZoneGeom = parseLimitZoneGeom(appState.campMap.limitZoneGeoJson);
-    renderMap(onCampPolygonClick);
-    updateAddMyBarrioVisibility();
-    initSignalR();
+    wireMeasureButtons();
 }
 
-// Global keydown: Delete/Backspace for vertex deletion when draw doesn't have focus
-document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && appState.measuringActive) {
-        exitMeasureMode();
+function wireToggle(btnId, layerIds, map) {
+    const btn = document.getElementById(btnId);
+    if (!btn || layerIds.length === 0) {
+        if (btn) btn.disabled = true;
         return;
     }
-    if ((e.key === 'Delete' || e.key === 'Backspace') && appState.activeCampSeasonId) {
-        e.preventDefault();
-        const poly = appState.draw.getAll().features.find(f => f.geometry.type === 'Polygon');
-        if (poly && poly.geometry.coordinates[0].length <= 4) return;
-        appState.draw.trash();
-    }
-});
-
-// --- Button handlers ---
-
-document.getElementById('add-my-barrio-btn')?.addEventListener('click', () => {
-    appState.activeCampSeasonId = CONFIG.USER_CAMP_SEASON_ID;
-    appState.draw.deleteAll();
-    appState.draw.changeMode('draw_polygon');
-    setEditingControlsVisible(true);
-});
-
-document.getElementById('add-barrio-select')?.addEventListener('change', e => {
-    const val = e.target.value;
-    if (!val) return;
-    appState.activeCampSeasonId = val;
-    appState.draw.deleteAll();
-    appState.draw.changeMode('draw_polygon');
-    e.target.value = '';
-    setEditingControlsVisible(true);
-});
-
-document.getElementById('save-btn')?.addEventListener('click', async () => {
-    if (!appState.activeCampSeasonId) return;
-    const features = appState.draw.getAll().features;
-    if (!features.length) return;
-
-    const feature = features[0];
-    const areaSqm = turf.area(feature);
-    const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
-
-    const resp = await fetch(`/api/city-planning/camp-polygons/${appState.activeCampSeasonId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': token },
-        body: JSON.stringify({ geoJson: JSON.stringify(feature), areaSqm }),
+    let visible = false;
+    btn.addEventListener('click', () => {
+        visible = !visible;
+        const v = visible ? 'visible' : 'none';
+        layerIds.forEach(id => { if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', v); });
+        btn.classList.toggle('active', visible);
+        btn.setAttribute('aria-pressed', String(visible));
     });
+}
 
-    if (resp.ok) {
-        exitEditMode();
-        // SignalR CampPolygonUpdated will refresh the map layer
-    } else {
-        alert('Failed to save polygon. Please try again.');
-    }
-});
-
-document.getElementById('cancel-btn')?.addEventListener('click', () => {
-    if (!confirm('Discard unsaved changes?')) return;
-    exitEditMode();
-});
-
-document.getElementById('measure-btn')?.addEventListener('click', () => {
-    if (appState.measuringActive) exitMeasureMode();
-    else enterMeasureMode();
-});
-
-init();
+init().catch(err => console.error('Overview map init failed:', err));

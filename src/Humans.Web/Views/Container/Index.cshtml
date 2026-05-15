@@ -1,0 +1,101 @@
+@model Humans.Web.Models.ContainerIndexViewModel
+@{
+    ViewData["Title"] = $"Containers — {Model.CampName}";
+
+    var routeValues = new Dictionary<string, string>(StringComparer.Ordinal)
+    {
+        ["slug"] = Model.CampSlug,
+    };
+
+    Humans.Web.Models.ContainerCardModel CardFor(Humans.Web.Models.ContainerViewModel c) => new()
+    {
+        Container = c,
+        Placement = Model.PlacementsByContainerId.TryGetValue(c.Id, out var p) ? p : null,
+        CanManage = Model.CanManage,
+        FormController = "Container",
+        EditAction = "Edit",
+        DeleteAction = "Delete",
+        ExtraRouteValues = routeValues,
+    };
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="Camp" asp-action="Index">@Localizer["Camp_Plural"]</a></li>
+        <li class="breadcrumb-item"><a asp-controller="Camp" asp-action="Details" asp-route-slug="@Model.CampSlug">@Model.CampName</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@Localizer["Container_Breadcrumb"]</li>
+    </ol>
+</nav>
+
+<div class="d-flex align-items-center gap-2 mb-4">
+    <h1 class="mb-0">@Localizer["Container_Breadcrumb"] <small class="text-muted">@Model.CampName</small></h1>
+    @if (Model.CanManage)
+    {
+        <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addContainerModal">
+            <i class="fa-solid fa-plus me-1"></i> @Localizer["Common_Add"]
+        </button>
+    }
+    @if (Model.CanManage && !Model.IsLeadButPhaseClosed)
+    {
+        <a asp-controller="CityPlanning" asp-action="ContainerMap" asp-route-year="@Model.CurrentYear"
+           class="btn btn-outline-primary btn-sm ms-auto">
+            <i class="fa-solid fa-map-location-dot me-1"></i> @Localizer["ContainerMap_PlaceOnMap"]
+        </a>
+    }
+</div>
+
+<vc:temp-data-alerts />
+
+@if (Model.IsLeadButPhaseClosed)
+{
+    <div class="alert alert-info mb-3">
+        <i class="fa-solid fa-lock me-1"></i>
+        @Localizer["Container_PlacementClosed"]
+    </div>
+}
+
+@if (Model.Containers.Count == 0)
+{
+    <div class="alert alert-secondary">@Localizer["Container_Empty"]</div>
+}
+else
+{
+    <ul class="list-group">
+        @foreach (var c in Model.Containers)
+        {
+            <partial name="_ContainerCardRow" model="@CardFor(c)" />
+        }
+    </ul>
+}
+
+@* ── Modals ──────────────────────────────────────────────────────────── *@
+
+@if (Model.CanManage)
+{
+    <div class="modal fade" id="addContainerModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@Localizer["Container_AddModal_Title"]</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form asp-action="Create" asp-route-slug="@Model.CampSlug"
+                      method="post" enctype="multipart/form-data">
+                    @Html.AntiForgeryToken()
+                    <div class="modal-body">
+                        <partial name="_ContainerFormFields" model="@((Humans.Web.Models.ContainerViewModel?)null)" />
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@Localizer["Common_Cancel"]</button>
+                        <button type="submit" class="btn btn-primary">@Localizer["Common_Add"]</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+
+@foreach (var c in Model.Containers)
+{
+    <partial name="_ContainerCardModals" model="@CardFor(c)" />
+}

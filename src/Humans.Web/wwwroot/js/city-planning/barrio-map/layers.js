@@ -1,6 +1,9 @@
 // Map layer definitions and rendering. Depends on maplibregl + MapboxDraw (globals).
 import { appState } from './state.js';
 import { buildCampPolygonFeatures } from './geometry.js';
+import { addOfficialZonesLayers } from '../shared/official-zones-layer.js';
+import { SOUND_ZONE_FILL_EXPR, SOUND_ZONE_LINE_EXPR } from '../shared/sound-zone-colors.js';
+import { isMeasuring } from '../shared/measure.js';
 
 export const DRAW_STYLES = [
   { id: 'gl-draw-polygon-fill-inactive', type: 'fill', filter: ['all', ['==', 'active', 'false'], ['==', '$type', 'Polygon'], ['!=', 'mode', 'static']], paint: { 'fill-color': '#ffffff', 'fill-opacity': 0.1 } },
@@ -129,21 +132,7 @@ export function renderMap(onCampPolygonClick) {
     });
   }
 
-  if (appState.campMap.officialZonesGeoJson) {
-    map.addSource('official-zones', { type: 'geojson', data: JSON.parse(appState.campMap.officialZonesGeoJson) });
-    map.addLayer({ id: 'official-zones-fill', type: 'fill', source: 'official-zones', paint: { 'fill-color': '#555555', 'fill-opacity': 0.12 } });
-    map.addLayer({ id: 'official-zones-line', type: 'line', source: 'official-zones', paint: { 'line-color': '#555555', 'line-width': 1.5 } });
-    map.addLayer({
-      id: 'official-zones-labels', type: 'symbol', source: 'official-zones',
-      layout: {
-        'text-field': ['get', 'name'],
-        'text-size': 12,
-        'text-anchor': 'center',
-        'text-allow-overlap': false,
-      },
-      paint: { 'text-color': '#333333', 'text-halo-color': '#ffffff', 'text-halo-width': 2 },
-    });
-  }
+  addOfficialZonesLayers(map, appState.campMap.officialZonesGeoJson);
 
   const features = buildCampPolygonFeatures(appState.campMap.campPolygons);
   map.addSource('camp-polygons', { type: 'geojson', data: { type: 'FeatureCollection', features } });
@@ -152,9 +141,7 @@ export function renderMap(onCampPolygonClick) {
     id: 'camp-polygons-fill', type: 'fill', source: 'camp-polygons',
     filter: ['!=', ['get', 'soundZone'], 5],
     paint: {
-      'fill-color': ['match', ['get', 'soundZone'],
-        0, '#88aadd', 1, '#88bb88', 2, '#ddcc66', 3, '#ddaa66', 4, '#dd8888', '#aaaaaa'
-      ],
+      'fill-color': SOUND_ZONE_FILL_EXPR,
       'fill-opacity': ['case', ['boolean', ['get', 'isOwn'], false], 0.4, 0.2],
     },
   });
@@ -169,9 +156,7 @@ export function renderMap(onCampPolygonClick) {
   map.addLayer({
     id: 'camp-polygons-outline', type: 'line', source: 'camp-polygons',
     paint: {
-      'line-color': ['match', ['get', 'soundZone'],
-        0, '#2266cc', 1, '#229944', 2, '#cc9900', 3, '#cc6600', 4, '#cc1111', 5, '#cc00cc', '#666666'
-      ],
+      'line-color': SOUND_ZONE_LINE_EXPR,
       'line-width': ['case', ['boolean', ['get', 'isOwn'], false], 4, 1],
     },
   });
@@ -207,10 +192,10 @@ export function renderMap(onCampPolygonClick) {
 
   map.on('click', 'camp-polygons-fill', onCampPolygonClick);
   map.on('click', 'camp-polygons-fill-surprise', onCampPolygonClick);
-  map.on('mouseenter', 'camp-polygons-fill', () => { if (!appState.measuringActive) map.getCanvas().style.cursor = 'pointer'; });
-  map.on('mouseenter', 'camp-polygons-fill-surprise', () => { if (!appState.measuringActive) map.getCanvas().style.cursor = 'pointer'; });
-  map.on('mouseleave', 'camp-polygons-fill', () => { map.getCanvas().style.cursor = appState.measuringActive ? 'crosshair' : ''; });
-  map.on('mouseleave', 'camp-polygons-fill-surprise', () => { map.getCanvas().style.cursor = appState.measuringActive ? 'crosshair' : ''; });
+  map.on('mouseenter', 'camp-polygons-fill', () => { if (!isMeasuring()) map.getCanvas().style.cursor = 'pointer'; });
+  map.on('mouseenter', 'camp-polygons-fill-surprise', () => { if (!isMeasuring()) map.getCanvas().style.cursor = 'pointer'; });
+  map.on('mouseleave', 'camp-polygons-fill', () => { map.getCanvas().style.cursor = isMeasuring() ? 'crosshair' : ''; });
+  map.on('mouseleave', 'camp-polygons-fill-surprise', () => { map.getCanvas().style.cursor = isMeasuring() ? 'crosshair' : ''; });
 
   // Bring draw layers and warning overlays above our polygon layers
   map.getStyle().layers

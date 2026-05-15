@@ -31,7 +31,9 @@ public sealed class CityPlanningRepository : ICityPlanningRepository
         IReadOnlyCollection<Guid> campSeasonIds, CancellationToken ct = default)
     {
         if (campSeasonIds.Count == 0)
+        {
             return [];
+        }
 
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.CampPolygons
@@ -44,7 +46,9 @@ public sealed class CityPlanningRepository : ICityPlanningRepository
         IReadOnlyCollection<Guid> campSeasonIds, CancellationToken ct = default)
     {
         if (campSeasonIds.Count == 0)
+        {
             return [];
+        }
 
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.CampPolygons

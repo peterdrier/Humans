@@ -207,7 +207,6 @@ public class CampServiceEarlyEntryTests : IDisposable
             MemberCount = 25,
             SpaceRequirement = SpaceSize.Sqm600,
             SoundZone = SoundZone.Yellow,
-            ContainerCount = 1,
             ElectricalGrid = ElectricalGrid.Yellow,
             CreatedAt = _clock.GetCurrentInstant(),
             UpdatedAt = _clock.GetCurrentInstant(),

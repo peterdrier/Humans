@@ -409,7 +409,6 @@ public class CampAdminController : HumansControllerBase
                     season.MemberCount,
                     season.SpaceRequirement?.ToString() ?? "",
                     season.SoundZone?.ToString() ?? "",
-                    season.ContainerCount,
                     season.ElectricalGrid?.ToString() ?? "",
                     season.AcceptingMembers,
                     season.KidsWelcome,

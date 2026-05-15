@@ -1,0 +1,28 @@
+@model Humans.Web.Models.ContainerViewModel?
+@{
+    var c = Model;
+    var idSuffix = c?.Id.ToString() ?? "new";
+}
+<h6 class="text-muted text-uppercase small mb-3">@Localizer["Common_General"]</h6>
+<div class="mb-3">
+    <label class="form-label">@Localizer["Container_FieldName"] <span class="text-danger">*</span></label>
+    <input name="Name" class="form-control" value="@c?.Name" maxlength="256" required placeholder="@Localizer["Container_NamePlaceholder"]" />
+</div>
+<div class="mb-3">
+    <label class="form-label">@Localizer["Container_FieldDescription"]</label>
+    <textarea name="Description" class="form-control" rows="3" maxlength="2000" placeholder="@Localizer["Container_DescPlaceholder"]">@c?.Description</textarea>
+</div>
+<div class="mb-4">
+    <label class="form-label">@Localizer["Container_FieldMainImage"]</label>
+    @if (c?.ImageUrl is not null)
+    {
+        <div class="mb-2">
+            <img src="@c.ImageUrl" alt="@c.ImageFileName" style="height:64px;object-fit:cover;border-radius:4px;" />
+        </div>
+        <div class="form-check mb-2">
+            <input type="checkbox" name="RemoveMainImage" value="true" class="form-check-input" id="removeMainImage-@idSuffix" />
+            <label class="form-check-label" for="removeMainImage-@idSuffix">@Localizer["Container_RemoveMainImage_Label"]</label>
+        </div>
+    }
+    <input type="file" name="MainImage" class="form-control" accept="image/jpeg,image/png,image/webp" />
+</div>

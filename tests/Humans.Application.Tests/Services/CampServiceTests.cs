@@ -392,8 +392,6 @@ public class CampServiceTests : IDisposable
                 MemberCount = 42,
                 SpaceRequirement = SpaceSize.Sqm800,
                 SoundZone = SoundZone.Blue,
-                ContainerCount = 2,
-                ContainerNotes = "Two containers",
                 ElectricalGrid = ElectricalGrid.Red
             },
             historicalNames: null,
@@ -413,8 +411,6 @@ public class CampServiceTests : IDisposable
                 MemberCount = 10,
                 SpaceRequirement = SpaceSize.Sqm300,
                 SoundZone = SoundZone.Green,
-                ContainerCount = 0,
-                ContainerNotes = null,
                 ElectricalGrid = ElectricalGrid.Yellow
             },
             historicalNames: null,
@@ -429,8 +425,6 @@ public class CampServiceTests : IDisposable
         placements[1].MemberCount.Should().Be(42);
         placements[1].SpaceRequirement.Should().Be(nameof(SpaceSize.Sqm800));
         placements[1].SoundZone.Should().Be(nameof(SoundZone.Blue));
-        placements[1].ContainerCount.Should().Be(2);
-        placements[1].ContainerNotes.Should().Be("Two containers");
         placements[1].ElectricalGrid.Should().Be(nameof(ElectricalGrid.Red));
         placements[1].Status.Should().Be(nameof(CampSeasonStatus.Active));
     }
@@ -1122,8 +1116,6 @@ public class CampServiceTests : IDisposable
         MemberCount: 25,
         SpaceRequirement: SpaceSize.Sqm600,
         SoundZone: SoundZone.Yellow,
-        ContainerCount: 1,
-        ContainerNotes: null,
         ElectricalGrid: ElectricalGrid.Yellow);
 
     private async Task<Camp> CreateTestCamp()

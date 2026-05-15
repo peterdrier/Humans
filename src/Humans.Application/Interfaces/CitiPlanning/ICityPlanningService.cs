@@ -35,6 +35,8 @@ public interface ICityPlanningService : IApplicationService
     Task<CityPlanningSettingsDto> GetSettingsAsync(CancellationToken cancellationToken = default);
     Task OpenPlacementAsync(Guid userId, CancellationToken cancellationToken = default);
     Task ClosePlacementAsync(Guid userId, CancellationToken cancellationToken = default);
+    Task OpenContainerPlacementAsync(Guid userId, CancellationToken cancellationToken = default);
+    Task CloseContainerPlacementAsync(Guid userId, CancellationToken cancellationToken = default);
     Task UpdateLimitZoneAsync(string geoJson, Guid userId, CancellationToken cancellationToken = default);
     Task DeleteLimitZoneAsync(Guid userId, CancellationToken cancellationToken = default);
     Task UpdateOfficialZonesAsync(string geoJson, Guid userId, CancellationToken cancellationToken = default);
@@ -49,6 +51,7 @@ public interface ICityPlanningService : IApplicationService
 
 public record CampPolygonDto(
     Guid CampSeasonId,
+    Guid CampId,
     string CampName,
     string CampSlug,
     string GeoJson,
@@ -82,6 +85,9 @@ public record CityPlanningSettingsDto(
     string? RegistrationInfo,
     string? LimitZoneGeoJson,
     string? OfficialZonesGeoJson,
+    bool IsContainerPlacementOpen,
+    Instant? ContainerPlacementOpenedAt,
+    Instant? ContainerPlacementClosedAt,
     Instant UpdatedAt);
 
 public record SaveCampPolygonRequest(

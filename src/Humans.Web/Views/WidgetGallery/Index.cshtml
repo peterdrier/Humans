@@ -1041,6 +1041,7 @@
                     <li><strong>Script-only partials</strong> — <code>_RequestVerificationTokenScript</code>, <code>_EscapeHtmlScript</code>, <code>_GitHubFolderPathScript</code>, <code>_VolunteerSearchScript</code>, <code>_ValidationScriptsPartial</code>: emit JS only.</li>
                     <li><strong>Infrastructure tag helper</strong> — <code>NonceTagHelper</code>: applies CSP nonces to <code>&lt;script&gt;</code>/<code>&lt;style&gt;</code>; nothing visible to render.</li>
                     <li><strong>Volunteer-tracking heatmaps</strong> — <code>_VolunteerHeatmap</code>, <code>_VolunteerUnbookedHeatmap</code>: context-bound — requires full <code>VolunteerTrackingPageViewModel</code>, cannot render in isolation. See <a href="/Shifts/Dashboard/VolunteerTracking">/Shifts/Dashboard/VolunteerTracking</a>.</li>
+                    <li><strong>Container card fragments</strong> — <code>_ContainerCardRow</code>, <code>_ContainerCardModals</code>, <code>_ContainerFormFields</code>: context-bound — render only as part of a populated <code>ContainerCardModel</code> on the container list/admin pages, with route values, placement state, and the parent modal-target form action. See <a href="/CityPlanning/BarrioMap/Admin/Containers/2026">/CityPlanning/BarrioMap/Admin/Containers/{year}</a>.</li>
                 </ul>
             </section>
 

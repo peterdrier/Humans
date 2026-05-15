@@ -46,7 +46,6 @@ public class CampSeasonConfiguration : IEntityTypeConfiguration<CampSeason>
 
         builder.Property(s => s.SpaceRequirement).HasConversion<string>().HasMaxLength(50);
         builder.Property(s => s.SoundZone).HasConversion<string>().HasMaxLength(50);
-        builder.Property(s => s.ContainerNotes).HasMaxLength(2000);
         builder.Property(s => s.ElectricalGrid).HasConversion<string>().HasMaxLength(50);
 
         builder.Property(s => s.ReviewNotes).HasMaxLength(2000);

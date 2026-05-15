@@ -214,7 +214,7 @@ public interface ICampRepository : IRepository
     /// Returns a tuple-shaped dictionary keyed by season id for seasons in the
     /// year, with (Name, CampSlug, SoundZone, SpaceRequirement). Read-only.
     /// </summary>
-    Task<IReadOnlyDictionary<Guid, (string Name, string CampSlug, SoundZone? SoundZone, SpaceSize? SpaceRequirement)>>
+    Task<IReadOnlyDictionary<Guid, (string Name, string CampSlug, SoundZone? SoundZone, SpaceSize? SpaceRequirement, Guid CampId)>>
         GetSeasonDisplayDataForYearAsync(int year, CancellationToken ct = default);
 
     /// <summary>

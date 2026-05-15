@@ -114,7 +114,7 @@
                             <dl>
                                 <dt>Languages</dt>
                                 <dd>@season.Languages</dd>
-                                <dt>Accepting Members</dt>
+                                <dt>Accepting Humans</dt>
                                 <dd>@season.AcceptingMembers</dd>
                                 <dt>Kids Welcome</dt>
                                 <dd>@season.KidsWelcome</dd>
@@ -134,7 +134,7 @@
                             <dl>
                                 <dt>Adult Playspace</dt>
                                 <dd>@season.AdultPlayspace</dd>
-                                <dt>Member Count</dt>
+                                <dt>Expected Humans</dt>
                                 <dd>@season.MemberCount</dd>
                             </dl>
                         </div>
@@ -185,6 +185,8 @@
             @if (Model.IsCurrentUserLead || Model.IsCurrentUserCampAdmin || isCityPlanningMember)
             {
                 var isPlacementOpen = ViewBag.PlacementIsOpen as bool? ?? false;
+                NodaTime.LocalDateTime? placementOpensAt = ViewBag.PlacementOpensAt;
+                NodaTime.LocalDateTime? placementClosesAt = ViewBag.PlacementClosesAt;
                 <div class="card mb-4">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <span><i class="fa-solid fa-map-location-dot me-1"></i> Placement</span>
@@ -193,7 +195,7 @@
                             @if (isPlacementOpen)
                             {
                                 <span class="badge bg-success">@Localizer["CityPlanning_StatusOpen"]</span>
-                                <a asp-controller="CityPlanning" asp-action="Index" class="btn btn-sm btn-outline-primary">
+                                <a asp-controller="CityPlanning" asp-action="BarrioMap" class="btn btn-sm btn-outline-primary">
                                     <i class="fa-solid fa-map me-1"></i> @Localizer["CityPlanning_GoToPlacementMap"]
                                 </a>
                             }
@@ -222,17 +224,16 @@
                                         <dt>Space Requirement</dt>
                                         <dd>@season.SpaceRequirement</dd>
                                     }
-                                    <dt>Containers</dt>
-                                    <dd>@season.ContainerCount</dd>
+                                    @if (Model.IsCurrentUserLead || Model.IsCurrentUserCampAdmin)
+                                    {
+                                        <dt>Containers</dt>
+                                        <dd><a asp-controller="Container" asp-action="Index"
+                                               asp-route-slug="@Model.Slug" asp-route-year="@season.Year">Manage containers →</a></dd>
+                                    }
                                 </dl>
                             </div>
                             <div class="col-md-6">
                                 <dl>
-                                    @if (!string.IsNullOrEmpty(season.ContainerNotes))
-                                    {
-                                        <dt>Container Notes</dt>
-                                        <dd>@season.ContainerNotes</dd>
-                                    }
                                     @if (season.ElectricalGrid.HasValue)
                                     {
                                         <dt>Electrical Grid</dt>
@@ -243,7 +244,7 @@
                         </div>
                     </div>
                 </div>
-                @await Html.PartialAsync("~/Views/CityPlanning/_PlacementHelpModal.cshtml")
+                @await Html.PartialAsync("~/Views/CityPlanning/_PlacementHelpModal.cshtml", (placementOpensAt, placementClosesAt))
             }
         }
     </div>

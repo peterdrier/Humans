@@ -371,26 +371,36 @@ builder.Services.AddRateLimiter(options =>
     {
         // Exclude error pages — prevent rate limit cascade when error page triggers additional requests
         if (context.Request.Path.StartsWithSegments("/Home/Error", StringComparison.OrdinalIgnoreCase))
+        {
             return RateLimitPartition.GetNoLimiter(string.Empty);
+        }
 
         // Exclude favicon — browsers request this automatically on every page load
         if (context.Request.Path == "/favicon.ico")
+        {
             return RateLimitPartition.GetNoLimiter(string.Empty);
+        }
 
         // Exclude profile picture requests — list pages legitimately load ~30 images at once
         if (context.Request.Path.StartsWithSegments("/Profile/Picture", StringComparison.OrdinalIgnoreCase))
+        {
             return RateLimitPartition.GetNoLimiter(string.Empty);
+        }
 
         // Exclude SignalR hubs — long-polling fallback sends one POST per invoke,
         // which trivially exceeds the global 100/min cap during active use.
         // SignalR manages its own backpressure; abuse is handled via auth on the hub.
         if (context.Request.Path.StartsWithSegments("/hubs", StringComparison.OrdinalIgnoreCase))
+        {
             return RateLimitPartition.GetNoLimiter(string.Empty);
+        }
 
         // Exclude local network — e2e tests and internal tooling run from 192.168.*
         var remoteIp = context.Connection.RemoteIpAddress?.ToString();
         if (remoteIp is not null && remoteIp.StartsWith("192.168.", StringComparison.Ordinal))
+        {
             return RateLimitPartition.GetNoLimiter(string.Empty);
+        }
 
         return RateLimitPartition.GetFixedWindowLimiter(
             partitionKey: context.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? context.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
@@ -503,6 +513,12 @@ if (builder.Environment.IsProduction())
 }
 builder.Services.AddRazorPages();
 builder.Services.AddSignalR();
+
+// In Developement, compile Razor pages each time they are loaded
+if (builder.Environment.IsDevelopment())
+{
+    mvcBuilder.AddRazorRuntimeCompilation();
+}
 
 // IExceptionHandler pipeline. Order matters — handlers run in registration order
 // until one returns true. Cancellation handler goes FIRST so client-abort
@@ -750,7 +766,9 @@ app.MapHub<CityPlanningHub>("/hubs/city-planning");
         if (pending.Count > 0)
         {
             foreach (var migration in pending)
+            {
                 migrationLogger.LogInformation("Pending migration: {Migration}", migration);
+            }
 
             await dbContext.Database.MigrateAsync();
 

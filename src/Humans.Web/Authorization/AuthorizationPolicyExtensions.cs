@@ -24,6 +24,7 @@ public static class AuthorizationPolicyExtensions
         services.AddScoped<IAuthorizationHandler, AgentRateLimitHandler>();
         services.AddScoped<IAuthorizationHandler, BudgetAuthorizationHandler>();
         services.AddScoped<IAuthorizationHandler, CampAuthorizationHandler>();
+        services.AddScoped<IAuthorizationHandler, ContainerAuthorizationHandler>();
         services.AddScoped<IAuthorizationHandler, StoreOrderAuthorizationHandler>();
         services.AddScoped<IAuthorizationHandler, TeamAuthorizationHandler>();
         services.AddScoped<IAuthorizationHandler, IsAnyTeamManagerOrCoordinatorHandler>();

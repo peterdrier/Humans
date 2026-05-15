@@ -123,6 +123,7 @@ public interface ICampService : IApplicationService
     // Cross-service queries (used by CityPlanningService)
     Task<CampSeasonLookup?> GetCampSeasonByIdAsync(Guid campSeasonId, CancellationToken cancellationToken = default);
     Task<IReadOnlyDictionary<Guid, CampSeasonDisplayData>> GetCampSeasonDisplayDataForYearAsync(int year, CancellationToken cancellationToken = default);
+
     Task<Guid?> GetCampLeadSeasonIdForYearAsync(Guid userId, int year, CancellationToken cancellationToken = default);
 
     // Authorization checks
@@ -298,7 +299,6 @@ public sealed record CampSeasonInfo(
     int MemberCount,
     SoundZone? SoundZone,
     SpaceSize? SpaceRequirement,
-    int ContainerCount,
     ElectricalGrid? ElectricalGrid,
     int EeSlotCount,
     int? EeGrantedCount);
@@ -406,8 +406,6 @@ public record CampSeasonData(
     int MemberCount,
     SpaceSize? SpaceRequirement,
     SoundZone? SoundZone,
-    int ContainerCount,
-    string? ContainerNotes,
     ElectricalGrid? ElectricalGrid);
 
 public record CampDirectoryFilter(
@@ -481,8 +479,6 @@ public record CampEditData(
     int MemberCount,
     SpaceSize? SpaceRequirement,
     SoundZone? SoundZone,
-    int ContainerCount,
-    string? ContainerNotes,
     ElectricalGrid? ElectricalGrid,
     IReadOnlyList<CampLeadSummary> Leads,
     IReadOnlyList<CampImageSummary> Images,
@@ -518,8 +514,6 @@ public record CampSeasonDetailData(
     int MemberCount,
     SpaceSize? SpaceRequirement,
     SoundZone? SoundZone,
-    int ContainerCount,
-    string? ContainerNotes,
     ElectricalGrid? ElectricalGrid,
     bool IsNameLocked);
 
@@ -547,11 +541,9 @@ public record CampPlacementSummary(
     int MemberCount,
     string? SpaceRequirement,
     string? SoundZone,
-    int ContainerCount,
-    string? ContainerNotes,
     string Status,
     string? ElectricalGrid);
 
-public record CampSeasonDisplayData(string Name, string CampSlug, SoundZone? SoundZone, SpaceSize? SpaceRequirement);
+public record CampSeasonDisplayData(string Name, string CampSlug, SoundZone? SoundZone, SpaceSize? SpaceRequirement, Guid CampId);
 
 public record CampSeasonBrief(Guid CampSeasonId, string Name, string CampSlug, SpaceSize? SpaceRequirement);

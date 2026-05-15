@@ -247,6 +247,7 @@ Each section's service owns these tables. Cross-service access goes through the 
 | **Legal & Consent** | `LegalDocumentService`, `AdminLegalDocumentService`, `LegalDocumentSyncService`, `ConsentService` | `legal_documents`, `document_versions`, `consent_records` |
 | **Onboarding** | `OnboardingService` (intake funnel), `HumanLifecycleService` (suspend/unsuspend state-machine) | *(no owned tables — orchestrator pair over Profiles, Legal & Consent, Teams, Governance)* |
 | **Camps** | `CampService`, `CampContactService` | `camps`, `camp_seasons`, `camp_leads`, `camp_images`, `camp_historical_names`, `camp_settings` |
+| **Containers** | `ContainerService` | `containers`, `container_placements` |
 | **City Planning** | `CityPlanningService` | `city_planning_settings`, `camp_polygons`, `camp_polygon_histories` |
 | **Calendar** | `CalendarService` | `calendar_events`, `calendar_event_exceptions` |
 | **Shifts** | `ShiftManagementService`, `ShiftSignupService`, `GeneralAvailabilityService`, `VolunteerTrackingService` | `rotas`, `shifts`, `shift_signups`, `event_settings`, `general_availability`, `volunteer_event_profiles`, `volunteer_build_statuses`, `shift_tags`, `volunteer_tag_preferences`, `rota_shift_tags` |

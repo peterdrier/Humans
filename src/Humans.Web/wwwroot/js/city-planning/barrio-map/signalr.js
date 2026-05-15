@@ -1,7 +1,7 @@
 // SignalR hub connection and real-time event handlers.
 import { appState } from './state.js';
 import { CONFIG } from './config.js';
-import { buildCampPolygonFeatures } from './geometry.js';
+import { buildCampPolygonFeatures, invalidateParsedFeature } from './geometry.js';
 import { updateAddMyBarrioVisibility } from './edit.js';
 
 export function initSignalR() {
@@ -17,6 +17,7 @@ export function initSignalR() {
         if (idx >= 0) {
             appState.campMap.campPolygons[idx].geoJson = geoJson;
             appState.campMap.campPolygons[idx].areaSqm = areaSqm;
+            invalidateParsedFeature(appState.campMap.campPolygons[idx]);
             // soundZone and campName are CampSeason properties — they don't change on polygon save
         } else {
             appState.campMap.campPolygons.push({ campSeasonId, geoJson, areaSqm, soundZone: soundZone ?? -1, campName: campName ?? '', campSlug: '' });
@@ -49,9 +50,33 @@ export function initSignalR() {
     appState.connection.start().catch(console.error);
 
     if (CONFIG.IS_PLACEMENT_OPEN) {
-        map.on('mousemove', e => {
+        // Throttle to ~15Hz — mousemove fires at 60-120Hz, but the cursor
+        // marker only needs to feel live to humans on the other end. With N
+        // peers, cursor fanout is O(N²); the throttle puts a real ceiling on it.
+        const CURSOR_INTERVAL_MS = 66;
+        let lastSentAt = 0;
+        let pendingLngLat = null;
+        let scheduled = false;
+
+        const send = () => {
+            scheduled = false;
+            if (!pendingLngLat) return;
+            const { lat, lng } = pendingLngLat;
+            pendingLngLat = null;
+            lastSentAt = performance.now();
             if (appState.connection.state === signalR.HubConnectionState.Connected) {
-                appState.connection.invoke('UpdateCursor', e.lngLat.lat, e.lngLat.lng).catch(() => {});
+                appState.connection.invoke('UpdateCursor', lat, lng).catch(() => {});
+            }
+        };
+
+        map.on('mousemove', e => {
+            pendingLngLat = e.lngLat;
+            const elapsed = performance.now() - lastSentAt;
+            if (elapsed >= CURSOR_INTERVAL_MS) {
+                send();
+            } else if (!scheduled) {
+                scheduled = true;
+                setTimeout(send, CURSOR_INTERVAL_MS - elapsed);
             }
         });
     }

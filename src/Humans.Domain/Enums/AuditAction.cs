@@ -167,4 +167,10 @@ public enum AuditAction
     MailerLiteAudienceSyncCompleted,
     GoogleSyncRetryScheduled,
     TicketContactsImported,
+    ContainerCreated,
+    ContainerUpdated,
+    ContainerDeleted,
+    ContainerPlacementSaved,
+    ContainerPlacementCleared,
+    ContainerPlacementNotesUpdated,
 }

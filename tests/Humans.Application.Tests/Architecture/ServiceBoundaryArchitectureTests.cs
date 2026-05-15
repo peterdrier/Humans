@@ -31,6 +31,7 @@ public class ServiceBoundaryArchitectureTests
             [typeof(ICommunicationPreferenceRepository)] = "Humans",
             [typeof(IConsentRepository)] = "Consent",
             [typeof(IContactFieldRepository)] = "Humans",
+            [typeof(IContainerRepository)] = "Containers",
             [typeof(IDriveActivityMonitorRepository)] = "GoogleIntegration",
             [typeof(IEmailOutboxRepository)] = "Email",
             [typeof(IExpenseRepository)] = "Expenses",

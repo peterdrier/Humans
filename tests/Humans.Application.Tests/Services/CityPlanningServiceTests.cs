@@ -340,6 +340,7 @@ public class CityPlanningServiceTests : IDisposable
     {
         var season2026Id = Guid.NewGuid();
         var season2027Id = Guid.NewGuid();
+        var camp2026Id = Guid.NewGuid();
         var userId = NewUserId();
 
         await _sut.SaveCampPolygonAsync(season2026Id, """{"type":"Feature"}""", 100, userId);
@@ -348,13 +349,14 @@ public class CityPlanningServiceTests : IDisposable
         _campService.GetCampSeasonDisplayDataForYearAsync(2026, Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, CampSeasonDisplayData>
             {
-                [season2026Id] = new("Test Camp 2026", "test-camp", null, null)
+                [season2026Id] = new("Test Camp 2026", "test-camp", null, null, camp2026Id)
             });
 
         var result = await _sut.GetCampPolygonsAsync(2026);
 
         result.Should().HaveCount(1);
         result[0].CampSeasonId.Should().Be(season2026Id);
+        result[0].CampId.Should().Be(camp2026Id);
     }
 
     [HumansFact]
@@ -369,8 +371,8 @@ public class CityPlanningServiceTests : IDisposable
         _campService.GetCampSeasonDisplayDataForYearAsync(2026, Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, CampSeasonDisplayData>
             {
-                [seasonWithId] = new("Camp With", "camp-with", null, null),
-                [seasonWithoutId] = new("Camp Without", "camp-without", null, null)
+                [seasonWithId] = new("Camp With", "camp-with", null, null, Guid.NewGuid()),
+                [seasonWithoutId] = new("Camp Without", "camp-without", null, null, Guid.NewGuid())
             });
 
         var result = await _sut.GetCampSeasonsWithoutCampPolygonAsync(2026);
@@ -391,7 +393,7 @@ public class CityPlanningServiceTests : IDisposable
         _campService.GetCampSeasonDisplayDataForYearAsync(2026, Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, CampSeasonDisplayData>
             {
-                [campSeasonId] = new("Test Camp", "test-camp", null, null)
+                [campSeasonId] = new("Test Camp", "test-camp", null, null, Guid.NewGuid())
             });
 
         var result = await _sut.ExportAsGeoJsonAsync(2026);
@@ -455,6 +457,7 @@ public class CityPlanningServiceTests : IDisposable
     public async Task GetCampPolygonsAsync_IncludesSoundZone_WhenSet()
     {
         var campSeasonId = Guid.NewGuid();
+        var campId = Guid.NewGuid();
         var userId = NewUserId();
         const string geoJson = """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[]]}}""";
         await _sut.SaveCampPolygonAsync(campSeasonId, geoJson, 100.0, userId);
@@ -462,7 +465,7 @@ public class CityPlanningServiceTests : IDisposable
         _campService.GetCampSeasonDisplayDataForYearAsync(2026, Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, CampSeasonDisplayData>
             {
-                [campSeasonId] = new("Test Camp", "test-camp", SoundZone.Blue, null)
+                [campSeasonId] = new("Test Camp", "test-camp", SoundZone.Blue, null, campId)
             });
 
         var polygons = await _sut.GetCampPolygonsAsync(2026);
@@ -474,6 +477,7 @@ public class CityPlanningServiceTests : IDisposable
     public async Task GetCampPolygonsAsync_SoundZoneIsNull_WhenNotSet()
     {
         var campSeasonId = Guid.NewGuid();
+        var campId = Guid.NewGuid();
         var userId = NewUserId();
         const string geoJson = """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[]]}}""";
         await _sut.SaveCampPolygonAsync(campSeasonId, geoJson, 100.0, userId);
@@ -481,7 +485,7 @@ public class CityPlanningServiceTests : IDisposable
         _campService.GetCampSeasonDisplayDataForYearAsync(2026, Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, CampSeasonDisplayData>
             {
-                [campSeasonId] = new("Test Camp", "test-camp", null, null)
+                [campSeasonId] = new("Test Camp", "test-camp", null, null, campId)
             });
 
         var polygons = await _sut.GetCampPolygonsAsync(2026);

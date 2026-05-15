@@ -135,6 +135,16 @@
     </div>
 </div>
 
+<script>
+    // Move the modal to <body> so Bootstrap's position:fixed covers the full viewport.
+    // Without this, if the component is rendered inside an overflow:hidden container
+    // (e.g. a full-screen map page), the modal is visually clipped to that container.
+    (function() {
+        var m = document.getElementById('@modalId');
+        if (m) document.body.appendChild(m);
+    })();
+</script>
+
 <style>
     .section-help-content {
         font-size: 0.95rem;
