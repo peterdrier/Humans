@@ -538,6 +538,19 @@ Old names that no longer exist: `CachedProfile`, `IProfileStore`, `ProfileStore`
 
 **`OnboardingService.SetConsentCheckPendingIfEligibleAsync`** does not invalidate the `UserInfo` dict. Pre-existing behavior. To be addressed after the section merge settles.
 
+### 15g-bis. Decorator-Integrity Hazards
+
+<!-- wheat: docs/plans/2026-04-17-architectural-review-and-pr235-impact.md Part 4 (NEW-A) -->
+
+Architecture tests verify *structure* (namespace, no-DbContext, no-IMemoryCache, required-constructor-deps). They do **not** verify that a caching decorator actually calls its private `RefreshEntryAsync` / dict upsert after delegating a write. The bug class "decorator forgot to invalidate after a write" is silent — stale data persists until process restart, with no error and no timeout. Unit tests of the inner service won't catch it because the inner service is correct in isolation.
+
+Two guards mitigate this:
+
+1. **Singleton identity.** The decorator and its invalidator interface must resolve to the *same* instance (§15e CRITICAL). If two instances exist, in-process invalidation routes to the wrong dict.
+2. **Integration test through the decorator.** For every cached section, a Testcontainers-backed test writes through the public service interface and reads back through the same interface, asserting the post-write read reflects the change. This is the only automated guard that catches a missing `RefreshEntryAsync` call.
+
+For the Google Workspace section in particular, the cached projection isn't a table — it's reconciliation state (permission maps, group memberships). When that section gains a decorator, it needs an `IGoogleStateStore` shape rather than the entity-collection shape used by Profile/User.
+
 ### 15h. Migration Rules During the Transition
 
 1. **New sections must comply.** New features use the §15 pattern from day one. Create the repository and decorator the same day you create the service — do not accrue "migrate later" debt.

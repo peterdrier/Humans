@@ -84,9 +84,104 @@ Subagent prompt: worktree path, target file, trigger paths fired, entry's prompt
 
 After each batch accumulate results. `--interactive`: stop on non-empty `questions`, ask Peter, continue.
 
+## Phase 5.5: Prune — wheat extraction, then deletion
+
+Goal: every sweep shrinks the historical-doc pile by ~5% (soft target, hard cap 7%) **without losing durable signal**. Whole-file deletion is the LAST step, never the first. The earliest sweep that tried to delete first lost ADR rationale, vendor-selection trade-offs, and decorator-integrity gotchas — those have to be extracted into living docs before the husk is removed.
+
+### Per-source workflow (every candidate doc goes through this)
+
+1. **Read** the historical doc in full + read every candidate target section/architecture doc in full.
+2. **Identify wheat** — durable signal: design decisions with rationale, rejected alternatives that explain why current behavior is the way it is, gotchas, negative-space rules, vendor/library selection rationale, external-system quirks.
+3. **Identify chaff** — data model tables (code is the spec), implementation task lists, code samples already in src/, status/date markers, restatements of obvious behavior, glossary etymology, "we will/might do X" speculation.
+4. **De-duplicate against target.** If the wheat is already in the target doc, drop it.
+5. **Genre-check against EXISTING destinations only.** Allowed:
+   - `docs/sections/*.md` — section invariants only, no rationale narrative (per `SECTION-TEMPLATE.md`)
+   - `docs/architecture/design-rules.md` — architecture-level decisions that extend the constitution
+   - `docs/architecture/conventions.md` — pattern definitions (when to use X, naming, etc.)
+   - **Never** create new design docs, ADR files, or `memory/` atoms during a sweep. `memory/` is for **atomic task-fires rules**, not for narrative-history-of-decisions, and design docs carry weight that needs Peter's review. If wheat doesn't fit one of the three allowed destinations, **flag for Peter** in the report's "Proposed for review" section with the proposed text — do not invent a destination.
+6. **Migrate** the wheat with a `<!-- wheat: <source path> §<section> -->` provenance comment. Preserve original prose voice.
+7. **Scan for inbound refs** to the historical doc across all `.md` files. For each ref:
+   - If from a living doc (sections, features, guide, architecture): retarget to the destination of the migrated wheat.
+   - If from an archive doc (`docs/superpowers/**`, other historical docs): rewrite as `(historical) — current invariants live in <destination>`. The archive remains historical; the link points forward.
+8. **Delete the husk** only after steps 6 + 7 are complete.
+
+### Allowlist of sources
+
+| Source tree | Action |
+|---|---|
+| `docs/plans/*.md` older than 30 days | Wheat-extract → migrate → retarget refs → delete |
+| `docs/superpowers/plans/*.md` older than 30 days | Same |
+| `docs/superpowers/specs/*.md` older than 60 days | Same |
+| `docs/architecture/tech-debt-*.md` where all items are `[DONE]` | Same (wheat may be `[DONE]` summaries worth keeping in maintenance-log) |
+| Orphan refs in living docs to already-deleted files | Edit out or retarget |
+
+### Never touched by prune
+
+- Anything outside `docs/`
+- `docs/architecture/freshness-catalog.yml`
+- `docs/sections/`, `docs/features/`, `docs/guide/` as deletion targets (these are migration *destinations*, never sources)
+- `docs/architecture/{design-rules,code-review-rules,coding-rules,conventions}.md` as deletion targets (same — these are destinations)
+- `docs/freshness/last-report.md`
+- the `freshness:auto` blocks in `data-model.md` and `code-analysis.md` (Phase 5 owns those)
+
+### Sizing
+
+```bash
+shopt -s globstar  # REQUIRED — without this, ** doesn't recurse and total_lines is wildly undercounted
+total_doc_lines=$(find docs -name '*.md' -print0 | xargs -0 wc -l | tail -1 | awk '{print $1}')
+target_lines=$((total_doc_lines * 5 / 100))
+hard_cap=$((total_doc_lines * 7 / 100))
+```
+
+Use `find` (above) rather than relying on shell globbing — it's safe whether globstar is set or not.
+
+### Orchestration
+
+Dispatch up to 3 subagents in parallel (one per logical source group: e.g., shifts-related, auth-related, infra-related). Each agent:
+
+- Takes 1–N source docs sharing a likely destination
+- Reads sources + candidate targets
+- Returns a JSON manifest (below) — does NOT write files
+
+Orchestrator reviews each manifest, applies migrations as `Edit` calls, retargets inbound refs, then deletes husks. Stop accumulating deletions once `applied_lines + this_doc_lines > hard_cap`.
+
+### Subagent return format
+
+```json
+{
+  "batch": "<logical group name>",
+  "migrations": [
+    {
+      "source_doc": "<path being mined>",
+      "target_doc": "<destination living doc>",
+      "insertion_anchor": "<exact existing line in target>",
+      "text_to_insert": "<markdown block including <!-- wheat: ... --> comment>",
+      "lines_inserted": <int>,
+      "wheat_summary": "<one-line: what survived and why it's durable>"
+    }
+  ],
+  "drop_entirely": [
+    { "source_doc": "<path>", "reason": "<all chaff: data-model now in code, task lists, etc.>" }
+  ],
+  "inbound_refs": [
+    { "source_doc": "<path>", "ref_from": "<path>", "ref_line": <int>, "proposed_action": "retarget to <dest>" | "rewrite as historical" | "remove" }
+  ],
+  "questions": []
+}
+```
+
+### Result-section in the sweep report
+
+The sweep report's "Pruned" section lists:
+- For each migration: `<source> → <target>` + the one-line wheat summary
+- For each husk deleted: file + line count + "all chaff" reason
+- For each retargeted ref: source ref → new target
+
+Medium-confidence wheat (the agent isn't sure it's durable) goes into "Proposed for review" with the proposed migration text — Peter can apply manually next pass.
+
 ## Phase 6: Aggregate and write report
 
-Overwrite `docs/freshness/last-report.md`: timestamp header; anchor/mode/counts summary; "Updated automatically" bullets (`id — summary`); "Flagged for human review" (file, triggers, reason, follow-up); "Questions"; "Skipped (errors)". Previous-anchor = `none` on first run or `--full`. No files changed → "Nothing to update." → Phase 8. Otherwise stage all changes + report.
+Overwrite `docs/freshness/last-report.md`: timestamp header; anchor/mode/counts summary; "Updated automatically" bullets (`id — summary`); "Pruned" section (file, lines removed, evidence) from Phase 5.5; "Flagged for human review" (file, triggers, reason, follow-up); medium-confidence prune candidates ("Proposed for prune — review"); "Questions"; "Skipped (errors)". Previous-anchor = `none` on first run or `--full`. No files changed → "Nothing to update." → Phase 8. Otherwise stage all changes + report.
 
 ## Phase 7: Commit, push, open PR
 
@@ -151,6 +246,7 @@ Print the PR URL.
 
 ## Constraints
 
-- Only touches files in the catalog or editorial trees.
+- Only touches files in the catalog, editorial trees, or the prune allowlist (Phase 5.5).
 - Main checkout dirty state is irrelevant — all work is in the worktree.
 - Does not update `docs/architecture/maintenance-log.md` (hand-maintained).
+- Prune phase (5.5) never touches living architectural docs (`design-rules.md`, `code-review-rules.md`, section invariants, feature specs). It only deletes shipped/historical plans and specs with cited evidence.
