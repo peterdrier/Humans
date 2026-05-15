@@ -260,5 +260,4 @@ Map admin = `RoleChecks.IsCampAdmin(User)` **or** member of the City Planning te
 
 ## Future
 
-- Containers will be assigned to map zones in a third phase (zone-assignment feature, follows container placement).
 - Hypothetical: other teams could use this map to collaborate on placement for art, power lines, …
