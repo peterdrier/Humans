@@ -233,7 +233,7 @@ public class HomeController : HumansControllerBase
             return;
         }
 
-        SetError("Could not undo — your status may have been updated by ticket sync.");
+        SetError("Could not undo â€” your status may have been updated by ticket sync.");
     }
     public IActionResult Privacy()
     {
