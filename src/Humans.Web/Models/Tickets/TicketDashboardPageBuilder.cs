@@ -137,13 +137,13 @@ public sealed class TicketDashboardPageBuilder
             switch ((p, t, s))
             {
                 case (false, false, false): none++; break;
-                case (true,  false, false): profileOnly++; break;
-                case (false, true,  false): ticketOnly++; break;
-                case (false, false, true):  shiftOnly++; break;
-                case (true,  true,  false): profileTicket++; break;
-                case (true,  false, true):  profileShift++; break;
-                case (false, true,  true):  ticketShift++; break;
-                case (true,  true,  true):  all++; break;
+                case (true, false, false): profileOnly++; break;
+                case (false, true, false): ticketOnly++; break;
+                case (false, false, true): shiftOnly++; break;
+                case (true, true, false): profileTicket++; break;
+                case (true, false, true): profileShift++; break;
+                case (false, true, true): ticketShift++; break;
+                case (true, true, true): all++; break;
             }
         }
 

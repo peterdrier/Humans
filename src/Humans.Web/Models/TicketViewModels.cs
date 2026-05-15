@@ -67,8 +67,8 @@ public sealed record UserSetMembership(
         + ProfileTicket + ProfileShift + TicketShift + All;
 
     public int ProfilesCount => ProfileOnly + ProfileTicket + ProfileShift + All;
-    public int TicketsCount  => TicketOnly + ProfileTicket + TicketShift + All;
-    public int ShiftsCount   => ShiftOnly + ProfileShift + TicketShift + All;
+    public int TicketsCount => TicketOnly + ProfileTicket + TicketShift + All;
+    public int ShiftsCount => ShiftOnly + ProfileShift + TicketShift + All;
 }
 
 public class PaymentMethodFeeBreakdown
