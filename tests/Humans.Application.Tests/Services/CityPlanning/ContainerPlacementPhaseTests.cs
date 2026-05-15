@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.Configuration;
 using Humans.Application.Interfaces.Camps;
-using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.CityPlanning;
@@ -39,7 +38,6 @@ public class ContainerPlacementPhaseTests
             repo, _clock, Options.Create(options),
             _campService,
             Substitute.For<ITeamService>(),
-            Substitute.For<IProfileService>(),
             Substitute.For<IUserService>());
     }
 
