@@ -1968,7 +1968,8 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
         GoogleGroupPrefix: team.GoogleGroupPrefix,
         HasBudget: team.HasBudget,
         IsSensitive: team.IsSensitive,
-        UpdatedAt: team.UpdatedAt);
+        UpdatedAt: team.UpdatedAt,
+        CustomSlug: team.CustomSlug);
 
     // ==========================================================================
     // Internal helpers — shift authorization invalidation

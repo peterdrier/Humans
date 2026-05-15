@@ -651,7 +651,8 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
         GoogleGroupPrefix: team.GoogleGroupPrefix,
         HasBudget: team.HasBudget,
         IsSensitive: team.IsSensitive,
-        UpdatedAt: team.UpdatedAt);
+        UpdatedAt: team.UpdatedAt,
+        CustomSlug: team.CustomSlug);
 
     private async Task<TResult> WithInner<TResult>(Func<ITeamService, Task<TResult>> action)
     {

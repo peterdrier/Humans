@@ -16,7 +16,8 @@ public record TeamInfo(
     string? GoogleGroupPrefix = null,
     bool HasBudget = false,
     bool IsSensitive = false,
-    Instant? UpdatedAt = null);
+    Instant? UpdatedAt = null,
+    string? CustomSlug = null);
 
 public record TeamMemberInfo(
     Guid TeamMemberId, Guid UserId, string DisplayName,

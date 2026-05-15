@@ -223,9 +223,11 @@ public sealed class CityPlanningService : ICityPlanningService
     public async Task<bool> IsCityPlanningTeamMemberAsync(
         Guid userId, CancellationToken cancellationToken = default)
     {
-        var slug = _options.Value.CityPlanningTeamSlug;
+        var normalizedSlug = _options.Value.CityPlanningTeamSlug.ToLowerInvariant();
         var team = (await _teamService.GetTeamsAsync(cancellationToken)).Values
-            .FirstOrDefault(t => string.Equals(t.Slug, slug, StringComparison.Ordinal));
+            .FirstOrDefault(t =>
+                string.Equals(t.Slug, normalizedSlug, StringComparison.Ordinal) ||
+                string.Equals(t.CustomSlug, normalizedSlug, StringComparison.Ordinal));
         return team is { IsActive: true } && team.Members.Any(m => m.UserId == userId);
     }
 
