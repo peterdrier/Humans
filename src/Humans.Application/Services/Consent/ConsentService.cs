@@ -8,7 +8,7 @@ using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Legal;
 using Humans.Application.Interfaces.Notifications;
-using Humans.Application.Interfaces.Onboarding;
+using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
@@ -33,7 +33,7 @@ namespace Humans.Application.Services.Consent;
 /// </para>
 /// <para>
 /// Cross-section dependencies are injected as service interfaces
-/// (<see cref="IOnboardingService"/>, <see cref="ILegalDocumentSyncService"/>,
+/// (<see cref="IProfileService"/>, <see cref="ILegalDocumentSyncService"/>,
 /// <see cref="ISystemTeamSync"/>, <see cref="INotificationInboxService"/>,
 /// <see cref="IUserService"/>). Legal-document repository migration is
 /// tracked as sub-task #547a; until it lands, legal document data still
@@ -48,7 +48,7 @@ namespace Humans.Application.Services.Consent;
 public sealed class ConsentService : IConsentService, IUserDataContributor
 {
     private readonly IConsentRepository _repo;
-    private readonly IOnboardingService _onboardingService;
+    private readonly IProfileService _profileService;
     private readonly ILegalDocumentSyncService _legalDocumentSyncService;
     private readonly INotificationInboxService _notificationInboxService;
     private readonly ISystemTeamSync _syncJob;
@@ -60,7 +60,7 @@ public sealed class ConsentService : IConsentService, IUserDataContributor
 
     public ConsentService(
         IConsentRepository repo,
-        IOnboardingService onboardingService,
+        IProfileService profileService,
         ILegalDocumentSyncService legalDocumentSyncService,
         INotificationInboxService notificationInboxService,
         ISystemTeamSync syncJob,
@@ -71,7 +71,7 @@ public sealed class ConsentService : IConsentService, IUserDataContributor
         ILogger<ConsentService> logger)
     {
         _repo = repo;
-        _onboardingService = onboardingService;
+        _profileService = profileService;
         _legalDocumentSyncService = legalDocumentSyncService;
         _notificationInboxService = notificationInboxService;
         _syncJob = syncJob;
@@ -247,7 +247,7 @@ public sealed class ConsentService : IConsentService, IUserDataContributor
             "User {UserId} consented to document {DocumentName} version {Version}",
             userId, version.LegalDocumentName, version.VersionNumber);
 
-        await _onboardingService.SetConsentCheckPendingIfEligibleAsync(userId, ct);
+        await _profileService.TrySetConsentCheckPendingIfEligibleAsync(userId, ct);
 
         // Sync system team memberships (adds user if eligible + all consents done).
         await _syncJob.SyncMembershipForUserAsync(userId, SystemTeamType.Volunteers, ct);

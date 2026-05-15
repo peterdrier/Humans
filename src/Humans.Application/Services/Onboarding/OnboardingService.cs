@@ -293,47 +293,6 @@ public sealed class OnboardingService : IOnboardingService
     }
 
     // ==========================================================================
-    // Consent-check pending (shared: ConsentService + ProfileService call this)
-    // ==========================================================================
-
-    public async Task<bool> SetConsentCheckPendingIfEligibleAsync(
-        Guid userId, CancellationToken ct = default)
-    {
-        var info = await _userService.GetUserInfoAsync(userId, ct);
-        if (info is null || !info.NeedsConsentReview || info.Profile!.ConsentCheckStatus is not null)
-            return false;
-
-        var hasAllConsents = await _membershipCalculator.HasAllRequiredConsentsForTeamAsync(
-            userId, SystemTeamIds.Volunteers, ct);
-        if (!hasAllConsents)
-            return false;
-
-        var set = await _profileService.SetConsentCheckPendingAsync(userId, ct);
-        if (!set)
-            return false;
-
-        try
-        {
-            await _notificationService.SendToRoleAsync(
-                NotificationSource.ConsentReviewNeeded,
-                NotificationClass.Actionable,
-                NotificationPriority.High,
-                "New consent review needed",
-                RoleNames.ConsentCoordinator,
-                body: "A human has completed all required consents and needs review.",
-                actionUrl: "/OnboardingReview",
-                actionLabel: "Review →",
-                cancellationToken: ct);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to dispatch ConsentReviewNeeded notification for user {UserId}", userId);
-        }
-
-        return true;
-    }
-
-    // ==========================================================================
     // Helpers
     // ==========================================================================
 

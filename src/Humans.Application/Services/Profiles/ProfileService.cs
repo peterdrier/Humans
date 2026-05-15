@@ -10,10 +10,11 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Domain.Helpers;
 using Humans.Application.Interfaces.AuditLog;
-using Humans.Application.Interfaces.Users;
 using Humans.Application.Interfaces.Onboarding;
+using Humans.Application.Interfaces.Users;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Auth;
+using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Services.Profiles;
 
@@ -31,9 +32,9 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
     private readonly IUserEmailRepository _userEmailRepository;
     private readonly IContactFieldRepository _contactFieldRepository;
     private readonly ICommunicationPreferenceRepository _communicationPreferenceRepository;
-    private readonly IOnboardingEligibilityQuery _onboardingEligibilityQuery;
     private readonly IAuditLogService _auditLogService;
     private readonly IMembershipCalculator _membershipCalculator;
+    private readonly INotificationService _notificationService;
     private readonly IFileStorage _fileStorage;
     private readonly IClock _clock;
     private readonly ILogger<ProfileService> _logger;
@@ -58,9 +59,9 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         IUserEmailRepository userEmailRepository,
         IContactFieldRepository contactFieldRepository,
         ICommunicationPreferenceRepository communicationPreferenceRepository,
-        IOnboardingEligibilityQuery onboardingEligibilityQuery,
         IAuditLogService auditLogService,
         IMembershipCalculator membershipCalculator,
+        INotificationService notificationService,
         IFileStorage fileStorage,
         IClock clock,
         ILogger<ProfileService> logger)
@@ -70,9 +71,9 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         _userEmailRepository = userEmailRepository;
         _contactFieldRepository = contactFieldRepository;
         _communicationPreferenceRepository = communicationPreferenceRepository;
-        _onboardingEligibilityQuery = onboardingEligibilityQuery;
         _auditLogService = auditLogService;
         _membershipCalculator = membershipCalculator;
+        _notificationService = notificationService;
         _fileStorage = fileStorage;
         _clock = clock;
         _logger = logger;
@@ -409,8 +410,9 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
 
         // Cache invalidation and store update handled by CachingUserService decorator
 
-        // Check consent eligibility
-        await _onboardingEligibilityQuery.SetConsentCheckPendingIfEligibleAsync(userId, ct);
+        // Threshold check — if this save completed the eligibility predicate,
+        // flip ConsentCheckStatus to Pending and notify Consent Coordinators.
+        await TrySetConsentCheckPendingIfEligibleAsync(userId, ct);
 
         _logger.LogInformation("User {UserId} updated their profile", userId);
 
@@ -749,6 +751,43 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
 
         _logger.LogInformation(
             "User {UserId} has all consents signed, consent check set to Pending", userId);
+
+        return true;
+    }
+
+    public async Task<bool> TrySetConsentCheckPendingIfEligibleAsync(
+        Guid userId, CancellationToken ct = default)
+    {
+        var info = await _userService.GetUserInfoAsync(userId, ct);
+        if (info is null || !info.NeedsConsentReview || info.Profile!.ConsentCheckStatus is not null)
+            return false;
+
+        var hasAllConsents = await _membershipCalculator.HasAllRequiredConsentsForTeamAsync(
+            userId, SystemTeamIds.Volunteers, ct);
+        if (!hasAllConsents)
+            return false;
+
+        var set = await SetConsentCheckPendingAsync(userId, ct);
+        if (!set)
+            return false;
+
+        try
+        {
+            await _notificationService.SendToRoleAsync(
+                NotificationSource.ConsentReviewNeeded,
+                NotificationClass.Actionable,
+                NotificationPriority.High,
+                "New consent review needed",
+                RoleNames.ConsentCoordinator,
+                body: "A human has completed all required consents and needs review.",
+                actionUrl: "/OnboardingReview",
+                actionLabel: "Review →",
+                cancellationToken: ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to dispatch ConsentReviewNeeded notification for user {UserId}", userId);
+        }
 
         return true;
     }

@@ -6,7 +6,7 @@ namespace Humans.Application.Interfaces.Onboarding;
 public record OnboardingResult(bool Success, string? ErrorKey = null);
 public record BulkOnboardingResult(int ApprovedCount);
 
-public interface IOnboardingService : IApplicationService, IOnboardingEligibilityQuery
+public interface IOnboardingService : IApplicationService
 {
     // --- Queries ---
     Task<DTOs.ReviewQueueData> GetReviewQueueAsync(CancellationToken ct = default);

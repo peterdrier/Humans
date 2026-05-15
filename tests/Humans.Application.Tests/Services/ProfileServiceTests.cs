@@ -13,6 +13,7 @@ using Humans.Infrastructure.Data;
 using Xunit;
 using ProfileService = Humans.Application.Services.Profiles.ProfileService;
 using Humans.Application.Interfaces.AuditLog;
+using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Auth;
@@ -34,9 +35,9 @@ public class ProfileServiceTests : IDisposable
     private readonly IUserEmailRepository _userEmailRepository;
     private readonly IContactFieldRepository _contactFieldRepository;
     private readonly ICommunicationPreferenceRepository _communicationPreferenceRepository = Substitute.For<ICommunicationPreferenceRepository>();
-    private readonly IOnboardingService _onboardingService = Substitute.For<IOnboardingService>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
     private readonly IMembershipCalculator _membershipCalculator = Substitute.For<IMembershipCalculator>();
+    private readonly INotificationService _notificationService = Substitute.For<INotificationService>();
     private readonly InMemoryFileStorage _fileStorage = new();
 
     // Delegate to the production helper (made internal for test access)
@@ -63,8 +64,9 @@ public class ProfileServiceTests : IDisposable
             _profileRepository, _userService,
             _userEmailRepository,
             _contactFieldRepository, _communicationPreferenceRepository,
-            _onboardingService, _auditLogService,
+            _auditLogService,
             _membershipCalculator,
+            _notificationService,
             _fileStorage,
             _clock,
             NullLogger<ProfileService>.Instance);
@@ -256,7 +258,7 @@ public class ProfileServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task SaveProfileAsync_CallsSetConsentCheckPending()
+    public async Task SaveProfileAsync_RunsConsentCheckThresholdEvaluation()
     {
         var userId = Guid.NewGuid();
         await SeedUserWithProfileAsync(userId);
@@ -264,7 +266,10 @@ public class ProfileServiceTests : IDisposable
 
         await _service.SaveProfileAsync(userId, "Test", request, "en");
 
-        await _onboardingService.Received().SetConsentCheckPendingIfEligibleAsync(userId, Arg.Any<CancellationToken>());
+        // Threshold check is now inlined into ProfileService. The first thing
+        // it does is read UserInfo to evaluate the predicate. Proves SaveProfileAsync
+        // attempted the threshold evaluation without coupling to an external service.
+        await _userService.Received().GetUserInfoAsync(userId, Arg.Any<CancellationToken>());
     }
 
     // --- Profile save flow: tier application during initial setup ---
@@ -578,8 +583,9 @@ public class ProfileServiceTests : IDisposable
         profileRepository, _userService,
         _userEmailRepository,
         _contactFieldRepository, _communicationPreferenceRepository,
-        _onboardingService, _auditLogService,
+        _auditLogService,
         _membershipCalculator,
+        _notificationService,
         _fileStorage,
         _clock,
         NullLogger<ProfileService>.Instance);
@@ -725,8 +731,9 @@ public class ProfileServiceTests : IDisposable
             fakeRepo, _userService,
             _userEmailRepository,
             _contactFieldRepository, _communicationPreferenceRepository,
-            _onboardingService, _auditLogService,
+            _auditLogService,
             _membershipCalculator,
+            _notificationService,
             _fileStorage,
             _clock,
             NullLogger<ProfileService>.Instance);

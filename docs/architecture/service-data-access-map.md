@@ -93,7 +93,7 @@ Repositories: `IProfileRepository`, `IUserEmailRepository`,
 | CommunicationPreferences | R | ICommunicationPreferenceRepository |
 
 Cross-section reads via owning interfaces (no direct table access):
-`IUserService`, `IOnboardingEligibilityQuery`, `IMembershipCalculator`,
+`IUserService`, `IMembershipCalculator`, `INotificationService`,
 `IAuditLogService`. Implements `IUserDataContributor` (GDPR) and
 `IUserMerge` (account-merge fan-out). No `IMemoryCache` injection; cache
 lives in `CachingProfileService` (`ConcurrentDictionary<Guid, FullProfile>`

@@ -14,8 +14,8 @@ using Humans.Infrastructure.Data;
 using Xunit;
 using ConsentService = Humans.Application.Services.Consent.ConsentService;
 using Humans.Application.Interfaces.Legal;
-using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Notifications;
+using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Domain.Enums;
@@ -30,7 +30,7 @@ public class ConsentServiceTests : IDisposable
     private readonly HumansDbContext _dbContext;
     private readonly FakeClock _clock;
     private readonly ConsentService _service;
-    private readonly IOnboardingService _onboardingService = Substitute.For<IOnboardingService>();
+    private readonly IProfileService _profileService = Substitute.For<IProfileService>();
     private readonly IMembershipCalculator _membershipCalculator = Substitute.For<IMembershipCalculator>();
     private readonly ILegalDocumentSyncService _legalDocumentSyncService = Substitute.For<ILegalDocumentSyncService>();
     private readonly INotificationInboxService _notificationInboxService = Substitute.For<INotificationInboxService>();
@@ -115,7 +115,7 @@ public class ConsentServiceTests : IDisposable
 
         _service = new ConsentService(
             consentRepository,
-            _onboardingService,
+            _profileService,
             _legalDocumentSyncService,
             _notificationInboxService,
             _syncJob,
@@ -233,7 +233,7 @@ public class ConsentServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task SubmitConsentAsync_CallsSetConsentCheckPending()
+    public async Task SubmitConsentAsync_TriggersConsentCheckThresholdEvaluation()
     {
         var userId = Guid.NewGuid();
         var versionId = Guid.NewGuid();
@@ -241,7 +241,9 @@ public class ConsentServiceTests : IDisposable
 
         await _service.SubmitConsentAsync(userId, versionId, true, "127.0.0.1", "Agent");
 
-        await _onboardingService.Received().SetConsentCheckPendingIfEligibleAsync(userId, Arg.Any<CancellationToken>());
+        // After the inversion fix, ConsentService asks ProfileService — the owner of
+        // the ConsentCheckStatus field — to re-evaluate the eligibility threshold.
+        await _profileService.Received().TrySetConsentCheckPendingIfEligibleAsync(userId, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

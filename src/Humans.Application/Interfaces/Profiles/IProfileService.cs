@@ -170,6 +170,20 @@ public interface IProfileService : IApplicationService, IUserMerge
     Task<bool> SetConsentCheckPendingAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
+    /// Threshold-check fired from natural completion points (a profile save
+    /// that lands the last required identity field, or a consent grant that
+    /// completes the required set). If the user has a profile, is not approved
+    /// or rejected, has no existing consent-check status, and has all required
+    /// consents for the Volunteers team, sets <c>ConsentCheckStatus</c> to
+    /// <c>Pending</c> and dispatches a review notification to Consent
+    /// Coordinators. Returns true if the status was set. Owned by Profiles
+    /// because the predicate is profile-state plus a membership read, and the
+    /// write lives on this service — no callback into Onboarding required.
+    /// </summary>
+    Task<bool> TrySetConsentCheckPendingIfEligibleAsync(
+        Guid userId, CancellationToken ct = default);
+
+    /// <summary>
     /// Anonymizes the personal fields of the user's profile for GDPR
     /// expiry-based deletion: clears first/last name → "Deleted"/"User",
     /// burner name → empty, and blanks every optional demographic /
