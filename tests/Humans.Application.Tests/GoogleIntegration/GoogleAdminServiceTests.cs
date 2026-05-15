@@ -878,11 +878,25 @@ public class GoogleAdminServiceTests
     [HumansFact]
     public async Task GetActiveTeamsAsync_ReturnsOnlyActiveTeamsOrdered()
     {
-        _teamService.GetActiveTeamOptionsAsync(Arg.Any<CancellationToken>())
-            .Returns([
-                new TeamOptionDto(Guid.NewGuid(), "Alpha"),
-                new TeamOptionDto(Guid.NewGuid(), "Zebra")
-            ]);
+        var alphaId = Guid.NewGuid();
+        var zebraId = Guid.NewGuid();
+        var teams = new Dictionary<Guid, TeamInfo>
+        {
+            [alphaId] = new(
+                alphaId, "Alpha", null, "alpha",
+                IsActive: true, IsSystemTeam: false, SystemTeamType: SystemTeamType.None,
+                RequiresApproval: false, IsPublicPage: false, IsHidden: false,
+                IsPromotedToDirectory: false, CreatedAt: Instant.MinValue,
+                Members: []),
+            [zebraId] = new(
+                zebraId, "Zebra", null, "zebra",
+                IsActive: true, IsSystemTeam: false, SystemTeamType: SystemTeamType.None,
+                RequiresApproval: false, IsPublicPage: false, IsHidden: false,
+                IsPromotedToDirectory: false, CreatedAt: Instant.MinValue,
+                Members: []),
+        };
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyDictionary<Guid, TeamInfo>)teams);
 
         var result = await _service.GetActiveTeamsAsync();
 

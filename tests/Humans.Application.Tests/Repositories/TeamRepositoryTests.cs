@@ -114,17 +114,6 @@ public sealed class TeamRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task GetActiveOptionsAsync_ReturnsIdNamePairs()
-    {
-        await SeedTeamAsync("A");
-        await SeedTeamAsync("B");
-
-        var options = await _repo.GetActiveOptionsAsync();
-
-        options.Select(o => o.Name).Should().Contain(["A", "B"]);
-    }
-
-    [HumansFact]
     public async Task GetNamesByIdsAsync_IncludesInactive_ForGdprHistory()
     {
         var active = await SeedTeamAsync("Active", isActive: true);

@@ -92,11 +92,14 @@ public class FeedbackController : HumansControllerBase
             unassignedOnly: isAdmin && unassigned ? true : null);
 
         var assigneeOptions = new List<AssigneeOption>();
-        var teamOptions = new List<TeamOptionDto>();
+        IReadOnlyList<TeamInfo> teamOptions = [];
 
         if (isAdmin)
         {
-            teamOptions = (await _teamService.GetActiveTeamOptionsAsync()).ToList();
+            teamOptions = (await _teamService.GetTeamsAsync()).Values
+                .Where(t => t.IsActive)
+                .OrderBy(t => t.Name, StringComparer.Ordinal)
+                .ToList();
             assigneeOptions = await GetActiveAssigneeOptionsAsync();
         }
 
@@ -364,19 +367,22 @@ public class FeedbackController : HumansControllerBase
 
     private async Task PopulateAssignmentOptionsAsync(FeedbackDetailViewModel viewModel)
     {
-        viewModel.TeamOptions = (await _teamService.GetActiveTeamOptionsAsync()).ToList();
+        var teamsById = await _teamService.GetTeamsAsync();
+        var teamOptions = teamsById.Values
+            .Where(t => t.IsActive)
+            .OrderBy(t => t.Name, StringComparer.Ordinal)
+            .ToList();
 
-        // Include currently assigned team even if inactive, to prevent silent clearing
+        // Include currently assigned team even if inactive, to prevent silent clearing.
+        // The (inactive) suffix is rendered conditionally in the view.
         if (viewModel.AssignedToTeamId.HasValue &&
-            viewModel.TeamOptions.All(t => t.Id != viewModel.AssignedToTeamId.Value))
+            teamOptions.All(t => t.Id != viewModel.AssignedToTeamId.Value)
+            && teamsById.TryGetValue(viewModel.AssignedToTeamId.Value, out var inactiveTeam))
         {
-            var inactiveTeam = await _teamService.GetTeamByIdAsync(viewModel.AssignedToTeamId.Value);
-            if (inactiveTeam is not null)
-            {
-                viewModel.TeamOptions.Insert(0,
-                    new TeamOptionDto(inactiveTeam.Id, $"{inactiveTeam.Name} (inactive)"));
-            }
+            teamOptions.Insert(0, inactiveTeam);
         }
+
+        viewModel.TeamOptions = teamOptions;
 
         viewModel.AssigneeOptions = await GetActiveAssigneeOptionsAsync();
 

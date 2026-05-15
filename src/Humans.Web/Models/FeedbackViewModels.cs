@@ -37,7 +37,7 @@ public class FeedbackPageViewModel
     public Guid? SelectedReportId { get; set; }
     public Guid CurrentUserId { get; set; }
     public List<AssigneeOption> AssigneeOptions { get; set; } = new();
-    public List<TeamOptionDto> TeamOptions { get; set; } = new();
+    public IReadOnlyList<TeamInfo> TeamOptions { get; set; } = [];
 }
 
 public class AssigneeOption
@@ -96,7 +96,7 @@ public class FeedbackDetailViewModel
     public Guid? AssignedToTeamId { get; set; }
     public string? AssignedToTeamName { get; set; }
     public List<AssigneeOption> AssigneeOptions { get; set; } = new();
-    public List<TeamOptionDto> TeamOptions { get; set; } = new();
+    public IReadOnlyList<TeamInfo> TeamOptions { get; set; } = [];
     public List<FeedbackMessageViewModel> Messages { get; set; } = new();
 }
 

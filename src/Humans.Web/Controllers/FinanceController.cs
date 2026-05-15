@@ -93,7 +93,10 @@ public class FinanceController : HumansControllerBase
             var category = await _budgetService.GetCategoryByIdAsync(id);
             if (category is null) return NotFound();
 
-            ViewBag.Teams = await _teamService.GetActiveTeamOptionsAsync();
+            ViewBag.Teams = (await _teamService.GetTeamsAsync()).Values
+                .Where(t => t.IsActive)
+                .OrderBy(t => t.Name, StringComparer.Ordinal)
+                .ToList();
 
             return View(category);
         }

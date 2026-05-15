@@ -229,20 +229,6 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
             .ToList();
     }
 
-    public async Task<IReadOnlyList<TeamOptionDto>> GetActiveTeamOptionsAsync(
-        CancellationToken cancellationToken = default)
-    {
-        var teams = await _repo.GetActiveOptionsAsync(cancellationToken);
-        return teams.ToList();
-    }
-
-    public async Task<IReadOnlyList<TeamOptionDto>> GetBudgetableTeamsAsync(
-        CancellationToken cancellationToken = default)
-    {
-        var teams = await _repo.GetBudgetableOptionsAsync(cancellationToken);
-        return teams.ToList();
-    }
-
     public async Task<IReadOnlyCollection<Guid>> GetEffectiveBudgetCoordinatorTeamIdsAsync(
         Guid userId, CancellationToken cancellationToken = default)
     {

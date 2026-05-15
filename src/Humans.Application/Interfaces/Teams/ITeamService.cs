@@ -105,8 +105,6 @@ public record TeamRosterSlotSummary(
     Guid? AssignedUserId,
     string? AssignedUserName);
 
-public record TeamOptionDto(Guid Id, string Name);
-
 public record AdminTeamSummary(
     Guid Id,
     string Name,
@@ -186,6 +184,7 @@ public record TeamActiveMemberSnapshot(
 /// <remarks>
 /// Surface-budget recent history (newest first):
 /// <list type="bullet">
+///   <item>68→66 — drained GetActiveTeamOptionsAsync + GetBudgetableTeamsAsync onto TeamInfo cache; killed TeamOptionDto record (parent: peterdrier/Humans#555 UserInfo migration).</item>
 ///   <item>71→70 — PR #478 (issue #615): removed GetActiveChildMembersByParentIdsAsync; the child-team rollup is now inside GetExpectedAsync via GetActiveMembersForTeamsAsync.</item>
 ///   <item>2026-05-11 — InterfaceMethodBudgetTests retired; budget migrated to [SurfaceBudget(71)] (issue nobodies-collective/Humans#700).</item>
 ///   <item>73→71 — tech-debt query consolidation: removed GetTeamMembersAsync and GetActiveMemberUserIdsAsync; callers project members/user IDs from GetTeamAsync/GetTeamsAsync read models.</item>
@@ -195,7 +194,7 @@ public record TeamActiveMemberSnapshot(
 ///   <item>71→70 — account-merge fold redesign: removed ReassignToUserAsync from ITeamService (moved to IUserMerge.ReassignAsync, implemented by TeamService and dispatched by AccountMergeService via IEnumerable&lt;IUserMerge&gt; fan-out).</item>
 /// </list>
 /// </remarks>
-[SurfaceBudget(68)]
+[SurfaceBudget(66)]
 public interface ITeamService : IApplicationService
 {
     /// <summary>
@@ -442,11 +441,6 @@ public interface ITeamService : IApplicationService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Gets active teams as lightweight Id+Name options for dropdown lists.
-    /// </summary>
-    Task<IReadOnlyList<TeamOptionDto>> GetActiveTeamOptionsAsync(CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Sets <c>Team.GoogleGroupPrefix</c> to <paramref name="prefix"/> (may be
     /// null to clear) and persists the change. Returns the previous prefix so
     /// callers can revert on downstream-service failure. Returns (<c>false</c>,
@@ -677,15 +671,6 @@ public interface ITeamService : IApplicationService
     // ==========================================================================
     // Budget Integration
     // ==========================================================================
-
-    /// <summary>
-    /// Returns active teams flagged with <c>HasBudget</c>, ordered by name.
-    /// Used by the Budget section to seed department categories when a budget
-    /// year is created or synced. Returns just <see cref="TeamOptionDto"/> so
-    /// the Budget section does not navigate the Teams graph.
-    /// </summary>
-    Task<IReadOnlyList<TeamOptionDto>> GetBudgetableTeamsAsync(
-        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Returns the department-scoped team IDs a user can coordinate for budget

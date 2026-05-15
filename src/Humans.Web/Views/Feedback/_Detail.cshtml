@@ -84,13 +84,14 @@
                         <option value="">@Localizer["Feedback_NoTeam"]</option>
                         @foreach (var t in Model.TeamOptions)
                         {
+                            var label = t.IsActive ? t.Name : $"{t.Name} (inactive)";
                             if (Model.AssignedToTeamId == t.Id)
                             {
-                                <option value="@t.Id" selected>@t.Name</option>
+                                <option value="@t.Id" selected>@label</option>
                             }
                             else
                             {
-                                <option value="@t.Id">@t.Name</option>
+                                <option value="@t.Id">@label</option>
                             }
                         }
                     </select>

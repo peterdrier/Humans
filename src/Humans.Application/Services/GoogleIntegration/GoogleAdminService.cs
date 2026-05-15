@@ -690,7 +690,9 @@ public sealed class GoogleAdminService : IGoogleAdminService
     public async Task<IReadOnlyList<TeamSummary>> GetActiveTeamsAsync(
         CancellationToken ct = default)
     {
-        var options = await _teamService.GetActiveTeamOptionsAsync(ct);
+        var options = (await _teamService.GetTeamsAsync(ct)).Values
+            .Where(t => t.IsActive)
+            .OrderBy(t => t.Name, StringComparer.Ordinal);
         return options
             .Select(o => new TeamSummary(o.Id, o.Name))
             .ToList();

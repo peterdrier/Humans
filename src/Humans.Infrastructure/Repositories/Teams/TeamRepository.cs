@@ -96,26 +96,6 @@ public sealed class TeamRepository : ITeamRepository
             .ToListAsync(ct);
     }
 
-    public async Task<IReadOnlyList<TeamOptionDto>> GetActiveOptionsAsync(CancellationToken ct = default)
-    {
-        await using var db = await _factory.CreateDbContextAsync(ct);
-        return await db.Teams
-            .AsNoTracking()
-            .Where(t => t.IsActive)
-            .Select(t => new TeamOptionDto(t.Id, t.Name))
-            .ToListAsync(ct);
-    }
-
-    public async Task<IReadOnlyList<TeamOptionDto>> GetBudgetableOptionsAsync(CancellationToken ct = default)
-    {
-        await using var db = await _factory.CreateDbContextAsync(ct);
-        return await db.Teams
-            .AsNoTracking()
-            .Where(t => t.HasBudget && t.IsActive)
-            .Select(t => new TeamOptionDto(t.Id, t.Name))
-            .ToListAsync(ct);
-    }
-
     public async Task<IReadOnlyDictionary<Guid, string>> GetNamesByIdsAsync(
         IReadOnlyCollection<Guid> teamIds, CancellationToken ct = default)
     {

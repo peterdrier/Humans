@@ -82,15 +82,26 @@ public class CampaignServiceTests : IDisposable
             });
 
         _teamService
-            .GetActiveTeamOptionsAsync(Arg.Any<CancellationToken>())
+            .GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(async _ =>
             {
                 var list = await _dbContext.Teams
-                    .Where(t => t.IsActive)
-                    .OrderBy(t => t.Name)
-                    .Select(t => new TeamOptionDto(t.Id, t.Name))
+                    .Include(t => t.Members)
                     .ToListAsync();
-                return (IReadOnlyList<TeamOptionDto>)list;
+                var dict = list.ToDictionary(
+                    t => t.Id,
+                    t => new TeamInfo(
+                        t.Id, t.Name, t.Description, t.Slug,
+                        t.IsActive, t.IsSystemTeam, t.SystemTeamType, t.RequiresApproval,
+                        t.IsPublicPage, t.IsHidden, t.IsPromotedToDirectory,
+                        t.CreatedAt,
+                        t.Members
+                            .Where(m => m.LeftAt is null)
+                            .Select(m => new TeamMemberInfo(
+                                m.Id, m.UserId, string.Empty, null, null, m.Role, m.JoinedAt))
+                            .ToList(),
+                        t.ParentTeamId));
+                return (IReadOnlyDictionary<Guid, TeamInfo>)dict;
             });
 
         _userService

@@ -66,12 +66,6 @@ public interface ITeamRepository : IRepository
     /// </summary>
     Task<IReadOnlyList<Team>> GetAllWithMembersAsync(CancellationToken ct = default);
 
-    /// <summary>Active teams projected to id/name.</summary>
-    Task<IReadOnlyList<TeamOptionDto>> GetActiveOptionsAsync(CancellationToken ct = default);
-
-    /// <summary>Active teams with <c>HasBudget=true</c> projected to id/name.</summary>
-    Task<IReadOnlyList<TeamOptionDto>> GetBudgetableOptionsAsync(CancellationToken ct = default);
-
     /// <summary>
     /// Resolve a set of team ids to their display names, without any
     /// <c>IsActive</c> filter (historical references in GDPR exports etc).

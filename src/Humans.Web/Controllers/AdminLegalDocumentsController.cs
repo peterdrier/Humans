@@ -252,7 +252,9 @@ public class AdminLegalDocumentsController : HumansControllerBase
 
     private async Task<List<TeamSelectItem>> GetTeamSelectItems()
     {
-        var teams = await _teamService.GetActiveTeamOptionsAsync();
+        var teams = (await _teamService.GetTeamsAsync()).Values
+            .Where(t => t.IsActive)
+            .OrderBy(t => t.Name, StringComparer.Ordinal);
         return teams.Select(t => new TeamSelectItem { Id = t.Id, Name = t.Name }).ToList();
     }
 
