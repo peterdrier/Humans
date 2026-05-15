@@ -177,7 +177,7 @@ public sealed class TicketTransferService : ITicketTransferService
         // path can't bypass the security gate. Wording matches the not-found case
         // above so a tampered POST learns nothing about why the recipient was rejected.
         if (receiverProfile is not null
-            && (receiverProfile.State == ProfileState.Suspended || !receiverProfile.IsApproved))
+            && (receiverInfo.IsSuspended || !receiverProfile.IsApproved))
             throw new InvalidOperationException("Receiver user not found.");
         // No double-submits: refuse if there's already a pending transfer from this
         // sender for this attendee. ToDictionary in GetMyAttendeesAsync would crash
@@ -654,7 +654,7 @@ public sealed class TicketTransferService : ITicketTransferService
         // (per docs/features/tickets/ticket-transfer.md — Receiver Lookup Contract). Gates
         // both lookup paths (exact-email + burner-name) and the detail-fetch used by
         // the confirm-card render.
-        if (profile is not null && (profile.State == ProfileState.Suspended || !profile.IsApproved))
+        if (profile is not null && (info.IsSuspended || !profile.IsApproved))
             return null;
         var primary = await _userEmailService.GetPrimaryEmailAsync(userId, ct);
         return new ReceiverLookupResultDto(

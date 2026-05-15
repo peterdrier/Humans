@@ -1802,7 +1802,7 @@ public class ProfileController : HumansControllerBase
         var profileInfo = await _userService.GetUserInfoAsync(id, ct);
         var profile = profileInfo?.Profile;
 
-        if (profile is null || profile.State == ProfileState.Suspended)
+        if (profile is null || profileInfo!.IsSuspended)
         {
             return NotFound();
         }

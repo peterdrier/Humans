@@ -330,6 +330,16 @@ public sealed record UserInfo(
         Profile is not null && Profile.RejectedAt is null;
 
     /// <summary>
+    /// True when the user has a profile in <see cref="ProfileState.Suspended"/>.
+    /// Canonical "is this user suspended" predicate — read this instead of paving
+    /// <c>Profile.State == ProfileState.Suspended</c> at call sites (or worse,
+    /// the legacy <c>Profile.IsSuspended</c> bool — see
+    /// <c>memory/code/no-issuspended.md</c>).
+    /// </summary>
+    public bool IsSuspended =>
+        Profile?.State == ProfileState.Suspended;
+
+    /// <summary>
     /// True when the user has a profile and BurnerName + FirstName + LastName
     /// are all non-blank. The "has a name" predicate — Consent Coordinator
     /// review cannot proceed without it. Reads field values directly, ignores
