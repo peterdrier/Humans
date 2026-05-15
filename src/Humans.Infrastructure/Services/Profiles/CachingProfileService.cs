@@ -336,15 +336,6 @@ public sealed class CachingProfileService : TrackedCache<Guid, FullProfile>, IPr
         return await inner.GetProfilePictureMigrationSnapshotAsync(ct);
     }
 
-    public Task<IReadOnlyList<Guid>> GetActiveApprovedUserIdsAsync(CancellationToken ct = default)
-    {
-        var ids = UserSnapshot()
-            .Where(u => u.Profile?.IsApproved == true && u.Profile.State != ProfileState.Suspended)
-            .Select(u => u.Id)
-            .ToList();
-        return Task.FromResult<IReadOnlyList<Guid>>(ids);
-    }
-
     /// <summary>
     /// Returns the cached <see cref="UserInfo"/> snapshot via the singleton
     /// <see cref="IUserService"/>. Resolved per-call via the scope factory because

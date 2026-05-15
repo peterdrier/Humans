@@ -360,9 +360,11 @@ public class SystemTeamSyncJob : ISystemTeamSync
             .GetActiveApprovedTierUserIdsAsync(tier, today, cancellationToken);
 
         // Filter by profile status to match per-user sync behavior.
-        var allApprovedIds = await ProfileService.GetActiveApprovedUserIdsAsync(cancellationToken);
-        var approvedSet = allApprovedIds.ToHashSet();
-        var userIds = applicationUserIds.Where(approvedSet.Contains).ToList();
+        var activeSet = _userService.GetAllUserInfos()
+            .Where(u => u.IsActive)
+            .Select(u => u.Id)
+            .ToHashSet();
+        var userIds = applicationUserIds.Where(activeSet.Contains).ToList();
 
         var eligibleSet = await MembershipCalculator.GetUsersWithAllRequiredConsentsForTeamAsync(
             userIds, teamId, cancellationToken);

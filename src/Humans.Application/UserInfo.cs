@@ -132,15 +132,6 @@ public sealed record ProfileInfo(
         !string.IsNullOrWhiteSpace(BurnerName) ? BurnerName :
         !string.IsNullOrWhiteSpace(FirstName) ? FirstName : "there";
 
-    /// <summary>
-    /// Mirror of <see cref="Domain.Entities.Profile.HasRequiredIdentityFields"/> —
-    /// internal building block for <see cref="UserInfo.IsActive"/>. BurnerName +
-    /// FirstName + LastName all non-blank.
-    /// </summary>
-    internal bool HasRequiredIdentityFields =>
-        !string.IsNullOrWhiteSpace(BurnerName)
-        && !string.IsNullOrWhiteSpace(FirstName)
-        && !string.IsNullOrWhiteSpace(LastName);
 }
 
 
@@ -331,27 +322,21 @@ public sealed record UserInfo(
         Profile is null || Profile.State is null or ProfileState.Stub;
 
     /// <summary>
-    /// True when this user has an Active profile, treating a legacy
-    /// <c>null</c>-State row with complete identity fields as Active-equivalent
-    /// (the §15i rollout semantic — legacy rows whose State has never been
-    /// backfilled are presumed Active iff BurnerName/FirstName/LastName are
-    /// populated). Charitable / inclusion predicate: review queues and
-    /// member-set surfaces include null-State legacy rows whose identity is
-    /// complete; <see cref="IsStub"/> excludes them.
+    /// A regular user of the site: has a profile and hasn't been rejected
+    /// (failed consent check). Does NOT require <see cref="ProfileInfo.IsApproved"/>
+    /// — Consent Coordinator approval is a separate gate on top of this.
     /// </summary>
     public bool IsActive =>
-        Profile is { State: ProfileState.Active }
-        || (Profile is { State: null } p && p.HasRequiredIdentityFields);
+        Profile is not null && Profile.RejectedAt is null;
 
     /// <summary>
     /// True when this user belongs in the Consent Coordinator's review queue —
-    /// an active profile (treating legacy null-State + complete-identity as
-    /// Active-equivalent) that has not been approved and has not been
-    /// rejected. Single predicate shared by review-queue and nav-badge call
+    /// an active user (has a profile, not rejected) who hasn't yet been
+    /// approved. Single predicate shared by review-queue and nav-badge call
     /// sites so the queue list and its count cannot drift.
     /// </summary>
     public bool NeedsConsentReview =>
-        IsActive && Profile is { IsApproved: false, RejectedAt: null };
+        IsActive && !Profile!.IsApproved;
 
     /// <summary>
     /// Builds a <see cref="UserInfo"/> from the 8 contributing tables. Each

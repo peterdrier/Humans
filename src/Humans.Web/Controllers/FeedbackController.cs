@@ -50,11 +50,14 @@ public class FeedbackController : HumansControllerBase
     /// person-search consolidation moved that surface to
     /// <c>SearchProfilesAsync</c>, which is for text search, not population
     /// queries. Population goes through the existing
-    /// <c>GetActiveApprovedUserIdsAsync</c> + <c>GetByIdsAsync</c> primitives.
+    /// the UserInfo snapshot + <c>IUserService.GetByIdsAsync</c> primitives.
     /// </summary>
     private async Task<List<AssigneeOption>> GetActiveAssigneeOptionsAsync(CancellationToken ct = default)
     {
-        var activeIds = await _profileService.GetActiveApprovedUserIdsAsync(ct);
+        var activeIds = _userService.GetAllUserInfos()
+            .Where(u => u.IsActive)
+            .Select(u => u.Id)
+            .ToList();
         if (activeIds.Count == 0) return new List<AssigneeOption>();
 
         var users = await _userService.GetByIdsAsync(activeIds, ct);

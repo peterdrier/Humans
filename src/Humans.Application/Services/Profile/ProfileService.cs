@@ -435,12 +435,6 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         return profile.Id;
     }
 
-    public Task<IReadOnlyList<Guid>> GetActiveApprovedUserIdsAsync(CancellationToken ct = default) =>
-        throw new NotSupportedException(
-            "GetActiveApprovedUserIdsAsync is only meaningful through CachingProfileService — " +
-            "scans the cached UserInfo snapshot. If this is called on the inner ProfileService " +
-            "it indicates a DI registration mistake.");
-
     public Task<IReadOnlyList<(Guid ProfileId, Guid UserId, long UpdatedAtTicks)>>
         GetCustomPictureInfoByUserIdsAsync(IEnumerable<Guid> userIds, CancellationToken ct = default) =>
         _profileRepository.GetCustomPictureInfoByUserIdsAsync(userIds, ct);

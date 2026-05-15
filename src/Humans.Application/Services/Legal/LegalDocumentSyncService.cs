@@ -6,6 +6,7 @@ using Humans.Domain.Enums;
 using Humans.Application.Interfaces.Legal;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Profiles;
+using Humans.Application.Interfaces.Users;
 
 namespace Humans.Application.Services.Legal;
 
@@ -22,7 +23,7 @@ public sealed class LegalDocumentSyncService : ILegalDocumentSyncService
     private readonly ILegalDocumentRepository _repository;
     private readonly IGitHubLegalDocumentConnector _gitHub;
     private readonly INotificationService _notificationService;
-    private readonly IProfileService _profileService;
+    private readonly IUserService _userService;
     private readonly IClock _clock;
     private readonly ILogger<LegalDocumentSyncService> _logger;
 
@@ -30,14 +31,14 @@ public sealed class LegalDocumentSyncService : ILegalDocumentSyncService
         ILegalDocumentRepository repository,
         IGitHubLegalDocumentConnector gitHub,
         INotificationService notificationService,
-        IProfileService profileService,
+        IUserService userService,
         IClock clock,
         ILogger<LegalDocumentSyncService> logger)
     {
         _repository = repository;
         _gitHub = gitHub;
         _notificationService = notificationService;
-        _profileService = profileService;
+        _userService = userService;
         _clock = clock;
         _logger = logger;
     }
@@ -319,7 +320,10 @@ public sealed class LegalDocumentSyncService : ILegalDocumentSyncService
     {
         try
         {
-            var approvedUserIds = await _profileService.GetActiveApprovedUserIdsAsync(cancellationToken);
+            var approvedUserIds = _userService.GetAllUserInfos()
+                .Where(u => u.IsActive)
+                .Select(u => u.Id)
+                .ToList();
             if (approvedUserIds.Count > 0)
             {
                 await _notificationService.SendAsync(
