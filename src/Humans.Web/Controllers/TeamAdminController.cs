@@ -136,11 +136,10 @@ public class TeamAdminController : HumansTeamControllerBase
             return teamError;
         }
 
-        var teamInfo = await _teamService.GetTeamAsync(team.Id);
-        var allMembers = teamInfo?.Members
+        var allMembers = team.Members
             .OrderBy(m => m.Role)
             .ThenBy(m => m.DisplayName, StringComparer.OrdinalIgnoreCase)
-            .ToList() ?? [];
+            .ToList();
         var totalCount = allMembers.Count;
 
         var pagedMembers = allMembers
@@ -192,11 +191,12 @@ public class TeamAdminController : HumansTeamControllerBase
         var parentDepartmentResources = new List<GoogleResourceSnapshot>();
         string? parentDepartmentName = null;
         string? parentDepartmentSlug = null;
-        if (team.ParentTeam is not null)
+        if (team.ParentTeamId is { } parentTeamId &&
+            await _teamService.GetTeamAsync(parentTeamId) is { } parentTeam)
         {
-            parentDepartmentName = team.ParentTeam.Name;
-            parentDepartmentSlug = team.ParentTeam.CustomSlug ?? team.ParentTeam.Slug;
-            var allParentResources = await _teamResourceService.GetTeamResourcesAsync(team.ParentTeam.Id);
+            parentDepartmentName = parentTeam.Name;
+            parentDepartmentSlug = parentTeam.CustomSlug ?? parentTeam.Slug;
+            var allParentResources = await _teamResourceService.GetTeamResourcesAsync(parentTeam.Id);
             parentDepartmentResources = allParentResources.Where(r => r.IsActive).OrderBy(r => r.ResourceType).ThenBy(r => r.Name, StringComparer.Ordinal).ToList();
         }
 
@@ -957,10 +957,14 @@ public class TeamAdminController : HumansTeamControllerBase
         if (teamError is not null)
             return teamError;
 
-        var canBePublic = !team.IsSystemTeam && !team.ParentTeamId.HasValue;
+        var teamEntity = await _teamService.GetTeamByIdAsync(team.Id);
+        if (teamEntity is null)
+            return NotFound();
+
+        var canBePublic = !teamEntity.IsSystemTeam && !teamEntity.ParentTeamId.HasValue;
 
         // Ensure we always show 3 CTA slots
-        var ctas = (team.CallsToAction ?? [])
+        var ctas = (teamEntity.CallsToAction ?? [])
             .Select(c => new CallToActionViewModel { Text = c.Text, Url = c.Url, Style = c.Style })
             .ToList();
         while (ctas.Count < 3)
@@ -968,13 +972,13 @@ public class TeamAdminController : HumansTeamControllerBase
 
         var viewModel = new EditTeamPageViewModel
         {
-            TeamId = team.Id,
-            Slug = team.Slug,
-            TeamName = team.DisplayName,
-            IsPublicPage = team.IsPublicPage,
-            ShowCoordinatorsOnPublicPage = team.ShowCoordinatorsOnPublicPage,
+            TeamId = teamEntity.Id,
+            Slug = teamEntity.Slug,
+            TeamName = teamEntity.DisplayName,
+            IsPublicPage = teamEntity.IsPublicPage,
+            ShowCoordinatorsOnPublicPage = teamEntity.ShowCoordinatorsOnPublicPage,
             CanBePublic = canBePublic,
-            PageContent = team.PageContent,
+            PageContent = teamEntity.PageContent,
             CallsToAction = ctas
         };
 
@@ -991,7 +995,10 @@ public class TeamAdminController : HumansTeamControllerBase
 
         if (!ModelState.IsValid)
         {
-            PopulateEditTeamPageModel(model, team);
+            var teamEntity = await _teamService.GetTeamByIdAsync(team.Id);
+            if (teamEntity is null)
+                return NotFound();
+            PopulateEditTeamPageModel(model, teamEntity);
             return View(model);
         }
 
@@ -1012,7 +1019,10 @@ public class TeamAdminController : HumansTeamControllerBase
         }
 
         ModelState.AddModelError("", result.ErrorMessage ?? "Failed to update team page.");
-        PopulateEditTeamPageModel(model, team);
+        var teamEntityAfterFailure = await _teamService.GetTeamByIdAsync(team.Id);
+        if (teamEntityAfterFailure is null)
+            return NotFound();
+        PopulateEditTeamPageModel(model, teamEntityAfterFailure);
         return View(model);
     }
 
@@ -1030,8 +1040,7 @@ public class TeamAdminController : HumansTeamControllerBase
             return Json(Array.Empty<RoleAssignmentSearchResult>());
         }
 
-        var teamInfo = await _teamService.GetTeamAsync(team.Id);
-        var teamMembers = teamInfo?.Members ?? [];
+        var teamMembers = team.Members;
         var teamMemberUserIds = teamMembers
             .Select(m => m.UserId)
             .ToHashSet();

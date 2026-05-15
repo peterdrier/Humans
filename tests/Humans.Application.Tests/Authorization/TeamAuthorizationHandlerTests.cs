@@ -2,9 +2,10 @@ using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Teams;
 using Humans.Domain.Constants;
-using Humans.Domain.Entities;
+using Humans.Domain.Enums;
 using Humans.Web.Authorization.Requirements;
 using Microsoft.AspNetCore.Authorization;
+using NodaTime;
 using NSubstitute;
 using Xunit;
 
@@ -56,7 +57,7 @@ public sealed class TeamAuthorizationHandlerTests
         result.Should().Be(expected);
     }
 
-    private async Task<bool> EvaluateAsync(ClaimsPrincipal user, Team resource)
+    private async Task<bool> EvaluateAsync(ClaimsPrincipal user, TeamInfo resource)
     {
         var requirement = TeamOperationRequirement.ManageCoordinators;
         var context = new AuthorizationHandlerContext([requirement], user, resource);
@@ -65,16 +66,26 @@ public sealed class TeamAuthorizationHandlerTests
         return context.HasSucceeded;
     }
 
-    private static Team CreateTeam(string kind) =>
-        new()
-        {
-            Id = kind switch
+    private static TeamInfo CreateTeam(string kind) =>
+        new(
+            Id: kind switch
             {
                 "coordinator" => CoordinatorTeamId,
                 "other" => OtherTeamId,
                 _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
-            }
-        };
+            },
+            Name: kind,
+            Description: null,
+            Slug: kind,
+            IsActive: true,
+            IsSystemTeam: false,
+            SystemTeamType: SystemTeamType.None,
+            RequiresApproval: false,
+            IsPublicPage: false,
+            IsHidden: false,
+            IsPromotedToDirectory: false,
+            CreatedAt: Instant.MinValue,
+            Members: []);
 
     private static ClaimsPrincipal CreateUser(string kind, Guid regularUserId) =>
         kind switch

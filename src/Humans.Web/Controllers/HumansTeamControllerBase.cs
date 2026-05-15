@@ -23,7 +23,7 @@ public abstract class HumansTeamControllerBase : HumansControllerBase
         _authorizationService = authorizationService;
     }
 
-    protected async Task<(IActionResult? ErrorResult, User User, Team Team)> ResolveTeamManagementAsync(string slug)
+    protected async Task<(IActionResult? ErrorResult, User User, TeamInfo Team)> ResolveTeamManagementAsync(string slug)
     {
         return await ResolveTeamAccessAsync(
             slug,
@@ -36,9 +36,9 @@ public abstract class HumansTeamControllerBase : HumansControllerBase
             });
     }
 
-    protected Task<(IActionResult? ErrorResult, User User, Team Team)> ResolveDepartmentAccessAsync(
+    protected Task<(IActionResult? ErrorResult, User User, TeamInfo Team)> ResolveDepartmentAccessAsync(
         string slug,
-        Func<Team, User, Task<bool>> canAccessAsync)
+        Func<TeamInfo, User, Task<bool>> canAccessAsync)
     {
         return ResolveTeamAccessAsync(
             slug,
@@ -46,10 +46,10 @@ public abstract class HumansTeamControllerBase : HumansControllerBase
             canAccessAsync);
     }
 
-    private async Task<(IActionResult? ErrorResult, User User, Team Team)> ResolveTeamAccessAsync(
+    private async Task<(IActionResult? ErrorResult, User User, TeamInfo Team)> ResolveTeamAccessAsync(
         string slug,
-        Func<Team, bool> teamFilter,
-        Func<Team, User, Task<bool>> canAccessAsync)
+        Func<TeamInfo, bool> teamFilter,
+        Func<TeamInfo, User, Task<bool>> canAccessAsync)
     {
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null)
@@ -57,7 +57,11 @@ public abstract class HumansTeamControllerBase : HumansControllerBase
             return (errorResult, null!, null!);
         }
 
-        var team = await _teamService.GetTeamBySlugAsync(slug);
+        var normalizedSlug = slug.ToLowerInvariant();
+        var teamsById = await _teamService.GetTeamsAsync();
+        var team = teamsById.Values.FirstOrDefault(
+            t => string.Equals(t.Slug, normalizedSlug, StringComparison.Ordinal)
+                 || string.Equals(t.CustomSlug, normalizedSlug, StringComparison.Ordinal));
         if (team is null || !teamFilter(team))
         {
             return (NotFound(), user, null!);

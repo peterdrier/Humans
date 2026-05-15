@@ -1,6 +1,5 @@
 using System.Security.Claims;
 using Humans.Application.Interfaces.Teams;
-using Humans.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 
 namespace Humans.Web.Authorization.Requirements;
@@ -11,7 +10,7 @@ namespace Humans.Web.Authorization.Requirements;
 /// - Team coordinator (or parent department coordinator): allow only their team
 /// - Everyone else: deny
 /// </summary>
-public class TeamAuthorizationHandler : AuthorizationHandler<TeamOperationRequirement, Team>
+public class TeamAuthorizationHandler : AuthorizationHandler<TeamOperationRequirement, TeamInfo>
 {
     private readonly ITeamService _teamService;
 
@@ -23,7 +22,7 @@ public class TeamAuthorizationHandler : AuthorizationHandler<TeamOperationRequir
     protected override async Task HandleRequirementAsync(
         AuthorizationHandlerContext context,
         TeamOperationRequirement requirement,
-        Team resource)
+        TeamInfo resource)
     {
         if (RoleChecks.IsTeamsAdminBoardOrAdmin(context.User))
         {
