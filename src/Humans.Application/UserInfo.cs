@@ -330,13 +330,28 @@ public sealed record UserInfo(
         Profile is not null && Profile.RejectedAt is null;
 
     /// <summary>
+    /// True when the user has a profile and BurnerName + FirstName + LastName
+    /// are all non-blank. The "has a name" predicate — Consent Coordinator
+    /// review cannot proceed without it. Reads field values directly, ignores
+    /// <see cref="ProfileInfo.State"/> so legacy null-State rows are evaluated
+    /// the same way Active rows are.
+    /// </summary>
+    public bool HasRequiredIdentityFields =>
+        Profile is not null
+        && !string.IsNullOrWhiteSpace(Profile.BurnerName)
+        && !string.IsNullOrWhiteSpace(Profile.FirstName)
+        && !string.IsNullOrWhiteSpace(Profile.LastName);
+
+    /// <summary>
     /// True when this user belongs in the Consent Coordinator's review queue —
-    /// an active user (has a profile, not rejected) who hasn't yet been
-    /// approved. Single predicate shared by review-queue and nav-badge call
-    /// sites so the queue list and its count cannot drift.
+    /// active (has profile, not rejected), has a legal name, not yet approved.
+    /// CC review cannot happen until the user fills in their name, so
+    /// <see cref="HasRequiredIdentityFields"/> gates queue inclusion. Single
+    /// predicate shared by review-queue and nav-badge call sites so the queue
+    /// list and its count cannot drift.
     /// </summary>
     public bool NeedsConsentReview =>
-        IsActive && !Profile!.IsApproved;
+        IsActive && HasRequiredIdentityFields && !Profile!.IsApproved;
 
     /// <summary>
     /// Builds a <see cref="UserInfo"/> from the 8 contributing tables. Each
