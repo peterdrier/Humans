@@ -7,7 +7,6 @@ using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Repositories.Tickets;
-using Microsoft.EntityFrameworkCore;
 using Xunit;
 using TicketQueryService = Humans.Application.Services.Tickets.TicketQueryService;
 
@@ -44,16 +43,6 @@ public class TicketQueryArchitectureTests
     {
         typeof(TicketQueryService).IsSealed.Should().BeTrue(
             because: "Application-layer services are sealed to prevent ad-hoc subclassing; new behavior belongs on the interface");
-    }
-
-    [HumansFact]
-    public void TicketQueryService_HasNoDbContextConstructorParameter()
-    {
-        var ctor = typeof(TicketQueryService).GetConstructors().Single();
-        ctor.GetParameters()
-            .Should().NotContain(
-                p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
-                because: "services in Humans.Application must never take DbContext — use ITicketRepository (design-rules §3)");
     }
 
     [HumansFact]

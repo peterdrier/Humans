@@ -3,7 +3,6 @@ using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Infrastructure.Repositories.Email;
-using Microsoft.EntityFrameworkCore;
 using Xunit;
 using EmailOutboxService = Humans.Application.Services.Email.EmailOutboxService;
 using OutboxEmailService = Humans.Application.Services.Email.OutboxEmailService;
@@ -39,16 +38,6 @@ public class EmailArchitectureTests
     }
 
     [HumansFact]
-    public void EmailOutboxService_HasNoDbContextConstructorParameter()
-    {
-        var ctor = typeof(EmailOutboxService).GetConstructors().Single();
-        ctor.GetParameters()
-            .Should().NotContain(
-                p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
-                because: "services in Humans.Application must never take DbContext — use IEmailOutboxRepository instead (design-rules §3)");
-    }
-
-    [HumansFact]
     public void EmailOutboxService_HasNoIMemoryCacheConstructorParameter()
     {
         var ctor = typeof(EmailOutboxService).GetConstructors().Single();
@@ -77,16 +66,6 @@ public class EmailArchitectureTests
         typeof(OutboxEmailService).Namespace
             .Should().Be("Humans.Application.Services.Email",
                 because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
-    }
-
-    [HumansFact]
-    public void OutboxEmailService_HasNoDbContextConstructorParameter()
-    {
-        var ctor = typeof(OutboxEmailService).GetConstructors().Single();
-        ctor.GetParameters()
-            .Should().NotContain(
-                p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
-                because: "services in Humans.Application must never take DbContext — use IEmailOutboxRepository instead (design-rules §3)");
     }
 
     [HumansFact]

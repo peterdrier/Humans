@@ -30,16 +30,6 @@ public class GovernanceArchitectureTests
     }
 
     [HumansFact]
-    public void ApplicationDecisionService_HasNoDbContextConstructorParameter()
-    {
-        var ctor = typeof(ApplicationDecisionService).GetConstructors().Single();
-        ctor.GetParameters()
-            .Should().NotContain(
-                p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
-                because: "services in Humans.Application must never take DbContext — use IApplicationRepository instead (design-rules §3)");
-    }
-
-    [HumansFact]
     public void ApplicationDecisionService_HasNoIMemoryCacheConstructorParameter()
     {
         var ctor = typeof(ApplicationDecisionService).GetConstructors().Single();

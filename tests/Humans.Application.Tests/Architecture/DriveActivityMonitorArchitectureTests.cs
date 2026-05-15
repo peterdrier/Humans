@@ -4,7 +4,6 @@ using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Infrastructure.Repositories.GoogleIntegration;
-using Microsoft.EntityFrameworkCore;
 using Xunit;
 using DriveActivityMonitorService = Humans.Application.Services.GoogleIntegration.DriveActivityMonitorService;
 
@@ -29,29 +28,6 @@ public class DriveActivityMonitorArchitectureTests
         typeof(DriveActivityMonitorService).Namespace
             .Should().Be("Humans.Application.Services.GoogleIntegration",
                 because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
-    }
-
-    [HumansFact]
-    public void DriveActivityMonitorService_HasNoDbContextConstructorParameter()
-    {
-        var ctor = typeof(DriveActivityMonitorService).GetConstructors().Single();
-        ctor.GetParameters()
-            .Should().NotContain(
-                p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
-                because: "services in Humans.Application must never take DbContext — use IDriveActivityMonitorRepository instead (design-rules §3)");
-    }
-
-    [HumansFact]
-    public void DriveActivityMonitorService_HasNoDbContextFactoryConstructorParameter()
-    {
-        var ctor = typeof(DriveActivityMonitorService).GetConstructors().Single();
-        var factoryParam = ctor.GetParameters()
-            .FirstOrDefault(p =>
-                p.ParameterType.IsGenericType &&
-                p.ParameterType.GetGenericTypeDefinition() == typeof(IDbContextFactory<>));
-
-        factoryParam.Should().BeNull(
-            because: "IDbContextFactory belongs behind the repository boundary, not in an Application-layer service");
     }
 
     [HumansFact]

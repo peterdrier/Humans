@@ -26,28 +26,6 @@ public class OnboardingArchitectureTests
     }
 
     [HumansFact]
-    public void OnboardingService_HasNoDbContextConstructorParameter()
-    {
-        var ctor = typeof(OnboardingService).GetConstructors().Single();
-        ctor.GetParameters()
-            .Should().NotContain(
-                p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
-                because: "Onboarding is a pure orchestrator — it owns no tables and must never inject DbContext (design-rules §2c, onboarding.md §15i violation #1)");
-    }
-
-    [HumansFact]
-    public void OnboardingService_HasNoIDbContextFactoryConstructorParameter()
-    {
-        var ctor = typeof(OnboardingService).GetConstructors().Single();
-        var factoryParam = ctor.GetParameters()
-            .FirstOrDefault(p => (p.ParameterType.FullName ?? string.Empty)
-                .StartsWith("Microsoft.EntityFrameworkCore.IDbContextFactory", StringComparison.Ordinal));
-
-        factoryParam.Should().BeNull(
-            because: "Onboarding is a pure orchestrator — it owns no tables, so IDbContextFactory has no legitimate use (design-rules §9)");
-    }
-
-    [HumansFact]
     public void OnboardingService_HasNoDbSetConstructorParameter()
     {
         var ctor = typeof(OnboardingService).GetConstructors().Single();

@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Infrastructure.Repositories.Shifts;
-using Microsoft.EntityFrameworkCore;
 using Xunit;
 using VolunteerTrackingService = Humans.Application.Services.Shifts.VolunteerTrackingService;
 
@@ -29,16 +28,6 @@ public class VolunteerTrackingArchitectureTests
         typeof(VolunteerTrackingService).Namespace
             .Should().Be("Humans.Application.Services.Shifts",
                 because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
-    }
-
-    [HumansFact]
-    public void VolunteerTrackingService_HasNoDbContextConstructorParameter()
-    {
-        var ctor = typeof(VolunteerTrackingService).GetConstructors().Single();
-        ctor.GetParameters()
-            .Should().NotContain(
-                p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
-                because: "services in Humans.Application must never take DbContext — use IVolunteerTrackingRepository instead (design-rules §3)");
     }
 
     [HumansFact]

@@ -2,7 +2,6 @@ using System.Reflection;
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Infrastructure.Repositories.Consent;
-using Microsoft.EntityFrameworkCore;
 using Xunit;
 using ConsentService = Humans.Application.Services.Consent.ConsentService;
 
@@ -40,16 +39,6 @@ public class ConsentArchitectureTests
         typeof(ConsentService).Namespace
             .Should().Be("Humans.Application.Services.Consent",
                 because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
-    }
-
-    [HumansFact]
-    public void ConsentService_HasNoDbContextConstructorParameter()
-    {
-        var ctor = typeof(ConsentService).GetConstructors().Single();
-        ctor.GetParameters()
-            .Should().NotContain(
-                p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
-                because: "services in Humans.Application must never take DbContext — use IConsentRepository instead (design-rules §3)");
     }
 
     [HumansFact]

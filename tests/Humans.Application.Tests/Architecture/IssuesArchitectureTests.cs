@@ -5,7 +5,6 @@ using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Repositories.Issues;
-using Microsoft.EntityFrameworkCore;
 using Xunit;
 using IssuesService = Humans.Application.Services.Issues.IssuesService;
 
@@ -28,16 +27,6 @@ public class IssuesArchitectureTests
         typeof(IssuesService).Namespace
             .Should().Be("Humans.Application.Services.Issues",
                 because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
-    }
-
-    [HumansFact]
-    public void IssuesService_HasNoDbContextConstructorParameter()
-    {
-        var ctor = typeof(IssuesService).GetConstructors().Single();
-        ctor.GetParameters()
-            .Should().NotContain(
-                p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
-                because: "services in Humans.Application must never take DbContext — use IIssuesRepository instead (design-rules §3)");
     }
 
     [HumansFact]

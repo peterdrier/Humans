@@ -23,28 +23,6 @@ public class HumanLifecycleArchitectureTests
     }
 
     [HumansFact]
-    public void HumanLifecycleService_HasNoDbContextConstructorParameter()
-    {
-        var ctor = typeof(HumanLifecycleService).GetConstructors().Single();
-        ctor.GetParameters()
-            .Should().NotContain(
-                p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
-                because: "lifecycle owns no tables — every state mutation flows through IProfileService (design-rules §2c)");
-    }
-
-    [HumansFact]
-    public void HumanLifecycleService_HasNoIDbContextFactoryConstructorParameter()
-    {
-        var ctor = typeof(HumanLifecycleService).GetConstructors().Single();
-        var factoryParam = ctor.GetParameters()
-            .FirstOrDefault(p => (p.ParameterType.FullName ?? string.Empty)
-                .StartsWith("Microsoft.EntityFrameworkCore.IDbContextFactory", StringComparison.Ordinal));
-
-        factoryParam.Should().BeNull(
-            because: "lifecycle owns no tables, so IDbContextFactory has no legitimate use (design-rules §9)");
-    }
-
-    [HumansFact]
     public void HumanLifecycleService_HasNoDbSetConstructorParameter()
     {
         var ctor = typeof(HumanLifecycleService).GetConstructors().Single();

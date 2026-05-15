@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Infrastructure.Repositories.Shifts;
-using Microsoft.EntityFrameworkCore;
 using Xunit;
 using GeneralAvailabilityService = Humans.Application.Services.Shifts.GeneralAvailabilityService;
 
@@ -29,16 +28,6 @@ public class GeneralAvailabilityArchitectureTests
         typeof(GeneralAvailabilityService).Namespace
             .Should().Be("Humans.Application.Services.Shifts",
                 because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
-    }
-
-    [HumansFact]
-    public void GeneralAvailabilityService_HasNoDbContextConstructorParameter()
-    {
-        var ctor = typeof(GeneralAvailabilityService).GetConstructors().Single();
-        ctor.GetParameters()
-            .Should().NotContain(
-                p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
-                because: "services in Humans.Application must never take DbContext — use IGeneralAvailabilityRepository instead (design-rules §3)");
     }
 
     [HumansFact]

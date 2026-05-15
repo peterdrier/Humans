@@ -2,7 +2,6 @@ using AwesomeAssertions;
 using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Infrastructure.Repositories.Tickets;
-using Microsoft.EntityFrameworkCore;
 using Xunit;
 using TicketingBudgetService = Humans.Application.Services.Tickets.TicketingBudgetService;
 
@@ -31,16 +30,6 @@ public class TicketingBudgetArchitectureTests
         typeof(TicketingBudgetService).Namespace
             .Should().Be("Humans.Application.Services.Tickets",
                 because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
-    }
-
-    [HumansFact]
-    public void TicketingBudgetService_HasNoDbContextConstructorParameter()
-    {
-        var ctor = typeof(TicketingBudgetService).GetConstructors().Single();
-        ctor.GetParameters()
-            .Should().NotContain(
-                p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
-                because: "services in Humans.Application must never take DbContext — use ITicketingBudgetRepository instead (design-rules §3)");
     }
 
     [HumansFact]

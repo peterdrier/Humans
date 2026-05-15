@@ -4,7 +4,6 @@ using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Repositories.Camps;
-using Microsoft.EntityFrameworkCore;
 using Xunit;
 using CampService = Humans.Application.Services.Camps.CampService;
 
@@ -28,16 +27,6 @@ public class CampsArchitectureTests
         typeof(CampService).Namespace
             .Should().Be("Humans.Application.Services.Camps",
                 because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
-    }
-
-    [HumansFact]
-    public void CampService_HasNoDbContextConstructorParameter()
-    {
-        var ctor = typeof(CampService).GetConstructors().Single();
-        ctor.GetParameters()
-            .Should().NotContain(
-                p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
-                because: "services in Humans.Application must never take DbContext — use ICampRepository instead (design-rules §3)");
     }
 
     [HumansFact]

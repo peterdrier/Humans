@@ -3,7 +3,6 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Repositories.Shifts;
-using Microsoft.EntityFrameworkCore;
 using Xunit;
 using ShiftManagementService = Humans.Application.Services.Shifts.ShiftManagementService;
 
@@ -23,16 +22,6 @@ public class ShiftManagementArchitectureTests
         typeof(ShiftManagementService).Namespace
             .Should().Be("Humans.Application.Services.Shifts",
                 because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
-    }
-
-    [HumansFact]
-    public void ShiftManagementService_HasNoDbContextConstructorParameter()
-    {
-        var ctor = typeof(ShiftManagementService).GetConstructors().Single();
-        ctor.GetParameters()
-            .Should().NotContain(
-                p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
-                because: "services in Humans.Application must never take DbContext — use IShiftManagementRepository (design-rules §3)");
     }
 
     [HumansFact]

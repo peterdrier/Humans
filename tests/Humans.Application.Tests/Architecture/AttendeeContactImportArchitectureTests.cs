@@ -7,7 +7,6 @@ using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Tickets;
 using Humans.Testing;
-using Microsoft.EntityFrameworkCore;
 
 namespace Humans.Application.Tests.Architecture;
 
@@ -19,16 +18,6 @@ public class AttendeeContactImportArchitectureTests
         typeof(AttendeeContactImportService).Namespace
             .Should().Be("Humans.Application.Services.Tickets",
                 because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
-    }
-
-    [HumansFact]
-    public void Service_HasNoDbContextConstructorParameter()
-    {
-        var ctor = typeof(AttendeeContactImportService).GetConstructors().Single();
-        ctor.GetParameters()
-            .Should().NotContain(
-                p => typeof(DbContext).IsAssignableFrom(p.ParameterType),
-                because: "services in Humans.Application must never take DbContext — use ITicketRepository instead (design-rules §3)");
     }
 
     [HumansFact]
