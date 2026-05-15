@@ -28,6 +28,7 @@ public class ShiftsController : HumansControllerBase
     private readonly IGeneralAvailabilityService _availabilityService;
     private readonly ITeamService _teamService;
     private readonly IAuditLogService _auditLogService;
+    private readonly IUserService _userService;
     private readonly IStringLocalizer<SharedResource> _localizer;
     private readonly IClock _clock;
     private readonly ShiftBrowsePageBuilder _browsePageBuilder;
@@ -39,6 +40,7 @@ public class ShiftsController : HumansControllerBase
         IGeneralAvailabilityService availabilityService,
         ITeamService teamService,
         IAuditLogService auditLogService,
+        IUserService userService,
         IStringLocalizer<SharedResource> localizer,
         UserManager<User> userManager,
         IClock clock,
@@ -51,6 +53,7 @@ public class ShiftsController : HumansControllerBase
         _availabilityService = availabilityService;
         _teamService = teamService;
         _auditLogService = auditLogService;
+        _userService = userService;
         _localizer = localizer;
         _clock = clock;
         _browsePageBuilder = browsePageBuilder;
@@ -295,13 +298,15 @@ public class ShiftsController : HumansControllerBase
 
     private async Task EnsureICalUrlAsync(MyShiftsViewModel model, User user)
     {
-        if (user.ICalToken is null)
+        var token = user.ICalToken;
+        if (token is null)
         {
-            user.ICalToken = Guid.NewGuid();
-            await UpdateCurrentUserAsync(user);
+            token = Guid.NewGuid();
+            await _userService.SetICalTokenAsync(user.Id, token.Value);
+            user.ICalToken = token;
         }
 
-        model.ICalUrl = $"{Request.Scheme}://{Request.Host}/ICal/{user.ICalToken}.ics";
+        model.ICalUrl = $"{Request.Scheme}://{Request.Host}/ICal/{token}.ics";
     }
 
     [HttpPost("Mine/Availability")]
@@ -332,8 +337,8 @@ public class ShiftsController : HumansControllerBase
             return currentUserNotFound;
         }
 
-        user.ICalToken = Guid.NewGuid();
-        await UpdateCurrentUserAsync(user);
+        var newToken = Guid.NewGuid();
+        await _userService.SetICalTokenAsync(user.Id, newToken);
 
         SetSuccess("iCal URL regenerated.");
         return RedirectToAction(nameof(Mine));
@@ -490,9 +495,7 @@ public class ShiftsController : HumansControllerBase
 
     [HttpGet("OrphanSignups")]
     [Authorize(Policy = PolicyNames.AdminOnly)]
-    public async Task<IActionResult> OrphanSignups(
-        [FromServices] IUserService userService,
-        CancellationToken ct)
+    public async Task<IActionResult> OrphanSignups(CancellationToken ct)
     {
         var allSignups = await _signupService.GetAllForOrphanScanAsync(ct);
         var auditedIds = await _auditLogService.GetEntityIdsForEntityTypeActionsAsync(
@@ -501,7 +504,7 @@ public class ShiftsController : HumansControllerBase
             ct);
 
         var orphans = allSignups.Where(s => !auditedIds.Contains(s.Id)).ToList();
-        var users = await ResolveOrphanActorsAsync(orphans, userService, ct);
+        var users = await ResolveOrphanActorsAsync(orphans, _userService, ct);
         var rows = BuildOrphanRows(orphans, users);
 
         return View(new OrphanSignupsViewModel(
