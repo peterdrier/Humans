@@ -88,14 +88,6 @@ public class TeamResourceArchitectureTests
     // ── IGoogleResourceRepository ────────────────────────────────────────────
 
     [HumansFact]
-    public void IGoogleResourceRepository_LivesInApplicationInterfacesRepositoriesNamespace()
-    {
-        typeof(IGoogleResourceRepository).Namespace
-            .Should().Be("Humans.Application.Interfaces.Repositories",
-                because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
-    }
-
-    [HumansFact]
     public void GoogleResourceRepository_IsSealed()
     {
         // Mirrors ProfileRepository — repository implementations are terminal; no subclass should

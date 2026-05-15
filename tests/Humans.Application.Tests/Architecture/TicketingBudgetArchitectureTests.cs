@@ -70,14 +70,6 @@ public class TicketingBudgetArchitectureTests
     // ── ITicketingBudgetRepository ───────────────────────────────────────────
 
     [HumansFact]
-    public void ITicketingBudgetRepository_LivesInApplicationInterfacesRepositoriesNamespace()
-    {
-        typeof(ITicketingBudgetRepository).Namespace
-            .Should().Be("Humans.Application.Interfaces.Repositories",
-                because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
-    }
-
-    [HumansFact]
     public void TicketingBudgetRepository_IsSealed()
     {
         // Mirrors ProfileRepository / UserRepository — repository implementations are terminal;

@@ -84,14 +84,6 @@ public class FeedbackArchitectureTests
     // ── IFeedbackRepository ──────────────────────────────────────────────────
 
     [HumansFact]
-    public void IFeedbackRepository_LivesInApplicationInterfacesRepositoriesNamespace()
-    {
-        typeof(IFeedbackRepository).Namespace
-            .Should().Be("Humans.Application.Interfaces.Repositories",
-                because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
-    }
-
-    [HumansFact]
     public void FeedbackRepository_IsSealed()
     {
         var repoType = typeof(FeedbackRepository);

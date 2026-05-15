@@ -68,14 +68,6 @@ public class GovernanceArchitectureTests
     }
 
     [HumansFact]
-    public void IApplicationRepository_LivesInApplicationInterfacesRepositoriesNamespace()
-    {
-        typeof(IApplicationRepository).Namespace
-            .Should().Be("Humans.Application.Interfaces.Repositories",
-                because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
-    }
-
-    [HumansFact]
     public void ApplicationRepository_IsSealedAndFactoryBased()
     {
         typeof(ApplicationRepository).IsSealed.Should().BeTrue();

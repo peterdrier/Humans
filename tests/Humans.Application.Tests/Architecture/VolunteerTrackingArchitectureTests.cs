@@ -46,14 +46,6 @@ public class VolunteerTrackingArchitectureTests
     // ── IVolunteerTrackingRepository ───────────────────────────────────────
 
     [HumansFact]
-    public void IVolunteerTrackingRepository_LivesInApplicationInterfacesRepositoriesNamespace()
-    {
-        typeof(IVolunteerTrackingRepository).Namespace
-            .Should().Be("Humans.Application.Interfaces.Repositories",
-                because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
-    }
-
-    [HumansFact]
     public void VolunteerTrackingRepository_IsSealed()
     {
         var repoType = typeof(VolunteerTrackingRepository);

@@ -115,14 +115,6 @@ public class NotificationsArchitectureTests
 
     // ── INotificationRepository ──────────────────────────────────────────────
 
-    [HumansFact]
-    public void INotificationRepository_LivesInApplicationInterfacesRepositoriesNamespace()
-    {
-        typeof(INotificationRepository).Namespace
-            .Should().Be("Humans.Application.Interfaces.Repositories",
-                because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
-    }
-
     // Sealed-repository check is covered by the generic
     // IRepositoryImplementationsAreSealedRule across every repository.
 

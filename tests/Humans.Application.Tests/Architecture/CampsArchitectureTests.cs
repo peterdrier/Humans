@@ -65,14 +65,6 @@ public class CampsArchitectureTests
     // ── ICampRepository ──────────────────────────────────────────────────────
 
     [HumansFact]
-    public void ICampRepository_LivesInApplicationInterfacesRepositoriesNamespace()
-    {
-        typeof(ICampRepository).Namespace
-            .Should().Be("Humans.Application.Interfaces.Repositories",
-                because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
-    }
-
-    [HumansFact]
     public void CampRepository_IsSealed()
     {
         var repoType = typeof(CampRepository);

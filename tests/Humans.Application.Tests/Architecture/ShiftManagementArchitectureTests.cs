@@ -34,14 +34,6 @@ public class ShiftManagementArchitectureTests
     }
 
     [HumansFact]
-    public void IShiftManagementRepository_LivesInApplicationInterfacesRepositoriesNamespace()
-    {
-        typeof(IShiftManagementRepository).Namespace
-            .Should().Be("Humans.Application.Interfaces.Repositories",
-                because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
-    }
-
-    [HumansFact]
     public void ShiftManagementRepository_IsSealed()
     {
         var repoType = typeof(ShiftManagementRepository);

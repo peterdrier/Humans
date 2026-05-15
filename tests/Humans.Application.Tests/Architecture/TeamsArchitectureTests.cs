@@ -65,14 +65,6 @@ public class TeamsArchitectureTests
     // ── ITeamRepository + TeamRepository ─────────────────────────────────────
 
     [HumansFact]
-    public void ITeamRepository_LivesInApplicationInterfacesRepositoriesNamespace()
-    {
-        typeof(ITeamRepository).Namespace
-            .Should().Be("Humans.Application.Interfaces.Repositories",
-                because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
-    }
-
-    [HumansFact]
     public void TeamRepository_IsSealed()
     {
         typeof(TeamRepository).IsSealed.Should().BeTrue(

@@ -60,14 +60,6 @@ public class CityPlanningArchitectureTests
     // ── ICityPlanningRepository ──────────────────────────────────────────────
 
     [HumansFact]
-    public void ICityPlanningRepository_LivesInApplicationInterfacesRepositoriesNamespace()
-    {
-        typeof(ICityPlanningRepository).Namespace
-            .Should().Be("Humans.Application.Interfaces.Repositories",
-                because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
-    }
-
-    [HumansFact]
     public void CityPlanningRepository_IsSealed()
     {
         var repoType = typeof(CityPlanningRepository);

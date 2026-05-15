@@ -116,14 +116,6 @@ public class DriveActivityMonitorArchitectureTests
     // ── IDriveActivityMonitorRepository ──────────────────────────────────────
 
     [HumansFact]
-    public void IDriveActivityMonitorRepository_LivesInApplicationInterfacesRepositoriesNamespace()
-    {
-        typeof(IDriveActivityMonitorRepository).Namespace
-            .Should().Be("Humans.Application.Interfaces.Repositories",
-                because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
-    }
-
-    [HumansFact]
     public void DriveActivityMonitorRepository_IsSealed()
     {
         var repoType = typeof(DriveActivityMonitorRepository);

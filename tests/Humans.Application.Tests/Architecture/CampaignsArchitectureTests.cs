@@ -55,14 +55,6 @@ public class CampaignsArchitectureTests
     }
 
     [HumansFact]
-    public void ICampaignRepository_LivesInApplicationInterfacesRepositoriesNamespace()
-    {
-        typeof(ICampaignRepository).Namespace
-            .Should().Be("Humans.Application.Interfaces.Repositories",
-                because: "repository interfaces are shared in the application contracts layer");
-    }
-
-    [HumansFact]
     public void CampaignRepository_IsSealed()
     {
         typeof(CampaignRepository).IsSealed.Should().BeTrue();

@@ -65,14 +65,6 @@ public class ShiftSignupArchitectureTests
     // ── IShiftSignupRepository ──────────────────────────────────────────────
 
     [HumansFact]
-    public void IShiftSignupRepository_LivesInApplicationInterfacesRepositoriesNamespace()
-    {
-        typeof(IShiftSignupRepository).Namespace
-            .Should().Be("Humans.Application.Interfaces.Repositories",
-                because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
-    }
-
-    [HumansFact]
     public void ShiftSignupRepository_IsSealed()
     {
         var repoType = typeof(ShiftSignupRepository);

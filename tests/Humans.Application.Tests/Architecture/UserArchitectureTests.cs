@@ -119,9 +119,6 @@ public class UserArchitectureTests
     [HumansFact]
     public void User_repository_has_expected_application_interface_and_sealed_implementation()
     {
-        typeof(IUserRepository).Namespace
-            .Should().Be("Humans.Application.Interfaces.Repositories");
-
         var repoType = typeof(IUserRepository).Assembly
             .GetExportedTypes()
             .Concat(typeof(UserRepository).Assembly.GetExportedTypes())

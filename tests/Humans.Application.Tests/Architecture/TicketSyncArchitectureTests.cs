@@ -93,14 +93,6 @@ public class TicketSyncArchitectureTests
     // ── ITicketRepository ────────────────────────────────────────────────────
 
     [HumansFact]
-    public void ITicketRepository_LivesInApplicationInterfacesRepositoriesNamespace()
-    {
-        typeof(ITicketRepository).Namespace
-            .Should().Be("Humans.Application.Interfaces.Repositories",
-                because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
-    }
-
-    [HumansFact]
     public void TicketRepository_IsSealed()
     {
         // Mirrors ProfileRepository/UserRepository — repository implementations

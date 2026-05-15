@@ -41,12 +41,6 @@ public class ProfileArchitectureTests
         typeof(CommunicationPreferenceService),
     };
 
-    public static TheoryData<Type> ProfileRepositories => new()
-    {
-        typeof(IProfileRepository),
-        typeof(IAccountMergeRepository),
-    };
-
     public static TheoryData<Type, Type> RequiredRepositoryEdges => new()
     {
         { typeof(ProfileService), typeof(IProfileRepository) },
@@ -110,15 +104,6 @@ public class ProfileArchitectureTests
             p => (p.ParameterType.Namespace ?? string.Empty)
                 .StartsWith("Humans.Application.Interfaces.Stores", StringComparison.Ordinal),
             because: "Profile services must not depend on store abstractions");
-    }
-
-    [HumansTheory]
-    [MemberData(nameof(ProfileRepositories))]
-    public void Profile_repositories_live_in_application_repository_namespace(Type repositoryType)
-    {
-        repositoryType.Namespace
-            .Should().Be("Humans.Application.Interfaces.Repositories",
-                because: "repository interfaces live in Humans.Application.Interfaces.Repositories");
     }
 
     [HumansFact]

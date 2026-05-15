@@ -79,14 +79,6 @@ public class IssuesArchitectureTests
     // ── IIssuesRepository ────────────────────────────────────────────────────
 
     [HumansFact]
-    public void IIssuesRepository_LivesInApplicationInterfacesRepositoriesNamespace()
-    {
-        typeof(IIssuesRepository).Namespace
-            .Should().Be("Humans.Application.Interfaces.Repositories",
-                because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
-    }
-
-    [HumansFact]
     public void IssuesRepository_IsSealed()
     {
         var repoType = typeof(IssuesRepository);

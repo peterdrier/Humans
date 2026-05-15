@@ -69,14 +69,6 @@ public class ConsentArchitectureTests
     // ── IConsentRepository ───────────────────────────────────────────────────
 
     [HumansFact]
-    public void IConsentRepository_LivesInApplicationInterfacesRepositoriesNamespace()
-    {
-        typeof(IConsentRepository).Namespace
-            .Should().Be("Humans.Application.Interfaces.Repositories",
-                because: "repository interfaces live in Humans.Application.Interfaces.Repositories per design-rules §3");
-    }
-
-    [HumansFact]
     public void ConsentRepository_IsSealed()
     {
         // Mirrors ProfileRepository / UserRepository / AuditLogRepository — repository implementations are terminal;

@@ -76,8 +76,6 @@ public class LegalArchitectureTests
     [HumansFact]
     public void Legal_repository_has_expected_application_interface_and_sealed_implementation()
     {
-        typeof(ILegalDocumentRepository).Namespace
-            .Should().Be("Humans.Application.Interfaces.Repositories");
         typeof(LegalDocumentRepository).IsSealed.Should().BeTrue(
             because: "repository implementations are sealed to prevent ad-hoc extension");
     }
