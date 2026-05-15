@@ -257,7 +257,7 @@ public sealed class NotificationMeterProvider : INotificationMeterProvider
 
     private async Task<MeterCounts> ComputeCountsAsync(CancellationToken cancellationToken)
     {
-        var consentReviewsPending = await _profileService.GetConsentReviewPendingCountAsync(cancellationToken);
+        var consentReviewsPending = _userService.GetAllUserInfos().Count(u => u.NeedsConsentReview);
 
         // Pending deletions derived from the user list — at ~500-user scale,
         // loading the list once per cache window is cheaper than maintaining a

@@ -16,6 +16,7 @@ namespace Humans.Application.Interfaces.Profiles;
 /// <remarks>
 /// Surface-budget recent history (newest first):
 /// <list type="bullet">
+///   <item>27→26 — PR #553 review follow-up: removed GetConsentReviewPendingCountAsync. The method was a cross-section accessor (Profile service reaching across to the UserInfo snapshot) implementing what is fundamentally a user-level question. Inlined at its 3 callers (NotificationMeterProvider, SendBoardDailyDigestJob, SendAdminDailyDigestJob) as <c>_userService.GetAllUserInfos().Count(u =&gt; u.NeedsConsentReview)</c> — same predicate as the Onboarding review queue and the Admin nav badge so the three surfaces cannot drift.</item>
 ///   <item>32→27 — UserInfo snapshot consolidation (PR #553): removed 5 single-caller DB readers (GetTierCountsAsync → GovernanceController; GetPendingReviewCountAsync → AdminDashboardService; GetBirthdayProfilesAsync / GetApprovedProfilesWithLocationAsync → TeamController; GetReviewableProfilesAsync → OnboardingService — also retyped ReviewQueueData to carry UserInfo). Reimplemented 3 multi-caller readers (GetConsentReviewPendingCountAsync, GetNotApprovedAndNotSuspendedCountAsync, GetActiveApprovedUserIdsAsync) over the cached UserInfo snapshot via the CachingProfileService decorator. Inner ProfileService now throws NotSupportedException on the swapped methods. Net effect: 8 DB read paths drained off the FullProfile / profiles tables.</item>
 ///   <item>2026-05-13 — 31→32: issue nobodies-collective/Humans#702. Added GetProfilePictureMigrationSnapshotAsync — backs the DB→FS migration verification page (/Profile/Admin/PictureMigration) used to confirm every DB-stored profile picture is on disk before Phase 2 drops the DB column. Profile section owns the FS-key helper, so the snapshot must be assembled inside the service.</item>
 ///   <item>2026-05-12 — 30→31: Expenses Phase 6 (PR #491). Added SetIbanAsync — IBAN set/clear on Profile via the expense-report IBAN modal. Profile section owns the write; no expiable substitute (must go through the caching decorator and the audit log, which both require the IProfileService surface). Carried over from the retired InterfaceMethodBudgetTests at the rebase onto origin/main.</item>
@@ -27,7 +28,7 @@ namespace Humans.Application.Interfaces.Profiles;
 ///   <item>41→40 — account-merge fold final consolidation: removed ReassignSubAggregatesToUserAsync from IProfileService (moved to IUserMerge.ReassignAsync, dispatched via fan-out).</item>
 /// </list>
 /// </remarks>
-[SurfaceBudget(27)]
+[SurfaceBudget(26)]
 public interface IProfileService : IApplicationService, IUserMerge
 {
     Task<Profile?> GetProfileAsync(Guid userId, CancellationToken ct = default);
@@ -117,14 +118,6 @@ public interface IProfileService : IApplicationService, IUserMerge
     /// </summary>
     Task<IReadOnlyList<Guid>> GetActiveApprovedUserIdsAsync(CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns the count of profiles whose <c>ConsentCheckStatus</c> is Pending
-    /// or Flagged and whose <c>RejectedAt</c> is null. Used by the notification
-    /// meter to surface pending consent reviews to Consent Coordinators
-    /// without letting the Notifications section read the <c>profiles</c> table
-    /// directly (design-rules §2c).
-    /// </summary>
-    Task<int> GetConsentReviewPendingCountAsync(CancellationToken ct = default);
 
     /// <summary>
     /// Returns the count of profiles that are neither approved nor suspended.

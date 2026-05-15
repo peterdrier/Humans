@@ -79,10 +79,7 @@ public sealed class AdminDashboardService : IAdminDashboardService
 
     public Task<int> GetPendingReviewCountAsync(CancellationToken ct = default)
     {
-        var count = _userService.GetAllUserInfos().Count(u =>
-            u.Profile is not null
-            && !u.Profile.IsApproved
-            && u.Profile.RejectedAt is null);
+        var count = _userService.GetAllUserInfos().Count(u => u.NeedsConsentReview);
         return Task.FromResult(count);
     }
 }

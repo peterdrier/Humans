@@ -84,7 +84,7 @@ public class SendAdminDailyDigestJob : IRecurringJob
         try
         {
             // Consent reviews / onboarding / voting.
-            var onboardingReviewCount = await _profileService.GetConsentReviewPendingCountAsync(cancellationToken);
+            var onboardingReviewCount = _userService.GetAllUserInfos().Count(u => u.NeedsConsentReview);
             var totalNotApproved = await _profileService.GetNotApprovedAndNotSuspendedCountAsync(cancellationToken);
             var stillOnboardingCount = Math.Max(0, totalNotApproved - onboardingReviewCount);
             var boardVotingTotal = await _applicationDecisionService.GetPendingApplicationCountAsync(cancellationToken);

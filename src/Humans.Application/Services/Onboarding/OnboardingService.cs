@@ -73,9 +73,7 @@ public sealed class OnboardingService : IOnboardingService
         // Read off the cached UserInfo snapshot — review queue = profiles not
         // approved and not rejected, oldest profile first.
         var reviewable = _userService.GetAllUserInfos()
-            .Where(u => u.Profile is not null
-                        && !u.Profile.IsApproved
-                        && u.Profile.RejectedAt is null)
+            .Where(u => u.NeedsConsentReview)
             .OrderBy(u => u.Profile!.CreatedAt)
             .ToList();
 

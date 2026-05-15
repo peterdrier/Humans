@@ -345,16 +345,6 @@ public sealed class CachingProfileService : TrackedCache<Guid, FullProfile>, IPr
         return Task.FromResult<IReadOnlyList<Guid>>(ids);
     }
 
-    public Task<int> GetConsentReviewPendingCountAsync(CancellationToken ct = default)
-    {
-        var count = UserSnapshot().Count(u =>
-            u.Profile is not null
-            && (u.Profile.ConsentCheckStatus == Humans.Domain.Enums.ConsentCheckStatus.Pending
-                || u.Profile.ConsentCheckStatus == Humans.Domain.Enums.ConsentCheckStatus.Flagged)
-            && u.Profile.RejectedAt is null);
-        return Task.FromResult(count);
-    }
-
     public Task<int> GetNotApprovedAndNotSuspendedCountAsync(CancellationToken ct = default)
     {
         var count = UserSnapshot().Count(u =>

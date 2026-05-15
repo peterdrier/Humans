@@ -128,7 +128,7 @@ public class SendBoardDailyDigestJob : IRecurringJob
             }
 
             // 3. Compute shared outstanding counts via owning services.
-            var onboardingReviewCount = await _profileService.GetConsentReviewPendingCountAsync(cancellationToken);
+            var onboardingReviewCount = _userService.GetAllUserInfos().Count(u => u.NeedsConsentReview);
             var totalNotApproved = await _profileService.GetNotApprovedAndNotSuspendedCountAsync(cancellationToken);
             var stillOnboardingCount = totalNotApproved - onboardingReviewCount;
             if (stillOnboardingCount < 0) stillOnboardingCount = 0;

@@ -441,12 +441,6 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
             "scans the cached UserInfo snapshot. If this is called on the inner ProfileService " +
             "it indicates a DI registration mistake.");
 
-    public Task<int> GetConsentReviewPendingCountAsync(CancellationToken ct = default) =>
-        throw new NotSupportedException(
-            "GetConsentReviewPendingCountAsync is only meaningful through CachingProfileService — " +
-            "counts off the cached UserInfo snapshot. If this is called on the inner " +
-            "ProfileService it indicates a DI registration mistake.");
-
     public Task<int> GetNotApprovedAndNotSuspendedCountAsync(CancellationToken ct = default) =>
         throw new NotSupportedException(
             "GetNotApprovedAndNotSuspendedCountAsync is only meaningful through CachingProfileService — " +

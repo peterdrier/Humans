@@ -156,11 +156,8 @@ public class ConsentController : HumansControllerBase
 
     private async Task<bool> IsStubProfileAsync(Guid userId)
     {
-        var profile = (await _userService.GetUserInfoAsync(userId))?.Profile;
-        // Treat a missing profile as non-Stub (NotFound semantics flow through
-        // the existing service path); only block when the profile exists and
-        // is still in the Stub lifecycle stage.
-        return profile is not null && profile.State == ProfileState.Stub;
+        var info = await _userService.GetUserInfoAsync(userId);
+        return info is not null && info.IsStub;
     }
 
     private IActionResult RedirectToProfileEditForStub()
