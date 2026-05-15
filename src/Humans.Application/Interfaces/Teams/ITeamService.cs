@@ -12,11 +12,16 @@ public record TeamInfo(
     Guid Id, string Name, string? Description, string Slug,
     bool IsActive, bool IsSystemTeam, SystemTeamType SystemTeamType, bool RequiresApproval,
     bool IsPublicPage, bool IsHidden, bool IsPromotedToDirectory, Instant CreatedAt, List<TeamMemberInfo> Members,
-    Guid? ParentTeamId = null);
+    Guid? ParentTeamId = null,
+    string? GoogleGroupPrefix = null,
+    bool HasBudget = false,
+    bool IsSensitive = false,
+    Instant? UpdatedAt = null);
 
 public record TeamMemberInfo(
     Guid TeamMemberId, Guid UserId, string DisplayName,
-    string? Email, string? ProfilePictureUrl, TeamMemberRole Role, Instant JoinedAt);
+    string? Email, string? ProfilePictureUrl, TeamMemberRole Role, Instant JoinedAt,
+    GoogleEmailStatus GoogleEmailStatus = GoogleEmailStatus.Unknown);
 
 public record TeamDirectorySummary(
     Guid Id,

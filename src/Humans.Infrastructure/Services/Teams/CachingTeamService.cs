@@ -737,10 +737,15 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
                     Email: u?.Email,
                     ProfilePictureUrl: u?.ProfilePictureUrl,
                     Role: m.Role,
-                    JoinedAt: m.JoinedAt);
+                    JoinedAt: m.JoinedAt,
+                    GoogleEmailStatus: u?.GoogleEmailStatus ?? GoogleEmailStatus.Unknown);
             })
             .ToList(),
-        ParentTeamId: team.ParentTeamId);
+        ParentTeamId: team.ParentTeamId,
+        GoogleGroupPrefix: team.GoogleGroupPrefix,
+        HasBudget: team.HasBudget,
+        IsSensitive: team.IsSensitive,
+        UpdatedAt: team.UpdatedAt);
 
     private async Task<TResult> WithInner<TResult>(Func<ITeamService, Task<TResult>> action)
     {
