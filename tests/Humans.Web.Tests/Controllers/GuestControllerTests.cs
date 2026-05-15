@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Humans.Application;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Profiles;
@@ -28,7 +29,7 @@ namespace Humans.Web.Tests.Controllers;
 /// </summary>
 public class GuestControllerTests
 {
-    private readonly UserManager<User> _userManager;
+    private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly ICommunicationPreferenceService _commPrefService = Substitute.For<ICommunicationPreferenceService>();
     private readonly IProfileService _profileService = Substitute.For<IProfileService>();
     private readonly ITicketQueryService _ticketQueryService = Substitute.For<ITicketQueryService>();
@@ -39,17 +40,24 @@ public class GuestControllerTests
 
     public GuestControllerTests()
     {
-        var userStore = Substitute.For<IUserStore<User>>();
-        _userManager = Substitute.For<UserManager<User>>(
-            userStore, null, null, null, null, null, null, null, null);
     }
 
     private GuestController BuildSut(User user)
     {
-        _userManager.GetUserAsync(Arg.Any<ClaimsPrincipal>()).Returns(user);
+        _userService.GetUserInfoAsync(user.Id, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(UserInfo.Create(
+                user,
+                Array.Empty<UserEmail>(),
+                Array.Empty<EventParticipation>(),
+                Array.Empty<(string, string)>(),
+                profile: null,
+                Array.Empty<ContactField>(),
+                Array.Empty<ProfileLanguage>(),
+                Array.Empty<VolunteerHistoryEntry>(),
+                Array.Empty<CommunicationPreference>())));
 
         var ctrl = new GuestController(
-            _userManager,
+            _userService,
             _commPrefService,
             _profileService,
             _ticketQueryService,

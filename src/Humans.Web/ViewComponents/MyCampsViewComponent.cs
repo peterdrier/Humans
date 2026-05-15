@@ -1,7 +1,6 @@
+using System.Security.Claims;
 using Humans.Application.Interfaces.Camps;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Web.ViewComponents;
@@ -13,16 +12,13 @@ namespace Humans.Web.ViewComponents;
 public class MyCampsViewComponent : ViewComponent
 {
     private readonly ICampService _campService;
-    private readonly UserManager<User> _userManager;
     private readonly ILogger<MyCampsViewComponent> _logger;
 
     public MyCampsViewComponent(
         ICampService campService,
-        UserManager<User> userManager,
         ILogger<MyCampsViewComponent> logger)
     {
         _campService = campService;
-        _userManager = userManager;
         _logger = logger;
     }
 
@@ -30,11 +26,10 @@ public class MyCampsViewComponent : ViewComponent
     {
         try
         {
-            var user = await _userManager.GetUserAsync(UserClaimsPrincipal);
-            if (user is null)
+            if (!Guid.TryParse(UserClaimsPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
                 return Content(string.Empty);
 
-            var memberships = await _campService.GetCampMembershipsForUserAsync(user.Id);
+            var memberships = await _campService.GetCampMembershipsForUserAsync(userId);
             if (memberships.Count == 0)
                 return Content(string.Empty);
 

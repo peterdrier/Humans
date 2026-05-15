@@ -1,5 +1,7 @@
 using AwesomeAssertions;
+using Humans.Application;
 using Humans.Application.Interfaces.Tickets;
+using Humans.Application.Interfaces.Users;
 using Humans.Application.Interfaces.Tickets.Dtos;
 using Humans.Domain.Entities;
 using Humans.Web.Constants;
@@ -19,27 +21,37 @@ namespace Humans.Web.Tests.Controllers;
 
 public class TicketsContactsAdminControllerTests
 {
-    private static UserManager<User> NoOpUserManager()
-    {
-        var userStore = Substitute.For<IUserStore<User>>();
-        return Substitute.For<UserManager<User>>(
-            userStore, null, null, null, null, null, null, null, null);
-    }
-
-    private static (TicketsContactsAdminController Ctrl, User CurrentUser, UserManager<User> Um)
+    private static (TicketsContactsAdminController Ctrl, User CurrentUser, IUserService Users)
         NewController(IAttendeeContactImportService import)
     {
-        var um = NoOpUserManager();
+        var users = Substitute.For<IUserService>();
         var currentUser = new User { Id = Guid.NewGuid() };
-        um.GetUserAsync(Arg.Any<System.Security.Claims.ClaimsPrincipal>()).Returns(currentUser);
+        users.GetUserInfoAsync(currentUser.Id, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(UserInfo.Create(
+                currentUser,
+                Array.Empty<UserEmail>(),
+                Array.Empty<EventParticipation>(),
+                Array.Empty<(string, string)>(),
+                profile: null,
+                Array.Empty<ContactField>(),
+                Array.Empty<ProfileLanguage>(),
+                Array.Empty<VolunteerHistoryEntry>(),
+                Array.Empty<CommunicationPreference>())));
 
         var ctrl = new TicketsContactsAdminController(
-            import, um,
+            import, users,
             NullLogger<TicketsContactsAdminController>.Instance);
 
         var services = new ServiceCollection();
         services.AddLogging();
-        var http = new DefaultHttpContext { RequestServices = services.BuildServiceProvider() };
+        var http = new DefaultHttpContext
+        {
+            RequestServices = services.BuildServiceProvider(),
+            User = new System.Security.Claims.ClaimsPrincipal(new System.Security.Claims.ClaimsIdentity(
+                new[] { new System.Security.Claims.Claim(
+                    System.Security.Claims.ClaimTypes.NameIdentifier, currentUser.Id.ToString()) },
+                "test")),
+        };
 
         ctrl.ControllerContext = new ControllerContext
         {
@@ -48,7 +60,7 @@ public class TicketsContactsAdminControllerTests
         };
         ctrl.TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>());
         ctrl.Url = Substitute.For<IUrlHelper>();
-        return (ctrl, currentUser, um);
+        return (ctrl, currentUser, users);
     }
 
     [HumansFact]

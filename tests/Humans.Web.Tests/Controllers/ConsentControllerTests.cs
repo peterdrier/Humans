@@ -55,9 +55,8 @@ public class ConsentControllerTests
         _http.Connection.RemoteIpAddress = System.Net.IPAddress.Parse("127.0.0.1");
 
         var ctrl = new ConsentController(
-            _userManager,
-            _consentService,
             _userService,
+            _consentService,
             _localizer,
             NullLogger<ConsentController>.Instance);
         ctrl.ControllerContext = new ControllerContext

@@ -86,6 +86,7 @@ public class ProfileControllerEditTests
             .Returns(AuthorizationResult.Success());
 
         _controller = new ProfileController(
+            _userService,
             _userManager,
             _profileService,
             Substitute.For<IContactFieldService>(),
@@ -110,7 +111,6 @@ public class ProfileControllerEditTests
             new MemoryCache(new MemoryCacheOptions()),
             new FakeClock(Instant.FromUtc(2026, 5, 9, 12, 0)),
             authorizationService,
-            _userService,
             Substitute.For<IConsentService>(),
             _applicationDecisionService,
             Substitute.For<IAccountDeletionService>(),

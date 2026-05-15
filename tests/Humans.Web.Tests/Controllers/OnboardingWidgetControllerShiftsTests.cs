@@ -60,7 +60,7 @@ public class OnboardingWidgetControllerShiftsTests
         var services = new ServiceCollection();
         services.AddSingleton<ILoggerFactory>(NullLoggerFactory.Instance);
         _http.RequestServices = services.BuildServiceProvider();
-        var ctrl = new OnboardingWidgetController(_userManager, _state, _profile, _signups, _shiftMgmt, _consents, _userService, _localizer);
+        var ctrl = new OnboardingWidgetController(_userService, _state, _profile, _signups, _shiftMgmt, _consents, _localizer);
         ctrl.ControllerContext = new ControllerContext
         {
             HttpContext = _http,

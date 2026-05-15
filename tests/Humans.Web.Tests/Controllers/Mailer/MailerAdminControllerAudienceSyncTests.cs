@@ -94,7 +94,7 @@ public class MailerAdminControllerAudienceSyncTests
         var ctrl = new MailerAdminController(
             _mlService, _importService, _audienceSync, audiences,
             _userService, _prefs, _audit,
-            NullLogger<MailerAdminController>.Instance, _userManager);
+            NullLogger<MailerAdminController>.Instance);
 
         var http = new DefaultHttpContext
         {

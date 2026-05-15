@@ -67,6 +67,7 @@ public class ProfileControllerPopoverTests
         localizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
 
         _controller = new ProfileController(
+            _userService,
             userManager,
             _profileService,
             Substitute.For<IContactFieldService>(),
@@ -91,7 +92,6 @@ public class ProfileControllerPopoverTests
             new MemoryCache(new MemoryCacheOptions()),
             new FakeClock(Instant.FromUtc(2026, 5, 9, 12, 0)),
             _authorizationService,
-            _userService,
             Substitute.For<IConsentService>(),
             Substitute.For<IApplicationDecisionService>(),
             Substitute.For<IAccountDeletionService>(),

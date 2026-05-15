@@ -1,6 +1,8 @@
 using System.Security.Claims;
 using AwesomeAssertions;
+using Humans.Application;
 using Humans.Application.DTOs.EmailProblems;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Profiles;
@@ -45,12 +47,14 @@ public class ProfileAdminControllerTests
         _userManager = Substitute.For<UserManager<User>>(
             userStore, null, null, null, null, null, null, null, null);
         _userManager.GetUserAsync(Arg.Any<ClaimsPrincipal>()).Returns(_adminUser);
+        _users.GetUserInfoAsync(_adminUserId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(_adminUser.ToUserInfo()));
     }
 
     private ProfileAdminController BuildController()
     {
         var c = new ProfileAdminController(
-            _userManager,
+            _users,
             _emailProblems,
             _accountMerge,
             _userEmails,

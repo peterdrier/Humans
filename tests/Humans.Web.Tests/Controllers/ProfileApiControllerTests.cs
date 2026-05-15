@@ -69,10 +69,12 @@ public class ProfileApiControllerTests
         if (currentUser is not null)
         {
             _userManager.GetUserAsync(Arg.Any<ClaimsPrincipal>()).Returns(currentUser);
+            _userService.GetUserInfoAsync(currentUser.Id, Arg.Any<CancellationToken>())
+                .Returns(new ValueTask<UserInfo?>(MakeViewerUserInfo(currentUser)));
         }
 
         var ctrl = new ProfileApiController(
-            _profileService, _userService, _contactFieldService, _userEmailService, _userManager);
+            _profileService, _userService, _contactFieldService, _userEmailService);
 
         var http = new DefaultHttpContext();
         if (currentUser is not null)
@@ -114,6 +116,18 @@ public class ProfileApiControllerTests
 
     private static User MakeUser(Guid id) =>
         new() { Id = id, Email = $"viewer-{id:N}@example.com", DisplayName = "Viewer" };
+
+    private static UserInfo MakeViewerUserInfo(User user) =>
+        UserInfo.Create(
+            user: user,
+            userEmails: Array.Empty<UserEmail>(),
+            eventParticipations: Array.Empty<EventParticipation>(),
+            externalLogins: Array.Empty<(string, string)>(),
+            profile: null,
+            contactFields: Array.Empty<ContactField>(),
+            profileLanguages: Array.Empty<ProfileLanguage>(),
+            volunteerHistory: Array.Empty<VolunteerHistoryEntry>(),
+            communicationPreferences: Array.Empty<CommunicationPreference>());
 
     private static UserInfo MakeUserInfo(
         Guid userId,
