@@ -41,7 +41,7 @@ public interface IAccountDeletionService : IApplicationService
     /// Cancels a pending user-initiated deletion request by clearing the
     /// deletion fields on the user. Returns <c>NotFound</c> if the user
     /// does not exist; <c>NoDeletionPending</c> if no request is open.
-    /// FullProfile cache is refreshed via <see cref="IUserService.ClearDeletionAsync"/>.
+    /// UserInfo cache is refreshed via <see cref="IUserService.ClearDeletionAsync"/>.
     /// </summary>
     Task<OnboardingResult> CancelDeletionAsync(Guid userId, CancellationToken ct = default);
 
@@ -49,7 +49,7 @@ public interface IAccountDeletionService : IApplicationService
     /// Admin-initiated purge: anonymizes the identity on the <c>User</c> row
     /// (display name + email replaced with sentinels, <c>UserEmail</c> rows
     /// removed) and invalidates the caches that key off the user's identity
-    /// (FullProfile, ActiveTeams, role-assignment claims, shift-authorization)
+    /// (UserInfo, ActiveTeams, role-assignment claims, shift-authorization)
     /// so downstream consumers see the purged view before TTL expiry. Writes
     /// an <see cref="Domain.Enums.AuditAction.AccountPurged"/> audit-log entry
     /// keyed by <paramref name="actorId"/> (the admin running the purge) so
@@ -68,7 +68,7 @@ public interface IAccountDeletionService : IApplicationService
     /// volunteer-event-profile deletion) BEFORE collapsing the User
     /// aggregate's identity — so a mid-cascade failure leaves the deletion
     /// fields intact and tomorrow's job run retries from the same state.
-    /// Invalidates the FullProfile, role-assignment claims, shift-authorization,
+    /// Invalidates the UserInfo, role-assignment claims, shift-authorization,
     /// and Teams member caches. Returns a summary of the pre-anonymization
     /// identity plus the ids of any cancelled shift signups so the caller
     /// (<c>ProcessAccountDeletionsJob</c>) can emit audit entries and send the

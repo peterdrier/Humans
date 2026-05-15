@@ -1,9 +1,7 @@
-using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Infrastructure.Caching;
-using Humans.Infrastructure.HostedServices;
 using Humans.Infrastructure.Services.Profiles;
 using ProfilesProfileService = Humans.Application.Services.Profiles.ProfileService;
 using ProfilesContactFieldService = Humans.Application.Services.Profiles.ContactFieldService;
@@ -26,9 +24,9 @@ internal static class ProfileSectionExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        // Profile section — repository/store/decorator pattern (§15 Step 0, PR #504)
+        // Profile section — repository/store pattern (§15 Step 0, PR #504).
         // Repositories use IDbContextFactory and are registered as Singleton so the
-        // CachingProfileService Singleton can inject them directly without scope-factory indirection.
+        // Singleton CachingUserService can inject them directly without scope-factory indirection.
         services.AddSingleton<IProfileRepository, ProfileRepository>();
         services.AddSingleton<IContactFieldRepository, ContactFieldRepository>();
         services.AddSingleton<IUserEmailRepository, UserEmailRepository>();
@@ -60,43 +58,15 @@ internal static class ProfileSectionExtensions
         services.AddScoped<IAccountProvisioningService, UsersAccountProvisioningService>();
         services.AddScoped<IUserEmailProviderBackfillService, UsersUserEmailProviderBackfillService>();
 
-        // ProfileService (inner): Scoped — has many Scoped cross-section deps.
-        // Registered under the keyed "profile-inner" key so CachingProfileService can
-        // resolve it from a scope without triggering self-resolution on the unkeyed
-        // IProfileService registration (which maps to the Singleton decorator).
-        services.AddKeyedScoped<IProfileService, ProfilesProfileService>(CachingProfileService.InnerServiceKey);
-        services.AddScoped<ProfilesProfileService>(sp =>
-            (ProfilesProfileService)sp.GetRequiredKeyedService<IProfileService>(CachingProfileService.InnerServiceKey));
+        // ProfileService: Scoped — owns Profile-table writes. Registered directly
+        // (no caching decorator) since the FullProfile cache was retired in favour
+        // of the unified UserInfo cache on CachingUserService. Profile reads that
+        // need a denormalized "everything-about-a-person" projection go through
+        // IUserService.GetUserInfoAsync instead.
+        services.AddScoped<ProfilesProfileService>();
+        services.AddScoped<IProfileService>(sp => sp.GetRequiredService<ProfilesProfileService>());
+        services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<ProfilesProfileService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<ProfilesProfileService>());
-
-        // CachingProfileService: Singleton so the _byUserId ConcurrentDictionary persists
-        // across requests. Resolves the Scoped inner IProfileService (keyed "profile-inner")
-        // and other Scoped deps (IUserService, INavBadgeCacheInvalidator,
-        // INotificationMeterCacheInvalidator) per-call via IServiceScopeFactory to avoid
-        // the captured-scoped-dep anti-pattern.
-        // IProfileRepository and IUserEmailRepository are injected directly because they
-        // are also Singleton (IDbContextFactory-based).
-        services.AddSingleton<CachingProfileService>();
-        services.AddSingleton<IProfileService>(sp => sp.GetRequiredService<CachingProfileService>());
-
-        // CRITICAL: IFullProfileInvalidator and IUserMerge must resolve to the same
-        // Singleton decorator instance that backs IProfileService. The merge fan-out
-        // goes through the decorator so the orchestrator never has to know
-        // ProfileService has a cache — the decorator owns its own eviction.
-        services.AddSingleton<IFullProfileInvalidator>(sp =>
-            sp.GetRequiredService<CachingProfileService>());
-        services.AddSingleton<IUserMerge>(sp =>
-            sp.GetRequiredService<CachingProfileService>());
-
-        // Surface FullProfile cache diagnostics on /Admin/CacheStats.
-        services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingProfileService>());
-
-        // Eagerly warm the FullProfile dict at startup so bulk reads
-        // (birthday widget, location directory, admin human list, profile search)
-        // return complete results immediately after deploy instead of filling
-        // in lazily per user. Failures are logged and swallowed; lazy population
-        // still works.
-        services.AddHostedService<FullProfileWarmupHostedService>();
 
         return services;
     }

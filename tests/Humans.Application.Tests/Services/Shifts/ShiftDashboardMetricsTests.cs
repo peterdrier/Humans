@@ -1032,6 +1032,10 @@ public class ShiftDashboardMetricsTests : IDisposable
                 communicationPreferences: Array.Empty<Humans.Domain.Entities.CommunicationPreference>())).ToList();
         }
 
+        public Task<IReadOnlyList<Humans.Application.DTOs.HumanSearchResult>> SearchUsersAsync(
+            string query, Humans.Application.Services.Profiles.PersonSearchFields fields,
+            int limit = 10, CancellationToken ct = default) => throw new NotSupportedException();
+
         public async Task<User?> GetByIdAsync(Guid userId, CancellationToken ct = default)
             => await _db.Users.FirstOrDefaultAsync(u => u.Id == userId, ct);
 

@@ -21,7 +21,7 @@ namespace Humans.Application.Services.Profiles;
 
 /// <summary>
 /// Core profile service. Business logic only — no DbContext, no IMemoryCache.
-/// Cache management is handled by the <c>CachingProfileService</c> decorator.
+/// Cache management is handled by the <c>CachingUserService</c> decorator.
 /// Cross-domain reads use owning-section service interfaces.
 /// </summary>
 public sealed class ProfileService : IProfileService, IUserDataContributor, IUserMerge
@@ -80,25 +80,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
 
     public async Task<Domain.Entities.Profile?> GetProfileAsync(Guid userId, CancellationToken ct = default)
     {
-        // The per-user profile cache (2-min TTL) is managed by CachingProfileService decorator.
-        // This inner method always hits the repository.
         return await _profileRepository.GetByUserIdReadOnlyAsync(userId, ct);
-    }
-
-    public async ValueTask<FullProfile?> GetFullProfileAsync(Guid userId, CancellationToken ct = default)
-    {
-        // GetByUserIdReadOnlyAsync includes VolunteerHistory; GetByUserIdAsync does not.
-        var profile = await _profileRepository.GetByUserIdReadOnlyAsync(userId, ct);
-        if (profile is null) return null;
-
-        var user = await _userService.GetByIdAsync(userId, ct);
-        if (user is null) return null;
-
-        var userEmails = await _userEmailRepository.GetByUserIdReadOnlyAsync(userId, ct);
-
-        // Issue #635 (§15i): pass userEmails directly so PrimaryEmail /
-        // AllVerifiedEmails / GoogleEmail derive from already-loaded data.
-        return FullProfile.Create(profile, user, profile.VolunteerHistory.ToList(), userEmails);
     }
 
     public async Task<IReadOnlyDictionary<Guid, Domain.Entities.Profile>> GetByUserIdsAsync(
@@ -120,7 +102,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         profile.UpdatedAt = _clock.GetCurrentInstant();
         await _profileRepository.UpdateAsync(profile, ct);
 
-        // Store update handled by CachingProfileService decorator
+        // Store update handled by CachingUserService decorator
     }
 
     public async Task EnsureStubProfileAsync(Guid userId, CancellationToken ct = default)
@@ -195,7 +177,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
                 profile.Id);
         }
 
-        // FullProfile cache invalidation handled by CachingProfileService decorator.
+        // UserInfo cache invalidation handled by CachingUserService decorator.
     }
 
     public async Task<(byte[] Data, string ContentType)?> GetProfilePictureAsync(
@@ -412,7 +394,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         // identity fields are populated and the profile is not Suspended,
         // promote the lifecycle marker. Predicate lives on the Profile
         // entity so the same rule serves the lazy-compute path in
-        // CachingProfileService.ComputeProfileState.
+        // CachingUserService.ComputeProfileState.
         if (profile.State != ProfileState.Suspended)
         {
             profile.State = profile.HasRequiredIdentityFields()
@@ -425,7 +407,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         // Update display name on user (cross-section → IUserService)
         await _userService.UpdateDisplayNameAsync(userId, displayName, ct);
 
-        // Cache invalidation and store update handled by CachingProfileService decorator
+        // Cache invalidation and store update handled by CachingUserService decorator
 
         // Check consent eligibility
         await _onboardingEligibilityQuery.SetConsentCheckPendingIfEligibleAsync(userId, ct);
@@ -438,40 +420,6 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
     public Task<IReadOnlyList<(Guid ProfileId, Guid UserId, long UpdatedAtTicks)>>
         GetCustomPictureInfoByUserIdsAsync(IEnumerable<Guid> userIds, CancellationToken ct = default) =>
         _profileRepository.GetCustomPictureInfoByUserIdsAsync(userIds, ct);
-
-    /// <summary>
-    /// Builds a <see cref="FullProfile"/> snapshot from repositories. Used by the
-    /// base <see cref="ProfileService"/> as the DB-backed fallback for
-    /// <see cref="SearchProfilesAsync"/>; the caching decorator overrides that
-    /// method to read from its in-memory dict instead.
-    /// </summary>
-    private async Task<IReadOnlyList<FullProfile>> BuildFullProfileSnapshotAsync(CancellationToken ct)
-    {
-        var profiles = await _profileRepository.GetAllAsync(ct);
-        if (profiles.Count == 0) return [];
-
-        var userIds = profiles.Select(p => p.UserId).ToList();
-        var users = await _userService.GetByIdsAsync(userIds, ct);
-
-        var allUserEmails = await _userEmailRepository.GetAllAsync(ct);
-        var emailsByUserId = allUserEmails
-            .GroupBy(e => e.UserId)
-            .ToDictionary(g => g.Key, g => (IReadOnlyList<UserEmail>)g.ToList());
-
-        var result = new List<FullProfile>(profiles.Count);
-        foreach (var profile in profiles)
-        {
-            if (!users.TryGetValue(profile.UserId, out var user))
-                continue;
-
-            var userEmails = emailsByUserId.TryGetValue(profile.UserId, out var list)
-                ? list
-                : Array.Empty<UserEmail>();
-            result.Add(FullProfile.Create(profile, user, profile.VolunteerHistory.ToList(), userEmails));
-        }
-
-        return result;
-    }
 
     public async Task<(bool CanAdd, int MinutesUntilResend, Guid? PendingEmailId)>
         GetEmailCooldownInfoAsync(Guid pendingEmailId, CancellationToken ct = default)
@@ -490,43 +438,6 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         }
 
         return (true, 0, null);
-    }
-
-    public async Task<IReadOnlyList<HumanSearchResult>> SearchProfilesAsync(
-        string query,
-        PersonSearchFields fields,
-        int limit = 10,
-        CancellationToken ct = default)
-    {
-        if (fields == PersonSearchFields.None || string.IsNullOrWhiteSpace(query) || limit <= 0)
-            return Array.Empty<HumanSearchResult>();
-
-        var snapshot = await BuildFullProfileSnapshotAsync(ct);
-
-        // Implicit scope: skip rejected profiles unconditionally.
-        // (Deleted profiles never reach FullProfile.Create because the
-        // owning User row is gone or anonymized; rejected profiles are
-        // still present and need an explicit filter.)
-        var eligible = snapshot.Where(p => !p.IsRejected).ToList();
-
-        IReadOnlyDictionary<Guid, IReadOnlyList<ContactField>>? contactFieldsByProfileId = null;
-        if ((fields & (PersonSearchFields.Bio | PersonSearchFields.Admin)) != PersonSearchFields.None)
-        {
-            contactFieldsByProfileId = await LoadContactFieldsByProfileIdAsync(ct);
-        }
-
-        return PersonSearchMatcher.Match(eligible, query, fields, contactFieldsByProfileId, limit);
-    }
-
-    private async Task<IReadOnlyDictionary<Guid, IReadOnlyList<ContactField>>>
-        LoadContactFieldsByProfileIdAsync(CancellationToken ct)
-    {
-        var all = await _contactFieldRepository.GetAllAsync(ct);
-        return all
-            .GroupBy(cf => cf.ProfileId)
-            .ToDictionary(
-                g => g.Key,
-                g => (IReadOnlyList<ContactField>)g.ToList());
     }
 
     public async Task SaveCVEntriesAsync(Guid userId, IReadOnlyList<CVEntry> entries, CancellationToken ct = default)
@@ -677,8 +588,8 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
     // ==========================================================================
     // Onboarding-section support methods — profile mutations that OnboardingService
     // delegates here so each section owns its DbSet writes (design-rules §2c).
-    // Cache invalidation (FullProfile refresh, nav-badge, notification meter) is
-    // handled by the CachingProfileService decorator's wrappers for these methods.
+    // Cache invalidation (UserInfo refresh, nav-badge, notification meter) is
+    // handled by the CachingUserService decorator's wrappers for these methods.
     // ==========================================================================
 
     public async Task<OnboardingResult> RecordConsentCheckAsync(
@@ -914,8 +825,8 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         _profileRepository.DowngradeTierForExpiredAsync(
             currentTier, userIdsToKeep, fallbackTierByUser, now, ct);
 
-    // Cache invalidation (FullProfile refresh for both source and target) is
-    // handled by the CachingProfileService decorator's wrapper for this
+    // Cache invalidation (UserInfo refresh for both source and target) is
+    // handled by the CachingUserService decorator's wrapper for this
     // method — ProfileService is the inner / non-cached implementation.
     public Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
         CancellationToken ct) =>

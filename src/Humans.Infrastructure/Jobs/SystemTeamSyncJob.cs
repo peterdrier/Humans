@@ -250,7 +250,14 @@ public class SystemTeamSyncJob : ISystemTeamSync
         // Flagged + RejectedAt exclusions preserve the CC's existing kick-out
         // levers (FlagConsentCheckAsync and RejectSignupAsync set those fields
         // before calling DeprovisionApprovalGatedSystemTeamsAsync).
-        var allUserIds = _userService.GetAllUserInfos().Select(u => u.Id).ToList();
+        // Read straight from the DB rather than the UserInfo cache: this is a
+        // destructive reconciliation that removes every Volunteers-team member
+        // not in candidateIds. UserInfoWarmupHostedService is explicitly
+        // non-fatal, so a startup warmup failure leaves GetAllUserInfos() empty
+        // and would deprovision the entire team. The hourly cost of one
+        // users-table scan is trivial next to that risk.
+        var allUsers = await _userService.GetAllUsersAsync(cancellationToken);
+        var allUserIds = allUsers.Select(u => u.Id).ToList();
         var profiles = await ProfileService.GetByUserIdsAsync(allUserIds, cancellationToken);
         var candidateIds = allUserIds
             .Where(id => profiles.TryGetValue(id, out var p)

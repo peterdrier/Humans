@@ -39,7 +39,7 @@ public sealed class DevPersonaSeeder
     private readonly IUserEmailService _userEmailService;
     private readonly IContactFieldService _contactFieldService;
     private readonly IRoleAssignmentService _roleAssignmentService;
-    private readonly IFullProfileInvalidator _fullProfileInvalidator;
+    private readonly IUserInfoInvalidator _userInfoInvalidator;
     private readonly ITeamService _teamService;
     private readonly ISystemTeamSync _systemTeamSync;
     private readonly IUserService _userService;
@@ -55,7 +55,7 @@ public sealed class DevPersonaSeeder
         IUserEmailService userEmailService,
         IContactFieldService contactFieldService,
         IRoleAssignmentService roleAssignmentService,
-        IFullProfileInvalidator fullProfileInvalidator,
+        IUserInfoInvalidator userInfoInvalidator,
         ITeamService teamService,
         ISystemTeamSync systemTeamSync,
         IUserService userService,
@@ -70,7 +70,7 @@ public sealed class DevPersonaSeeder
         _userEmailService = userEmailService;
         _contactFieldService = contactFieldService;
         _roleAssignmentService = roleAssignmentService;
-        _fullProfileInvalidator = fullProfileInvalidator;
+        _userInfoInvalidator = userInfoInvalidator;
         _teamService = teamService;
         _systemTeamSync = systemTeamSync;
         _userService = userService;
@@ -170,7 +170,7 @@ public sealed class DevPersonaSeeder
 
         // Mark approved + cleared so the dev persona skips the consent gate
         // and lands on the dashboard. Routes through ProfileService so the
-        // CachingProfileService decorator handles the FullProfile cache
+        // CachingUserService decorator handles the UserInfo cache
         // refresh atomically with the DB write (issue #474 â€” Profiles is the
         // single writer to the profile state fields).
         var consentCheckResult = await _profileService.RecordConsentCheckAsync(
@@ -221,7 +221,7 @@ public sealed class DevPersonaSeeder
         }
 
         _cache.InvalidateUserAccess(id);
-        await _fullProfileInvalidator.InvalidateAsync(id);
+        await _userInfoInvalidator.InvalidateAsync(id);
 
         _logger.LogInformation(
             "DEV: seeded persona {Email} with roles [{Roles}]",
@@ -464,8 +464,8 @@ public sealed class DevPersonaSeeder
         {
             _teamService.InvalidateActiveTeamsCache();
             _cache.InvalidateUserAccess(coordinatorUserId);
-            // Team membership changes ripple into FullProfile (active-teams shape)
-            await _fullProfileInvalidator.InvalidateAsync(coordinatorUserId);
+            // Team membership changes ripple into UserInfo (active-teams shape)
+            await _userInfoInvalidator.InvalidateAsync(coordinatorUserId);
             _logger.LogInformation(
                 "DEV: ensured coordinator teams — department {DeptId}, sub-team {SubTeamId}",
                 department.Id, subTeam.Id);
@@ -531,8 +531,8 @@ public sealed class DevPersonaSeeder
         {
             _teamService.InvalidateActiveTeamsCache();
             _cache.InvalidateUserAccess(userId);
-            // Team membership changes ripple into FullProfile (active-teams shape)
-            await _fullProfileInvalidator.InvalidateAsync(userId);
+            // Team membership changes ripple into UserInfo (active-teams shape)
+            await _userInfoInvalidator.InvalidateAsync(userId);
         }
     }
 

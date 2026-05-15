@@ -204,7 +204,7 @@ public class ProfileController : HumansControllerBase
             // PersonSearchFields.AdminAll is appropriate here. Limit large
             // enough that "show me every match" is the practical effect at
             // ~500-user scale; the controller paginates afterward.
-            var searchResults = await _profileService.SearchProfilesAsync(
+            var searchResults = await _userService.SearchUsersAsync(
                 search, PersonSearchFields.AdminAll, limit: 500, ct);
 
             // Email-direct match isn't covered by the matcher's verified-emails
@@ -481,7 +481,7 @@ public class ProfileController : HumansControllerBase
 
         // Cancel any pending deletion request when creating a profile.
         // Routes through IAccountDeletionService so the deletion-fields
-        // write + FullProfile invalidation goes through the orchestrator,
+        // write + UserInfo invalidation goes through the orchestrator,
         // not raw UserManager.UpdateAsync.
         if (isInitialSetup && user.IsDeletionPending)
         {
@@ -2015,7 +2015,7 @@ public class ProfileController : HumansControllerBase
 
         // PublicAll = name + bio + public ContactFields. Admin bit is gated
         // by code review — never set on a public endpoint.
-        var results = await _profileService.SearchProfilesAsync(
+        var results = await _userService.SearchUsersAsync(
             q!, PersonSearchFields.PublicAll, limit: 50, ct);
 
         // Display ordering at the controller per

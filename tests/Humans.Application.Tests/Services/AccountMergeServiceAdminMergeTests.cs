@@ -20,7 +20,7 @@ public class AccountMergeServiceAdminMergeTests
     private readonly IAccountMergeRepository _mergeRepo = Substitute.For<IAccountMergeRepository>();
     private readonly IUserEmailRepository _userEmailRepo = Substitute.For<IUserEmailRepository>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
-    private readonly IFullProfileInvalidator _fullProfileInvalidator = Substitute.For<IFullProfileInvalidator>();
+    private readonly IUserInfoInvalidator _userInfoInvalidator = Substitute.For<IUserInfoInvalidator>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly ITeamService _team = Substitute.For<ITeamService>();
     private readonly IRoleAssignmentService _roles = Substitute.For<IRoleAssignmentService>();
@@ -30,7 +30,7 @@ public class AccountMergeServiceAdminMergeTests
 
     private AccountMergeService BuildSut() =>
         new(
-            _mergeRepo, _userEmailRepo, _audit, _fullProfileInvalidator,
+            _mergeRepo, _userEmailRepo, _audit, _userInfoInvalidator,
             NullLogger<AccountMergeService>.Instance, _clock,
             _userMerges, _userService, _team, _roles, _notify);
 

@@ -132,7 +132,7 @@ public interface IUserEmailService : IApplicationService
     /// (<c>AccountProvisioningService</c>): on a freshly created User the row
     /// is added through <see cref="UserEmailService"/> rather than the
     /// repository directly so it goes through the same orchestrator
-    /// (Primary + Google invariants, FullProfile invalidation) as every
+    /// (Primary + Google invariants, UserInfo invalidation) as every
     /// other UserEmail-add path. Issue nobodies-collective/Humans#687.
     /// Skips if the email already exists for this user (idempotent).
     /// </summary>

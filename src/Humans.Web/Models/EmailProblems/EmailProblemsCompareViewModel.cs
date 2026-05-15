@@ -15,7 +15,7 @@ public sealed record CompareSide(
     Guid UserId,
     string DisplayName,
     string? ProfilePictureUrl,
-    IReadOnlyList<UserEmailSnapshot> AllUserEmails,
+    IReadOnlyList<UserEmailInfo> AllUserEmails,
     int TeamCount,
     int RoleAssignmentCount,
     Instant? LastLogin,

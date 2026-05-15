@@ -28,7 +28,7 @@ namespace Humans.Infrastructure.Jobs;
 /// never touches <see cref="Humans.Infrastructure.Data.HumansDbContext"/>
 /// directly (design-rules §2c). Cross-cutting cache invalidation routes
 /// through invalidator interfaces
-/// (<see cref="IFullProfileInvalidator"/>,
+/// (<see cref="IUserInfoInvalidator"/>,
 /// <see cref="IRoleAssignmentClaimsCacheInvalidator"/>,
 /// <see cref="IShiftAuthorizationInvalidator"/>) rather than IMemoryCache.
 /// </remarks>
@@ -43,7 +43,7 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
     private readonly INotificationService _notificationService;
     private readonly IGoogleSyncService _googleSyncService;
     private readonly IAuditLogService _auditLogService;
-    private readonly IFullProfileInvalidator _fullProfileInvalidator;
+    private readonly IUserInfoInvalidator _userInfoInvalidator;
     private readonly IRoleAssignmentClaimsCacheInvalidator _roleAssignmentClaimsInvalidator;
     private readonly IShiftAuthorizationInvalidator _shiftAuthorizationInvalidator;
     private readonly IHumansMetrics _metrics;
@@ -59,7 +59,7 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
         INotificationService notificationService,
         IGoogleSyncService googleSyncService,
         IAuditLogService auditLogService,
-        IFullProfileInvalidator fullProfileInvalidator,
+        IUserInfoInvalidator userInfoInvalidator,
         IRoleAssignmentClaimsCacheInvalidator roleAssignmentClaimsInvalidator,
         IShiftAuthorizationInvalidator shiftAuthorizationInvalidator,
         IHumansMetrics metrics,
@@ -74,7 +74,7 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
         _notificationService = notificationService;
         _googleSyncService = googleSyncService;
         _auditLogService = auditLogService;
-        _fullProfileInvalidator = fullProfileInvalidator;
+        _userInfoInvalidator = userInfoInvalidator;
         _roleAssignmentClaimsInvalidator = roleAssignmentClaimsInvalidator;
         _shiftAuthorizationInvalidator = shiftAuthorizationInvalidator;
         _metrics = metrics;
@@ -202,7 +202,7 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
                     $"{user.DisplayName} suspended for missing required document consent (grace period expired)",
                     nameof(SuspendNonCompliantMembersJob));
 
-                await _fullProfileInvalidator.InvalidateAsync(user.Id, cancellationToken);
+                await _userInfoInvalidator.InvalidateAsync(user.Id, cancellationToken);
                 _roleAssignmentClaimsInvalidator.Invalidate(user.Id);
                 _shiftAuthorizationInvalidator.Invalidate(user.Id);
                 _teamService.RemoveMemberFromAllTeamsCache(user.Id);

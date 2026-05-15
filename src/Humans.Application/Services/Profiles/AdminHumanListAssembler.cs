@@ -19,7 +19,7 @@ namespace Humans.Application.Services.Profiles;
 /// <para>The text-search portion is now controller-driven: the caller may
 /// pre-filter the candidate user-id set by passing
 /// <paramref name="searchUserIds"/>, which is the union returned by
-/// <c>IProfileService.SearchProfilesAsync(query, PersonSearchFields.AdminAll)</c>
+/// <c>IUserService.SearchUsersAsync(query, PersonSearchFields.AdminAll)</c>
 /// + email-direct match. Pass <c>null</c> when no search term is in play.</para>
 /// </summary>
 public static class AdminHumanListAssembler

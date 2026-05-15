@@ -167,7 +167,7 @@ public class Profile
     /// <summary>
     /// Lifecycle state — Stub / Active / Suspended. Issue #635 (§15i): nullable
     /// while existing rows are lazily populated by
-    /// <c>CachingProfileService</c>. New rows are created with an explicit
+    /// <c>CachingUserService</c>. New rows are created with an explicit
     /// <see cref="ProfileState.Stub"/> via the Stub Profile invariant.
     /// </summary>
     public ProfileState? State { get; set; }
@@ -177,7 +177,7 @@ public class Profile
     /// <see cref="LastName"/> are all populated (non-whitespace). The single
     /// canonical predicate for Stub→Active eligibility — used by
     /// <c>ProfileService.SaveProfileAsync</c>, <c>ProfileService.SetSuspendedAsync</c>,
-    /// and <c>CachingProfileService.ComputeProfileState</c> so the rule cannot
+    /// and <c>CachingUserService.ComputeProfileState</c> so the rule cannot
     /// drift between write paths and lazy-compute paths.
     /// </summary>
     public bool HasRequiredIdentityFields() =>

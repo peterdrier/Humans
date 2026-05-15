@@ -46,16 +46,6 @@ public class OnboardingArchitectureTests
     }
 
     [HumansFact]
-    public void OnboardingService_HasNoIFullProfileInvalidatorConstructorParameter()
-    {
-        var ctor = typeof(OnboardingService).GetConstructors().Single();
-        ctor.GetParameters()
-            .Should().NotContain(
-                p => p.ParameterType == typeof(IFullProfileInvalidator),
-                because: "FullProfile cache invalidation is owned by ProfileService (via its decorator) — the orchestrator must not shortcut around it");
-    }
-
-    [HumansFact]
     public void OnboardingService_HasNoRepositoryDependency()
     {
         var ctor = typeof(OnboardingService).GetConstructors().Single();

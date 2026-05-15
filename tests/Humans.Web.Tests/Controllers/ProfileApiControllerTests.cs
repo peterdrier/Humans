@@ -155,33 +155,6 @@ public class ProfileApiControllerTests
             communicationPreferences: Array.Empty<CommunicationPreference>());
     }
 
-    private static FullProfile MakeFullProfile(
-        Guid userId,
-        Guid profileId,
-        string? burnerName = "Target Burner",
-        bool isRejected = false) =>
-        new(
-            UserId: userId,
-            DisplayName: "Target Display",
-            ProfilePictureUrl: null,
-            HasCustomPicture: false,
-            ProfileId: profileId,
-            UpdatedAtTicks: 0,
-            BurnerName: burnerName,
-            Bio: null,
-            Pronouns: null,
-            ContributionInterests: null,
-            City: null,
-            CountryCode: null,
-            Latitude: null,
-            Longitude: null,
-            BirthdayDay: null,
-            BirthdayMonth: null,
-            IsApproved: true,
-            IsSuspended: false,
-            CVEntries: Array.Empty<CVEntry>(),
-            IsRejected: isRejected);
-
     // ==========================================================================
     // Search — privacy gate behavior on the per-row detail line.
     // ==========================================================================
@@ -198,7 +171,7 @@ public class ProfileApiControllerTests
 
         result.Should().BeOfType<UnauthorizedResult>();
 
-        await _profileService.DidNotReceive().SearchProfilesAsync(
+        await _userService.DidNotReceive().SearchUsersAsync(
             Arg.Any<string>(), Arg.Any<PersonSearchFields>(),
             Arg.Any<int>(), Arg.Any<CancellationToken>());
         await _contactFieldService.DidNotReceive().GetViewerAccessLevelAsync(
@@ -212,7 +185,7 @@ public class ProfileApiControllerTests
         var targetUserId = Guid.NewGuid();
         var targetProfileId = Guid.NewGuid();
 
-        _profileService.SearchProfilesAsync(Arg.Any<string>(),
+        _userService.SearchUsersAsync(Arg.Any<string>(),
                 Arg.Any<PersonSearchFields>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(new[] { MakeSearchResult(targetUserId, targetProfileId, "David") });
 
@@ -251,7 +224,7 @@ public class ProfileApiControllerTests
         var targetUserId = Guid.NewGuid();
         var targetProfileId = Guid.NewGuid();
 
-        _profileService.SearchProfilesAsync(Arg.Any<string>(),
+        _userService.SearchUsersAsync(Arg.Any<string>(),
                 Arg.Any<PersonSearchFields>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(new[] { MakeSearchResult(targetUserId, targetProfileId, "David") });
 
@@ -286,7 +259,7 @@ public class ProfileApiControllerTests
         var targetUserId = Guid.NewGuid();
         var targetProfileId = Guid.NewGuid();
 
-        _profileService.SearchProfilesAsync(Arg.Any<string>(),
+        _userService.SearchUsersAsync(Arg.Any<string>(),
                 Arg.Any<PersonSearchFields>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(new[] { MakeSearchResult(targetUserId, targetProfileId, "David") });
 
@@ -313,7 +286,7 @@ public class ProfileApiControllerTests
         var targetUserId = Guid.NewGuid();
         var targetProfileId = Guid.NewGuid();
 
-        _profileService.SearchProfilesAsync(Arg.Any<string>(),
+        _userService.SearchUsersAsync(Arg.Any<string>(),
                 Arg.Any<PersonSearchFields>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(new[] { MakeSearchResult(targetUserId, targetProfileId, "David") });
 
