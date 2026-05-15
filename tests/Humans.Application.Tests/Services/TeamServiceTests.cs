@@ -539,48 +539,6 @@ public class TeamServiceTests : IDisposable
     }
 
     // ==========================================================================
-    // IsUserMemberOfTeamAsync
-    // ==========================================================================
-
-    [HumansFact]
-    public async Task IsUserMemberOfTeamAsync_ActiveMember_ReturnsTrue()
-    {
-        var user = SeedUser();
-        var team = SeedTeam("Alpha");
-        SeedTeamMember(team.Id, user.Id);
-        await _dbContext.SaveChangesAsync();
-
-        var result = await _service.IsUserMemberOfTeamAsync(team.Id, user.Id);
-
-        result.Should().BeTrue();
-    }
-
-    [HumansFact]
-    public async Task IsUserMemberOfTeamAsync_LeftTeam_ReturnsFalse()
-    {
-        var user = SeedUser();
-        var team = SeedTeam("Alpha");
-        SeedTeamMember(team.Id, user.Id, leftAt: _clock.GetCurrentInstant() - Duration.FromDays(1));
-        await _dbContext.SaveChangesAsync();
-
-        var result = await _service.IsUserMemberOfTeamAsync(team.Id, user.Id);
-
-        result.Should().BeFalse();
-    }
-
-    [HumansFact]
-    public async Task IsUserMemberOfTeamAsync_NotMember_ReturnsFalse()
-    {
-        var user = SeedUser();
-        var team = SeedTeam("Alpha");
-        await _dbContext.SaveChangesAsync();
-
-        var result = await _service.IsUserMemberOfTeamAsync(team.Id, user.Id);
-
-        result.Should().BeFalse();
-    }
-
-    // ==========================================================================
     // GetTeamBySlugAsync
     // ==========================================================================
 
@@ -1123,67 +1081,6 @@ public class TeamServiceTests : IDisposable
         var result = await _service.GetPendingRequestCountsByTeamIdsAsync([team.Id]);
 
         result[team.Id].Should().Be(0);
-    }
-
-    // ==========================================================================
-    // GetNonSystemTeamNamesByUserIdsAsync
-    // ==========================================================================
-
-    [HumansFact]
-    public async Task GetNonSystemTeamNamesByUserIdsAsync_ReturnsTeamNamesGroupedByUser()
-    {
-        var u1 = SeedUser(displayName: "U1");
-        var u2 = SeedUser(displayName: "U2");
-        var teamA = SeedTeam("Alpha");
-        var teamB = SeedTeam("Beta");
-        SeedTeamMember(teamA.Id, u1.Id);
-        SeedTeamMember(teamB.Id, u1.Id);
-        SeedTeamMember(teamA.Id, u2.Id);
-        await _dbContext.SaveChangesAsync();
-
-        var result = await _service.GetNonSystemTeamNamesByUserIdsAsync([u1.Id, u2.Id]);
-
-        result[u1.Id].Should().HaveCount(2);
-        result[u1.Id].Should().Contain("Alpha");
-        result[u1.Id].Should().Contain("Beta");
-        result[u2.Id].Should().ContainSingle("Alpha");
-    }
-
-    [HumansFact]
-    public async Task GetNonSystemTeamNamesByUserIdsAsync_ExcludesSystemTeams()
-    {
-        var user = SeedUser();
-        var userTeam = SeedTeam("User Team");
-        var sysTeam = SeedTeam("Volunteers", type: SystemTeamType.Volunteers);
-        SeedTeamMember(userTeam.Id, user.Id);
-        SeedTeamMember(sysTeam.Id, user.Id);
-        await _dbContext.SaveChangesAsync();
-
-        var result = await _service.GetNonSystemTeamNamesByUserIdsAsync([user.Id]);
-
-        result[user.Id].Should().ContainSingle("User Team");
-    }
-
-    [HumansFact]
-    public async Task GetNonSystemTeamNamesByUserIdsAsync_ExcludesLeftMembers()
-    {
-        var user = SeedUser();
-        var team = SeedTeam("Alpha");
-        SeedTeamMember(team.Id, user.Id,
-            leftAt: _clock.GetCurrentInstant() - Duration.FromDays(1));
-        await _dbContext.SaveChangesAsync();
-
-        var result = await _service.GetNonSystemTeamNamesByUserIdsAsync([user.Id]);
-
-        result.Should().BeEmpty();
-    }
-
-    [HumansFact]
-    public async Task GetNonSystemTeamNamesByUserIdsAsync_EmptyInput_ReturnsEmptyDict()
-    {
-        var result = await _service.GetNonSystemTeamNamesByUserIdsAsync([]);
-
-        result.Should().BeEmpty();
     }
 
     // ==========================================================================

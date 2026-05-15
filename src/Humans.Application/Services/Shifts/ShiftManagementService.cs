@@ -327,7 +327,10 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         // navigation is cross-domain (design-rules §6) so the repo never
         // navigates it.
         var teamIds = rotas.Select(r => r.TeamId).Distinct().ToList();
-        var teamNames = await TeamService.GetTeamNamesByIdsAsync(teamIds, cancellationToken);
+        var teamsById = await TeamService.GetTeamsAsync(cancellationToken);
+        var teamNames = teamIds
+            .Where(teamsById.ContainsKey)
+            .ToDictionary(id => id, id => teamsById[id].Name);
 
         return rotas
             .Select(r => new RotaSearchHit(

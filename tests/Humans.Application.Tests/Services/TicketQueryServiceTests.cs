@@ -83,9 +83,8 @@ public sealed class TicketQueryServiceTests : IDisposable
                 Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(Array.Empty<string>());
 
-        _teamService.GetActiveNonSystemTeamNamesByUserIdsAsync(
-                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, IReadOnlyList<string>>());
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyDictionary<Guid, TeamInfo>)new Dictionary<Guid, TeamInfo>());
     }
 
     public void Dispose()
@@ -622,9 +621,8 @@ public sealed class TicketQueryServiceTests : IDisposable
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(users.ToDictionary(u => u.Id, u => u.Email ?? string.Empty));
 
-        _teamService.GetActiveNonSystemTeamNamesByUserIdsAsync(
-                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, IReadOnlyList<string>>());
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyDictionary<Guid, TeamInfo>)new Dictionary<Guid, TeamInfo>());
 
         _shiftManagementService.GetActiveAsync()
             .Returns((EventSettings?)null);

@@ -127,9 +127,20 @@ public class ShiftSignupsBucketingTests
         }
 
         var teamService = Substitute.For<ITeamService>();
-        teamService.GetTeamNamesByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(ci => (IReadOnlyDictionary<Guid, string>)((IReadOnlyCollection<Guid>)ci[0])
-                .ToDictionary(id => id, _ => "Test Dept"));
+        teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                var teamIds = signups.Select(s => s.Shift.Rota.TeamId).Distinct().ToList();
+                IReadOnlyDictionary<Guid, TeamInfo> dict = teamIds.ToDictionary(
+                    id => id,
+                    id => new TeamInfo(
+                        id, "Test Dept", null, "test-dept",
+                        IsActive: true, IsSystemTeam: false, SystemTeamType: SystemTeamType.None,
+                        RequiresApproval: false, IsPublicPage: false, IsHidden: false,
+                        IsPromotedToDirectory: false, CreatedAt: Instant.MinValue,
+                        Members: []));
+                return dict;
+            });
 
         var clock = new FakeClock(TestNow);
         var component = new ShiftSignupsViewComponent(

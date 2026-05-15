@@ -217,8 +217,9 @@ public sealed class GoogleAdminService : IGoogleAdminService
         // Reject if the prefix collides with a team's Google Group. Team groups live on
         // the same domain (@nobodies.team), so provisioning a user account with the same
         // address would cause mail-routing chaos and break group membership.
-        var conflictingTeamName = await _teamService.GetTeamNameByGoogleGroupPrefixAsync(
-            normalizedPrefix, ct);
+        var conflictingTeamName = (await _teamService.GetTeamsAsync(ct)).Values
+            .FirstOrDefault(t => string.Equals(t.GoogleGroupPrefix, normalizedPrefix, StringComparison.OrdinalIgnoreCase))
+            ?.Name;
         if (!string.IsNullOrEmpty(conflictingTeamName))
         {
             _logger.LogWarning(

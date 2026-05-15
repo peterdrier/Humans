@@ -67,20 +67,6 @@ public interface ITeamRepository : IRepository
     Task<IReadOnlyList<Team>> GetAllWithMembersAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// Resolve a set of team ids to their display names, without any
-    /// <c>IsActive</c> filter (historical references in GDPR exports etc).
-    /// </summary>
-    Task<IReadOnlyDictionary<Guid, string>> GetNamesByIdsAsync(
-        IReadOnlyCollection<Guid> teamIds, CancellationToken ct = default);
-
-    /// <summary>
-    /// Return the team display name whose <c>GoogleGroupPrefix</c> matches
-    /// <paramref name="prefix"/> (case-insensitive, wildcard-safe). Returns
-    /// null if no team uses that prefix.
-    /// </summary>
-    Task<string?> GetNameByGoogleGroupPrefixAsync(string prefix, CancellationToken ct = default);
-
-    /// <summary>
     /// Page of all teams (active/inactive) with active members, pending join
     /// requests, and role definitions eagerly loaded. Admin paging stays
     /// DB-side because the include graph is too expensive to load wholesale.
@@ -311,13 +297,6 @@ public interface ITeamRepository : IRepository
         TeamRoleDefinition definition,
         bool clearingIsManagement,
         CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns the names of non-system active teams the user belongs to,
-    /// grouped by user id. Used for the tickets admin dashboard.
-    /// </summary>
-    Task<IReadOnlyDictionary<Guid, IReadOnlyList<string>>> GetActiveNonSystemTeamNamesByUserIdsAsync(
-        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
 
     /// <summary>
     /// Loads active (<see cref="TeamMember.LeftAt"/> is null) team members

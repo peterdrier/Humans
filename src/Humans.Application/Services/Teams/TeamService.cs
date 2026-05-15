@@ -207,11 +207,6 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
         CancellationToken cancellationToken = default) =>
         await LoadTeamsByIdAsync(cancellationToken);
 
-    public Task<IReadOnlyDictionary<Guid, string>> GetTeamNamesByIdsAsync(
-        IReadOnlyCollection<Guid> teamIds,
-        CancellationToken cancellationToken = default) =>
-        _repo.GetNamesByIdsAsync(teamIds, cancellationToken);
-
     public async Task<IReadOnlyList<Team>> GetAllTeamsAsync(CancellationToken cancellationToken = default)
     {
         var teams = await _repo.GetAllActiveAsync(cancellationToken);
@@ -251,10 +246,6 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
         var (updated, previous) = await _repo.SetGoogleGroupPrefixAsync(teamId, prefix, cancellationToken);
         return (updated, previous);
     }
-
-    public Task<string?> GetTeamNameByGoogleGroupPrefixAsync(
-        string prefix, CancellationToken cancellationToken = default) =>
-        _repo.GetNameByGoogleGroupPrefixAsync(prefix, cancellationToken);
 
     public async Task<TeamDirectoryResult> GetTeamDirectoryAsync(
         Guid? userId,
@@ -661,7 +652,8 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
         if (existingRequest is not null)
             throw new InvalidOperationException("User already has a pending request for this team");
 
-        var isMember = await IsUserMemberOfTeamAsync(teamId, userId, cancellationToken);
+        var teamInfo = await GetTeamAsync(teamId, cancellationToken);
+        var isMember = teamInfo is { IsActive: true } && teamInfo.Members.Any(m => m.UserId == userId);
         if (isMember)
             throw new InvalidOperationException("User is already a member of this team");
 
@@ -1065,17 +1057,6 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
         return await IsUserCoordinatorOfTeamAsync(teamId, userId, cancellationToken);
     }
 
-    public async Task<bool> IsUserMemberOfTeamAsync(
-        Guid teamId,
-        Guid userId,
-        CancellationToken cancellationToken = default)
-    {
-        var teamsById = await LoadTeamsByIdAsync(cancellationToken);
-        return teamsById.TryGetValue(teamId, out var team)
-            && team.IsActive
-            && team.Members.Any(m => m.UserId == userId);
-    }
-
     public async Task<bool> IsUserCoordinatorOfTeamAsync(
         Guid teamId,
         Guid userId,
@@ -1288,11 +1269,6 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
             actorUserId,
             relatedEntityId: userId, relatedEntityType: nameof(User));
     }
-
-    public Task<IReadOnlyDictionary<Guid, IReadOnlyList<string>>> GetActiveNonSystemTeamNamesByUserIdsAsync(
-        IReadOnlyCollection<Guid> userIds,
-        CancellationToken cancellationToken = default) =>
-        _repo.GetActiveNonSystemTeamNamesByUserIdsAsync(userIds, cancellationToken);
 
     // ==========================================================================
     // Team Role Definitions
@@ -1855,33 +1831,6 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
         IEnumerable<Guid> teamIds,
         CancellationToken cancellationToken = default) =>
         _repo.GetPublicManagementRoleNamesByTeamIdsAsync(teamIds.ToList(), cancellationToken);
-
-    public async Task<IReadOnlyDictionary<Guid, List<string>>> GetNonSystemTeamNamesByUserIdsAsync(
-        IEnumerable<Guid> userIds,
-        CancellationToken cancellationToken = default)
-    {
-        var userIdSet = userIds.ToHashSet();
-        if (userIdSet.Count == 0)
-            return new Dictionary<Guid, List<string>>();
-
-        var teamsById = await LoadTeamsByIdAsync(cancellationToken);
-        var result = new Dictionary<Guid, List<string>>();
-
-        foreach (var team in teamsById.Values.Where(t => t.IsActive && t.SystemTeamType == SystemTeamType.None && !t.IsHidden))
-        {
-            foreach (var member in team.Members.Where(m => userIdSet.Contains(m.UserId)))
-            {
-                if (!result.TryGetValue(member.UserId, out var names))
-                {
-                    names = [];
-                    result[member.UserId] = names;
-                }
-                names.Add(team.Name);
-            }
-        }
-
-        return result;
-    }
 
     public async Task<AdminTeamListResult> GetAdminTeamListAsync(
         int page,

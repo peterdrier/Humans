@@ -378,9 +378,8 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
 
         if (report.AssignedToTeamId != assignedToTeamId && report.AssignedToTeamId.HasValue)
         {
-            var oldTeam = await _teamService.GetTeamNamesByIdsAsync(
-                [report.AssignedToTeamId.Value], cancellationToken);
-            oldTeamName = oldTeam.TryGetValue(report.AssignedToTeamId.Value, out var oldName) ? oldName : null;
+            var team = await _teamService.GetTeamAsync(report.AssignedToTeamId.Value, cancellationToken);
+            oldTeamName = team?.Name;
         }
 
         if (report.AssignedToUserId != assignedToUserId)
@@ -402,11 +401,8 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
             string toLabel = "Unassigned";
             if (assignedToTeamId.HasValue)
             {
-                var names = await _teamService.GetTeamNamesByIdsAsync(
-                    [assignedToTeamId.Value], cancellationToken);
-                toLabel = names.TryGetValue(assignedToTeamId.Value, out var newName)
-                    ? newName
-                    : assignedToTeamId.Value.ToString();
+                var team = await _teamService.GetTeamAsync(assignedToTeamId.Value, cancellationToken);
+                toLabel = team?.Name ?? assignedToTeamId.Value.ToString();
             }
             changes.Add($"Team: {fromLabel} → {toLabel}");
             report.AssignedToTeamId = assignedToTeamId;
@@ -539,9 +535,14 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
         var users = userIds.Count == 0
             ? null
             : await _userService.GetByIdsAsync(userIds, ct);
-        var teamNames = teamIds.Count == 0
-            ? null
-            : await _teamService.GetTeamNamesByIdsAsync(teamIds, ct);
+        IReadOnlyDictionary<Guid, string>? teamNames = null;
+        if (teamIds.Count > 0)
+        {
+            var teamsById = await _teamService.GetTeamsAsync(ct);
+            teamNames = teamIds
+                .Where(teamsById.ContainsKey)
+                .ToDictionary(id => id, id => teamsById[id].Name);
+        }
 
         foreach (var r in reports)
         {

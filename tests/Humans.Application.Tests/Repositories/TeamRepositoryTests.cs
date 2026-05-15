@@ -113,18 +113,6 @@ public sealed class TeamRepositoryTests : IDisposable
         all.Should().ContainSingle(t => t.Name == "Active");
     }
 
-    [HumansFact]
-    public async Task GetNamesByIdsAsync_IncludesInactive_ForGdprHistory()
-    {
-        var active = await SeedTeamAsync("Active", isActive: true);
-        var inactive = await SeedTeamAsync("Inactive", isActive: false);
-
-        var names = await _repo.GetNamesByIdsAsync(new[] { active.Id, inactive.Id });
-
-        names[active.Id].Should().Be("Active");
-        names[inactive.Id].Should().Be("Inactive");
-    }
-
     // ==========================================================================
     // Membership writes — compound transactions
     // ==========================================================================

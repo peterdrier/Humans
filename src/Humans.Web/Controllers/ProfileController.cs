@@ -1857,7 +1857,10 @@ public class ProfileController : HumansControllerBase
         }
 
         var noShowTeamIds = noShows.Select(s => s.TeamId).Distinct().ToList();
-        var noShowTeamNames = await _teamService.GetTeamNamesByIdsAsync(noShowTeamIds, ct);
+        var teamsById = await _teamService.GetTeamsAsync(ct);
+        var noShowTeamNames = noShowTeamIds
+            .Where(teamsById.ContainsKey)
+            .ToDictionary(id => id, id => teamsById[id].Name);
 
         var reviewerIds = noShows
             .Where(s => s.ReviewedByUserId.HasValue)

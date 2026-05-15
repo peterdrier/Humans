@@ -96,35 +96,6 @@ public sealed class TeamRepository : ITeamRepository
             .ToListAsync(ct);
     }
 
-    public async Task<IReadOnlyDictionary<Guid, string>> GetNamesByIdsAsync(
-        IReadOnlyCollection<Guid> teamIds, CancellationToken ct = default)
-    {
-        if (teamIds.Count == 0)
-            return new Dictionary<Guid, string>();
-
-        await using var db = await _factory.CreateDbContextAsync(ct);
-        return await db.Teams
-            .AsNoTracking()
-            .Where(t => teamIds.Contains(t.Id))
-            .ToDictionaryAsync(t => t.Id, t => t.Name, ct);
-    }
-
-    public async Task<string?> GetNameByGoogleGroupPrefixAsync(string prefix, CancellationToken ct = default)
-    {
-        if (string.IsNullOrWhiteSpace(prefix))
-            return null;
-
-        var escaped = EscapeLikePattern(prefix.Trim());
-
-        await using var db = await _factory.CreateDbContextAsync(ct);
-        return await db.Teams
-            .AsNoTracking()
-            .Where(t => t.GoogleGroupPrefix != null
-                && EF.Functions.ILike(t.GoogleGroupPrefix, escaped, "\\"))
-            .Select(t => t.Name)
-            .FirstOrDefaultAsync(ct);
-    }
-
     private static string EscapeLikePattern(string value)
         => value
             .Replace("\\", "\\\\")
@@ -438,29 +409,6 @@ public sealed class TeamRepository : ITeamRepository
         // writes in the service that still want an explicit commit point
         // after the repository has bundled multiple mutations in one method.
         return Task.CompletedTask;
-    }
-
-    public async Task<IReadOnlyDictionary<Guid, IReadOnlyList<string>>> GetActiveNonSystemTeamNamesByUserIdsAsync(
-        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
-    {
-        if (userIds.Count == 0)
-            return new Dictionary<Guid, IReadOnlyList<string>>();
-
-        await using var db = await _factory.CreateDbContextAsync(ct);
-        var rows = await db.TeamMembers
-            .AsNoTracking()
-            .Where(tm => userIds.Contains(tm.UserId) && tm.LeftAt == null && !tm.Team.IsSystemTeam)
-            .Select(tm => new { tm.UserId, TeamName = tm.Team.Name })
-            .ToListAsync(ct);
-
-        return rows
-            .GroupBy(r => r.UserId)
-            .ToDictionary(
-                g => g.Key,
-                g => (IReadOnlyList<string>)g
-                    .Select(r => r.TeamName)
-                    .OrderBy(n => n, StringComparer.OrdinalIgnoreCase)
-                    .ToList());
     }
 
     // ==========================================================================

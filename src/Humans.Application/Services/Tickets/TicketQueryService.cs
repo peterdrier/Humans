@@ -624,7 +624,22 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
         // Stitch in memory: profiles (for tier), notification emails, team memberships.
         var profiles = await _profileService.GetByUserIdsAsync(candidateIds);
         var emailsById = await _userEmailService.GetNotificationEmailsByUserIdsAsync(candidateIds);
-        var teamsByUser = await _teamService.GetActiveNonSystemTeamNamesByUserIdsAsync(candidateIds);
+        var candidateIdSet = candidateIds.ToHashSet();
+        var teamsByIdLookup = await _teamService.GetTeamsAsync();
+        var teamsByUser = new Dictionary<Guid, IReadOnlyList<string>>();
+        foreach (var team in teamsByIdLookup.Values
+            .Where(t => t.IsActive && t.SystemTeamType == SystemTeamType.None && !t.IsHidden))
+        {
+            foreach (var member in team.Members.Where(m => candidateIdSet.Contains(m.UserId)))
+            {
+                if (!teamsByUser.TryGetValue(member.UserId, out var names))
+                {
+                    names = new List<string>();
+                    teamsByUser[member.UserId] = names;
+                }
+                ((List<string>)names).Add(team.Name);
+            }
+        }
 
         var usersById = allUsers.ToDictionary(u => u.Id);
 

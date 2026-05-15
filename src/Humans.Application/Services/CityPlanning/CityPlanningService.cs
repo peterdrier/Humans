@@ -223,10 +223,10 @@ public sealed class CityPlanningService : ICityPlanningService
     public async Task<bool> IsCityPlanningTeamMemberAsync(
         Guid userId, CancellationToken cancellationToken = default)
     {
-        var team = await _teamService.GetTeamBySlugAsync(_options.Value.CityPlanningTeamSlug, cancellationToken);
-        if (team is null) return false;
-
-        return await _teamService.IsUserMemberOfTeamAsync(team.Id, userId, cancellationToken);
+        var slug = _options.Value.CityPlanningTeamSlug;
+        var team = (await _teamService.GetTeamsAsync(cancellationToken)).Values
+            .FirstOrDefault(t => string.Equals(t.Slug, slug, StringComparison.Ordinal));
+        return team is { IsActive: true } && team.Members.Any(m => m.UserId == userId);
     }
 
     public async Task<bool> CanUserEditAsync(

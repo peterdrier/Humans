@@ -53,8 +53,8 @@ public class ProcessGoogleSyncOutboxJobTests : IDisposable
             .Returns(new Dictionary<Guid, User>());
         _teamService = Substitute.For<ITeamService>();
         _teamService
-            .GetTeamNamesByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, string>());
+            .GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyDictionary<Guid, TeamInfo>)new Dictionary<Guid, TeamInfo>());
         _googleSyncService = Substitute.For<IGoogleSyncService>();
         _notificationService = Substitute.For<INotificationService>();
         _clock = new FakeClock(Instant.FromUtc(2026, 2, 15, 20, 0));

@@ -276,9 +276,12 @@ public class ShiftsController : HumansControllerBase
     private async Task<IReadOnlyDictionary<Guid, string>> LoadTeamNamesForSignupsAsync(IReadOnlyList<ShiftSignup> signups)
     {
         var teamIds = ShiftSignupBucketer.GetTeamIds(signups);
-        return teamIds.Count == 0
-            ? new Dictionary<Guid, string>()
-            : await _teamService.GetTeamNamesByIdsAsync(teamIds);
+        if (teamIds.Count == 0)
+            return new Dictionary<Guid, string>();
+        var teamsById = await _teamService.GetTeamsAsync();
+        return teamIds
+            .Where(teamsById.ContainsKey)
+            .ToDictionary(id => id, id => teamsById[id].Name);
     }
 
     private async Task PopulateAvailabilityAsync(MyShiftsViewModel model, Guid userId, EventSettings? eventSettings)

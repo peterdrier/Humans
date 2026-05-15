@@ -195,9 +195,16 @@ public class EmailProvisioningServiceTests
 
         var userId = Guid.NewGuid();
         StubTargetUser(f, userId);
-        f.TeamService.GetTeamNameByGoogleGroupPrefixAsync(
-                "comms", Arg.Any<CancellationToken>())
-            .Returns("Communications");
+        var teamId = Guid.NewGuid();
+        var teamInfo = new TeamInfo(
+            teamId, "Communications", null, "communications",
+            IsActive: true, IsSystemTeam: false, SystemTeamType: SystemTeamType.None,
+            RequiresApproval: false, IsPublicPage: false, IsHidden: false,
+            IsPromotedToDirectory: false, CreatedAt: Instant.MinValue,
+            Members: [],
+            GoogleGroupPrefix: "comms");
+        f.TeamService.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyDictionary<Guid, TeamInfo>)new Dictionary<Guid, TeamInfo> { [teamId] = teamInfo });
 
         var result = await f.Service.ProvisionNobodiesEmailAsync(userId, "comms", userId);
 

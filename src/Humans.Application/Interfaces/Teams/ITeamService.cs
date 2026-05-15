@@ -184,6 +184,7 @@ public record TeamActiveMemberSnapshot(
 /// <remarks>
 /// Surface-budget recent history (newest first):
 /// <list type="bullet">
+///   <item>61→56 — drained 5 name-lookup readers (GetTeamNameByGoogleGroupPrefixAsync, GetTeamNamesByIdsAsync, GetNonSystemTeamNamesByUserIdsAsync, GetActiveNonSystemTeamNamesByUserIdsAsync, IsUserMemberOfTeamAsync) onto TeamInfo cache.</item>
 ///   <item>66→61 — drained 5 coordinator readers (GetCoordinatorUserIdsAsync, GetActiveCoordinatorsForTeamsAsync, GetActiveNonSystemTeamCoordinatorUserIdsAsync, GetActiveDepartmentCoordinatorUserIdsAsync, IsActiveDepartmentCoordinatorAsync) onto TeamInfo cache.</item>
 ///   <item>68→66 — drained GetActiveTeamOptionsAsync + GetBudgetableTeamsAsync onto TeamInfo cache; killed TeamOptionDto record (parent: peterdrier/Humans#555 UserInfo migration).</item>
 ///   <item>71→70 — PR #478 (issue #615): removed GetActiveChildMembersByParentIdsAsync; the child-team rollup is now inside GetExpectedAsync via GetActiveMembersForTeamsAsync.</item>
@@ -195,7 +196,7 @@ public record TeamActiveMemberSnapshot(
 ///   <item>71→70 — account-merge fold redesign: removed ReassignToUserAsync from ITeamService (moved to IUserMerge.ReassignAsync, implemented by TeamService and dispatched by AccountMergeService via IEnumerable&lt;IUserMerge&gt; fan-out).</item>
 /// </list>
 /// </remarks>
-[SurfaceBudget(61)]
+[SurfaceBudget(56)]
 public interface ITeamService : IApplicationService
 {
     /// <summary>
@@ -229,28 +230,6 @@ public interface ITeamService : IApplicationService
     /// Gets team read models keyed by ID, including active members.
     /// </summary>
     Task<IReadOnlyDictionary<Guid, TeamInfo>> GetTeamsAsync(CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Returns the display name of the team whose <c>GoogleGroupPrefix</c> matches
-    /// <paramref name="googleGroupPrefix"/> (case-insensitive), or null if no team
-    /// uses that prefix. Used by @nobodies.team provisioning to block personal
-    /// prefixes that would collide with a team group on the same domain.
-    /// </summary>
-    Task<string?> GetTeamNameByGoogleGroupPrefixAsync(
-        string googleGroupPrefix,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Resolves a set of team IDs to their display names WITHOUT filtering by
-    /// <see cref="Team.IsActive"/>. Used by the GDPR export, where historical
-    /// records (shift signups, audit entries) may reference teams that have
-    /// since been deactivated — those users still deserve a name in their
-    /// downloaded data, not <c>null</c>. The returned dictionary contains one
-    /// entry per input ID that resolves; unknown IDs are simply absent.
-    /// </summary>
-    Task<IReadOnlyDictionary<Guid, string>> GetTeamNamesByIdsAsync(
-        IReadOnlyCollection<Guid> teamIds,
-        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets all active teams.
@@ -390,14 +369,6 @@ public interface ITeamService : IApplicationService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Checks if a user is a member of a team.
-    /// </summary>
-    Task<bool> IsUserMemberOfTeamAsync(
-        Guid teamId,
-        Guid userId,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Checks if a user is a coordinator of a team.
     /// </summary>
     Task<bool> IsUserCoordinatorOfTeamAsync(
@@ -431,14 +402,6 @@ public interface ITeamService : IApplicationService
     /// <returns>Dictionary mapping team ID to the management role name.</returns>
     Task<IReadOnlyDictionary<Guid, string>> GetManagementRoleNamesByTeamIdsAsync(
         IEnumerable<Guid> teamIds,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Gets non-system team names for users, grouped by user ID.
-    /// Used for birthday display.
-    /// </summary>
-    Task<IReadOnlyDictionary<Guid, List<string>>> GetNonSystemTeamNamesByUserIdsAsync(
-        IEnumerable<Guid> userIds,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -615,16 +578,6 @@ public interface ITeamService : IApplicationService
     /// </summary>
     Task<IReadOnlyDictionary<Guid, Team>> GetByIdsWithParentsAsync(
         IReadOnlyCollection<Guid> teamIds,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Returns the active non-system team names for each of the given user ids.
-    /// Entries are absent for users with no active memberships.
-    /// Used by the Tickets admin "who hasn't bought" view and similar
-    /// cross-section admin lists.
-    /// </summary>
-    Task<IReadOnlyDictionary<Guid, IReadOnlyList<string>>> GetActiveNonSystemTeamNamesByUserIdsAsync(
-        IReadOnlyCollection<Guid> userIds,
         CancellationToken cancellationToken = default);
 
     /// <summary>

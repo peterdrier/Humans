@@ -237,12 +237,7 @@ public class CityPlanningServiceTests : IDisposable
     {
         var userId = NewUserId();
         var teamId = Guid.NewGuid();
-        var team = new Team { Id = teamId, Name = "City Planning", Slug = "city-planning" };
-
-        _teamService.GetTeamBySlugAsync("city-planning", Arg.Any<CancellationToken>())
-            .Returns(team);
-        _teamService.IsUserMemberOfTeamAsync(teamId, userId, Arg.Any<CancellationToken>())
-            .Returns(true);
+        SetupCityPlanningTeam(teamId, memberUserId: userId);
 
         var result = await _sut.IsCityPlanningTeamMemberAsync(userId);
         result.Should().BeTrue();
@@ -253,12 +248,7 @@ public class CityPlanningServiceTests : IDisposable
     {
         var userId = NewUserId();
         var teamId = Guid.NewGuid();
-        var team = new Team { Id = teamId, Name = "City Planning", Slug = "city-planning" };
-
-        _teamService.GetTeamBySlugAsync("city-planning", Arg.Any<CancellationToken>())
-            .Returns(team);
-        _teamService.IsUserMemberOfTeamAsync(teamId, userId, Arg.Any<CancellationToken>())
-            .Returns(false);
+        SetupCityPlanningTeam(teamId, memberUserId: null);
 
         var result = await _sut.IsCityPlanningTeamMemberAsync(userId);
         result.Should().BeFalse();
@@ -270,16 +260,30 @@ public class CityPlanningServiceTests : IDisposable
         var userId = NewUserId();
         var campSeasonId = Guid.NewGuid();
         var teamId = Guid.NewGuid();
-        var team = new Team { Id = teamId, Name = "City Planning", Slug = "city-planning" };
         await SeedMapSettingsAsync(placementOpen: false);
-
-        _teamService.GetTeamBySlugAsync("city-planning", Arg.Any<CancellationToken>())
-            .Returns(team);
-        _teamService.IsUserMemberOfTeamAsync(teamId, userId, Arg.Any<CancellationToken>())
-            .Returns(true);
+        SetupCityPlanningTeam(teamId, memberUserId: userId);
 
         var result = await _sut.CanUserEditAsync(userId, campSeasonId);
         result.Should().BeTrue();
+    }
+
+    private void SetupCityPlanningTeam(Guid teamId, Guid? memberUserId)
+    {
+        var members = memberUserId.HasValue
+            ? new List<TeamMemberInfo>
+            {
+                new(Guid.NewGuid(), memberUserId.Value, string.Empty, null, null,
+                    TeamMemberRole.Member, Instant.MinValue),
+            }
+            : new List<TeamMemberInfo>();
+        var teamInfo = new TeamInfo(
+            teamId, "City Planning", null, "city-planning",
+            IsActive: true, IsSystemTeam: false, SystemTeamType: SystemTeamType.None,
+            RequiresApproval: false, IsPublicPage: false, IsHidden: false,
+            IsPromotedToDirectory: false, CreatedAt: Instant.MinValue,
+            Members: members);
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyDictionary<Guid, TeamInfo>)new Dictionary<Guid, TeamInfo> { [teamId] = teamInfo });
     }
 
     [HumansFact]
