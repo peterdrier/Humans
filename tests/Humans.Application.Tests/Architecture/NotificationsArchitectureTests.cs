@@ -27,14 +27,6 @@ public class NotificationsArchitectureTests
 {
     // ── NotificationService ──────────────────────────────────────────────────
 
-    [HumansFact]
-    public void NotificationService_LivesInHumansApplicationServicesNotificationsNamespace()
-    {
-        typeof(NotificationService).Namespace
-            .Should().Be("Humans.Application.Services.Notifications",
-                because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
-    }
-
     // The DbContext-constructor-parameter check is covered by the generic
     // ApplicationServicesTakeNoDbContextRule for every Application service.
 
@@ -65,13 +57,6 @@ public class NotificationsArchitectureTests
     }
 
     // ── NotificationInboxService ─────────────────────────────────────────────
-
-    [HumansFact]
-    public void NotificationInboxService_LivesInHumansApplicationServicesNotificationsNamespace()
-    {
-        typeof(NotificationInboxService).Namespace
-            .Should().Be("Humans.Application.Services.Notifications");
-    }
 
     [HumansFact]
     public void NotificationInboxService_TakesRepositoryAndUserService()

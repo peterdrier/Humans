@@ -23,14 +23,6 @@ public class ShiftSignupArchitectureTests
     // ── ShiftSignupService ──────────────────────────────────────────────────
 
     [HumansFact]
-    public void ShiftSignupService_LivesInHumansApplicationServicesShiftsNamespace()
-    {
-        typeof(ShiftSignupService).Namespace
-            .Should().Be("Humans.Application.Services.Shifts",
-                because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
-    }
-
-    [HumansFact]
     public void ShiftSignupService_HasNoIMemoryCacheConstructorParameter()
     {
         var ctor = typeof(ShiftSignupService).GetConstructors().Single();

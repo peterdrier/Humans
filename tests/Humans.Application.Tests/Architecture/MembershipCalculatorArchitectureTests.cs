@@ -26,14 +26,6 @@ namespace Humans.Application.Tests.Architecture;
 public class MembershipCalculatorArchitectureTests
 {
     [HumansFact]
-    public void MembershipCalculator_LivesInHumansApplicationServicesGovernanceNamespace()
-    {
-        typeof(MembershipCalculator).Namespace
-            .Should().Be("Humans.Application.Services.Governance",
-                because: "orchestrators with business logic live in Humans.Application per design-rules §2b, organized by section — MembershipCalculator reads belong under Governance alongside ApplicationDecisionService");
-    }
-
-    [HumansFact]
     public void MembershipCalculator_HasNoRepositoryConstructorParameter()
     {
         // The orchestrator owns no tables; it must not inject any

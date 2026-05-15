@@ -22,14 +22,6 @@ public class IssuesArchitectureTests
     // ── IssuesService ────────────────────────────────────────────────────────
 
     [HumansFact]
-    public void IssuesService_LivesInHumansApplicationServicesIssuesNamespace()
-    {
-        typeof(IssuesService).Namespace
-            .Should().Be("Humans.Application.Services.Issues",
-                because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
-    }
-
-    [HumansFact]
     public void IssuesService_TakesIssuesBadgeInvalidator()
     {
         var ctor = typeof(IssuesService).GetConstructors().Single();

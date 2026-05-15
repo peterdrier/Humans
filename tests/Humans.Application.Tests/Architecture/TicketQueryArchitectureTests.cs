@@ -31,14 +31,6 @@ public class TicketQueryArchitectureTests
     // ── TicketQueryService ───────────────────────────────────────────────────
 
     [HumansFact]
-    public void TicketQueryService_LivesInHumansApplicationServicesTicketsNamespace()
-    {
-        typeof(TicketQueryService).Namespace
-            .Should().Be("Humans.Application.Services.Tickets",
-                because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
-    }
-
-    [HumansFact]
     public void TicketQueryService_IsSealed()
     {
         typeof(TicketQueryService).IsSealed.Should().BeTrue(

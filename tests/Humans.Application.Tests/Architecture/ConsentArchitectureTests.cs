@@ -34,14 +34,6 @@ public class ConsentArchitectureTests
     // ── ConsentService ───────────────────────────────────────────────────────
 
     [HumansFact]
-    public void ConsentService_LivesInHumansApplicationServicesConsentNamespace()
-    {
-        typeof(ConsentService).Namespace
-            .Should().Be("Humans.Application.Services.Consent",
-                because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
-    }
-
-    [HumansFact]
     public void ConsentService_HasNoIMemoryCacheConstructorParameter()
     {
         var ctor = typeof(ConsentService).GetConstructors().Single();

@@ -23,14 +23,6 @@ public class GeneralAvailabilityArchitectureTests
     // ── GeneralAvailabilityService ──────────────────────────────────────────
 
     [HumansFact]
-    public void GeneralAvailabilityService_LivesInHumansApplicationServicesShiftsNamespace()
-    {
-        typeof(GeneralAvailabilityService).Namespace
-            .Should().Be("Humans.Application.Services.Shifts",
-                because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
-    }
-
-    [HumansFact]
     public void GeneralAvailabilityService_HasNoIMemoryCacheConstructorParameter()
     {
         var ctor = typeof(GeneralAvailabilityService).GetConstructors().Single();

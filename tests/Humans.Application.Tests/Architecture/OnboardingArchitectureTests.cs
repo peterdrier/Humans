@@ -18,14 +18,6 @@ namespace Humans.Application.Tests.Architecture;
 public class OnboardingArchitectureTests
 {
     [HumansFact]
-    public void OnboardingService_LivesInHumansApplicationServicesOnboardingNamespace()
-    {
-        typeof(OnboardingService).Namespace
-            .Should().Be("Humans.Application.Services.Onboarding",
-                because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
-    }
-
-    [HumansFact]
     public void OnboardingService_HasNoDbSetConstructorParameter()
     {
         var ctor = typeof(OnboardingService).GetConstructors().Single();

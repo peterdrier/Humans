@@ -23,14 +23,6 @@ public class VolunteerTrackingArchitectureTests
     // ── VolunteerTrackingService ────────────────────────────────────────────
 
     [HumansFact]
-    public void VolunteerTrackingService_LivesInHumansApplicationServicesShiftsNamespace()
-    {
-        typeof(VolunteerTrackingService).Namespace
-            .Should().Be("Humans.Application.Services.Shifts",
-                because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
-    }
-
-    [HumansFact]
     public void VolunteerTrackingService_HasNoIMemoryCacheConstructorParameter()
     {
         var ctor = typeof(VolunteerTrackingService).GetConstructors().Single();

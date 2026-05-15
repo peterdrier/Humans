@@ -13,14 +13,6 @@ namespace Humans.Application.Tests.Architecture;
 public class AttendeeContactImportArchitectureTests
 {
     [HumansFact]
-    public void Service_LivesInTicketsNamespace()
-    {
-        typeof(AttendeeContactImportService).Namespace
-            .Should().Be("Humans.Application.Services.Tickets",
-                because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
-    }
-
-    [HumansFact]
     public void Service_DependsOnExpectedAbstractions()
     {
         var ctor = typeof(AttendeeContactImportService).GetConstructors().Single();

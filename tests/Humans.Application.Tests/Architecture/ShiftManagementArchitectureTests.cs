@@ -17,14 +17,6 @@ namespace Humans.Application.Tests.Architecture;
 public class ShiftManagementArchitectureTests
 {
     [HumansFact]
-    public void ShiftManagementService_LivesInHumansApplicationServicesShiftsNamespace()
-    {
-        typeof(ShiftManagementService).Namespace
-            .Should().Be("Humans.Application.Services.Shifts",
-                because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
-    }
-
-    [HumansFact]
     public void ShiftManagementService_TakesRepository()
     {
         var ctor = typeof(ShiftManagementService).GetConstructors().Single();

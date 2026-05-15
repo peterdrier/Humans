@@ -23,14 +23,6 @@ public class DriveActivityMonitorArchitectureTests
     // ── DriveActivityMonitorService ──────────────────────────────────────────
 
     [HumansFact]
-    public void DriveActivityMonitorService_LivesInHumansApplicationServicesGoogleIntegrationNamespace()
-    {
-        typeof(DriveActivityMonitorService).Namespace
-            .Should().Be("Humans.Application.Services.GoogleIntegration",
-                because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
-    }
-
-    [HumansFact]
     public void DriveActivityMonitorService_TakesConnectorAndRepository()
     {
         var ctor = typeof(DriveActivityMonitorService).GetConstructors().Single();

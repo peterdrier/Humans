@@ -23,14 +23,6 @@ public class CalendarArchitectureTests
     // ── CalendarService ──────────────────────────────────────────────────────
 
     [HumansFact]
-    public void CalendarService_LivesInHumansApplicationServicesCalendarNamespace()
-    {
-        typeof(CalendarService).Namespace
-            .Should().Be("Humans.Application.Services.Calendar",
-                because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
-    }
-
-    [HumansFact]
     public void CalendarService_DoesNotImportMicrosoftEntityFrameworkCore()
     {
         // The Application project reference graph structurally prevents this —

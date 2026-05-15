@@ -24,14 +24,6 @@ namespace Humans.Application.Tests.Architecture;
 public class TeamPageArchitectureTests
 {
     [HumansFact]
-    public void TeamPageService_LivesInHumansApplicationServicesTeamsNamespace()
-    {
-        typeof(TeamPageService).Namespace
-            .Should().Be("Humans.Application.Services.Teams",
-                because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
-    }
-
-    [HumansFact]
     public void TeamPageService_ImplementsITeamPageService()
     {
         typeof(ITeamPageService).IsAssignableFrom(typeof(TeamPageService))

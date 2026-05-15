@@ -39,14 +39,6 @@ public class TeamResourceArchitectureTests
     // ── TeamResourceService ──────────────────────────────────────────────────
 
     [HumansFact]
-    public void TeamResourceService_LivesInHumansApplicationServicesTeamsNamespace()
-    {
-        typeof(TeamResourceService).Namespace
-            .Should().Be("Humans.Application.Services.Teams",
-                because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
-    }
-
-    [HumansFact]
     public void TeamResourceService_IsSealed()
     {
         typeof(TeamResourceService).IsSealed

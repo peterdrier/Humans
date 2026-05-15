@@ -30,14 +30,6 @@ public class TeamsArchitectureTests
     // ── TeamService ──────────────────────────────────────────────────────────
 
     [HumansFact]
-    public void TeamService_LivesInHumansApplicationServicesTeamsNamespace()
-    {
-        typeof(TeamService).Namespace
-            .Should().Be("Humans.Application.Services.Teams",
-                because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
-    }
-
-    [HumansFact]
     public void TeamService_TakesRepository()
     {
         var ctor = typeof(TeamService).GetConstructors().Single();

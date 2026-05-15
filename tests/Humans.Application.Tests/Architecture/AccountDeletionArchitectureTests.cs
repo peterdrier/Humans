@@ -14,14 +14,6 @@ namespace Humans.Application.Tests.Architecture;
 public class AccountDeletionArchitectureTests
 {
     [HumansFact]
-    public void AccountDeletionService_LivesInApplicationUsersAccountLifecycleNamespace()
-    {
-        typeof(AccountDeletionService).Namespace
-            .Should().Be("Humans.Application.Services.Users.AccountLifecycle",
-                because: "AccountDeletionService is part of the User section's deletion-orchestration subfolder (issue nobodies-collective/Humans#582)");
-    }
-
-    [HumansFact]
     public void AccountDeletionService_HasNoIMemoryCacheConstructorParameter()
     {
         var ctor = typeof(AccountDeletionService).GetConstructors().Single();

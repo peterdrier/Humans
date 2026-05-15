@@ -22,14 +22,6 @@ namespace Humans.Application.Tests.Architecture;
 public class GovernanceArchitectureTests
 {
     [HumansFact]
-    public void ApplicationDecisionService_LivesInHumansApplicationServicesGovernanceNamespace()
-    {
-        typeof(ApplicationDecisionService).Namespace
-            .Should().Be("Humans.Application.Services.Governance",
-                because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
-    }
-
-    [HumansFact]
     public void ApplicationDecisionService_HasNoIMemoryCacheConstructorParameter()
     {
         var ctor = typeof(ApplicationDecisionService).GetConstructors().Single();

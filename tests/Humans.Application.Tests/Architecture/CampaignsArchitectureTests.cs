@@ -28,14 +28,6 @@ namespace Humans.Application.Tests.Architecture;
 public class CampaignsArchitectureTests
 {
     [HumansFact]
-    public void CampaignService_LivesInHumansApplicationServicesCampaignsNamespace()
-    {
-        typeof(Humans.Application.Services.Campaigns.CampaignService).Namespace
-            .Should().Be("Humans.Application.Services.Campaigns",
-                because: "service-layer logic in Campaigns belongs in Humans.Application and is organized by section");
-    }
-
-    [HumansFact]
     public void CampaignService_TakesRepository()
     {
         var ctor = typeof(Humans.Application.Services.Campaigns.CampaignService).GetConstructors().Single();

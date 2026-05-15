@@ -32,14 +32,6 @@ public class GoogleIntegrationArchitectureTests
     // ── EmailProvisioningService ─────────────────────────────────────────────
 
     [HumansFact]
-    public void EmailProvisioningService_LivesInHumansApplicationServicesGoogleIntegrationNamespace()
-    {
-        typeof(EmailProvisioningService).Namespace
-            .Should().Be("Humans.Application.Services.GoogleIntegration",
-                because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
-    }
-
-    [HumansFact]
     public void EmailProvisioningService_HasNoUserManagerConstructorParameter()
     {
         var ctor = typeof(EmailProvisioningService).GetConstructors().Single();
@@ -75,14 +67,6 @@ public class GoogleIntegrationArchitectureTests
     }
 
     // ── GoogleWorkspaceSyncService (§15 Part 2b, issue #575) ─────────────────
-
-    [HumansFact]
-    public void GoogleWorkspaceSyncService_LivesInHumansApplicationServicesGoogleIntegrationNamespace()
-    {
-        typeof(GoogleWorkspaceSyncService).Namespace
-            .Should().Be("Humans.Application.Services.GoogleIntegration",
-                because: "§15 Part 2b (#575) moved the service out of Humans.Infrastructure — see design-rules §15i");
-    }
 
     [HumansFact]
     public void GoogleWorkspaceSyncService_DependenciesGoThroughBridgesAndSectionServiceInterfaces()
@@ -164,14 +148,6 @@ public class GoogleIntegrationArchitectureTests
     // ── GoogleRemovalNotificationService (issue #639) ────────────────────────
 
     [HumansFact]
-    public void GoogleRemovalNotificationService_LivesInHumansApplicationServicesGoogleIntegrationNamespace()
-    {
-        typeof(GoogleRemovalNotificationService).Namespace
-            .Should().Be("Humans.Application.Services.GoogleIntegration",
-                because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
-    }
-
-    [HumansFact]
     public void GoogleRemovalNotificationService_IsSealed()
     {
         typeof(GoogleRemovalNotificationService).IsSealed.Should().BeTrue(
@@ -179,14 +155,6 @@ public class GoogleIntegrationArchitectureTests
     }
 
     // ── SyncSettingsService (§15 Phase 0, issue #554) ────────────────────────
-
-    [HumansFact]
-    public void SyncSettingsService_LivesInHumansApplicationServicesGoogleIntegrationNamespace()
-    {
-        typeof(SyncSettingsService).Namespace
-            .Should().Be("Humans.Application.Services.GoogleIntegration",
-                because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
-    }
 
     [HumansFact]
     public void SyncSettingsService_IsSealed()

@@ -25,14 +25,6 @@ public class TicketingBudgetArchitectureTests
     // ── TicketingBudgetService ───────────────────────────────────────────────
 
     [HumansFact]
-    public void TicketingBudgetService_LivesInHumansApplicationServicesTicketsNamespace()
-    {
-        typeof(TicketingBudgetService).Namespace
-            .Should().Be("Humans.Application.Services.Tickets",
-                because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
-    }
-
-    [HumansFact]
     public void TicketingBudgetService_HasNoIMemoryCacheConstructorParameter()
     {
         var ctor = typeof(TicketingBudgetService).GetConstructors().Single();

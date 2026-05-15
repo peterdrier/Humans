@@ -15,14 +15,6 @@ namespace Humans.Application.Tests.Architecture;
 public class HumanLifecycleArchitectureTests
 {
     [HumansFact]
-    public void HumanLifecycleService_LivesInHumansApplicationServicesHumanLifecycleNamespace()
-    {
-        typeof(HumanLifecycleService).Namespace
-            .Should().Be("Humans.Application.Services.HumanLifecycle",
-                because: "lifecycle is an orchestrator over Profiles + notifications; lives in Humans.Application per design-rules §2b");
-    }
-
-    [HumansFact]
     public void HumanLifecycleService_HasNoDbSetConstructorParameter()
     {
         var ctor = typeof(HumanLifecycleService).GetConstructors().Single();

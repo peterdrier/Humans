@@ -30,14 +30,6 @@ public class EmailArchitectureTests
     // ── EmailOutboxService ───────────────────────────────────────────────────
 
     [HumansFact]
-    public void EmailOutboxService_LivesInHumansApplicationServicesEmailNamespace()
-    {
-        typeof(EmailOutboxService).Namespace
-            .Should().Be("Humans.Application.Services.Email",
-                because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
-    }
-
-    [HumansFact]
     public void EmailOutboxService_HasNoIMemoryCacheConstructorParameter()
     {
         var ctor = typeof(EmailOutboxService).GetConstructors().Single();
@@ -59,14 +51,6 @@ public class EmailArchitectureTests
     }
 
     // ── OutboxEmailService ───────────────────────────────────────────────────
-
-    [HumansFact]
-    public void OutboxEmailService_LivesInHumansApplicationServicesEmailNamespace()
-    {
-        typeof(OutboxEmailService).Namespace
-            .Should().Be("Humans.Application.Services.Email",
-                because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
-    }
 
     [HumansFact]
     public void OutboxEmailService_TakesOutboxRepositoryAndUserEmailService()

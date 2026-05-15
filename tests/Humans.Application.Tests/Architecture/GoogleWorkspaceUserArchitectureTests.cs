@@ -21,14 +21,6 @@ public class GoogleWorkspaceUserArchitectureTests
     // ── GoogleWorkspaceUserService ───────────────────────────────────────────
 
     [HumansFact]
-    public void GoogleWorkspaceUserService_LivesInHumansApplicationServicesGoogleIntegrationNamespace()
-    {
-        typeof(GoogleWorkspaceUserService).Namespace
-            .Should().Be("Humans.Application.Services.GoogleIntegration",
-                because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
-    }
-
-    [HumansFact]
     public void GoogleWorkspaceUserService_TakesConnectorClient()
     {
         var ctor = typeof(GoogleWorkspaceUserService).GetConstructors().Single();

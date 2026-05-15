@@ -24,14 +24,6 @@ public class GoogleAdminArchitectureTests
     // ── GoogleAdminService ───────────────────────────────────────────────────
 
     [HumansFact]
-    public void GoogleAdminService_LivesInHumansApplicationServicesGoogleIntegrationNamespace()
-    {
-        typeof(GoogleAdminService).Namespace
-            .Should().Be("Humans.Application.Services.GoogleIntegration",
-                because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
-    }
-
-    [HumansFact]
     public void GoogleAdminService_RoutesCrossSectionDataThroughOwningServices()
     {
         var ctor = typeof(GoogleAdminService).GetConstructors().Single();

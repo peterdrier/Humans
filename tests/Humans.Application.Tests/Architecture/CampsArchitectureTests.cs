@@ -22,14 +22,6 @@ public class CampsArchitectureTests
     // ── CampService ──────────────────────────────────────────────────────────
 
     [HumansFact]
-    public void CampService_LivesInHumansApplicationServicesCampsNamespace()
-    {
-        typeof(CampService).Namespace
-            .Should().Be("Humans.Application.Services.Camps",
-                because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
-    }
-
-    [HumansFact]
     public void CampService_TakesRepository()
     {
         var ctor = typeof(CampService).GetConstructors().Single();

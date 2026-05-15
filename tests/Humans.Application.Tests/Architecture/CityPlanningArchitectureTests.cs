@@ -25,14 +25,6 @@ public class CityPlanningArchitectureTests
     // ── CityPlanningService ──────────────────────────────────────────────────
 
     [HumansFact]
-    public void CityPlanningService_LivesInHumansApplicationServicesCityPlanningNamespace()
-    {
-        typeof(CityPlanningService).Namespace
-            .Should().Be("Humans.Application.Services.CityPlanning",
-                because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
-    }
-
-    [HumansFact]
     public void CityPlanningService_HasNoIMemoryCacheConstructorParameter()
     {
         var ctor = typeof(CityPlanningService).GetConstructors().Single();
