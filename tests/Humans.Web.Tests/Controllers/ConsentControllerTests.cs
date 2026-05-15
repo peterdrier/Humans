@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Humans.Application;
 using Humans.Application.Interfaces.Consent;
+using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -28,6 +29,7 @@ public class ConsentControllerTests
 {
     private readonly UserManager<User> _userManager;
     private readonly IConsentService _consentService = Substitute.For<IConsentService>();
+    private readonly IOnboardingService _onboardingService = Substitute.For<IOnboardingService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IStringLocalizer<SharedResource> _localizer =
         Substitute.For<IStringLocalizer<SharedResource>>();
@@ -56,6 +58,7 @@ public class ConsentControllerTests
         var ctrl = new ConsentController(
             _userManager,
             _consentService,
+            _onboardingService,
             _userService,
             _localizer,
             NullLogger<ConsentController>.Instance);

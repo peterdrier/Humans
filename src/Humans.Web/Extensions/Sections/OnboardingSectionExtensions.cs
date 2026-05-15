@@ -15,8 +15,9 @@ internal static class OnboardingSectionExtensions
         // ISystemTeamSync, etc.). Takes no DbContext dependency.
         //
         // No back-call from leaf services into this director: ProfileService and
-        // ConsentService own their own threshold checks via
-        // IProfileService.TrySetConsentCheckPendingIfEligibleAsync.
+        // ConsentService do not inject IOnboardingService. The consent-check
+        // threshold (IOnboardingService.SetConsentCheckPendingIfEligibleAsync) is
+        // invoked by controllers as a peer call after the leaf-service write.
         services.AddScoped<OnboardingOrchestratorService>();
         services.AddScoped<IOnboardingService>(sp => sp.GetRequiredService<OnboardingOrchestratorService>());
 

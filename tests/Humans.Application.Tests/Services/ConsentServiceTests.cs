@@ -13,7 +13,6 @@ using Humans.Infrastructure.Data;
 using ConsentService = Humans.Application.Services.Consent.ConsentService;
 using Humans.Application.Interfaces.Legal;
 using Humans.Application.Interfaces.Notifications;
-using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Domain.Enums;
@@ -28,7 +27,6 @@ public class ConsentServiceTests : IDisposable
     private readonly HumansDbContext _dbContext;
     private readonly FakeClock _clock;
     private readonly ConsentService _service;
-    private readonly IProfileService _profileService = Substitute.For<IProfileService>();
     private readonly IMembershipCalculator _membershipCalculator = Substitute.For<IMembershipCalculator>();
     private readonly ILegalDocumentSyncService _legalDocumentSyncService = Substitute.For<ILegalDocumentSyncService>();
     private readonly INotificationInboxService _notificationInboxService = Substitute.For<INotificationInboxService>();
@@ -113,7 +111,6 @@ public class ConsentServiceTests : IDisposable
 
         _service = new ConsentService(
             consentRepository,
-            _profileService,
             _legalDocumentSyncService,
             _notificationInboxService,
             _syncJob,
@@ -230,19 +227,10 @@ public class ConsentServiceTests : IDisposable
         record.UserAgent.Should().HaveLength(500);
     }
 
-    [HumansFact]
-    public async Task SubmitConsentAsync_TriggersConsentCheckThresholdEvaluation()
-    {
-        var userId = Guid.NewGuid();
-        var versionId = Guid.NewGuid();
-        SeedDocumentVersion(versionId, "Test Doc", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "text" });
-
-        await _service.SubmitConsentAsync(userId, versionId, true, "127.0.0.1", "Agent");
-
-        // After the inversion fix, ConsentService asks ProfileService — the owner of
-        // the ConsentCheckStatus field — to re-evaluate the eligibility threshold.
-        await _profileService.Received().TrySetConsentCheckPendingIfEligibleAsync(userId, Arg.Any<CancellationToken>());
-    }
+    // Threshold check (formerly SubmitConsentAsync_CallsSetConsentCheckPending)
+    // moved out of ConsentService entirely — it's a director method on
+    // IOnboardingService now, invoked by controllers as a peer call after
+    // SubmitConsentAsync. ConsentService has no dep on Onboarding or Profile.
 
     [HumansFact]
     public async Task SubmitConsentAsync_CallsSyncJobs()

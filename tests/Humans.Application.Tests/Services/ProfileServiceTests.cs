@@ -5,7 +5,6 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using Humans.Application.DTOs;
-using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -13,7 +12,6 @@ using Humans.Infrastructure.Data;
 using Xunit;
 using ProfileService = Humans.Application.Services.Profiles.ProfileService;
 using Humans.Application.Interfaces.AuditLog;
-using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Tests.Infrastructure;
@@ -32,8 +30,6 @@ public class ProfileServiceTests : IDisposable
     private readonly IContactFieldRepository _contactFieldRepository;
     private readonly ICommunicationPreferenceRepository _communicationPreferenceRepository = Substitute.For<ICommunicationPreferenceRepository>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
-    private readonly IMembershipCalculator _membershipCalculator = Substitute.For<IMembershipCalculator>();
-    private readonly INotificationService _notificationService = Substitute.For<INotificationService>();
     private readonly InMemoryFileStorage _fileStorage = new();
 
     // Delegate to the production helper (made internal for test access)
@@ -61,26 +57,9 @@ public class ProfileServiceTests : IDisposable
             _userEmailRepository,
             _contactFieldRepository, _communicationPreferenceRepository,
             _auditLogService,
-            _membershipCalculator,
-            _notificationService,
             _fileStorage,
             _clock,
             NullLogger<ProfileService>.Instance);
-
-        // Default: return all input IDs as Active (sufficient for most tests that don't filter by status)
-        _membershipCalculator
-            .PartitionUsersAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(callInfo =>
-            {
-                var ids = callInfo.Arg<IEnumerable<Guid>>().ToHashSet();
-                return Task.FromResult(new MembershipPartition(
-                    IncompleteSignup: [],
-                    PendingApproval: [],
-                    Active: ids,
-                    MissingConsents: [],
-                    Suspended: [],
-                    PendingDeletion: []));
-            });
 
         _userService.StubGetUserInfosFromContext(_dbContext);
     }
@@ -253,20 +232,10 @@ public class ProfileServiceTests : IDisposable
         _fileStorage.Files.Should().NotContainKey(PicKey(profile.Id, "image/png"));
     }
 
-    [HumansFact]
-    public async Task SaveProfileAsync_RunsConsentCheckThresholdEvaluation()
-    {
-        var userId = Guid.NewGuid();
-        await SeedUserWithProfileAsync(userId);
-        var request = MakeRequest();
-
-        await _service.SaveProfileAsync(userId, "Test", request, "en");
-
-        // Threshold check is now inlined into ProfileService. The first thing
-        // it does is read UserInfo to evaluate the predicate. Proves SaveProfileAsync
-        // attempted the threshold evaluation without coupling to an external service.
-        await _userService.Received().GetUserInfoAsync(userId, Arg.Any<CancellationToken>());
-    }
+    // Threshold check (formerly SaveProfileAsync_CallsSetConsentCheckPending)
+    // moved out of ProfileService entirely — it's a director method on
+    // IOnboardingService now, invoked by controllers as a peer call after
+    // SaveProfileAsync. ProfileService has no dep on Onboarding.
 
     // --- Profile save flow: tier application during initial setup ---
 
@@ -580,8 +549,6 @@ public class ProfileServiceTests : IDisposable
         _userEmailRepository,
         _contactFieldRepository, _communicationPreferenceRepository,
         _auditLogService,
-        _membershipCalculator,
-        _notificationService,
         _fileStorage,
         _clock,
         NullLogger<ProfileService>.Instance);
@@ -728,8 +695,6 @@ public class ProfileServiceTests : IDisposable
             _userEmailRepository,
             _contactFieldRepository, _communicationPreferenceRepository,
             _auditLogService,
-            _membershipCalculator,
-            _notificationService,
             _fileStorage,
             _clock,
             NullLogger<ProfileService>.Instance);

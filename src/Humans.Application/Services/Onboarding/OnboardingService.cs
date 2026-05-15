@@ -293,6 +293,50 @@ public sealed class OnboardingService : IOnboardingService
     }
 
     // ==========================================================================
+    // Consent-check pending threshold (peer-called from controllers after a
+    // ProfileService.SaveProfileAsync or ConsentService.SubmitConsentAsync write
+    // completes — the leaves do not invoke this directly; that was the inverted
+    // arrow that produced the DI cycle this PR removes).
+    // ==========================================================================
+
+    public async Task<bool> SetConsentCheckPendingIfEligibleAsync(
+        Guid userId, CancellationToken ct = default)
+    {
+        var info = await _userService.GetUserInfoAsync(userId, ct);
+        if (info is null || !info.NeedsConsentReview || info.Profile!.ConsentCheckStatus is not null)
+            return false;
+
+        var hasAllConsents = await _membershipCalculator.HasAllRequiredConsentsForTeamAsync(
+            userId, SystemTeamIds.Volunteers, ct);
+        if (!hasAllConsents)
+            return false;
+
+        var set = await _profileService.SetConsentCheckPendingAsync(userId, ct);
+        if (!set)
+            return false;
+
+        try
+        {
+            await _notificationService.SendToRoleAsync(
+                NotificationSource.ConsentReviewNeeded,
+                NotificationClass.Actionable,
+                NotificationPriority.High,
+                "New consent review needed",
+                RoleNames.ConsentCoordinator,
+                body: "A human has completed all required consents and needs review.",
+                actionUrl: "/OnboardingReview",
+                actionLabel: "Review →",
+                cancellationToken: ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to dispatch ConsentReviewNeeded notification for user {UserId}", userId);
+        }
+
+        return true;
+    }
+
+    // ==========================================================================
     // Helpers
     // ==========================================================================
 

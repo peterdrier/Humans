@@ -437,6 +437,10 @@ public class ProfileController : HumansControllerBase
             user.Id, model.BurnerName, saveRequest,
             CultureInfo.CurrentUICulture.TwoLetterISOLanguageName);
 
+        // Peer-call the director threshold check. ProfileService deliberately
+        // does not call into Onboarding directly — that was the inverted arrow.
+        await _onboardingService.SetConsentCheckPendingIfEligibleAsync(user.Id);
+
         // Initial-setup tier-application orchestration. Same form submission
         // as profile fields, by design — onboarding efficiency. The form
         // disables the radios when a Submitted/Approved Application already

@@ -536,7 +536,7 @@ Old names that no longer exist: `CachedProfile`, `IProfileStore`, `ProfileStore`
 
 **§15 NEW-B — Cross-section ShiftAuthorization cache staleness.** **Resolved 2026-04-24** — `ShiftManagementService` implements `IShiftAuthorizationInvalidator`, exposed so Profile / User / Team writes call `Invalidate(userId)` directly. Cross-section dependency direction is Shifts → (nothing); callers push the signal, the cache owner stays decoupled.
 
-**`ProfileService.TrySetConsentCheckPendingIfEligibleAsync`** (formerly `OnboardingService.SetConsentCheckPendingIfEligibleAsync` before the leaf-to-director inversion was removed) does not invalidate the `UserInfo` dict. Pre-existing behavior. To be addressed after the section merge settles.
+**`OnboardingService.SetConsentCheckPendingIfEligibleAsync`** does not invalidate the `UserInfo` dict. Pre-existing behavior. To be addressed after the section merge settles.
 
 ### 15h. Migration Rules During the Transition
 
