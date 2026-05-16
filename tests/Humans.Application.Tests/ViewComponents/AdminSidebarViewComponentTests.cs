@@ -1,13 +1,11 @@
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.Domain.Constants;
 using Humans.Web.Authorization;
 using Humans.Web.ViewComponents;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.ViewComponents;
-using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;

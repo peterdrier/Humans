@@ -1,4 +1,3 @@
-using System.ComponentModel.DataAnnotations;
 using Humans.Application.DTOs.Calendar;
 using Humans.Application.Interfaces.Calendar;
 using Humans.Application.Interfaces.Teams;
@@ -8,6 +7,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
+
+using Humans.Application.Interfaces.Users;
 
 namespace Humans.Web.Controllers;
 
@@ -22,11 +23,11 @@ public class CalendarController : HumansControllerBase
     private readonly IClock _clock;
 
     public CalendarController(
-        UserManager<User> userManager,
+        IUserService userService,
         ICalendarService calendar,
         ITeamService teams,
         IClock clock)
-        : base(userManager)
+        : base(userService)
     {
         _calendar = calendar;
         _teams = teams;
@@ -138,7 +139,7 @@ public class CalendarController : HumansControllerBase
             Month: ym,
             Occurrences: occ,
             FilterTeamId: teamId,
-            TeamOptions: Array.Empty<TeamOption>(),
+            TeamOptions: [],
             ViewerTimezoneLabel: zone.Id));
     }
 
@@ -160,10 +161,8 @@ public class CalendarController : HumansControllerBase
         // CalendarEvent.OwningTeam nav is [Obsolete] and no longer .Include()d.
         // Use the lightweight name-only lookup so we don't hydrate the entire
         // team aggregate (members + users) just to render a display string.
-        var teamNames = await _teams.GetTeamNamesByIdsAsync([ev.OwningTeamId], ct);
-        var owningTeamName = teamNames.TryGetValue(ev.OwningTeamId, out var name)
-            ? name
-            : string.Empty;
+        var owningTeam = await _teams.GetTeamAsync(ev.OwningTeamId, ct);
+        var owningTeamName = owningTeam?.Name ?? string.Empty;
 
         // Any authenticated human can edit; changes are audited.
         return View(new CalendarEventViewModel(ev, owningTeamName, upcoming, CanEdit: true, zone.Id));
@@ -205,7 +204,7 @@ public class CalendarController : HumansControllerBase
             form.OwningTeamId, start, end, form.IsAllDay,
             form.IsRecurring ? form.RecurrenceRule : null,
             form.IsRecurring ? form.RecurrenceTimezone : null),
-            createdByUserId: GetCurrentUserId(), ct);
+            createdByUserId: RequireCurrentUserId(), ct);
 
         if (result.Succeeded && result.Event is not null)
         {
@@ -273,7 +272,7 @@ public class CalendarController : HumansControllerBase
             form.OwningTeamId, start, end, form.IsAllDay,
             form.IsRecurring ? form.RecurrenceRule : null,
             form.IsRecurring ? form.RecurrenceTimezone : null),
-            updatedByUserId: GetCurrentUserId(), ct);
+            updatedByUserId: RequireCurrentUserId(), ct);
 
         if (result.NotFound) return NotFound();
         if (result.Succeeded) return RedirectToAction(nameof(Event), new { id });
@@ -339,7 +338,7 @@ public class CalendarController : HumansControllerBase
         var ev = await _calendar.GetEventByIdAsync(id, ct);
         if (ev is null) return NotFound();
 
-        await _calendar.DeleteEventAsync(id, deletedByUserId: GetCurrentUserId(), ct);
+        await _calendar.DeleteEventAsync(id, deletedByUserId: RequireCurrentUserId(), ct);
         return RedirectToAction(nameof(Index));
     }
 
@@ -351,7 +350,7 @@ public class CalendarController : HumansControllerBase
         if (ev is null) return NotFound();
 
         var original = OccurrenceOverrideFormViewModel.ParseOriginal(originalStartUtc);
-        await _calendar.CancelOccurrenceAsync(id, original, GetCurrentUserId(), ct);
+        await _calendar.CancelOccurrenceAsync(id, original, RequireCurrentUserId(), ct);
         return RedirectToAction(nameof(Event), new { id });
     }
 
@@ -395,7 +394,7 @@ public class CalendarController : HumansControllerBase
             new OverrideOccurrenceDto(overrideStart, overrideEnd,
                 form.OverrideTitle, form.OverrideDescription,
                 form.OverrideLocation, form.OverrideLocationUrl),
-            GetCurrentUserId(), ct);
+            RequireCurrentUserId(), ct);
 
         return RedirectToAction(nameof(Event), new { id });
     }
@@ -409,13 +408,8 @@ public class CalendarController : HumansControllerBase
             .ToList();
     }
 
-    private Guid GetCurrentUserId()
-    {
-        var id = UserManager.GetUserId(User);
-        if (!Guid.TryParse(id, out var userId))
-            throw new InvalidOperationException("Current user has no valid ID claim.");
-        return userId;
-    }
+    private Guid RequireCurrentUserId() =>
+        GetCurrentUserId() ?? throw new InvalidOperationException("Current user has no valid ID claim.");
 
     private void AddCalendarEventMutationError(
         CalendarEventFormViewModel form,

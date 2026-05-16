@@ -1,15 +1,12 @@
-using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Caching;
-using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Teams;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Domain.ValueObjects;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NodaTime;
@@ -79,16 +76,6 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
     public async Task<IReadOnlyDictionary<Guid, TeamInfo>> GetTeamsAsync(
         CancellationToken cancellationToken = default) =>
         await GetTeamsByIdAsync(cancellationToken);
-
-    public Task<string?> GetTeamNameByGoogleGroupPrefixAsync(
-        string googleGroupPrefix,
-        CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetTeamNameByGoogleGroupPrefixAsync(googleGroupPrefix, cancellationToken));
-
-    public Task<IReadOnlyDictionary<Guid, string>> GetTeamNamesByIdsAsync(
-        IReadOnlyCollection<Guid> teamIds,
-        CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetTeamNamesByIdsAsync(teamIds, cancellationToken));
 
     public Task<IReadOnlyList<Team>> GetAllTeamsAsync(CancellationToken cancellationToken = default) =>
         WithInner(inner => inner.GetAllTeamsAsync(cancellationToken));
@@ -226,25 +213,13 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
         CancellationToken cancellationToken = default) =>
         WithInner(inner => inner.CanUserApproveRequestsForTeamAsync(teamId, userId, cancellationToken));
 
-    public async Task<bool> IsUserMemberOfTeamAsync(
-        Guid teamId,
-        Guid userId,
-        CancellationToken cancellationToken = default)
-    {
-        var teamsById = await GetTeamsByIdAsync(cancellationToken);
-        return teamsById.TryGetValue(teamId, out var team)
-            && team.IsActive
-            && team.Members.Any(m => m.UserId == userId);
-    }
-
     public async Task<bool> IsUserCoordinatorOfTeamAsync(
         Guid teamId,
         Guid userId,
         CancellationToken cancellationToken = default)
     {
         var teamsById = await GetTeamsByIdAsync(cancellationToken);
-        var coordinatorTeamIds = await _teamRepository.GetUserCoordinatorTeamIdsAsync(userId, cancellationToken);
-        return IsUserCoordinatorOfActiveTeam(teamsById, coordinatorTeamIds, teamId, userId);
+        return IsUserCoordinatorOfActiveTeam(teamsById, teamId, userId);
     }
 
     public async Task<bool> RemoveMemberAsync(
@@ -264,19 +239,26 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
         CancellationToken cancellationToken = default) =>
         WithInner(inner => inner.GetPendingRequestCountsByTeamIdsAsync(teamIds, cancellationToken));
 
-    public Task<IReadOnlyDictionary<Guid, string>> GetManagementRoleNamesByTeamIdsAsync(
+    public async Task<IReadOnlyDictionary<Guid, string>> GetManagementRoleNamesByTeamIdsAsync(
         IEnumerable<Guid> teamIds,
-        CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetManagementRoleNamesByTeamIdsAsync(teamIds, cancellationToken));
-
-    public Task<IReadOnlyDictionary<Guid, List<string>>> GetNonSystemTeamNamesByUserIdsAsync(
-        IEnumerable<Guid> userIds,
-        CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetNonSystemTeamNamesByUserIdsAsync(userIds, cancellationToken));
-
-    public Task<IReadOnlyList<TeamOptionDto>> GetActiveTeamOptionsAsync(
-        CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetActiveTeamOptionsAsync(cancellationToken));
+        CancellationToken cancellationToken = default)
+    {
+        // Mirrors TeamRepository.GetPublicManagementRoleNamesByTeamIdsAsync:
+        // for each requested team, return the name of its definition flagged
+        // both IsManagement and IsPublic. Teams with no such definition are
+        // omitted from the result.
+        var teamsById = await GetTeamsByIdAsync(cancellationToken);
+        var result = new Dictionary<Guid, string>();
+        foreach (var teamId in teamIds)
+        {
+            if (!teamsById.TryGetValue(teamId, out var team) || team.RoleDefinitions is null)
+                continue;
+            var mgmt = team.RoleDefinitions.FirstOrDefault(d => d.IsManagement && d.IsPublic);
+            if (mgmt is not null)
+                result[teamId] = mgmt.Name;
+        }
+        return result;
+    }
 
     public async Task<(bool Updated, string? PreviousPrefix)> SetGoogleGroupPrefixAsync(
         Guid teamId,
@@ -405,14 +387,33 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
         return result;
     }
 
-    public Task<IReadOnlyList<TeamRoleDefinitionSnapshot>> GetRoleDefinitionsAsync(
+    public async Task<IReadOnlyList<TeamRoleDefinitionSnapshot>> GetRoleDefinitionsAsync(
         Guid teamId,
-        CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetRoleDefinitionsAsync(teamId, cancellationToken));
+        CancellationToken cancellationToken = default)
+    {
+        // Mirrors TeamRepository.GetRoleDefinitionsAsync(teamId): all definitions
+        // for the team (no activity / system filter), ordered by SortOrder
+        // then Name. Cache projection pre-sorts at warm time.
+        var teamsById = await GetTeamsByIdAsync(cancellationToken);
+        if (!teamsById.TryGetValue(teamId, out var team) || team.RoleDefinitions is null)
+            return [];
+        return team.RoleDefinitions;
+    }
 
-    public Task<IReadOnlyList<TeamRoleDefinitionSnapshot>> GetAllRoleDefinitionsAsync(
-        CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetAllRoleDefinitionsAsync(cancellationToken));
+    public async Task<IReadOnlyList<TeamRoleDefinitionSnapshot>> GetAllRoleDefinitionsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        // Mirrors TeamRepository.GetAllRoleDefinitionsAsync: active non-system
+        // teams' role definitions, ordered by Team.Name → SortOrder → Name.
+        // Cache projection pre-sorts each team's definitions; we add the
+        // outer Team.Name sort here.
+        var teamsById = await GetTeamsByIdAsync(cancellationToken);
+        return teamsById.Values
+            .Where(t => t.IsActive && t.SystemTeamType == SystemTeamType.None)
+            .OrderBy(t => t.Name, StringComparer.Ordinal) // arch:db-sort-ok — preserves repo ordering
+            .SelectMany(t => t.RoleDefinitions ?? Array.Empty<TeamRoleDefinitionSnapshot>())
+            .ToList();
+    }
 
     public async Task<TeamRoleAssignment> AssignToRoleAsync(
         Guid roleDefinitionId,
@@ -437,22 +438,38 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
         InvalidateTeamsCache();
     }
 
-    public Task<IReadOnlyList<Guid>> GetUserCoordinatedTeamIdsAsync(
+    public async Task<IReadOnlyList<Guid>> GetUserCoordinatedTeamIdsAsync(
         Guid userId,
-        CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetUserCoordinatedTeamIdsAsync(userId, cancellationToken));
+        CancellationToken cancellationToken = default)
+    {
+        // Mirrors TeamRepository.GetUserCoordinatorTeamIdsAsync: non-system teams
+        // where the user is either an active Coordinator member or holds an
+        // active management role assignment.
+        var teamsById = await GetTeamsByIdAsync(cancellationToken);
+        var result = new HashSet<Guid>();
+        foreach (var team in teamsById.Values)
+        {
+            if (team.SystemTeamType != SystemTeamType.None)
+                continue;
 
-    public Task<IReadOnlyList<Guid>> GetCoordinatorUserIdsAsync(
-        Guid teamId,
-        CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetCoordinatorUserIdsAsync(teamId, cancellationToken));
+            if (team.Members.Any(m => m.UserId == userId && m.Role == TeamMemberRole.Coordinator))
+            {
+                result.Add(team.Id);
+                continue;
+            }
 
-    public async Task<IReadOnlyList<Humans.Application.Models.TeamMembership>> GetActiveTeamMembershipsForUserAsync(
+            if (team.ManagementRoleHolderUserIds?.Contains(userId) == true)
+                result.Add(team.Id);
+        }
+        return result.ToList();
+    }
+
+    public async Task<IReadOnlyList<Application.Models.TeamMembership>> GetActiveTeamMembershipsForUserAsync(
         Guid userId,
         CancellationToken cancellationToken = default)
     {
         var teamsById = await GetTeamsByIdAsync(cancellationToken);
-        var rows = new List<Humans.Application.Models.TeamMembership>();
+        var rows = new List<Application.Models.TeamMembership>();
 
         foreach (var team in teamsById.Values.Where(t => t.IsActive))
         {
@@ -461,7 +478,7 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
 
             var membership = team.Members.FirstOrDefault(m => m.UserId == userId);
             if (membership is not null)
-                rows.Add(new Humans.Application.Models.TeamMembership(team.Name, membership.Role)
+                rows.Add(new Application.Models.TeamMembership(team.Name, membership.Role)
                 {
                     IsHidden = team.IsHidden,
                 });
@@ -479,38 +496,6 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
         IReadOnlyCollection<Guid> teamIds,
         CancellationToken cancellationToken = default) =>
         WithInner(inner => inner.GetByIdsWithParentsAsync(teamIds, cancellationToken));
-
-    public Task<IReadOnlyList<TeamCoordinatorRef>> GetActiveCoordinatorsForTeamsAsync(
-        IReadOnlyCollection<Guid> teamIds,
-        CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetActiveCoordinatorsForTeamsAsync(teamIds, cancellationToken));
-
-    public async Task<IReadOnlyDictionary<Guid, IReadOnlyList<string>>> GetActiveNonSystemTeamNamesByUserIdsAsync(
-        IReadOnlyCollection<Guid> userIds,
-        CancellationToken cancellationToken = default)
-    {
-        var userIdSet = userIds.ToHashSet();
-        if (userIdSet.Count == 0)
-            return new Dictionary<Guid, IReadOnlyList<string>>();
-
-        var teamsById = await GetTeamsByIdAsync(cancellationToken);
-        var result = new Dictionary<Guid, List<string>>();
-
-        foreach (var team in teamsById.Values.Where(t => t.IsActive && t.SystemTeamType == SystemTeamType.None && !t.IsHidden))
-        {
-            foreach (var member in team.Members.Where(m => userIdSet.Contains(m.UserId)))
-            {
-                if (!result.TryGetValue(member.UserId, out var names))
-                {
-                    names = [];
-                    result[member.UserId] = names;
-                }
-                names.Add(team.Name);
-            }
-        }
-
-        return result.ToDictionary(kvp => kvp.Key, kvp => (IReadOnlyList<string>)kvp.Value);
-    }
 
     public async Task<TeamMember> AddSeededMemberAsync(
         Guid teamId,
@@ -535,14 +520,45 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
         return result;
     }
 
-    public Task<IReadOnlyList<TeamOptionDto>> GetBudgetableTeamsAsync(
-        CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetBudgetableTeamsAsync(cancellationToken));
-
-    public Task<IReadOnlyCollection<Guid>> GetEffectiveBudgetCoordinatorTeamIdsAsync(
+    public async Task<IReadOnlyCollection<Guid>> GetEffectiveBudgetCoordinatorTeamIdsAsync(
         Guid userId,
-        CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetEffectiveBudgetCoordinatorTeamIdsAsync(userId, cancellationToken));
+        CancellationToken cancellationToken = default)
+    {
+        // Mirrors TeamService.GetEffectiveBudgetCoordinatorTeamIdsAsync ⇒
+        // TeamRepository.GetUserDepartmentCoordinatorTeamIdsAsync +
+        // GetActiveChildIdsByParentsAsync. Departments are teams with no parent
+        // where the user is either Coordinator or holds a management role
+        // assignment (no system-team filter on this path). Children are added
+        // when they are active and parented to one of those departments.
+        var teamsById = await GetTeamsByIdAsync(cancellationToken);
+        var departments = new HashSet<Guid>();
+        foreach (var team in teamsById.Values)
+        {
+            if (team.ParentTeamId.HasValue)
+                continue;
+
+            if (team.Members.Any(m => m.UserId == userId && m.Role == TeamMemberRole.Coordinator)
+                || team.ManagementRoleHolderUserIds?.Contains(userId) == true)
+            {
+                departments.Add(team.Id);
+            }
+        }
+
+        if (departments.Count == 0)
+            return departments;
+
+        var result = new HashSet<Guid>(departments);
+        foreach (var team in teamsById.Values)
+        {
+            if (team.IsActive
+                && team.ParentTeamId.HasValue
+                && departments.Contains(team.ParentTeamId.Value))
+            {
+                result.Add(team.Id);
+            }
+        }
+        return result;
+    }
 
     public void RemoveMemberFromAllTeamsCache(Guid userId)
     {
@@ -581,20 +597,6 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
     public Task<int> GetTotalPendingJoinRequestCountAsync(CancellationToken cancellationToken = default) =>
         WithInner(inner => inner.GetTotalPendingJoinRequestCountAsync(cancellationToken));
 
-    public Task<IReadOnlyList<Guid>> GetActiveNonSystemTeamCoordinatorUserIdsAsync(
-        CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetActiveNonSystemTeamCoordinatorUserIdsAsync(cancellationToken));
-
-    public Task<IReadOnlyList<TeamActiveMemberSnapshot>> GetActiveMembersForTeamsAsync(
-        IReadOnlyCollection<Guid> teamIds,
-        CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetActiveMembersForTeamsAsync(teamIds, cancellationToken));
-
-    public Task<SystemTeamMembershipSnapshot?> GetSystemTeamWithActiveMembersAsync(
-        SystemTeamType type,
-        CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetSystemTeamWithActiveMembersAsync(type, cancellationToken));
-
     public Task<IReadOnlyList<TeamRoleReconciliationMembership>> GetActiveMembershipsForRoleReconciliationAsync(
         CancellationToken cancellationToken = default) =>
         WithInner(inner => inner.GetActiveMembershipsForRoleReconciliationAsync(cancellationToken));
@@ -608,15 +610,6 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
             InvalidateTeamsCache();
         return result;
     }
-
-    public Task<IReadOnlyList<Guid>> GetActiveDepartmentCoordinatorUserIdsAsync(
-        CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.GetActiveDepartmentCoordinatorUserIdsAsync(cancellationToken));
-
-    public Task<bool> IsActiveDepartmentCoordinatorAsync(
-        Guid userId,
-        CancellationToken cancellationToken = default) =>
-        WithInner(inner => inner.IsActiveDepartmentCoordinatorAsync(userId, cancellationToken));
 
     public async Task<bool> ApplySystemTeamMembershipDeltaAsync(
         Guid teamId,
@@ -673,14 +666,16 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
             await using var scope = _scopeFactory.CreateAsyncScope();
             var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
             var users = allUserIds.Count == 0
-                ? new Dictionary<Guid, User>()
-                : await userService.GetByIdsWithEmailsAsync(allUserIds, ct);
+                ? new Dictionary<Guid, Application.UserInfo>()
+                : await userService.GetUserInfosAsync(allUserIds, ct);
+            var managementHolders = await _teamRepository.GetActiveManagementRoleHolderUserIdsByTeamAsync(ct);
+            var roleDefinitionsByTeam = await _teamRepository.GetAllRoleDefinitionsByTeamAsync(ct);
 
             // No defensive Clear() — InvalidateTeamsCache already emptied the cache
             // before flipping _isLoaded to false (or the cache is empty on first
             // startup). Set is upsert, so any rare leftover entry is overwritten.
             foreach (var team in teams)
-                Set(team.Id, BuildTeamInfo(team, users));
+                Set(team.Id, BuildTeamInfo(team, users, managementHolders, roleDefinitionsByTeam));
 
             _isLoaded = true;
         }
@@ -692,7 +687,6 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
 
     private bool IsUserCoordinatorOfActiveTeam(
         IReadOnlyDictionary<Guid, TeamInfo> teams,
-        IReadOnlyCollection<Guid> coordinatorTeamIds,
         Guid teamId,
         Guid userId)
     {
@@ -705,14 +699,20 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
         if (team.Members.Any(m => m.UserId == userId && m.Role == TeamMemberRole.Coordinator))
             return true;
 
-        if (coordinatorTeamIds.Contains(teamId))
+        // Mirror GetUserCoordinatorTeamIdsAsync: the "by management role assignment"
+        // path was filtered to non-system teams.
+        if (!team.IsSystemTeam && team.ManagementRoleHolderUserIds?.Contains(userId) == true)
             return true;
 
         return team.ParentTeamId.HasValue
-            && IsUserCoordinatorOfActiveTeam(teams, coordinatorTeamIds, team.ParentTeamId.Value, userId);
+            && IsUserCoordinatorOfActiveTeam(teams, team.ParentTeamId.Value, userId);
     }
 
-    private static TeamInfo BuildTeamInfo(Team team, IReadOnlyDictionary<Guid, User> users) => new(
+    private static TeamInfo BuildTeamInfo(
+        Team team,
+        IReadOnlyDictionary<Guid, Application.UserInfo> users,
+        IReadOnlyDictionary<Guid, IReadOnlySet<Guid>> managementHolders,
+        IReadOnlyDictionary<Guid, IReadOnlyList<TeamRoleDefinition>> roleDefinitionsByTeam) => new(
         Id: team.Id,
         Name: team.Name,
         Description: team.Description,
@@ -737,10 +737,42 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
                     Email: u?.Email,
                     ProfilePictureUrl: u?.ProfilePictureUrl,
                     Role: m.Role,
-                    JoinedAt: m.JoinedAt);
+                    JoinedAt: m.JoinedAt,
+                    GoogleEmailStatus: u?.GoogleEmailStatus ?? GoogleEmailStatus.Unknown);
             })
             .ToList(),
-        ParentTeamId: team.ParentTeamId);
+        ParentTeamId: team.ParentTeamId,
+        GoogleGroupPrefix: team.GoogleGroupPrefix,
+        HasBudget: team.HasBudget,
+        IsSensitive: team.IsSensitive,
+        UpdatedAt: team.UpdatedAt,
+        CustomSlug: team.CustomSlug,
+        ManagementRoleHolderUserIds: managementHolders.TryGetValue(team.Id, out var holders) ? holders : null,
+        RoleDefinitions: roleDefinitionsByTeam.TryGetValue(team.Id, out var defs)
+            ? defs.Select(d => ProjectRoleDefinitionSnapshot(d, team)).ToList()
+            : null);
+
+    private static TeamRoleDefinitionSnapshot ProjectRoleDefinitionSnapshot(TeamRoleDefinition d, Team team) =>
+        new(
+            d.Id,
+            d.TeamId,
+            team.Name,
+            team.Slug,
+            d.Name,
+            d.Description,
+            d.SlotCount,
+            d.Priorities,
+            d.SortOrder,
+            d.IsManagement,
+            d.Period,
+            d.IsPublic,
+            d.Assignments
+                .Select(a => new TeamRoleAssignmentSnapshot(
+                    a.Id,
+                    a.TeamMemberId,
+                    a.SlotIndex,
+                    a.TeamMember?.UserId))
+                .ToList());
 
     private async Task<TResult> WithInner<TResult>(Func<ITeamService, Task<TResult>> action)
     {

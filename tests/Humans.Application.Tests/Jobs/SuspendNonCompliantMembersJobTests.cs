@@ -1,4 +1,3 @@
-using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NodaTime;
@@ -8,7 +7,6 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Services;
-using Xunit;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Email;
@@ -19,6 +17,7 @@ using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Users;
+using Humans.Application.Tests.Infrastructure;
 
 namespace Humans.Application.Tests.Jobs;
 
@@ -32,7 +31,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
     private readonly INotificationService _notificationService;
     private readonly IGoogleSyncService _googleSyncService;
     private readonly IAuditLogService _auditLogService;
-    private readonly IFullProfileInvalidator _fullProfileInvalidator;
+    private readonly IUserInfoInvalidator _userInfoInvalidator;
     private readonly IRoleAssignmentClaimsCacheInvalidator _roleAssignmentClaimsInvalidator;
     private readonly IShiftAuthorizationInvalidator _shiftAuthorizationInvalidator;
     private readonly HumansMetricsService _metrics;
@@ -51,7 +50,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
         _notificationService = Substitute.For<INotificationService>();
         _googleSyncService = Substitute.For<IGoogleSyncService>();
         _auditLogService = Substitute.For<IAuditLogService>();
-        _fullProfileInvalidator = Substitute.For<IFullProfileInvalidator>();
+        _userInfoInvalidator = Substitute.For<IUserInfoInvalidator>();
         _roleAssignmentClaimsInvalidator = Substitute.For<IRoleAssignmentClaimsCacheInvalidator>();
         _shiftAuthorizationInvalidator = Substitute.For<IShiftAuthorizationInvalidator>();
         _clock = new FakeClock(Now);
@@ -63,12 +62,12 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
         // Default: ITeamService.GetUserTeamsAsync returns empty list so tests
         // that don't care about team fan-out don't need to stub it.
         _teamService.GetUserTeamsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<TeamMember>());
+            .Returns([]);
 
         _job = new SuspendNonCompliantMembersJob(
             _userService, _profileService, _teamService, _membershipCalculator,
             _emailService, _notificationService, _googleSyncService, _auditLogService,
-            _fullProfileInvalidator, _roleAssignmentClaimsInvalidator,
+            _userInfoInvalidator, _roleAssignmentClaimsInvalidator,
             _shiftAuthorizationInvalidator, _metrics, logger, _clock);
     }
 
@@ -150,6 +149,10 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
             Arg.Any<IReadOnlyCollection<Guid>>(),
             Arg.Any<CancellationToken>())
             .Returns((IReadOnlyDictionary<Guid, User>)new Dictionary<Guid, User>());
+        _userService.GetUserInfosAsync(
+            Arg.Any<IReadOnlyCollection<Guid>>(),
+            Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
 
         await _job.ExecuteAsync();
 
@@ -262,7 +265,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
 
         await _job.ExecuteAsync();
 
-        await _fullProfileInvalidator.Received(1).InvalidateAsync(user.Id, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
+        await _userInfoInvalidator.Received(1).InvalidateAsync(user.Id, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
         _roleAssignmentClaimsInvalidator.Received(1).Invalidate(user.Id);
         _shiftAuthorizationInvalidator.Received(1).Invalidate(user.Id);
         _teamService.Received(1).RemoveMemberFromAllTeamsCache(user.Id);
@@ -329,6 +332,11 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
             {
                 [userId] = user,
             });
+        _userService.GetUserInfosAsync(
+            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
+            Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                new Dictionary<Guid, UserInfo> { [userId] = user.ToUserInfo() }));
 
         return user;
     }

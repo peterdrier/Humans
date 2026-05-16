@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Stores;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Stores;
 using Humans.Web.Authorization.Handlers;
@@ -8,7 +7,6 @@ using Humans.Web.Authorization.Requirements;
 using Microsoft.AspNetCore.Authorization;
 using NodaTime;
 using NSubstitute;
-using Xunit;
 
 namespace Humans.Application.Tests.Agent;
 

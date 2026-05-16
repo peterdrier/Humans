@@ -14,7 +14,6 @@ using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Repositories.Email;
 using Humans.Infrastructure.Services;
-using Xunit;
 
 namespace Humans.Application.Tests.Jobs;
 

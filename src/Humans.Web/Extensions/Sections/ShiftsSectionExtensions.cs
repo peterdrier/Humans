@@ -57,7 +57,7 @@ internal static class ShiftsSectionExtensions
         services.AddScoped<IVolunteerTrackingService, ShiftsVolunteerTrackingService>();
 
         // ShiftView — issue #720. Singleton caching decorator over a Scoped
-        // inner. Mirrors the Profiles / Teams pattern (CachingProfileService,
+        // inner. Mirrors the Profiles / Teams pattern (CachingUserService,
         // CachingTeamService). The inner is registered keyed so the Singleton
         // decorator can resolve a fresh Scoped instance per cache miss via
         // IServiceScopeFactory without self-resolving the unkeyed

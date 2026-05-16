@@ -135,15 +135,15 @@ public sealed class CampRepository : ICampRepository
     // translates to an IN clause. CampSeasonStatus is stored via
     // HasConversion<string>(), so ||-chained == comparisons would violate
     // memory/code/no-enum-compare-in-ef.md.
-    private static readonly CampSeasonStatus[] PublicCampSeasonStatuses =
-        { CampSeasonStatus.Active, CampSeasonStatus.Full };
+    private static readonly CampSeasonStatus[] PublicCampSeasonStatuses = [CampSeasonStatus.Active, CampSeasonStatus.Full
+    ];
 
     public async Task<IReadOnlyList<Camp>> SearchForYearAsync(
         string query, int year, bool onlyPublicStatus, int max,
         CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(query) || max <= 0)
-            return Array.Empty<Camp>();
+            return [];
 
         var pattern = "%" + EscapeLikePattern(query.Trim()) + "%";
 

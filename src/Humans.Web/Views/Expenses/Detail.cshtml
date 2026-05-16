@@ -1,7 +1,6 @@
 @model Humans.Web.Models.ExpenseDetailViewModel
-@using Humans.Domain.Enums
 @{
-    ViewData["Title"] = $"Expense Report";
+    ViewData["Title"] = "Expense Report";
     var r = Model.Report;
     var badgeClass = r.Status switch
     {

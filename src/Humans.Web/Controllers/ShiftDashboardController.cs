@@ -1,10 +1,8 @@
 using Humans.Application.Enums;
 using Humans.Application.Interfaces.Shifts;
-using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Authorization;
-using Humans.Web.Extensions;
 using Humans.Web.Helpers;
 using Humans.Web.Models;
 using Humans.Web.Models.Shifts;
@@ -13,6 +11,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using NodaTime.Text;
+
+using Humans.Application.Interfaces.Users;
 
 namespace Humans.Web.Controllers;
 
@@ -35,10 +35,11 @@ public class ShiftDashboardController : HumansControllerBase
         IShiftManagementService shiftMgmt,
         IShiftSignupService signupService,
         IGeneralAvailabilityService availabilityService,
+        IUserService userService,
         UserManager<User> userManager,
         ShiftDashboardPageBuilder pageBuilder,
         ILogger<ShiftDashboardController> logger)
-        : base(userManager)
+        : base(userService)
     {
         _shiftMgmt = shiftMgmt;
         _signupService = signupService;

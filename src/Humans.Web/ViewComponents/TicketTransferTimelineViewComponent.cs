@@ -14,7 +14,7 @@ public sealed class TicketTransferTimelineViewComponent : ViewComponent
     public IViewComponentResult Invoke(TicketTransferRowDto request, string vendorStepsJson)
     {
         var steps = JsonSerializer.Deserialize<List<TicketTransferVendorStep>>(
-            vendorStepsJson, JsonOptions) ?? new();
+            vendorStepsJson, JsonOptions) ?? [];
         return View(new TicketTransferTimelineViewModel(request, steps));
     }
 }

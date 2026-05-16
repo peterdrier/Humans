@@ -1,4 +1,3 @@
-using Humans.Application.Interfaces;
 using Humans.Application.Services.Store.Dtos;
 using Humans.Domain.Enums;
 

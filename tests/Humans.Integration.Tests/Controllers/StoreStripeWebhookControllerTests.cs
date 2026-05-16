@@ -1,6 +1,5 @@
 using System.Globalization;
 using System.Net;
-using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
 using AwesomeAssertions;
@@ -11,7 +10,6 @@ using Humans.Integration.Tests.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
-using Xunit;
 
 namespace Humans.Integration.Tests.Controllers;
 

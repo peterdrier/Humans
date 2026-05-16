@@ -1,13 +1,13 @@
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Domain.Entities;
-using Humans.Domain.Enums;
 using Humans.Web.Authorization;
 using Humans.Web.Models;
-using Humans.Web.ViewComponents;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+
+using Humans.Application.Interfaces.Users;
 
 namespace Humans.Web.Controllers;
 
@@ -26,11 +26,11 @@ public sealed class WidgetGalleryController : HumansControllerBase
     private readonly ILogger<WidgetGalleryController> _logger;
 
     public WidgetGalleryController(
-        UserManager<User> userManager,
+        IUserService userService,
         ITeamService teamService,
         IShiftManagementService shiftMgmt,
         ILogger<WidgetGalleryController> logger)
-        : base(userManager)
+        : base(userService)
     {
         _teamService = teamService;
         _shiftMgmt = shiftMgmt;
@@ -49,7 +49,7 @@ public sealed class WidgetGalleryController : HumansControllerBase
         var shifts = await ResolveShiftsSamplesAsync(currentUser.Id);
 
         var displayName = string.IsNullOrEmpty(currentUser.DisplayName)
-            ? currentUser.UserName ?? "Current user"
+            ? "Current user"
             : currentUser.DisplayName;
 
         var model = new WidgetGalleryViewModel
@@ -222,9 +222,9 @@ public sealed class WidgetGalleryController : HumansControllerBase
     {
         public static readonly ShiftsSamples Empty = new(
             null, null,
-            Array.Empty<DailyStaffingData>(),
-            Array.Empty<DailyStaffingHours>(),
-            Array.Empty<ShiftDisplayItem>(),
+            [],
+            [],
+            [],
             new HashSet<Guid>());
     }
 }

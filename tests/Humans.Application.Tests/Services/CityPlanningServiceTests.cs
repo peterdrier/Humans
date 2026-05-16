@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Application;
 using Humans.Application.Configuration;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Teams;
@@ -16,7 +15,6 @@ using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Xunit;
 
 namespace Humans.Application.Tests.Services;
 
@@ -55,14 +53,14 @@ public class CityPlanningServiceTests : IDisposable
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             GoogleEmailStatus = GoogleEmailStatus.Unknown,
         },
-        userEmails: Array.Empty<UserEmail>(),
-        eventParticipations: Array.Empty<EventParticipation>(),
-        externalLogins: Array.Empty<(string, string)>(),
+        userEmails: [],
+        eventParticipations: [],
+        externalLogins: [],
         profile: profile,
-        contactFields: Array.Empty<ContactField>(),
-        profileLanguages: Array.Empty<ProfileLanguage>(),
-        volunteerHistory: Array.Empty<VolunteerHistoryEntry>(),
-        communicationPreferences: Array.Empty<CommunicationPreference>());
+        contactFields: [],
+        profileLanguages: [],
+        volunteerHistory: [],
+        communicationPreferences: []);
 
     public void Dispose()
     {
@@ -237,12 +235,7 @@ public class CityPlanningServiceTests : IDisposable
     {
         var userId = NewUserId();
         var teamId = Guid.NewGuid();
-        var team = new Team { Id = teamId, Name = "City Planning", Slug = "city-planning" };
-
-        _teamService.GetTeamBySlugAsync("city-planning", Arg.Any<CancellationToken>())
-            .Returns(team);
-        _teamService.IsUserMemberOfTeamAsync(teamId, userId, Arg.Any<CancellationToken>())
-            .Returns(true);
+        SetupCityPlanningTeam(teamId, memberUserId: userId);
 
         var result = await _sut.IsCityPlanningTeamMemberAsync(userId);
         result.Should().BeTrue();
@@ -253,12 +246,7 @@ public class CityPlanningServiceTests : IDisposable
     {
         var userId = NewUserId();
         var teamId = Guid.NewGuid();
-        var team = new Team { Id = teamId, Name = "City Planning", Slug = "city-planning" };
-
-        _teamService.GetTeamBySlugAsync("city-planning", Arg.Any<CancellationToken>())
-            .Returns(team);
-        _teamService.IsUserMemberOfTeamAsync(teamId, userId, Arg.Any<CancellationToken>())
-            .Returns(false);
+        SetupCityPlanningTeam(teamId, memberUserId: null);
 
         var result = await _sut.IsCityPlanningTeamMemberAsync(userId);
         result.Should().BeFalse();
@@ -270,16 +258,30 @@ public class CityPlanningServiceTests : IDisposable
         var userId = NewUserId();
         var campSeasonId = Guid.NewGuid();
         var teamId = Guid.NewGuid();
-        var team = new Team { Id = teamId, Name = "City Planning", Slug = "city-planning" };
         await SeedMapSettingsAsync(placementOpen: false);
-
-        _teamService.GetTeamBySlugAsync("city-planning", Arg.Any<CancellationToken>())
-            .Returns(team);
-        _teamService.IsUserMemberOfTeamAsync(teamId, userId, Arg.Any<CancellationToken>())
-            .Returns(true);
+        SetupCityPlanningTeam(teamId, memberUserId: userId);
 
         var result = await _sut.CanUserEditAsync(userId, campSeasonId);
         result.Should().BeTrue();
+    }
+
+    private void SetupCityPlanningTeam(Guid teamId, Guid? memberUserId)
+    {
+        var members = memberUserId.HasValue
+            ? new List<TeamMemberInfo>
+            {
+                new(Guid.NewGuid(), memberUserId.Value, string.Empty, null, null,
+                    TeamMemberRole.Member, Instant.MinValue),
+            }
+            : new List<TeamMemberInfo>();
+        var teamInfo = new TeamInfo(
+            teamId, "City Planning", null, "city-planning",
+            IsActive: true, IsSystemTeam: false, SystemTeamType: SystemTeamType.None,
+            RequiresApproval: false, IsPublicPage: false, IsHidden: false,
+            IsPromotedToDirectory: false, CreatedAt: Instant.MinValue,
+            Members: members);
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns((IReadOnlyDictionary<Guid, TeamInfo>)new Dictionary<Guid, TeamInfo> { [teamId] = teamInfo });
     }
 
     [HumansFact]
@@ -488,13 +490,16 @@ public class CityPlanningServiceTests : IDisposable
         var userId = NewUserId();
 
         // Stub the user service — replaces the old cross-domain .Include(h => h.ModifiedByUser).
+        var testUser = new User { Id = userId, UserName = "test@test.com", Email = "test@test.com", DisplayName = "Test User" };
         _userService.GetByIdsAsync(
             Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
             Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, User>
-            {
-                [userId] = new User { Id = userId, UserName = "test@test.com", Email = "test@test.com", DisplayName = "Test User" }
-            });
+            .Returns(new Dictionary<Guid, User> { [userId] = testUser });
+        _userService.GetUserInfosAsync(
+            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
+            Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                new Dictionary<Guid, UserInfo> { [userId] = testUser.ToUserInfo() }));
 
         _clock.Advance(Duration.FromSeconds(1));
         await _sut.SaveCampPolygonAsync(campSeasonId, """{"type":"Feature"}""", 100.0, userId);
@@ -520,6 +525,10 @@ public class CityPlanningServiceTests : IDisposable
             Arg.Any<IReadOnlyCollection<Guid>>(),
             Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, User>());
+        _userService.GetUserInfosAsync(
+            Arg.Any<IReadOnlyCollection<Guid>>(),
+            Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
 
         await _sut.SaveCampPolygonAsync(campSeasonId, """{"type":"Feature"}""", 100.0, userId);
 

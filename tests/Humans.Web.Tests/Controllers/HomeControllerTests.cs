@@ -1,5 +1,5 @@
-using System.Collections.Generic;
 using System.Security.Claims;
+using Humans.Application;
 using Humans.Application.Configuration;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Dashboard;
@@ -9,7 +9,6 @@ using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Testing;
 using Humans.Web.Authorization;
 using Humans.Web.Controllers;
 using Microsoft.AspNetCore.Http;
@@ -49,12 +48,22 @@ public class HomeControllerTests
     private HomeController BuildSut(User user, bool hasProfile = true)
     {
         _userManager.GetUserAsync(Arg.Any<ClaimsPrincipal>()).Returns(user);
+        _userService.GetUserInfoAsync(user.Id, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(UserInfo.Create(
+                user,
+                Array.Empty<UserEmail>(),
+                Array.Empty<EventParticipation>(),
+                Array.Empty<(string, string)>(),
+                profile: null,
+                Array.Empty<ContactField>(),
+                Array.Empty<ProfileLanguage>(),
+                Array.Empty<VolunteerHistoryEntry>(),
+                Array.Empty<CommunicationPreference>())));
 
         var ctrl = new HomeController(
-            _userManager,
+            _userService,
             _dashboardService,
             _shiftMgmt,
-            _userService,
             _widgetState,
             _configuration,
             _configRegistry,
@@ -121,7 +130,7 @@ public class HomeControllerTests
                 IsVolunteerMember: true,
                 RequiredConsentCount: 0,
                 PendingConsentCount: 0,
-                MissingConsentVersionIds: Array.Empty<Guid>()),
+                MissingConsentVersionIds: []),
             LatestApplication: null,
             HasPendingApplication: false,
             CurrentTier: MembershipTier.Volunteer,
@@ -129,8 +138,8 @@ public class HomeControllerTests
             TermExpiresSoon: false,
             TermExpired: false,
             ActiveEvent: null,
-            UrgentShifts: Array.Empty<DashboardUrgentShift>(),
-            NextShifts: Array.Empty<DashboardSignup>(),
+            UrgentShifts: [],
+            NextShifts: [],
             PendingSignupCount: 0,
             HasShiftSignups: false,
             TicketsConfigured: false,

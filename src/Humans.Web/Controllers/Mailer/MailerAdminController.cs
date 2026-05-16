@@ -12,7 +12,6 @@ using Humans.Web.Models.Mailer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 
 namespace Humans.Web.Controllers.Mailer;
 
@@ -37,9 +36,8 @@ public sealed class MailerAdminController : HumansControllerBase
         IUserService users,
         ICommunicationPreferenceService prefs,
         IAuditLogService audit,
-        ILogger<MailerAdminController> logger,
-        UserManager<User> userManager)
-        : base(userManager)
+        ILogger<MailerAdminController> logger)
+        : base(users)
     {
         _ml = ml;
         _import = import;
@@ -77,7 +75,7 @@ public sealed class MailerAdminController : HumansControllerBase
         var optedOut = await _prefs.GetCountByCategoryAndStateAsync(MessageCategory.Marketing, optedOut: true, ct);
 
         var recent = await _audit.GetFilteredEntriesAsync(
-            actions: new[] { AuditAction.MailerLiteReconciliationCompleted },
+            actions: [AuditAction.MailerLiteReconciliationCompleted],
             limit: 1,
             ct: ct);
         var last = recent.FirstOrDefault();
@@ -94,12 +92,12 @@ public sealed class MailerAdminController : HumansControllerBase
         catch (HttpRequestException ex)
         {
             _logger.LogWarning(ex, "Audience stats failed");
-            audienceRows = Array.Empty<AudienceCardRow>();
+            audienceRows = [];
         }
         catch (TaskCanceledException) when (!ct.IsCancellationRequested)
         {
             _logger.LogWarning("Audience stats timed out");
-            audienceRows = Array.Empty<AudienceCardRow>();
+            audienceRows = [];
         }
 
         var vm = new MailerDashboardViewModel(
@@ -119,7 +117,7 @@ public sealed class MailerAdminController : HumansControllerBase
 
         try
         {
-            var actor = await GetCurrentUserAsync();
+            var actor = await GetCurrentUserInfoAsync();
             var result = await _audienceSync.SyncAsync(audience, actor?.Id, ct);
             TempData["Banner"] = $"{audience.DisplayName}: {result.FormatSummary()}";
         }

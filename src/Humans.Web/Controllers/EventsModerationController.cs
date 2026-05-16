@@ -7,7 +7,6 @@ using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Filters;
-using Humans.Web.Models;
 using Humans.Web.Models.Events;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -31,12 +30,12 @@ public class EventsModerationController : HumansControllerBase
 
     public EventsModerationController(
         IEventService guide,
-        UserManager<User> userManager,
+        IUserService userService,
         IEmailService emailService,
         IUserService users,
         ICampService camps,
         ILogger<EventsModerationController> logger)
-        : base(userManager)
+        : base(userService)
     {
         _guide = guide;
         _emailService = emailService;
@@ -140,7 +139,7 @@ public class EventsModerationController : HumansControllerBase
 
     private async Task<IActionResult> ProcessActionAsync(Guid eventId, EventModerationActionType actionType, string? reason)
     {
-        var moderator = await GetCurrentUserAsync();
+        var moderator = await GetCurrentUserInfoAsync();
         if (moderator == null) return Challenge();
 
         var guideEvent = await _guide.GetEventForModerationAsync(eventId);

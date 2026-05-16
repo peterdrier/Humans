@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Mailer.Dtos;
-using Humans.Testing;
 using NodaTime;
 
 namespace Humans.Application.Tests.Services.Mailer;

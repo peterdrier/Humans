@@ -21,11 +21,10 @@ public class AuditLogController : HumansControllerBase
     private readonly ILogger<AuditLogController> _logger;
 
     public AuditLogController(
-        UserManager<User> userManager,
-        IAuditViewerService auditViewer,
         IUserService userService,
+        IAuditViewerService auditViewer,
         ILogger<AuditLogController> logger)
-        : base(userManager)
+        : base(userService)
     {
         _auditViewer = auditViewer;
         _userService = userService;
@@ -58,7 +57,7 @@ public class AuditLogController : HumansControllerBase
     public async Task<IActionResult> CheckDriveActivity(
         [FromServices] IDriveActivityMonitorService monitorService)
     {
-        var currentUser = await GetCurrentUserAsync();
+        var currentUser = await GetCurrentUserInfoAsync();
 
         try
         {
@@ -104,7 +103,7 @@ public class AuditLogController : HumansControllerBase
     [Authorize(Policy = PolicyNames.HumanAdminBoardOrAdmin)]
     public async Task<IActionResult> Human(Guid id)
     {
-        var user = await FindUserByIdAsync(id);
+        var user = await FindUserInfoByIdAsync(id);
 
         if (user is null)
         {

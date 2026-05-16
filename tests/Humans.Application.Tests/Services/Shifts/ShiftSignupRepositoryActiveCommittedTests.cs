@@ -55,7 +55,7 @@ public class ShiftSignupRepositoryActiveCommittedTests : IDisposable
 
         var result = await _repo.GetActiveCommittedUserIdsForEventAsync(es.Id, CancellationToken.None);
 
-        result.Should().BeEquivalentTo(new[] { pending, confirmed });
+        result.Should().BeEquivalentTo([pending, confirmed]);
     }
 
     [HumansFact]
@@ -71,7 +71,7 @@ public class ShiftSignupRepositoryActiveCommittedTests : IDisposable
 
         var resultA = await _repo.GetActiveCommittedUserIdsForEventAsync(esA.Id, CancellationToken.None);
 
-        resultA.Should().BeEquivalentTo(new[] { userA });
+        resultA.Should().BeEquivalentTo([userA]);
         resultA.Should().NotContain(userB);
     }
 

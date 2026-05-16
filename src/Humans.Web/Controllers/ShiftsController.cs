@@ -1,10 +1,10 @@
 using System.Globalization;
 using System.Text.Json;
+using Humans.Application;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
-using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Authorization;
@@ -28,6 +28,7 @@ public class ShiftsController : HumansControllerBase
     private readonly IGeneralAvailabilityService _availabilityService;
     private readonly ITeamService _teamService;
     private readonly IAuditLogService _auditLogService;
+    private readonly IUserService _userService;
     private readonly IStringLocalizer<SharedResource> _localizer;
     private readonly IClock _clock;
     private readonly ShiftBrowsePageBuilder _browsePageBuilder;
@@ -39,18 +40,19 @@ public class ShiftsController : HumansControllerBase
         IGeneralAvailabilityService availabilityService,
         ITeamService teamService,
         IAuditLogService auditLogService,
+        IUserService userService,
         IStringLocalizer<SharedResource> localizer,
-        UserManager<User> userManager,
         IClock clock,
         ShiftBrowsePageBuilder browsePageBuilder,
         ILogger<ShiftsController> logger)
-        : base(userManager)
+        : base(userService)
     {
         _shiftMgmt = shiftMgmt;
         _signupService = signupService;
         _availabilityService = availabilityService;
         _teamService = teamService;
         _auditLogService = auditLogService;
+        _userService = userService;
         _localizer = localizer;
         _clock = clock;
         _browsePageBuilder = browsePageBuilder;
@@ -276,9 +278,12 @@ public class ShiftsController : HumansControllerBase
     private async Task<IReadOnlyDictionary<Guid, string>> LoadTeamNamesForSignupsAsync(IReadOnlyList<ShiftSignup> signups)
     {
         var teamIds = ShiftSignupBucketer.GetTeamIds(signups);
-        return teamIds.Count == 0
-            ? new Dictionary<Guid, string>()
-            : await _teamService.GetTeamNamesByIdsAsync(teamIds);
+        if (teamIds.Count == 0)
+            return new Dictionary<Guid, string>();
+        var teamsById = await _teamService.GetTeamsAsync();
+        return teamIds
+            .Where(teamsById.ContainsKey)
+            .ToDictionary(id => id, id => teamsById[id].Name);
     }
 
     private async Task PopulateAvailabilityAsync(MyShiftsViewModel model, Guid userId, EventSettings? eventSettings)
@@ -290,15 +295,16 @@ public class ShiftsController : HumansControllerBase
             model.AvailableDayOffsets = availability.AvailableDayOffsets.ToList();
     }
 
-    private async Task EnsureICalUrlAsync(MyShiftsViewModel model, User user)
+    private async Task EnsureICalUrlAsync(MyShiftsViewModel model, UserInfo user)
     {
-        if (user.ICalToken is null)
+        var token = user.ICalToken;
+        if (token is null)
         {
-            user.ICalToken = Guid.NewGuid();
-            await UpdateCurrentUserAsync(user);
+            token = Guid.NewGuid();
+            await _userService.SetICalTokenAsync(user.Id, token.Value);
         }
 
-        model.ICalUrl = $"{Request.Scheme}://{Request.Host}/ICal/{user.ICalToken}.ics";
+        model.ICalUrl = $"{Request.Scheme}://{Request.Host}/ICal/{token}.ics";
     }
 
     [HttpPost("Mine/Availability")]
@@ -329,8 +335,8 @@ public class ShiftsController : HumansControllerBase
             return currentUserNotFound;
         }
 
-        user.ICalToken = Guid.NewGuid();
-        await UpdateCurrentUserAsync(user);
+        var newToken = Guid.NewGuid();
+        await _userService.SetICalTokenAsync(user.Id, newToken);
 
         SetSuccess("iCal URL regenerated.");
         return RedirectToAction(nameof(Mine));
@@ -487,9 +493,7 @@ public class ShiftsController : HumansControllerBase
 
     [HttpGet("OrphanSignups")]
     [Authorize(Policy = PolicyNames.AdminOnly)]
-    public async Task<IActionResult> OrphanSignups(
-        [FromServices] IUserService userService,
-        CancellationToken ct)
+    public async Task<IActionResult> OrphanSignups(CancellationToken ct)
     {
         var allSignups = await _signupService.GetAllForOrphanScanAsync(ct);
         var auditedIds = await _auditLogService.GetEntityIdsForEntityTypeActionsAsync(
@@ -498,7 +502,7 @@ public class ShiftsController : HumansControllerBase
             ct);
 
         var orphans = allSignups.Where(s => !auditedIds.Contains(s.Id)).ToList();
-        var users = await ResolveOrphanActorsAsync(orphans, userService, ct);
+        var users = await ResolveOrphanActorsAsync(orphans, _userService, ct);
         var rows = BuildOrphanRows(orphans, users);
 
         return View(new OrphanSignupsViewModel(
@@ -508,7 +512,7 @@ public class ShiftsController : HumansControllerBase
             Rows: rows));
     }
 
-    private static async Task<IReadOnlyDictionary<Guid, User>> ResolveOrphanActorsAsync(
+    private static async Task<IReadOnlyDictionary<Guid, UserInfo>> ResolveOrphanActorsAsync(
         IReadOnlyList<OrphanSignupSnapshot> orphans, IUserService userService, CancellationToken ct)
     {
         // Display-name resolution goes through the Users section directly —
@@ -522,13 +526,13 @@ public class ShiftsController : HumansControllerBase
             .Distinct()
             .ToList();
         return userIds.Count == 0
-            ? new Dictionary<Guid, User>()
-            : await userService.GetByIdsAsync(userIds, ct);
+            ? new Dictionary<Guid, UserInfo>()
+            : await userService.GetUserInfosAsync(userIds, ct);
     }
 
     private static List<OrphanSignupRow> BuildOrphanRows(
         IReadOnlyList<OrphanSignupSnapshot> orphans,
-        IReadOnlyDictionary<Guid, User> users)
+        IReadOnlyDictionary<Guid, UserInfo> users)
     {
         string? GetName(Guid? id) => id.HasValue && users.TryGetValue(id.Value, out var u) ? u.DisplayName : null;
 

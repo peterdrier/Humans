@@ -1,9 +1,7 @@
 using AwesomeAssertions;
 using Humans.Domain.Enums;
-using Humans.Testing;
 using Humans.Web.Controllers;
 using NodaTime;
-using Xunit;
 
 namespace Humans.Web.Tests.Controllers;
 

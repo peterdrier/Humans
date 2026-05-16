@@ -7,9 +7,9 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Tickets;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Testing;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Serialization.SystemTextJson;
@@ -42,8 +42,18 @@ public sealed class TicketTransferService_VendorStepsTests
         _service = new TicketTransferService(_transferRepo, _ticketRepo, _vendor,
             _ticketQueryService, _userService, _userEmailService, _profileService,
             _auditLog, _clock, NullLogger<TicketTransferService>.Instance);
+        var sender = new User { Id = SenderId, DisplayName = "Sender" };
         _userService.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(new User { Id = SenderId, DisplayName = "Sender" });
+            .Returns(sender);
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                var ids = callInfo.Arg<IReadOnlyCollection<Guid>>();
+                IReadOnlyDictionary<Guid, UserInfo> dict = ids.ToDictionary(
+                    id => id,
+                    id => (id == SenderId ? sender : new User { Id = id, DisplayName = id.ToString() }).ToUserInfo());
+                return new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(dict);
+            });
     }
 
     private static TicketTransferRequest PendingRequest(Guid attendeeId) => new()
@@ -76,7 +86,7 @@ public sealed class TicketTransferService_VendorStepsTests
 
     private static readonly JsonSerializerOptions WebOptions =
         new JsonSerializerOptions(JsonSerializerDefaults.Web)
-            .ConfigureForNodaTime(NodaTime.DateTimeZoneProviders.Tzdb);
+            .ConfigureForNodaTime(DateTimeZoneProviders.Tzdb);
 
     private static IReadOnlyList<TicketTransferVendorStep> StepsOf(TicketTransferRequest r) =>
         JsonSerializer.Deserialize<List<TicketTransferVendorStep>>(r.VendorStepsJson, WebOptions)!;

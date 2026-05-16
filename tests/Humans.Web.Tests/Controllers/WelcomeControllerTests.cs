@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using Humans.Testing;
 using Humans.Web.Authorization;
 using Humans.Web.Controllers;
 using Microsoft.AspNetCore.Http;

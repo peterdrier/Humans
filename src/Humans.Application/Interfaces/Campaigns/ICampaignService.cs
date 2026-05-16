@@ -1,5 +1,4 @@
 using Humans.Application.Architecture;
-using Humans.Application.Interfaces;
 using Humans.Application.DTOs;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -104,7 +103,7 @@ public interface ICampaignService : IApplicationService
     /// </summary>
     Task<bool> UpdateGrantEmailStatusAsync(
         Guid grantId,
-        Humans.Domain.Enums.EmailOutboxStatus status,
+        EmailOutboxStatus status,
         Instant latestEmailAt,
         CancellationToken ct = default);
 }

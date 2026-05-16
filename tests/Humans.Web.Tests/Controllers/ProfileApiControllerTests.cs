@@ -7,7 +7,6 @@ using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Profiles;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Testing;
 using Humans.Web.Controllers;
 using NodaTime;
 using Humans.Web.Models;
@@ -18,7 +17,6 @@ using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
-using Xunit;
 
 namespace Humans.Web.Tests.Controllers;
 
@@ -63,7 +61,7 @@ public class ProfileApiControllerTests
         // helper returns null URLs for every result row.
         _profileService
             .GetCustomPictureInfoByUserIdsAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<(Guid ProfileId, Guid UserId, long UpdatedAtTicks)>());
+            .Returns([]);
     }
 
     private ProfileApiController BuildSut(User? currentUser)
@@ -71,16 +69,18 @@ public class ProfileApiControllerTests
         if (currentUser is not null)
         {
             _userManager.GetUserAsync(Arg.Any<ClaimsPrincipal>()).Returns(currentUser);
+            _userService.GetUserInfoAsync(currentUser.Id, Arg.Any<CancellationToken>())
+                .Returns(new ValueTask<UserInfo?>(MakeViewerUserInfo(currentUser)));
         }
 
         var ctrl = new ProfileApiController(
-            _profileService, _userService, _contactFieldService, _userEmailService, _userManager);
+            _profileService, _userService, _contactFieldService, _userEmailService);
 
         var http = new DefaultHttpContext();
         if (currentUser is not null)
         {
-            http.User = new ClaimsPrincipal(new ClaimsIdentity(
-                new[] { new Claim(ClaimTypes.NameIdentifier, currentUser.Id.ToString()) },
+            http.User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, currentUser.Id.ToString())
+                ],
                 "test"));
         }
 
@@ -117,6 +117,18 @@ public class ProfileApiControllerTests
     private static User MakeUser(Guid id) =>
         new() { Id = id, Email = $"viewer-{id:N}@example.com", DisplayName = "Viewer" };
 
+    private static UserInfo MakeViewerUserInfo(User user) =>
+        UserInfo.Create(
+            user: user,
+            userEmails: Array.Empty<UserEmail>(),
+            eventParticipations: Array.Empty<EventParticipation>(),
+            externalLogins: Array.Empty<(string, string)>(),
+            profile: null,
+            contactFields: Array.Empty<ContactField>(),
+            profileLanguages: Array.Empty<ProfileLanguage>(),
+            volunteerHistory: Array.Empty<VolunteerHistoryEntry>(),
+            communicationPreferences: Array.Empty<CommunicationPreference>());
+
     private static UserInfo MakeUserInfo(
         Guid userId,
         Guid profileId,
@@ -145,42 +157,15 @@ public class ProfileApiControllerTests
         };
         return UserInfo.Create(
             user: user,
-            userEmails: Array.Empty<UserEmail>(),
-            eventParticipations: Array.Empty<EventParticipation>(),
-            externalLogins: Array.Empty<(string, string)>(),
+            userEmails: [],
+            eventParticipations: [],
+            externalLogins: [],
             profile: profile,
-            contactFields: Array.Empty<ContactField>(),
-            profileLanguages: Array.Empty<ProfileLanguage>(),
-            volunteerHistory: Array.Empty<VolunteerHistoryEntry>(),
-            communicationPreferences: Array.Empty<CommunicationPreference>());
+            contactFields: [],
+            profileLanguages: [],
+            volunteerHistory: [],
+            communicationPreferences: []);
     }
-
-    private static FullProfile MakeFullProfile(
-        Guid userId,
-        Guid profileId,
-        string? burnerName = "Target Burner",
-        bool isRejected = false) =>
-        new(
-            UserId: userId,
-            DisplayName: "Target Display",
-            ProfilePictureUrl: null,
-            HasCustomPicture: false,
-            ProfileId: profileId,
-            UpdatedAtTicks: 0,
-            BurnerName: burnerName,
-            Bio: null,
-            Pronouns: null,
-            ContributionInterests: null,
-            City: null,
-            CountryCode: null,
-            Latitude: null,
-            Longitude: null,
-            BirthdayDay: null,
-            BirthdayMonth: null,
-            IsApproved: true,
-            IsSuspended: false,
-            CVEntries: Array.Empty<CVEntry>(),
-            IsRejected: isRejected);
 
     // ==========================================================================
     // Search — privacy gate behavior on the per-row detail line.
@@ -198,7 +183,7 @@ public class ProfileApiControllerTests
 
         result.Should().BeOfType<UnauthorizedResult>();
 
-        await _profileService.DidNotReceive().SearchProfilesAsync(
+        await _userService.DidNotReceive().SearchUsersAsync(
             Arg.Any<string>(), Arg.Any<PersonSearchFields>(),
             Arg.Any<int>(), Arg.Any<CancellationToken>());
         await _contactFieldService.DidNotReceive().GetViewerAccessLevelAsync(
@@ -212,24 +197,23 @@ public class ProfileApiControllerTests
         var targetUserId = Guid.NewGuid();
         var targetProfileId = Guid.NewGuid();
 
-        _profileService.SearchProfilesAsync(Arg.Any<string>(),
+        _userService.SearchUsersAsync(Arg.Any<string>(),
                 Arg.Any<PersonSearchFields>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(new[] { MakeSearchResult(targetUserId, targetProfileId, "David") });
+            .Returns([MakeSearchResult(targetUserId, targetProfileId, "David")]);
 
         _contactFieldService.GetViewerAccessLevelAsync(targetUserId, viewer.Id, Arg.Any<CancellationToken>())
             .Returns(ContactFieldVisibility.AllActiveProfiles);
 
         _userEmailService.GetVisibleEmailsAsync(targetUserId,
                 ContactFieldVisibility.AllActiveProfiles, Arg.Any<CancellationToken>())
-            .Returns(new[]
-            {
+            .Returns([
                 new UserEmailDto(Guid.NewGuid(), "alt@example.com",
                     IsVerified: true, IsGoogle: false, Provider: null, ProviderKey: null,
                     IsPrimary: false, Visibility: ContactFieldVisibility.AllActiveProfiles),
                 new UserEmailDto(Guid.NewGuid(), "primary@example.com",
                     IsVerified: true, IsGoogle: false, Provider: null, ProviderKey: null,
-                    IsPrimary: true, Visibility: ContactFieldVisibility.AllActiveProfiles),
-            });
+                    IsPrimary: true, Visibility: ContactFieldVisibility.AllActiveProfiles)
+            ]);
 
         var sut = BuildSut(viewer);
 
@@ -239,9 +223,6 @@ public class ProfileApiControllerTests
             .Should().BeAssignableTo<IEnumerable<HumanLookupSearchResult>>().Subject.Single();
         row.Detail.Should().Be("primary@example.com");
 
-        // GetByUserIdsAsync (DB-bound) is bypassed — ProfileId comes from HumanSearchResult.
-        await _profileService.DidNotReceive().GetByUserIdsAsync(
-            Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -251,24 +232,23 @@ public class ProfileApiControllerTests
         var targetUserId = Guid.NewGuid();
         var targetProfileId = Guid.NewGuid();
 
-        _profileService.SearchProfilesAsync(Arg.Any<string>(),
+        _userService.SearchUsersAsync(Arg.Any<string>(),
                 Arg.Any<PersonSearchFields>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(new[] { MakeSearchResult(targetUserId, targetProfileId, "David") });
+            .Returns([MakeSearchResult(targetUserId, targetProfileId, "David")]);
 
         _contactFieldService.GetViewerAccessLevelAsync(targetUserId, viewer.Id, Arg.Any<CancellationToken>())
             .Returns(ContactFieldVisibility.AllActiveProfiles);
         _userEmailService.GetVisibleEmailsAsync(targetUserId, Arg.Any<ContactFieldVisibility>(), Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<UserEmailDto>());
+            .Returns([]);
 
         // Mix of types — Phone must win over Signal regardless of insert order.
         _contactFieldService.GetVisibleContactFieldsAsync(targetProfileId, viewer.Id, Arg.Any<CancellationToken>())
-            .Returns(new[]
-            {
+            .Returns([
                 new ContactFieldDto(Guid.NewGuid(), ContactFieldType.Signal, "Signal", "signal-handle",
                     ContactFieldVisibility.AllActiveProfiles),
                 new ContactFieldDto(Guid.NewGuid(), ContactFieldType.Phone, "Phone", "+1-555-0100",
-                    ContactFieldVisibility.AllActiveProfiles),
-            });
+                    ContactFieldVisibility.AllActiveProfiles)
+            ]);
 
         var sut = BuildSut(viewer);
 
@@ -286,16 +266,16 @@ public class ProfileApiControllerTests
         var targetUserId = Guid.NewGuid();
         var targetProfileId = Guid.NewGuid();
 
-        _profileService.SearchProfilesAsync(Arg.Any<string>(),
+        _userService.SearchUsersAsync(Arg.Any<string>(),
                 Arg.Any<PersonSearchFields>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(new[] { MakeSearchResult(targetUserId, targetProfileId, "David") });
+            .Returns([MakeSearchResult(targetUserId, targetProfileId, "David")]);
 
         _contactFieldService.GetViewerAccessLevelAsync(targetUserId, viewer.Id, Arg.Any<CancellationToken>())
             .Returns(ContactFieldVisibility.AllActiveProfiles);
         _userEmailService.GetVisibleEmailsAsync(targetUserId, Arg.Any<ContactFieldVisibility>(), Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<UserEmailDto>());
+            .Returns([]);
         _contactFieldService.GetVisibleContactFieldsAsync(targetProfileId, viewer.Id, Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<ContactFieldDto>());
+            .Returns([]);
 
         var sut = BuildSut(viewer);
 
@@ -313,24 +293,23 @@ public class ProfileApiControllerTests
         var targetUserId = Guid.NewGuid();
         var targetProfileId = Guid.NewGuid();
 
-        _profileService.SearchProfilesAsync(Arg.Any<string>(),
+        _userService.SearchUsersAsync(Arg.Any<string>(),
                 Arg.Any<PersonSearchFields>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(new[] { MakeSearchResult(targetUserId, targetProfileId, "David") });
+            .Returns([MakeSearchResult(targetUserId, targetProfileId, "David")]);
 
         _contactFieldService.GetViewerAccessLevelAsync(targetUserId, viewer.Id, Arg.Any<CancellationToken>())
             .Returns(ContactFieldVisibility.AllActiveProfiles);
         _userEmailService.GetVisibleEmailsAsync(targetUserId, Arg.Any<ContactFieldVisibility>(), Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<UserEmailDto>());
+            .Returns([]);
 
 #pragma warning disable CS0618 // Verifying the controller skips the obsolete Email enum value.
         _contactFieldService.GetVisibleContactFieldsAsync(targetProfileId, viewer.Id, Arg.Any<CancellationToken>())
-            .Returns(new[]
-            {
+            .Returns([
                 new ContactFieldDto(Guid.NewGuid(), ContactFieldType.Email, "Email", "obsolete@example.com",
                     ContactFieldVisibility.AllActiveProfiles),
                 new ContactFieldDto(Guid.NewGuid(), ContactFieldType.Discord, "Discord", "user#1234",
-                    ContactFieldVisibility.AllActiveProfiles),
-            });
+                    ContactFieldVisibility.AllActiveProfiles)
+            ]);
 #pragma warning restore CS0618
 
         var sut = BuildSut(viewer);
@@ -389,12 +368,11 @@ public class ProfileApiControllerTests
         _contactFieldService.GetViewerAccessLevelAsync(targetUserId, viewer.Id, Arg.Any<CancellationToken>())
             .Returns(ContactFieldVisibility.AllActiveProfiles);
         _userEmailService.GetVisibleEmailsAsync(targetUserId, Arg.Any<ContactFieldVisibility>(), Arg.Any<CancellationToken>())
-            .Returns(new[]
-            {
+            .Returns([
                 new UserEmailDto(Guid.NewGuid(), "shared@example.com",
                     IsVerified: true, IsGoogle: false, Provider: null, ProviderKey: null,
-                    IsPrimary: true, Visibility: ContactFieldVisibility.AllActiveProfiles),
-            });
+                    IsPrimary: true, Visibility: ContactFieldVisibility.AllActiveProfiles)
+            ]);
 
         var sut = BuildSut(viewer);
 

@@ -1,9 +1,7 @@
 using AwesomeAssertions;
-using Humans.Application;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Budget;
-using Humans.Application.Interfaces.Expenses;
 using Humans.Application.Interfaces.Holded;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
@@ -20,7 +18,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Xunit;
 
 namespace Humans.Application.Tests.Services.Expenses;
 
@@ -75,14 +72,14 @@ public class ExpenseReportServiceTests
             CreatedAt = FakeNow,
             GoogleEmailStatus = GoogleEmailStatus.Unknown,
         },
-        userEmails: Array.Empty<UserEmail>(),
-        eventParticipations: Array.Empty<EventParticipation>(),
-        externalLogins: Array.Empty<(string, string)>(),
+        userEmails: [],
+        eventParticipations: [],
+        externalLogins: [],
         profile: profile,
-        contactFields: Array.Empty<ContactField>(),
-        profileLanguages: Array.Empty<ProfileLanguage>(),
-        volunteerHistory: Array.Empty<VolunteerHistoryEntry>(),
-        communicationPreferences: Array.Empty<CommunicationPreference>());
+        contactFields: [],
+        profileLanguages: [],
+        volunteerHistory: [],
+        communicationPreferences: []);
 
     // ─────────────────────────────── 4.2 ─────────────────────────────────────
 
@@ -197,8 +194,8 @@ public class ExpenseReportServiceTests
         var submitter = Guid.NewGuid();
         var id = await _sut.CreateDraftAsync(submitter, category.Id, null);
         var report = await _sut.GetAsync(id);
-        _profileService.GetProfileAsync(submitter, Arg.Any<CancellationToken>())
-            .Returns(new Profile { Id = Guid.NewGuid(), UserId = submitter, Iban = "ES9121000418450200051332" });
+        _userService.GetUserInfoAsync(submitter, Arg.Any<CancellationToken>())
+            .Returns(WrapInUserInfo(new Profile { Id = Guid.NewGuid(), UserId = submitter, Iban = "ES9121000418450200051332" }));
 
         var result = await _sut.GetDetailViewDataAsync(submitter, report!);
 
@@ -460,7 +457,7 @@ public class ExpenseReportServiceTests
         var download = await _sut.TryReadAttachmentAsync(loaded!, attachId);
 
         download.Should().NotBeNull();
-        download!.Bytes.Should().Equal([4, 5, 6]);
+        download!.Bytes.Should().Equal(4, 5, 6);
         download.ContentType.Should().Be("application/pdf");
         download.OriginalFileName.Should().Be("receipt.pdf");
     }
@@ -750,8 +747,8 @@ public class ExpenseReportServiceTests
     public async Task SaveSubmitterIbanWithResultAsync_ReturnsValidationFailure_WhenIbanInvalid()
     {
         var submitter = Guid.NewGuid();
-        _profileService.GetProfileAsync(submitter, Arg.Any<CancellationToken>())
-            .Returns(new Profile { Id = Guid.NewGuid(), UserId = submitter, Iban = "ES9121000418450200051332" });
+        _userService.GetUserInfoAsync(submitter, Arg.Any<CancellationToken>())
+            .Returns(WrapInUserInfo(new Profile { Id = Guid.NewGuid(), UserId = submitter, Iban = "ES9121000418450200051332" }));
 
         var result = await _sut.SaveSubmitterIbanWithResultAsync(submitter, "not-an-iban");
 
@@ -765,8 +762,8 @@ public class ExpenseReportServiceTests
     public async Task GetSubmitterIbanViewAsync_ReturnsMaskedIban_WhenProfileHasIban()
     {
         var submitter = Guid.NewGuid();
-        _profileService.GetProfileAsync(submitter, Arg.Any<CancellationToken>())
-            .Returns(new Profile { Id = Guid.NewGuid(), UserId = submitter, Iban = "ES9121000418450200051332" });
+        _userService.GetUserInfoAsync(submitter, Arg.Any<CancellationToken>())
+            .Returns(WrapInUserInfo(new Profile { Id = Guid.NewGuid(), UserId = submitter, Iban = "ES9121000418450200051332" }));
 
         var result = await _sut.GetSubmitterIbanViewAsync(submitter);
 
@@ -1081,8 +1078,8 @@ public class ExpenseReportServiceTests
         await SeedReportWithStatus(id2, Guid.NewGuid(), category.Id, yearId, ExpenseReportStatus.Approved);
         await SeedReportWithStatus(id3, Guid.NewGuid(), category.Id, yearId, ExpenseReportStatus.Submitted); // not Approved
 
-        var flipped = await _sut.MarkSepaSentAsync(new[] { id1, id2 }, actor);
-        flipped.Should().BeEquivalentTo(new[] { id1, id2 });
+        var flipped = await _sut.MarkSepaSentAsync([id1, id2], actor);
+        flipped.Should().BeEquivalentTo([id1, id2]);
 
         (await _sut.GetAsync(id1))!.Status.Should().Be(ExpenseReportStatus.SepaSent);
         (await _sut.GetAsync(id2))!.Status.Should().Be(ExpenseReportStatus.SepaSent);
@@ -1107,9 +1104,9 @@ public class ExpenseReportServiceTests
         await SeedReportWithStatus(aId, Guid.NewGuid(), category.Id, yearId, ExpenseReportStatus.Approved);
         await SeedReportWithStatus(bId, Guid.NewGuid(), category.Id, yearId, ExpenseReportStatus.Submitted);
 
-        var flipped = await _sut.MarkSepaSentAsync(new[] { aId, bId }, actor);
+        var flipped = await _sut.MarkSepaSentAsync([aId, bId], actor);
 
-        flipped.Should().BeEquivalentTo(new[] { aId });
+        flipped.Should().BeEquivalentTo([aId]);
         (await _sut.GetAsync(bId))!.Status.Should().Be(ExpenseReportStatus.Submitted);
 
         await _auditLogService.Received(1).LogAsync(
@@ -1158,7 +1155,7 @@ public class ExpenseReportServiceTests
     public async Task GetCoordinatorQueueAsync_ReturnsEmptyWhenNoTeams()
     {
         _teamService.GetEffectiveBudgetCoordinatorTeamIdsAsync(Arg.Any<Guid>(),
-            Arg.Any<CancellationToken>()).Returns(Array.Empty<Guid>());
+            Arg.Any<CancellationToken>()).Returns([]);
 
         var result = await _sut.GetCoordinatorQueueAsync(Guid.NewGuid());
         result.Should().BeEmpty();

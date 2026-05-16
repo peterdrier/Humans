@@ -1,6 +1,5 @@
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Store;
-using Humans.Application.Services.Store.Dtos;
 using Humans.Domain.Entities;
 using Humans.Web.Authorization;
 using Humans.Web.Models;
@@ -9,6 +8,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using NodaTime.Text;
+
+using Humans.Application.Interfaces.Users;
 
 namespace Humans.Web.Controllers;
 
@@ -27,9 +28,9 @@ public class StoreAdminController : HumansControllerBase
         IStoreService storeService,
         IShiftManagementService shifts,
         IClock clock,
-        UserManager<User> userManager,
+        IUserService userService,
         ILogger<StoreAdminController> logger)
-        : base(userManager)
+        : base(userService)
     {
         _storeService = storeService;
         _shifts = shifts;

@@ -5,7 +5,8 @@ using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
+
+using Humans.Application.Interfaces.Users;
 
 namespace Humans.Web.Controllers;
 
@@ -18,9 +19,9 @@ public sealed class TicketTransferController : HumansControllerBase
 
     public TicketTransferController(
         ITicketTransferService service,
-        UserManager<User> userManager,
+        IUserService userService,
         ILogger<TicketTransferController> logger)
-        : base(userManager)
+        : base(userService)
     {
         _service = service;
         _logger = logger;

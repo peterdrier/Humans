@@ -31,7 +31,7 @@ public class GoogleController : HumansControllerBase
     private readonly ILogger<GoogleController> _logger;
 
     public GoogleController(
-        UserManager<User> userManager,
+        IUserService userService,
         IGoogleSyncService googleSyncService,
         IGoogleGroupSync googleGroupSync,
         IAuditViewerService auditViewer,
@@ -40,7 +40,7 @@ public class GoogleController : HumansControllerBase
         IGoogleAdminService googleAdminService,
         IMemoryCache cache,
         ILogger<GoogleController> logger)
-        : base(userManager)
+        : base(userService)
     {
         _googleSyncService = googleSyncService;
         _googleGroupSync = googleGroupSync;
@@ -96,7 +96,7 @@ public class GoogleController : HumansControllerBase
         [FromServices] ISyncSettingsService syncSettingsService,
         SyncServiceType serviceType, SyncMode mode)
     {
-        var currentUser = await GetCurrentUserAsync();
+        var currentUser = await GetCurrentUserInfoAsync();
         if (currentUser is null) return Unauthorized();
 
         await syncSettingsService.UpdateModeAsync(serviceType, mode, currentUser.Id);
@@ -259,7 +259,9 @@ public class GoogleController : HumansControllerBase
         try
         {
             var result = await _googleSyncService.GetAllDomainGroupsAsync();
-            var teams = await _googleAdminService.GetActiveTeamsAsync();
+            var teams = (await _googleAdminService.GetActiveTeamsAsync())
+                .OrderBy(t => t.Name, StringComparer.Ordinal)
+                .ToList();
             ViewBag.Teams = teams;
             return View(result);
         }
@@ -395,7 +397,7 @@ public class GoogleController : HumansControllerBase
             return RedirectToAction(nameof(ProfileController.AdminDetail), "Profile", new { id });
         }
 
-        var currentUser = await GetCurrentUserAsync();
+        var currentUser = await GetCurrentUserInfoAsync();
         if (currentUser is null)
             return NotFound();
 
@@ -482,7 +484,7 @@ public class GoogleController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ProvisionAccount(ProvisionWorkspaceAccountModel model)
     {
-        var currentUser = await GetCurrentUserAsync();
+        var currentUser = await GetCurrentUserInfoAsync();
         if (currentUser is null) return Unauthorized();
 
         var result = await _googleAdminService.ProvisionStandaloneAccountAsync(
@@ -507,7 +509,7 @@ public class GoogleController : HumansControllerBase
             return BadRequest();
         }
 
-        var currentUser = await GetCurrentUserAsync();
+        var currentUser = await GetCurrentUserInfoAsync();
         if (currentUser is null) return Unauthorized();
 
         var result = await _googleAdminService.SuspendAccountAsync(
@@ -531,7 +533,7 @@ public class GoogleController : HumansControllerBase
             return BadRequest();
         }
 
-        var currentUser = await GetCurrentUserAsync();
+        var currentUser = await GetCurrentUserInfoAsync();
         if (currentUser is null) return Unauthorized();
 
         var result = await _googleAdminService.ReactivateAccountAsync(
@@ -550,7 +552,7 @@ public class GoogleController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ResetPassword(string email)
     {
-        var currentUser = await GetCurrentUserAsync();
+        var currentUser = await GetCurrentUserInfoAsync();
         if (currentUser is null) return Unauthorized();
 
         var result = await _googleAdminService.ResetPasswordAsync(
@@ -579,7 +581,7 @@ public class GoogleController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ResetPasswordAndGenerate2Fa(string email)
     {
-        var currentUser = await GetCurrentUserAsync();
+        var currentUser = await GetCurrentUserInfoAsync();
         if (currentUser is null) return Unauthorized();
 
         var result = await _googleAdminService.ResetPasswordAndGenerate2FaAsync(
@@ -625,7 +627,7 @@ public class GoogleController : HumansControllerBase
             return RedirectToAction(nameof(Accounts));
         }
 
-        var currentUser = await GetCurrentUserAsync();
+        var currentUser = await GetCurrentUserInfoAsync();
         if (currentUser is null) return Unauthorized();
 
         var result = await _googleAdminService.LinkAccountAsync(
@@ -670,8 +672,10 @@ public class GoogleController : HumansControllerBase
             googleEmailLookup[userId] = info?.GoogleEmail ?? info?.Email ?? "unknown";
             displayNameLookup[userId] = info?.BurnerName ?? "(unknown)";
         }
-        var teamLookup = (await teamService.GetTeamNamesByIdsAsync(teamIds))
-            .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+        var teamsById = await teamService.GetTeamsAsync();
+        var teamLookup = teamIds
+            .Where(teamsById.ContainsKey)
+            .ToDictionary(id => id, id => teamsById[id].Name);
         var resourcesByTeam = await _teamResourceService.GetResourcesByTeamIdsAsync(teamIds);
         var resourceLookup = resourcesByTeam.ToDictionary(
             kvp => kvp.Key,

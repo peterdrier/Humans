@@ -171,7 +171,7 @@ public sealed class AgentToolDispatcher : IAgentToolDispatcher
         var singleton = signups.FirstOrDefault(s => s.Id == shiftKey);
         if (singleton is not null)
             return new AnthropicToolResult(callId,
-                RenderShiftDetails(new[] { singleton }, activeEvent), IsError: false);
+                RenderShiftDetails([singleton], activeEvent), IsError: false);
 
         return new AnthropicToolResult(callId, "Shift not found.", IsError: true);
     }

@@ -1,7 +1,6 @@
 using System.Text;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Users;
-using Humans.Domain.Enums;
 using Humans.Web.Extensions;
 
 namespace Humans.Web.Models.CampAdmin;

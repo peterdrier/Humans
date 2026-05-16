@@ -1,7 +1,4 @@
-using System.Linq;
-using System.Threading.Tasks;
 using AwesomeAssertions;
-using Humans.Testing;
 
 namespace Humans.Analyzers.Tests;
 
@@ -21,7 +18,7 @@ public class ControllerDbContextInjectionAnalyzerTests
         """;
 
     private static bool IsHum0008(Microsoft.CodeAnalysis.Diagnostic d) =>
-        string.Equals(d.Id, ControllerDbContextInjectionAnalyzer.DiagnosticId, System.StringComparison.Ordinal);
+        string.Equals(d.Id, ControllerDbContextInjectionAnalyzer.DiagnosticId, StringComparison.Ordinal);
 
     [HumansFact]
     public async Task Fires_when_controller_injects_HumansDbContext()

@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Authorization;
@@ -22,12 +21,11 @@ public class AdminMergeController : HumansControllerBase
     private readonly ILogger<AdminMergeController> _logger;
 
     public AdminMergeController(
-        UserManager<User> userManager,
-        IAccountMergeService mergeService,
         IUserService userService,
+        IAccountMergeService mergeService,
         ITeamService teamService,
         ILogger<AdminMergeController> logger)
-        : base(userManager)
+        : base(userService)
     {
         _mergeService = mergeService;
         _userService = userService;

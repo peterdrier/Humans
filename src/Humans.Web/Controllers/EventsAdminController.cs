@@ -2,13 +2,14 @@ using Humans.Application.Interfaces.Events;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Web.Filters;
-using Humans.Web.Models;
 using Humans.Web.Models.Events;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using static Humans.Web.Helpers.EventsTimeHelpers;
+
+using Humans.Application.Interfaces.Users;
 
 namespace Humans.Web.Controllers;
 
@@ -23,8 +24,8 @@ public class EventsAdminController : HumansControllerBase
     public EventsAdminController(
         IEventService guide,
         ILogger<EventsAdminController> logger,
-        UserManager<User> userManager)
-        : base(userManager)
+        IUserService userService)
+        : base(userService)
     {
         _guide = guide;
         _logger = logger;

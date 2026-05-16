@@ -3,10 +3,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
-using Xunit;
-using Humans.Application;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
+using Humans.Application.Services.Profiles;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Services.Users;
@@ -49,14 +48,14 @@ public class CachingUserServiceTests
     private static UserInfo SampleUserInfo(Guid userId, string displayName = "Alice") =>
         UserInfo.Create(
             new User { Id = userId, DisplayName = displayName, PreferredLanguage = "en" },
-            userEmails: Array.Empty<UserEmail>(),
-            eventParticipations: Array.Empty<EventParticipation>(),
-            externalLogins: Array.Empty<(string, string)>(),
+            userEmails: [],
+            eventParticipations: [],
+            externalLogins: [],
             profile: null,
-            contactFields: Array.Empty<ContactField>(),
-            profileLanguages: Array.Empty<ProfileLanguage>(),
-            volunteerHistory: Array.Empty<VolunteerHistoryEntry>(),
-            communicationPreferences: Array.Empty<CommunicationPreference>());
+            contactFields: [],
+            profileLanguages: [],
+            volunteerHistory: [],
+            communicationPreferences: []);
 
     [HumansFact]
     public async Task GetUserInfoAsync_DictMiss_DelegatesToInnerAndCaches()
@@ -107,9 +106,9 @@ public class CachingUserServiceTests
         freshUser.DisplayName = "After";
         _userRepo.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(freshUser);
         _userEmailRepo.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<UserEmail>());
+            .Returns([]);
         _userRepo.GetEventParticipationsByUserIdAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<EventParticipation>());
+            .Returns([]);
         _userRepo.GetExternalLoginsByUserIdsAsync(
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, IReadOnlyList<(string Provider, string ProviderKey)>>());
@@ -164,9 +163,9 @@ public class CachingUserServiceTests
         freshUser.DisplayName = "After";
         _userRepo.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(freshUser);
         _userEmailRepo.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<UserEmail>());
+            .Returns([]);
         _userRepo.GetEventParticipationsByUserIdAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<EventParticipation>());
+            .Returns([]);
         _userRepo.GetExternalLoginsByUserIdsAsync(
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, IReadOnlyList<(string Provider, string ProviderKey)>>());
@@ -216,7 +215,7 @@ public class CachingUserServiceTests
         _userRepo.GetAllAsync(Arg.Any<CancellationToken>())
             .Returns(new List<User> { userA, userB });
         _userEmailRepo.GetAllAsync(Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<UserEmail>());
+            .Returns([]);
         _userRepo.GetExternalLoginsByUserIdsAsync(
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, IReadOnlyList<(string Provider, string ProviderKey)>>());
@@ -224,9 +223,9 @@ public class CachingUserServiceTests
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, IReadOnlyList<EventParticipation>>());
         _profileRepo.GetAllAsync(Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<Profile>());
+            .Returns([]);
         _contactFieldRepo.GetAllAsync(Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<ContactField>());
+            .Returns([]);
 
         var sut = CreateSut();
         await sut.WarmAllAsync();
@@ -329,15 +328,12 @@ public class CachingUserServiceTests
             };
 
         var fullInfo = UserInfo.Create(
-            user,
-            new[] { userEmail },
-            new[] { participation },
+            user, [userEmail], [participation],
             externalLogins,
-            profile,
-            new[] { contactField },
+            profile, [contactField],
             profile.Languages.ToList(),
             profile.VolunteerHistory.ToList(),
-            Array.Empty<CommunicationPreference>());
+            []);
 
         _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(fullInfo));
@@ -404,7 +400,7 @@ public class CachingUserServiceTests
         await sut.GetUserInfoAsync(u1);
         await sut.GetUserInfoAsync(u2);
 
-        var deleted = await sut.DeleteUsersAsync(new[] { u1, u2 });
+        var deleted = await sut.DeleteUsersAsync([u1, u2]);
 
         deleted.Should().Be(2);
 
@@ -415,5 +411,259 @@ public class CachingUserServiceTests
             .Returns(new ValueTask<UserInfo?>((UserInfo?)null));
         (await sut.GetUserInfoAsync(u1)).Should().BeNull();
         (await sut.GetUserInfoAsync(u2)).Should().BeNull();
+    }
+
+    // ==========================================================================
+    // SearchUsersAsync — per-record matcher buckets, pre-filter rules,
+    // admin GUID short-circuit. The matcher reads from the cached UserInfo dict;
+    // tests prime the cache via GetUserInfoAsync then invoke SearchUsersAsync.
+    // ==========================================================================
+
+    private static UserInfo BuildSearchableUserInfo(
+        Guid userId,
+        string? burnerName = null,
+        string? city = null,
+        string? bio = null,
+        string? pronouns = null,
+        string? contributionInterests = null,
+        bool isApproved = true,
+        bool isSuspended = false,
+        bool isRejected = false,
+        IReadOnlyList<(string Email, bool IsVerified, bool IsPrimary)>? emails = null,
+        IReadOnlyList<(string EventName, string? Description)>? volunteerHistory = null,
+        IReadOnlyList<(ContactFieldType Type, string Value, ContactFieldVisibility Visibility)>? contactFields = null)
+    {
+        var user = new User
+        {
+            Id = userId,
+            DisplayName = burnerName ?? "Display",
+            PreferredLanguage = "en",
+            CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+        };
+
+        var userEmails = (emails ?? [])
+            .Select(e => new UserEmail
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                Email = e.Email,
+                IsVerified = e.IsVerified,
+                IsPrimary = e.IsPrimary,
+            })
+            .ToList();
+
+        var profile = new Profile
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            BurnerName = burnerName ?? string.Empty,
+            FirstName = "First",
+            LastName = "Last",
+            City = city,
+            Bio = bio,
+            Pronouns = pronouns,
+            ContributionInterests = contributionInterests,
+            IsApproved = isApproved,
+            CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+            UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
+            State = isSuspended ? ProfileState.Suspended : (isApproved ? ProfileState.Active : ProfileState.Stub),
+            RejectedAt = isRejected ? (Instant?)Instant.FromUtc(2026, 1, 1, 0, 0) : null,
+        };
+
+        var cfRows = (contactFields ?? [])
+            .Select((cf, i) => new ContactField
+            {
+                Id = Guid.NewGuid(),
+                ProfileId = profile.Id,
+                FieldType = cf.Type,
+                Value = cf.Value,
+                Visibility = cf.Visibility,
+                DisplayOrder = i,
+            })
+            .ToList();
+
+        var vhRows = (volunteerHistory ?? [])
+            .Select(v => new VolunteerHistoryEntry
+            {
+                Id = Guid.NewGuid(),
+                ProfileId = profile.Id,
+                Date = new LocalDate(2025, 1, 1),
+                EventName = v.EventName,
+                Description = v.Description,
+            })
+            .ToList();
+
+        return UserInfo.Create(
+            user, userEmails,
+            eventParticipations: [],
+            externalLogins: [],
+            profile, cfRows,
+            profileLanguages: [],
+            volunteerHistory: vhRows,
+            communicationPreferences: []);
+    }
+
+    private async Task PrimeAsync(CachingUserService sut, UserInfo info)
+    {
+        _inner.GetUserInfoAsync(info.Id, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(info));
+        await sut.GetUserInfoAsync(info.Id);
+    }
+
+    [HumansFact]
+    public async Task SearchUsersAsync_PublicAll_MatchesByBurnerName()
+    {
+        var userId = Guid.NewGuid();
+        var sut = CreateSut();
+        await PrimeAsync(sut, BuildSearchableUserInfo(userId, burnerName: "Burner Bob"));
+
+        var results = await sut.SearchUsersAsync("Burner", PersonSearchFields.PublicAll);
+
+        results.Should().HaveCount(1);
+        results[0].UserId.Should().Be(userId);
+        results[0].MatchField.Should().Be("Name");
+    }
+
+    [HumansFact]
+    public async Task SearchUsersAsync_PublicAll_MatchesByCity()
+    {
+        var sut = CreateSut();
+        await PrimeAsync(sut, BuildSearchableUserInfo(Guid.NewGuid(), city: "Barcelona"));
+
+        var results = await sut.SearchUsersAsync("Barcelona", PersonSearchFields.PublicAll);
+
+        results.Should().HaveCount(1);
+        results[0].MatchField.Should().Be("City");
+    }
+
+    [HumansFact]
+    public async Task SearchUsersAsync_PublicAll_MatchesByBio()
+    {
+        var sut = CreateSut();
+        await PrimeAsync(sut, BuildSearchableUserInfo(Guid.NewGuid(), bio: "I love fire dancing and community building"));
+
+        var results = await sut.SearchUsersAsync("fire dancing", PersonSearchFields.PublicAll);
+
+        results.Should().HaveCount(1);
+        results[0].MatchField.Should().Be("Bio");
+    }
+
+    [HumansFact]
+    public async Task SearchUsersAsync_PublicAll_ExcludesSuspended()
+    {
+        var sut = CreateSut();
+        await PrimeAsync(sut, BuildSearchableUserInfo(Guid.NewGuid(), city: "Madrid", isSuspended: true));
+
+        var results = await sut.SearchUsersAsync("Madrid", PersonSearchFields.PublicAll);
+
+        results.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task SearchUsersAsync_PublicAll_ExcludesUnapproved()
+    {
+        var sut = CreateSut();
+        await PrimeAsync(sut, BuildSearchableUserInfo(Guid.NewGuid(), city: "Madrid", isApproved: false));
+
+        var results = await sut.SearchUsersAsync("Madrid", PersonSearchFields.PublicAll);
+
+        results.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task SearchUsersAsync_PublicAll_ExcludesRejected()
+    {
+        var sut = CreateSut();
+        await PrimeAsync(sut, BuildSearchableUserInfo(Guid.NewGuid(), city: "Madrid", isRejected: true));
+
+        var results = await sut.SearchUsersAsync("Madrid", PersonSearchFields.PublicAll);
+
+        results.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task SearchUsersAsync_None_ReturnsEmpty()
+    {
+        var sut = CreateSut();
+        await PrimeAsync(sut, BuildSearchableUserInfo(Guid.NewGuid(), burnerName: "Match"));
+
+        var results = await sut.SearchUsersAsync("Match", PersonSearchFields.None);
+
+        results.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task SearchUsersAsync_NoMatch_ReturnsEmpty()
+    {
+        var sut = CreateSut();
+        await PrimeAsync(sut, BuildSearchableUserInfo(Guid.NewGuid(), burnerName: "Alice"));
+
+        var results = await sut.SearchUsersAsync("zzzznonexistent", PersonSearchFields.PublicAll);
+
+        results.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task SearchUsersAsync_AdminBit_IncludesSuspended()
+    {
+        var sut = CreateSut();
+        await PrimeAsync(sut, BuildSearchableUserInfo(Guid.NewGuid(), city: "Madrid", isSuspended: true));
+
+        var results = await sut.SearchUsersAsync("Madrid", PersonSearchFields.AdminAll);
+
+        results.Should().HaveCount(1);
+    }
+
+    [HumansFact]
+    public async Task SearchUsersAsync_AdminBit_ExactUserIdLookup()
+    {
+        var userId = Guid.NewGuid();
+        var sut = CreateSut();
+        await PrimeAsync(sut, BuildSearchableUserInfo(userId, burnerName: "Alice"));
+
+        var results = await sut.SearchUsersAsync(userId.ToString(), PersonSearchFields.AdminAll);
+
+        results.Should().HaveCount(1);
+        results[0].UserId.Should().Be(userId);
+        results[0].MatchField.Should().Be("User ID");
+    }
+
+    [HumansFact]
+    public async Task SearchUsersAsync_PublicAll_GuidDoesNotShortCircuitById()
+    {
+        var userId = Guid.NewGuid();
+        var sut = CreateSut();
+        await PrimeAsync(sut, BuildSearchableUserInfo(userId, burnerName: "Alice"));
+
+        var results = await sut.SearchUsersAsync(userId.ToString(), PersonSearchFields.PublicAll);
+
+        results.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task SearchUsersAsync_AdminBit_GuidNotFound_ReturnsEmpty()
+    {
+        var sut = CreateSut();
+        await PrimeAsync(sut, BuildSearchableUserInfo(Guid.NewGuid(), burnerName: "Alice"));
+
+        var results = await sut.SearchUsersAsync(Guid.NewGuid().ToString(), PersonSearchFields.AdminAll);
+
+        results.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task SearchUsersAsync_AdminBit_MatchesVerifiedEmail()
+    {
+        var sut = CreateSut();
+        await PrimeAsync(sut, BuildSearchableUserInfo(
+            Guid.NewGuid(),
+            burnerName: "Alice",
+            emails: [("alice@example.com", true, true)]));
+
+        var results = await sut.SearchUsersAsync("alice@example.com", PersonSearchFields.AdminAll);
+
+        results.Should().HaveCount(1);
+        results[0].MatchField.Should().Be("Email");
+        results[0].MatchedEmail.Should().Be("alice@example.com");
     }
 }

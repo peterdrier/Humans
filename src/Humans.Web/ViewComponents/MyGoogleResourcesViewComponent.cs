@@ -1,6 +1,5 @@
-using Microsoft.AspNetCore.Identity;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Application.Interfaces.Teams;
 
@@ -9,16 +8,13 @@ namespace Humans.Web.ViewComponents;
 public class MyGoogleResourcesViewComponent : ViewComponent
 {
     private readonly ITeamResourceService _teamResourceService;
-    private readonly UserManager<User> _userManager;
     private readonly ILogger<MyGoogleResourcesViewComponent> _logger;
 
     public MyGoogleResourcesViewComponent(
         ITeamResourceService teamResourceService,
-        UserManager<User> userManager,
         ILogger<MyGoogleResourcesViewComponent> logger)
     {
         _teamResourceService = teamResourceService;
-        _userManager = userManager;
         _logger = logger;
     }
 
@@ -26,11 +22,10 @@ public class MyGoogleResourcesViewComponent : ViewComponent
     {
         try
         {
-            var user = await _userManager.GetUserAsync(UserClaimsPrincipal);
-            if (user is null)
+            if (!Guid.TryParse(UserClaimsPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
                 return Content(string.Empty);
 
-            var resources = await _teamResourceService.GetUserTeamResourcesAsync(user.Id);
+            var resources = await _teamResourceService.GetUserTeamResourcesAsync(userId);
 
             if (resources.Count == 0)
                 return Content(string.Empty);

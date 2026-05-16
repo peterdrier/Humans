@@ -6,7 +6,6 @@ using Humans.Infrastructure.Repositories.CityPlanning;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using NodaTime.Testing;
-using Xunit;
 
 namespace Humans.Application.Tests.Repositories;
 

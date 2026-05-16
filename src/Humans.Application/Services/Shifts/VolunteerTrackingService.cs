@@ -43,8 +43,8 @@ public sealed class VolunteerTrackingService : IVolunteerTrackingService
                 0,
                 default,
                 default,
-                Array.Empty<VolunteerHeatmapRow>(),
-                Array.Empty<VolunteerCohortRow>());
+                [],
+                []);
         }
 
         var zone = DateTimeZoneProviders.Tzdb[es.TimeZoneId];
@@ -92,14 +92,14 @@ public sealed class VolunteerTrackingService : IVolunteerTrackingService
                 ? OffsetOf(es, d)
                 : null;
             var lastExpectedDay = Math.Min(setupOffset ?? int.MaxValue, 0);
-            var dayOffSet = bs?.DayOffs.Select(x => x.DayOffset).ToHashSet() ?? new HashSet<int>();
+            var dayOffSet = bs?.DayOffs.Select(x => x.DayOffset).ToHashSet() ?? [];
 
             var cells = new List<VolunteerCell>(-es.BuildStartOffset);
             int gapCount = 0;
             for (int d2 = es.BuildStartOffset; d2 < 0; d2++)
             {
                 VolunteerCellState s;
-                IReadOnlyList<string> rotaNames = Array.Empty<string>();
+                IReadOnlyList<string> rotaNames = [];
                 if (setupOffset.HasValue && d2 >= setupOffset.Value)
                 {
                     s = VolunteerCellState.CampSetup;
@@ -131,7 +131,7 @@ public sealed class VolunteerTrackingService : IVolunteerTrackingService
             // The repository persists DayOffs sorted by DayOffset (see
             // VolunteerTrackingRepository.UpsertDayOffAsync), so no resort is
             // needed here — the projection preserves order.
-            var dayOffSummaries = (bs?.DayOffs ?? new List<DayOffEntry>())
+            var dayOffSummaries = (bs?.DayOffs ?? [])
                 .Select(x => new DayOffSummary(x.DayOffset, x.Reason))
                 .ToList();
 
@@ -204,7 +204,7 @@ public sealed class VolunteerTrackingService : IVolunteerTrackingService
                     s = VolunteerCellState.NotAvailable;
                 }
 
-                cells.Add(new VolunteerCell(d3, s, Array.Empty<string>()));
+                cells.Add(new VolunteerCell(d3, s, []));
             }
 
             unbookedRows.Add(new VolunteerCohortRow(

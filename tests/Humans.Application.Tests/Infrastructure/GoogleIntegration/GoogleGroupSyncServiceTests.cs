@@ -13,7 +13,6 @@ using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Xunit;
 
 namespace Humans.Application.Tests.Infrastructure.GoogleIntegration;
 
@@ -26,7 +25,7 @@ public sealed class GoogleGroupSyncServiceTests
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
-    private readonly IProfileService _profileService = Substitute.For<IProfileService>();
+    private readonly Dictionary<Guid, Profile> _profilesByUserId = new();
     private readonly ISyncSettingsService _syncSettingsService = Substitute.For<ISyncSettingsService>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
     private readonly IGoogleRemovalNotificationService _removalNotifications = Substitute.For<IGoogleRemovalNotificationService>();
@@ -42,6 +41,8 @@ public sealed class GoogleGroupSyncServiceTests
             .Returns("service-account@nobodies.team");
         _syncSettingsService.GetModeAsync(SyncServiceType.GoogleGroups, Arg.Any<CancellationToken>())
             .Returns(SyncMode.AddAndRemove);
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
     }
 
     [HumansFact]
@@ -71,7 +72,7 @@ public sealed class GoogleGroupSyncServiceTests
         await _membershipClient.Received(1)
             .DeleteMembershipAsync("groups/group-1/memberships/old", Arg.Any<CancellationToken>());
         await _userService.Received(1)
-            .GetByIdsAsync(Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 2), Arg.Any<CancellationToken>());
+            .GetUserInfosAsync(Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 2), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -292,7 +293,7 @@ public sealed class GoogleGroupSyncServiceTests
 
         result.Diffs.Should().HaveCount(2);
         await _userService.Received(1)
-            .GetByIdsAsync(Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 2), Arg.Any<CancellationToken>());
+            .GetUserInfosAsync(Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Count == 2), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -437,7 +438,6 @@ public sealed class GoogleGroupSyncServiceTests
         _teamService,
         _userService,
         _userEmailService,
-        _profileService,
         _syncSettingsService,
         _auditLogService,
         _removalNotifications,
@@ -448,18 +448,32 @@ public sealed class GoogleGroupSyncServiceTests
 
     private void StubUsers(params (Guid UserId, string DisplayName, string Email)[] users)
     {
+        var userEntities = users.ToDictionary(
+            u => u.UserId,
+            u => new User
+            {
+                Id = u.UserId,
+                DisplayName = u.DisplayName,
+                CreatedAt = _clock.GetCurrentInstant()
+            });
         _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(call =>
             {
                 var requested = call.ArgAt<IReadOnlyCollection<Guid>>(0).ToHashSet();
-                return users
-                    .Where(u => requested.Contains(u.UserId))
-                    .ToDictionary(u => u.UserId, u => new User
-                    {
-                        Id = u.UserId,
-                        DisplayName = u.DisplayName,
-                        CreatedAt = _clock.GetCurrentInstant()
-                    });
+                return userEntities
+                    .Where(kv => requested.Contains(kv.Key))
+                    .ToDictionary(kv => kv.Key, kv => kv.Value);
+            });
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                var requested = call.ArgAt<IReadOnlyCollection<Guid>>(0).ToHashSet();
+                IReadOnlyDictionary<Guid, UserInfo> dict = userEntities
+                    .Where(kv => requested.Contains(kv.Key))
+                    .ToDictionary(
+                        kv => kv.Key,
+                        kv => kv.Value.ToUserInfo(profile: _profilesByUserId.GetValueOrDefault(kv.Key)));
+                return new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(dict);
             });
 
         _userEmailService.GetEntitiesByUserIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
@@ -488,38 +502,33 @@ public sealed class GoogleGroupSyncServiceTests
                         ]);
             });
 
-        _profileService.GetByUserIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(call =>
+        foreach (var u in users)
+        {
+            _profilesByUserId[u.UserId] = new Profile
             {
-                var requested = call.ArgAt<IReadOnlyCollection<Guid>>(0);
-                return requested.ToDictionary(id => id, id => new Profile
-                {
-                    Id = Guid.NewGuid(),
-                    UserId = id,
-                    State = ProfileState.Active,
-                    CreatedAt = _clock.GetCurrentInstant(),
-                    UpdatedAt = _clock.GetCurrentInstant()
-                });
-            });
+                Id = Guid.NewGuid(),
+                UserId = u.UserId,
+                State = ProfileState.Active,
+                CreatedAt = _clock.GetCurrentInstant(),
+                UpdatedAt = _clock.GetCurrentInstant()
+            };
+        }
     }
 
     private void StubProfiles(params (Guid UserId, string? BurnerName)[] profiles)
     {
-        _profileService.GetByUserIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(call =>
+        foreach (var p in profiles)
+        {
+            _profilesByUserId[p.UserId] = new Profile
             {
-                var requested = call.ArgAt<IReadOnlyCollection<Guid>>(0);
-                var byUserId = profiles.ToDictionary(p => p.UserId, p => p.BurnerName);
-                return requested.ToDictionary(id => id, id => new Profile
-                {
-                    Id = Guid.NewGuid(),
-                    UserId = id,
-                    BurnerName = byUserId.GetValueOrDefault(id) ?? string.Empty,
-                    State = ProfileState.Active,
-                    CreatedAt = _clock.GetCurrentInstant(),
-                    UpdatedAt = _clock.GetCurrentInstant()
-                });
-            });
+                Id = Guid.NewGuid(),
+                UserId = p.UserId,
+                BurnerName = p.BurnerName ?? string.Empty,
+                State = ProfileState.Active,
+                CreatedAt = _clock.GetCurrentInstant(),
+                UpdatedAt = _clock.GetCurrentInstant()
+            };
+        }
     }
 
     private void StubGroup(string groupKey, string groupId, params GroupMembership[] currentMembers)

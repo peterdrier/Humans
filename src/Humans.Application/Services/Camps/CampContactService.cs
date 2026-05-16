@@ -1,5 +1,4 @@
 using System.Text.RegularExpressions;
-using Humans.Application;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Camps;

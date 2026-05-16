@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Tickets.Dtos;
-using Humans.Testing;
 using NodaTime;
 
 namespace Humans.Application.Tests.Services.Tickets;

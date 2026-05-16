@@ -273,7 +273,7 @@
                                             <label class="form-label small" for="EditableLanguages_@(i)__LanguageCode">Language</label>
                                             <select name="EditableLanguages[@i].LanguageCode" id="EditableLanguages_@(i)__LanguageCode" class="form-select form-select-sm language-code-select" required>
                                                 <option value="">— Select language —</option>
-                                                @foreach (var lang in Humans.Web.Helpers.LanguageCatalog.Languages)
+                                                @foreach (var lang in LanguageCatalog.Languages)
                                                 {
                                                     <option value="@lang.Key" selected="@(Model.EditableLanguages[i].LanguageCode == lang.Key ? "selected" : null)">@lang.Value (@lang.Key)</option>
                                                 }
@@ -874,7 +874,7 @@
             const addButton = document.getElementById('addLanguage');
             if (!container || !addButton) return;
 
-            const languageOptions = `@Html.Raw(string.Join("", Humans.Web.Helpers.LanguageCatalog.Languages.Select(l => $"<option value=\"{l.Key}\">{l.Value} ({l.Key})</option>")))`;
+            const languageOptions = `@Html.Raw(string.Join("", LanguageCatalog.Languages.Select(l => $"<option value=\"{l.Key}\">{l.Value} ({l.Key})</option>")))`;
 
             function getNextIndex() {
                 const rows = container.querySelectorAll('.language-row');

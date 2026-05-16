@@ -1,10 +1,16 @@
+@using System.Security.Claims
 @using Microsoft.AspNetCore.Identity
+@using Humans.Application.Interfaces.Users
 @inject SignInManager<User> SignInManager
-@inject UserManager<User> UserManager
+@inject IUserService UserService
 
 @if (SignInManager.IsSignedIn(User))
 {
-    var currentUser = await UserManager.GetUserAsync(User);
+    Humans.Application.UserInfo? currentUser = null;
+    if (Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var currentUserId))
+    {
+        currentUser = await UserService.GetUserInfoAsync(currentUserId);
+    }
     var displayName = currentUser?.DisplayName ?? User.Identity?.Name;
     var email = currentUser?.Email;
     <div class="dropdown" data-testid="user-nav">

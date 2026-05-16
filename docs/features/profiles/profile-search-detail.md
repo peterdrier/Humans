@@ -93,8 +93,8 @@ The view defends against broken URLs with `img.onerror = () => img.remove();` â€
 
 ## Caching
 
-- **Search index + ProfileId resolution**: served from the `CachingProfileService._byUserId` `ConcurrentDictionary<Guid, FullProfile>` warmed at startup by `FullProfileWarmupHostedService`. No DB hit for the matcher itself or for resolving `ProfileId` per result.
-- **Single-person lookup endpoint**: served from the same dict via `IProfileService.GetFullProfileAsync(userId)`.
+- **Search index + ProfileId resolution**: served from the `CachingUserService` `ConcurrentDictionary<Guid, UserInfo>` warmed at startup by `UserInfoWarmupHostedService`. No DB hit for the matcher itself; `ProfileId` lives on `UserInfo.Profile.Id`.
+- **Single-person lookup endpoint**: served from the same dict via `IUserService.GetUserInfoAsync(userId)`.
 - **Per-result email / contact-field reads**: not cached. These remain DB-bound, one round-trip per result row per visibility category. Acceptable at the project's ~500-user scale per `CLAUDE.md` ("prefer in-memory caching over query optimization"). Batching these is a separate, follow-up optimization if the picker latency ever becomes user-visible.
 
 ## XSS Posture

@@ -23,7 +23,7 @@ public sealed class AgentSettingsStore : IAgentSettingsStore
         UpdatedAt = Instant.MinValue
     };
 
-    public AgentSettings Current => System.Threading.Volatile.Read(ref _current);
+    public AgentSettings Current => Volatile.Read(ref _current);
 
-    public void Set(AgentSettings settings) => System.Threading.Interlocked.Exchange(ref _current, settings);
+    public void Set(AgentSettings settings) => Interlocked.Exchange(ref _current, settings);
 }

@@ -5,7 +5,6 @@ using NodaTime;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Gdpr;
-using Humans.Application.Models;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -25,8 +24,8 @@ namespace Humans.Application.Services.Feedback;
 /// never imports <c>Microsoft.EntityFrameworkCore</c>, enforced by
 /// <c>Humans.Application.csproj</c>'s reference graph. Cross-section reads
 /// (reporter/assignee/resolver display names, team names, effective emails)
-/// go through <see cref="IUserService"/>, <see cref="IProfileService"/>,
-/// <see cref="ITeamService"/>, and <see cref="IUserEmailService"/>, and are
+/// go through <see cref="IUserService"/>, <see cref="ITeamService"/>, and
+/// <see cref="IUserEmailService"/>, and are
 /// projected into <see cref="FeedbackReportInfo"/> / <see cref="FeedbackMessageInfo"/>
 /// records before returning. Nav-badge cache invalidation is routed through
 /// <see cref="INavBadgeCacheInvalidator"/> rather than <c>IMemoryCache</c> directly.
@@ -37,7 +36,6 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
     private readonly IUserService _userService;
     private readonly IUserEmailService _userEmailService;
     private readonly ITeamService _teamService;
-    private readonly IProfileService _profileService;
     private readonly IEmailService _emailService;
     private readonly INotificationService _notificationService;
     private readonly IAuditLogService _auditLogService;
@@ -58,7 +56,6 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
         IUserService userService,
         IUserEmailService userEmailService,
         ITeamService teamService,
-        IProfileService profileService,
         IEmailService emailService,
         INotificationService notificationService,
         IAuditLogService auditLogService,
@@ -71,7 +68,6 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
         _userService = userService;
         _userEmailService = userEmailService;
         _teamService = teamService;
-        _profileService = profileService;
         _emailService = emailService;
         _notificationService = notificationService;
         _auditLogService = auditLogService;
@@ -378,9 +374,8 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
 
         if (report.AssignedToTeamId != assignedToTeamId && report.AssignedToTeamId.HasValue)
         {
-            var oldTeam = await _teamService.GetTeamNamesByIdsAsync(
-                [report.AssignedToTeamId.Value], cancellationToken);
-            oldTeamName = oldTeam.TryGetValue(report.AssignedToTeamId.Value, out var oldName) ? oldName : null;
+            var team = await _teamService.GetTeamAsync(report.AssignedToTeamId.Value, cancellationToken);
+            oldTeamName = team?.Name;
         }
 
         if (report.AssignedToUserId != assignedToUserId)
@@ -402,11 +397,8 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
             string toLabel = "Unassigned";
             if (assignedToTeamId.HasValue)
             {
-                var names = await _teamService.GetTeamNamesByIdsAsync(
-                    [assignedToTeamId.Value], cancellationToken);
-                toLabel = names.TryGetValue(assignedToTeamId.Value, out var newName)
-                    ? newName
-                    : assignedToTeamId.Value.ToString();
+                var team = await _teamService.GetTeamAsync(assignedToTeamId.Value, cancellationToken);
+                toLabel = team?.Name ?? assignedToTeamId.Value.ToString();
             }
             changes.Add($"Team: {fromLabel} → {toLabel}");
             report.AssignedToTeamId = assignedToTeamId;
@@ -451,8 +443,7 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
             return [];
 
         var userIds = rows.Select(r => r.UserId).ToHashSet();
-        var users = await _userService.GetByIdsAsync(userIds, cancellationToken);
-        var displayNames = await BuildDisplayNamesAsync(userIds, users, cancellationToken);
+        var displayNames = await BuildDisplayNamesAsync(userIds, cancellationToken);
 
         return rows
             .Select(r =>
@@ -539,9 +530,14 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
         var users = userIds.Count == 0
             ? null
             : await _userService.GetByIdsAsync(userIds, ct);
-        var teamNames = teamIds.Count == 0
-            ? null
-            : await _teamService.GetTeamNamesByIdsAsync(teamIds, ct);
+        IReadOnlyDictionary<Guid, string>? teamNames = null;
+        if (teamIds.Count > 0)
+        {
+            var teamsById = await _teamService.GetTeamsAsync(ct);
+            teamNames = teamIds
+                .Where(teamsById.ContainsKey)
+                .ToDictionary(id => id, id => teamsById[id].Name);
+        }
 
         foreach (var r in reports)
         {
@@ -559,25 +555,24 @@ public sealed class FeedbackService : IFeedbackService, IUserDataContributor, IU
             }
         }
 
-        return await BuildDisplayNamesAsync(userIds, users, ct);
+        return await BuildDisplayNamesAsync(userIds, ct);
     }
 
-    // Resolves display names using the BurnerName-first rule (memory/architecture/burnername-is-the-display-name.md):
-    // Profile.BurnerName when present, else User.DisplayName. Mirrors FullProfile.ResolveDisplayName.
+    // Resolves display names via UserInfo.BurnerName, which implements the
+    // BurnerName-first fallback (memory/architecture/burnername-is-the-display-name.md):
+    // Profile.BurnerName when present, else User.DisplayName.
     private async Task<IReadOnlyDictionary<Guid, string>> BuildDisplayNamesAsync(
         IReadOnlyCollection<Guid> userIds,
-        IReadOnlyDictionary<Guid, User>? users,
         CancellationToken ct)
     {
-        if (userIds.Count == 0 || users is null) return EmptyDisplayNames;
+        if (userIds.Count == 0) return EmptyDisplayNames;
 
-        var profiles = await _profileService.GetByUserIdsAsync(userIds, ct);
+        var infos = await _userService.GetUserInfosAsync(userIds, ct);
         var result = new Dictionary<Guid, string>(userIds.Count);
         foreach (var id in userIds)
         {
-            if (!users.TryGetValue(id, out var user)) continue;
-            var burnerName = profiles.TryGetValue(id, out var profile) ? profile.BurnerName : null;
-            result[id] = !string.IsNullOrWhiteSpace(burnerName) ? burnerName : user.DisplayName;
+            if (infos.TryGetValue(id, out var info))
+                result[id] = info.BurnerName;
         }
         return result;
     }

@@ -8,13 +8,11 @@ using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Application.Interfaces.Caching;
-using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Services.Shifts;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Teams;
-using Xunit;
 using RoleAssignmentService = Humans.Application.Services.Auth.RoleAssignmentService;
 using TeamService = Humans.Application.Services.Teams.TeamService;
 using Humans.Application.Interfaces.AuditLog;
@@ -97,6 +95,7 @@ public class TeamRoleServiceTests : IDisposable
                 using var db = new HumansDbContext(options);
                 return Task.FromResult(db.Users.AsNoTracking().FirstOrDefault(u => u.Id == id));
             });
+        testUserService.StubGetUserInfosFromDb(options);
         serviceProvider.GetService(typeof(IUserService)).Returns(testUserService);
         _shiftAuthInvalidator = Substitute.For<IShiftAuthorizationInvalidator>();
         _service = new TeamService(

@@ -19,14 +19,14 @@ internal static class UsersSectionExtensions
     internal static IServiceCollection AddUsersSection(this IServiceCollection services)
     {
         // User section — §15 repository pattern (issue #511).
-        // Issue #703: added CachingUserService decorator + UserInfo cached
-        // read-model spanning the User and Profile sections. The base
-        // UserService is now registered keyed under "user-inner"; unkeyed
-        // IUserService resolves to the Singleton decorator. UserService still
-        // owns Application-side write paths and invalidates IFullProfileInvalidator
-        // for FullProfile-visible field changes — the SaveChanges interceptor
-        // (UserInfoSaveChangesInterceptor) handles UserInfo-cache invalidation
-        // for every persisted mutation including Identity-machinery writes.
+        // Issue #703: CachingUserService decorator + UserInfo cached read-model
+        // spanning the User and Profile sections. The base UserService is
+        // registered keyed under "user-inner"; unkeyed IUserService resolves to
+        // the Singleton decorator. UserService owns Application-side write paths
+        // and signals IUserInfoInvalidator after writes; the SaveChanges
+        // interceptor (UserInfoSaveChangesInterceptor) handles UserInfo-cache
+        // invalidation for every persisted mutation including Identity-machinery
+        // writes.
         services.AddSingleton<IUserRepository, UserRepository>();
 
         // Inner UserService — Scoped + keyed. CachingUserService resolves via
@@ -45,8 +45,9 @@ internal static class UsersSectionExtensions
         services.AddSingleton<IUserService>(sp => sp.GetRequiredService<CachingUserService>());
 
         // IUserInfoInvalidator and IUserMerge must resolve to the SAME Singleton
-        // CachingUserService instance that backs IUserService — same critical
-        // aliasing rule as IFullProfileInvalidator → CachingProfileService.
+        // CachingUserService instance that backs IUserService — every external
+        // section that signals "this user changed" must hit the same instance
+        // that owns the cache.
         services.AddSingleton<IUserInfoInvalidator>(sp =>
             sp.GetRequiredService<CachingUserService>());
         services.AddSingleton<IUserMerge>(sp =>

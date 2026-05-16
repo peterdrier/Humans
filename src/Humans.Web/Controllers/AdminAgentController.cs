@@ -21,8 +21,8 @@ public class AdminAgentController : HumansControllerBase
         IAgentSettingsService settings,
         IAgentService agent,
         IUserService users,
-        UserManager<User> userManager)
-        : base(userManager)
+        IUserService userService)
+        : base(userService)
     {
         _settings = settings;
         _agent = agent;

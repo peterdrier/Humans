@@ -1,6 +1,5 @@
 @model IReadOnlyList<Serilog.Events.LogEvent>
 @using Humans.Infrastructure.Logging
-@using Serilog.Events
 @{
     ViewData["Title"] = "Application Logs";
     var lifetimeCounts = ViewBag.LifetimeCounts as IReadOnlyDictionary<Serilog.Events.LogEventLevel, long>

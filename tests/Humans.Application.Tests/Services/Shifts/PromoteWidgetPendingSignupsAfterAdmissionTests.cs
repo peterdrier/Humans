@@ -11,7 +11,6 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Shifts;
-using Humans.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -168,7 +167,7 @@ public class PromoteWidgetPendingSignupsAfterAdmissionTests : IDisposable
     public async Task Promote_PublicBuildRangeBlock_AllShiftsConfirmed()
     {
         var blockId = Guid.NewGuid();
-        var ids = SeedPendingBlock(blockId, SignupPolicy.Public, dayOffsets: new[] { -3, -2, -1 });
+        var ids = SeedPendingBlock(blockId, SignupPolicy.Public, dayOffsets: [-3, -2, -1]);
 
         await _service.PromoteWidgetPendingSignupsAfterAdmissionAsync(_userId);
 

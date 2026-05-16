@@ -29,7 +29,7 @@ public class ProfileAdminController : HumansControllerBase
     private readonly IRoleAssignmentService _roleAssignmentService;
 
     public ProfileAdminController(
-        UserManager<User> userManager,
+        IUserService userService,
         IEmailProblemsService emailProblems,
         IAccountMergeService accountMerge,
         IUserEmailService userEmails,
@@ -39,7 +39,7 @@ public class ProfileAdminController : HumansControllerBase
         IProfileService profileService,
         ITeamService teamService,
         IRoleAssignmentService roleAssignmentService)
-        : base(userManager)
+        : base(userService)
     {
         _emailProblems = emailProblems;
         _accountMerge = accountMerge;
@@ -84,21 +84,23 @@ public class ProfileAdminController : HumansControllerBase
             return RedirectToAction(nameof(EmailProblems));
         }
 
-        var p1 = await _profileService.GetFullProfileAsync(userId1, ct);
-        var p2 = await _profileService.GetFullProfileAsync(userId2, ct);
+        var info1 = await _users.GetUserInfoAsync(userId1, ct);
+        var info2 = await _users.GetUserInfoAsync(userId2, ct);
 
-        var sharedEmail = (p1?.AllUserEmails ?? Array.Empty<UserEmailSnapshot>())
+        IReadOnlyList<UserEmailInfo> Emails(UserInfo? info) =>
+            info?.UserEmails ?? [];
+
+        var sharedEmail = Emails(info1)
             .Select(e => e.Email)
-            .Intersect((p2?.AllUserEmails ?? Array.Empty<UserEmailSnapshot>()).Select(e => e.Email),
-                       StringComparer.OrdinalIgnoreCase)
+            .Intersect(Emails(info2).Select(e => e.Email), StringComparer.OrdinalIgnoreCase)
             .FirstOrDefault() ?? "(no exact match — see normalized)";
 
-        CompareSide BuildSide(User user, FullProfile? profile, int teamCount, int roleCount) =>
+        CompareSide BuildSide(User user, UserInfo? info, int teamCount, int roleCount) =>
             new(user.Id, user.DisplayName, user.ProfilePictureUrl,
-                profile?.AllUserEmails ?? Array.Empty<UserEmailSnapshot>(),
+                Emails(info),
                 teamCount, roleCount,
                 user.LastLoginAt,
-                !string.IsNullOrEmpty(profile?.BurnerName));
+                !string.IsNullOrEmpty(info?.Profile?.BurnerName));
 
         var memberships1 = await _teamService.GetUserTeamsAsync(userId1, ct);
         var memberships2 = await _teamService.GetUserTeamsAsync(userId2, ct);
@@ -108,10 +110,10 @@ public class ProfileAdminController : HumansControllerBase
         var vm = new EmailProblemsCompareViewModel
         {
             SharedEmail = sharedEmail,
-            Account1 = BuildSide(u1, p1,
+            Account1 = BuildSide(u1, info1,
                 memberships1.Count(m => m.LeftAt is null),
                 roles1.Count(r => r.ValidTo is null)),
-            Account2 = BuildSide(u2, p2,
+            Account2 = BuildSide(u2, info2,
                 memberships2.Count(m => m.LeftAt is null),
                 roles2.Count(r => r.ValidTo is null))
         };

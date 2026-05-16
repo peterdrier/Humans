@@ -21,7 +21,7 @@ public class MailerAudienceSyncServiceTests
     public async Task SyncAsync_NewUserNotInML_BulkImportsAndAssigns()
     {
         var userA = Guid.NewGuid();
-        var audience = NewAudience("a-aud", "Humans - A", new[] { userA });
+        var audience = NewAudience("a-aud", "Humans - A", [userA]);
         SetupEmails((userA, "a@example.com"));
         SetupGroups(Group("g1", "Humans - A"));
         SetupSubscribers();
@@ -44,7 +44,7 @@ public class MailerAudienceSyncServiceTests
     public async Task SyncAsync_UnsubscribedUser_ExcludedFromGroup()
     {
         var userA = Guid.NewGuid();
-        var audience = NewAudience("a-aud", "Humans - A", new[] { userA });
+        var audience = NewAudience("a-aud", "Humans - A", [userA]);
         SetupEmails((userA, "a@example.com"));
         SetupGroups(Group("g1", "Humans - A"));
         SetupSubscribers(Subscriber("s1", "a@example.com", "unsubscribed"));
@@ -64,7 +64,7 @@ public class MailerAudienceSyncServiceTests
     public async Task SyncAsync_ExistingSubscriberNotInGroup_AssignsIt()
     {
         var userA = Guid.NewGuid();
-        var audience = NewAudience("a-aud", "Humans - A", new[] { userA });
+        var audience = NewAudience("a-aud", "Humans - A", [userA]);
         SetupEmails((userA, "a@example.com"));
         SetupGroups(Group("g1", "Humans - A"));
         SetupSubscribers(Subscriber("s1", "a@example.com", "active"));
@@ -78,10 +78,10 @@ public class MailerAudienceSyncServiceTests
     [HumansFact]
     public async Task SyncAsync_UserDroppedOut_Unassigned()
     {
-        var audience = NewAudience("a-aud", "Humans - A", Array.Empty<Guid>());
+        var audience = NewAudience("a-aud", "Humans - A", []);
         SetupEmailsEmpty();
         SetupGroups(Group("g1", "Humans - A"));
-        SetupSubscribers(Subscriber("s1", "a@example.com", "active", inGroups: new[] { "g1" }));
+        SetupSubscribers(Subscriber("s1", "a@example.com", "active", inGroups: ["g1"]));
 
         var result = await NewService(audience).SyncAsync(audience, ct: CancellationToken.None);
 
@@ -93,7 +93,7 @@ public class MailerAudienceSyncServiceTests
     public async Task SyncAsync_GroupMissing_CreatesItFirst()
     {
         var userA = Guid.NewGuid();
-        var audience = NewAudience("a-aud", "Humans - A", new[] { userA });
+        var audience = NewAudience("a-aud", "Humans - A", [userA]);
         SetupEmails((userA, "a@example.com"));
         SetupGroups(); // empty
         _ml.CreateGroupAsync("Humans - A", Arg.Any<CancellationToken>())
@@ -112,10 +112,10 @@ public class MailerAudienceSyncServiceTests
     public async Task SyncAsync_Idempotent_AllAlreadyAssignedOnSecondRun()
     {
         var userA = Guid.NewGuid();
-        var audience = NewAudience("a-aud", "Humans - A", new[] { userA });
+        var audience = NewAudience("a-aud", "Humans - A", [userA]);
         SetupEmails((userA, "a@example.com"));
         SetupGroups(Group("g1", "Humans - A"));
-        SetupSubscribers(Subscriber("s1", "a@example.com", "active", inGroups: new[] { "g1" }));
+        SetupSubscribers(Subscriber("s1", "a@example.com", "active", inGroups: ["g1"]));
 
         var result = await NewService(audience).SyncAsync(audience, ct: CancellationToken.None);
 
@@ -136,7 +136,7 @@ public class MailerAudienceSyncServiceTests
     {
         var userA = Guid.NewGuid();
         var userB = Guid.NewGuid();
-        var audience = NewAudience("a-aud", "Humans - A", new[] { userA, userB });
+        var audience = NewAudience("a-aud", "Humans - A", [userA, userB]);
         SetupEmails((userA, "a@example.com"), (userB, "b@example.com"));
         SetupGroups(Group("g1", "Humans - A"));
         SetupSubscribers(
@@ -154,7 +154,7 @@ public class MailerAudienceSyncServiceTests
     [HumansFact]
     public async Task SyncAsync_GroupNameLacksPrefix_ThrowsBeforeAnyMlCall()
     {
-        var audience = NewAudience("a-aud", "Newsletter", Array.Empty<Guid>());
+        var audience = NewAudience("a-aud", "Newsletter", []);
 
         var act = async () => await NewService(audience).SyncAsync(audience, ct: CancellationToken.None);
 
@@ -166,7 +166,7 @@ public class MailerAudienceSyncServiceTests
     public async Task SyncAsync_WritesAuditEntryWithSerializedCounts()
     {
         var userA = Guid.NewGuid();
-        var audience = NewAudience("a-aud", "Humans - A", new[] { userA });
+        var audience = NewAudience("a-aud", "Humans - A", [userA]);
         SetupEmails((userA, "a@example.com"));
         SetupGroups(Group("g1", "Humans - A"));
         SetupSubscribers(Subscriber("s1", "a@example.com", "active"));
@@ -233,5 +233,5 @@ public class MailerAudienceSyncServiceTests
             SubscribedAt: Instant.FromUtc(2026, 1, 1, 0, 0),
             UnsubscribedAt: null, OptedInAt: null,
             FirstName: null, LastName: null,
-            GroupIds: inGroups ?? Array.Empty<string>());
+            GroupIds: inGroups ?? []);
 }

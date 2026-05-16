@@ -42,7 +42,7 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
     private readonly IAccountMergeRepository _mergeRepository;
     private readonly IUserEmailRepository _userEmailRepository;
     private readonly IAuditLogService _auditLogService;
-    private readonly IFullProfileInvalidator _fullProfileInvalidator;
+    private readonly IUserInfoInvalidator _userInfoInvalidator;
     private readonly ILogger<AccountMergeService> _logger;
     private readonly IClock _clock;
 
@@ -61,7 +61,7 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
         IAccountMergeRepository mergeRepository,
         IUserEmailRepository userEmailRepository,
         IAuditLogService auditLogService,
-        IFullProfileInvalidator fullProfileInvalidator,
+        IUserInfoInvalidator userInfoInvalidator,
         ILogger<AccountMergeService> logger,
         IClock clock,
         IEnumerable<IUserMerge> userMerges,
@@ -73,7 +73,7 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
         _mergeRepository = mergeRepository;
         _userEmailRepository = userEmailRepository;
         _auditLogService = auditLogService;
-        _fullProfileInvalidator = fullProfileInvalidator;
+        _userInfoInvalidator = userInfoInvalidator;
         _logger = logger;
         _clock = clock;
         _userMerges = userMerges;
@@ -224,8 +224,8 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
 
             // Cache invalidation runs AFTER the transaction commits so
             // cache-aside readers don't repopulate from rows that might
-            // still roll back. FullProfile eviction for both users is
-            // handled by the CachingProfileService decorator inside the
+            // still roll back. UserInfo eviction for both users is
+            // handled by the CachingUserService decorator inside the
             // fan-out (covers Profile / UserEmail / ContactField /
             // CommunicationPreference, all Profile-section). Claims +
             // nav-badge cover RoleAssignment. Notification badge counts
@@ -293,10 +293,10 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
             scope.Complete();
         }
 
-        // Invalidate the target's FullProfile so the removed pending email
+        // Invalidate the target's UserInfo so the removed pending email
         // disappears from the cached view. Runs after commit so cache-aside
         // reads don't repopulate from an uncommitted state.
-        await _fullProfileInvalidator.InvalidateAsync(request.TargetUserId, ct);
+        await _userInfoInvalidator.InvalidateAsync(request.TargetUserId, ct);
     }
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)

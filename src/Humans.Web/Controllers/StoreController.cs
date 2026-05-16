@@ -1,4 +1,3 @@
-using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Store;
 using Humans.Application.Services.Store.Dtos;
@@ -9,6 +8,8 @@ using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+
+using Humans.Application.Interfaces.Users;
 
 namespace Humans.Web.Controllers;
 
@@ -25,9 +26,9 @@ public class StoreController : HumansControllerBase
         IStoreService storeService,
         ICampService campService,
         IAuthorizationService authService,
-        UserManager<User> userManager,
+        IUserService userService,
         ILogger<StoreController> logger)
-        : base(userManager)
+        : base(userService)
     {
         _storeService = storeService;
         _campService = campService;

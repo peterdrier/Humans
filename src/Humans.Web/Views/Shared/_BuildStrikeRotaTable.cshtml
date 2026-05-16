@@ -241,7 +241,7 @@ else if (allDayShifts.All(s => s.RemainingSlots <= 0) && allDayShifts.Any(s => s
     {
         if (currentRange == null || s.Shift.DayOffset != currentRange.Last().Shift.DayOffset + 1)
         {
-            currentRange = new List<ShiftDisplayItem> { s };
+            currentRange = [s];
             dateRanges.Add(currentRange);
         }
         else

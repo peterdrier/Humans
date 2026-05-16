@@ -40,8 +40,7 @@ public sealed class WebRepositoryInjectionAnalyzer : DiagnosticAnalyzer
             "boundary owned by Application/Infrastructure; reaching past services collapses the " +
             "layer (design-rules §2b, §3).");
 
-    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
-        ImmutableArray.Create(Rule);
+    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
 
     public override void Initialize(AnalysisContext context)
     {
@@ -92,7 +91,7 @@ public sealed class WebRepositoryInjectionAnalyzer : DiagnosticAnalyzer
                     effectiveSeverity: severity,
                     additionalLocations: null,
                     properties: null,
-                    messageArgs: new object[] { type.Name, parameter.Type.Name }));
+                    messageArgs: [type.Name, parameter.Type.Name]));
             }
         }
     }

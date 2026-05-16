@@ -6,7 +6,7 @@ public class CampSettings
 {
     public Guid Id { get; init; }
     public int PublicYear { get; set; }
-    public List<int> OpenSeasons { get; set; } = new();
+    public List<int> OpenSeasons { get; set; } = [];
 
     /// <summary>
     /// Date from which humans holding an EE grant for the current public year

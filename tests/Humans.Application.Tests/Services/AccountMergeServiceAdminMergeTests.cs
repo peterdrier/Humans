@@ -1,9 +1,7 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
-using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Notifications;
-using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
@@ -20,17 +18,17 @@ public class AccountMergeServiceAdminMergeTests
     private readonly IAccountMergeRepository _mergeRepo = Substitute.For<IAccountMergeRepository>();
     private readonly IUserEmailRepository _userEmailRepo = Substitute.For<IUserEmailRepository>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
-    private readonly IFullProfileInvalidator _fullProfileInvalidator = Substitute.For<IFullProfileInvalidator>();
+    private readonly IUserInfoInvalidator _userInfoInvalidator = Substitute.For<IUserInfoInvalidator>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly ITeamService _team = Substitute.For<ITeamService>();
     private readonly IRoleAssignmentService _roles = Substitute.For<IRoleAssignmentService>();
     private readonly INotificationService _notify = Substitute.For<INotificationService>();
-    private readonly List<IUserMerge> _userMerges = new();
+    private readonly List<IUserMerge> _userMerges = [];
     private readonly FakeClock _clock = new(NodaTime.Instant.FromUtc(2026, 5, 5, 12, 0));
 
     private AccountMergeService BuildSut() =>
         new(
-            _mergeRepo, _userEmailRepo, _audit, _fullProfileInvalidator,
+            _mergeRepo, _userEmailRepo, _audit, _userInfoInvalidator,
             NullLogger<AccountMergeService>.Instance, _clock,
             _userMerges, _userService, _team, _roles, _notify);
 

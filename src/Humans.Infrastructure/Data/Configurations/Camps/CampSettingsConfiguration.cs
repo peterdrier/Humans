@@ -28,7 +28,7 @@ public class CampSettingsConfiguration : IEntityTypeConfiguration<CampSettings>
         {
             Id = Guid.Parse("00000000-0000-0000-0010-000000000001"),
             PublicYear = 2026,
-            OpenSeasons = new List<int> { 2026 }
+            OpenSeasons = [2026]
         });
     }
 }

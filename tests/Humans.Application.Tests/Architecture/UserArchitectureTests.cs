@@ -5,6 +5,7 @@ using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Repositories.Users;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
@@ -19,12 +20,12 @@ namespace Humans.Application.Tests.Architecture;
 /// </summary>
 public class UserArchitectureTests
 {
-    public static TheoryData<Type> UserServices => new()
-    {
+    public static TheoryData<Type> UserServices =>
+    [
         typeof(UserService),
         typeof(AccountProvisioningService),
-        typeof(UnsubscribeService),
-    };
+        typeof(UnsubscribeService)
+    ];
 
     public static TheoryData<Type, Type> RequiredConstructorEdges => new()
     {
@@ -92,8 +93,8 @@ public class UserArchitectureTests
 
         cachingParam.Should().BeNull(
             because: "canonical User data is not IMemoryCache-backed");
-        paramTypes.Should().Contain(typeof(IFullProfileInvalidator),
-            because: "User writes that change FullProfile-visible fields must invalidate the Profile cache");
+        paramTypes.Should().Contain(typeof(IUserInfoInvalidator),
+            because: "User writes that change UserInfo-visible fields must invalidate the UserInfo cache");
     }
 
     [HumansFact]

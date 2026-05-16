@@ -2,7 +2,6 @@ using AwesomeAssertions;
 using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Infrastructure.Repositories.Tickets;
-using Xunit;
 using TicketingBudgetService = Humans.Application.Services.Tickets.TicketingBudgetService;
 
 namespace Humans.Application.Tests.Architecture;

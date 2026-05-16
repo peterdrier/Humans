@@ -3,7 +3,6 @@ using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Services.Mailer.Audiences;
 using Humans.Domain.Entities;
-using Humans.Domain.Enums;
 using NodaTime;
 using NSubstitute;
 
@@ -23,20 +22,20 @@ public class TicketNoShiftsAudienceTests
         _ = userC;
 
         var audience = NewAudience(
-            ticketHolders: new HashSet<Guid> { userA, userB, userD },
-            shiftCommitted: new HashSet<Guid> { userB, userD });
+            ticketHolders: [userA, userB, userD],
+            shiftCommitted: [userB, userD]);
 
         var members = await audience.ComputeMemberUserIdsAsync(CancellationToken.None);
 
-        members.Should().BeEquivalentTo(new[] { userA });
+        members.Should().BeEquivalentTo([userA]);
     }
 
     [HumansFact]
     public async Task ComputeMemberUserIdsAsync_NoActiveEvent_ReturnsEmpty()
     {
         var audience = NewAudience(
-            ticketHolders: new HashSet<Guid> { Guid.NewGuid() },
-            shiftCommitted: new HashSet<Guid>(),
+            ticketHolders: [Guid.NewGuid()],
+            shiftCommitted: [],
             activeEvent: null,
             useDefaultEvent: false);
 
@@ -48,7 +47,7 @@ public class TicketNoShiftsAudienceTests
     [HumansFact]
     public void Metadata_UsesHumansPrefix()
     {
-        var audience = NewAudience(new HashSet<Guid>(), new HashSet<Guid>());
+        var audience = NewAudience([], []);
         audience.Key.Should().Be("ticket-no-shifts");
         audience.MailerLiteGroupName.Should().Be("Humans - Ticket no Shifts");
         audience.MailerLiteGroupName.Should().StartWith("Humans - ");
@@ -62,12 +61,12 @@ public class TicketNoShiftsAudienceTests
         // They should remain in the audience.
         var userA = Guid.NewGuid();
         var audience = NewAudience(
-            ticketHolders: new HashSet<Guid> { userA },
-            shiftCommitted: new HashSet<Guid>());
+            ticketHolders: [userA],
+            shiftCommitted: []);
 
         var members = await audience.ComputeMemberUserIdsAsync(CancellationToken.None);
 
-        members.Should().BeEquivalentTo(new[] { userA });
+        members.Should().BeEquivalentTo([userA]);
     }
 
     private static TicketNoShiftsAudience NewAudience(

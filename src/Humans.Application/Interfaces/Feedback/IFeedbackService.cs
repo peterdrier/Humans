@@ -1,5 +1,3 @@
-using Humans.Application.Interfaces;
-using Humans.Application.Models;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.AspNetCore.Http;

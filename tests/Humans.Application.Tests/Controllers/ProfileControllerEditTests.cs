@@ -1,6 +1,5 @@
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.Application;
 using Humans.Application.Configuration;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.AuditLog;
@@ -17,9 +16,9 @@ using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Testing;
 using Humans.Web;
 using Humans.Web.Controllers;
 using Humans.Web.Models;
@@ -36,8 +35,6 @@ using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Xunit;
-using MemberApplication = Humans.Domain.Entities.Application;
 
 namespace Humans.Application.Tests.Controllers;
 
@@ -89,6 +86,7 @@ public class ProfileControllerEditTests
             .Returns(AuthorizationResult.Success());
 
         _controller = new ProfileController(
+            _userService,
             _userManager,
             _profileService,
             Substitute.For<IContactFieldService>(),
@@ -113,7 +111,6 @@ public class ProfileControllerEditTests
             new MemoryCache(new MemoryCacheOptions()),
             new FakeClock(Instant.FromUtc(2026, 5, 9, 12, 0)),
             authorizationService,
-            _userService,
             Substitute.For<IConsentService>(),
             _applicationDecisionService,
             Substitute.For<IAccountDeletionService>(),
@@ -129,16 +126,26 @@ public class ProfileControllerEditTests
                 Substitute.For<IUserConfirmation<User>>()),
             Options.Create(new GoogleWorkspaceOptions()));
 
-        var identity = new ClaimsIdentity(new[]
-        {
-            new Claim(ClaimTypes.NameIdentifier, _userId.ToString()),
-        }, authenticationType: "TestAuth");
+        var identity = new ClaimsIdentity([
+            new Claim(ClaimTypes.NameIdentifier, _userId.ToString())
+        ], authenticationType: "TestAuth");
         var httpContext = new DefaultHttpContext { User = new ClaimsPrincipal(identity) };
         _controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
         _controller.TempData = new TempDataDictionary(httpContext, Substitute.For<ITempDataProvider>());
 
         _userManager.GetUserAsync(Arg.Any<ClaimsPrincipal>())
             .Returns(new User { Id = _userId, DisplayName = "Test Human", PreferredLanguage = "en" });
+        _userManager.GetUserId(Arg.Any<ClaimsPrincipal>()).Returns(_userId.ToString());
+
+        // Edit POST resolves the current user through GetCurrentUserInfoAsync
+        // (cache-resident); subsequent setup-detection lookups in the action body
+        // also call IUserService.GetUserInfoAsync. Default stub returns a UserInfo
+        // with no profile so the initial-setup branch is taken; per-test overrides
+        // (e.g. approved profile) replace it.
+        _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(
+                new User { Id = _userId, DisplayName = "Test Human", PreferredLanguage = "en" }
+                    .ToUserInfo()));
 
         // SaveProfileAsync is invoked unconditionally by the happy path.
         _profileService.SaveProfileAsync(
@@ -150,8 +157,6 @@ public class ProfileControllerEditTests
     [HumansFact]
     public async Task Edit_InitialSetup_Volunteer_DoesNotDispatchTierApplication()
     {
-        // Initial setup is signalled by GetProfileAsync returning null.
-        _profileService.GetProfileAsync(_userId, Arg.Any<CancellationToken>()).Returns((Profile?)null);
 
         var model = MakeValidModel(MembershipTier.Volunteer);
 
@@ -166,9 +171,8 @@ public class ProfileControllerEditTests
     [HumansFact]
     public async Task Edit_InitialSetup_Colaborador_NoExistingApp_CallsSubmitAsync()
     {
-        _profileService.GetProfileAsync(_userId, Arg.Any<CancellationToken>()).Returns((Profile?)null);
         _applicationDecisionService.GetUserApplicationsAsync(_userId, Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<UserApplicationSnapshot>());
+            .Returns([]);
 
         var model = MakeValidModel(MembershipTier.Colaborador, motivation: "to help");
 
@@ -193,7 +197,6 @@ public class ProfileControllerEditTests
         // pending applications by replaying the form. ApplicationDecisionService
         // also rejects with AlreadyPending as a backstop, but the controller
         // shouldn't lean on that.
-        _profileService.GetProfileAsync(_userId, Arg.Any<CancellationToken>()).Returns((Profile?)null);
 
         var existingDraftId = Guid.NewGuid();
         var existingDraft = new UserApplicationSnapshot(
@@ -201,7 +204,7 @@ public class ProfileControllerEditTests
             _userId,
             ApplicationStatus.Submitted,
             MembershipTier.Colaborador,
-            NodaTime.SystemClock.Instance.GetCurrentInstant(),
+            SystemClock.Instance.GetCurrentInstant(),
             ResolvedAt: null,
             TermExpiresAt: null,
             Motivation: "old motivation",
@@ -209,7 +212,7 @@ public class ProfileControllerEditTests
             SignificantContribution: null,
             RoleUnderstanding: null);
         _applicationDecisionService.GetUserApplicationsAsync(_userId, Arg.Any<CancellationToken>())
-            .Returns(new[] { existingDraft });
+            .Returns([existingDraft]);
 
         var model = MakeValidModel(MembershipTier.Colaborador, motivation: "updated motivation");
 
@@ -258,9 +261,8 @@ public class ProfileControllerEditTests
     [HumansFact]
     public async Task Edit_Post_WithShiftTagIds_CallsSetVolunteerTagPreferencesAsync()
     {
-        _profileService.GetProfileAsync(_userId, Arg.Any<CancellationToken>()).Returns((Profile?)null);
         _applicationDecisionService.GetUserApplicationsAsync(_userId, Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<UserApplicationSnapshot>());
+            .Returns([]);
 
         var tagId1 = Guid.NewGuid();
         var tagId2 = Guid.NewGuid();
@@ -277,9 +279,8 @@ public class ProfileControllerEditTests
     [HumansFact]
     public async Task Edit_Post_WithEmptyShiftTagIds_CallsSetVolunteerTagPreferencesAsyncWithEmptyList()
     {
-        _profileService.GetProfileAsync(_userId, Arg.Any<CancellationToken>()).Returns((Profile?)null);
         _applicationDecisionService.GetUserApplicationsAsync(_userId, Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<UserApplicationSnapshot>());
+            .Returns([]);
 
         var model = MakeValidModel(MembershipTier.Volunteer);
         model.EditableShiftTagIds = [];
@@ -331,12 +332,12 @@ public class ProfileControllerEditTests
 
     private UserInfo BuildUserInfo(Profile? profile) => UserInfo.Create(
         user: new User { Id = _userId, DisplayName = "Test Human", PreferredLanguage = "en" },
-        userEmails: Array.Empty<UserEmail>(),
-        eventParticipations: Array.Empty<EventParticipation>(),
-        externalLogins: Array.Empty<(string, string)>(),
+        userEmails: [],
+        eventParticipations: [],
+        externalLogins: [],
         profile: profile,
-        contactFields: Array.Empty<ContactField>(),
-        profileLanguages: Array.Empty<ProfileLanguage>(),
-        volunteerHistory: Array.Empty<VolunteerHistoryEntry>(),
-        communicationPreferences: Array.Empty<CommunicationPreference>());
+        contactFields: [],
+        profileLanguages: [],
+        volunteerHistory: [],
+        communicationPreferences: []);
 }

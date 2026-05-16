@@ -1,8 +1,6 @@
 using System.Net;
-using System.Net.Http;
 using System.Text.RegularExpressions;
 using AwesomeAssertions;
-using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
 using Humans.Integration.Tests.Infrastructure;
@@ -10,7 +8,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using NSubstitute;
-using Xunit;
 
 namespace Humans.Integration.Tests.Controllers;
 
@@ -123,7 +120,7 @@ public class StorePayActionTests : IntegrationTestBase
         {
             Id = orderId,
             CampSeasonId = seasonId,
-            State = Humans.Domain.Enums.StoreOrderState.Open,
+            State = Domain.Enums.StoreOrderState.Open,
             Lines = new List<StoreOrderLine>
             {
                 new()

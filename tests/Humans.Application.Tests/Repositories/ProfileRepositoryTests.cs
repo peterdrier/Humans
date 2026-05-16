@@ -2,12 +2,10 @@ using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using NodaTime.Testing;
-using Humans.Application;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
-using Xunit;
 using Humans.Infrastructure.Repositories.Profiles;
 
 namespace Humans.Application.Tests.Repositories;

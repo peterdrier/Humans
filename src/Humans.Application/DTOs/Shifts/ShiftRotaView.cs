@@ -27,7 +27,7 @@ public sealed record ShiftRotaView(
     public static ShiftRotaView Empty(Guid rotaId) => new(
         rotaId,
         Rota: null,
-        Shifts: Array.Empty<Shift>(),
-        Tags: Array.Empty<ShiftTag>(),
-        Signups: Array.Empty<ShiftSignup>());
+        Shifts: [],
+        Tags: [],
+        Signups: []);
 }

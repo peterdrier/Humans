@@ -259,12 +259,11 @@ public sealed class NotificationMeterProvider : INotificationMeterProvider
     {
         var consentReviewsPending = _userService.GetAllUserInfos().Count(u => u.NeedsConsentReview);
 
-        // Pending deletions derived from the user list — at ~500-user scale,
-        // loading the list once per cache window is cheaper than maintaining a
-        // narrow count primitive on IUserService (the meter result itself is
-        // cached for CacheDuration; see ComputeCountsAsync caller).
-        var allUsers = await _userService.GetAllUsersAsync(cancellationToken);
-        var pendingDeletions = allUsers.Count(u => u.DeletionRequestedAt != null);
+        // Pending deletions derived from the cached UserInfo snapshot —
+        // ConsentReviewsPending above already reads the same snapshot, and the
+        // meter result itself is cached for CacheDuration anyway.
+        var pendingDeletions = _userService.GetAllUserInfos()
+            .Count(u => u.DeletionRequestedAt != null);
 
         var failedSyncEvents = await _googleSyncService.GetFailedSyncEventCountAsync(cancellationToken);
 

@@ -1,8 +1,8 @@
+using Humans.Application;
 using Humans.Application.Interfaces.Camps;
-using Humans.Domain.Entities;
+using Humans.Application.Interfaces.Users;
 using Humans.Web.Authorization.Requirements;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Web.Controllers;
@@ -13,10 +13,10 @@ public abstract class HumansCampControllerBase : HumansControllerBase
     private readonly IAuthorizationService _authorizationService;
 
     protected HumansCampControllerBase(
-        UserManager<User> userManager,
+        IUserService userService,
         ICampService campService,
         IAuthorizationService authorizationService)
-        : base(userManager)
+        : base(userService)
     {
         _campService = campService;
         _authorizationService = authorizationService;
@@ -27,7 +27,7 @@ public abstract class HumansCampControllerBase : HumansControllerBase
         return _campService.GetCampBySlugAsync(slug, cancellationToken);
     }
 
-    protected async Task<(bool IsLead, bool IsCampAdmin)> ResolveCampViewerStateAsync(Guid campId, User? user, CancellationToken cancellationToken = default)
+    protected async Task<(bool IsLead, bool IsCampAdmin)> ResolveCampViewerStateAsync(Guid campId, UserInfo? user, CancellationToken cancellationToken = default)
     {
         var canManage = (await _authorizationService.AuthorizeAsync(User, campId, CampOperationRequirement.Manage)).Succeeded;
         if (!canManage)
@@ -46,7 +46,7 @@ public abstract class HumansCampControllerBase : HumansControllerBase
         return (isLead, isCampAdmin);
     }
 
-    protected async Task<(IActionResult? ErrorResult, User User, CampLookup Camp)> ResolveCampManagementAsync(string slug)
+    protected async Task<(IActionResult? ErrorResult, UserInfo User, CampLookup Camp)> ResolveCampManagementAsync(string slug)
     {
         var camp = await GetCampBySlugAsync(slug);
         if (camp is null)

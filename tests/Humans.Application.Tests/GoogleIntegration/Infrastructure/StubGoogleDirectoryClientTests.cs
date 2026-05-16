@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Humans.Infrastructure.Services.GoogleWorkspace;
 using Microsoft.Extensions.Logging.Abstractions;
-using Xunit;
 
 namespace Humans.Application.Tests.GoogleIntegration.Infrastructure;
 

@@ -1,48 +1,56 @@
-using Humans.Domain.Entities;
+using System.Security.Claims;
+using Humans.Application;
+using Humans.Application.Interfaces.Users;
 using Humans.Web.Constants;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Web.Controllers;
 
 public abstract class HumansControllerBase : Controller
 {
-    private readonly UserManager<User> _userManager;
-    protected UserManager<User> UserManager => _userManager;
+    private readonly IUserService _userService;
+    protected IUserService UserService => _userService;
 
-    protected HumansControllerBase(UserManager<User> userManager)
+    protected HumansControllerBase(IUserService userService)
     {
-        _userManager = userManager;
+        _userService = userService;
     }
 
-    protected Task<User?> GetCurrentUserAsync()
+    protected Guid? GetCurrentUserId()
     {
-        return _userManager.GetUserAsync(User);
+        var raw = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        return Guid.TryParse(raw, out var id) ? id : null;
     }
 
-    protected Task<User?> FindUserByIdAsync(Guid userId)
+    protected async Task<UserInfo?> GetCurrentUserInfoAsync(CancellationToken ct = default)
     {
-        return _userManager.FindByIdAsync(userId.ToString());
+        var id = GetCurrentUserId();
+        return id is null ? null : await _userService.GetUserInfoAsync(id.Value, ct);
     }
 
-    protected async Task<(IActionResult? ErrorResult, User User)> RequireCurrentUserAsync()
+    protected async Task<UserInfo?> FindUserInfoByIdAsync(Guid userId, CancellationToken ct = default)
     {
-        return await ResolveCurrentUserAsync(() => NotFound());
+        return await _userService.GetUserInfoAsync(userId, ct);
     }
 
-    protected async Task<(IActionResult? ErrorResult, User User)> ResolveCurrentUserOrChallengeAsync()
+    protected async Task<(IActionResult? ErrorResult, UserInfo User)> RequireCurrentUserAsync(CancellationToken ct = default)
     {
-        return await ResolveCurrentUserAsync(() => Challenge());
+        return await ResolveCurrentUserAsync(() => NotFound(), ct);
     }
 
-    protected async Task<(IActionResult? ErrorResult, User User)> ResolveCurrentUserOrUnauthorizedAsync()
+    protected async Task<(IActionResult? ErrorResult, UserInfo User)> ResolveCurrentUserOrChallengeAsync(CancellationToken ct = default)
     {
-        return await ResolveCurrentUserAsync(() => Unauthorized());
+        return await ResolveCurrentUserAsync(() => Challenge(), ct);
     }
 
-    private async Task<(IActionResult? ErrorResult, User User)> ResolveCurrentUserAsync(Func<IActionResult> onMissing)
+    protected async Task<(IActionResult? ErrorResult, UserInfo User)> ResolveCurrentUserOrUnauthorizedAsync(CancellationToken ct = default)
     {
-        var user = await GetCurrentUserAsync();
+        return await ResolveCurrentUserAsync(() => Unauthorized(), ct);
+    }
+
+    private async Task<(IActionResult? ErrorResult, UserInfo User)> ResolveCurrentUserAsync(Func<IActionResult> onMissing, CancellationToken ct)
+    {
+        var user = await GetCurrentUserInfoAsync(ct);
         return user is null ? (onMissing(), null!) : (null, user);
     }
 
@@ -62,10 +70,5 @@ public abstract class HumansControllerBase : Controller
     protected void SetInfo(string message)
     {
         TempData[TempDataKeys.InfoMessage] = message;
-    }
-
-    protected Task<IdentityResult> UpdateCurrentUserAsync(User user)
-    {
-        return _userManager.UpdateAsync(user);
     }
 }

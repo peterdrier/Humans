@@ -1,8 +1,5 @@
-using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
-using System.Threading;
 using Anthropic.Core;
 using Anthropic.Models.Messages;
 using Humans.Application.Configuration;
@@ -218,7 +215,7 @@ public sealed class AnthropicClient : IAnthropicClient
 
         foreach (var msg in messages)
         {
-            var role = string.Equals(msg.Role, "assistant", System.StringComparison.OrdinalIgnoreCase)
+            var role = string.Equals(msg.Role, "assistant", StringComparison.OrdinalIgnoreCase)
                 ? Role.Assistant
                 : Role.User;
 

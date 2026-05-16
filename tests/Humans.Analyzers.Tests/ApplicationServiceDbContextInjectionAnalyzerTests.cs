@@ -1,7 +1,4 @@
-using System.Linq;
-using System.Threading.Tasks;
 using AwesomeAssertions;
-using Humans.Testing;
 using Microsoft.CodeAnalysis;
 
 namespace Humans.Analyzers.Tests;
@@ -36,7 +33,7 @@ public class ApplicationServiceDbContextInjectionAnalyzerTests
         """;
 
     private static bool IsHum0009(Diagnostic d) =>
-        string.Equals(d.Id, ApplicationServiceDbContextInjectionAnalyzer.DiagnosticId, System.StringComparison.Ordinal);
+        string.Equals(d.Id, ApplicationServiceDbContextInjectionAnalyzer.DiagnosticId, StringComparison.Ordinal);
 
     [HumansFact]
     public async Task Fires_error_on_non_repository_class_using_HumansDbContext()

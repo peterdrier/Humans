@@ -3,7 +3,6 @@ using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
-using Humans.Domain.Enums;
 using Humans.Infrastructure.Jobs;
 using Humans.Web.Authorization;
 using Humans.Web.Extensions;
@@ -30,9 +29,9 @@ public class TicketController : HumansControllerBase
         ITicketSyncService ticketSyncService,
         IUserParticipationBackfillService participationBackfillService,
         TicketDashboardPageBuilder dashboardPageBuilder,
-        UserManager<User> userManager,
+        IUserService userService,
         ILogger<TicketController> logger)
-        : base(userManager)
+        : base(userService)
     {
         _ticketQueryService = ticketQueryService;
         _ticketSyncService = ticketSyncService;

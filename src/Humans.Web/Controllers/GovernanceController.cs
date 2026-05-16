@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using Humans.Application.Interfaces.Governance;
-using Humans.Domain.Constants;
 using Humans.Web.Authorization;
 using Humans.Web.Extensions;
 using Humans.Web.Models;
@@ -14,6 +13,9 @@ using Humans.Application.Interfaces.Auth;
 // continue to read them for view-model shaping. Nav-strip follow-up tracked in
 // design-rules §15i.
 #pragma warning disable CS0618
+
+using Humans.Application.Interfaces.Users;
+using Humans.Application;
 
 namespace Humans.Web.Controllers;
 
@@ -26,11 +28,11 @@ public class GovernanceController : HumansControllerBase
     private readonly IClock _clock;
 
     public GovernanceController(
-        UserManager<Domain.Entities.User> userManager,
+        IUserService userService,
         IGovernanceIndexService governanceIndexService,
         IRoleAssignmentService roleAssignmentService,
         IClock clock)
-        : base(userManager)
+        : base(userService)
     {
         _governanceIndexService = governanceIndexService;
         _roleAssignmentService = roleAssignmentService;
@@ -39,7 +41,7 @@ public class GovernanceController : HumansControllerBase
 
     public async Task<IActionResult> Index()
     {
-        var user = await GetCurrentUserAsync();
+        var user = await GetCurrentUserInfoAsync();
         if (user is null)
             return NotFound();
 

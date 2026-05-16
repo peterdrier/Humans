@@ -1,7 +1,4 @@
-using System;
 using System.Collections.Immutable;
-using System.Linq;
-using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
@@ -28,7 +25,7 @@ internal static class AnalyzerTestHarness
         var syntaxTree = CSharpSyntaxTree.ParseText(source);
         var compilation = CSharpCompilation.Create(
             assemblyName: assemblyName,
-            syntaxTrees: new[] { syntaxTree },
+            syntaxTrees: [syntaxTree],
             references: BaseReferences,
             options: new CSharpCompilationOptions(
                 OutputKind.DynamicallyLinkedLibrary,
@@ -44,7 +41,7 @@ internal static class AnalyzerTestHarness
                 string.Join("; ", compileDiagnostics.Select(d => d.ToString())));
         }
 
-        var withAnalyzers = compilation.WithAnalyzers(ImmutableArray.Create(analyzer));
+        var withAnalyzers = compilation.WithAnalyzers([analyzer]);
         return await withAnalyzers.GetAnalyzerDiagnosticsAsync().ConfigureAwait(false);
     }
 
@@ -52,7 +49,7 @@ internal static class AnalyzerTestHarness
     {
         var builder = ImmutableArray.CreateBuilder<MetadataReference>();
         var trustedAssemblies = (string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!;
-        foreach (var path in trustedAssemblies.Split(System.IO.Path.PathSeparator))
+        foreach (var path in trustedAssemblies.Split(Path.PathSeparator))
         {
             if (path.Length > 0)
                 builder.Add(MetadataReference.CreateFromFile(path));

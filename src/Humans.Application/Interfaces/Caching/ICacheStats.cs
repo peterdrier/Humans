@@ -2,7 +2,7 @@ namespace Humans.Application.Interfaces.Caching;
 
 /// <summary>
 /// Diagnostic snapshot for a single in-memory caching dictionary owned by a
-/// Singleton decorator (e.g. <c>CachingProfileService</c>'s FullProfile dict).
+/// Singleton decorator (e.g. <c>CachingUserService</c>'s UserInfo dict).
 /// Surfaced on <c>/Admin/CacheStats</c> alongside <see cref="ICacheStatsProvider"/>
 /// (which covers <see cref="Microsoft.Extensions.Caching.Memory.IMemoryCache"/>).
 /// </summary>

@@ -2,7 +2,6 @@ using AwesomeAssertions;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Budget;
-using Humans.Application.Interfaces.Expenses;
 using Humans.Application.Interfaces.Holded;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
@@ -10,13 +9,13 @@ using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Expenses;
 using Humans.Application.Services.Expenses.Dtos;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Xunit;
 
 namespace Humans.Application.Tests.Services.Expenses;
 
@@ -62,11 +61,15 @@ public class ExpenseReportServiceHoldedOutboxTests
         _budgetService.GetCategoryByIdAsync(CategoryId)
             .Returns(_category);
 
+        var submitter = new User { Id = SubmitterId, DisplayName = "Alice Smith" };
         _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, User>
             {
-                [SubmitterId] = new User { Id = SubmitterId, DisplayName = "Alice Smith" },
+                [SubmitterId] = submitter,
             });
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                new Dictionary<Guid, UserInfo> { [SubmitterId] = submitter.ToUserInfo() }));
 
         _sut = new ExpenseReportService(
             _repo,
@@ -116,7 +119,7 @@ public class ExpenseReportServiceHoldedOutboxTests
     public async Task EmptyQueue_NoClientCalls()
     {
         _repo.GetUnprocessedOutboxAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<HoldedExpenseOutboxEvent>());
+            .Returns([]);
 
         await _sut.DrainHoldedOutboxAsync(BatchSize);
 
@@ -226,11 +229,11 @@ public class ExpenseReportServiceHoldedOutboxTests
         _fileStorage.TryReadAsync(
                 $"uploads/expense-attachments/{attachment1.Id}.pdf",
                 Arg.Any<CancellationToken>())
-            .Returns(new byte[] { 1, 2 });
+            .Returns([1, 2]);
         _fileStorage.TryReadAsync(
                 $"uploads/expense-attachments/{attachment2.Id}.jpg",
                 Arg.Any<CancellationToken>())
-            .Returns(new byte[] { 3, 4 });
+            .Returns([3, 4]);
 
         await _sut.DrainHoldedOutboxAsync(BatchSize);
 

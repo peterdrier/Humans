@@ -1,4 +1,3 @@
-using Humans.Application.Interfaces;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Teams;
 using Humans.Domain.Entities;
@@ -143,7 +142,7 @@ public sealed record CoordinatorBudgetViewData(
 public sealed record CoordinatorCategoryDetailViewData(
     BudgetCategorySnapshot? Category,
     bool ShouldForbid,
-    IReadOnlyList<TeamOptionDto> Teams);
+    IReadOnlyList<TeamInfo> Teams);
 
 public sealed record BudgetYearSummarySnapshot(
     Guid Id,

@@ -1,5 +1,4 @@
 using Humans.Application.Interfaces.Campaigns;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 
 namespace Humans.Application.DTOs;

@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces;
-using Xunit;
 
 namespace Humans.Application.Tests.Architecture;
 

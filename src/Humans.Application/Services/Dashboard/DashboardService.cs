@@ -2,7 +2,6 @@ using Humans.Application.Configuration;
 using Humans.Application.Helpers;
 using Humans.Application.Interfaces.Dashboard;
 using Humans.Application.Interfaces.Governance;
-using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Tickets;
@@ -12,7 +11,6 @@ using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NodaTime;
-using MemberApplication = Humans.Domain.Entities.Application;
 
 namespace Humans.Application.Services.Dashboard;
 
@@ -24,7 +22,6 @@ namespace Humans.Application.Services.Dashboard;
 /// </summary>
 public class DashboardService : IDashboardService
 {
-    private readonly IProfileService _profileService;
     private readonly IMembershipCalculator _membershipCalculator;
     private readonly IApplicationDecisionService _applicationDecisionService;
     private readonly IShiftManagementService _shiftMgmt;
@@ -37,7 +34,6 @@ public class DashboardService : IDashboardService
     private readonly ILogger<DashboardService> _logger;
 
     public DashboardService(
-        IProfileService profileService,
         IMembershipCalculator membershipCalculator,
         IApplicationDecisionService applicationDecisionService,
         IShiftManagementService shiftMgmt,
@@ -49,7 +45,6 @@ public class DashboardService : IDashboardService
         IClock clock,
         ILogger<DashboardService> logger)
     {
-        _profileService = profileService;
         _membershipCalculator = membershipCalculator;
         _applicationDecisionService = applicationDecisionService;
         _shiftMgmt = shiftMgmt;
@@ -69,7 +64,8 @@ public class DashboardService : IDashboardService
     {
         _ = isPrivileged; // Retained for future privileged-only fields; no current effect.
 
-        var profile = await _profileService.GetProfileAsync(userId, cancellationToken);
+        var userInfo = await _userService.GetUserInfoAsync(userId, cancellationToken);
+        var profile = userInfo?.Profile;
         var shiftTagPreferences = await _shiftMgmt.GetVolunteerTagPreferencesAsync(userId);
         var dashboardProfile = profile is null
             ? null
@@ -172,9 +168,10 @@ public class DashboardService : IDashboardService
                     .Select(s => s.Shift.Rota.TeamId)
                     .Distinct()
                     .ToList();
-                var teamNames = dashboardTeamIds.Count == 0
-                    ? (IReadOnlyDictionary<Guid, string>)new Dictionary<Guid, string>()
-                    : await _teamService.GetTeamNamesByIdsAsync(dashboardTeamIds);
+                var teamsById = await _teamService.GetTeamsAsync();
+                var teamNames = dashboardTeamIds
+                    .Where(teamsById.ContainsKey)
+                    .ToDictionary(id => id, id => teamsById[id].Name);
 
                 foreach (var s in confirmedSignups)
                 {

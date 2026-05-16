@@ -6,7 +6,6 @@ using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
-using Xunit;
 using Humans.Infrastructure.Repositories.Legal;
 
 namespace Humans.Application.Tests.Repositories;

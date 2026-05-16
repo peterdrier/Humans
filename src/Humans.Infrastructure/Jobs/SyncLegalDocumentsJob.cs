@@ -1,7 +1,6 @@
 using Hangfire;
 using Microsoft.Extensions.Logging;
 using NodaTime;
-using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Email;
@@ -145,10 +144,10 @@ public class SyncLegalDocumentsJob : IRecurringJob
             return;
         }
 
-        // Batch load user entities for display names and emails via
-        // IUserService. Use the -WithEmails variant so GetEffectiveEmail
-        // picks the verified notification-target address.
-        var users = await _userService.GetByIdsWithEmailsAsync(usersToNotify, cancellationToken);
+        // Batch load UserInfo snapshots via IUserService so we resolve the
+        // verified notification-target address (UserInfo.Email mirrors
+        // User.GetEffectiveEmail).
+        var users = await _userService.GetUserInfosAsync(usersToNotify, cancellationToken);
 
         var documentNames = updatedDocs.Where(d => d.IsRequired).Select(d => d.Name).ToList();
         var notificationCount = 0;

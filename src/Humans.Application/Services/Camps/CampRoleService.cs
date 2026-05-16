@@ -179,9 +179,9 @@ public sealed class CampRoleService : ICampRoleService
         var assignments = await _repo.GetAssignmentsForSeasonAsync(campSeasonId, ct);
 
         var memberUserIds = assignments.Select(a => a.CampMember.UserId).Distinct().ToList();
-        IReadOnlyDictionary<Guid, User> users = memberUserIds.Count == 0
-            ? new Dictionary<Guid, User>()
-            : await _userService.GetByIdsAsync(memberUserIds, ct);
+        IReadOnlyDictionary<Guid, UserInfo> users = memberUserIds.Count == 0
+            ? new Dictionary<Guid, UserInfo>()
+            : await _userService.GetUserInfosAsync(memberUserIds, ct);
 
         var rows = definitions.Select(def =>
         {
@@ -260,7 +260,7 @@ public sealed class CampRoleService : ICampRoleService
                 notificationClass: NotificationClass.Informational,
                 priority: NotificationPriority.Normal,
                 title: $"You were assigned the {def.Name} role.",
-                recipientUserIds: new[] { memberLookup.UserId },
+                recipientUserIds: [memberLookup.UserId],
                 cancellationToken: ct);
         }
         catch (Exception ex)

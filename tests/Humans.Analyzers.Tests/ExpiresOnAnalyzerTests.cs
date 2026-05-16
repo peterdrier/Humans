@@ -1,8 +1,4 @@
-using System;
-using System.Linq;
-using System.Threading.Tasks;
 using AwesomeAssertions;
-using Humans.Testing;
 using Microsoft.CodeAnalysis;
 
 namespace Humans.Analyzers.Tests;

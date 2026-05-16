@@ -1,12 +1,10 @@
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Infrastructure.Logging;
-using Humans.Testing;
 using Microsoft.AspNetCore.Http;
 using Serilog.Core;
 using Serilog.Events;
 using Serilog.Parsing;
-using Xunit;
 
 namespace Humans.Application.Tests.Infrastructure.Logging;
 
@@ -107,8 +105,8 @@ public class CurrentUserEnricherTests
         timestamp: DateTimeOffset.UtcNow,
         level: LogEventLevel.Information,
         exception: null,
-        messageTemplate: new MessageTemplate("test", Array.Empty<MessageTemplateToken>()),
-        properties: Array.Empty<LogEventProperty>());
+        messageTemplate: new MessageTemplate("test", []),
+        properties: []);
 
     private sealed class SimplePropertyFactory : ILogEventPropertyFactory
     {

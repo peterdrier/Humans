@@ -37,10 +37,10 @@ public class IssuesController : HumansControllerBase
         IAuthorizationService authorization,
         IProfileService profiles,
         IUserService users,
-        UserManager<User> userManager,
+        IUserService userService,
         IStringLocalizer<SharedResource> localizer,
         ILogger<IssuesController> logger)
-        : base(userManager)
+        : base(userService)
     {
         _issues = issues;
         _authorization = authorization;
@@ -95,8 +95,8 @@ public class IssuesController : HumansControllerBase
 
         var filter = new IssueListFilter(
             Statuses: statuses,
-            Categories: category.HasValue ? new[] { category.Value } : null,
-            Sections: !string.IsNullOrWhiteSpace(section) ? new string?[] { section } : null,
+            Categories: category.HasValue ? [category.Value] : null,
+            Sections: !string.IsNullOrWhiteSpace(section) ? [section] : null,
             ReporterUserId: reporterFilter,
             AssigneeUserId: null,
             SearchText: !string.IsNullOrWhiteSpace(search) ? search : null,
@@ -263,7 +263,7 @@ public class IssuesController : HumansControllerBase
             .ToList();
         if (activeIds.Count == 0)
         {
-            vm.AssigneeOptions = new List<AssigneeOption>();
+            vm.AssigneeOptions = [];
         }
         else
         {

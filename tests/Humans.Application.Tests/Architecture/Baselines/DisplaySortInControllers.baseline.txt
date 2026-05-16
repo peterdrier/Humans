@@ -102,7 +102,6 @@ src/Humans.Infrastructure/Repositories/Shifts/ShiftSignupRepository.cs:OrderByDe
 src/Humans.Infrastructure/Repositories/Shifts/ShiftSignupRepository.cs:ThenBy#1
 src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:OrderBy#1
 src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:OrderBy#2
-src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:OrderBy#3
 src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:OrderByDescending#1
 src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:OrderByDescending#2
 src/Humans.Infrastructure/Repositories/Teams/TeamRepository.cs:ThenBy#1

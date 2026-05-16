@@ -3,25 +3,21 @@ using NodaTime;
 using Humans.Application.DTOs;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Gdpr;
-using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Domain.Helpers;
 using Humans.Application.Interfaces.AuditLog;
-using Humans.Application.Interfaces.Users;
 using Humans.Application.Interfaces.Onboarding;
+using Humans.Application.Interfaces.Users;
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Profiles;
-using Humans.Application.Services.Profiles;
 
 namespace Humans.Application.Services.Profiles;
 
 /// <summary>
 /// Core profile service. Business logic only — no DbContext, no IMemoryCache.
-/// Cache management is handled by the <c>CachingProfileService</c> decorator.
+/// Cache management is handled by the <c>CachingUserService</c> decorator.
 /// Cross-domain reads use owning-section service interfaces.
 /// </summary>
 public sealed class ProfileService : IProfileService, IUserDataContributor, IUserMerge
@@ -31,10 +27,9 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
     private readonly IUserEmailRepository _userEmailRepository;
     private readonly IContactFieldRepository _contactFieldRepository;
     private readonly ICommunicationPreferenceRepository _communicationPreferenceRepository;
-    private readonly IOnboardingEligibilityQuery _onboardingEligibilityQuery;
     private readonly IAuditLogService _auditLogService;
-    private readonly IMembershipCalculator _membershipCalculator;
     private readonly IFileStorage _fileStorage;
+    private readonly IUserInfoInvalidator _userInfoInvalidator;
     private readonly IClock _clock;
     private readonly ILogger<ProfileService> _logger;
 
@@ -58,10 +53,9 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         IUserEmailRepository userEmailRepository,
         IContactFieldRepository contactFieldRepository,
         ICommunicationPreferenceRepository communicationPreferenceRepository,
-        IOnboardingEligibilityQuery onboardingEligibilityQuery,
         IAuditLogService auditLogService,
-        IMembershipCalculator membershipCalculator,
         IFileStorage fileStorage,
+        IUserInfoInvalidator userInfoInvalidator,
         IClock clock,
         ILogger<ProfileService> logger)
     {
@@ -70,40 +64,12 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         _userEmailRepository = userEmailRepository;
         _contactFieldRepository = contactFieldRepository;
         _communicationPreferenceRepository = communicationPreferenceRepository;
-        _onboardingEligibilityQuery = onboardingEligibilityQuery;
         _auditLogService = auditLogService;
-        _membershipCalculator = membershipCalculator;
         _fileStorage = fileStorage;
+        _userInfoInvalidator = userInfoInvalidator;
         _clock = clock;
         _logger = logger;
     }
-
-    public async Task<Domain.Entities.Profile?> GetProfileAsync(Guid userId, CancellationToken ct = default)
-    {
-        // The per-user profile cache (2-min TTL) is managed by CachingProfileService decorator.
-        // This inner method always hits the repository.
-        return await _profileRepository.GetByUserIdReadOnlyAsync(userId, ct);
-    }
-
-    public async ValueTask<FullProfile?> GetFullProfileAsync(Guid userId, CancellationToken ct = default)
-    {
-        // GetByUserIdReadOnlyAsync includes VolunteerHistory; GetByUserIdAsync does not.
-        var profile = await _profileRepository.GetByUserIdReadOnlyAsync(userId, ct);
-        if (profile is null) return null;
-
-        var user = await _userService.GetByIdAsync(userId, ct);
-        if (user is null) return null;
-
-        var userEmails = await _userEmailRepository.GetByUserIdReadOnlyAsync(userId, ct);
-
-        // Issue #635 (§15i): pass userEmails directly so PrimaryEmail /
-        // AllVerifiedEmails / GoogleEmail derive from already-loaded data.
-        return FullProfile.Create(profile, user, profile.VolunteerHistory.ToList(), userEmails);
-    }
-
-    public async Task<IReadOnlyDictionary<Guid, Domain.Entities.Profile>> GetByUserIdsAsync(
-        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
-        await _profileRepository.GetByUserIdsAsync(userIds, ct);
 
     public async Task SetMembershipTierAsync(
         Guid userId, MembershipTier tier, CancellationToken ct = default)
@@ -119,8 +85,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         profile.MembershipTier = tier;
         profile.UpdatedAt = _clock.GetCurrentInstant();
         await _profileRepository.UpdateAsync(profile, ct);
-
-        // Store update handled by CachingProfileService decorator
+        await _userInfoInvalidator.InvalidateAsync(userId, ct);
     }
 
     public async Task EnsureStubProfileAsync(Guid userId, CancellationToken ct = default)
@@ -133,7 +98,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
             if (existing is not null) return;
 
             var now = _clock.GetCurrentInstant();
-            var profile = new Domain.Entities.Profile
+            var profile = new Profile
             {
                 Id = Guid.NewGuid(),
                 UserId = userId,
@@ -142,6 +107,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
                 State = ProfileState.Stub,
             };
             await _profileRepository.AddAsync(profile, ct);
+            await _userInfoInvalidator.InvalidateAsync(userId, ct);
         }
         finally
         {
@@ -170,10 +136,10 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         }
 
         var oldContentType = profile.ProfilePictureContentType;
-        profile.ProfilePictureData = pictureData;
         profile.ProfilePictureContentType = contentType;
         profile.UpdatedAt = _clock.GetCurrentInstant();
         await _profileRepository.UpdateAsync(profile, ct);
+        await _userInfoInvalidator.InvalidateAsync(userId, ct);
 
         try
         {
@@ -191,58 +157,29 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             _logger.LogWarning(ex,
-                "Failed to write profile picture to filesystem for {ProfileId}; DB write still applied",
+                "Failed to write profile picture to filesystem for {ProfileId}; content-type column is set but the file is missing — picture will not render",
                 profile.Id);
         }
 
-        // FullProfile cache invalidation handled by CachingProfileService decorator.
+        // UserInfo cache invalidation handled by CachingUserService decorator.
     }
 
     public async Task<(byte[] Data, string ContentType)?> GetProfilePictureAsync(
         Guid profileId, CancellationToken ct = default)
     {
-        // Anonymization gate (GDPR): a cheap scalar projection of the DB
-        // content-type column is the source of truth for whether a picture
-        // should be served. If anonymization (or any future cleanup) has
-        // cleared the DB column, do not serve from disk even if a stale
-        // file remains.
+        // Anonymization gate (GDPR): the content-type column is the source of
+        // truth for whether a picture should be served. If anonymization (or
+        // any future cleanup) has cleared the column, do not serve from disk
+        // even if a stale file remains.
         var dbContentType = await _profileRepository.GetProfilePictureContentTypeAsync(profileId, ct);
         if (string.IsNullOrEmpty(dbContentType))
         {
             return null;
         }
 
-        // Filesystem fast path. Avoids loading the bytea column when the file
-        // is already on disk (the common case after migrate-on-read).
         var key = ProfilePictureKey(profileId, dbContentType);
         var fsBytes = await _fileStorage.TryReadAsync(key, ct);
-        if (fsBytes is not null)
-        {
-            return (fsBytes, dbContentType);
-        }
-
-        // DB fallback + migrate-on-read.
-        var (data, contentType) = await _profileRepository.GetProfilePictureDataAsync(profileId, ct);
-        if (data is null || string.IsNullOrEmpty(contentType))
-        {
-            return null;
-        }
-
-        try
-        {
-            await _fileStorage.SaveAsync(ProfilePictureKey(profileId, contentType), data, ct);
-            _logger.LogInformation(
-                "Profile picture {ProfileId} served from DB fallback; migrated to filesystem",
-                profileId);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            _logger.LogWarning(ex,
-                "Profile picture {ProfileId} served from DB fallback; migration to filesystem failed",
-                profileId);
-        }
-
-        return (data, contentType);
+        return fsBytes is not null ? (fsBytes, dbContentType) : null;
     }
 
     public async Task<ProfilePictureMigrationSnapshot> GetProfilePictureMigrationSnapshotAsync(
@@ -251,10 +188,10 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         var rows = await _profileRepository.GetCustomPictureRowsAsync(ct);
         if (rows.Count == 0)
         {
-            return new ProfilePictureMigrationSnapshot(0, 0, Array.Empty<ProfilePictureMigrationRow>());
+            return new ProfilePictureMigrationSnapshot(0, 0, []);
         }
 
-        var users = await _userService.GetByIdsAsync(rows.Select(r => r.UserId).ToList(), ct);
+        var users = await _userService.GetUserInfosAsync(rows.Select(r => r.UserId).ToList(), ct);
 
         var onFs = 0;
         var dbOnly = new List<ProfilePictureMigrationRow>();
@@ -312,7 +249,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
             // populated (BurnerName/FirstName/LastName), giving the
             // ProfileService_UpdateProfileAsync_TransitionsStubToActive
             // behavior contract a single home.
-            profile = new Domain.Entities.Profile
+            profile = new Profile
             {
                 Id = Guid.NewGuid(),
                 UserId = userId,
@@ -358,13 +295,13 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
             profile.DateOfBirth = null;
         }
 
-        // Handle profile picture. Phase 1 of issue nobodies-collective/Humans#527:
-        // dual-write to filesystem + DB so rollback stays safe. Phase 2 drops the
-        // DB columns once phase 1 has bedded in.
+        // Profile pictures live on the file share; the DB carries only the
+        // content-type marker so reads can find the file by extension and the
+        // GDPR gate has a single source of truth. The bytea column is dead —
+        // the column drop is a follow-up PR after prod soak.
         if (request.RemoveProfilePicture)
         {
             var oldContentType = profile.ProfilePictureContentType;
-            profile.ProfilePictureData = null;
             profile.ProfilePictureContentType = null;
             if (oldContentType is not null)
             {
@@ -375,7 +312,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
                     _logger.LogWarning(ex,
-                        "Failed to delete profile picture from filesystem for {ProfileId}; DB delete still applied",
+                        "Failed to delete profile picture from filesystem for {ProfileId}; content-type column has been cleared so the file will not be served",
                         profile.Id);
                 }
             }
@@ -383,7 +320,6 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         else if (request.ProfilePictureData is not null && request.ProfilePictureContentType is not null)
         {
             var oldContentType = profile.ProfilePictureContentType;
-            profile.ProfilePictureData = request.ProfilePictureData;
             profile.ProfilePictureContentType = request.ProfilePictureContentType;
             try
             {
@@ -403,7 +339,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 _logger.LogWarning(ex,
-                    "Failed to write profile picture to filesystem for {ProfileId}; DB write still applied",
+                    "Failed to write profile picture to filesystem for {ProfileId}; content-type column is set but the file is missing — picture will not render",
                     profile.Id);
             }
         }
@@ -412,7 +348,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         // identity fields are populated and the profile is not Suspended,
         // promote the lifecycle marker. Predicate lives on the Profile
         // entity so the same rule serves the lazy-compute path in
-        // CachingProfileService.ComputeProfileState.
+        // CachingUserService.ComputeProfileState.
         if (profile.State != ProfileState.Suspended)
         {
             profile.State = profile.HasRequiredIdentityFields()
@@ -425,10 +361,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         // Update display name on user (cross-section → IUserService)
         await _userService.UpdateDisplayNameAsync(userId, displayName, ct);
 
-        // Cache invalidation and store update handled by CachingProfileService decorator
-
-        // Check consent eligibility
-        await _onboardingEligibilityQuery.SetConsentCheckPendingIfEligibleAsync(userId, ct);
+        await _userInfoInvalidator.InvalidateAsync(userId, ct);
 
         _logger.LogInformation("User {UserId} updated their profile", userId);
 
@@ -438,40 +371,6 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
     public Task<IReadOnlyList<(Guid ProfileId, Guid UserId, long UpdatedAtTicks)>>
         GetCustomPictureInfoByUserIdsAsync(IEnumerable<Guid> userIds, CancellationToken ct = default) =>
         _profileRepository.GetCustomPictureInfoByUserIdsAsync(userIds, ct);
-
-    /// <summary>
-    /// Builds a <see cref="FullProfile"/> snapshot from repositories. Used by the
-    /// base <see cref="ProfileService"/> as the DB-backed fallback for
-    /// <see cref="SearchProfilesAsync"/>; the caching decorator overrides that
-    /// method to read from its in-memory dict instead.
-    /// </summary>
-    private async Task<IReadOnlyList<FullProfile>> BuildFullProfileSnapshotAsync(CancellationToken ct)
-    {
-        var profiles = await _profileRepository.GetAllAsync(ct);
-        if (profiles.Count == 0) return [];
-
-        var userIds = profiles.Select(p => p.UserId).ToList();
-        var users = await _userService.GetByIdsAsync(userIds, ct);
-
-        var allUserEmails = await _userEmailRepository.GetAllAsync(ct);
-        var emailsByUserId = allUserEmails
-            .GroupBy(e => e.UserId)
-            .ToDictionary(g => g.Key, g => (IReadOnlyList<UserEmail>)g.ToList());
-
-        var result = new List<FullProfile>(profiles.Count);
-        foreach (var profile in profiles)
-        {
-            if (!users.TryGetValue(profile.UserId, out var user))
-                continue;
-
-            var userEmails = emailsByUserId.TryGetValue(profile.UserId, out var list)
-                ? list
-                : Array.Empty<UserEmail>();
-            result.Add(FullProfile.Create(profile, user, profile.VolunteerHistory.ToList(), userEmails));
-        }
-
-        return result;
-    }
 
     public async Task<(bool CanAdd, int MinutesUntilResend, Guid? PendingEmailId)>
         GetEmailCooldownInfoAsync(Guid pendingEmailId, CancellationToken ct = default)
@@ -492,49 +391,13 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         return (true, 0, null);
     }
 
-    public async Task<IReadOnlyList<HumanSearchResult>> SearchProfilesAsync(
-        string query,
-        PersonSearchFields fields,
-        int limit = 10,
-        CancellationToken ct = default)
-    {
-        if (fields == PersonSearchFields.None || string.IsNullOrWhiteSpace(query) || limit <= 0)
-            return Array.Empty<HumanSearchResult>();
-
-        var snapshot = await BuildFullProfileSnapshotAsync(ct);
-
-        // Implicit scope: skip rejected profiles unconditionally.
-        // (Deleted profiles never reach FullProfile.Create because the
-        // owning User row is gone or anonymized; rejected profiles are
-        // still present and need an explicit filter.)
-        var eligible = snapshot.Where(p => !p.IsRejected).ToList();
-
-        IReadOnlyDictionary<Guid, IReadOnlyList<ContactField>>? contactFieldsByProfileId = null;
-        if ((fields & (PersonSearchFields.Bio | PersonSearchFields.Admin)) != PersonSearchFields.None)
-        {
-            contactFieldsByProfileId = await LoadContactFieldsByProfileIdAsync(ct);
-        }
-
-        return PersonSearchMatcher.Match(eligible, query, fields, contactFieldsByProfileId, limit);
-    }
-
-    private async Task<IReadOnlyDictionary<Guid, IReadOnlyList<ContactField>>>
-        LoadContactFieldsByProfileIdAsync(CancellationToken ct)
-    {
-        var all = await _contactFieldRepository.GetAllAsync(ct);
-        return all
-            .GroupBy(cf => cf.ProfileId)
-            .ToDictionary(
-                g => g.Key,
-                g => (IReadOnlyList<ContactField>)g.ToList());
-    }
-
     public async Task SaveCVEntriesAsync(Guid userId, IReadOnlyList<CVEntry> entries, CancellationToken ct = default)
     {
         var profile = await _profileRepository.GetByUserIdAsync(userId, ct);
         if (profile is null) return;
 
         await _profileRepository.ReconcileCVEntriesAsync(profile.Id, entries, ct);
+        await _userInfoInvalidator.InvalidateAsync(userId, ct);
     }
 
     public async Task<IReadOnlyList<ProfileLanguageSnapshot>> GetProfileLanguagesAsync(
@@ -548,8 +411,13 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
             l.Proficiency)).ToList();
     }
 
-    public Task SaveProfileLanguagesAsync(Guid profileId, IReadOnlyList<ProfileLanguage> languages, CancellationToken ct = default) =>
-        _profileRepository.ReplaceLanguagesAsync(profileId, languages, ct);
+    public async Task SaveProfileLanguagesAsync(Guid profileId, IReadOnlyList<ProfileLanguage> languages, CancellationToken ct = default)
+    {
+        await _profileRepository.ReplaceLanguagesAsync(profileId, languages, ct);
+        var ownerUserId = await _profileRepository.GetOwnerUserIdAsync(profileId, ct);
+        if (ownerUserId is { } userId)
+            await _userInfoInvalidator.InvalidateAsync(userId, ct);
+    }
 
     // ==========================================================================
     // Volunteer Event Profiles — cross-section reads (§15 Step 1 quarantine)
@@ -677,8 +545,8 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
     // ==========================================================================
     // Onboarding-section support methods — profile mutations that OnboardingService
     // delegates here so each section owns its DbSet writes (design-rules §2c).
-    // Cache invalidation (FullProfile refresh, nav-badge, notification meter) is
-    // handled by the CachingProfileService decorator's wrappers for these methods.
+    // Each write invalidates the UserInfo cache so downstream readers see the
+    // committed state immediately.
     // ==========================================================================
 
     public async Task<OnboardingResult> RecordConsentCheckAsync(
@@ -688,7 +556,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         if (result is not ConsentCheckStatus.Cleared and not ConsentCheckStatus.Flagged)
         {
             throw new ArgumentException(
-                $"RecordConsentCheckAsync only accepts Cleared or Flagged; use SetConsentCheckPendingAsync for the system-driven Pending transition.",
+                "RecordConsentCheckAsync only accepts Cleared or Flagged; use SetConsentCheckPendingAsync for the system-driven Pending transition.",
                 nameof(result));
         }
 
@@ -711,10 +579,11 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         profile.UpdatedAt = now;
 
         await _profileRepository.UpdateAsync(profile, ct);
+        await _userInfoInvalidator.InvalidateAsync(userId, ct);
 
         await _auditLogService.LogAsync(
             cleared ? AuditAction.ConsentCheckCleared : AuditAction.ConsentCheckFlagged,
-            nameof(Domain.Entities.Profile), userId,
+            nameof(Profile), userId,
             cleared ? "Consent check cleared" : $"Consent check flagged: {notes}",
             reviewerId);
 
@@ -744,9 +613,10 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         profile.UpdatedAt = now;
 
         await _profileRepository.UpdateAsync(profile, ct);
+        await _userInfoInvalidator.InvalidateAsync(userId, ct);
 
         await _auditLogService.LogAsync(
-            AuditAction.SignupRejected, nameof(Domain.Entities.Profile), userId,
+            AuditAction.SignupRejected, nameof(Profile), userId,
             $"Signup rejected{(string.IsNullOrWhiteSpace(reason) ? "" : $": {reason}")}",
             reviewerId);
 
@@ -768,6 +638,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         profile.UpdatedAt = now;
 
         await _profileRepository.UpdateAsync(profile, ct);
+        await _userInfoInvalidator.InvalidateAsync(userId, ct);
 
         await _auditLogService.LogAsync(
             AuditAction.VolunteerApproved, nameof(User), userId,
@@ -810,6 +681,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         profile.UpdatedAt = _clock.GetCurrentInstant();
 
         await _profileRepository.UpdateAsync(profile, ct);
+        await _userInfoInvalidator.InvalidateAsync(userId, ct);
 
         await _auditLogService.LogAsync(
             suspended ? AuditAction.MemberSuspended : AuditAction.MemberUnsuspended,
@@ -835,6 +707,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         profile.ConsentCheckStatus = ConsentCheckStatus.Pending;
         profile.UpdatedAt = _clock.GetCurrentInstant();
         await _profileRepository.UpdateAsync(profile, ct);
+        await _userInfoInvalidator.InvalidateAsync(userId, ct);
 
         _logger.LogInformation(
             "User {UserId} has all consents signed, consent check set to Pending", userId);
@@ -844,17 +717,17 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
 
     public async Task<bool> AnonymizeExpiredProfileAsync(Guid userId, CancellationToken ct = default)
     {
-        // Anonymize clears ProfilePictureData / ProfilePictureContentType in
-        // the DB and best-effort wipes the filesystem copy (phase 1 of issue
-        // nobodies-collective/Humans#527). The DB clear alone is NOT
-        // sufficient under the FS-first read path: if this delete throws,
-        // the file remains on disk and TryReadAsync would otherwise serve it
-        // indefinitely. The read-path gate in GetProfilePictureAsync (which
-        // checks the DB content-type before consulting the filesystem)
-        // closes that loop — but we still log this failure as an Error so
-        // an operator can clean up the stale file out-of-band.
+        // Anonymize clears ProfilePictureContentType in the DB and best-effort
+        // wipes the filesystem copy. The DB clear alone is NOT sufficient on
+        // its own: if this delete throws, the file remains on disk. The
+        // read-path gate in GetProfilePictureAsync (which checks the
+        // content-type column before consulting the filesystem) closes that
+        // loop — but we still log this failure as an Error so an operator can
+        // clean up the stale file out-of-band.
         var profile = await _profileRepository.GetByUserIdReadOnlyAsync(userId, ct);
         var anonymized = await _profileRepository.AnonymizeForDeletionByUserIdAsync(userId, ct);
+        if (anonymized)
+            await _userInfoInvalidator.InvalidateAsync(userId, ct);
         if (anonymized && profile?.ProfilePictureContentType is not null)
         {
             try
@@ -898,28 +771,39 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         _ => string.Empty
     };
 
-    public Task<IReadOnlySet<Guid>> SuspendForMissingConsentAsync(
+    public async Task<IReadOnlySet<Guid>> SuspendForMissingConsentAsync(
         IReadOnlyCollection<Guid> userIds,
         Instant now,
-        CancellationToken ct = default) =>
-        _profileRepository.SuspendManyAsync(userIds, now, ct);
+        CancellationToken ct = default)
+    {
+        var mutated = await _profileRepository.SuspendManyAsync(userIds, now, ct);
+        foreach (var id in mutated)
+            await _userInfoInvalidator.InvalidateAsync(id, ct);
+        return mutated;
+    }
 
-    public Task<IReadOnlyList<(Guid UserId, MembershipTier NewTier)>>
+    public async Task<IReadOnlyList<(Guid UserId, MembershipTier NewTier)>>
         DowngradeTierForExpiredAsync(
             MembershipTier currentTier,
             IReadOnlyCollection<Guid> userIdsToKeep,
             IReadOnlyDictionary<Guid, MembershipTier> fallbackTierByUser,
             Instant now,
-            CancellationToken ct = default) =>
-        _profileRepository.DowngradeTierForExpiredAsync(
+            CancellationToken ct = default)
+    {
+        var downgrades = await _profileRepository.DowngradeTierForExpiredAsync(
             currentTier, userIdsToKeep, fallbackTierByUser, now, ct);
+        foreach (var (userId, _) in downgrades)
+            await _userInfoInvalidator.InvalidateAsync(userId, ct);
+        return downgrades;
+    }
 
-    // Cache invalidation (FullProfile refresh for both source and target) is
-    // handled by the CachingProfileService decorator's wrapper for this
-    // method — ProfileService is the inner / non-cached implementation.
-    public Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
-        CancellationToken ct) =>
-        _profileRepository.ReassignSubAggregatesToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
+    public async Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
+        CancellationToken ct)
+    {
+        await _profileRepository.ReassignSubAggregatesToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
+        await _userInfoInvalidator.InvalidateAsync(sourceUserId, ct);
+        await _userInfoInvalidator.InvalidateAsync(targetUserId, ct);
+    }
 
     public async Task<bool> SetIbanAsync(Guid userId, string? iban, CancellationToken ct = default)
     {
@@ -937,10 +821,11 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         profile.Iban = normalized;
         profile.UpdatedAt = _clock.GetCurrentInstant();
         await _profileRepository.UpdateAsync(profile, ct);
+        await _userInfoInvalidator.InvalidateAsync(userId, ct);
 
         await _auditLogService.LogAsync(
             isClearing ? AuditAction.IbanRemove : AuditAction.IbanSet,
-            nameof(Domain.Entities.Profile), userId,
+            nameof(Profile), userId,
             isClearing ? "IBAN removed" : "IBAN set",
             userId);
 

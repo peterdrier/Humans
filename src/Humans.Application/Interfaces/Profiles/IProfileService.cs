@@ -1,9 +1,6 @@
-using Humans.Application.Architecture;
-using Humans.Application.Interfaces;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Users;
-using Humans.Application.Services.Profiles;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
@@ -14,43 +11,20 @@ namespace Humans.Application.Interfaces.Profiles;
 /// Service for managing profile data and profile-side merge fan-out.
 /// </summary>
 /// <remarks>
-/// Surface-budget recent history (newest first, last 3 only — see memory/code/surface-budget-history-trim.md):
-/// <list type="bullet">
-///   <item>27→24 — PR #553 follow-up: dropped 3 cross-section accessors (GetConsentReviewPendingCountAsync, GetNotApprovedAndNotSuspendedCountAsync, GetActiveApprovedUserIdsAsync). Callers now read UserInfo via IUserService.</item>
-///   <item>32→27 — PR #553: drained 5 single-caller DB readers + reimplemented 3 multi-caller readers over the cached UserInfo snapshot. ReviewQueueData retyped to carry UserInfo.</item>
-///   <item>2026-05-13 — 31→32 (issue #702): added GetProfilePictureMigrationSnapshotAsync for the DB→FS picture migration verification page.</item>
-/// </list>
+/// SurfaceBudget intentionally removed for the duration of the Users+Profile
+/// section merge — the interface is shrinking as its surface migrates onto
+/// IUserService over the next several PRs and is slated for deletion when the
+/// merge completes. Per-PR budget churn is not useful while that is in flight.
 /// </remarks>
-[SurfaceBudget(24)]
 public interface IProfileService : IApplicationService, IUserMerge
 {
-    Task<Profile?> GetProfileAsync(Guid userId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns the denormalized <see cref="FullProfile"/> projection for the
-    /// given user, stitched from Profile + User + CV entries. The caching
-    /// decorator serves dict hits synchronously; the base implementation loads
-    /// from repositories each call.
-    /// </summary>
-    ValueTask<FullProfile?> GetFullProfileAsync(Guid userId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Batched profile fetch keyed by user id. Missing users are absent
-    /// from the returned dictionary. Used by cross-section services that
-    /// need to stitch profile slices in memory instead of pulling them
-    /// through a cross-domain <c>.Include</c> chain.
-    /// </summary>
-    Task<IReadOnlyDictionary<Guid, Profile>> GetByUserIdsAsync(
-        IReadOnlyCollection<Guid> userIds,
-        CancellationToken ct = default);
-
     /// <summary>
     /// Issue #635 (§15i): idempotently materialize a <see cref="ProfileState.Stub"/>
     /// Profile row for the given user. Called by User-creation paths
     /// (<c>AccountController.ExternalLoginCallback</c>, <c>AccountController.CompleteSignup</c>,
     /// <c>AccountProvisioningService.FindOrCreateUserByEmailAsync</c>) so cross-
     /// section reads can rely on a non-null Profile pointer. No-op if a profile
-    /// already exists. The caching decorator refreshes the FullProfile entry
+    /// already exists. The caching decorator refreshes the UserInfo entry
     /// after the write so downstream reads see the new Stub immediately.
     /// </summary>
     Task EnsureStubProfileAsync(Guid userId, CancellationToken ct = default);
@@ -68,14 +42,13 @@ public interface IProfileService : IApplicationService, IUserMerge
         CancellationToken ct = default);
 
     /// <summary>
-    /// Returns the profile picture for the given profile, reading from the
-    /// filesystem store first and falling back to the DB column. On a
-    /// DB-fallback hit the bytes are migrated to the filesystem store so
-    /// subsequent requests use the fast path. Returns <c>null</c> when the
-    /// profile has no picture or has been anonymized (the DB content-type
-    /// column is null), so a stale on-disk file left behind by a failed
-    /// anonymization cleanup is not served. Centralizing the read path here
-    /// keeps controllers free of <see cref="IFileStorage"/>.
+    /// Returns the profile picture for the given profile, read from the
+    /// filesystem store. The DB <c>ProfilePictureContentType</c> column is
+    /// consulted first as a GDPR gate — if null (no picture, or anonymized)
+    /// the call returns <c>null</c> without touching disk so a stale on-disk
+    /// file left behind by a failed anonymization cleanup is not served.
+    /// Returns <c>null</c> when the file is missing on disk. Centralizing
+    /// the read path here keeps controllers free of <see cref="IFileStorage"/>.
     /// </summary>
     Task<(byte[] Data, string ContentType)?> GetProfilePictureAsync(Guid profileId, CancellationToken ct = default);
 
@@ -94,7 +67,7 @@ public interface IProfileService : IApplicationService, IUserMerge
 
     /// <summary>
     /// Persists a new custom profile picture for the user's profile. No-op (logs a
-    /// warning) if the user has no profile yet. Invalidates the FullProfile cache
+    /// warning) if the user has no profile yet. Invalidates the UserInfo cache
     /// entry via the caching decorator. Callers are responsible for validating and
     /// resizing the image before calling.
     /// </summary>
@@ -105,28 +78,6 @@ public interface IProfileService : IApplicationService, IUserMerge
 
     Task<IReadOnlyList<(Guid ProfileId, Guid UserId, long UpdatedAtTicks)>>
         GetCustomPictureInfoByUserIdsAsync(IEnumerable<Guid> userIds, CancellationToken ct = default);
-
-    /// <summary>
-    /// Single canonical person-search method. Matches <paramref name="query"/>
-    /// against the buckets named by <paramref name="fields"/> and returns up
-    /// to <paramref name="limit"/> matches in unspecified order — callers
-    /// sort + take(N) at the presentation layer per
-    /// <c>memory/architecture/display-sort-in-controllers.md</c>.
-    ///
-    /// <para>Implicit scope: the service always filters to "not rejected,
-    /// not deleted" — the only population anyone is searching. Emergency
-    /// contact data is never reachable regardless of which bits are set.</para>
-    ///
-    /// <para>Auth boundary is the controller per design-rules §6: services
-    /// are auth-free, so a non-admin endpoint passing
-    /// <see cref="PersonSearchFields.Admin"/> is a programmer error caught
-    /// in code review, not a runtime check.</para>
-    /// </summary>
-    Task<IReadOnlyList<HumanSearchResult>> SearchProfilesAsync(
-        string query,
-        PersonSearchFields fields,
-        int limit = 10,
-        CancellationToken ct = default);
 
     /// <summary>
     /// Reconciles the user's CV entries (volunteer history) with the provided set.
@@ -149,7 +100,7 @@ public interface IProfileService : IApplicationService, IUserMerge
     // Onboarding-section support methods — exposed so OnboardingService can
     // coordinate profile mutations without touching the Profile section's
     // DbSet directly (design-rules §2c). Each method owns its own cache
-    // invalidation (FullProfile refresh, nav-badge, notification meter) so the
+    // invalidation (UserInfo refresh, nav-badge, notification meter) so the
     // Onboarding orchestrator has no cache responsibilities (§15i goal).
     // ==========================================================================
 

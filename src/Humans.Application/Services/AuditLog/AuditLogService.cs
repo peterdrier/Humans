@@ -266,7 +266,7 @@ public sealed class AuditLogService : IAuditLogService, IUserDataContributor
             var sourceIds = await _userService.GetMergedSourceIdsAsync(userId.Value, ct);
             if (sourceIds.Count == 0)
             {
-                userIds = new[] { userId.Value };
+                userIds = [userId.Value];
             }
             else
             {
@@ -321,8 +321,8 @@ public sealed class AuditLogService : IAuditLogService, IUserDataContributor
     }
 
     public Task<IReadOnlyList<Guid>> GetEntityIdsForActionInWindowAsync(
-        NodaTime.Instant windowStart,
-        NodaTime.Instant windowEnd,
+        Instant windowStart,
+        Instant windowEnd,
         AuditAction action,
         CancellationToken ct = default) =>
         _repo.GetEntityIdsForActionInWindowAsync(windowStart, windowEnd, action, ct);

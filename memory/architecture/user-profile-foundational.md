@@ -20,4 +20,4 @@ Before adding a dependency on `UserService` or `ProfileService` from a higher-le
 
 If a dependency seems unavoidable, the feature is probably in the wrong service — check whether it belongs on a higher-level orchestrator instead.
 
-Interface narrowing (e.g., Profile injecting `IOnboardingEligibilityQuery` instead of `IOnboardingService`) is acceptable but doesn't fix the direction — only a loose-coupling mitigation. Prefer true inversion where practical.
+Interface narrowing (e.g., Profile injecting a narrow query interface instead of a full service) is acceptable but doesn't fix the direction — only a loose-coupling mitigation. Prefer true inversion: relocate the predicate/write to the leaf that owns the field. See `memory/architecture/no-leaf-to-director-callbacks.md`.

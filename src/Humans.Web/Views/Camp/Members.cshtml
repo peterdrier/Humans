@@ -154,7 +154,7 @@
                                 <div class="d-flex gap-2">
                                     @* Defense-in-depth: only render approve/reject when status is actually Pending.
                                        Service-side guard in CampService.ApproveCampMemberAsync remains. *@
-                                    @if (pending.Status == Humans.Domain.Enums.CampMemberStatus.Pending)
+                                    @if (pending.Status == CampMemberStatus.Pending)
                                     {
                                         <form asp-action="ApproveMembership" asp-route-slug="@Model.Slug" asp-route-campMemberId="@pending.CampMemberId" method="post" class="d-inline">
                                             @Html.AntiForgeryToken()

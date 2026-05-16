@@ -43,9 +43,9 @@ public class IssuesApiController : ControllerBase
         [FromQuery] int limit = 50)
     {
         var filter = new IssueListFilter(
-            Statuses: status.HasValue ? new[] { status.Value } : null,
-            Categories: category.HasValue ? new[] { category.Value } : null,
-            Sections: section is not null ? new string?[] { section } : null,
+            Statuses: status.HasValue ? [status.Value] : null,
+            Categories: category.HasValue ? [category.Value] : null,
+            Sections: section is not null ? [section] : null,
             ReporterUserId: reporter,
             AssigneeUserId: assignee,
             SearchText: string.IsNullOrWhiteSpace(search) ? null : search,
@@ -54,7 +54,7 @@ public class IssuesApiController : ControllerBase
         var issues = await _issues.GetIssueListAsync(
             filter,
             viewerUserId: Guid.Empty,
-            viewerRoles: Array.Empty<string>(),
+            viewerRoles: [],
             viewerIsAdmin: true);
 
         return Ok(issues.Select(MapList));

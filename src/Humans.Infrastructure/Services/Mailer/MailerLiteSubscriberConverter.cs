@@ -77,9 +77,9 @@ public sealed class MailerLiteSubscriberConverter : JsonConverter<MailerLiteSubs
         if (!obj.TryGetProperty(name, out var el) || el.ValueKind != JsonValueKind.String) return null;
         var raw = el.GetString();
         if (string.IsNullOrEmpty(raw)) return null;
-        var dt = System.DateTime.ParseExact(raw, "yyyy-MM-dd HH:mm:ss",
+        var dt = DateTime.ParseExact(raw, "yyyy-MM-dd HH:mm:ss",
             System.Globalization.CultureInfo.InvariantCulture,
             System.Globalization.DateTimeStyles.AssumeUniversal | System.Globalization.DateTimeStyles.AdjustToUniversal);
-        return Instant.FromDateTimeUtc(System.DateTime.SpecifyKind(dt, System.DateTimeKind.Utc));
+        return Instant.FromDateTimeUtc(DateTime.SpecifyKind(dt, DateTimeKind.Utc));
     }
 }

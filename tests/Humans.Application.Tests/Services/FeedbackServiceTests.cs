@@ -18,7 +18,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Xunit;
 using FeedbackApplicationService = Humans.Application.Services.Feedback.FeedbackService;
 
 namespace Humans.Application.Tests.Services;
@@ -32,7 +31,6 @@ public class FeedbackServiceTests : IDisposable
     private readonly IUserService _userService;
     private readonly IUserEmailService _userEmailService;
     private readonly ITeamService _teamService;
-    private readonly IProfileService _profileService;
     private readonly INotificationService _notificationService;
     private readonly INavBadgeCacheInvalidator _navBadge;
     private readonly IFeedbackRepository _repository;
@@ -69,6 +67,7 @@ public class FeedbackServiceTests : IDisposable
                 var id = (Guid)call[0]!;
                 return Task.FromResult(_dbContext.Users.AsNoTracking().FirstOrDefault(u => u.Id == id));
             });
+        _userService.StubGetUserInfosFromContext(_dbContext);
 
         _userEmailService = Substitute.For<IUserEmailService>();
         _userEmailService
@@ -85,28 +84,49 @@ public class FeedbackServiceTests : IDisposable
 
         _teamService = Substitute.For<ITeamService>();
         _teamService
-            .GetTeamNamesByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(call =>
+            .GetTeamsAsync(Arg.Any<CancellationToken>())
+            .Returns(_ =>
             {
-                var ids = (IReadOnlyCollection<Guid>)call[0]!;
-                IReadOnlyDictionary<Guid, string> dict = _dbContext.Teams
+                var teams = _dbContext.Teams
+                    .Include(t => t.Members)
                     .AsNoTracking()
-                    .Where(t => ids.Contains(t.Id))
-                    .ToDictionary(t => t.Id, t => t.Name);
+                    .ToList();
+                IReadOnlyDictionary<Guid, TeamInfo> dict = teams.ToDictionary(
+                    t => t.Id,
+                    t => new TeamInfo(
+                        t.Id, t.Name, t.Description, t.Slug,
+                        t.IsActive, t.IsSystemTeam, t.SystemTeamType, t.RequiresApproval,
+                        t.IsPublicPage, t.IsHidden, t.IsPromotedToDirectory,
+                        t.CreatedAt,
+                        t.Members
+                            .Where(m => m.LeftAt is null)
+                            .Select(m => new TeamMemberInfo(
+                                m.Id, m.UserId, string.Empty, null, null, m.Role, m.JoinedAt))
+                            .ToList(),
+                        t.ParentTeamId));
                 return Task.FromResult(dict);
             });
-
-        _profileService = Substitute.For<IProfileService>();
-        _profileService
-            .GetByUserIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _teamService
+            .GetTeamAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(call =>
             {
-                var ids = (IReadOnlyCollection<Guid>)call[0]!;
-                IReadOnlyDictionary<Guid, Profile> dict = _dbContext.Profiles
+                var id = call.ArgAt<Guid>(0);
+                var t = _dbContext.Teams
+                    .Include(team => team.Members)
                     .AsNoTracking()
-                    .Where(p => ids.Contains(p.UserId))
-                    .ToDictionary(p => p.UserId);
-                return Task.FromResult(dict);
+                    .FirstOrDefault(team => team.Id == id);
+                if (t is null) return Task.FromResult<TeamInfo?>(null);
+                return Task.FromResult<TeamInfo?>(new TeamInfo(
+                    t.Id, t.Name, t.Description, t.Slug,
+                    t.IsActive, t.IsSystemTeam, t.SystemTeamType, t.RequiresApproval,
+                    t.IsPublicPage, t.IsHidden, t.IsPromotedToDirectory,
+                    t.CreatedAt,
+                    t.Members
+                        .Where(m => m.LeftAt is null)
+                        .Select(m => new TeamMemberInfo(
+                            m.Id, m.UserId, string.Empty, null, null, m.Role, m.JoinedAt))
+                        .ToList(),
+                    t.ParentTeamId));
             });
 
         _notificationService = Substitute.For<INotificationService>();
@@ -115,7 +135,7 @@ public class FeedbackServiceTests : IDisposable
         _repository = new FeedbackRepository(new TestDbContextFactory(options));
 
         _service = new FeedbackApplicationService(
-            _repository, _userService, _userEmailService, _teamService, _profileService,
+            _repository, _userService, _userEmailService, _teamService,
             _emailService, _notificationService, _auditLog, _navBadge, _clock, env,
             NullLogger<FeedbackApplicationService>.Instance);
     }

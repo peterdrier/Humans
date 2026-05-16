@@ -3,9 +3,11 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application;
+using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
+using Humans.Application.Services.Profiles;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 
@@ -20,7 +22,7 @@ namespace Humans.Infrastructure.Services.Users;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Pattern mirrors <c>CachingProfileService</c>: dict hits served
+/// Pattern mirrors <c>CachingUserService</c>: dict hits served
 /// synchronously, cache miss refills via the inner Scoped
 /// <see cref="IUserService"/>, every write through this surface delegates and
 /// then refreshes the affected entry. Identity-machinery write paths
@@ -57,6 +59,8 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
     private readonly ICommunicationPreferenceRepository _communicationPreferenceRepository;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<CachingUserService> _logger;
+
+    public bool IsWarmedUp { get; private set; }
 
     public CachingUserService(
         IUserRepository userRepository,
@@ -102,6 +106,189 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
     /// <inheritdoc cref="IUserService.GetAllUserInfos" />
     public IReadOnlyCollection<UserInfo> GetAllUserInfos() => Values.ToArray();
 
+    /// <inheritdoc cref="IUserService.GetUserInfosAsync" />
+    public async ValueTask<IReadOnlyDictionary<Guid, UserInfo>> GetUserInfosAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
+    {
+        var result = new Dictionary<Guid, UserInfo>(userIds.Count);
+        List<Guid>? misses = null;
+        foreach (var id in userIds)
+        {
+            if (TryGet(id, out var hit))
+                result[id] = hit;
+            else
+                (misses ??= []).Add(id);
+        }
+
+        if (misses is not null)
+        {
+            foreach (var id in misses)
+            {
+                var info = await LoadAndCacheAsync(id, ct);
+                if (info is not null)
+                    result[id] = info;
+            }
+        }
+
+        return result;
+    }
+
+    /// <inheritdoc cref="IUserService.SearchUsersAsync" />
+    public Task<IReadOnlyList<HumanSearchResult>> SearchUsersAsync(
+        string query, PersonSearchFields fields, int limit = 10, CancellationToken ct = default)
+    {
+        if (fields == PersonSearchFields.None || string.IsNullOrWhiteSpace(query) || limit <= 0)
+            return Task.FromResult<IReadOnlyList<HumanSearchResult>>([]);
+
+        var includeAdmin = (fields & PersonSearchFields.Admin) != PersonSearchFields.None;
+
+        // Admin-only exact-UserId lookup. Lets an admin paste a UserId from
+        // logs / audit trails / URLs and jump straight to that human. Public
+        // callers fall through to text matching so they can't enumerate IDs.
+        if (includeAdmin && Guid.TryParse(query, out var idGuid))
+        {
+            if (TryGet(idGuid, out var byId) && byId.Profile is not null && byId.Profile.RejectedAt is null)
+            {
+                return Task.FromResult<IReadOnlyList<HumanSearchResult>>([
+                    new HumanSearchResult(
+                        UserId: byId.Id,
+                        ProfileId: byId.Profile.Id,
+                        BurnerName: byId.BurnerName,
+                        ProfilePictureUrl: byId.ProfilePictureUrl,
+                        MatchField: "User ID",
+                        MatchSnippet: null,
+                        MatchedEmail: null)
+                ]);
+            }
+            return Task.FromResult<IReadOnlyList<HumanSearchResult>>([]);
+        }
+
+        var results = new List<HumanSearchResult>();
+        foreach (var u in Values)
+        {
+            // Must have a profile and not be rejected to be searchable.
+            if (u.Profile is null) continue;
+            if (u.Profile.RejectedAt is not null) continue;
+
+            // Public-only callers never see suspended humans. Admin callers
+            // do, because admin search is the primary tool for finding a
+            // suspended person to lift suspension etc.
+            if (!includeAdmin && u.IsSuspended) continue;
+
+            // Public-only: only approved profiles surface. Admin: pre-approval
+            // / consent-pending profiles are valid search targets.
+            if (!includeAdmin && !u.Profile.IsApproved) continue;
+
+            var match = TryMatchBuckets(u, query, fields);
+            if (match is null) continue;
+
+            results.Add(new HumanSearchResult(
+                UserId: u.Id,
+                ProfileId: u.Profile.Id,
+                BurnerName: u.BurnerName,
+                ProfilePictureUrl: u.ProfilePictureUrl,
+                MatchField: match.Value.Field,
+                MatchSnippet: match.Value.Snippet,
+                MatchedEmail: match.Value.MatchedEmail));
+
+            if (results.Count >= limit) break;
+        }
+
+        return Task.FromResult<IReadOnlyList<HumanSearchResult>>(results);
+    }
+
+    /// <summary>
+    /// Per-record predicate for <see cref="SearchUsersAsync"/>. Returns the
+    /// first bucket that matches <paramref name="query"/>, or null if none do.
+    /// Emergency-contact fields are skipped by every branch regardless of
+    /// which bits are set.
+    /// </summary>
+    private static (string Field, string? Snippet, string? MatchedEmail)?
+        TryMatchBuckets(UserInfo u, string query, PersonSearchFields fields)
+    {
+        // Callers guarantee u.Profile is not null (filtered upstream).
+        var p = u.Profile!;
+        var includeName = (fields & PersonSearchFields.Name) != PersonSearchFields.None;
+        var includeBio = (fields & PersonSearchFields.Bio) != PersonSearchFields.None;
+        var includeAdmin = (fields & PersonSearchFields.Admin) != PersonSearchFields.None;
+
+        // ── Name bucket ─────────────────────────────────────────────
+        if (includeName)
+        {
+            // BurnerName only — see memory/architecture/burnername-is-the-display-name.md.
+            if (!string.IsNullOrEmpty(p.BurnerName) &&
+                p.BurnerName.Contains(query, StringComparison.OrdinalIgnoreCase))
+                return ("Name", null, null);
+        }
+
+        // ── Bio bucket (public long-form + short fields + public ContactFields) ──
+        if (includeBio)
+        {
+            if (p.City?.Contains(query, StringComparison.OrdinalIgnoreCase) == true)
+                return ("City", p.City, null);
+
+            if (p.ContributionInterests?.Contains(query, StringComparison.OrdinalIgnoreCase) == true)
+                return ("Interests", GetSnippet(p.ContributionInterests, query), null);
+
+            if (p.Bio?.Contains(query, StringComparison.OrdinalIgnoreCase) == true)
+                return ("Bio", GetSnippet(p.Bio, query), null);
+
+            if (p.Pronouns?.Contains(query, StringComparison.OrdinalIgnoreCase) == true)
+                return ("Pronouns", p.Pronouns, null);
+
+            foreach (var v in p.VolunteerHistory)
+            {
+                if (v.EventName.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                    v.Description?.Contains(query, StringComparison.OrdinalIgnoreCase) == true)
+                    return ("Burner CV", v.EventName, null);
+            }
+
+            foreach (var cf in p.ContactFields)
+            {
+                if (cf.Visibility != ContactFieldVisibility.AllActiveProfiles) continue;
+                if (cf.Value.Contains(query, StringComparison.OrdinalIgnoreCase))
+                    return (DisplayLabel(cf), cf.Value, null);
+            }
+        }
+
+        // ── Admin bucket (verified emails + non-public ContactFields) ───────────
+        if (includeAdmin)
+        {
+            foreach (var email in u.AllVerifiedEmails)
+            {
+                if (email.Contains(query, StringComparison.OrdinalIgnoreCase))
+                    return ("Email", null, email);
+            }
+
+            foreach (var cf in p.ContactFields)
+            {
+                // Public ContactFields were already handled above (when
+                // the Bio bit was on). Admin bucket covers the remainder.
+                if (cf.Visibility == ContactFieldVisibility.AllActiveProfiles) continue;
+                if (cf.Value.Contains(query, StringComparison.OrdinalIgnoreCase))
+                    return (DisplayLabel(cf), cf.Value, cf.Value);
+            }
+        }
+
+        return null;
+    }
+
+    private static string DisplayLabel(ContactFieldInfo cf) =>
+        !string.IsNullOrWhiteSpace(cf.CustomLabel) ? cf.CustomLabel! : cf.FieldType.ToString();
+
+    private static string GetSnippet(string text, string query, int contextChars = 60)
+    {
+        var index = text.IndexOf(query, StringComparison.OrdinalIgnoreCase);
+        if (index < 0) return text.Length <= contextChars * 2 ? text : text[..(contextChars * 2)] + "...";
+
+        var start = Math.Max(0, index - contextChars);
+        var end = Math.Min(text.Length, index + query.Length + contextChars);
+        var snippet = text[start..end];
+        if (start > 0) snippet = "..." + snippet;
+        if (end < text.Length) snippet += "...";
+        return snippet;
+    }
+
     /// <summary>
     /// Rebuilds the cache entry for <paramref name="userId"/> directly from
     /// repositories. If the user no longer exists, the entry is removed.
@@ -117,15 +304,15 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
 
         var userEmails = await _userEmailRepository.GetByUserIdReadOnlyAsync(userId, ct);
         var participations = await _userRepository.GetEventParticipationsByUserIdAsync(userId, ct);
-        var loginsMap = await _userRepository.GetExternalLoginsByUserIdsAsync(new[] { userId }, ct);
+        var loginsMap = await _userRepository.GetExternalLoginsByUserIdsAsync([userId], ct);
         var externalLogins = loginsMap.TryGetValue(userId, out var logins)
             ? logins
-            : Array.Empty<(string Provider, string ProviderKey)>();
+            : [];
 
         var profile = await _profileRepository.GetByUserIdReadOnlyAsync(userId, ct);
-        IReadOnlyList<ContactField> contactFields = Array.Empty<ContactField>();
-        IReadOnlyList<ProfileLanguage> languages = Array.Empty<ProfileLanguage>();
-        IReadOnlyList<VolunteerHistoryEntry> volunteerHistory = Array.Empty<VolunteerHistoryEntry>();
+        IReadOnlyList<ContactField> contactFields = [];
+        IReadOnlyList<ProfileLanguage> languages = [];
+        IReadOnlyList<VolunteerHistoryEntry> volunteerHistory = [];
         if (profile is not null)
         {
             contactFields = await _contactFieldRepository.GetByProfileIdReadOnlyAsync(profile.Id, ct);
@@ -151,7 +338,13 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
     public async Task WarmAllAsync(CancellationToken ct = default)
     {
         var users = await _userRepository.GetAllAsync(ct);
-        if (users.Count == 0) return;
+        if (users.Count == 0)
+        {
+            // Empty system (fresh dev DB / new deploy) is a legitimate warm
+            // state — flag flips, jobs may safely run against an empty cache.
+            IsWarmedUp = true;
+            return;
+        }
 
         var userIds = users.Select(u => u.Id).ToList();
 
@@ -181,32 +374,34 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
         foreach (var user in users)
         {
             var emails = emailsByUser.TryGetValue(user.Id, out var es)
-                ? es : Array.Empty<UserEmail>();
+                ? es : [];
             var logins = loginsByUser.TryGetValue(user.Id, out var ls)
-                ? ls : Array.Empty<(string Provider, string ProviderKey)>();
+                ? ls : [];
             var participations = participationsByUser.TryGetValue(user.Id, out var ps)
-                ? ps : (IReadOnlyList<EventParticipation>)Array.Empty<EventParticipation>();
+                ? ps : (IReadOnlyList<EventParticipation>)[];
 
             profileByUser.TryGetValue(user.Id, out var profile);
-            IReadOnlyList<ContactField> contactFields = Array.Empty<ContactField>();
-            IReadOnlyList<ProfileLanguage> languages = Array.Empty<ProfileLanguage>();
-            IReadOnlyList<VolunteerHistoryEntry> volunteerHistory = Array.Empty<VolunteerHistoryEntry>();
+            IReadOnlyList<ContactField> contactFields = [];
+            IReadOnlyList<ProfileLanguage> languages = [];
+            IReadOnlyList<VolunteerHistoryEntry> volunteerHistory = [];
             if (profile is not null)
             {
                 contactFields = contactFieldsByProfile.TryGetValue(profile.Id, out var cf)
-                    ? cf : Array.Empty<ContactField>();
+                    ? cf : [];
                 languages = profile.Languages.ToList();
                 volunteerHistory = profile.VolunteerHistory.ToList();
             }
 
             var preferences = preferencesByUser.TryGetValue(user.Id, out var pp)
-                ? pp : Array.Empty<CommunicationPreference>();
+                ? pp : [];
 
             Set(user.Id, UserInfo.Create(
                 user, emails, participations, logins,
                 profile, contactFields, languages, volunteerHistory,
                 preferences));
         }
+
+        IsWarmedUp = true;
     }
 
     // ==========================================================================
@@ -222,7 +417,7 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
     {
         _logger.LogDebug(
             "UserInfo invalidate userId={UserId} caller={CallerMember} file={CallerFile}",
-            userId, memberName, System.IO.Path.GetFileName(filePath));
+            userId, memberName, Path.GetFileName(filePath));
 
         return RefreshEntryAsync(userId, ct);
     }
@@ -336,6 +531,18 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
         await RefreshEntryAsync(userId, ct);
     }
 
+    public async Task SetPreferredLanguageAsync(Guid userId, string preferredLanguage, CancellationToken ct = default)
+    {
+        await WithInnerAsync(inner => inner.SetPreferredLanguageAsync(userId, preferredLanguage, ct));
+        await RefreshEntryAsync(userId, ct);
+    }
+
+    public async Task SetICalTokenAsync(Guid userId, Guid token, CancellationToken ct = default)
+    {
+        await WithInnerAsync(inner => inner.SetICalTokenAsync(userId, token, ct));
+        await RefreshEntryAsync(userId, ct);
+    }
+
     public async Task<bool> SetDeletionPendingAsync(
         Guid userId, Instant requestedAt, Instant scheduledFor, Instant? eligibleAfter,
         CancellationToken ct = default)
@@ -402,7 +609,7 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
     public async Task<string?> PurgeOwnDataAsync(Guid userId, CancellationToken ct = default)
     {
         var result = await WithInnerAsync(inner => inner.PurgeOwnDataAsync(userId, ct));
-        // Inner already invoked IFullProfileInvalidator on success; we refresh
+        // Inner already invoked IUserInfoInvalidator on success; we refresh
         // our own dict whether or not the row existed (RefreshEntryAsync removes
         // the entry when the user is gone).
         await RefreshEntryAsync(userId, ct);

@@ -4,7 +4,6 @@ using Humans.Application.Services.Gdpr;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
-using Xunit;
 
 namespace Humans.Application.Tests.Services.Gdpr;
 

@@ -14,14 +14,11 @@ using Microsoft.Extensions.Localization;
 using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Gdpr;
-using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using MemberApplication = Humans.Domain.Entities.Application;
 using Humans.Web.Authorization;
 using Humans.Web.Extensions;
 using Humans.Web.Models;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using NodaTime;
@@ -39,7 +36,6 @@ using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Services.Profiles;
-using Humans.Domain.Helpers;
 
 // RoleAssignment cross-domain nav properties (User, CreatedByUser) are [Obsolete] —
 // RoleAssignmentService stitches them in memory from IUserService so controllers can
@@ -112,6 +108,7 @@ public class ProfileController : HumansControllerBase
     };
 
     public ProfileController(
+        IUserService userService,
         UserManager<User> userManager,
         IProfileService profileService,
         IContactFieldService contactFieldService,
@@ -136,7 +133,6 @@ public class ProfileController : HumansControllerBase
         IMemoryCache cache,
         IClock clock,
         IAuthorizationService authorizationService,
-        IUserService userService,
         IConsentService consentService,
         IApplicationDecisionService applicationDecisionService,
         IAccountDeletionService accountDeletionService,
@@ -144,7 +140,7 @@ public class ProfileController : HumansControllerBase
         IHttpClientFactory httpClientFactory,
         SignInManager<User> signInManager,
         IOptions<GoogleWorkspaceOptions> googleWorkspaceOptions)
-        : base(userManager)
+        : base(userService)
     {
         _userManager = userManager;
         _profileService = profileService;
@@ -191,9 +187,8 @@ public class ProfileController : HumansControllerBase
     private async Task<IReadOnlyList<AdminHumanRow>> BuildAdminHumansAsync(
         string? search, string? statusFilter, CancellationToken ct)
     {
-        var allUsers = await _userService.GetAllUsersAsync(ct);
+        var allUsers = _userService.GetAllUserInfos();
         var allUserIds = allUsers.Select(u => u.Id).ToList();
-        var profilesByUserId = await _profileService.GetByUserIdsAsync(allUserIds, ct);
         var notificationEmails =
             await _userEmailService.GetNotificationEmailsByUserIdsAsync(allUserIds, ct);
 
@@ -204,7 +199,7 @@ public class ProfileController : HumansControllerBase
             // PersonSearchFields.AdminAll is appropriate here. Limit large
             // enough that "show me every match" is the practical effect at
             // ~500-user scale; the controller paginates afterward.
-            var searchResults = await _profileService.SearchProfilesAsync(
+            var searchResults = await _userService.SearchUsersAsync(
                 search, PersonSearchFields.AdminAll, limit: 500, ct);
 
             // Email-direct match isn't covered by the matcher's verified-emails
@@ -224,7 +219,6 @@ public class ProfileController : HumansControllerBase
 
         return await AdminHumanListAssembler.AssembleAsync(
             allUsers,
-            profilesByUserId,
             notificationEmails,
             searchUserIds,
             statusFilter,
@@ -240,28 +234,28 @@ public class ProfileController : HumansControllerBase
     [HttpGet("Me")]
     public async Task<IActionResult> Me(CancellationToken ct)
     {
-        var user = await GetCurrentUserAsync();
-        if (user is null)
+        var info = await GetCurrentUserInfoAsync(ct);
+        if (info is null)
             return NotFound();
 
-        var profile = (await _userService.GetUserInfoAsync(user.Id, ct))?.Profile;
-        var snapshot = await _membershipCalculator.GetMembershipSnapshotAsync(user.Id, ct);
+        var profile = info.Profile;
+        var snapshot = await _membershipCalculator.GetMembershipSnapshotAsync(info.Id, ct);
         var pendingConsentCount = snapshot.PendingConsentCount;
 
-        var applications = await _applicationDecisionService.GetUserApplicationsAsync(user.Id, ct);
+        var applications = await _applicationDecisionService.GetUserApplicationsAsync(info.Id, ct);
         var latestApplication = applications.Count > 0 ? applications[0] : null;
 
-        var campaignGrants = await _campaignService.GetActiveOrCompletedGrantsForUserAsync(user.Id, ct);
+        var campaignGrants = await _campaignService.GetActiveOrCompletedGrantsForUserAsync(info.Id, ct);
 
         var viewModel = new ProfileViewModel
         {
             Id = profile?.Id ?? Guid.Empty,
-            UserId = user.Id,
+            UserId = info.Id,
             HasPendingConsents = pendingConsentCount > 0,
             PendingConsentCount = pendingConsentCount,
             IsApproved = profile?.IsApproved ?? false,
             IsOwnProfile = true,
-            DisplayName = user.DisplayName,
+            DisplayName = info.DisplayName,
             CampaignGrants = campaignGrants,
         };
 
@@ -279,7 +273,7 @@ public class ProfileController : HumansControllerBase
     [HttpGet("Me/Edit")]
     public async Task<IActionResult> Edit([FromQuery] bool preview = false, CancellationToken ct = default)
     {
-        var user = await GetCurrentUserAsync();
+        var user = await _userManager.GetUserAsync(User);
         if (user is null)
             return NotFound();
 
@@ -289,7 +283,7 @@ public class ProfileController : HumansControllerBase
         var applications = await _applicationDecisionService.GetUserApplicationsAsync(user.Id, ct);
         var allShiftTags = await _shiftMgmt.GetTagsAsync();
         var preferredShiftTags = await _shiftMgmt.GetVolunteerTagPreferencesAsync(user.Id);
-        var externalLogins = await UserManager.GetLoginsAsync(user);
+        var externalLogins = await _userManager.GetLoginsAsync(user);
 
         var viewModel = ProfileEditViewModelBuilder.Build(
             info,
@@ -320,7 +314,7 @@ public class ProfileController : HumansControllerBase
             return View(model);
         }
 
-        var user = await GetCurrentUserAsync();
+        var user = await GetCurrentUserInfoAsync();
         if (user is null)
             return NotFound();
 
@@ -441,6 +435,10 @@ public class ProfileController : HumansControllerBase
             user.Id, model.BurnerName, saveRequest,
             CultureInfo.CurrentUICulture.TwoLetterISOLanguageName);
 
+        // Peer-call the director threshold check. ProfileService deliberately
+        // does not call into Onboarding directly — that was the inverted arrow.
+        await _onboardingService.SetConsentCheckPendingIfEligibleAsync(user.Id);
+
         // Initial-setup tier-application orchestration. Same form submission
         // as profile fields, by design — onboarding efficiency. The form
         // disables the radios when a Submitted/Approved Application already
@@ -481,7 +479,7 @@ public class ProfileController : HumansControllerBase
 
         // Cancel any pending deletion request when creating a profile.
         // Routes through IAccountDeletionService so the deletion-fields
-        // write + FullProfile invalidation goes through the orchestrator,
+        // write + UserInfo invalidation goes through the orchestrator,
         // not raw UserManager.UpdateAsync.
         if (isInitialSetup && user.IsDeletionPending)
         {
@@ -598,7 +596,7 @@ public class ProfileController : HumansControllerBase
     [HttpGet("Me/Emails")]
     public async Task<IActionResult> Emails()
     {
-        var user = await GetCurrentUserAsync();
+        var user = await _userManager.GetUserAsync(User);
         if (user is null)
             return NotFound();
 
@@ -610,7 +608,7 @@ public class ProfileController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AddEmail(EmailsViewModel model)
     {
-        var user = await GetCurrentUserAsync();
+        var user = await _userManager.GetUserAsync(User);
         if (user is null)
             return NotFound();
 
@@ -732,7 +730,7 @@ public class ProfileController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SetPrimary(Guid emailId, CancellationToken ct)
     {
-        var user = await GetCurrentUserAsync();
+        var user = await GetCurrentUserInfoAsync(ct);
         if (user is null)
             return NotFound();
 
@@ -767,7 +765,7 @@ public class ProfileController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SetEmailVisibility(Guid emailId, string? visibility)
     {
-        var user = await GetCurrentUserAsync();
+        var user = await GetCurrentUserInfoAsync();
         if (user is null)
             return NotFound();
 
@@ -812,7 +810,7 @@ public class ProfileController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteEmail(Guid emailId)
     {
-        var user = await GetCurrentUserAsync();
+        var user = await GetCurrentUserInfoAsync();
         if (user is null)
             return NotFound();
 
@@ -856,7 +854,7 @@ public class ProfileController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SetGoogle(Guid emailId, CancellationToken ct)
     {
-        var user = await GetCurrentUserAsync();
+        var user = await GetCurrentUserInfoAsync(ct);
         if (user is null)
             return NotFound();
 
@@ -894,7 +892,7 @@ public class ProfileController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ClearGoogle(Guid emailId, CancellationToken ct)
     {
-        var user = await GetCurrentUserAsync();
+        var user = await GetCurrentUserInfoAsync(ct);
         if (user is null)
             return NotFound();
 
@@ -932,7 +930,7 @@ public class ProfileController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ClearPrimary(Guid emailId, CancellationToken ct)
     {
-        var user = await GetCurrentUserAsync();
+        var user = await GetCurrentUserInfoAsync(ct);
         if (user is null)
             return NotFound();
 
@@ -970,7 +968,7 @@ public class ProfileController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Link(string provider, string? returnUrl = null)
     {
-        var user = await GetCurrentUserAsync();
+        var user = await GetCurrentUserInfoAsync();
         if (user is null)
             return NotFound();
 
@@ -994,7 +992,7 @@ public class ProfileController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Unlink(Guid id, CancellationToken ct)
     {
-        var user = await GetCurrentUserAsync();
+        var user = await GetCurrentUserInfoAsync(ct);
         if (user is null)
             return NotFound();
 
@@ -1038,7 +1036,7 @@ public class ProfileController : HumansControllerBase
         if (!authz.Succeeded)
             return Forbid();
 
-        var targetUser = await FindUserByIdAsync(id);
+        var targetUser = await _userManager.FindByIdAsync(id.ToString());
         if (targetUser is null)
             return NotFound();
 
@@ -1054,7 +1052,7 @@ public class ProfileController : HumansControllerBase
         if (!authz.Succeeded)
             return Forbid();
 
-        var actor = await GetCurrentUserAsync();
+        var actor = await GetCurrentUserInfoAsync(ct);
         if (actor is null)
             return Forbid();
 
@@ -1080,7 +1078,7 @@ public class ProfileController : HumansControllerBase
         if (!authz.Succeeded)
             return Forbid();
 
-        var actor = await GetCurrentUserAsync();
+        var actor = await GetCurrentUserInfoAsync(ct);
         if (actor is null)
             return Forbid();
 
@@ -1114,7 +1112,7 @@ public class ProfileController : HumansControllerBase
         if (!authz.Succeeded)
             return Forbid();
 
-        var actor = await GetCurrentUserAsync();
+        var actor = await GetCurrentUserInfoAsync(ct);
         if (actor is null)
             return Forbid();
 
@@ -1140,7 +1138,7 @@ public class ProfileController : HumansControllerBase
         if (!authz.Succeeded)
             return Forbid();
 
-        var actor = await GetCurrentUserAsync();
+        var actor = await GetCurrentUserInfoAsync(ct);
         if (actor is null)
             return Forbid();
 
@@ -1172,11 +1170,11 @@ public class ProfileController : HumansControllerBase
             return RedirectToAction(nameof(AdminEmails), new { id });
         }
 
-        var actor = await GetCurrentUserAsync();
+        var actor = await GetCurrentUserInfoAsync(ct);
         if (actor is null)
             return Forbid();
 
-        var targetUser = await FindUserByIdAsync(id);
+        var targetUser = await _userManager.FindByIdAsync(id.ToString());
         if (targetUser is null)
             return NotFound();
 
@@ -1246,8 +1244,8 @@ public class ProfileController : HumansControllerBase
             return RedirectToAction(nameof(AdminEmails), new { id });
         }
 
-        var actor = await GetCurrentUserAsync();
-        var targetUser = await FindUserByIdAsync(id);
+        var actor = await _userManager.GetUserAsync(User);
+        var targetUser = await _userManager.FindByIdAsync(id.ToString());
 
         return await AdminAddVerifiedEmailAsync(id, email.Trim(), actor, targetUser, ct);
     }
@@ -1309,7 +1307,7 @@ public class ProfileController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AdminVerifyEmail(Guid id, Guid emailId, CancellationToken ct)
     {
-        var actor = await GetCurrentUserAsync();
+        var actor = await GetCurrentUserInfoAsync(ct);
         if (actor is null)
             return Forbid();
 
@@ -1345,7 +1343,7 @@ public class ProfileController : HumansControllerBase
         if (!authz.Succeeded)
             return Forbid();
 
-        var actor = await GetCurrentUserAsync();
+        var actor = await GetCurrentUserInfoAsync(ct);
         if (actor is null)
             return Forbid();
 
@@ -1371,7 +1369,7 @@ public class ProfileController : HumansControllerBase
         if (!authz.Succeeded)
             return Forbid();
 
-        var actor = await GetCurrentUserAsync();
+        var actor = await GetCurrentUserInfoAsync(ct);
         if (actor is null)
             return Forbid();
 
@@ -1416,7 +1414,7 @@ public class ProfileController : HumansControllerBase
         if (!authz.Succeeded)
             return Forbid();
 
-        var actor = await GetCurrentUserAsync();
+        var actor = await GetCurrentUserInfoAsync(ct);
         if (actor is null)
             return Forbid();
 
@@ -1452,7 +1450,7 @@ public class ProfileController : HumansControllerBase
     [HttpGet("Me/Outbox")]
     public async Task<IActionResult> MyOutbox()
     {
-        var user = await GetCurrentUserAsync();
+        var user = await GetCurrentUserInfoAsync();
         if (user is null)
             return NotFound();
 
@@ -1464,7 +1462,7 @@ public class ProfileController : HumansControllerBase
     [HttpGet("Me/Privacy")]
     public async Task<IActionResult> Privacy()
     {
-        var user = await GetCurrentUserAsync();
+        var user = await GetCurrentUserInfoAsync();
         if (user is null)
             return NotFound();
 
@@ -1483,7 +1481,7 @@ public class ProfileController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RequestDeletion()
     {
-        var user = await GetCurrentUserAsync();
+        var user = await GetCurrentUserInfoAsync();
         if (user is null)
             return NotFound();
 
@@ -1505,7 +1503,7 @@ public class ProfileController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CancelDeletion()
     {
-        var user = await GetCurrentUserAsync();
+        var user = await GetCurrentUserInfoAsync();
         if (user is null)
             return NotFound();
 
@@ -1526,7 +1524,7 @@ public class ProfileController : HumansControllerBase
     {
         try
         {
-            var user = await GetCurrentUserAsync();
+            var user = await GetCurrentUserInfoAsync();
             if (user is null)
                 return NotFound(); var profile = await _shiftMgmt.GetShiftProfileAsync(user.Id, includeMedical: false);
             return View(ShiftInfoViewModel.FromProfile(profile));
@@ -1545,7 +1543,7 @@ public class ProfileController : HumansControllerBase
     {
         try
         {
-            var user = await GetCurrentUserAsync();
+            var user = await GetCurrentUserInfoAsync();
             if (user is null)
                 return NotFound();
 
@@ -1576,7 +1574,7 @@ public class ProfileController : HumansControllerBase
     {
         try
         {
-            var user = await GetCurrentUserAsync();
+            var user = await GetCurrentUserInfoAsync();
             if (user is null)
                 return NotFound();
 
@@ -1598,7 +1596,7 @@ public class ProfileController : HumansControllerBase
     {
         try
         {
-            var user = await GetCurrentUserAsync();
+            var user = await GetCurrentUserInfoAsync();
             if (user is null)
                 return Unauthorized();
 
@@ -1624,7 +1622,7 @@ public class ProfileController : HumansControllerBase
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
     public async Task<IActionResult> DownloadData(CancellationToken ct)
     {
-        var user = await GetCurrentUserAsync();
+        var user = await GetCurrentUserInfoAsync(ct);
         if (user is null)
             return NotFound();
 
@@ -1674,13 +1672,13 @@ public class ProfileController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ImportGooglePhoto(CancellationToken ct)
     {
-        var user = await GetCurrentUserAsync();
+        var user = await _userManager.GetUserAsync(User);
         if (user is null)
         {
             return NotFound();
         }
 
-        var externalLogins = await UserManager.GetLoginsAsync(user);
+        var externalLogins = await _userManager.GetLoginsAsync(user);
         if (!HasGoogleAvatarSource(user, externalLogins))
         {
             SetError(_localizer["Profile_ImportGooglePhoto_Unavailable"].Value);
@@ -1807,7 +1805,7 @@ public class ProfileController : HumansControllerBase
             return NotFound();
         }
 
-        var viewer = await GetCurrentUserAsync();
+        var viewer = await GetCurrentUserInfoAsync(ct);
         if (viewer is null)
         {
             return NotFound();
@@ -1815,7 +1813,7 @@ public class ProfileController : HumansControllerBase
 
         var isOwnProfile = viewer.Id == id;
 
-        var noShowContext = await BuildNoShowHistoryContextAsync(id, viewer, isOwnProfile, ct);
+        var noShowContext = await BuildNoShowHistoryContextAsync(id, viewer.Id, isOwnProfile, ct);
 
         // The ProfileCard ViewComponent handles all data fetching and permission checks.
         var viewModel = new ProfileViewModel
@@ -1834,7 +1832,7 @@ public class ProfileController : HumansControllerBase
 
     private async Task<(bool CanView, List<NoShowHistoryItem>? History)> BuildNoShowHistoryContextAsync(
         Guid profileUserId,
-        User viewer,
+        Guid viewerId,
         bool isOwnProfile,
         CancellationToken ct)
     {
@@ -1843,7 +1841,7 @@ public class ProfileController : HumansControllerBase
             return (false, null);
         }
 
-        var viewerIsCoordinator = (await _shiftMgmt.GetCoordinatorTeamIdsAsync(viewer.Id)).Count > 0;
+        var viewerIsCoordinator = (await _shiftMgmt.GetCoordinatorTeamIdsAsync(viewerId)).Count > 0;
         var viewerCanViewShiftHistory = viewerIsCoordinator || ShiftRoleChecks.IsPrivilegedSignupApprover(User);
         if (!viewerCanViewShiftHistory)
         {
@@ -1857,7 +1855,10 @@ public class ProfileController : HumansControllerBase
         }
 
         var noShowTeamIds = noShows.Select(s => s.TeamId).Distinct().ToList();
-        var noShowTeamNames = await _teamService.GetTeamNamesByIdsAsync(noShowTeamIds, ct);
+        var teamsById = await _teamService.GetTeamsAsync(ct);
+        var noShowTeamNames = noShowTeamIds
+            .Where(teamsById.ContainsKey)
+            .ToDictionary(id => id, id => teamsById[id].Name);
 
         var reviewerIds = noShows
             .Where(s => s.ReviewedByUserId.HasValue)
@@ -1865,8 +1866,8 @@ public class ProfileController : HumansControllerBase
             .Distinct()
             .ToList();
         var reviewers = reviewerIds.Count == 0
-            ? (IReadOnlyDictionary<Guid, User>)new Dictionary<Guid, User>()
-            : await _userService.GetByIdsAsync(reviewerIds, ct);
+            ? (IReadOnlyDictionary<Guid, UserInfo>)new Dictionary<Guid, UserInfo>()
+            : await _userService.GetUserInfosAsync(reviewerIds, ct);
 
         return (true, noShows.Select(s =>
         {
@@ -1912,14 +1913,14 @@ public class ProfileController : HumansControllerBase
     [HttpGet("{id:guid}/SendMessage")]
     public async Task<IActionResult> SendMessage(Guid id)
     {
-        var currentUser = await GetCurrentUserAsync();
+        var currentUser = await GetCurrentUserInfoAsync();
         if (currentUser is null)
             return NotFound();
 
         if (currentUser.Id == id)
             return RedirectToAction(nameof(ViewProfile), new { id });
 
-        var targetUser = await FindUserByIdAsync(id);
+        var targetUser = await _userManager.FindByIdAsync(id.ToString());
         if (targetUser is null)
             return NotFound();
 
@@ -1942,7 +1943,7 @@ public class ProfileController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SendMessage(Guid id, SendMessageViewModel model)
     {
-        var currentUser = await GetCurrentUserAsync();
+        var currentUser = await GetCurrentUserInfoAsync();
         if (currentUser is null)
             return NotFound();
 
@@ -1952,8 +1953,7 @@ public class ProfileController : HumansControllerBase
         // Issue #635 (§15i): bulk-fetch sender + recipient with UserEmails
         // hydrated through the section-owned service instead of a raw
         // `.Include(u => u.UserEmails)` over the cross-domain nav.
-        var participants = await _userService.GetByIdsWithEmailsAsync(
-            new[] { id, currentUser.Id });
+        var participants = await _userService.GetUserInfosAsync([id, currentUser.Id]);
         if (!participants.TryGetValue(id, out var targetUser))
             return NotFound();
 
@@ -2015,7 +2015,7 @@ public class ProfileController : HumansControllerBase
 
         // PublicAll = name + bio + public ContactFields. Admin bit is gated
         // by code review — never set on a public endpoint.
-        var results = await _profileService.SearchProfilesAsync(
+        var results = await _userService.SearchUsersAsync(
             q!, PersonSearchFields.PublicAll, limit: 50, ct);
 
         // Display ordering at the controller per
@@ -2108,7 +2108,7 @@ public class ProfileController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RevealIban(Guid id, CancellationToken ct)
     {
-        var actor = await GetCurrentUserAsync();
+        var actor = await GetCurrentUserInfoAsync(ct);
         if (actor is null) return Forbid();
         return await RevealIbanCoreAsync(id, actor.Id, ct);
     }
@@ -2144,7 +2144,7 @@ public class ProfileController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SuspendHuman(Guid id, string? notes)
     {
-        var currentUser = await GetCurrentUserAsync();
+        var currentUser = await GetCurrentUserInfoAsync();
         if (currentUser is null)
             return NotFound();
 
@@ -2161,7 +2161,7 @@ public class ProfileController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UnsuspendHuman(Guid id)
     {
-        var currentUser = await GetCurrentUserAsync();
+        var currentUser = await GetCurrentUserInfoAsync();
         if (currentUser is null)
             return NotFound();
 
@@ -2178,7 +2178,7 @@ public class ProfileController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ApproveVolunteer(Guid id)
     {
-        var currentUser = await GetCurrentUserAsync();
+        var currentUser = await GetCurrentUserInfoAsync();
         if (currentUser is null)
             return NotFound();
 
@@ -2195,7 +2195,7 @@ public class ProfileController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RejectSignup(Guid id, string? reason)
     {
-        var currentUser = await GetCurrentUserAsync();
+        var currentUser = await GetCurrentUserInfoAsync();
         if (currentUser is null)
             return Unauthorized();
 
@@ -2217,7 +2217,7 @@ public class ProfileController : HumansControllerBase
     [HttpGet("{id:guid}/Admin/Roles/Add")]
     public async Task<IActionResult> AddRole(Guid id)
     {
-        var user = await FindUserByIdAsync(id);
+        var user = await _userManager.FindByIdAsync(id.ToString());
         if (user is null)
         {
             return NotFound();
@@ -2238,7 +2238,7 @@ public class ProfileController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AddRole(Guid id, CreateRoleAssignmentViewModel model)
     {
-        var user = await FindUserByIdAsync(id);
+        var user = await _userManager.FindByIdAsync(id.ToString());
         if (user is null)
         {
             return NotFound();
@@ -2251,7 +2251,7 @@ public class ProfileController : HumansControllerBase
             return View(model);
         }
 
-        var currentUser = await GetCurrentUserAsync();
+        var currentUser = await GetCurrentUserInfoAsync();
         if (currentUser is null)
         {
             return Unauthorized();
@@ -2305,7 +2305,7 @@ public class ProfileController : HumansControllerBase
             return NotFound();
         }
 
-        var currentUser = await GetCurrentUserAsync();
+        var currentUser = await GetCurrentUserInfoAsync();
         if (currentUser is null)
         {
             return Unauthorized();
@@ -2394,13 +2394,12 @@ public class ProfileController : HumansControllerBase
         // store-disagreement flags. Self contexts skip the lookup (the section
         // is admin-only).
         IReadOnlyList<(string Provider, string ProviderKey)> userLogins =
-            Array.Empty<(string, string)>();
+            [];
         IReadOnlyList<UserEmailRowSnapshot> rawUserEmails =
-            Array.Empty<UserEmailRowSnapshot>();
+            [];
         if (isAdminContext)
         {
-            var loginsByUser = await _userService.GetExternalLoginsByUserIdsAsync(
-                new[] { user.Id }, ct);
+            var loginsByUser = await _userService.GetExternalLoginsByUserIdsAsync([user.Id], ct);
             if (loginsByUser.TryGetValue(user.Id, out var list))
                 userLogins = list;
             rawUserEmails = await _userEmailService.GetEntitiesByUserIdAsync(user.Id, ct);
@@ -2460,7 +2459,7 @@ public class ProfileController : HumansControllerBase
             IsAdminContext = isAdminContext,
             WorkspaceLockedEmailId = workspaceLockedEmail?.Id,
             LegacyIdentityEmailColumn = isAdminContext
-                && User.IsInRole(Humans.Domain.Constants.RoleNames.Admin)
+                && User.IsInRole(Domain.Constants.RoleNames.Admin)
                 ? user.IdentityEmailColumn
                 : null,
         };

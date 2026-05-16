@@ -6,11 +6,9 @@ using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Shifts;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Testing;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Xunit;
 
 namespace Humans.Application.Tests.Services.Shifts;
 
@@ -156,7 +154,7 @@ public class VolunteerTrackingServiceTests
             BarrioSetupStartDate = es.GateOpeningDate.PlusDays(-3), // setupOffset = -3
         };
 
-        var sut = BuildSut(es, signups: signups, participations: participations, buildStatuses: new[] { bs });
+        var sut = BuildSut(es, signups: signups, participations: participations, buildStatuses: [bs]);
 
         var result = await sut.GetTrackingDataAsync();
 
@@ -201,7 +199,7 @@ public class VolunteerTrackingServiceTests
         var es = MakeEvent(buildStartOffset: -5);
         var userId = Guid.NewGuid();
         var participations = new[] { Participation(userId, ParticipationStatus.Ticketed, es.Year) };
-        var availability = new[] { Availability(userId, es.Id, new[] { -5, -4, -3 }) };
+        var availability = new[] { Availability(userId, es.Id, [-5, -4, -3]) };
 
         var sut = BuildSut(es, participations: participations, availabilities: availability);
 
@@ -227,7 +225,7 @@ public class VolunteerTrackingServiceTests
         var es = MakeEvent(buildStartOffset: -5);
         var userId = Guid.NewGuid();
         var participations = new[] { Participation(userId, ParticipationStatus.Ticketed, es.Year) };
-        var availability = new[] { Availability(userId, es.Id, new[] { -5, -4, -3 }) };
+        var availability = new[] { Availability(userId, es.Id, [-5, -4, -3]) };
         var signups = new List<EligibleBuildSignup>
         {
             new(userId, -3, SignupStatus.Confirmed, "Cleanup"),
@@ -248,7 +246,7 @@ public class VolunteerTrackingServiceTests
         var es = MakeEvent(buildStartOffset: -5);
         var userId = Guid.NewGuid();
         var participations = new[] { Participation(userId, ParticipationStatus.NotAttending, es.Year) };
-        var availability = new[] { Availability(userId, es.Id, new[] { -5, -4, -3 }) };
+        var availability = new[] { Availability(userId, es.Id, [-5, -4, -3]) };
 
         var sut = BuildSut(es, participations: participations, availabilities: availability);
 
@@ -302,7 +300,7 @@ public class VolunteerTrackingServiceTests
         {
             new(userId, -5, SignupStatus.Confirmed, "Cleanup"),
         };
-        var trackingRepo = new FakeVolunteerTrackingRepository(signups, Array.Empty<VolunteerBuildStatus>());
+        var trackingRepo = new FakeVolunteerTrackingRepository(signups, []);
         var sut = BuildSut(es, signups: signups, trackingRepo: trackingRepo);
         var setupDate = es.GateOpeningDate.PlusDays(-3);
 
@@ -337,8 +335,8 @@ public class VolunteerTrackingServiceTests
             SetAt = TestNow,
         };
         var trackingRepo = new FakeVolunteerTrackingRepository(
-            Array.Empty<EligibleBuildSignup>(), new[] { bs });
-        var sut = BuildSut(es, buildStatuses: new[] { bs }, trackingRepo: trackingRepo);
+            [], [bs]);
+        var sut = BuildSut(es, buildStatuses: [bs], trackingRepo: trackingRepo);
 
         await sut.ClearCampSetupAsync(userId, coordinatorId);
 
@@ -415,7 +413,7 @@ public class VolunteerTrackingServiceTests
         var userId = Guid.NewGuid();
         var coordId = Guid.NewGuid();
         var trackingRepo = new FakeVolunteerTrackingRepository(
-            Array.Empty<EligibleBuildSignup>(), Array.Empty<VolunteerBuildStatus>());
+            [], []);
         var sut = BuildSut(es, trackingRepo: trackingRepo);
 
         var result = await sut.SetDayOffAsync(userId, -3, "doctor", coordId);
@@ -436,7 +434,7 @@ public class VolunteerTrackingServiceTests
         var es = MakeEvent(buildStartOffset: -5);
         var userId = Guid.NewGuid();
         var trackingRepo = new FakeVolunteerTrackingRepository(
-            Array.Empty<EligibleBuildSignup>(), Array.Empty<VolunteerBuildStatus>());
+            [], []);
         var sut = BuildSut(es, trackingRepo: trackingRepo);
 
         await sut.SetDayOffAsync(userId, -3, "doctor", Guid.NewGuid());
@@ -452,7 +450,7 @@ public class VolunteerTrackingServiceTests
     {
         var es = MakeEvent(buildStartOffset: -5);
         var trackingRepo = new FakeVolunteerTrackingRepository(
-            Array.Empty<EligibleBuildSignup>(), Array.Empty<VolunteerBuildStatus>());
+            [], []);
         var sut = BuildSut(es, trackingRepo: trackingRepo);
 
         await sut.SetDayOffAsync(Guid.NewGuid(), -3, "   ", Guid.NewGuid());
@@ -484,8 +482,8 @@ public class VolunteerTrackingServiceTests
             BarrioSetupStartDate = es.GateOpeningDate.PlusDays(-3),  // span = -3..-1
         };
         var trackingRepo = new FakeVolunteerTrackingRepository(
-            Array.Empty<EligibleBuildSignup>(), new[] { bs });
-        var sut = BuildSut(es, buildStatuses: new[] { bs }, trackingRepo: trackingRepo);
+            [], [bs]);
+        var sut = BuildSut(es, buildStatuses: [bs], trackingRepo: trackingRepo);
 
         // -2 is INSIDE the camp-setup span. The service does NOT reject.
         var result = await sut.SetDayOffAsync(userId, -2, "doctor", Guid.NewGuid());
@@ -503,14 +501,14 @@ public class VolunteerTrackingServiceTests
             Id = Guid.NewGuid(),
             UserId = userId,
             EventSettingsId = es.Id,
-            DayOffs = new List<DayOffEntry>
-            {
-                new(-3, "doctor", Guid.NewGuid(), TestNow),
-            },
+            DayOffs =
+            [
+                new(-3, "doctor", Guid.NewGuid(), TestNow)
+            ],
         };
         var trackingRepo = new FakeVolunteerTrackingRepository(
-            Array.Empty<EligibleBuildSignup>(), new[] { bs });
-        var sut = BuildSut(es, buildStatuses: new[] { bs }, trackingRepo: trackingRepo);
+            [], [bs]);
+        var sut = BuildSut(es, buildStatuses: [bs], trackingRepo: trackingRepo);
 
         var result = await sut.ClearDayOffAsync(userId, -3, Guid.NewGuid());
 
@@ -523,7 +521,7 @@ public class VolunteerTrackingServiceTests
     {
         var es = MakeEvent(buildStartOffset: -5);
         var trackingRepo = new FakeVolunteerTrackingRepository(
-            Array.Empty<EligibleBuildSignup>(), Array.Empty<VolunteerBuildStatus>());
+            [], []);
         var sut = BuildSut(es, trackingRepo: trackingRepo);
 
         var result = await sut.ClearDayOffAsync(Guid.NewGuid(), -3, Guid.NewGuid());
@@ -547,12 +545,12 @@ public class VolunteerTrackingServiceTests
             Id = Guid.NewGuid(),
             UserId = userId,
             EventSettingsId = es.Id,
-            DayOffs = new List<DayOffEntry>
-            {
-                new(-3, "doctor", Guid.NewGuid(), TestNow),
-            },
+            DayOffs =
+            [
+                new(-3, "doctor", Guid.NewGuid(), TestNow)
+            ],
         };
-        var sut = BuildSut(es, signups: signups, participations: participations, buildStatuses: new[] { bs });
+        var sut = BuildSut(es, signups: signups, participations: participations, buildStatuses: [bs]);
 
         var result = await sut.GetTrackingDataAsync();
 
@@ -579,22 +577,22 @@ public class VolunteerTrackingServiceTests
             Id = Guid.NewGuid(),
             UserId = userId,
             EventSettingsId = es.Id,
-            DayOffs = new List<DayOffEntry>
-            {
-                new(-9, "early", Guid.NewGuid(), TestNow),  // before new span
-                new(-6, "soon", Guid.NewGuid(), TestNow),   // inside new span
-            },
+            DayOffs =
+            [
+                new(-9, "early", Guid.NewGuid(), TestNow), // before new span
+                new(-6, "soon", Guid.NewGuid(), TestNow) // inside new span
+            ],
         };
-        var trackingRepo = new FakeVolunteerTrackingRepository(signups, new[] { bs });
-        var sut = BuildSut(es, signups: signups, buildStatuses: new[] { bs }, trackingRepo: trackingRepo);
+        var trackingRepo = new FakeVolunteerTrackingRepository(signups, [bs]);
+        var sut = BuildSut(es, signups: signups, buildStatuses: [bs], trackingRepo: trackingRepo);
 
         // New camp-setup at -7 → span covers -7, -6, -5, ..., -1.
         var result = await sut.SetCampSetupAsync(
             userId, es.GateOpeningDate.PlusDays(-7), notes: null, coordId);
 
         result.Ok.Should().BeTrue();
-        result.AutoClearedDayOffs.Should().Equal(new[] { -6 });
-        bs.DayOffs.Select(d => d.DayOffset).Should().Equal(new[] { -9 });
+        result.AutoClearedDayOffs.Should().Equal(-6);
+        bs.DayOffs.Select(d => d.DayOffset).Should().Equal(-9);
     }
 
     [HumansFact]
@@ -607,14 +605,14 @@ public class VolunteerTrackingServiceTests
             Id = Guid.NewGuid(),
             UserId = userId,
             EventSettingsId = es.Id,
-            DayOffs = new List<DayOffEntry>
-            {
-                new(-9, "early", Guid.NewGuid(), TestNow),
-            },
+            DayOffs =
+            [
+                new(-9, "early", Guid.NewGuid(), TestNow)
+            ],
         };
         var trackingRepo = new FakeVolunteerTrackingRepository(
-            Array.Empty<EligibleBuildSignup>(), new[] { bs });
-        var sut = BuildSut(es, buildStatuses: new[] { bs }, trackingRepo: trackingRepo);
+            [], [bs]);
+        var sut = BuildSut(es, buildStatuses: [bs], trackingRepo: trackingRepo);
 
         var result = await sut.SetCampSetupAsync(
             userId, es.GateOpeningDate.PlusDays(-3), notes: null, Guid.NewGuid());
@@ -670,7 +668,7 @@ public class VolunteerTrackingServiceTests
             .Returns(call =>
             {
                 var eventId = call.Arg<Guid>();
-                var rows = (availabilities ?? Array.Empty<GeneralAvailability>())
+                var rows = (availabilities ?? [])
                     .Where(a => a.EventSettingsId == eventId).ToList();
                 return Task.FromResult<IReadOnlyList<GeneralAvailability>>(rows);
             });
@@ -681,13 +679,13 @@ public class VolunteerTrackingServiceTests
             {
                 var year = call.Arg<int>();
                 return Task.FromResult(
-                    (participations ?? Array.Empty<EventParticipation>())
+                    (participations ?? [])
                     .Where(p => p.Year == year).ToList());
             });
 
         trackingRepo ??= new FakeVolunteerTrackingRepository(
-            signups ?? Array.Empty<EligibleBuildSignup>(),
-            buildStatuses ?? Array.Empty<VolunteerBuildStatus>());
+            signups ?? [],
+            buildStatuses ?? []);
 
         return new VolunteerTrackingService(
             trackingRepo, shiftMgmt, availabilityRepo, userService, Substitute.For<IShiftViewInvalidator>(), clock);
@@ -718,9 +716,10 @@ public class VolunteerTrackingServiceTests
         private readonly IReadOnlyList<EligibleBuildSignup> _signups;
         public List<VolunteerBuildStatus> BuildStatuses { get; }
 
-        public List<(Guid UserId, Guid EventSettingsId, LocalDate? Date, string? Notes, Guid? SetByUserId, Instant? SetAt)> UpsertCalls { get; } = new();
-        public List<(Guid UserId, Guid EventSettingsId, DayOffEntry Entry)> UpsertDayOffCalls { get; } = new();
-        public List<(Guid UserId, Guid EventSettingsId, int DayOffset)> RemoveDayOffCalls { get; } = new();
+        public List<(Guid UserId, Guid EventSettingsId, LocalDate? Date, string? Notes, Guid? SetByUserId, Instant? SetAt)> UpsertCalls { get; } =
+            [];
+        public List<(Guid UserId, Guid EventSettingsId, DayOffEntry Entry)> UpsertDayOffCalls { get; } = [];
+        public List<(Guid UserId, Guid EventSettingsId, int DayOffset)> RemoveDayOffCalls { get; } = [];
 
         public FakeVolunteerTrackingRepository(
             IReadOnlyList<EligibleBuildSignup> signups,
@@ -759,7 +758,7 @@ public class VolunteerTrackingServiceTests
             existing.SetByUserId = setByUserId;
             existing.SetAt = setAt;
 
-            IReadOnlyList<int> trimmed = Array.Empty<int>();
+            IReadOnlyList<int> trimmed = [];
             if (setupOffsetThreshold is { } threshold)
             {
                 var toTrim = existing.DayOffs

@@ -5,22 +5,15 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Controllers;
 using Humans.Web.Models;
-using Humans.Testing;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using NSubstitute;
-using Xunit;
 
 namespace Humans.Web.Tests.Controllers;
 
 public class UsersAdminDebugControllerTests
 {
-    private static UserManager<User> StubUserManager() =>
-        Substitute.For<UserManager<User>>(
-            Substitute.For<IUserStore<User>>(),
-            null, null, null, null, null, null, null, null);
-
     private static UserInfo MakeUserInfo(
         Guid id, string displayName, bool hasProfile, bool hasTicket)
     {
@@ -60,14 +53,14 @@ public class UsersAdminDebugControllerTests
                 CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
                 GoogleEmailStatus = GoogleEmailStatus.Unknown,
             },
-            userEmails: Array.Empty<UserEmail>(),
+            userEmails: [],
             eventParticipations: participations,
-            externalLogins: Array.Empty<(string, string)>(),
+            externalLogins: [],
             profile: profile,
-            contactFields: Array.Empty<ContactField>(),
-            profileLanguages: Array.Empty<ProfileLanguage>(),
-            volunteerHistory: Array.Empty<VolunteerHistoryEntry>(),
-            communicationPreferences: Array.Empty<CommunicationPreference>());
+            contactFields: [],
+            profileLanguages: [],
+            volunteerHistory: [],
+            communicationPreferences: []);
     }
 
     [HumansFact]
@@ -80,7 +73,7 @@ public class UsersAdminDebugControllerTests
         var userService = Substitute.For<IUserService>();
         userService.GetAllUserInfos().Returns(users);
 
-        var controller = new UsersAdminDebugController(userService, StubUserManager());
+        var controller = new UsersAdminDebugController(userService);
 
         var result = controller.Index(page: 1, pageSize: 50, sort: "displayName", dir: "asc") as ViewResult;
 
@@ -104,7 +97,7 @@ public class UsersAdminDebugControllerTests
         var userService = Substitute.For<IUserService>();
         userService.GetAllUserInfos().Returns(users);
 
-        var controller = new UsersAdminDebugController(userService, StubUserManager());
+        var controller = new UsersAdminDebugController(userService);
 
         var result = controller.Index(page: 1, pageSize: 50, sort: "displayName", dir: "desc") as ViewResult;
 
@@ -121,7 +114,7 @@ public class UsersAdminDebugControllerTests
         var userService = Substitute.For<IUserService>();
         userService.GetAllUserInfos().Returns(users);
 
-        var controller = new UsersAdminDebugController(userService, StubUserManager());
+        var controller = new UsersAdminDebugController(userService);
 
         var tooSmall = (UsersDebugViewModel)((ViewResult)controller.Index(1, 1, "displayName", "asc")).Model!;
         tooSmall.PageSize.Should().Be(10);

@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Profiles;
@@ -7,13 +6,13 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Tickets;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Humans.Testing;
 
 namespace Humans.Application.Tests.Services.Tickets;
 
@@ -43,6 +42,16 @@ public sealed class TicketTransferService_OnwardTransferTests
         _service = new TicketTransferService(_transferRepo, _ticketRepo, _vendor,
             _ticketQueryService, _userService, _userEmailService, _profileService,
             _auditLog, _clock, NullLogger<TicketTransferService>.Instance);
+
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                var ids = callInfo.Arg<IReadOnlyCollection<Guid>>();
+                IReadOnlyDictionary<Guid, UserInfo> dict = ids.ToDictionary(
+                    id => id,
+                    id => new User { Id = id, DisplayName = id.ToString() }.ToUserInfo());
+                return new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(dict);
+            });
     }
 
     [HumansFact]
@@ -57,9 +66,9 @@ public sealed class TicketTransferService_OnwardTransferTests
             TicketOrder = new TicketOrder { Id = OrderId, MatchedUserId = UserA },
         };
         _ticketRepo.GetAttendeesVisibleToUserAsync(UserB, Arg.Any<CancellationToken>())
-            .Returns(new[] { attendee });
+            .Returns([attendee]);
         _transferRepo.GetBySenderAsync(UserB, Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<TicketTransferRequest>());
+            .Returns([]);
 
         var rows = await _service.GetMyAttendeesAsync(UserB);
 
@@ -78,9 +87,9 @@ public sealed class TicketTransferService_OnwardTransferTests
             TicketOrder = new TicketOrder { Id = OrderId, MatchedUserId = UserA },
         };
         _ticketRepo.GetAttendeesVisibleToUserAsync(UserA, Arg.Any<CancellationToken>())
-            .Returns(new[] { attendee });
+            .Returns([attendee]);
         _transferRepo.GetBySenderAsync(UserA, Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<TicketTransferRequest>());
+            .Returns([]);
 
         var rows = await _service.GetMyAttendeesAsync(UserA);
 
@@ -99,9 +108,9 @@ public sealed class TicketTransferService_OnwardTransferTests
             TicketOrder = new TicketOrder { Id = OrderId, MatchedUserId = UserA },
         };
         _ticketRepo.GetAttendeesVisibleToUserAsync(UserA, Arg.Any<CancellationToken>())
-            .Returns(new[] { attendee });
+            .Returns([attendee]);
         _transferRepo.GetBySenderAsync(UserA, Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<TicketTransferRequest>());
+            .Returns([]);
 
         var rows = await _service.GetMyAttendeesAsync(UserA);
 
@@ -146,18 +155,18 @@ public sealed class TicketTransferService_OnwardTransferTests
         _userService.GetUserInfoAsync(UserC, Arg.Any<CancellationToken>())
             .Returns(UserInfo.Create(
                 user: carol,
-                userEmails: Array.Empty<UserEmail>(),
-                eventParticipations: Array.Empty<EventParticipation>(),
-                externalLogins: Array.Empty<(string, string)>(),
+                userEmails: [],
+                eventParticipations: [],
+                externalLogins: [],
                 profile: carolProfile,
-                contactFields: Array.Empty<ContactField>(),
-                profileLanguages: Array.Empty<ProfileLanguage>(),
-                volunteerHistory: Array.Empty<VolunteerHistoryEntry>(),
-                communicationPreferences: Array.Empty<CommunicationPreference>()));
+                contactFields: [],
+                profileLanguages: [],
+                volunteerHistory: [],
+                communicationPreferences: []));
         _userEmailService.GetPrimaryEmailAsync(UserC, Arg.Any<CancellationToken>())
             .Returns("carol@example.com");
         _transferRepo.GetBySenderAsync(UserB, Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<TicketTransferRequest>());
+            .Returns([]);
 
         var result = await _service.CreateRequestAsync(
             new TicketTransferRequestDto(attendeeId, UserC, "passing to Carol"), UserB);

@@ -1,12 +1,12 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Humans.Application.DTOs;
 using Humans.Domain.Entities;
-using Humans.Domain.Enums;
 using Humans.Web.Authorization;
 using Humans.Web.Models;
 using Humans.Application.Interfaces.Campaigns;
+
+using Humans.Application.Interfaces.Users;
 
 namespace Humans.Web.Controllers;
 
@@ -18,8 +18,8 @@ public class CampaignController : HumansControllerBase
 
     public CampaignController(
         ICampaignService campaignService,
-        UserManager<User> userManager)
-        : base(userManager)
+        IUserService userService)
+        : base(userService)
     {
         _campaignService = campaignService;
     }
@@ -44,7 +44,7 @@ public class CampaignController : HumansControllerBase
     [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> Create(string title, string? description, string emailSubject, string emailBodyTemplate, string? replyToAddress)
     {
-        var currentUser = await GetCurrentUserAsync();
+        var currentUser = await GetCurrentUserInfoAsync();
         if (currentUser is null) return Unauthorized();
 
         var result = await _campaignService.CreateAsync(

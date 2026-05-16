@@ -21,8 +21,8 @@ public sealed class VolunteerTrackingPageViewModel
     public int BuildStartOffset { get; init; }
     public LocalDate GateOpeningDate { get; init; }
     public LocalDate Today { get; init; }
-    public IReadOnlyList<VolunteerHeatmapRow> MainCohort { get; init; } = Array.Empty<VolunteerHeatmapRow>();
-    public IReadOnlyList<VolunteerCohortRow> UnbookedCohort { get; init; } = Array.Empty<VolunteerCohortRow>();
+    public IReadOnlyList<VolunteerHeatmapRow> MainCohort { get; init; } = [];
+    public IReadOnlyList<VolunteerCohortRow> UnbookedCohort { get; init; } = [];
     public IReadOnlyDictionary<Guid, string> DisplayNameByUserId { get; init; }
         = new Dictionary<Guid, string>();
 

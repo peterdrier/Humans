@@ -69,7 +69,7 @@ public sealed class AuditLogRepository : IAuditLogRepository
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
     {
         if (userIds.Count == 0)
-            return Array.Empty<AuditLogEntry>();
+            return [];
 
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.AuditLogEntries
@@ -141,7 +141,7 @@ public sealed class AuditLogRepository : IAuditLogRepository
         IReadOnlyCollection<Guid> userIds, int count, CancellationToken ct = default)
     {
         if (userIds.Count == 0)
-            return Array.Empty<AuditLogEntry>();
+            return [];
 
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.AuditLogEntries
@@ -204,7 +204,7 @@ public sealed class AuditLogRepository : IAuditLogRepository
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
     {
         if (userIds.Count == 0)
-            return Array.Empty<AuditLogEntry>();
+            return [];
 
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.AuditLogEntries

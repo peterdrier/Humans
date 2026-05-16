@@ -245,7 +245,7 @@ public sealed class ShiftManagementRepository : IShiftManagementRepository
         int max, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(query) || max <= 0)
-            return Array.Empty<Rota>();
+            return [];
 
         var pattern = "%" + EscapeLikePattern(query.Trim()) + "%";
 

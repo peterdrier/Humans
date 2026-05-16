@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Web.Authorization;
 using Humans.Web.Models;
@@ -21,12 +20,11 @@ public class AdminDuplicateAccountsController : HumansControllerBase
     private readonly ILogger<AdminDuplicateAccountsController> _logger;
 
     public AdminDuplicateAccountsController(
-        UserManager<User> userManager,
-        IDuplicateAccountService duplicateService,
         IUserService userService,
+        IDuplicateAccountService duplicateService,
         ITeamService teamService,
         ILogger<AdminDuplicateAccountsController> logger)
-        : base(userManager)
+        : base(userService)
     {
         _duplicateService = duplicateService;
         _userService = userService;

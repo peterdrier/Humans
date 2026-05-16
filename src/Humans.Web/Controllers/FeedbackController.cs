@@ -2,14 +2,12 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
-using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Authorization;
 using Humans.Web.Models;
 using Humans.Application.Interfaces.Feedback;
 using Humans.Application.Interfaces.Teams;
-using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
 
 namespace Humans.Web.Controllers;
@@ -20,7 +18,6 @@ public class FeedbackController : HumansControllerBase
 {
     private readonly IFeedbackService _feedbackService;
     private readonly ITeamService _teamService;
-    private readonly IProfileService _profileService;
     private readonly IUserService _userService;
     private readonly IStringLocalizer<SharedResource> _localizer;
     private readonly ILogger<FeedbackController> _logger;
@@ -28,16 +25,13 @@ public class FeedbackController : HumansControllerBase
     public FeedbackController(
         IFeedbackService feedbackService,
         ITeamService teamService,
-        IProfileService profileService,
         IUserService userService,
-        UserManager<User> userManager,
         IStringLocalizer<SharedResource> localizer,
         ILogger<FeedbackController> logger)
-        : base(userManager)
+        : base(userService)
     {
         _feedbackService = feedbackService;
         _teamService = teamService;
-        _profileService = profileService;
         _userService = userService;
         _localizer = localizer;
         _logger = logger;
@@ -48,30 +42,18 @@ public class FeedbackController : HumansControllerBase
     /// rows for the assignee dropdowns. Replaces the deleted
     /// <c>IProfileService.GetFilteredHumansAsync(null, "Active")</c> path:
     /// person-search consolidation moved that surface to
-    /// <c>SearchProfilesAsync</c>, which is for text search, not population
-    /// queries. Population goes through the existing
-    /// the UserInfo snapshot + <c>IUserService.GetByIdsAsync</c> primitives.
+    /// <c>IUserService.SearchUsersAsync</c>, which is for text search, not
+    /// population queries. Population goes through the UserInfo snapshot +
+    /// <c>IUserService.GetByIdsAsync</c> primitives.
     /// </summary>
-    private async Task<List<AssigneeOption>> GetActiveAssigneeOptionsAsync(CancellationToken ct = default)
+    private Task<List<AssigneeOption>> GetActiveAssigneeOptionsAsync(CancellationToken ct = default)
     {
-        var activeIds = _userService.GetAllUserInfos()
+        var options = _userService.GetAllUserInfos()
             .Where(u => u.IsActive)
-            .Select(u => u.Id)
-            .ToList();
-        if (activeIds.Count == 0) return new List<AssigneeOption>();
-
-        var users = await _userService.GetByIdsAsync(activeIds, ct);
-        var profiles = await _profileService.GetByUserIdsAsync(activeIds, ct);
-
-        return users.Values
-            .Select(u =>
-            {
-                var burnerName = profiles.TryGetValue(u.Id, out var p) ? p.BurnerName : null;
-                var displayName = !string.IsNullOrWhiteSpace(burnerName) ? burnerName : u.DisplayName;
-                return new AssigneeOption { Id = u.Id, DisplayName = displayName };
-            })
+            .Select(u => new AssigneeOption { Id = u.Id, DisplayName = u.BurnerName })
             .OrderBy(o => o.DisplayName, StringComparer.OrdinalIgnoreCase)
             .ToList();
+        return Task.FromResult(options);
     }
 
     [HttpGet("")]
@@ -92,11 +74,14 @@ public class FeedbackController : HumansControllerBase
             unassignedOnly: isAdmin && unassigned ? true : null);
 
         var assigneeOptions = new List<AssigneeOption>();
-        var teamOptions = new List<TeamOptionDto>();
+        IReadOnlyList<TeamInfo> teamOptions = [];
 
         if (isAdmin)
         {
-            teamOptions = (await _teamService.GetActiveTeamOptionsAsync()).ToList();
+            teamOptions = (await _teamService.GetTeamsAsync()).Values
+                .Where(t => t.IsActive)
+                .OrderBy(t => t.Name, StringComparer.Ordinal)
+                .ToList();
             assigneeOptions = await GetActiveAssigneeOptionsAsync();
         }
 
@@ -197,7 +182,10 @@ public class FeedbackController : HumansControllerBase
 
         try
         {
-            var roles = await UserManager.GetRolesAsync(user);
+            var roles = User.Claims
+                .Where(c => string.Equals(c.Type, System.Security.Claims.ClaimTypes.Role, StringComparison.Ordinal))
+                .Select(c => c.Value)
+                .ToList();
 
             await _feedbackService.SubmitUserFeedbackAsync(
                 user.Id, model.Category, model.Description,
@@ -364,19 +352,22 @@ public class FeedbackController : HumansControllerBase
 
     private async Task PopulateAssignmentOptionsAsync(FeedbackDetailViewModel viewModel)
     {
-        viewModel.TeamOptions = (await _teamService.GetActiveTeamOptionsAsync()).ToList();
+        var teamsById = await _teamService.GetTeamsAsync();
+        var teamOptions = teamsById.Values
+            .Where(t => t.IsActive)
+            .OrderBy(t => t.Name, StringComparer.Ordinal)
+            .ToList();
 
-        // Include currently assigned team even if inactive, to prevent silent clearing
+        // Include currently assigned team even if inactive, to prevent silent clearing.
+        // The (inactive) suffix is rendered conditionally in the view.
         if (viewModel.AssignedToTeamId.HasValue &&
-            viewModel.TeamOptions.All(t => t.Id != viewModel.AssignedToTeamId.Value))
+            teamOptions.All(t => t.Id != viewModel.AssignedToTeamId.Value)
+            && teamsById.TryGetValue(viewModel.AssignedToTeamId.Value, out var inactiveTeam))
         {
-            var inactiveTeam = await _teamService.GetTeamByIdAsync(viewModel.AssignedToTeamId.Value);
-            if (inactiveTeam is not null)
-            {
-                viewModel.TeamOptions.Insert(0,
-                    new TeamOptionDto(inactiveTeam.Id, $"{inactiveTeam.Name} (inactive)"));
-            }
+            teamOptions.Insert(0, inactiveTeam);
         }
+
+        viewModel.TeamOptions = teamOptions;
 
         viewModel.AssigneeOptions = await GetActiveAssigneeOptionsAsync();
 

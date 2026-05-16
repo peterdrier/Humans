@@ -117,8 +117,8 @@ public sealed class RoleAssignmentService : IRoleAssignmentService, IUserDataCon
             .Distinct()
             .ToList();
         var users = userIds.Count == 0
-            ? new Dictionary<Guid, User>()
-            : await _userService.GetByIdsAsync(userIds, ct);
+            ? new Dictionary<Guid, UserInfo>()
+            : await _userService.GetUserInfosAsync(userIds, ct);
 
         return assignments.Select(assignment =>
         {

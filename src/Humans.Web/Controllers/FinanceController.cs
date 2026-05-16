@@ -10,6 +10,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 
+using Humans.Application.Interfaces.Users;
+
 namespace Humans.Web.Controllers;
 
 [Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]
@@ -29,9 +31,9 @@ public class FinanceController : HumansControllerBase
         ITicketingBudgetService ticketingBudgetService,
         ITicketQueryService ticketQueryService,
         IClock clock,
-        UserManager<User> userManager,
+        IUserService userService,
         ILogger<FinanceController> logger)
-        : base(userManager)
+        : base(userService)
     {
         _budgetService = budgetService;
         _teamService = teamService;
@@ -93,7 +95,10 @@ public class FinanceController : HumansControllerBase
             var category = await _budgetService.GetCategoryByIdAsync(id);
             if (category is null) return NotFound();
 
-            ViewBag.Teams = await _teamService.GetActiveTeamOptionsAsync();
+            ViewBag.Teams = (await _teamService.GetTeamsAsync()).Values
+                .Where(t => t.IsActive)
+                .OrderBy(t => t.Name, StringComparer.Ordinal)
+                .ToList();
 
             return View(category);
         }

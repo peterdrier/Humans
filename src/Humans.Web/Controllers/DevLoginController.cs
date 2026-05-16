@@ -4,7 +4,6 @@ using Humans.Application.Configuration;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
-using Humans.Infrastructure.Configuration;
 using Humans.Web.Infrastructure;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;

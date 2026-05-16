@@ -8,7 +8,6 @@ using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Xunit;
 using GeneralAvailabilityService = Humans.Application.Services.Shifts.GeneralAvailabilityService;
 
 namespace Humans.Application.Tests.Services.Shifts;
@@ -51,7 +50,7 @@ public class GeneralAvailabilityServiceTests : IDisposable
             .AsNoTracking()
             .FirstOrDefaultAsync(g => g.UserId == userId && g.EventSettingsId == esId);
         record.Should().NotBeNull();
-        record!.AvailableDayOffsets.Should().BeEquivalentTo(new[] { -3, -2, -1 });
+        record!.AvailableDayOffsets.Should().BeEquivalentTo([-3, -2, -1]);
     }
 
     [HumansFact]
@@ -72,7 +71,7 @@ public class GeneralAvailabilityServiceTests : IDisposable
             .Where(g => g.UserId == userId && g.EventSettingsId == esId)
             .ToListAsync();
         records.Should().HaveCount(1);
-        records[0].AvailableDayOffsets.Should().BeEquivalentTo(new[] { 0, 1, 2 });
+        records[0].AvailableDayOffsets.Should().BeEquivalentTo([0, 1, 2]);
     }
 
     [HumansFact]
@@ -91,7 +90,7 @@ public class GeneralAvailabilityServiceTests : IDisposable
         // Query for day -2: should return user1 and user2
         var available = await _service.GetAvailableForDayAsync(esId, -2);
         available.Should().HaveCount(2);
-        available.Select(a => a.UserId).Should().BeEquivalentTo(new[] { user1Id, user2Id });
+        available.Select(a => a.UserId).Should().BeEquivalentTo([user1Id, user2Id]);
     }
 
     [HumansFact]

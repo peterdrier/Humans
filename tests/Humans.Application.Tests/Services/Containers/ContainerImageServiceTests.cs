@@ -8,7 +8,6 @@ using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Containers;
-using Humans.Testing;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using NodaTime.Testing;

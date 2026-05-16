@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
@@ -12,8 +11,6 @@ using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Services;
-using Xunit;
 using ShiftSignupService = Humans.Application.Services.Shifts.ShiftSignupService;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Governance;

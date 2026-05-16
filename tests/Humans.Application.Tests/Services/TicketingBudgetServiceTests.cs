@@ -8,7 +8,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Xunit;
 using TicketingBudgetService = Humans.Application.Services.Tickets.TicketingBudgetService;
 
 namespace Humans.Application.Tests.Services;

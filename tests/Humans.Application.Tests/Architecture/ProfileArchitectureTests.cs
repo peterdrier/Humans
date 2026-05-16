@@ -3,7 +3,6 @@ using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
-using Humans.Infrastructure.Services.Profiles;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using Xunit;
@@ -23,23 +22,23 @@ namespace Humans.Application.Tests.Architecture;
 /// </summary>
 public class ProfileArchitectureTests
 {
-    public static TheoryData<Type> ApplicationProfileServices => new()
-    {
+    public static TheoryData<Type> ApplicationProfileServices =>
+    [
         typeof(ProfileService),
         typeof(ContactFieldService),
         typeof(UserEmailService),
         typeof(CommunicationPreferenceService),
         typeof(AccountMergeService),
-        typeof(DuplicateAccountService),
-    };
+        typeof(DuplicateAccountService)
+    ];
 
-    public static TheoryData<Type> ServicesWithoutMemoryCache => new()
-    {
+    public static TheoryData<Type> ServicesWithoutMemoryCache =>
+    [
         typeof(ProfileService),
         typeof(ContactFieldService),
         typeof(UserEmailService),
-        typeof(CommunicationPreferenceService),
-    };
+        typeof(CommunicationPreferenceService)
+    ];
 
     public static TheoryData<Type, Type> RequiredRepositoryEdges => new()
     {
@@ -104,16 +103,6 @@ public class ProfileArchitectureTests
             p => (p.ParameterType.Namespace ?? string.Empty)
                 .StartsWith("Humans.Application.Interfaces.Stores", StringComparison.Ordinal),
             because: "Profile services must not depend on store abstractions");
-    }
-
-    [HumansFact]
-    public void CachingProfileService_lives_in_infrastructure_and_implements_public_interfaces()
-    {
-        typeof(CachingProfileService).Namespace
-            .Should().Be("Humans.Infrastructure.Services.Profiles",
-                because: "caching decorators live in Infrastructure");
-        typeof(CachingProfileService).Should().BeAssignableTo<IProfileService>();
-        typeof(CachingProfileService).Should().BeAssignableTo<IFullProfileInvalidator>();
     }
 
     [HumansFact]

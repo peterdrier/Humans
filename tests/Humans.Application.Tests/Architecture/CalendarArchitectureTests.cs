@@ -1,9 +1,7 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Calendar;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Infrastructure.Repositories.Calendar;
-using Xunit;
 using CalendarService = Humans.Application.Services.Calendar.CalendarService;
 
 namespace Humans.Application.Tests.Architecture;

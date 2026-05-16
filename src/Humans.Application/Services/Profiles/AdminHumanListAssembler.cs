@@ -1,8 +1,6 @@
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Governance;
 using Humans.Domain.Constants;
-using Humans.Domain.Entities;
-using ProfileEntity = Humans.Domain.Entities.Profile;
 
 namespace Humans.Application.Services.Profiles;
 
@@ -20,14 +18,13 @@ namespace Humans.Application.Services.Profiles;
 /// <para>The text-search portion is now controller-driven: the caller may
 /// pre-filter the candidate user-id set by passing
 /// <paramref name="searchUserIds"/>, which is the union returned by
-/// <c>IProfileService.SearchProfilesAsync(query, PersonSearchFields.AdminAll)</c>
+/// <c>IUserService.SearchUsersAsync(query, PersonSearchFields.AdminAll)</c>
 /// + email-direct match. Pass <c>null</c> when no search term is in play.</para>
 /// </summary>
 public static class AdminHumanListAssembler
 {
     public static async Task<IReadOnlyList<AdminHumanRow>> AssembleAsync(
-        IReadOnlyList<User> allUsers,
-        IReadOnlyDictionary<Guid, ProfileEntity> profilesByUserId,
+        IReadOnlyCollection<UserInfo> allUsers,
         IReadOnlyDictionary<Guid, string> notificationEmailsByUserId,
         IReadOnlySet<Guid>? searchUserIds,
         string? statusFilter,
@@ -35,13 +32,12 @@ public static class AdminHumanListAssembler
         CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(allUsers);
-        ArgumentNullException.ThrowIfNull(profilesByUserId);
         ArgumentNullException.ThrowIfNull(notificationEmailsByUserId);
         ArgumentNullException.ThrowIfNull(membershipCalculator);
 
-        var candidates = searchUserIds is null
+        IEnumerable<UserInfo> candidates = searchUserIds is null
             ? allUsers
-            : allUsers.Where(u => searchUserIds.Contains(u.Id)).ToList();
+            : allUsers.Where(u => searchUserIds.Contains(u.Id));
 
         var ids = candidates.Select(u => u.Id).ToList();
         var partition = await membershipCalculator.PartitionUsersAsync(ids, ct);
@@ -63,9 +59,8 @@ public static class AdminHumanListAssembler
 
         return rows.Select(u =>
         {
-            profilesByUserId.TryGetValue(u.Id, out var profile);
-            var hasProfile = profile is not null;
-            var isApproved = profile?.IsApproved ?? false;
+            var hasProfile = u.Profile is not null;
+            var isApproved = u.Profile?.IsApproved ?? false;
 
             var email = notificationEmailsByUserId.TryGetValue(u.Id, out var primary)
                 ? primary

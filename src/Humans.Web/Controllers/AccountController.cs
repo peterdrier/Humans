@@ -24,6 +24,7 @@ public class AccountController : HumansControllerBase
 
     public AccountController(
         SignInManager<User> signInManager,
+        IUserService userService,
         UserManager<User> userManager,
         IClock clock,
         ILogger<AccountController> logger,
@@ -32,7 +33,7 @@ public class AccountController : HumansControllerBase
         IAccountProvisioningService accountProvisioningService,
         IProfileService profileService,
         IStringLocalizer<SharedResource> localizer)
-        : base(userManager)
+        : base(userService)
     {
         _signInManager = signInManager;
         _userManager = userManager;
@@ -128,7 +129,7 @@ public class AccountController : HumansControllerBase
         // so a fresh OAuth email never spawns a duplicate account.
         if (User.Identity?.IsAuthenticated == true)
         {
-            var currentUser = await GetCurrentUserAsync();
+            var currentUser = await _userManager.GetUserAsync(User);
             if (currentUser is not null)
             {
                 var addLinkResult = await _userManager.AddLoginAsync(currentUser, info);
@@ -403,7 +404,7 @@ public class AccountController : HumansControllerBase
     /// whether to roll back, so it calls reconcile inline rather than via
     /// this helper.
     /// </summary>
-    private async Task TryReconcileOAuthIdentityAsync(Guid userId, Microsoft.AspNetCore.Identity.ExternalLoginInfo info)
+    private async Task TryReconcileOAuthIdentityAsync(Guid userId, ExternalLoginInfo info)
     {
         var claimEmail = info.Principal.FindFirstValue(ClaimTypes.Email);
         if (string.IsNullOrEmpty(claimEmail))
@@ -470,7 +471,7 @@ public class AccountController : HumansControllerBase
     /// unparseable — the displacement gate in the service treats this as
     /// "don't displace another user".
     /// </summary>
-    private static bool ReadEmailVerifiedClaim(Microsoft.AspNetCore.Identity.ExternalLoginInfo info)
+    private static bool ReadEmailVerifiedClaim(ExternalLoginInfo info)
     {
         var raw = info.Principal.FindFirstValue("email_verified");
         return bool.TryParse(raw, out var verified) && verified;

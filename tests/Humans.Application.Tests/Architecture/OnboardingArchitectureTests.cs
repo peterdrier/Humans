@@ -1,9 +1,6 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Onboarding;
-using Humans.Application.Interfaces.Profiles;
 using Microsoft.EntityFrameworkCore;
-using Xunit;
 using OnboardingService = Humans.Application.Services.Onboarding.OnboardingService;
 
 namespace Humans.Application.Tests.Architecture;
@@ -46,16 +43,6 @@ public class OnboardingArchitectureTests
     }
 
     [HumansFact]
-    public void OnboardingService_HasNoIFullProfileInvalidatorConstructorParameter()
-    {
-        var ctor = typeof(OnboardingService).GetConstructors().Single();
-        ctor.GetParameters()
-            .Should().NotContain(
-                p => p.ParameterType == typeof(IFullProfileInvalidator),
-                because: "FullProfile cache invalidation is owned by ProfileService (via its decorator) — the orchestrator must not shortcut around it");
-    }
-
-    [HumansFact]
     public void OnboardingService_HasNoRepositoryDependency()
     {
         var ctor = typeof(OnboardingService).GetConstructors().Single();
@@ -65,22 +52,6 @@ public class OnboardingArchitectureTests
 
         repositoryParam.Should().BeNull(
             because: "Onboarding owns no tables — it must not inject repository interfaces, only section service interfaces (design-rules §9)");
-    }
-
-    [HumansFact]
-    public void OnboardingService_ImplementsIOnboardingEligibilityQuery()
-    {
-        typeof(IOnboardingEligibilityQuery).IsAssignableFrom(typeof(OnboardingService))
-            .Should().BeTrue(
-                because: "OnboardingService exposes the narrow IOnboardingEligibilityQuery surface so ProfileService / ConsentService can break the DI cycle with OnboardingService");
-    }
-
-    [HumansFact]
-    public void IOnboardingService_ExtendsIOnboardingEligibilityQuery()
-    {
-        typeof(IOnboardingEligibilityQuery).IsAssignableFrom(typeof(IOnboardingService))
-            .Should().BeTrue(
-                because: "the narrow consent-check query surface is available to every IOnboardingService caller as well as the DI-cycle-break callers");
     }
 
     [HumansFact]

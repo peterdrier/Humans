@@ -1,4 +1,3 @@
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Application.Interfaces.Campaigns;
 using Humans.Application.Interfaces.Email;
@@ -7,10 +6,6 @@ namespace Humans.Web.Models;
 
 public class AdminHumanListViewModel : PagedListViewModel
 {
-    public AdminHumanListViewModel() : base()
-    {
-    }
-
     /// <summary>
     /// Page of admin humans to render via the canonical
     /// <c>_HumanSearchResults</c> partial. Admin-specific fields
@@ -101,10 +96,6 @@ public class AdminHumanApplicationViewModel
 
 public class AdminApplicationListViewModel : PagedListViewModel
 {
-    public AdminApplicationListViewModel() : base()
-    {
-    }
-
     public List<AdminApplicationViewModel> Applications { get; set; } = [];
     public string? StatusFilter { get; set; }
     public string? TierFilter { get; set; }

@@ -34,6 +34,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddAuthSection();
         services.AddTeamsSection();
         services.AddGovernanceSection();
+        services.AddOnboardingSection();
         services.AddCampsSection();
         services.AddContainersSection();
         services.AddEventsSection();

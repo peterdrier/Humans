@@ -1,5 +1,3 @@
-using Humans.Application.Interfaces;
-using Humans.Application.DTOs;
 using Humans.Domain.Enums;
 
 namespace Humans.Application.Interfaces.Email;

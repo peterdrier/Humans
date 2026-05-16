@@ -184,7 +184,7 @@ public sealed class GoogleDriveActivityClient : IGoogleDriveActivityClient
     {
         if (source is null || source.Count == 0)
         {
-            return Array.Empty<DriveActivityPermission>();
+            return [];
         }
 
         var result = new List<DriveActivityPermission>(source.Count);

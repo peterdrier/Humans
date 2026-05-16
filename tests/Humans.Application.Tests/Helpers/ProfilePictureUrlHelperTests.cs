@@ -4,7 +4,6 @@ using Humans.Web.Helpers;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
 using NSubstitute;
-using Xunit;
 
 namespace Humans.Application.Tests.Helpers;
 

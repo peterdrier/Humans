@@ -3,7 +3,6 @@ using Humans.Application.Interfaces.Email;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Infrastructure.Repositories.Email;
-using Xunit;
 using EmailOutboxService = Humans.Application.Services.Email.EmailOutboxService;
 using OutboxEmailService = Humans.Application.Services.Email.OutboxEmailService;
 

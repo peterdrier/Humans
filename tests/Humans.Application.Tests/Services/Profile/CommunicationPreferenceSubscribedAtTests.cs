@@ -13,7 +13,6 @@ using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Xunit;
 using CommunicationPreferenceService = Humans.Application.Services.Profiles.CommunicationPreferenceService;
 
 namespace Humans.Application.Tests.Services.Profiles;

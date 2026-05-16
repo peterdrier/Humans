@@ -6,6 +6,8 @@ using Humans.Application.Interfaces.Profiles;
 using Humans.Domain.Entities;
 using Humans.Web.Authorization;
 
+using Humans.Application.Interfaces.Users;
+
 namespace Humans.Web.Controllers;
 
 /// <summary>
@@ -36,10 +38,10 @@ public sealed class ProfilePictureMigrationAdminController : HumansControllerBas
     private readonly ILogger<ProfilePictureMigrationAdminController> _logger;
 
     public ProfilePictureMigrationAdminController(
-        UserManager<User> userManager,
+        IUserService userService,
         IProfileService profileService,
         ILogger<ProfilePictureMigrationAdminController> logger)
-        : base(userManager)
+        : base(userService)
     {
         _profileService = profileService;
         _logger = logger;

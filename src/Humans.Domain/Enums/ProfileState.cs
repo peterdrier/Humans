@@ -3,7 +3,7 @@ namespace Humans.Domain.Enums;
 /// <summary>
 /// Lifecycle state of a <see cref="Entities.Profile"/>. Issue #635 (§15i):
 /// stored as a nullable string column added by the additive migration. Existing
-/// rows hold <c>null</c> until first read; <c>CachingProfileService</c> lazily
+/// rows hold <c>null</c> until first read; <c>CachingUserService</c> lazily
 /// computes the correct value from <c>IsSuspended</c> + required-field presence
 /// and persists it via the repository so the next read is canonical. Eventually
 /// every row is touched and populated; the column is later promoted to

@@ -3,7 +3,6 @@ using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Consent;
 using Humans.Application.Interfaces.Feedback;
-using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Tickets;
@@ -16,7 +15,6 @@ namespace Humans.Infrastructure.Services.Agent;
 
 public sealed class AgentUserSnapshotProvider : IAgentUserSnapshotProvider
 {
-    private readonly IProfileService _profiles;
     private readonly IUserService _users;
     private readonly IRoleAssignmentService _roles;
     private readonly ITeamService _teams;
@@ -28,7 +26,6 @@ public sealed class AgentUserSnapshotProvider : IAgentUserSnapshotProvider
     private readonly IClock _clock;
 
     public AgentUserSnapshotProvider(
-        IProfileService profiles,
         IUserService users,
         IRoleAssignmentService roles,
         ITeamService teams,
@@ -39,7 +36,6 @@ public sealed class AgentUserSnapshotProvider : IAgentUserSnapshotProvider
         IShiftManagementService shiftManagement,
         IClock clock)
     {
-        _profiles = profiles;
         _users = users;
         _roles = roles;
         _teams = teams;
@@ -53,8 +49,8 @@ public sealed class AgentUserSnapshotProvider : IAgentUserSnapshotProvider
 
     public async Task<AgentUserSnapshot> LoadAsync(Guid userId, CancellationToken cancellationToken)
     {
-        var profile = await _profiles.GetProfileAsync(userId, cancellationToken);
-        var user = await _users.GetByIdAsync(userId, cancellationToken);
+        var user = await _users.GetUserInfoAsync(userId, cancellationToken);
+        var profile = user?.Profile;
         var activeRoles = await _roles.GetActiveForUserAsync(userId, cancellationToken);
         var teamMemberships = await _teams.GetActiveTeamMembershipsForUserAsync(userId, cancellationToken);
         var pendingDocs = await _consents.GetPendingDocumentNamesAsync(userId, cancellationToken);
@@ -85,11 +81,11 @@ public sealed class AgentUserSnapshotProvider : IAgentUserSnapshotProvider
     {
         var activeEvent = await _shiftManagement.GetActiveAsync();
         if (activeEvent is null)
-            return Array.Empty<UpcomingShiftEntry>();
+            return [];
 
         var signups = await _shiftSignups.GetByUserAsync(userId, activeEvent.Id);
         if (signups.Count == 0)
-            return Array.Empty<UpcomingShiftEntry>();
+            return [];
 
         var now = _clock.GetCurrentInstant();
         var upcoming = signups
@@ -98,7 +94,7 @@ public sealed class AgentUserSnapshotProvider : IAgentUserSnapshotProvider
                 && s.Status is SignupStatus.Pending or SignupStatus.Confirmed)
             .ToList();
         if (upcoming.Count == 0)
-            return Array.Empty<UpcomingShiftEntry>();
+            return [];
 
         var entries = new List<UpcomingShiftEntry>();
 

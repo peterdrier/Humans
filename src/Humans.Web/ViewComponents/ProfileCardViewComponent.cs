@@ -1,6 +1,5 @@
-using Microsoft.AspNetCore.Identity;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Controllers;
 using Humans.Web.Helpers;
@@ -22,7 +21,6 @@ public enum ProfileCardViewMode
 
 public class ProfileCardViewComponent : ViewComponent
 {
-    private readonly UserManager<User> _userManager;
     private readonly IUserService _userService;
     private readonly IContactFieldService _contactFieldService;
     private readonly IUserEmailService _userEmailService;
@@ -32,7 +30,6 @@ public class ProfileCardViewComponent : ViewComponent
     private readonly ICommunicationPreferenceService _commPrefService;
 
     public ProfileCardViewComponent(
-        UserManager<User> userManager,
         IUserService userService,
         IContactFieldService contactFieldService,
         IUserEmailService userEmailService,
@@ -41,7 +38,6 @@ public class ProfileCardViewComponent : ViewComponent
         IMembershipCalculator membershipCalculator,
         ICommunicationPreferenceService commPrefService)
     {
-        _userManager = userManager;
         _userService = userService;
         _contactFieldService = contactFieldService;
         _userEmailService = userEmailService;
@@ -65,14 +61,11 @@ public class ProfileCardViewComponent : ViewComponent
         var viewerUserId = userId; // default for self/admin
 
         // For public view, resolve actual permissions based on viewer
-        if (viewMode == ProfileCardViewMode.Public)
+        if (viewMode == ProfileCardViewMode.Public
+            && Guid.TryParse(UserClaimsPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out var viewerId))
         {
-            var viewer = await _userManager.GetUserAsync(UserClaimsPrincipal);
-            if (viewer is not null)
-            {
-                viewerUserId = viewer.Id;
-                canViewLegalName = await _roleAssignmentService.IsUserBoardMemberAsync(viewer.Id);
-            }
+            viewerUserId = viewerId;
+            canViewLegalName = await _roleAssignmentService.IsUserBoardMemberAsync(viewerId);
         }
 
         // Get contact fields

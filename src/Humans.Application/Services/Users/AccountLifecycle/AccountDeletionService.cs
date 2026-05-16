@@ -1,9 +1,7 @@
-using Humans.Application.Extensions;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Email;
-using Humans.Application.Interfaces.Mailer;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
@@ -115,7 +113,7 @@ public sealed class AccountDeletionService : IAccountDeletionService
         }
 
         // 1. Persist deletion-pending fields on User. UserService invalidates
-        //    FullProfile after the write.
+        //    UserInfo after the write.
         await _userService.SetDeletionPendingAsync(userId, now, deletionDate, eligibleAfter, ct);
 
         // 2. Revoke team memberships and team role assignments immediately so
@@ -281,7 +279,7 @@ public sealed class AccountDeletionService : IAccountDeletionService
         //    aggregate. This is the write that clears DeletionScheduledFor /
         //    DeletionEligibleAfter — once this commits, the user falls off
         //    tomorrow's candidate list. UserService owns the repo call and
-        //    FullProfile invalidation; cross-section cache invalidation
+        //    UserInfo invalidation; cross-section cache invalidation
         //    (below) stays with the orchestrator.
         var identity = await _userService.ApplyExpiredDeletionAnonymizationAsync(userId, ct);
         if (identity is null)
@@ -298,7 +296,7 @@ public sealed class AccountDeletionService : IAccountDeletionService
         }
 
         // 7. Invalidate cross-section caches that key off the user. The
-        //    FullProfile entry was already invalidated by UserService when it
+        //    UserInfo entry was already invalidated by UserService when it
         //    wrote the User-aggregate anonymization; the ones here belong to
         //    sections other than Users.
         _teamService.RemoveMemberFromAllTeamsCache(userId);

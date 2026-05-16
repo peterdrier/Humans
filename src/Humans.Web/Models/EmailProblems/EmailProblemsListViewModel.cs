@@ -10,10 +10,10 @@ public sealed class EmailProblemsListViewModel
     public int TotalProblems =>
         CrossUserConflicts.Count + SingleUserIssues.Count + SystemLevelIssues.Count + LegacyEmailRows.Count;
 
-    public IReadOnlyList<CrossUserConflictRow> CrossUserConflicts { get; init; } = Array.Empty<CrossUserConflictRow>();
-    public IReadOnlyList<SingleUserIssueRow> SingleUserIssues { get; init; } = Array.Empty<SingleUserIssueRow>();
-    public IReadOnlyList<SystemLevelIssueRow> SystemLevelIssues { get; init; } = Array.Empty<SystemLevelIssueRow>();
-    public IReadOnlyList<LegacyEmailRow> LegacyEmailRows { get; init; } = Array.Empty<LegacyEmailRow>();
+    public IReadOnlyList<CrossUserConflictRow> CrossUserConflicts { get; init; } = [];
+    public IReadOnlyList<SingleUserIssueRow> SingleUserIssues { get; init; } = [];
+    public IReadOnlyList<SystemLevelIssueRow> SystemLevelIssues { get; init; } = [];
+    public IReadOnlyList<LegacyEmailRow> LegacyEmailRows { get; init; } = [];
 
     public static EmailProblemsListViewModel From(
         EmailProblemsReport report,
@@ -41,7 +41,7 @@ public sealed class EmailProblemsListViewModel
                     when p.UserId is Guid u:
                     if (!singleUserMap.TryGetValue(u, out var list))
                     {
-                        list = new List<string>();
+                        list = [];
                         singleUserMap[u] = list;
                     }
                     list.Add(p.Kind switch

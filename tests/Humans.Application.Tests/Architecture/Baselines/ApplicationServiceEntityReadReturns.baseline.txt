@@ -33,8 +33,6 @@ Humans.Application.Interfaces.Events.IEventService.GetUserEventAsync:Humans.Doma
 Humans.Application.Interfaces.Events.IEventService.GetUserSubmissionsAsync:Humans.Domain.Entities.Event
 Humans.Application.Interfaces.Events.IEventService.GetVenueAsync:Humans.Domain.Entities.EventVenue
 Humans.Application.Interfaces.Issues.IIssuesService.GetIssueByIdAsync:Humans.Domain.Entities.Issue
-Humans.Application.Interfaces.Profiles.IProfileService.GetByUserIdsAsync:Humans.Domain.Entities.Profile
-Humans.Application.Interfaces.Profiles.IProfileService.GetProfileAsync:Humans.Domain.Entities.Profile
 Humans.Application.Interfaces.Shifts.IShiftManagementService.GetActiveAsync:Humans.Domain.Entities.EventSettings
 Humans.Application.Interfaces.Shifts.IShiftManagementService.GetBrowseShiftsAsync:Humans.Domain.Entities.Shift
 Humans.Application.Interfaces.Shifts.IShiftManagementService.GetByIdAsync:Humans.Domain.Entities.EventSettings

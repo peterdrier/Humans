@@ -78,9 +78,10 @@ public sealed record UserExternalLoginInfo(
 
 /// <summary>
 /// Immutable projection of a <see cref="Profile"/> row carried inside
-/// <see cref="UserInfo"/>. <c>ProfilePictureData</c> is intentionally excluded
-/// (large blob, served separately); only <c>BirthdayDay</c> / <c>BirthdayMonth</c>
-/// are carried (year-of-birth excluded by design).
+/// <see cref="UserInfo"/>. Picture bytes are not carried — pictures live on
+/// the file share and are served via <c>ProfileController.Picture</c>; only
+/// <c>BirthdayDay</c> / <c>BirthdayMonth</c> are carried (year-of-birth
+/// excluded by design).
 /// </summary>
 public sealed record ProfileInfo(
     Guid Id,
@@ -161,10 +162,6 @@ public sealed record ProfileInfo(
 /// <see cref="ProfileInfo.EmergencyContactPhone"/> /
 /// <see cref="ProfileInfo.EmergencyContactRelationship"/>) ride along on the
 /// cached god-object; visibility filtering is a view-layer concern.
-/// </para>
-/// <para>
-/// <see cref="FullProfile"/> continues to coexist for the Profile-cache read
-/// path until follow-up migrations retire it (see issue #703 out-of-scope items).
 /// </para>
 /// </remarks>
 public sealed record UserInfo(
@@ -313,7 +310,7 @@ public sealed record UserInfo(
     /// True when this user should be treated as a Stub profile — no profile row,
     /// explicit <see cref="ProfileState.Stub"/>, or a legacy <c>null</c> State
     /// row that has not yet been backfilled by
-    /// <c>CachingProfileService.PopulateStateIfNullAsync</c>. Paranoid /
+    /// <c>CachingUserService.PopulateStateIfNullAsync</c>. Paranoid /
     /// defense-in-depth predicate: callers writing consent records or
     /// admitting the user to flows that require a verified legal name MUST
     /// block on this.
@@ -434,7 +431,7 @@ public sealed record UserInfo(
                 EmergencyContactName: profile.EmergencyContactName,
                 EmergencyContactPhone: profile.EmergencyContactPhone,
                 EmergencyContactRelationship: profile.EmergencyContactRelationship,
-                HasCustomPicture: profile.ProfilePictureData is not null && profile.ProfilePictureData.Length > 0,
+                HasCustomPicture: profile.ProfilePictureContentType is not null,
                 ProfilePictureContentType: profile.ProfilePictureContentType,
                 CreatedAt: profile.CreatedAt,
                 UpdatedAt: profile.UpdatedAt,

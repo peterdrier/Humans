@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Application;
 using Humans.Application.DTOs.EmailProblems;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
@@ -18,7 +17,7 @@ public class EmailProblemsServiceTests
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 5, 5, 12, 0));
 
-    private readonly List<UserInfo> _allInfos = new();
+    private readonly List<UserInfo> _allInfos = [];
 
     public EmailProblemsServiceTests()
     {
@@ -71,13 +70,13 @@ public class EmailProblemsServiceTests
         return UserInfo.Create(
             user: user,
             userEmails: emails,
-            eventParticipations: Array.Empty<EventParticipation>(),
-            externalLogins: Array.Empty<(string, string)>(),
+            eventParticipations: [],
+            externalLogins: [],
             profile: profile,
-            contactFields: Array.Empty<ContactField>(),
-            profileLanguages: Array.Empty<ProfileLanguage>(),
-            volunteerHistory: Array.Empty<VolunteerHistoryEntry>(),
-            communicationPreferences: Array.Empty<CommunicationPreference>());
+            contactFields: [],
+            profileLanguages: [],
+            volunteerHistory: [],
+            communicationPreferences: []);
     }
 
     private void AddInfo(UserInfo info)
@@ -110,11 +109,11 @@ public class EmailProblemsServiceTests
     public async Task DetectsMultipleIsPrimary()
     {
         var userId = Guid.NewGuid();
-        AddInfo(MakeInfo(userId, emails: new[]
-        {
+        AddInfo(MakeInfo(userId, emails:
+        [
             Email(userId, "a@x.com", isVerified: true, isPrimary: true),
-            Email(userId, "b@x.com", isVerified: true, isPrimary: true),
-        }));
+            Email(userId, "b@x.com", isVerified: true, isPrimary: true)
+        ]));
         SetOrphans();
         SetGhosts();
 
@@ -128,11 +127,11 @@ public class EmailProblemsServiceTests
     public async Task DetectsMultipleIsGoogle()
     {
         var userId = Guid.NewGuid();
-        AddInfo(MakeInfo(userId, emails: new[]
-        {
+        AddInfo(MakeInfo(userId, emails:
+        [
             Email(userId, "a@x.com", isVerified: true, isGoogle: true),
-            Email(userId, "b@x.com", isVerified: true, isGoogle: true),
-        }));
+            Email(userId, "b@x.com", isVerified: true, isGoogle: true)
+        ]));
         SetOrphans();
         SetGhosts();
 
@@ -146,11 +145,11 @@ public class EmailProblemsServiceTests
     public async Task DetectsZeroIsPrimary_WhenUserHasVerifiedEmails()
     {
         var userId = Guid.NewGuid();
-        AddInfo(MakeInfo(userId, emails: new[]
-        {
+        AddInfo(MakeInfo(userId, emails:
+        [
             Email(userId, "a@x.com", isVerified: true),
-            Email(userId, "b@x.com", isVerified: true),
-        }));
+            Email(userId, "b@x.com", isVerified: true)
+        ]));
         SetOrphans();
         SetGhosts();
 
@@ -164,10 +163,10 @@ public class EmailProblemsServiceTests
     public async Task DoesNotFlagZeroIsPrimary_WhenUserHasNoVerifiedEmails()
     {
         var userId = Guid.NewGuid();
-        AddInfo(MakeInfo(userId, emails: new[]
-        {
-            Email(userId, "a@x.com", isVerified: false),
-        }));
+        AddInfo(MakeInfo(userId, emails:
+        [
+            Email(userId, "a@x.com", isVerified: false)
+        ]));
         SetOrphans();
         SetGhosts();
 
@@ -180,10 +179,10 @@ public class EmailProblemsServiceTests
     public async Task DetectsZeroIsGoogle()
     {
         var userId = Guid.NewGuid();
-        AddInfo(MakeInfo(userId, emails: new[]
-        {
-            Email(userId, "a@x.com", isVerified: true, isPrimary: true),
-        }));
+        AddInfo(MakeInfo(userId, emails:
+        [
+            Email(userId, "a@x.com", isVerified: true, isPrimary: true)
+        ]));
         SetOrphans();
         SetGhosts();
 
@@ -198,7 +197,7 @@ public class EmailProblemsServiceTests
     {
         var userId = Guid.NewGuid();
         var unverified = Email(userId, "a@x.com", isVerified: false);
-        AddInfo(MakeInfo(userId, emails: new[] { unverified }));
+        AddInfo(MakeInfo(userId, emails: [unverified]));
         SetOrphans();
         SetGhosts();
 
@@ -216,8 +215,8 @@ public class EmailProblemsServiceTests
     {
         var u1 = Guid.NewGuid();
         var u2 = Guid.NewGuid();
-        AddInfo(MakeInfo(u1, emails: new[] { Email(u1, "joe@x.com", isVerified: true, isPrimary: true) }));
-        AddInfo(MakeInfo(u2, emails: new[] { Email(u2, "joe@x.com", isVerified: true, isPrimary: true) }));
+        AddInfo(MakeInfo(u1, emails: [Email(u1, "joe@x.com", isVerified: true, isPrimary: true)]));
+        AddInfo(MakeInfo(u2, emails: [Email(u2, "joe@x.com", isVerified: true, isPrimary: true)]));
         SetOrphans();
         SetGhosts();
 
@@ -236,8 +235,8 @@ public class EmailProblemsServiceTests
     {
         var u1 = Guid.NewGuid();
         var u2 = Guid.NewGuid();
-        AddInfo(MakeInfo(u1, emails: new[] { Email(u1, "joe@gmail.com", isVerified: true, isPrimary: true) }));
-        AddInfo(MakeInfo(u2, emails: new[] { Email(u2, "joe@googlemail.com", isVerified: true, isPrimary: true) }));
+        AddInfo(MakeInfo(u1, emails: [Email(u1, "joe@gmail.com", isVerified: true, isPrimary: true)]));
+        AddInfo(MakeInfo(u2, emails: [Email(u2, "joe@googlemail.com", isVerified: true, isPrimary: true)]));
         SetOrphans();
         SetGhosts();
 
@@ -281,8 +280,8 @@ public class EmailProblemsServiceTests
     {
         var u1 = Guid.NewGuid();
         var u2 = Guid.NewGuid();
-        AddInfo(MakeInfo(u1, emails: new[] { Email(u1, "joe@x.com", isVerified: true, isPrimary: true) }));
-        AddInfo(MakeInfo(u2, emails: new[] { Email(u2, "joe@x.com", isVerified: true, isPrimary: true) }));
+        AddInfo(MakeInfo(u1, emails: [Email(u1, "joe@x.com", isVerified: true, isPrimary: true)]));
+        AddInfo(MakeInfo(u2, emails: [Email(u2, "joe@x.com", isVerified: true, isPrimary: true)]));
 
         (await Sut.UsersShareAnyEmailAsync(u1, u2)).Should().BeTrue();
     }
@@ -292,8 +291,8 @@ public class EmailProblemsServiceTests
     {
         var u1 = Guid.NewGuid();
         var u2 = Guid.NewGuid();
-        AddInfo(MakeInfo(u1, emails: new[] { Email(u1, "joe@gmail.com", isVerified: true, isPrimary: true) }));
-        AddInfo(MakeInfo(u2, emails: new[] { Email(u2, "joe@googlemail.com", isVerified: true, isPrimary: true) }));
+        AddInfo(MakeInfo(u1, emails: [Email(u1, "joe@gmail.com", isVerified: true, isPrimary: true)]));
+        AddInfo(MakeInfo(u2, emails: [Email(u2, "joe@googlemail.com", isVerified: true, isPrimary: true)]));
 
         (await Sut.UsersShareAnyEmailAsync(u1, u2)).Should().BeTrue();
     }
@@ -303,8 +302,8 @@ public class EmailProblemsServiceTests
     {
         var u1 = Guid.NewGuid();
         var u2 = Guid.NewGuid();
-        AddInfo(MakeInfo(u1, emails: new[] { Email(u1, "alice@x.com", isVerified: true, isPrimary: true) }));
-        AddInfo(MakeInfo(u2, emails: new[] { Email(u2, "bob@x.com", isVerified: true, isPrimary: true) }));
+        AddInfo(MakeInfo(u1, emails: [Email(u1, "alice@x.com", isVerified: true, isPrimary: true)]));
+        AddInfo(MakeInfo(u2, emails: [Email(u2, "bob@x.com", isVerified: true, isPrimary: true)]));
 
         (await Sut.UsersShareAnyEmailAsync(u1, u2)).Should().BeFalse();
     }
@@ -313,7 +312,7 @@ public class EmailProblemsServiceTests
     public async Task UsersShareAnyEmail_SameUserId_False()
     {
         var u = Guid.NewGuid();
-        AddInfo(MakeInfo(u, emails: new[] { Email(u, "joe@x.com", isVerified: true, isPrimary: true) }));
+        AddInfo(MakeInfo(u, emails: [Email(u, "joe@x.com", isVerified: true, isPrimary: true)]));
 
         (await Sut.UsersShareAnyEmailAsync(u, u)).Should().BeFalse();
     }
@@ -341,10 +340,10 @@ public class EmailProblemsServiceTests
     public async Task DetectsLegacyIdentityEmailNotInUserEmails()
     {
         var userId = Guid.NewGuid();
-        AddInfo(MakeInfo(userId, identityEmailColumn: "legacy@x.com", emails: new[]
-        {
-            Email(userId, "other@x.com", isVerified: true, isPrimary: true),
-        }));
+        AddInfo(MakeInfo(userId, identityEmailColumn: "legacy@x.com", emails:
+        [
+            Email(userId, "other@x.com", isVerified: true, isPrimary: true)
+        ]));
         SetOrphans();
         SetGhosts();
 
@@ -360,10 +359,10 @@ public class EmailProblemsServiceTests
     public async Task DoesNotFlagLegacyEmail_WhenMatchingVerifiedRowExists()
     {
         var userId = Guid.NewGuid();
-        AddInfo(MakeInfo(userId, identityEmailColumn: "match@x.com", emails: new[]
-        {
-            Email(userId, "match@x.com", isVerified: true, isPrimary: true),
-        }));
+        AddInfo(MakeInfo(userId, identityEmailColumn: "match@x.com", emails:
+        [
+            Email(userId, "match@x.com", isVerified: true, isPrimary: true)
+        ]));
         SetOrphans();
         SetGhosts();
 
@@ -391,10 +390,10 @@ public class EmailProblemsServiceTests
     public async Task DoesNotFlagLegacyEmail_WhenMatchingRowIsUnverified()
     {
         var userId = Guid.NewGuid();
-        AddInfo(MakeInfo(userId, identityEmailColumn: "legacy@x.com", emails: new[]
-        {
-            Email(userId, "legacy@x.com", isVerified: false),
-        }));
+        AddInfo(MakeInfo(userId, identityEmailColumn: "legacy@x.com", emails:
+        [
+            Email(userId, "legacy@x.com", isVerified: false)
+        ]));
         SetOrphans();
         SetGhosts();
 
@@ -427,10 +426,10 @@ public class EmailProblemsServiceTests
     public async Task BackfillLegacyIdentityEmails_AlreadyHasMatchingVerifiedRow_SkipsUser()
     {
         var userId = Guid.NewGuid();
-        AddInfo(MakeInfo(userId, identityEmailColumn: "match@x.com", emails: new[]
-        {
-            Email(userId, "match@x.com", isVerified: true, isPrimary: true),
-        }));
+        AddInfo(MakeInfo(userId, identityEmailColumn: "match@x.com", emails:
+        [
+            Email(userId, "match@x.com", isVerified: true, isPrimary: true)
+        ]));
 
         var result = await Sut.BackfillLegacyIdentityEmailsAsync(Guid.NewGuid());
 
@@ -454,10 +453,10 @@ public class EmailProblemsServiceTests
     public async Task DoesNotFlagLegacyEmail_WhenProfileLessUserHasMatchingVerifiedRow()
     {
         var userId = Guid.NewGuid();
-        AddInfo(MakeInfo(userId, hasProfile: false, identityEmailColumn: "import@x.com", emails: new[]
-        {
-            Email(userId, "import@x.com", isVerified: true),
-        }));
+        AddInfo(MakeInfo(userId, hasProfile: false, identityEmailColumn: "import@x.com", emails:
+        [
+            Email(userId, "import@x.com", isVerified: true)
+        ]));
         SetOrphans();
         SetGhosts();
 
@@ -487,10 +486,10 @@ public class EmailProblemsServiceTests
     public async Task BackfillLegacyIdentityEmails_ProfileLessUserAlreadyMatched_SkipsUser()
     {
         var userId = Guid.NewGuid();
-        AddInfo(MakeInfo(userId, hasProfile: false, identityEmailColumn: "import@x.com", emails: new[]
-        {
-            Email(userId, "import@x.com", isVerified: true),
-        }));
+        AddInfo(MakeInfo(userId, hasProfile: false, identityEmailColumn: "import@x.com", emails:
+        [
+            Email(userId, "import@x.com", isVerified: true)
+        ]));
 
         var result = await Sut.BackfillLegacyIdentityEmailsAsync(Guid.NewGuid());
 

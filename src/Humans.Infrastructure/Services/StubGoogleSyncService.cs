@@ -123,6 +123,6 @@ public class StubGoogleSyncService : IGoogleSyncService
         int take, CancellationToken cancellationToken = default)
     {
         // Stub: no outbox in non-production environments.
-        return Task.FromResult<IReadOnlyList<GoogleSyncOutboxEventSnapshot>>(Array.Empty<GoogleSyncOutboxEventSnapshot>());
+        return Task.FromResult<IReadOnlyList<GoogleSyncOutboxEventSnapshot>>([]);
     }
 }

@@ -13,8 +13,9 @@ namespace Humans.Application.Interfaces.Users;
 /// affected entry from the 8 tables, preserving the fully-warm invariant.
 /// </summary>
 /// <remarks>
-/// Sibling of <see cref="Profiles.IFullProfileInvalidator"/>. Both coexist for
-/// the issue-703 PR — <c>FullProfile</c> follow-up migration is out of scope.
+/// Sole cache-staleness signal for the unified User+Profile cache. The legacy
+/// <c>IFullProfileInvalidator</c> was retired alongside the FullProfile delete;
+/// every external section that previously held it now holds this.
 /// </remarks>
 public interface IUserInfoInvalidator
 {

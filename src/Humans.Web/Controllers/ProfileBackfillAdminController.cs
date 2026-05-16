@@ -40,11 +40,10 @@ public sealed class ProfileBackfillAdminController : HumansControllerBase
     private readonly ILogger<ProfileBackfillAdminController> _logger;
 
     public ProfileBackfillAdminController(
-        UserManager<User> userManager,
         IUserService userService,
         IProfileService profileService,
         ILogger<ProfileBackfillAdminController> logger)
-        : base(userManager)
+        : base(userService)
     {
         _userService = userService;
         _profileService = profileService;
@@ -74,7 +73,7 @@ public sealed class ProfileBackfillAdminController : HumansControllerBase
             // EnsureStubProfileAsync is idempotent — ProfileService takes a
             // per-userId lock around the GetByUserId/Add pair, so a parallel
             // signup creating the profile between count and run is handled
-            // cleanly. The caching decorator refreshes the FullProfile entry
+            // cleanly. The caching decorator refreshes the UserInfo entry
             // after the write so downstream reads see the new Stub immediately
             // (design-rules §2a/§2c).
             await _profileService.EnsureStubProfileAsync(row.UserId, ct);
@@ -86,14 +85,10 @@ public sealed class ProfileBackfillAdminController : HumansControllerBase
         return RedirectToAction(nameof(Index));
     }
 
-    private async Task<IReadOnlyList<MissingProfileRow>> GetUsersMissingProfileAsync(CancellationToken ct)
+    private Task<IReadOnlyList<MissingProfileRow>> GetUsersMissingProfileAsync(CancellationToken ct)
     {
-        var users = await _userService.GetAllUsersAsync(ct);
-        var userIds = users.Select(u => u.Id).ToList();
-        var profiles = await _profileService.GetByUserIdsAsync(userIds, ct);
-
-        return users
-            .Where(u => !profiles.ContainsKey(u.Id))
+        IReadOnlyList<MissingProfileRow> rows = _userService.GetAllUserInfos()
+            .Where(u => u.Profile is null)
             .Select(u => new MissingProfileRow(
                 u.Id,
                 u.Email ?? string.Empty,
@@ -102,6 +97,7 @@ public sealed class ProfileBackfillAdminController : HumansControllerBase
                 u.ContactSource))
             .OrderByDescending(r => r.CreatedAt)
             .ToList();
+        return Task.FromResult(rows);
     }
 }
 

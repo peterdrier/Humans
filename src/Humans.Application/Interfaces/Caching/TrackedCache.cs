@@ -4,7 +4,7 @@ namespace Humans.Application.Interfaces.Caching;
 
 /// <summary>
 /// Generic, thread-safe in-memory cache primitive used by the Singleton caching
-/// decorators (<c>CachingProfileService</c>, <c>CachingUserService</c>,
+/// decorators (<c>CachingUserService</c>, <c>CachingUserService</c>,
 /// <c>CachingTeamService</c>, <c>CachingShiftViewService</c>). Owns a
 /// <see cref="ConcurrentDictionary{TKey, TValue}"/> and tracks hit / miss /
 /// invalidation counters via <see cref="Interlocked"/>.

@@ -2,8 +2,6 @@ using AwesomeAssertions;
 using Humans.Application.Models;
 using Humans.Application.Services;
 using Humans.Domain.Constants;
-using Humans.Testing;
-using Xunit;
 
 namespace Humans.Application.Tests.Services;
 

@@ -3,7 +3,6 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Repositories.Shifts;
-using Xunit;
 using ShiftManagementService = Humans.Application.Services.Shifts.ShiftManagementService;
 
 namespace Humans.Application.Tests.Architecture;

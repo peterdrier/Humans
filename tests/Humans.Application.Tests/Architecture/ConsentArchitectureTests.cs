@@ -2,7 +2,6 @@ using System.Reflection;
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Infrastructure.Repositories.Consent;
-using Xunit;
 using ConsentService = Humans.Application.Services.Consent.ConsentService;
 
 namespace Humans.Application.Tests.Architecture;

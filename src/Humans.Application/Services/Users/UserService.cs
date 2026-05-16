@@ -1,9 +1,10 @@
+using Humans.Application.DTOs;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Gdpr;
-using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
+using Humans.Application.Services.Profiles;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Domain.Helpers;
@@ -21,11 +22,9 @@ namespace Humans.Application.Services.Users;
 /// <remarks>
 /// <para>
 /// Cross-section invalidation: writes that change fields exposed by
-/// <see cref="FullProfile"/> (DisplayName, GoogleEmail) call
-/// <see cref="IFullProfileInvalidator.InvalidateAsync"/> so the Profile cache
-/// reloads the affected entry. Writes to deletion state and event
-/// participation do not invalidate — those fields are not included in the
-/// FullProfile projection.
+/// <see cref="UserInfo"/> (DisplayName, UserEmails, ProfilePictureUrl) call
+/// <see cref="IUserInfoInvalidator.InvalidateAsync"/> so the cache reloads
+/// the affected entry.
 /// </para>
 /// <para>
 /// No outbound edges to higher-level sections (Teams, RoleAssignments,
@@ -38,7 +37,7 @@ namespace Humans.Application.Services.Users;
 public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
 {
     private readonly IUserRepository _repo;
-    private readonly IFullProfileInvalidator _fullProfileInvalidator;
+    private readonly IUserInfoInvalidator _userInfoInvalidator;
     private readonly IAdminAuthorizationService _adminAuthorization;
     private readonly IClock _clock;
     private readonly ILogger<UserService> _logger;
@@ -54,7 +53,7 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
         IProfileRepository profileRepo,
         IContactFieldRepository contactFieldRepo,
         ICommunicationPreferenceRepository communicationPreferenceRepo,
-        IFullProfileInvalidator fullProfileInvalidator,
+        IUserInfoInvalidator userInfoInvalidator,
         IAdminAuthorizationService adminAuthorization,
         IClock clock,
         ILogger<UserService> logger)
@@ -64,11 +63,16 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
         _profileRepo = profileRepo;
         _contactFieldRepo = contactFieldRepo;
         _communicationPreferenceRepo = communicationPreferenceRepo;
-        _fullProfileInvalidator = fullProfileInvalidator;
+        _userInfoInvalidator = userInfoInvalidator;
         _adminAuthorization = adminAuthorization;
         _clock = clock;
         _logger = logger;
     }
+
+    // The undecorated service has no cache to warm — bulk-read callers that
+    // care about warmup state are decorated, this base impl is only used by
+    // the decorator on miss.
+    public bool IsWarmedUp => true;
 
     // ==========================================================================
     // User reads
@@ -81,15 +85,15 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
 
         var userEmails = await _userEmailRepo.GetByUserIdReadOnlyAsync(userId, ct);
         var participations = await _repo.GetEventParticipationsByUserIdAsync(userId, ct);
-        var externalLoginsMap = await _repo.GetExternalLoginsByUserIdsAsync(new[] { userId }, ct);
+        var externalLoginsMap = await _repo.GetExternalLoginsByUserIdsAsync([userId], ct);
         var externalLogins = externalLoginsMap.TryGetValue(userId, out var logins)
             ? logins
-            : Array.Empty<(string Provider, string ProviderKey)>();
+            : [];
 
         var profile = await _profileRepo.GetByUserIdReadOnlyAsync(userId, ct);
-        IReadOnlyList<ContactField> contactFields = Array.Empty<ContactField>();
-        IReadOnlyList<ProfileLanguage> languages = Array.Empty<ProfileLanguage>();
-        IReadOnlyList<VolunteerHistoryEntry> volunteerHistory = Array.Empty<VolunteerHistoryEntry>();
+        IReadOnlyList<ContactField> contactFields = [];
+        IReadOnlyList<ProfileLanguage> languages = [];
+        IReadOnlyList<VolunteerHistoryEntry> volunteerHistory = [];
         if (profile is not null)
         {
             contactFields = await _contactFieldRepo.GetByProfileIdReadOnlyAsync(profile.Id, ct);
@@ -112,6 +116,22 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
             "If this is being called on the inner UserService it indicates a DI " +
             "registration mistake — IUserService should resolve to CachingUserService.");
 
+    public ValueTask<IReadOnlyDictionary<Guid, UserInfo>> GetUserInfosAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
+        throw new NotSupportedException(
+            "GetUserInfosAsync is only meaningful through CachingUserService — " +
+            "the decorator serves cached hits from the dict and refills misses " +
+            "through inner.GetUserInfoAsync. If this is being called on the inner " +
+            "UserService it indicates a DI registration mistake.");
+
+    public Task<IReadOnlyList<HumanSearchResult>> SearchUsersAsync(
+        string query, PersonSearchFields fields, int limit = 10, CancellationToken ct = default) =>
+        throw new NotSupportedException(
+            "SearchUsersAsync runs against the cached UserInfo snapshot in " +
+            "CachingUserService. If this is being called on the inner UserService " +
+            "it indicates a DI registration mistake — IUserService should resolve " +
+            "to CachingUserService.");
+
     public Task<User?> GetByIdAsync(Guid userId, CancellationToken ct = default) =>
         _repo.GetByIdAsync(userId, ct);
 
@@ -132,11 +152,11 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
         if (displayName is null)
             return null;
 
-        // The purge renames the user + removes UserEmail rows. The FullProfile
+        // The purge renames the user + removes UserEmail rows. The UserInfo
         // cache entry must refresh so downstream consumers see the purged view.
         // Cross-section invalidations (ActiveTeams cache, etc.) belong to the
         // orchestrator — see IAccountDeletionService.PurgeAsync.
-        await _fullProfileInvalidator.InvalidateAsync(userId, ct);
+        await _userInfoInvalidator.InvalidateAsync(userId, ct);
 
         _logger.LogWarning("Purged human {DisplayName} ({HumanId})", displayName, userId);
 
@@ -150,11 +170,11 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
         // Cross-section cascade (team memberships, role assignments, profile
         // anonymization, shift cleanup) and cross-section cache invalidation
         // are owned by IAccountDeletionService — this method only handles the
-        // User-aggregate write and the FullProfile cache (the one cache keyed
+        // User-aggregate write and the UserInfo cache (the one cache keyed
         // directly on fields owned here).
         var result = await _repo.ApplyExpiredDeletionAnonymizationAsync(userId, ct);
         if (result is not null)
-            await _fullProfileInvalidator.InvalidateAsync(userId, ct);
+            await _userInfoInvalidator.InvalidateAsync(userId, ct);
         return result;
     }
 
@@ -203,7 +223,7 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
     {
         var set = await _repo.SetGoogleEmailStatusAsync(userId, status, ct);
         if (set)
-            await _fullProfileInvalidator.InvalidateAsync(userId, ct);
+            await _userInfoInvalidator.InvalidateAsync(userId, ct);
         return set;
     }
 
@@ -211,7 +231,21 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
     {
         var updated = await _repo.UpdateDisplayNameAsync(userId, displayName, ct);
         if (updated)
-            await _fullProfileInvalidator.InvalidateAsync(userId, ct);
+            await _userInfoInvalidator.InvalidateAsync(userId, ct);
+    }
+
+    public async Task SetPreferredLanguageAsync(Guid userId, string preferredLanguage, CancellationToken ct = default)
+    {
+        var updated = await _repo.SetPreferredLanguageAsync(userId, preferredLanguage, ct);
+        if (updated)
+            await _userInfoInvalidator.InvalidateAsync(userId, ct);
+    }
+
+    public async Task SetICalTokenAsync(Guid userId, Guid token, CancellationToken ct = default)
+    {
+        var updated = await _repo.SetICalTokenAsync(userId, token, ct);
+        if (updated)
+            await _userInfoInvalidator.InvalidateAsync(userId, ct);
     }
 
     public async Task<bool> SetDeletionPendingAsync(
@@ -221,7 +255,7 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
         var updated = await _repo.SetDeletionPendingAsync(
             userId, requestedAt, scheduledFor, eligibleAfter, ct);
         if (updated)
-            await _fullProfileInvalidator.InvalidateAsync(userId, ct);
+            await _userInfoInvalidator.InvalidateAsync(userId, ct);
         return updated;
     }
 
@@ -229,7 +263,7 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
     {
         var updated = await _repo.ClearDeletionAsync(userId, ct);
         if (updated)
-            await _fullProfileInvalidator.InvalidateAsync(userId, ct);
+            await _userInfoInvalidator.InvalidateAsync(userId, ct);
         return updated;
     }
 
@@ -424,7 +458,7 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
         await _adminAuthorization.RequireCurrentUserIsAdminAsync(ct);
         var deleted = await _repo.DeleteUsersAsync(userIds, ct);
         foreach (var userId in userIds)
-            await _fullProfileInvalidator.InvalidateAsync(userId, ct);
+            await _userInfoInvalidator.InvalidateAsync(userId, ct);
         return deleted;
     }
 

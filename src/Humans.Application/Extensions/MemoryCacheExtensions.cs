@@ -1,5 +1,4 @@
 using System.Diagnostics.CodeAnalysis;
-using Humans.Application.Interfaces;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace Humans.Application.Extensions;

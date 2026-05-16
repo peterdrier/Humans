@@ -33,6 +33,7 @@ Atomic rules. Fetch the body when the description's trigger matches your task. S
 - [`provenance-fks-not-user-scoped`](architecture/provenance-fks-not-user-scoped.md) — per-user FK columns recording WHO did something (AddedByUserId etc) don't make a section user-scoped under §8a; the deletion test settles it
 - [`refunds-manual-via-dashboard`](architecture/refunds-manual-via-dashboard.md) — HARD RULE. Humans never calls Stripe refund/payout APIs. Money-out is dashboard-manual; Humans only does bookkeeping (negative `StorePayment` rows).
 - [`repository-required-for-db-access`](architecture/repository-required-for-db-access.md) — HARD RULE. Every DB-accessing service goes through a repository interface; no service injects `HumansDbContext` directly, even for singleton-row tables.
+- [`no-leaf-to-director-callbacks`](architecture/no-leaf-to-director-callbacks.md) — HARD RULE. ProfileService/ConsentService/UserService never depend on or call back into OnboardingService/HumanLifecycleService/etc. Narrow-interface band-aids are a symptom; relocate the predicate to the field's owner.
 - [`shared-drives-only`](architecture/shared-drives-only.md) — Drive resources on Shared Drives only; API calls need `SupportsAllDrives` + `permissionDetails`
 - [`user-profile-foundational`](architecture/user-profile-foundational.md) — UserService/ProfileService are bottom of the stack; no outbound calls to higher-level sections
 - [Widget Pending → Confirmed promotion](architecture/widget-pending-promotion.md) — how mid-onboarding signups stay Pending until consents land

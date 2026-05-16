@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Humans.Application;
 using Humans.Application.Extensions;
-using Humans.Web.Extensions;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Users;
@@ -39,7 +39,7 @@ public class GuestController : HumansControllerBase
     };
 
     public GuestController(
-        UserManager<User> userManager,
+        IUserService userService,
         ICommunicationPreferenceService commPrefService,
         IProfileService profileService,
         ITicketQueryService ticketQueryService,
@@ -48,7 +48,7 @@ public class GuestController : HumansControllerBase
         IAccountDeletionService accountDeletionService,
         IClock clock,
         ILogger<GuestController> logger)
-        : base(userManager)
+        : base(userService)
     {
         _commPrefService = commPrefService;
         _profileService = profileService;
@@ -62,7 +62,7 @@ public class GuestController : HumansControllerBase
 
     public async Task<IActionResult> Index(CancellationToken cancellationToken)
     {
-        var user = await GetCurrentUserAsync();
+        var user = await GetCurrentUserInfoAsync();
         if (user is null)
         {
             return Challenge();
@@ -153,7 +153,7 @@ public class GuestController : HumansControllerBase
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
     public async Task<IActionResult> DownloadData(CancellationToken ct)
     {
-        var user = await GetCurrentUserAsync();
+        var user = await GetCurrentUserInfoAsync();
         if (user is null)
             return Challenge();
 
@@ -195,7 +195,7 @@ public class GuestController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RequestDeletion()
     {
-        var user = await GetCurrentUserAsync();
+        var user = await GetCurrentUserInfoAsync();
         if (user is null)
             return Challenge();
 
@@ -229,7 +229,7 @@ public class GuestController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CancelDeletion()
     {
-        var user = await GetCurrentUserAsync();
+        var user = await GetCurrentUserInfoAsync();
         if (user is null)
             return Challenge();
 
@@ -248,7 +248,7 @@ public class GuestController : HumansControllerBase
 
     // ─── Private Helpers ─────────────────────────────────────────────
 
-    private async Task<GuestDashboardViewModel> BuildDashboardViewModelAsync(User user)
+    private async Task<GuestDashboardViewModel> BuildDashboardViewModelAsync(UserInfo user)
     {
         var viewModel = new GuestDashboardViewModel
         {
@@ -296,7 +296,7 @@ public class GuestController : HumansControllerBase
     private async Task<(Guid? UserId, MessageCategory? TokenCategory, bool FromToken)> ResolveUserIdOrTokenAsync(string? utoken)
     {
         // Prefer authenticated session
-        var user = await GetCurrentUserAsync();
+        var user = await GetCurrentUserInfoAsync();
         if (user is not null)
             return (user.Id, null, false);
 
@@ -309,7 +309,7 @@ public class GuestController : HumansControllerBase
             return (null, null, false);
 
         // Verify user still exists
-        var exists = await FindUserByIdAsync(result.UserId);
+        var exists = await FindUserInfoByIdAsync(result.UserId);
         return exists is not null
             ? (result.UserId, result.Category, true)
             : (null, null, false);

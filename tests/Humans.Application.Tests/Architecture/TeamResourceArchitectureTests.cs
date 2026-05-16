@@ -3,7 +3,6 @@ using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Infrastructure.Repositories.GoogleIntegration;
-using Xunit;
 using TeamResourceService = Humans.Application.Services.Teams.TeamResourceService;
 
 namespace Humans.Application.Tests.Architecture;

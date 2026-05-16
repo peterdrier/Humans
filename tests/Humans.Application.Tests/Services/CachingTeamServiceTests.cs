@@ -14,7 +14,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Xunit;
 
 namespace Humans.Application.Tests.Services;
 
@@ -48,6 +47,7 @@ public sealed class CachingTeamServiceTests : IDisposable
                 var ids = callInfo.Arg<IReadOnlyCollection<Guid>>();
                 return Task.FromResult(LoadUsers(ids, includeEmails: true));
             });
+        userService.StubGetUserInfosFromDb(_options);
 
         var services = new ServiceCollection();
         services.AddSingleton(userService);

@@ -44,7 +44,7 @@ public class CoordinatorCategoryDetailViewModel
     public required BudgetCategorySnapshot Category { get; init; }
     public bool CanEdit { get; init; }
     public bool IsFinanceAdmin { get; init; }
-    public required IReadOnlyList<TeamOptionDto> Teams { get; init; }
+    public required IReadOnlyList<TeamInfo> Teams { get; init; }
 }
 
 public class BudgetSummaryViewModel

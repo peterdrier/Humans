@@ -2,13 +2,11 @@ using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Profiles;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Extensions;
 using Humans.Web.Helpers;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Web.Controllers;
@@ -29,9 +27,8 @@ public class ProfileApiController : ApiControllerBase
         IProfileService profileService,
         IUserService userService,
         IContactFieldService contactFieldService,
-        IUserEmailService userEmailService,
-        UserManager<User> userManager)
-        : base(userManager)
+        IUserEmailService userEmailService)
+        : base(userService)
     {
         _profileService = profileService;
         _userService = userService;
@@ -65,7 +62,7 @@ public class ProfileApiController : ApiControllerBase
             return authError;
         var viewerUserId = viewer.Id;
 
-        var results = await _profileService.SearchProfilesAsync(q, fields, MaxResults, ct);
+        var results = await _userService.SearchUsersAsync(q, fields, MaxResults, ct);
         var userIds = results.Select(r => r.UserId).ToList();
         var pictureUrls = await ProfilePictureUrlHelper.BuildEffectiveUrlsAsync(
             _profileService,
@@ -99,7 +96,7 @@ public class ProfileApiController : ApiControllerBase
     /// <see cref="Search"/>, so callers that already know the userId (URL
     /// param, integration, pre-fill) can render the row without typing a name
     /// and choosing from a dropdown. Cache-backed via
-    /// <see cref="IProfileService.GetFullProfileAsync"/>.
+    /// <see cref="IUserService.GetUserInfoAsync"/>.
     /// </summary>
     [HttpGet("by-userid/{userId:guid}")]
     public async Task<IActionResult> GetByUserId(Guid userId, CancellationToken ct = default)
@@ -115,8 +112,7 @@ public class ProfileApiController : ApiControllerBase
 
         var pictureUrls = await ProfilePictureUrlHelper.BuildEffectiveUrlsAsync(
             _profileService,
-            Url,
-            new[] { userId },
+            Url, [userId],
             ct);
 
         var detail = await GetSharedDetailAsync(

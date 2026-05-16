@@ -1,7 +1,6 @@
 using Humans.Application.Interfaces.Expenses;
 using Humans.Infrastructure.Jobs;
 using NSubstitute;
-using Xunit;
 
 namespace Humans.Application.Tests.Jobs;
 

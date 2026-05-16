@@ -7,7 +7,6 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.GoogleIntegration;
-using Xunit;
 using SyncSettingsService = Humans.Application.Services.GoogleIntegration.SyncSettingsService;
 
 namespace Humans.Application.Tests.GoogleIntegration;

@@ -22,7 +22,7 @@ public sealed class BudgetAuthorizationHandlerTests
     {
         _handler = new BudgetAuthorizationHandler(_budgetService);
         _budgetService.GetEffectiveCoordinatorTeamIdsAsync(UserId)
-            .Returns(new HashSet<Guid> { CoordinatorTeamId });
+            .Returns([CoordinatorTeamId]);
     }
 
     public static TheoryData<string, string, bool, bool, bool, bool> BudgetAuthorizationCases => new()
@@ -57,7 +57,7 @@ public sealed class BudgetAuthorizationHandlerTests
         if (string.Equals(userKind, "regular", StringComparison.Ordinal))
         {
             _budgetService.GetEffectiveCoordinatorTeamIdsAsync(Arg.Any<Guid>())
-                .Returns(new HashSet<Guid>());
+                .Returns([]);
         }
 
         var user = CreateUser(userKind);

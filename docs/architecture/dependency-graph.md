@@ -33,6 +33,12 @@ graph LR
     classDef dashboard fill:#f43f5e,color:#fff
     classDef notifications fill:#a855f7,color:#fff
     classDef gdpr fill:#0f172a,color:#fff
+    classDef mailer fill:#10b981,color:#fff
+    classDef search fill:#fb7185,color:#fff
+    classDef issues fill:#fbbf24,color:#000
+    classDef store fill:#7c3aed,color:#fff
+    classDef expenses fill:#9ca3af,color:#000
+    classDef containers fill:#4ade80,color:#000
     classDef crosscut fill:#334155,color:#fff
 
     %% ── Cross-cutting services (hub) ──
@@ -48,9 +54,9 @@ graph LR
     CF[ContactFieldService]:::profiles
     UEmail[UserEmailService]:::profiles
     CommPref[CommunicationPreferenceService]:::profiles
-    Contact[ContactService]:::profiles
     Merge[AccountMergeService]:::profiles
     DupAcct[DuplicateAccountService]:::profiles
+    EmailProb[EmailProblemsService]:::profiles
 
     Team[TeamService]:::teams
     TPage[TeamPageService]:::teams
@@ -58,17 +64,18 @@ graph LR
 
     Camp[CampService]:::camps
     CampContact[CampContactService]:::camps
+    CampRole[CampRoleService]:::camps
 
     CityPlan[CityPlanningService]:::cityplanning
 
     ShiftMgmt[ShiftManagementService]:::shifts
     ShiftSign[ShiftSignupService]:::shifts
-    GenAvail[GeneralAvailabilityService]:::shifts
     VolTrack[VolunteerTrackingService]:::shifts
 
     AppDec[ApplicationDecisionService]:::governance
     MembershipCalc[MembershipCalculator]:::governance
     MemQuery[MembershipQuery]:::governance
+    GovIndex[GovernanceIndexService]:::governance
 
     LegalDoc[LegalDocumentService]:::legal
     AdminLegal[AdminLegalDocumentService]:::legal
@@ -78,15 +85,19 @@ graph LR
     TicketQ[TicketQueryService]:::tickets
     TicketSync[TicketSyncService]:::tickets
     TicketBudget[TicketingBudgetService]:::tickets
+    TicketTransfer[TicketTransferService]:::tickets
+    AttendeeImport[AttendeeContactImportService]:::tickets
 
     Campaign[CampaignService]:::campaigns
 
     GSyncSvc[GoogleWorkspaceSyncService]:::google
+    GGroupSync[GoogleGroupSyncService]:::google
     GAdmin[GoogleAdminService]:::google
     GUser[GoogleWorkspaceUserService]:::google
     EmailProv[EmailProvisioningService]:::google
     SyncSet[SyncSettingsService]:::google
     DriveMon[DriveActivityMonitorService]:::google
+    GRemoval[GoogleRemovalNotificationService]:::google
 
     Onboard[OnboardingService]:::onboarding
     HumanLifecycle[HumanLifecycleService]:::onboarding
@@ -103,15 +114,23 @@ graph LR
     Cal[CalendarService]:::calendar
 
     Dash[DashboardService]:::dashboard
+    AdminDash[AdminDashboardService]:::dashboard
 
     NotifEmitter[NotificationEmitter]:::notifications
     NotifInbox[NotificationInboxService]:::notifications
     NotifResolver[NotificationRecipientResolver]:::notifications
     NotifMeter[NotificationMeterProvider]:::notifications
     OutboxEmail[OutboxEmailService]:::notifications
-    EmailOutbox[EmailOutboxService]:::notifications
 
     Gdpr[GdprExportService]:::gdpr
+
+    Search[SearchService]:::search
+    Issues[IssuesService]:::issues
+    Store[StoreService]:::store
+    ExpenseReport[ExpenseReportService]:::expenses
+    Container[ContainerService]:::containers
+    MailerSync[MailerAudienceSyncService]:::mailer
+    MailerImport[MailerImportService]:::mailer
 
     %% ═══════════════════════════════════
     %% Ctor-injected dependencies (solid)
@@ -120,23 +139,24 @@ graph LR
     %% Profiles section
     Prof --> User
     Prof --> MembershipCalc
-    Prof --> Consent
-    Prof --> Role
+    Prof --> Onboard
     Prof --> Audit
     CF --> Team
     CF --> Role
-    Contact --> User
-    Contact --> UEmail
-    Contact --> CommPref
-    Contact --> Audit
     UEmail --> User
+    UEmail --> Audit
     CommPref --> Audit
+    Merge --> User
     Merge --> Team
     Merge --> Role
+    Merge --> Notif
     Merge --> Audit
+    DupAcct --> User
     DupAcct --> Team
     DupAcct --> Role
     DupAcct --> Audit
+    EmailProb --> User
+    EmailProb --> UEmail
 
     %% Teams section
     Team --> ShiftMgmt
@@ -148,8 +168,6 @@ graph LR
     TPage --> ShiftMgmt
     TPage --> User
     TRes --> Team
-    TRes --> Role
-    TRes --> GSyncSvc
     TRes --> Audit
 
     %% Camps section
@@ -157,7 +175,12 @@ graph LR
     Camp --> NotifEmitter
     Camp --> Audit
     CampContact --> Email
+    CampContact --> NotifEmitter
     CampContact --> Audit
+    CampRole --> Camp
+    CampRole --> User
+    CampRole --> NotifEmitter
+    CampRole --> Audit
 
     %% CityPlanning section
     CityPlan --> Camp
@@ -167,6 +190,7 @@ graph LR
     %% Shifts section
     ShiftMgmt --> Audit
     ShiftSign --> ShiftMgmt
+    ShiftSign --> MembershipCalc
     ShiftSign --> Notif
     ShiftSign --> Audit
     VolTrack --> User
@@ -175,6 +199,7 @@ graph LR
     AppDec --> User
     AppDec --> Prof
     AppDec --> Role
+    AppDec --> UEmail
     AppDec --> Email
     AppDec --> Notif
     AppDec --> Metrics
@@ -185,11 +210,14 @@ graph LR
     MembershipCalc --> LegalSync
     MemQuery --> Team
     MemQuery --> Role
+    GovIndex --> AppDec
+    GovIndex --> LegalDoc
+    GovIndex --> User
 
     %% Legal section
     AdminLegal --> LegalSync
     AdminLegal --> Team
-    LegalSync --> Prof
+    LegalSync --> User
     LegalSync --> Notif
     Consent --> Onboard
     Consent --> LegalSync
@@ -209,6 +237,17 @@ graph LR
     TicketSync --> Campaign
     TicketSync --> ShiftMgmt
     TicketBudget --> Budget
+    TicketTransfer --> TicketQ
+    TicketTransfer --> User
+    TicketTransfer --> UEmail
+    TicketTransfer --> Prof
+    TicketTransfer --> Audit
+    AttendeeImport --> AcctProv
+    AttendeeImport --> User
+    AttendeeImport --> UEmail
+    AttendeeImport --> ShiftMgmt
+    AttendeeImport --> TicketQ
+    AttendeeImport --> Audit
 
     %% Campaigns section
     Campaign --> Team
@@ -222,8 +261,18 @@ graph LR
     GSyncSvc --> Team
     GSyncSvc --> User
     GSyncSvc --> UEmail
+    GSyncSvc --> GGroupSync
     GSyncSvc --> SyncSet
+    GSyncSvc --> GRemoval
     GSyncSvc --> Audit
+    GGroupSync --> Team
+    GGroupSync --> TRes
+    GGroupSync --> User
+    GGroupSync --> UEmail
+    GGroupSync --> Prof
+    GGroupSync --> SyncSet
+    GGroupSync --> GRemoval
+    GGroupSync --> Audit
     GAdmin --> GUser
     GAdmin --> GSyncSvc
     GAdmin --> Team
@@ -238,14 +287,20 @@ graph LR
     EmailProv --> Email
     EmailProv --> Notif
     EmailProv --> Audit
+    GRemoval --> UEmail
+    GRemoval --> User
+    GRemoval --> Email
     DriveMon --> TRes
 
     %% AuditLog read+render side
+    %% AuditLogService injects IUserService for display-name lookups.
     %% AuditViewerService composes resolved audit pages; calls cross-section services
     %% for display-name stitching (lifted out of AuditLogRepository in 2026-05 alignment).
+    Audit --> User
     AuditViewer --> Audit
-    AuditViewer --> User
+    AuditViewer --> Prof
     AuditViewer --> Team
+    AuditViewer --> TRes
     %% DriveActivityMonitorRepository writes ctx.AuditLogEntries directly — tracked §6 violation,
     %% pending GoogleIntegration /section-align to route through IAuditLogService.LogAsync.
     DriveMon -. "pending: writes ctx.AuditLogEntries directly (see OnlyAuditLogRepositoryWritesAuditLogEntries.baseline.txt)" .-> Audit
@@ -268,14 +323,18 @@ graph LR
     Feedback --> User
     Feedback --> UEmail
     Feedback --> Team
+    Feedback --> Prof
     Feedback --> Email
     Feedback --> Notif
     Feedback --> Audit
 
     %% Budget section
     Budget --> Team
+    Budget --> User
 
     %% Users section
+    AcctProv --> UEmail
+    AcctProv --> Prof
     AcctProv --> Audit
     Unsub --> CommPref
     AcctDel --> User
@@ -305,10 +364,12 @@ graph LR
     Dash --> MembershipCalc
     Dash --> AppDec
     Dash --> ShiftMgmt
-    Dash --> ShiftSign
     Dash --> TicketQ
     Dash --> User
     Dash --> Team
+    AdminDash --> User
+    AdminDash --> MembershipCalc
+    AdminDash --> AppDec
 
     %% Notifications cluster
     Notif --> NotifEmitter
@@ -329,6 +390,35 @@ graph LR
     OutboxEmail --> CommPref
     OutboxEmail --> Metrics
 
+    %% Search / Issues / Store / Expenses / Containers / Mailer
+    Search --> Prof
+    Search --> Team
+    Search --> Camp
+    Search --> ShiftMgmt
+    Issues --> User
+    Issues --> UEmail
+    Issues --> Role
+    Issues --> Email
+    Issues --> Notif
+    Issues --> Audit
+    Store --> Camp
+    Store --> ShiftMgmt
+    Store --> Audit
+    ExpenseReport --> Budget
+    ExpenseReport --> Team
+    ExpenseReport --> User
+    ExpenseReport --> Prof
+    ExpenseReport --> Audit
+    Container --> Camp
+    Container --> Audit
+    MailerSync --> UEmail
+    MailerSync --> Audit
+    MailerImport --> UEmail
+    MailerImport --> User
+    MailerImport --> AcctProv
+    MailerImport --> CommPref
+    MailerImport --> Audit
+
     %% ═══════════════════════════════════
     %% Lazy-resolved (IServiceProvider) —
     %% break DI cycles
@@ -338,7 +428,10 @@ graph LR
     Team -. "lazy" .-> TRes
     Team -. "lazy" .-> Role
     Team -. "lazy" .-> Email
+    Team -. "lazy" .-> GGroupSync
+    TRes -. "lazy" .-> Role
     Consent -. "lazy" .-> MembershipCalc
+    Consent -. "lazy" .-> ShiftSign
     MembershipCalc -. "lazy" .-> Consent
     ShiftMgmt -. "lazy" .-> Team
     ShiftMgmt -. "lazy" .-> Role
@@ -350,11 +443,12 @@ graph LR
 
     %% ── Edge styling ──
     %% Lazy-resolution edges — colored + thickened so the cycle-breaking
-    %% dashed arrows pop visually against eager solid arrows. The index range
-    %% below covers every "-. lazy .->" edge in this graph; recompute when
-    %% adding/removing edges. Eager count is currently the number of "-->"
-    %% lines above this block.
-    linkStyle 170,171,172,173,174,175,176,177,178,179,180,181,182 stroke:#f97316,stroke-width:2.5px
+    %% dashed arrows pop visually against eager solid arrows. The first lazy
+    %% edge in this diagram is the (N+1)-th link after the eager arrows
+    %% above; recompute the index range whenever edges are added or removed.
+    %% Eager count (including the DriveMon → Audit "pending" dashed arrow that
+    %% Mermaid counts as link index 236): 237 eager-or-pending links.
+    linkStyle 237,238,239,240,241,242,243,244,245,246,247,248,249,250,251,252 stroke:#f97316,stroke-width:2.5px
 ```
 
 ## Cycles broken by lazy-resolution

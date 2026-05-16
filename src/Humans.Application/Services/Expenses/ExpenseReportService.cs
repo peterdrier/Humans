@@ -502,7 +502,7 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
         await _auditLogService.LogAsync(
             AuditAction.ExpenseSubmit,
             "ExpenseReport", reportId,
-            $"Submitted expense report.",
+            "Submitted expense report.",
             submitterUserId);
 
         return true;
@@ -540,7 +540,7 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
         await _auditLogService.LogAsync(
             AuditAction.ExpenseWithdraw,
             "ExpenseReport", reportId,
-            $"Withdrew expense report.",
+            "Withdrew expense report.",
             submitterUserId);
 
         return true;
@@ -568,17 +568,17 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
         Guid submitterUserId, string? iban, CancellationToken ct = default)
     {
         var ibanValue = string.IsNullOrWhiteSpace(iban) ? null : iban.Trim();
-        var profile = await _profileService.GetProfileAsync(submitterUserId, ct);
+        var existingIban = (await _userService.GetUserInfoAsync(submitterUserId, ct))?.Profile?.Iban;
 
         if (ibanValue is not null && !IbanValidator.IsValid(ibanValue))
-            return IbanFailure("Invalid IBAN format.", isValidationError: true, profile);
+            return IbanFailure("Invalid IBAN format.", isValidationError: true, existingIban);
 
         var normalized = ibanValue is null ? null : IbanValidator.Normalize(ibanValue);
         try
         {
             var saved = await _profileService.SetIbanAsync(submitterUserId, normalized, ct);
             if (!saved)
-                return IbanFailure("Failed to save IBAN.", isValidationError: false, profile);
+                return IbanFailure("Failed to save IBAN.", isValidationError: false, existingIban);
 
             return new ExpenseIbanSaveResult(
                 Succeeded: true,
@@ -590,29 +590,29 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error setting IBAN for user {UserId}", submitterUserId);
-            return IbanFailure("Failed to save IBAN.", isValidationError: false, profile);
+            return IbanFailure("Failed to save IBAN.", isValidationError: false, existingIban);
         }
     }
 
     public async Task<ExpenseIbanViewData> GetSubmitterIbanViewAsync(
         Guid submitterUserId, CancellationToken ct = default)
     {
-        var profile = await _profileService.GetProfileAsync(submitterUserId, ct);
-        var hasIban = !string.IsNullOrEmpty(profile?.Iban);
+        var iban = (await _userService.GetUserInfoAsync(submitterUserId, ct))?.Profile?.Iban;
+        var hasIban = !string.IsNullOrEmpty(iban);
         return new ExpenseIbanViewData(
             HasIban: hasIban,
-            MaskedIban: hasIban ? IbanFormatter.Mask(profile!.Iban!) : null);
+            MaskedIban: hasIban ? IbanFormatter.Mask(iban!) : null);
     }
 
-    private static ExpenseIbanSaveResult IbanFailure(string message, bool isValidationError, Domain.Entities.Profile? profile)
+    private static ExpenseIbanSaveResult IbanFailure(string message, bool isValidationError, string? existingIban)
     {
-        var hasIban = !string.IsNullOrEmpty(profile?.Iban);
+        var hasIban = !string.IsNullOrEmpty(existingIban);
         return new ExpenseIbanSaveResult(
             Succeeded: false,
             IsValidationError: isValidationError,
             Message: message,
             HasIban: hasIban,
-            MaskedIban: hasIban ? IbanFormatter.Mask(profile!.Iban!) : null);
+            MaskedIban: hasIban ? IbanFormatter.Mask(existingIban!) : null);
     }
 
     public async Task<bool> CoordinatorEndorseAsync(
@@ -630,7 +630,7 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
         await _auditLogService.LogAsync(
             AuditAction.ExpenseEndorse,
             "ExpenseReport", reportId,
-            $"Coordinator endorsed expense report.",
+            "Coordinator endorsed expense report.",
             coordinatorUserId);
 
         return true;
@@ -710,7 +710,7 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
         await _auditLogService.LogAsync(
             AuditAction.ExpenseApprove,
             "ExpenseReport", reportId,
-            $"Finance approved expense report.",
+            "Finance approved expense report.",
             actorUserId);
 
         if (overrideCategoryId.HasValue && overrideCategoryId.Value != report.BudgetCategoryId)
@@ -869,7 +869,7 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
                 var category = await _budgetService.GetCategoryByIdAsync(report.BudgetCategoryId);
                 var tag = BuildHoldedTag(category?.BudgetGroup?.Name, category?.Name);
 
-                var users = await _userService.GetByIdsAsync(
+                var users = await _userService.GetUserInfosAsync(
                     [report.SubmitterUserId], ct);
                 var submitterName = users.TryGetValue(report.SubmitterUserId, out var user)
                     ? user.DisplayName
@@ -944,7 +944,7 @@ public sealed class ExpenseReportService : IExpenseReportService, IUserDataContr
 
                 if (doc.PaymentsPending == 0 && doc.ApprovedAt is not null)
                 {
-                    await this.MarkPaidAsync(report.Id, ct);
+                    await MarkPaidAsync(report.Id, ct);
                     _logger.LogInformation(
                         "Marked expense report {ReportId} as Paid (HoldedDocId={HoldedDocId})",
                         report.Id, report.HoldedDocId);

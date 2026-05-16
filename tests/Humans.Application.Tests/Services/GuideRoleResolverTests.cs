@@ -10,8 +10,6 @@ using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Teams;
 using Humans.Infrastructure.Services;
-using Humans.Testing;
-using Xunit;
 
 namespace Humans.Application.Tests.Services;
 

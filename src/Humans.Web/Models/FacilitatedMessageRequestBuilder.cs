@@ -1,4 +1,4 @@
-using Humans.Domain.Entities;
+using Humans.Application;
 
 namespace Humans.Web.Models;
 
@@ -14,8 +14,8 @@ public sealed record FacilitatedMessageRequest(
 public static class FacilitatedMessageRequestBuilder
 {
     public static FacilitatedMessageRequest? TryBuild(
-        User sender,
-        User recipient,
+        UserInfo sender,
+        UserInfo recipient,
         SendMessageViewModel model)
     {
         ArgumentNullException.ThrowIfNull(sender);

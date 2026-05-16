@@ -8,7 +8,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Xunit;
 using DriveActivityMonitorService = Humans.Application.Services.GoogleIntegration.DriveActivityMonitorService;
 
 namespace Humans.Application.Tests.GoogleIntegration;
@@ -54,7 +53,7 @@ public class DriveActivityMonitorServiceTests
     public async Task CheckForAnomalousActivityAsync_WithNoResources_ReturnsZeroAndDoesNotHitApi()
     {
         _teamResources.GetActiveDriveFoldersAsync(Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<GoogleResourceSnapshot>());
+            .Returns([]);
 
         var count = await _service.CheckForAnomalousActivityAsync();
 
@@ -282,24 +281,24 @@ public class DriveActivityMonitorServiceTests
     private static DriveActivityEvent BuildPermissionChangeEvent(
         string actorPersonName, string addedRole, string targetUser) =>
         new(
-            Actors: new[]
-            {
+            Actors:
+            [
                 new DriveActivityActor(
                     KnownUserPersonName: actorPersonName,
                     IsAdministrator: false,
-                    IsSystem: false),
-            },
+                    IsSystem: false)
+            ],
             PermissionChange: new DriveActivityPermissionChange(
-                AddedPermissions: new[]
-                {
+                AddedPermissions:
+                [
                     new DriveActivityPermission(
                         Role: addedRole,
                         UserPersonName: targetUser,
                         GroupEmail: null,
                         DomainName: null,
-                        IsAnyone: false),
-                },
-                RemovedPermissions: Array.Empty<DriveActivityPermission>()));
+                        IsAnyone: false)
+                ],
+                RemovedPermissions: []));
 
     private static async IAsyncEnumerable<DriveActivityEvent> ToAsyncEnumerable(
         IEnumerable<DriveActivityEvent> source)

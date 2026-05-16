@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using NodaTime;
 using Humans.Domain.Entities;
-using Xunit;
 
 namespace Humans.Domain.Tests.Entities;
 

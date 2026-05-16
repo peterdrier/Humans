@@ -156,8 +156,7 @@ Three controllers serve this section.
 
 ## Cross-Section Dependencies
 
-- **Profiles:** `IProfileService` — consent-check status lives on the profile (read by `ConsentService` for the review-detail view); `IProfileService.GetActiveApprovedUserIdsAsync` is the fan-out target list when `LegalDocumentSyncService` notifies on a new published / re-consent-required version.
-- **Onboarding:** `IOnboardingService.SetConsentCheckPendingIfEligibleAsync` — narrow callback after a consent submit when all required consents are satisfied.
+- **Profiles:** `IProfileService` — consent-check status lives on the profile (read by `ConsentService` for the review-detail view); `IProfileService.GetActiveApprovedUserIdsAsync` is the fan-out target list when `LegalDocumentSyncService` notifies on a new published / re-consent-required version. `ConsentService` does **not** call into Profile or Onboarding directly after a consent submit — the threshold check (`OnboardingService.SetConsentCheckPendingIfEligibleAsync`) is invoked by the controller (`ConsentController.Submit`, `OnboardingWidgetController`) as a peer call alongside `ConsentService.SubmitConsentAsync`.
 - **Teams:** `ITeamService` — `AdminLegalDocumentService` stitches team names in memory (replaces `.Include(d => d.Team)`); legal documents are team-scoped (Volunteers team = global).
 - **Notifications:** `INotificationService` (in-app fan-out from `LegalDocumentSyncService`) and `INotificationInboxService.ResolveBySourceAsync` (auto-resolve `AccessSuspended` notifications from `ConsentService` once all required consents are complete).
 - **Google Integration:** `ISystemTeamSync.SyncVolunteersMembershipForUserAsync` / `SyncCoordinatorsMembershipForUserAsync` — `ConsentService` re-syncs system team membership after each consent submit.

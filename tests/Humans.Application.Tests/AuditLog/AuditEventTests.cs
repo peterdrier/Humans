@@ -2,7 +2,6 @@ using AwesomeAssertions;
 using Humans.Application.Services.AuditLog;
 using Humans.Domain.Enums;
 using NodaTime;
-using Xunit;
 
 namespace Humans.Application.Tests.AuditLog;
 

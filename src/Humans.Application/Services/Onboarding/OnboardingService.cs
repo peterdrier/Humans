@@ -104,7 +104,7 @@ public sealed class OnboardingService : IOnboardingService
 
     public async Task<ReviewDetailData> GetReviewDetailAsync(Guid userId, CancellationToken ct = default)
     {
-        var profile = await _profileService.GetProfileAsync(userId, ct);
+        var profile = (await _userService.GetUserInfoAsync(userId, ct))?.Profile;
 
         if (profile is null)
             return new ReviewDetailData(null, 0, 0, null);
@@ -293,7 +293,10 @@ public sealed class OnboardingService : IOnboardingService
     }
 
     // ==========================================================================
-    // Consent-check pending (shared: ConsentService + ProfileService call this)
+    // Consent-check pending threshold (peer-called from controllers after a
+    // ProfileService.SaveProfileAsync or ConsentService.SubmitConsentAsync write
+    // completes — the leaves do not invoke this directly; that was the inverted
+    // arrow that produced the DI cycle this PR removes).
     // ==========================================================================
 
     public async Task<bool> SetConsentCheckPendingIfEligibleAsync(

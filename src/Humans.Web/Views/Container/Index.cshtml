@@ -7,7 +7,7 @@
         ["slug"] = Model.CampSlug,
     };
 
-    Humans.Web.Models.ContainerCardModel CardFor(Humans.Web.Models.ContainerViewModel c) => new()
+    ContainerCardModel CardFor(ContainerViewModel c) => new()
     {
         Container = c,
         Placement = Model.PlacementsByContainerId.TryGetValue(c.Id, out var p) ? p : null,
@@ -83,7 +83,7 @@ else
                       method="post" enctype="multipart/form-data">
                     @Html.AntiForgeryToken()
                     <div class="modal-body">
-                        <partial name="_ContainerFormFields" model="@((Humans.Web.Models.ContainerViewModel?)null)" />
+                        <partial name="_ContainerFormFields" model="@((ContainerViewModel?)null)" />
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@Localizer["Common_Cancel"]</button>

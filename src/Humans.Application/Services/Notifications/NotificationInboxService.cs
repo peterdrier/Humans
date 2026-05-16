@@ -261,7 +261,7 @@ public sealed class NotificationInboxService : INotificationInboxService, IUserD
         if (userIds.Count == 0)
             return new Dictionary<Guid, string>();
 
-        var users = await _userService.GetByIdsAsync(userIds, ct);
+        var users = await _userService.GetUserInfosAsync(userIds, ct);
         return users.ToDictionary(kv => kv.Key, kv => kv.Value.DisplayName ?? string.Empty);
     }
 

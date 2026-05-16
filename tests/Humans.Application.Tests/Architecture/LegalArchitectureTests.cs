@@ -15,12 +15,12 @@ namespace Humans.Application.Tests.Architecture;
 /// </summary>
 public class LegalArchitectureTests
 {
-    public static TheoryData<Type> LegalServices => new()
-    {
+    public static TheoryData<Type> LegalServices =>
+    [
         typeof(AdminLegalDocumentService),
         typeof(LegalDocumentSyncService),
-        typeof(LegalDocumentService),
-    };
+        typeof(LegalDocumentService)
+    ];
 
     public static TheoryData<Type, Type> RequiredConstructorEdges => new()
     {

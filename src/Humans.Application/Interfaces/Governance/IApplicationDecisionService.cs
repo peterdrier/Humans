@@ -1,4 +1,3 @@
-using Humans.Application.Interfaces;
 using Humans.Application.DTOs;
 using Humans.Application.DTOs.Governance;
 using Humans.Application.Architecture;

@@ -12,12 +12,11 @@ When migrating a caller to a new service / read-model / interface, do NOT carry 
 - `Profile.IsSuspended` (bool, `[Obsolete]`-flagged with `HUM_PROFILE_ISSUSPENDED`) → `Profile.State == ProfileState.Suspended`.
 - `Profile.HasRequiredIdentityFields()` (predicate) → `Profile.State == ProfileState.Stub` for the "is this a stub?" question; the State enum is the canonical lifecycle marker. The predicate exists to *derive* State; downstream code reads State.
 - `User.DisplayName` for public rendering → `UserInfo.BurnerName` / `<vc:human>` (see [`burnername-is-the-display-name`](../architecture/burnername-is-the-display-name.md)).
-- `IProfileService.GetFullProfileAsync` for reads → `IUserService.GetUserInfoAsync` (see [`iuserservice-onestop-userinfo`](../architecture/iuserservice-onestop-userinfo.md)).
 - Any `[Obsolete]` attribute or `#pragma warning disable HUM_*_OBSOLETE` you see while editing is a stop-sign for the line under it: replace it with the canonical successor, don't propagate it.
 - If you genuinely can't find a canonical replacement — STOP and ask. Don't invent one and don't suppress the obsolete warning.
 - Applies to tests too: when porting a test off the obsolete field, the test setup uses the new field. Don't seed Profile entities with the obsolete bool just because that's what the old test did.
 
-**Exceptions:** Identity / framework interop sites that must use the legacy `User.DisplayName` for the underlying Identity column (e.g. claims transformation, `UserManager.UpdateAsync`), and the State-derivation code itself in `ProfileService` / `CachingProfileService` that *writes* both the legacy bool and the new enum during the dual-write window.
+**Exceptions:** Identity / framework interop sites that must use the legacy `User.DisplayName` for the underlying Identity column (e.g. claims transformation, `UserManager.UpdateAsync`), and the State-derivation code itself in `ProfileService` that *writes* both the legacy bool and the new enum during the dual-write window.
 
 **Related:**
 

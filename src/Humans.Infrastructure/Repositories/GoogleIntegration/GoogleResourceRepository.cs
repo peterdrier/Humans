@@ -64,7 +64,7 @@ public sealed class GoogleResourceRepository : IGoogleResourceRepository
         var result = new Dictionary<Guid, IReadOnlyList<GoogleResource>>(teamIds.Count);
         foreach (var teamId in teamIds)
         {
-            result[teamId] = Array.Empty<GoogleResource>();
+            result[teamId] = [];
         }
         foreach (var group in rows.GroupBy(r => r.TeamId))
         {
@@ -282,7 +282,7 @@ public sealed class GoogleResourceRepository : IGoogleResourceRepository
         var rows = await query.ToListAsync(ct);
         if (rows.Count == 0)
         {
-            return Array.Empty<GoogleResource>();
+            return [];
         }
 
         foreach (var row in rows)

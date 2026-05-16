@@ -4,7 +4,6 @@ using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Repositories.Camps;
-using Xunit;
 using CampService = Humans.Application.Services.Camps.CampService;
 
 namespace Humans.Application.Tests.Architecture;

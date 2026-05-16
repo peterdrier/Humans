@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
-using Xunit;
 using HumanLifecycleService = Humans.Application.Services.HumanLifecycle.HumanLifecycleService;
 
 namespace Humans.Application.Tests.Architecture;

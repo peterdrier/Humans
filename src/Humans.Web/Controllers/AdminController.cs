@@ -8,7 +8,6 @@ using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Dashboard;
 using Humans.Application.Interfaces.Feedback;
-using Humans.Application.Interfaces.Onboarding;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
@@ -32,7 +31,7 @@ public class AdminController : HumansControllerBase
     private readonly IAdminDatabaseDiagnosticsService _databaseDiagnostics;
 
     public AdminController(
-        UserManager<User> userManager,
+        IUserService userService,
         ILogger<AdminController> logger,
         IWebHostEnvironment environment,
         IAccountDeletionService accountDeletionService,
@@ -42,7 +41,7 @@ public class AdminController : HumansControllerBase
         IEnumerable<ICacheStats> decoratorCacheStats,
         IUserEmailProviderBackfillService userEmailProviderBackfillService,
         IAdminDatabaseDiagnosticsService databaseDiagnostics)
-        : base(userManager)
+        : base(userService)
     {
         _logger = logger;
         _environment = environment;
@@ -72,7 +71,7 @@ public class AdminController : HumansControllerBase
         var firstName = User.Identity?.Name?.Split(' ').FirstOrDefault() ?? "";
         var snapshot = userService.GetAllUserInfos();
         var totalUsers = snapshot.Count;
-        var activeProfileUsers = snapshot.Count(u => u.Profile is not null);
+        var activeProfileUsers = snapshot.Count(u => u.IsActive);
         var activeEvent = await shifts.GetActiveAsync();
         var ticketHolders = activeEvent is { Year: > 0 }
             ? snapshot.Count(u => u.HasTicketForYear(activeEvent.Year))
@@ -121,13 +120,13 @@ public class AdminController : HumansControllerBase
             return NotFound();
         }
 
-        var user = await FindUserByIdAsync(id);
+        var user = await FindUserInfoByIdAsync(id);
         if (user is null)
         {
             return NotFound();
         }
 
-        var currentUser = await GetCurrentUserAsync();
+        var currentUser = await GetCurrentUserInfoAsync();
 
         if (user.Id == currentUser?.Id)
         {
@@ -314,7 +313,7 @@ public class AdminController : HumansControllerBase
             ProviderRowsUpdated: 0,
             IsGoogleRowsUpdated: 0,
             AmbiguousMatchesWarned: 0,
-            Warnings: Array.Empty<string>()));
+            Warnings: []));
     }
 
     [HttpPost("BackfillUserEmailProviders")]
@@ -322,7 +321,7 @@ public class AdminController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> BackfillUserEmailProvidersRun(CancellationToken ct)
     {
-        var currentUser = await GetCurrentUserAsync();
+        var currentUser = await GetCurrentUserInfoAsync();
         _logger.LogInformation(
             "Admin {AdminId} running UserEmail Provider/IsGoogle backfill",
             currentUser?.Id);

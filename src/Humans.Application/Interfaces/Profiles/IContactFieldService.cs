@@ -1,7 +1,5 @@
-using Humans.Application.Interfaces;
 using Humans.Application.DTOs;
 using Humans.Domain.Enums;
-using NodaTime;
 
 namespace Humans.Application.Interfaces.Profiles;
 

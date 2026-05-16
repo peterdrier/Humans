@@ -1,4 +1,3 @@
-@using Humans.Domain.Enums
 @model Humans.Web.ViewComponents.TicketHoldingsViewModel
 @{
     var voidCount = Model.Tickets.Count(t => t.Status == TicketAttendeeStatus.Void);

@@ -35,8 +35,8 @@ public class AgentController : HumansControllerBase
         IAuthorizationService auth,
         IAgentSettingsService settings,
         IUserService users,
-        UserManager<User> userManager)
-        : base(userManager)
+        IUserService userService)
+        : base(userService)
     {
         _agent = agent;
         _auth = auth;

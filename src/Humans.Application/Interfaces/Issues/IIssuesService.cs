@@ -1,4 +1,3 @@
-using Humans.Application.Interfaces;
 using Microsoft.AspNetCore.Http;
 using NodaTime;
 using Humans.Domain.Entities;

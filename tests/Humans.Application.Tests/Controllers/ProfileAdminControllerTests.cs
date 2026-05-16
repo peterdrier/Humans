@@ -1,6 +1,8 @@
 using System.Security.Claims;
 using AwesomeAssertions;
+using Humans.Application;
 using Humans.Application.DTOs.EmailProblems;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Profiles;
@@ -8,7 +10,6 @@ using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Testing;
 using Humans.Web.Authorization;
 using Humans.Web.Controllers;
 using Humans.Web.Models.EmailProblems;
@@ -17,7 +18,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Controllers;
-using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
@@ -47,12 +47,14 @@ public class ProfileAdminControllerTests
         _userManager = Substitute.For<UserManager<User>>(
             userStore, null, null, null, null, null, null, null, null);
         _userManager.GetUserAsync(Arg.Any<ClaimsPrincipal>()).Returns(_adminUser);
+        _users.GetUserInfoAsync(_adminUserId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(_adminUser.ToUserInfo()));
     }
 
     private ProfileAdminController BuildController()
     {
         var c = new ProfileAdminController(
-            _userManager,
+            _users,
             _emailProblems,
             _accountMerge,
             _userEmails,
@@ -63,10 +65,9 @@ public class ProfileAdminControllerTests
             _teamService,
             _roleAssignmentService);
 
-        var identity = new ClaimsIdentity(new[]
-        {
-            new Claim(ClaimTypes.NameIdentifier, _adminUserId.ToString()),
-        }, authenticationType: "TestAuth");
+        var identity = new ClaimsIdentity([
+            new Claim(ClaimTypes.NameIdentifier, _adminUserId.ToString())
+        ], authenticationType: "TestAuth");
         var principal = new ClaimsPrincipal(identity);
 
         var services = new ServiceCollection();
@@ -103,7 +104,7 @@ public class ProfileAdminControllerTests
     {
         _emailProblems.ScanAsync(Arg.Any<CancellationToken>())
             .Returns(new EmailProblemsReport(NodaTime.SystemClock.Instance.GetCurrentInstant(),
-                Array.Empty<EmailProblem>()));
+                []));
         _users.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, User>());
 

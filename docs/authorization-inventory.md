@@ -1,8 +1,8 @@
 # Authorization Inventory
 
-Originally produced as Phase 0 of the [first-class authorization transition plan](plans/2026-04-03-first-class-authorization-transition.md) (kept linked for historical context). **Phase 1 is complete:** every canonical policy in §5 is registered in `AuthorizationPolicyExtensions.AddHumansAuthorizationPolicies`, all controllers use `[Authorize(Policy = PolicyNames.X)]`, the `authorize-policy` TagHelper resolves through `IAuthorizationService`, and views no longer call `RoleChecks.*` / `ShiftRoleChecks.*` directly. **Phase 2 (resource-based authorization)** has shipped its first vertical slices — see §6 (`TeamAuthorizationHandler`, `CampAuthorizationHandler`, `BudgetAuthorizationHandler`, `RoleAssignmentAuthorizationHandler`). **Phase 3 (service-layer enforcement) is cancelled** — see the tombstone in the transition plan.
+Originally produced as Phase 0 of the [first-class authorization transition plan](plans/2026-04-03-first-class-authorization-transition.md) (kept linked for historical context). **Phase 1 is complete:** every canonical policy in §5 is registered in `AuthorizationPolicyExtensions.AddHumansAuthorizationPolicies`, all controllers use `[Authorize(Policy = PolicyNames.X)]` (with a narrow exception in the Events Guide section, which still uses `[Authorize(Roles = RoleGroups.EventsAdminOrAdmin)]` — see §7), the `authorize-policy` TagHelper resolves through `IAuthorizationService`, and views no longer call `RoleChecks.*` / `ShiftRoleChecks.*` directly. **Phase 2 (resource-based authorization)** has shipped multiple vertical slices — see §6 (`TeamAuthorizationHandler`, `CampAuthorizationHandler`, `BudgetAuthorizationHandler`, `RoleAssignmentAuthorizationHandler`, `ContainerAuthorizationHandler`, `ExpenseReportAuthorizationHandler`, `IbanAccessHandler`, `StoreOrderAuthorizationHandler`, `UserEmailAuthorizationHandler`, `IssuesAuthorizationHandler`, `AgentRateLimitHandler`). **Phase 3 (service-layer enforcement) is cancelled** — see the tombstone in the transition plan.
 
-Generated 2026-04-03. Refreshed 2026-04-25 (Section 2 fully re-scanned 2026-04-26; Scanner controller row refreshed 2026-05-12). Covers every `[Authorize(Policy)]` / `[Authorize(Roles)]` attribute on controllers and actions in `src/Humans.Web/Controllers/`, every `RoleChecks.*` / `ShiftRoleChecks.*` invocation across `src/Humans.Web/` and `src/Humans.Application/`, every `IAuthorizationService.AuthorizeAsync` call site, every `authorize-policy` TagHelper attribute and `User.IsInRole` / `Model.X` authorization check across `src/Humans.Web/Views/` and `src/Humans.Web/ViewComponents/`, and every `AuthorizationHandler<T, R>` under `src/Humans.Web/Authorization/` and `src/Humans.Application/Authorization/`.
+Generated 2026-04-03. Refreshed 2026-05-15 (full re-scan via `/freshness-sweep`). Covers every `[Authorize(Policy)]` / `[Authorize(Roles)]` attribute on controllers and actions in `src/Humans.Web/Controllers/` (including `Controllers/Api/` and `Controllers/Mailer/`), every `RoleChecks.*` / `ShiftRoleChecks.*` invocation across `src/Humans.Web/` and `src/Humans.Application/`, every `IAuthorizationService.AuthorizeAsync` call site, every `authorize-policy` TagHelper attribute and `User.IsInRole` / `Model.X` authorization check across `src/Humans.Web/Views/` and `src/Humans.Web/ViewComponents/`, and every `AuthorizationHandler<T, R>` (and `IAuthorizationHandler`) under `src/Humans.Web/Authorization/` and `src/Humans.Application/Authorization/`.
 
 The `Source` column reflects the constant referenced in the attribute as it appears in the code today.
 
@@ -15,19 +15,28 @@ The `Source` column reflects the constant referenced in the attribute as it appe
 | Controller | Scope | Roles | Source |
 |---|---|---|---|
 | `AdminController` | Class | `[Route("Admin")]` only — no class-level `[Authorize]` | — |
-| `AdminController.Index` | Action | `Admin` | `PolicyNames.AdminOnly` |
+| `AdminController.Index` | Action | `Admin, Board, HumanAdmin, TeamsAdmin, CampAdmin, TicketAdmin, EventsAdmin, FeedbackAdmin, FinanceAdmin, StoreAdmin, NoInfoAdmin, VolunteerCoordinator, ConsentCoordinator` | `PolicyNames.AnyAdminRole` |
 | `AdminController.PurgeHuman` | Action | `Admin` | `PolicyNames.AdminOnly` |
 | `AdminController.Logs` | Action | `Admin` | `PolicyNames.AdminOnly` |
+| `AdminController.Maintenance` | Action | `Admin` | `PolicyNames.AdminOnly` |
 | `AdminController.Configuration` | Action | `Admin` | `PolicyNames.AdminOnly` |
 | `AdminController.DbVersion` | Action | `AllowAnonymous` | Override |
 | `AdminController.DbStats` / `ResetDbStats` | Action | `Admin` | `PolicyNames.AdminOnly` |
 | `AdminController.ClearHangfireLocks` | Action | `Admin` | `PolicyNames.AdminOnly` |
+| `AdminController.BackfillUserEmailProviders` / `BackfillUserEmailProvidersRun` | Action | `Admin` | `PolicyNames.AdminOnly` |
 | `AdminController.CacheStats` / `ResetCacheStats` | Action | `Admin` | `PolicyNames.AdminOnly` |
 | `AdminController.AudienceSegmentation` | Action | `Admin` | `PolicyNames.AdminOnly` |
+| `AdminAgentController` | Class | `Admin` | `PolicyNames.AdminOnly` |
 | `AdminDuplicateAccountsController` | Class | `Admin` | `PolicyNames.AdminOnly` |
 | `AdminMergeController` | Class | `Admin` | `PolicyNames.AdminOnly` |
 | `AdminLegalDocumentsController` | Class | `Board, Admin` | `PolicyNames.BoardOrAdmin` |
 | `EmailController` | Class | `Admin` | `PolicyNames.AdminOnly` |
+| `MailerAdminController` | Class | `Admin` | `PolicyNames.AdminOnly` |
+| `ProfileAdminController` | Class | `Admin` | `PolicyNames.AdminOnly` |
+| `ProfileBackfillAdminController` | Class | `Admin` | `PolicyNames.AdminOnly` |
+| `ProfilePictureMigrationAdminController` | Class | `Admin` | `PolicyNames.AdminOnly` |
+| `UsersAdminDebugController` | Class | `Admin` | `PolicyNames.AdminOnly` |
+| `WidgetGalleryController` | Class | `Admin` | `PolicyNames.AdminOnly` |
 
 ### Google Section
 
@@ -44,26 +53,24 @@ The `Source` column reflects the constant referenced in the attribute as it appe
 | `GoogleController.RemediateAllGroupSettings` | Action | `Admin` | `PolicyNames.AdminOnly` |
 | `GoogleController.AllGroups` | Action | `Admin` | `PolicyNames.AdminOnly` |
 | `GoogleController.LinkGroupToTeam` | Action | `Admin` | `PolicyNames.AdminOnly` |
-| `GoogleController.CheckEmailMismatches` | Action | `Admin` | `PolicyNames.AdminOnly` |
-| `GoogleController.EmailBackfillReview` | Action | `Admin` | `PolicyNames.AdminOnly` |
-| `GoogleController.ApplyEmailBackfill` | Action | `Admin` | `PolicyNames.AdminOnly` |
 | `GoogleController.Sync` | Action | `TeamsAdmin, Board, Admin` | `PolicyNames.TeamsAdminBoardOrAdmin` |
 | `GoogleController.SyncPreview` | Action | `TeamsAdmin, Board, Admin` | `PolicyNames.TeamsAdminBoardOrAdmin` |
 | `GoogleController.SyncExecute` | Action | `Admin` | `PolicyNames.AdminOnly` |
 | `GoogleController.SyncExecuteAll` | Action | `Admin` | `PolicyNames.AdminOnly` |
-| `AuditLogController.CheckDriveActivity` | Action | `Board, Admin` | `PolicyNames.BoardOrAdmin` |
-| `AuditLogController.Resource` | Action | `Board, Admin` | `PolicyNames.BoardOrAdmin` |
-| `AuditLogController.Human` | Action | `HumanAdmin, Board, Admin` | `PolicyNames.HumanAdminBoardOrAdmin` |
 | `GoogleController.ProvisionEmail` | Action | `HumanAdmin, Admin` | `PolicyNames.HumanAdminOrAdmin` |
 | `GoogleController.Accounts` | Action | `Admin` | `PolicyNames.AdminOnly` |
 | `GoogleController.ProvisionAccount` | Action | `Admin` | `PolicyNames.AdminOnly` |
 | `GoogleController.SuspendAccount` | Action | `Admin` | `PolicyNames.AdminOnly` |
 | `GoogleController.ReactivateAccount` | Action | `Admin` | `PolicyNames.AdminOnly` |
-| `GoogleController.ResetPassword` | Action | `Admin` | `PolicyNames.AdminOnly` |
+| `GoogleController.ResetPassword` / `ResetPasswordAndGenerate2Fa` | Action | `Admin` | `PolicyNames.AdminOnly` |
 | `GoogleController.LinkAccount` | Action | `Admin` | `PolicyNames.AdminOnly` |
 | `GoogleController.SyncOutbox` | Action | `Admin` | `PolicyNames.AdminOnly` |
-| `GoogleController.CheckEmailRenames` / `EmailRenames` / `FixEmailRename` | Action | `Admin` | `PolicyNames.AdminOnly` |
+| `GoogleController.CheckEmailRenames` / `EmailRenames` / `EmailFlagViolations` | Action | `Admin` | `PolicyNames.AdminOnly` |
 | `GoogleController.Index` | Action | `Admin` | `PolicyNames.AdminOnly` |
+| `AuditLogController.Index` | Action | `Board, Admin` | `PolicyNames.BoardOrAdmin` |
+| `AuditLogController.CheckDriveActivity` | Action | `Board, Admin` | `PolicyNames.BoardOrAdmin` |
+| `AuditLogController.Resource` | Action | `Board, Admin` | `PolicyNames.BoardOrAdmin` |
+| `AuditLogController.Human` | Action | `HumanAdmin, Board, Admin` | `PolicyNames.HumanAdminBoardOrAdmin` |
 
 ### Tickets Section
 
@@ -75,6 +82,9 @@ The `Source` column reflects the constant referenced in the attribute as it appe
 | `TicketController.ParticipationBackfill` (GET/POST) | Action | `Admin` | `PolicyNames.AdminOnly` |
 | `TicketController.ExportAttendees` | Action | `TicketAdmin, Admin` | `PolicyNames.TicketAdminOrAdmin` |
 | `TicketController.ExportOrders` | Action | `TicketAdmin, Admin` | `PolicyNames.TicketAdminOrAdmin` |
+| `TicketTransferController` | Class | `[Authorize]` (authenticated) | — |
+| `TicketTransferAdminController` | Class | `TicketAdmin, Admin` | `PolicyNames.TicketAdminOrAdmin` |
+| `TicketsContactsAdminController` | Class | `TicketAdmin, Admin` | `PolicyNames.TicketAdminOrAdmin` |
 
 ### Scanner Section
 
@@ -93,7 +103,7 @@ The `Source` column reflects the constant referenced in the attribute as it appe
 | `CampaignController.Detail` | Action | `TicketAdmin, Admin` | `PolicyNames.TicketAdminOrAdmin` |
 | `CampaignController.ImportCodes` | Action | `Admin` | `PolicyNames.AdminOnly` |
 | `CampaignController.GenerateCodes` | Action | `TicketAdmin, Admin` | `PolicyNames.TicketAdminOrAdmin` |
-| `CampaignController.Activate/Complete` | Action | `Admin` | `PolicyNames.AdminOnly` |
+| `CampaignController.Activate` / `Complete` | Action | `Admin` | `PolicyNames.AdminOnly` |
 | `CampaignController.SendWave` (GET/POST) | Action | `Admin` | `PolicyNames.AdminOnly` |
 | `CampaignController.Resend` | Action | `Admin` | `PolicyNames.AdminOnly` |
 | `CampaignController.RetryAllFailed` | Action | `Admin` | `PolicyNames.AdminOnly` |
@@ -111,11 +121,31 @@ The `Source` column reflects the constant referenced in the attribute as it appe
 | `BudgetController` | Class | `[Authorize]` (authenticated) | — |
 | Runtime guards | In-method | `_authService.AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)` and `_authService.AuthorizeAsync(User, category, BudgetOperationRequirement.Edit)` | Resource-based (see §6) |
 
+### Expenses Section
+
+| Controller | Scope | Roles | Source |
+|---|---|---|---|
+| `ExpensesController` | Class | `[Authorize]` (authenticated) | — |
+| `ExpensesController.Review` | Action | `FinanceAdmin, Admin` | `PolicyNames.FinanceAdminOrAdmin` |
+| `ExpensesController.Approve` | Action | `FinanceAdmin, Admin` | `PolicyNames.FinanceAdminOrAdmin` |
+| `ExpensesController.Reject` | Action | `FinanceAdmin, Admin` | `PolicyNames.FinanceAdminOrAdmin` |
+| `ExpensesController.SepaGenerate` | Action | `FinanceAdmin, Admin` | `PolicyNames.FinanceAdminOrAdmin` |
+| `ExpensesController` runtime guards | In-method | `_authService.AuthorizeAsync(User, report, ExpenseReportOperationRequirement.*)` | Resource-based (see §6) |
+
+### Store Section
+
+| Controller | Scope | Roles | Source |
+|---|---|---|---|
+| `StoreController` | Class | `[Authorize]` (authenticated) | — |
+| `StoreController` runtime guards | In-method | `_authService.AuthorizeAsync(User, order, StoreOrderOperationRequirement.{View, AddLine, RemoveLine, EditCounterparty, Pay})` and `StoreOrderCreateContext` for Create | Resource-based (see §6) |
+| `StoreAdminController` | Class | `StoreAdmin, FinanceAdmin, Admin` | `PolicyNames.StoreCatalogAdmin` |
+| `StoreStripeWebhookController` | Class | `AllowAnonymous` (Stripe signature-verified) | — |
+
 ### Board Section
 
 | Controller | Scope | Roles | Source |
 |---|---|---|---|
-| `BoardController` | Class | `Board, Admin` | `PolicyNames.BoardOrAdmin` |
+| (No standalone `BoardController` — board-only actions live under `GovernanceBoardVotingController` below.) | | | |
 
 ### Onboarding Review Section
 
@@ -123,8 +153,10 @@ The `Source` column reflects the constant referenced in the attribute as it appe
 |---|---|---|---|
 | `OnboardingReviewController` | Class | `ConsentCoordinator, VolunteerCoordinator, Board, Admin` | `PolicyNames.ReviewQueueAccess` |
 | `OnboardingReviewController.Clear` | Action | `ConsentCoordinator, Board, Admin` | `PolicyNames.ConsentCoordinatorBoardOrAdmin` |
+| `OnboardingReviewController.BulkClear` | Action | `ConsentCoordinator, Board, Admin` | `PolicyNames.ConsentCoordinatorBoardOrAdmin` |
 | `OnboardingReviewController.Flag` | Action | `ConsentCoordinator, Board, Admin` | `PolicyNames.ConsentCoordinatorBoardOrAdmin` |
 | `OnboardingReviewController.Reject` | Action | `ConsentCoordinator, Board, Admin` | `PolicyNames.ConsentCoordinatorBoardOrAdmin` |
+| `OnboardingWidgetController` | Class | `[Authorize]` (authenticated) | — |
 
 ### Governance / Application Section
 
@@ -137,7 +169,6 @@ The `Source` column reflects the constant referenced in the attribute as it appe
 | `GovernanceApplicationsController.AdminDetail` | Action | `Board, Admin` | `PolicyNames.BoardOrAdmin` |
 | `GovernanceBoardVotingController` | Class | `Board, Admin` | `PolicyNames.BoardOrAdmin` |
 | `GovernanceBoardVotingController.Vote` | Action | `Board` | `PolicyNames.BoardOnly` |
-| `GovernanceBoardVotingController.Finalize` | Action | `Board, Admin` | `PolicyNames.BoardOrAdmin` |
 
 ### Profile / Contacts Section
 
@@ -145,8 +176,11 @@ The `Source` column reflects the constant referenced in the attribute as it appe
 |---|---|---|---|
 | `ProfileController` | Class | `[Authorize]` (authenticated) | — |
 | `ProfileController.VerifyEmail` | Action | `AllowAnonymous` | Override |
+| `ProfileController.AdminAddVerifiedEmail` | Action | `Admin` | `PolicyNames.AdminOnly` |
+| `ProfileController.AdminVerifyEmail` | Action | `Admin` | `PolicyNames.AdminOnly` |
 | `ProfileController.AdminList` | Action | `HumanAdmin, Board, Admin` | `PolicyNames.HumanAdminBoardOrAdmin` |
 | `ProfileController.AdminDetail` | Action | `HumanAdmin, Board, Admin` | `PolicyNames.HumanAdminBoardOrAdmin` |
+| `ProfileController.RevealIban` | Action | `Admin` | `PolicyNames.AdminOnly` |
 | `ProfileController.AdminOutbox` | Action | `HumanAdmin, Board, Admin` | `PolicyNames.HumanAdminBoardOrAdmin` |
 | `ProfileController.SuspendHuman` | Action | `HumanAdmin, Board, Admin` | `PolicyNames.HumanAdminBoardOrAdmin` |
 | `ProfileController.UnsuspendHuman` | Action | `HumanAdmin, Board, Admin` | `PolicyNames.HumanAdminBoardOrAdmin` |
@@ -155,6 +189,8 @@ The `Source` column reflects the constant referenced in the attribute as it appe
 | `ProfileController.AddRole` (GET/POST) | Action | `HumanAdmin, Board, Admin` | `PolicyNames.HumanAdminBoardOrAdmin` |
 | `ProfileController.EndRole` | Action | `HumanAdmin, Board, Admin` | `PolicyNames.HumanAdminBoardOrAdmin` |
 | `ProfileController.AddRole/EndRole` runtime guards | In-method | `_authorizationService.AuthorizeAsync(User, roleName, RoleAssignmentOperationRequirement.Manage)` | Resource-based (see §6) |
+| `ProfileController` email-action runtime guards | In-method | `_authorizationService.AuthorizeAsync(User, userId, UserEmailOperations.Edit)` (gating ~20 email-edit endpoints) | Resource-based (see §6) |
+| `ProfileApiController` | Class | `[Authorize]` (authenticated) | — |
 
 ### Teams Section
 
@@ -177,10 +213,13 @@ The `Source` column reflects the constant referenced in the attribute as it appe
 |---|---|---|---|
 | `CampController` | Class | None at class level — anonymous public actions + `[Authorize]` per action | Camp lead + CampAdmin runtime checks |
 | `CampController.Index/Details/SeasonDetails` | Action | `AllowAnonymous` | Override |
-| `CampController.*` (Edit/Register/Join/Leave/etc.) | Action | `[Authorize]` (authenticated) | — |
+| `CampController.*` (Edit/Register/Members/Withdraw/Rejoin/AddLead/RemoveLead/etc.) | Action | `[Authorize]` (authenticated) | — |
 | `CampController` runtime guards | In-method | `_authorizationService.AuthorizeAsync(User, camp, CampOperationRequirement.Manage)` via `HumansCampControllerBase` | Resource-based (see §6) |
 | `CampAdminController` | Class | `CampAdmin, Admin` | `PolicyNames.CampAdminOrAdmin` |
 | `CampAdminController.Delete` | Action | `Admin` | `PolicyNames.AdminOnly` |
+| `CampApiController` | Class | `AllowAnonymous` (with `BarriosPublic` CORS) | — |
+| `ContainerController` | Class | `[Authorize]` (authenticated) | — |
+| `ContainerController` runtime guards | In-method | `_authorizationService.AuthorizeAsync(User, target, ContainerOperationRequirement.{Manage, Place})` | Resource-based (see §6) |
 
 ### Shifts Section
 
@@ -188,8 +227,27 @@ The `Source` column reflects the constant referenced in the attribute as it appe
 |---|---|---|---|
 | `ShiftsController` | Class | `[Authorize]` (authenticated) | — |
 | `ShiftsController.Settings` (GET/POST) | Action | `Admin` | `PolicyNames.AdminOnly` |
+| `ShiftsController.OrphanSignups` | Action | `Admin` | `PolicyNames.AdminOnly` |
 | `ShiftAdminController` | Class | `[Authorize]` (authenticated) | Coordinator checks at runtime via `HumansTeamControllerBase` |
-| `ShiftDashboardController` | Class | `Admin, NoInfoAdmin, VolunteerCoordinator` | `PolicyNames.ShiftDashboardAccess` |
+| `ShiftDashboardController` | Class | `Admin, NoInfoAdmin, VolunteerCoordinator` (role requirement) OR any team manager/coordinator (custom handler) | `PolicyNames.ShiftDepartmentManager` |
+| `ShiftDashboardController.SearchVolunteers` | Action | `Admin, NoInfoAdmin, VolunteerCoordinator` | `PolicyNames.ShiftDashboardAccess` |
+| `ShiftDashboardController.Voluntell` | Action | `Admin, NoInfoAdmin, VolunteerCoordinator` | `PolicyNames.ShiftDashboardAccess` |
+| `VolunteerTrackingController` | Class | `Admin, NoInfoAdmin, VolunteerCoordinator` | `PolicyNames.ShiftDashboardAccess` |
+| `VolunteerTrackingController.SetCampSetup` / `ClearCampSetup` / `SetDayOff` / `ClearDayOff` | Action | `Admin, VolunteerCoordinator` | `PolicyNames.VolunteerTrackingWrite` |
+
+### Events Guide Section
+
+| Controller | Scope | Roles | Source |
+|---|---|---|---|
+| `EventsController` | Class | `[Authorize]` (authenticated) + `EventsFeatureFilter` | — |
+| `BarrioEventsController` | Class | `[Authorize]` (authenticated) + `EventsFeatureFilter` | — |
+| `EventsAdminController` | Class | `EventsAdmin, Admin` | `[Authorize(Roles = RoleGroups.EventsAdminOrAdmin)]` (role-list — `PolicyNames.EventsAdminOrAdmin` is registered but not yet referenced on attributes) |
+| `EventsDashboardController` | Class | `EventsAdmin, Admin` | `[Authorize(Roles = RoleGroups.EventsAdminOrAdmin)]` |
+| `EventsExportController` | Class | `EventsAdmin, Admin` | `[Authorize(Roles = RoleGroups.EventsAdminOrAdmin)]` |
+| `EventsModerationController` | Class | `EventsAdmin, Admin` | `[Authorize(Roles = RoleGroups.EventsAdminOrAdmin)]` |
+| `EventsApiController` | Class | `[ApiController]`, `[EnableCors("EventsApi")]`, `EventsFeatureFilter` — no class-level `[Authorize]` | — |
+| `EventsApiController.GetEvents/GetEvent/GetBarrios/GetBarrio/GetCategories` | Action | (anonymous reads) | — |
+| `EventsApiController.GetPreferences/UpdatePreferences/GetFavourites/AddFavourite/RemoveFavourite` | Action | `[Authorize]` (authenticated) | — |
 
 ### Calendar Section
 
@@ -204,7 +262,7 @@ The `Source` column reflects the constant referenced in the attribute as it appe
 | `CityPlanningController` | Class | `[Authorize]` (authenticated) | — |
 | `CityPlanningController` runtime guards | In-method | `RoleChecks.IsCampAdmin(User)` and lead-of-camp checks | RoleChecks helper |
 | `CityPlanningApiController` | Class | `[Authorize]` (authenticated) | — |
-| `CityPlanningApiController` runtime guards | In-method | `RoleChecks.IsCampAdmin(User)` and lead-of-camp checks | RoleChecks helper |
+| `CityPlanningApiController` runtime guards | In-method | `RoleChecks.IsCampAdmin(User)` and lead-of-camp checks; `_authorizationService.AuthorizeAsync(...)` on three endpoints | RoleChecks helper + resource-based |
 
 ### Feedback Section
 
@@ -217,7 +275,23 @@ The `Source` column reflects the constant referenced in the attribute as it appe
 | `FeedbackController` runtime guards | In-method | `RoleChecks.IsFeedbackAdmin(User)` to drive admin-vs-user view | RoleChecks helper |
 | `FeedbackApiController` | Class | `[ServiceFilter(typeof(ApiKeyAuthFilter))]` (API-key auth) | `ApiKeyAuthFilter` |
 
-### Guide Section
+### Issues Section
+
+| Controller | Scope | Roles | Source |
+|---|---|---|---|
+| `IssuesController` | Class | `[Authorize]` (authenticated) | — |
+| `IssuesController` runtime guards | In-method | `_authorization.AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle)` on every mutating endpoint | Resource-based (see §6) |
+| `IssuesApiController` | Class | `[ServiceFilter(typeof(IssuesApiKeyAuthFilter))]` (API-key auth) | `IssuesApiKeyAuthFilter` |
+
+### Agent Section
+
+| Controller | Scope | Roles | Source |
+|---|---|---|---|
+| `AgentController` | Class | `[Authorize]` (authenticated) | — |
+| `AgentController.Ask` | In-method | `_auth.AuthorizeAsync(User, user.Id, PolicyNames.AgentRateLimit)` | Resource-based (see §6) |
+| `AgentApiController` | Class | `[ServiceFilter(typeof(AgentApiKeyAuthFilter))]` (API-key auth) | `AgentApiKeyAuthFilter` |
+
+### Guide Section (Help Documentation)
 
 | Controller | Scope | Roles | Source |
 |---|---|---|---|
@@ -225,6 +299,18 @@ The `Source` column reflects the constant referenced in the attribute as it appe
 | `GuideController.Index` | Action | `AllowAnonymous` | Override |
 | `GuideController.Document` | Action | `AllowAnonymous` | Override |
 | `GuideController.Refresh` | Action | `Admin` | `PolicyNames.AdminOnly` |
+
+### Search Section
+
+| Controller | Scope | Roles | Source |
+|---|---|---|---|
+| `SearchController` | Class | `[Authorize]` (authenticated) | — |
+
+### Notifications
+
+| Controller | Scope | Roles | Source |
+|---|---|---|---|
+| `NotificationsController` | Class | `[Authorize]` (authenticated) | — |
 
 ### About / Home / Account / Misc
 
@@ -239,6 +325,8 @@ The `Source` column reflects the constant referenced in the attribute as it appe
 | `UnsubscribeController` | Class | (no class-level `[Authorize]`) | — |
 | `LanguageController` | Class | (no class-level `[Authorize]`) | — |
 | `DevLoginController` | Class | (no class-level `[Authorize]`) | — |
+| `WelcomeController` | Class | `AllowAnonymous` | — |
+| `ColorPaletteController` | Class | `AllowAnonymous` | — |
 
 ### Dev Seed (test data)
 
@@ -246,26 +334,25 @@ The `Source` column reflects the constant referenced in the attribute as it appe
 |---|---|---|---|
 | `DevSeedController` | Class | `[Authorize]` (authenticated) | — |
 | `DevSeedController.SeedBudget` | Action | `FinanceAdmin, Admin` | `PolicyNames.FinanceAdminOrAdmin` |
+| `DevSeedController.SeedCampRoles` | Action | `CampAdmin, Admin` | `PolicyNames.CampAdminOrAdmin` |
 | `DevSeedController.SeedDashboard` | Action | `Admin, NoInfoAdmin, VolunteerCoordinator` | `PolicyNames.ShiftDashboardAccess` |
+| `DevSeedController.ResetDashboard` | Action | `Admin` | `[Authorize(Roles = RoleNames.Admin)]` |
 
-### Guest / Consent / Notifications
+### Guest / Consent
 
 | Controller | Scope | Roles | Source |
 |---|---|---|---|
 | `GuestController` | Class | `[Authorize]` (authenticated) | — |
 | `GuestController.CommunicationPreferences` (GET/POST) | Action | `AllowAnonymous` (token-validated) | Override (see WARNING in source) |
+| `GuestController.UpdatePreference` | Action | `AllowAnonymous` (token-validated) | Override |
 | `ConsentController` | Class | `[Authorize]` (authenticated) | — |
-| `NotificationController` | Class | `[Authorize]` (authenticated) | — |
 
 ### Public / API
 
 | Controller | Scope | Roles | Source |
 |---|---|---|---|
-| `ProfileApiController` | Class | `[Authorize]` (authenticated) | — |
 | `LegalController` | Class | `AllowAnonymous` | — |
-| `CampApiController` | Class | `AllowAnonymous` | — |
-| `ColorPaletteController` | Class | `AllowAnonymous` | — |
-| `LogApiController` | Class | (no class-level `[Authorize]`) | — |
+| `LogApiController` | Class | `[ServiceFilter(typeof(LogApiKeyAuthFilter))]` (API-key auth) | `LogApiKeyAuthFilter` |
 | `TimezoneApiController` | Class | (no class-level `[Authorize]`) | — |
 | `HangfireAuthorizationFilter` | Filter | `RoleChecks.IsAdmin(User)` | Admin only |
 
@@ -277,33 +364,35 @@ Views express authorization four ways today:
 
 1. **`authorize-policy="PolicyName"` TagHelper attribute** — the dominant pattern. Resolves through `IAuthorizationService.AuthorizeAsync(User, policyName)` via `AuthorizeViewTagHelper`. Hides the element when the policy fails.
 2. **`(await AuthService.AuthorizeAsync(User, PolicyNames.X)).Succeeded`** — used when a view needs the boolean for branching, multi-use within the page, or to drive a `var` flag rather than gate one element. Requires `@inject IAuthorizationService AuthService`.
-3. **`User.IsInRole(RoleNames.X)` direct calls** — used in two places only (build-hash tooltip in the nav, Refresh button in the Guide layout). Not part of the canonical pattern; kept where the surrounding logic needs a plain `bool` outside the TagHelper rendering pipeline.
+3. **`User.IsInRole(RoleNames.X)` direct calls** — used in the build-hash tooltip in the nav (multi-role OR-chain), the Events dropdown sub-items in the main layout, the Refresh button in the Guide layout, and two locations in `Profile/AdminDetail.cshtml`. Not part of the canonical pattern; kept where the surrounding logic needs a plain `bool` outside the TagHelper rendering pipeline or where role-specific behaviour mixes with non-auth UI logic.
 4. **`Model.CanX` / `Model.IsX` view-model properties** — for resource-relative checks (coordinator-of-this-team, lead-of-this-camp, can-edit-this-budget) and for status-driven UI (suspended badge, approved badge, etc.). The view does not know about roles; the controller / view-model author resolved authorization upstream.
 
-`RoleChecks.*` and `ShiftRoleChecks.*` are no longer invoked from any view file (Phase 1 retirement complete — verified 2026-04-26).
+`RoleChecks.*` and `ShiftRoleChecks.*` are no longer invoked from any view file (Phase 1 retirement complete — verified 2026-05-15).
 
 ### Nav Layout (`_Layout.cshtml`)
 
 | Line | Check | Controls |
 |---|---|---|
-| 33–40 | `User.IsInRole(RoleNames.Admin) \|\| HumanAdmin \|\| TeamsAdmin \|\| CampAdmin \|\| TicketAdmin \|\| FeedbackAdmin \|\| FinanceAdmin \|\| NoInfoAdmin` | Build-hash tooltip on brand link (any admin role sees commit SHA on hover) |
-| 101 | `authorize-policy="IsActiveMember"` | City Planning nav link |
-| 110 | `authorize-policy="ActiveMemberOrShiftAccess"` | Shifts nav link |
-| 113 | `authorize-policy="ReviewQueueAccess"` | Review nav link + queue badges |
-| 119 | `authorize-policy="BoardOrAdmin"` | Voting nav link + queue badges |
-| 122 | `authorize-policy="BoardOrAdmin"` | Board nav link |
-| 125 | `authorize-policy="HumanAdminOnly"` | "Humans" nav link (standalone HumanAdmin without Board/Admin) |
-| 128 | `authorize-policy="AdminOnly"` | Admin nav link |
-| 131 | `authorize-policy="AdminOnly"` | Google nav link |
-| 134 | `authorize-policy="TicketAdminBoardOrAdmin"` | Tickets nav link |
-| 137 | `authorize-policy="IsActiveMember"` | Budget nav link |
-| 140 | `authorize-policy="FinanceAdminOrAdmin"` | Finance nav link |
+| 34–42 | `User.IsInRole(RoleNames.Admin) \|\| HumanAdmin \|\| TeamsAdmin \|\| CampAdmin \|\| TicketAdmin \|\| EventsAdmin \|\| FeedbackAdmin \|\| FinanceAdmin \|\| NoInfoAdmin` | Build-hash tooltip on brand link (any admin role sees commit SHA on hover) |
+| 103 | `authorize-policy="IsActiveMember"` | City Planning nav link |
+| 108 | `authorize-policy="IsActiveMember"` | Events dropdown (feature-flagged) |
+| 114–115 | `User.IsInRole(EventsAdmin) \|\| User.IsInRole(Admin)` | Guide Dashboard / Moderate / Export dropdown items |
+| 122–123 | `User.IsInRole(EventsAdmin) \|\| User.IsInRole(Admin)` | Guide Settings / Categories / Venues dropdown items |
+| 139 | `authorize-policy="ActiveMemberOrShiftAccess"` | Shifts nav link |
+| 142 | `authorize-policy="IsActiveMember"` | Budget nav link |
+| 145 | `authorize-policy="AnyAdminRole"` | Admin nav link (entry to admin shell) |
 
 ### Login Partial (`_LoginPartial.cshtml`)
 
 | Line | Check | Controls |
 |---|---|---|
 | 44 | `authorize-policy="IsActiveMember"` | Governance link in profile dropdown |
+
+### Admin Topbar User Menu (`_AdminTopbarUserMenu.cshtml`)
+
+| Line | Check | Controls |
+|---|---|---|
+| 34 | `authorize-policy="IsActiveMember"` | Active-member-only entry in admin topbar dropdown |
 
 ### Guide Layout (`_GuideLayout.cshtml`)
 
@@ -315,13 +404,15 @@ Views express authorization four ways today:
 
 | View | Line | Check | Controls |
 |---|---|---|---|
-| `Shifts/Index.cshtml` | 27 | `authorize-policy="ShiftDepartmentManager"` | Dashboard button |
-| `Shifts/Index.cshtml` | 28 | `authorize-policy="AdminOnly"` | Settings button |
+| `Shifts/Index.cshtml` | 63 | `authorize-policy="ShiftDepartmentManager"` | Dashboard button |
+| `Shifts/Index.cshtml` | 64 | `authorize-policy="AdminOnly"` | Settings button |
 | `Shifts/NoActiveEvent.cshtml` | 8 | `authorize-policy="AdminOnly"` | "Configure Event Settings" link |
-| `ShiftAdmin/Index.cshtml` | 39 | `Model.CanApproveSignups` | Pending approvals card visibility |
-| `ShiftAdmin/Index.cshtml` | 66, 558, 594 | `Model.CanViewMedical` | Medical badge in volunteer profile partial |
-| `ShiftAdmin/Index.cshtml` | 169, 204, 429, 461, 660, 791, 868, 930 | `Model.CanManageShifts` | Rota/shift edit/delete buttons, add-rota/add-shift forms |
-| `ShiftAdmin/Index.cshtml` | 335, 393, 440, 538, 572, 633, 734 | `Model.CanApproveSignups` | Signups column header, approve/reject buttons, signup table cells |
+| `ShiftDashboard/Index.cshtml` | 87 | `authorize-policy="ShiftDashboardAccess"` | Voluntell card |
+| `ShiftDashboard/Index.cshtml` | 228 | `authorize-policy="ShiftDashboardAccess"` | Volunteer search column |
+| `ShiftDashboard/Index.cshtml` | 317, 327 | `authorize-policy="ShiftDashboardAccess"` | Per-row signup-action cells |
+| `VolunteerTracking/Index.cshtml` | 8 | `(await AuthService.AuthorizeAsync(User, PolicyNames.VolunteerTrackingWrite)).Succeeded` | Drives `canWrite` flag for write controls below |
+| `VolunteerTracking/_VolunteerHeatmap.cshtml` | 9 | `(await AuthService.AuthorizeAsync(User, PolicyNames.VolunteerTrackingWrite)).Succeeded` | Drives `canWrite` flag for cell-level write actions |
+| `VolunteerTracking/_VolunteerUnbookedHeatmap.cshtml` | 9 | `(await AuthService.AuthorizeAsync(User, PolicyNames.VolunteerTrackingWrite)).Succeeded` | Drives `canWrite` flag for cell-level write actions |
 
 ### Profile Views
 
@@ -329,123 +420,65 @@ Views express authorization four ways today:
 |---|---|---|---|
 | `Profile/Index.cshtml` | 15 | `authorize-policy="HumanAdminBoardOrAdmin"` | "Admin" link to AdminDetail |
 | `Profile/Index.cshtml` | 63 | `(await AuthService.AuthorizeAsync(User, PolicyNames.TeamsAdminBoardOrAdmin)).Succeeded` | `ProfileCardViewMode.Admin` vs `Public` for non-own profiles |
-| `Profile/AdminDetail.cshtml` | 32 | `Model.IsSuspended` | "Suspended" badge |
-| `Profile/AdminDetail.cshtml` | 36 | `Model.HasProfile && !Model.IsApproved` | "Pending Approval" badge |
-| `Profile/AdminDetail.cshtml` | 40 | `Model.HasProfile && Model.IsApproved` | "Approved" badge |
-| `Profile/AdminDetail.cshtml` | 47 | `Model.IsRejected` | Rejection reason banner |
-| `Profile/AdminDetail.cshtml` | 371 | `Model.HasProfile && !Model.IsApproved && !Model.IsSuspended` | "Approve Volunteer" button |
-| `Profile/AdminDetail.cshtml` | 379 | `Model.IsSuspended` | "Unsuspend" form (vs "Suspend" form in else branch) |
-| `Profile/AdminDetail.cshtml` | 398 | `Model.HasProfile && !Model.IsRejected` | "Reject Signup" form |
+| `Profile/Emails.cshtml` | 17 | `(await AuthService.AuthorizeAsync(User, PolicyNames.AdminOnly)).Succeeded` | Admin-only email management controls |
+| `Profile/AdminDetail.cshtml` | 299 | `User.IsInRole(RoleNames.Admin)` | Admin-only data block within Admin Detail page |
+| `Profile/AdminDetail.cshtml` | 348 | `User.IsInRole(RoleNames.Admin)` | Admin-only data block within Admin Detail page |
+
+### Home / Dashboard Views
+
+| View | Line | Check | Controls |
+|---|---|---|---|
+| `Home/Dashboard.cshtml` | 7 | `(await AuthService.AuthorizeAsync(User, PolicyNames.AnyAdminRole)).Succeeded` | Drives `canSendTicketTransfer` flag in admin dashboard tile region |
 
 ### Board / Onboarding Review Views
 
 | View | Line | Check | Controls |
 |---|---|---|---|
 | `Governance/BoardVoting/Detail.cshtml` | 115 | `authorize-policy="BoardOnly"` | Vote casting card |
-| `Governance/BoardVoting/Detail.cshtml` | 153 | `Model.CanFinalize` | Finalize decision card |
-| `OnboardingReview/Detail.cshtml` | 30 | `Model.HasPendingApplication` | Application tier badge |
 
 ### Team Views
 
 | View | Line | Check | Controls |
 |---|---|---|---|
-| `Team/Index.cshtml` | 23 | `Model.CanCreateTeam` | "Create Team" button |
-| `Team/Summary.cshtml` | 18 | `authorize-policy="BoardOrAdmin"` | "Create Team" button |
-| `Team/Summary.cshtml` | 38 | `authorize-policy="BoardOrAdmin"` | Actions column header |
-| `Team/Summary.cshtml` | 82 | `(await AuthService.AuthorizeAsync(User, PolicyNames.BoardOrAdmin)).Succeeded` | Pending-shift-signup badge link to ShiftAdmin |
-| `Team/Summary.cshtml` | 134 | `authorize-policy="BoardOrAdmin"` | Actions column cell (Edit/Deactivate buttons) |
+| `Team/Summary.cshtml` | 22 | `authorize-policy="BoardOrAdmin"` | "Create Team" button |
+| `Team/Summary.cshtml` | 51 | `authorize-policy="BoardOrAdmin"` | Actions column header |
+| `Team/_AdminTeamRow.cshtml` | 44 | `(await AuthService.AuthorizeAsync(User, PolicyNames.BoardOrAdmin)).Succeeded` | Pending-shift-signup badge link |
+| `Team/_AdminTeamRow.cshtml` | 96 | `authorize-policy="BoardOrAdmin"` | Actions column cell (Edit/Deactivate buttons) |
 | `Team/EditTeam.cshtml` | 81 | `authorize-policy="AdminOnly"` | "Sensitive team" checkbox |
-| `Team/_TeamCard.cshtml` | 39 | `Model.IsCurrentUserCoordinator` | "Manage" link |
-| `Team/Details.cshtml` | 36 | `Model.IsCurrentUserCoordinator` | Coordinator role badge |
-| `Team/Details.cshtml` | 70, 95 | `Model.CanEditPageContent` | "Edit Page" / "Add Page Content" buttons |
 
 ### Camp Views
 
 | View | Line | Check | Controls |
 |---|---|---|---|
 | `Camp/Index.cshtml` | 11 | `authorize-policy="CampAdminOrAdmin"` | "Camp Admin" link |
-| `Camp/Details.cshtml` | 184 | `Model.IsCurrentUserLead \|\| Model.IsCurrentUserCampAdmin` | Placement card visibility |
-| `Camp/Details.cshtml` | 348 | `Model.IsCurrentUserLead \|\| Model.IsCurrentUserCampAdmin` | Actions card (Edit) |
-| `Camp/Details.cshtml` | 361 | `Model.IsCurrentUserLead && status in (Pending\|Active)` | "Withdraw Season" form |
-| `Camp/Details.cshtml` | 370 | `(Model.IsCurrentUserLead \|\| Model.IsCurrentUserCampAdmin) && status == Withdrawn` | "Rejoin Season" form |
-| `Camp/Details.cshtml` | 379 | `Model.IsCurrentUserCampAdmin && status == Full` | "Reactivate Season" form |
-| `CampAdmin/Index.cshtml` | 345 | `authorize-policy="AdminOnly"` | Danger Zone card (Delete Camp) |
+| `CampAdmin/Index.cshtml` | 417 | `authorize-policy="AdminOnly"` | Danger Zone card (Delete Camp) |
 
 ### Ticket Views
 
 | View | Line | Check | Controls |
 |---|---|---|---|
-| `Ticket/Index.cshtml` | 337 | `authorize-policy="TicketAdminOrAdmin"` | "Sync Now" form |
-| `Ticket/Index.cshtml` | 343 | `authorize-policy="AdminOnly"` | "Full Re-sync" form |
+| `Ticket/Index.cshtml` | 328 | `authorize-policy="TicketAdminOrAdmin"` | "Sync Now" form |
+| `Ticket/Index.cshtml` | 334 | `authorize-policy="AdminOnly"` | "Full Re-sync" form |
+| `Ticket/Index.cshtml` | 342 | `authorize-policy="TicketAdminOrAdmin"` | Export link |
 | `Ticket/_TicketNav.cshtml` | 26 | `authorize-policy="AdminOnly"` | "Backfill" tab |
 
 ### Campaign Views
 
 | View | Line | Check | Controls |
 |---|---|---|---|
-| `Campaign/Detail.cshtml` | 21 | `var isAdmin = (await AuthService.AuthorizeAsync(User, PolicyNames.AdminOnly)).Succeeded` | Drives all admin-gated buttons below |
+| `Campaign/Detail.cshtml` | 21 | `var isAdmin = (await AuthService.AuthorizeAsync(User, PolicyNames.AdminOnly)).Succeeded` | Drives admin-gated buttons below |
 | `Campaign/Detail.cshtml` | 22 | `var canGenerateCodes = (await AuthService.AuthorizeAsync(User, PolicyNames.TicketAdminOrAdmin)).Succeeded` | Drives "Generate Codes" form |
-| `Campaign/Detail.cshtml` | 34, 52, 59, 85, 96, 106 | `if (isAdmin)` | Edit, Send Wave, Import Codes, Activate, Complete, Retry-All buttons |
-| `Campaign/Detail.cshtml` | 70 | `if (canGenerateCodes && status == Draft)` | "Generate Codes" form |
-
-### Budget Views
-
-| View | Line | Check | Controls |
-|---|---|---|---|
-| `Budget/Index.cshtml` | 5 | `Model.IsFinanceAdmin` | Filters out ticketing groups for non-finance |
-| `Budget/Index.cshtml` | 25 | `Model.IsFinanceAdmin` | "Finance Admin" link |
-| `Budget/Index.cshtml` | 115, 116 | `Model.IsFinanceAdmin` | Per-row editability + restricted-group flag |
-| `Budget/Summary.cshtml` | 13 | `Model.IsCoordinator` | "Department Detail" link |
-| `Budget/CategoryDetail.cshtml` | 51, 125, 162, 178, 249, 259 | `Model.CanEdit` | Editable badge, line-item edit/delete buttons, add-line-item form |
-
-### Feedback Views
-
-| View | Line | Check | Controls |
-|---|---|---|---|
-| `Feedback/Index.cshtml` | 39 | `Model.IsAdmin && Model.Reporters.Count > 0` | Reporter filter dropdown |
-| `Feedback/Index.cshtml` | 56 | `Model.IsAdmin` | Assignee/team/unassigned filter row |
-| `Feedback/Index.cshtml` | 145, 155 | `Model.IsAdmin` | Reporter name + assignment badges in list items |
-| `Feedback/Index.cshtml` | 183 | `report.NeedsReply && Model.IsAdmin` | "Needs reply" indicator |
-| `Feedback/_Detail.cshtml` | 9 | `Model.IsAdmin` | Reporter shown as `<human-link>` (admin) vs name (user) |
-| `Feedback/_Detail.cshtml` | 22 | `Model.IsAdmin` | Status / GH-issue-number / lock-icon controls |
-| `Feedback/_Detail.cshtml` | 54 | `Model.IsAdmin` | Assignment selectors (assignee, team, unassigned-only checkbox) |
-
-### Google Views
-
-| View | Line | Check | Controls |
-|---|---|---|---|
-| `Google/_SyncTabContent.cshtml` | 53 | `Model.CanExecuteActions && result.DriftCount > 0` | "Add All Missing" / "Sync All" bulk buttons |
-| `Google/_SyncTabContent.cshtml` | 125 | `Model.CanViewAudit` | Per-resource Audit link |
-| `Google/_SyncTabContent.cshtml` | 130 | `Model.CanExecuteActions && !diff.IsInSync && !hasError` | Per-resource "Add Missing" / "Sync All" buttons |
-
-### Calendar Views
-
-| View | Line | Check | Controls |
-|---|---|---|---|
-| `Calendar/Event.cshtml` | 18 | `Model.CanEdit` | Edit / Delete buttons in event header |
-| `Calendar/Event.cshtml` | 96 | `Model.CanEdit && o.IsRecurring && o.OriginalOccurrenceStartUtc is not null` | Per-occurrence Edit / Cancel-this buttons |
-
-### Application / Governance Views
-
-| View | Line | Check | Controls |
-|---|---|---|---|
-| `Application/Index.cshtml` | 36 | `Model.IsApprovedColaborador && Model.CanSubmitNew` | Asociado upgrade hint + link |
-| `Application/Details.cshtml` | 54 | `Model.CanWithdraw` | Withdraw form |
-| `Application/ApplicationDetail.cshtml` | 75 | `Model.CanApproveReject` | Board voting link card |
-| `Governance/Index.cshtml` | 98 | `Model.CanApply` | Apply button (in rejected branch) |
-| `Governance/Index.cshtml` | 158 | `Model.IsApprovedColaborador && Model.CanApply` | Asociado upgrade card |
 
 ### Shared Components
 
 | View | Line | Check | Controls |
 |---|---|---|---|
-| `Shared/Components/ProfileCard/Default.cshtml` | 132 | `Model.CanSendMessage` | "Send Message" button |
-| `Shared/Components/ProfileCard/Default.cshtml` | 202 | `Model.CanViewLegalName` | Board / private information card |
-| `Shared/_ShiftsSummaryCard.cshtml` | 39 | `Model.CanManageShifts` | "Manage Shifts" link |
-| `Shared/_HumanPopover.cshtml` | 7 | `Model.IsSuspended` | Suspended badge in popover |
-| `Shared/_BuildStrikeRotaTable.cshtml` | 67, 111, 140, 159, 191, 210 | `Model.ShowSignups` | Signup column header + cells + colspan adjustments |
-| `Shared/_EventRotaTable.cshtml` | 42, 69, 110 | `Model.ShowSignups` | Signup column header + cells + colspan adjustments |
+| `Shared/Components/ProfileCard/Default.cshtml` | 30 | `(await AuthService.AuthorizeAsync(User, PolicyNames.HumanAdminBoardOrAdmin)).Succeeded` | Admin / Board view of profile card |
+| `Shared/_HumanPopover.cshtml` | 7 | `(await AuthService.AuthorizeAsync(User, PolicyNames.TeamsAdminBoardOrAdmin)).Succeeded` | Admin popover details |
+| `Shared/_HumanPopover.cshtml` | 17 | `(await AuthService.AuthorizeAsync(User, PolicyNames.HumanAdminBoardOrAdmin)).Succeeded` | HumanAdmin/Board/Admin popover quick actions |
+| `WidgetGallery/Index.cshtml` | 1018 / 1023 | `authorize-policy="@PolicyNames.AdminOnly"` / `authorize-policy="DefinitelyNotARealPolicyName"` | Documentation/demo of the TagHelper (not production gating) |
 | `AuthorizeViewTagHelper` | — | `IAuthorizationService.AuthorizeAsync(user, Policy)` | Backs every `authorize-policy="..."` attribute above |
+| `AdminSidebarViewComponent` | line 47 | `IAuthorizationService.AuthorizeAsync(HttpContext.User, null, item.Policy)` | Filters /Admin sidebar items per policy |
 
 ---
 
@@ -453,9 +486,12 @@ Views express authorization four ways today:
 
 Post Phase-1 retirement, controllers and views express the same authorization rule by referencing the same `PolicyNames` constant — the controller via the `[Authorize(Policy = ...)]` attribute, the view via the `authorize-policy="..."` TagHelper attribute (or `(await AuthService.AuthorizeAsync(User, PolicyNames.X)).Succeeded` when a boolean is needed). The legacy `RoleChecks.*` / `ShiftRoleChecks.*` helpers are no longer invoked from any view.
 
+The one outstanding deviation is the Events Guide section, where controllers still use `[Authorize(Roles = RoleGroups.EventsAdminOrAdmin)]` even though `PolicyNames.EventsAdminOrAdmin` is registered.
+
 | Rule | Controller Spelling | View Spelling |
 |---|---|---|
 | Admin only | `[Authorize(Policy = PolicyNames.AdminOnly)]` | `authorize-policy="AdminOnly"` |
+| Any admin role (admin shell) | `[Authorize(Policy = PolicyNames.AnyAdminRole)]` | `authorize-policy="AnyAdminRole"` |
 | Board or Admin | `[Authorize(Policy = PolicyNames.BoardOrAdmin)]` | `authorize-policy="BoardOrAdmin"` |
 | TeamsAdmin/Board/Admin | `[Authorize(Policy = PolicyNames.TeamsAdminBoardOrAdmin)]` | `authorize-policy="TeamsAdminBoardOrAdmin"` |
 | TicketAdmin/Board/Admin | `[Authorize(Policy = PolicyNames.TicketAdminBoardOrAdmin)]` | `authorize-policy="TicketAdminBoardOrAdmin"` |
@@ -464,15 +500,26 @@ Post Phase-1 retirement, controllers and views express the same authorization ru
 | HumanAdmin/Board/Admin | `[Authorize(Policy = PolicyNames.HumanAdminBoardOrAdmin)]` | `authorize-policy="HumanAdminBoardOrAdmin"` |
 | FeedbackAdmin or Admin | `[Authorize(Policy = PolicyNames.FeedbackAdminOrAdmin)]` | `authorize-policy="FeedbackAdminOrAdmin"` |
 | FinanceAdmin or Admin | `[Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]` | `authorize-policy="FinanceAdminOrAdmin"` |
-| Review queue access | `[Authorize(Policy = PolicyNames.ReviewQueueAccess)]` | `authorize-policy="ReviewQueueAccess"` |
-| Consent coordinator + B/A | `[Authorize(Policy = PolicyNames.ConsentCoordinatorBoardOrAdmin)]` | `authorize-policy="ConsentCoordinatorBoardOrAdmin"` |
+| Store catalog admin | `[Authorize(Policy = PolicyNames.StoreCatalogAdmin)]` | (no view spelling — controller-only today) |
+| EventsAdmin or Admin | `[Authorize(Roles = RoleGroups.EventsAdminOrAdmin)]` (legacy role-list) | `User.IsInRole(EventsAdmin) \|\| User.IsInRole(Admin)` (legacy) |
+| Review queue access | `[Authorize(Policy = PolicyNames.ReviewQueueAccess)]` | (no current view spelling) |
+| Consent coordinator + B/A | `[Authorize(Policy = PolicyNames.ConsentCoordinatorBoardOrAdmin)]` | (no current view spelling) |
 | Board only | `[Authorize(Policy = PolicyNames.BoardOnly)]` | `authorize-policy="BoardOnly"` |
 | Shift dashboard access | `[Authorize(Policy = PolicyNames.ShiftDashboardAccess)]` | `authorize-policy="ShiftDashboardAccess"` |
+| Shift department manager | `[Authorize(Policy = PolicyNames.ShiftDepartmentManager)]` | `authorize-policy="ShiftDepartmentManager"` |
+| Volunteer tracking write | `[Authorize(Policy = PolicyNames.VolunteerTrackingWrite)]` | `(await AuthService.AuthorizeAsync(User, PolicyNames.VolunteerTrackingWrite)).Succeeded` |
 | Active member or shift access | `[Authorize(Policy = PolicyNames.ActiveMemberOrShiftAccess)]` | `authorize-policy="ActiveMemberOrShiftAccess"` |
 | Active member | `[Authorize(Policy = PolicyNames.IsActiveMember)]` | `authorize-policy="IsActiveMember"` |
 | Resource: team coord/admin | `_authorizationService.AuthorizeAsync(User, team, TeamOperationRequirement.ManageCoordinators)` | `Model.IsCurrentUserCoordinator` (view-model) |
 | Resource: camp lead/admin | `_authorizationService.AuthorizeAsync(User, camp, CampOperationRequirement.Manage)` | `Model.IsCurrentUserLead \|\| Model.IsCurrentUserCampAdmin` (view-model) |
 | Resource: budget edit | `_authorizationService.AuthorizeAsync(User, category, BudgetOperationRequirement.Edit)` | `Model.CanEdit` (view-model) |
+| Resource: container place/manage | `_authorizationService.AuthorizeAsync(User, target, ContainerOperationRequirement.{Manage, Place})` | `Model.CanX` (view-model) |
+| Resource: store order | `_authService.AuthorizeAsync(User, order, StoreOrderOperationRequirement.{View, AddLine, RemoveLine, EditCounterparty, Pay})` | `Model.CanX` (view-model) |
+| Resource: expense report | `_authService.AuthorizeAsync(User, report, ExpenseReportOperationRequirement.X)` | `Model.CanX` (view-model) |
+| Resource: IBAN access | `_authService.AuthorizeAsync(User, requirement)` (IbanAccessRequirement) | `Model.CanRevealIban` (view-model) |
+| Resource: issue handle | `_authorization.AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle)` | `Model.CanHandle` (view-model) |
+| Resource: user-email edit | `_authorizationService.AuthorizeAsync(User, userId, UserEmailOperations.Edit)` | (no view spelling) |
+| Resource: agent rate-limit | `_auth.AuthorizeAsync(User, user.Id, PolicyNames.AgentRateLimit)` | (no view spelling) |
 | Resource: role assignment | `_authorizationService.AuthorizeAsync(User, roleName, RoleAssignmentOperationRequirement.Manage)` | (UI list driven by `IRoleAssignmentService.GetAssignableRolesAsync`) |
 
 ---
@@ -483,15 +530,15 @@ Post Phase-1 retirement, controllers and views express the same authorization ru
 
 | Location | Check | Risk |
 |---|---|---|
-| `CampAdmin/Index.cshtml` — "Delete Camp" | `RoleChecks.IsAdmin(User)` in view | Delete action has `[Authorize(Policy = PolicyNames.AdminOnly)]` — **OK, narrower than class-level CampAdminOrAdmin**. |
-| `Team/Summary.cshtml` — Edit/Delete/Archive links | `RoleChecks.IsAdminOrBoard(User)` in view | Team edit actions have `[Authorize(Policy = PolicyNames.TeamsAdminBoardOrAdmin)]` — view is **stricter** than server (hides from TeamsAdmin). |
-| `Ticket/Index.cshtml` — "Event Settings" link | `RoleChecks.IsAdmin(User)` in view | Targets `Shifts/Settings` which has `[Authorize(Policy = PolicyNames.AdminOnly)]` — **OK**. |
+| `CampAdmin/Index.cshtml` — "Delete Camp" | `authorize-policy="AdminOnly"` in view | Delete action has `[Authorize(Policy = PolicyNames.AdminOnly)]` — **OK, narrower than class-level CampAdminOrAdmin**. |
+| `Team/Summary.cshtml` / `_AdminTeamRow.cshtml` — Edit/Delete/Archive links | `authorize-policy="BoardOrAdmin"` in view | Team edit actions have `[Authorize(Policy = PolicyNames.TeamsAdminBoardOrAdmin)]` — view is **stricter** than server (hides from TeamsAdmin). |
+| `Ticket/_TicketNav.cshtml` — Backfill / Settings links | `authorize-policy="AdminOnly"` in view | Targets `Shifts/Settings` / Ticket admin actions which have `[Authorize(Policy = PolicyNames.AdminOnly)]` — **OK**. |
 
 ### Server-Only (protected endpoint, no visible UI gating)
 
 | Endpoint | Roles | Note |
 |---|---|---|
-| `GoogleController` actions with broader policies (`Sync`, `SyncPreview`, `CheckDriveActivity`, `GoogleSyncResourceAudit`, `HumanGoogleSyncAudit`, `ProvisionEmail`) | TeamsAdmin/Board/Admin / Board/Admin / HumanAdmin/Board/Admin / HumanAdmin/Admin | Class-level `[Authorize]` was removed; each action has its own policy. The "AND with class-level Admin" effect noted in earlier revisions no longer applies. |
+| `GoogleController` actions with broader policies (`Sync`, `SyncPreview`, `CheckDriveActivity`, `AuditLog/Resource`, `AuditLog/Human`, `ProvisionEmail`) | TeamsAdmin/Board/Admin / Board/Admin / HumanAdmin/Board/Admin / HumanAdmin/Admin | Class-level `[Authorize]` was removed; each action has its own policy. |
 | `ProfileController.AdminOutbox` | `HumanAdminBoardOrAdmin` | No visible button in `AdminList` view (accessed via URL pattern). |
 
 ### Runtime-Only Guards (no attribute, enforced in method body)
@@ -501,15 +548,21 @@ These actions rely on `if` checks + early return/forbid instead of `[Authorize(P
 | Controller | Action | Guard |
 |---|---|---|
 | `ShiftAdminController` | All non-public actions | Coordinator-of-team check via `HumansTeamControllerBase.ResolveTeamManagementAsync` (resource-based) |
-| `TeamAdminController` | All non-public actions | Coordinator-of-team check via `HumansTeamControllerBase.ResolveTeamManagementAsync` (resource-based) |
+| `TeamAdminController` | All non-public actions | Coordinator-of-team check via `HumansTeamControllerBase.ResolveTeamManagementAsync`; `RoleChecks.IsTeamsAdmin(User)` / `RoleChecks.IsAdmin(User)` toggle management features |
 | `BudgetController` | `Index`, `Summary`, `CategoryDetail`, line-item CRUD | `_authService.AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)` and `_authService.AuthorizeAsync(User, category, BudgetOperationRequirement.Edit)` |
 | `CampController` | All management actions | `_authorizationService.AuthorizeAsync(User, camp, CampOperationRequirement.Manage)` via `HumansCampControllerBase` |
-| `CityPlanningController` / `CityPlanningApiController` | All actions except `Index`/`GetState` | `RoleChecks.IsCampAdmin(User)` and lead-of-camp checks |
-| `FeedbackController` | `Index`, `Detail` | `RoleChecks.IsFeedbackAdmin(User)` to determine admin vs user view |
+| `ContainerController` | All non-public actions | `_authorizationService.AuthorizeAsync(User, target, ContainerOperationRequirement.{Manage, Place})` (resource-based) |
+| `ExpensesController` | Report submit/edit/withdraw/line CRUD | `_authService.AuthorizeAsync(User, report, ExpenseReportOperationRequirement.*)` (resource-based) |
+| `StoreController` | Order CRUD/pay | `_authService.AuthorizeAsync(User, order, StoreOrderOperationRequirement.*)` (resource-based) |
+| `IssuesController` | All mutating actions | `_authorization.AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle)` (resource-based) |
+| `CityPlanningController` / `CityPlanningApiController` | All actions except `Index`/`GetState` | `RoleChecks.IsCampAdmin(User)` and lead-of-camp checks; three API endpoints also call `_authorizationService.AuthorizeAsync` |
+| `FeedbackController` | `Index`, `Detail`, `PostMessage` | `RoleChecks.IsFeedbackAdmin(User)` to determine admin vs user view |
 | `ProfileController.AddRole/EndRole` | After `[Authorize(Policy)]` attribute | `_authorizationService.AuthorizeAsync(User, roleName, RoleAssignmentOperationRequirement.Manage)` enforces the role-list filter |
+| `ProfileController` email-edit endpoints (~20 actions) | After class-level `[Authorize]` | `_authorizationService.AuthorizeAsync(User, userId, UserEmailOperations.Edit)` (resource-based) |
 | `TicketController.Index` | After class-level policy | `RoleChecks.CanAccessFinance(User)` toggles finance-only metrics |
 | `MembershipRequiredFilter` | All requests | `RoleChecks.BypassesMembershipRequirement(user)` skips active-member check for privileged roles |
 | `HangfireAuthorizationFilter` | Hangfire dashboard | `RoleChecks.IsAdmin(User)` |
+| `AgentController.Ask` | Per-request | `_auth.AuthorizeAsync(User, user.Id, PolicyNames.AgentRateLimit)` (resource-based) |
 
 ---
 
@@ -520,7 +573,8 @@ These are the named ASP.NET policies registered in `AuthorizationPolicyExtension
 | Canonical Policy Name | Roles | Current Sources |
 |---|---|---|
 | `AdminOnly` | Admin | `PolicyNames.AdminOnly`, `RoleChecks.IsAdmin` |
-| `BoardOnly` | Board | `PolicyNames.BoardOnly`, `RoleChecks.IsBoard` |
+| `AnyAdminRole` | Admin, Board, HumanAdmin, TeamsAdmin, CampAdmin, TicketAdmin, EventsAdmin, FeedbackAdmin, FinanceAdmin, StoreAdmin, NoInfoAdmin, VolunteerCoordinator, ConsentCoordinator | `PolicyNames.AnyAdminRole` (admin-shell entry-point gate) |
+| `BoardOnly` | Board | `PolicyNames.BoardOnly` |
 | `BoardOrAdmin` | Board, Admin | `PolicyNames.BoardOrAdmin`, `RoleChecks.IsAdminOrBoard` |
 | `HumanAdminBoardOrAdmin` | HumanAdmin, Board, Admin | `PolicyNames.HumanAdminBoardOrAdmin`, `RoleChecks.IsHumanAdminBoardOrAdmin` |
 | `HumanAdminOrAdmin` | HumanAdmin, Admin | `PolicyNames.HumanAdminOrAdmin` |
@@ -530,37 +584,49 @@ These are the named ASP.NET policies registered in `AuthorizationPolicyExtension
 | `TicketAdminOrAdmin` | TicketAdmin, Admin | `PolicyNames.TicketAdminOrAdmin`, `RoleChecks.CanManageTickets` |
 | `FeedbackAdminOrAdmin` | FeedbackAdmin, Admin | `PolicyNames.FeedbackAdminOrAdmin`, `RoleChecks.IsFeedbackAdmin` |
 | `FinanceAdminOrAdmin` | FinanceAdmin, Admin | `PolicyNames.FinanceAdminOrAdmin`, `RoleChecks.IsFinanceAdmin`, `RoleChecks.CanAccessFinance` |
+| `EventsAdminOrAdmin` | EventsAdmin, Admin | `PolicyNames.EventsAdminOrAdmin` (registered but not yet referenced in `[Authorize(Policy = ...)]`) |
+| `StoreCatalogAdmin` | StoreAdmin, FinanceAdmin, Admin | `PolicyNames.StoreCatalogAdmin`, `RoleChecks.CanAdministerStore` |
 | `ReviewQueueAccess` | ConsentCoordinator, VolunteerCoordinator, Board, Admin | `PolicyNames.ReviewQueueAccess`, `RoleChecks.CanAccessReviewQueue` |
 | `ConsentCoordinatorBoardOrAdmin` | ConsentCoordinator, Board, Admin | `PolicyNames.ConsentCoordinatorBoardOrAdmin` |
 | `ShiftDashboardAccess` | Admin, NoInfoAdmin, VolunteerCoordinator | `PolicyNames.ShiftDashboardAccess`, `ShiftRoleChecks.CanAccessDashboard` |
-| `ShiftDepartmentManager` | Admin, NoInfoAdmin, VolunteerCoordinator | `PolicyNames.ShiftDepartmentManager`, `ShiftRoleChecks.CanManageDepartment` |
+| `ShiftDepartmentManager` | Admin, NoInfoAdmin, VolunteerCoordinator OR any team manager/coordinator | `PolicyNames.ShiftDepartmentManager` (composite — `IsAnyTeamManagerOrCoordinatorHandler`) |
+| `VolunteerTrackingWrite` | Admin, VolunteerCoordinator | `PolicyNames.VolunteerTrackingWrite` |
 | `PrivilegedSignupApprover` | Admin, NoInfoAdmin | `PolicyNames.PrivilegedSignupApprover`, `ShiftRoleChecks.IsPrivilegedSignupApprover` |
 | `VolunteerManager` | Admin, VolunteerCoordinator | `PolicyNames.VolunteerManager`, `RoleChecks.IsVolunteerManager` |
-| `ActiveMemberOrShiftAccess` | ActiveMember claim OR ShiftDashboardAccess | `PolicyNames.ActiveMemberOrShiftAccess` (composite — `ActiveMemberOrShiftAccessHandler`) |
+| `ActiveMemberOrShiftAccess` | ActiveMember claim OR ShiftDashboardAccess OR TeamsAdmin/Board/Admin | `PolicyNames.ActiveMemberOrShiftAccess` (composite — `ActiveMemberOrShiftAccessHandler`) |
 | `IsActiveMember` | ActiveMember claim OR TeamsAdmin/Board/Admin | `PolicyNames.IsActiveMember` (composite — `IsActiveMemberHandler`) |
 | `HumanAdminOnly` | HumanAdmin AND NOT (Admin OR Board) | `PolicyNames.HumanAdminOnly` (composite — `HumanAdminOnlyHandler`) |
 | `MedicalDataViewer` | Admin, NoInfoAdmin | `PolicyNames.MedicalDataViewer`, `ShiftRoleChecks.CanViewMedical` |
+| `AgentRateLimit` | (per-user rate-limit) | `PolicyNames.AgentRateLimit` (resource-based — `AgentRateLimitHandler`) |
 
 ### Notes on Policy Design
 
-- `ShiftDashboardAccess` and `ShiftDepartmentManager` currently resolve to the same roles but are semantically distinct. Keeping them separate allows future divergence (e.g. per-department manager roles).
+- `ShiftDashboardAccess` and `ShiftDepartmentManager` are intentionally distinct: dashboard access is role-list-based, department manager additionally permits any team manager/coordinator (composite via `IsAnyTeamManagerOrCoordinatorHandler`).
 - `ActiveMemberOrShiftAccess` and `IsActiveMember` are composite policies that check the `ActiveMember` claim OR fall back to role-based access. They use custom `IAuthorizationRequirement` + handler rather than a simple `RequireRole`.
 - `HumanAdminOnly` is a composite policy used for the nav "Humans" link that only shows when the user has HumanAdmin but not the broader Board/Admin access.
 - `MedicalDataViewer` is a data-access policy, not a page-access policy. It controls whether medical fields are visible within pages the user already has access to.
-- Object-relative policies (coordinator of specific team, camp lead of specific camp, budget category for coordinator's department, manageable role for HumanAdmin) are implemented as resource-based authorization handlers — see §6.
+- `AnyAdminRole` gates the admin-shell entry point (`/Admin`). Sidebar items inside the shell are filtered per-item by `AdminSidebarViewComponent` against each item's policy.
+- Object-relative policies (coordinator of specific team, camp lead of specific camp, budget category for coordinator's department, manageable role for HumanAdmin, expense reports, store orders, containers, issues, user-email edits, agent rate-limit) are implemented as resource-based authorization handlers — see §6.
 
 ---
 
 ## 6. Resource-Based Authorization Handlers
 
-Resource-based authorization handlers are subclasses of `AuthorizationHandler<TRequirement, TResource>` that evaluate whether a user can perform an operation on a specific resource instance. They are invoked via `IAuthorizationService.AuthorizeAsync(User, resource, requirement)` from controllers (or controller base classes).
+Resource-based authorization handlers are subclasses of `AuthorizationHandler<TRequirement, TResource>` (or implement `IAuthorizationHandler` directly when the same handler covers multiple resource shapes) that evaluate whether a user can perform an operation on a specific resource instance. They are invoked via `IAuthorizationService.AuthorizeAsync(User, resource, requirement)` from controllers (or controller base classes).
 
 | Handler | Requirement | Resource | Path |
 |---|---|---|---|
 | `TeamAuthorizationHandler` | `TeamOperationRequirement` (`ManageCoordinators`) | `Team` | `src/Humans.Web/Authorization/Requirements/TeamAuthorizationHandler.cs` |
-| `CampAuthorizationHandler` | `CampOperationRequirement` (`Manage`) | `Camp` | `src/Humans.Web/Authorization/Requirements/CampAuthorizationHandler.cs` |
-| `BudgetAuthorizationHandler` | `BudgetOperationRequirement` (`Edit`) | `BudgetCategory` | `src/Humans.Web/Authorization/Requirements/BudgetAuthorizationHandler.cs` |
+| `CampAuthorizationHandler` | `CampOperationRequirement` (`Manage`) | `Camp` (or camp id) | `src/Humans.Web/Authorization/Requirements/CampAuthorizationHandler.cs` |
+| `BudgetAuthorizationHandler` | `BudgetOperationRequirement` (`Edit`) | `BudgetCategorySnapshot` | `src/Humans.Web/Authorization/Requirements/BudgetAuthorizationHandler.cs` |
+| `ContainerAuthorizationHandler` | `ContainerOperationRequirement` (`Manage`, `Place`) | `ContainerAuthorizationTarget` | `src/Humans.Web/Authorization/Requirements/ContainerAuthorizationHandler.cs` |
+| `StoreOrderAuthorizationHandler` | `StoreOrderOperationRequirement` (`View`, `AddLine`, `RemoveLine`, `EditCounterparty`, `Pay`, `Create`) | `OrderDto` / `StoreOrderCreateContext` | `src/Humans.Web/Authorization/Requirements/StoreOrderAuthorizationHandler.cs` |
+| `ExpenseReportAuthorizationHandler` | `ExpenseReportOperationRequirement` | `ExpenseReportDto` | `src/Humans.Web/Authorization/Requirements/ExpenseReportAuthorizationHandler.cs` |
+| `IbanAccessHandler` | `IbanAccessRequirement` | (intrinsic — fields on requirement) | `src/Humans.Web/Authorization/Requirements/IbanAccessHandler.cs` |
+| `IssuesAuthorizationHandler` | `IssuesOperationRequirement` (`Handle`) | `Issue` | `src/Humans.Web/Authorization/Requirements/IssuesAuthorizationHandler.cs` |
+| `UserEmailAuthorizationHandler` | `UserEmailOperationRequirement` (`Edit`) | `Guid` (target user id) | `src/Humans.Web/Authorization/Requirements/UserEmailAuthorizationHandler.cs` |
 | `RoleAssignmentAuthorizationHandler` | `RoleAssignmentOperationRequirement` (`Manage`) | `string` (roleName) | `src/Humans.Application/Authorization/RoleAssignmentAuthorizationHandler.cs` |
+| `AgentRateLimitHandler` | `AgentRateLimitRequirement` | `Guid` (user id) | `src/Humans.Web/Authorization/Handlers/AgentRateLimitHandler.cs` |
 
 Composite (non-resource) handlers registered alongside the above:
 
@@ -569,22 +635,39 @@ Composite (non-resource) handlers registered alongside the above:
 | `ActiveMemberOrShiftAccessHandler` | `ActiveMemberOrShiftAccessRequirement` | `src/Humans.Web/Authorization/Requirements/ActiveMemberOrShiftAccessHandler.cs` |
 | `IsActiveMemberHandler` | `IsActiveMemberRequirement` | `src/Humans.Web/Authorization/Requirements/IsActiveMemberHandler.cs` |
 | `HumanAdminOnlyHandler` | `HumanAdminOnlyRequirement` | `src/Humans.Web/Authorization/Requirements/HumanAdminOnlyHandler.cs` |
+| `IsAnyTeamManagerOrCoordinatorHandler` | `IsAnyTeamManagerOrCoordinatorRequirement` | `src/Humans.Web/Authorization/Requirements/IsAnyTeamManagerOrCoordinatorHandler.cs` |
 
 ### `IAuthorizationService.AuthorizeAsync` Call Sites
 
 | File | Line | Call |
 |---|---|---|
-| `src/Humans.Web/Controllers/ProfileController.cs` | 1537 | `AuthorizeAsync(User, model.RoleName, RoleAssignmentOperationRequirement.Manage)` (AddRole) |
-| `src/Humans.Web/Controllers/ProfileController.cs` | 1579 | `AuthorizeAsync(User, roleAssignment.RoleName, RoleAssignmentOperationRequirement.Manage)` (EndRole) |
 | `src/Humans.Web/Controllers/HumansTeamControllerBase.cs` | 33 | `AuthorizeAsync(User, team, TeamOperationRequirement.ManageCoordinators)` |
-| `src/Humans.Web/Controllers/HumansCampControllerBase.cs` | 32 | `AuthorizeAsync(User, camp, CampOperationRequirement.Manage)` |
-| `src/Humans.Web/Controllers/HumansCampControllerBase.cs` | 65 | `AuthorizeAsync(User, camp, CampOperationRequirement.Manage)` |
+| `src/Humans.Web/Controllers/HumansCampControllerBase.cs` | 32 | `AuthorizeAsync(User, campId, CampOperationRequirement.Manage)` |
+| `src/Humans.Web/Controllers/HumansCampControllerBase.cs` | 63 | `AuthorizeAsync(User, camp, CampOperationRequirement.Manage)` |
 | `src/Humans.Web/Controllers/BudgetController.cs` | 45 | `AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)` |
-| `src/Humans.Web/Controllers/BudgetController.cs` | 109 | `AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)` |
-| `src/Humans.Web/Controllers/BudgetController.cs` | 133 | `AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)` |
-| `src/Humans.Web/Controllers/BudgetController.cs` | 142 | `AuthorizeAsync(User, category, BudgetOperationRequirement.Edit)` |
-| `src/Humans.Web/Controllers/BudgetController.cs` | 254 | `AuthorizeAsync(User, category, BudgetOperationRequirement.Edit)` |
+| `src/Humans.Web/Controllers/BudgetController.cs` | 108 | `AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)` |
+| `src/Humans.Web/Controllers/BudgetController.cs` | 128 | `AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)` |
+| `src/Humans.Web/Controllers/BudgetController.cs` | 135 | `AuthorizeAsync(User, detail.Category, BudgetOperationRequirement.Edit)` |
+| `src/Humans.Web/Controllers/BudgetController.cs` | 241 | `AuthorizeAsync(User, category, BudgetOperationRequirement.Edit)` |
+| `src/Humans.Web/Controllers/ContainerController.cs` | 41 | `AuthorizeAsync(User, target, requirement)` (private helper) |
+| `src/Humans.Web/Controllers/ExpensesController.cs` | 171, 513, 563, 586, 638, 662, 754 | `AuthorizeAsync(User, report, ExpenseReportOperationRequirement.X)` |
+| `src/Humans.Web/Controllers/StoreController.cs` | 69, 72, 73, 88, 122, 143, 165, 190 | `AuthorizeAsync(User, order, StoreOrderOperationRequirement.X)` |
+| `src/Humans.Web/Controllers/IssuesController.cs` | 232, 300, 346, 373, 400, 425 | `AuthorizeAsync(User, issue, IssuesOperationRequirement.Handle)` |
+| `src/Humans.Web/Controllers/CityPlanningApiController.cs` | 290, 315, 353 | `AuthorizeAsync(User, ...)` (resource-based) |
+| `src/Humans.Web/Controllers/ProfileController.cs` | 739, 774, 819, 863, 901, 939, 977, 1001, 1037, 1053, 1079, 1113, 1139, 1165, 1344, 1370, 1415 | `AuthorizeAsync(User, userId, UserEmailOperations.Edit)` |
+| `src/Humans.Web/Controllers/ProfileController.cs` | 2260 | `AuthorizeAsync(User, model.RoleName, RoleAssignmentOperationRequirement.Manage)` (AddRole) |
+| `src/Humans.Web/Controllers/ProfileController.cs` | 2314 | `AuthorizeAsync(User, roleAssignment.RoleName, RoleAssignmentOperationRequirement.Manage)` (EndRole) |
+| `src/Humans.Web/Controllers/AgentController.cs` | 64 | `AuthorizeAsync(User, user.Id, PolicyNames.AgentRateLimit)` |
 | `src/Humans.Web/TagHelpers/AuthorizeViewTagHelper.cs` | 65 | `AuthorizeAsync(user, Policy)` (driver of `<authorize-policy>` view tags) |
+| `src/Humans.Web/ViewComponents/AdminSidebarViewComponent.cs` | 47 | `AuthorizeAsync(HttpContext.User, null, item.Policy)` (filters admin sidebar) |
+
+---
+
+## 7. Notes / Known Deviations
+
+- **Events Guide controllers (`EventsAdminController`, `EventsDashboardController`, `EventsExportController`, `EventsModerationController`) still use `[Authorize(Roles = RoleGroups.EventsAdminOrAdmin)]`.** `PolicyNames.EventsAdminOrAdmin` is registered in `AuthorizationPolicyExtensions` but not yet referenced from these attributes. Tracked as a Phase-1 cleanup follow-up.
+- **`DevSeedController.ResetDashboard` uses `[Authorize(Roles = RoleNames.Admin)]`** rather than `[Authorize(Policy = PolicyNames.AdminOnly)]`. Single-purpose dev/test endpoint; behaviourally identical to AdminOnly.
+- **`User.IsInRole(EventsAdmin) || User.IsInRole(Admin)` appears twice in `_Layout.cshtml`** to gate the Events admin sub-dropdowns. Will be migrated to `authorize-policy="EventsAdminOrAdmin"` when the controller migration above lands.
 
 ---
 
@@ -602,16 +685,17 @@ Composite (non-resource) handlers registered alongside the above:
 | `CampAdmin` | `"CampAdmin"` |
 | `TicketAdmin` | `"TicketAdmin"` |
 | `NoInfoAdmin` | `"NoInfoAdmin"` |
+| `EventsAdmin` | `"EventsAdmin"` |
 | `FeedbackAdmin` | `"FeedbackAdmin"` |
 | `HumanAdmin` | `"HumanAdmin"` |
 | `FinanceAdmin` | `"FinanceAdmin"` |
+| `StoreAdmin` | `"StoreAdmin"` |
 
 ### RoleChecks Methods → Canonical Policy Mapping
 
 | Method | Canonical Policy |
 |---|---|
 | `IsAdmin` | `AdminOnly` |
-| `IsBoard` | `BoardOnly` |
 | `IsAdminOrBoard` | `BoardOrAdmin` |
 | `IsTeamsAdmin` | (no standalone policy — used in TeamAdminController toggle-management check) |
 | `IsTeamsAdminBoardOrAdmin` | `TeamsAdminBoardOrAdmin` |
@@ -623,6 +707,7 @@ Composite (non-resource) handlers registered alongside the above:
 | `IsHumanAdmin` | `HumanAdminOnly` (composite, when negated against Board/Admin) |
 | `IsFeedbackAdmin` | `FeedbackAdminOrAdmin` |
 | `IsFinanceAdmin` / `CanAccessFinance` | `FinanceAdminOrAdmin` |
+| `CanAdministerStore` | `StoreCatalogAdmin` |
 | `IsVolunteerManager` | `VolunteerManager` |
 | `BypassesMembershipRequirement` | (filter-level in `MembershipRequiredFilter`, not a page policy) |
 | `GetAssignableRoles` / `CanManageRole` | `RoleAssignmentOperationRequirement.Manage` (resource-based, see §6) |
@@ -632,6 +717,6 @@ Composite (non-resource) handlers registered alongside the above:
 | Method | Canonical Policy |
 |---|---|
 | `IsPrivilegedSignupApprover` | `PrivilegedSignupApprover` |
-| `CanManageDepartment` | `ShiftDepartmentManager` |
+| `CanManageDepartment` | `ShiftDepartmentManager` (role-list portion; composite extends with team-manager OR) |
 | `CanAccessDashboard` | `ShiftDashboardAccess` |
 | `CanViewMedical` | `MedicalDataViewer` |

@@ -1,6 +1,4 @@
 using AwesomeAssertions;
-using Humans.Application;
-using Humans.Application.Configuration;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Profiles;
@@ -9,6 +7,7 @@ using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Profiles;
 using Humans.Application.Services.Tickets;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -16,7 +15,6 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
-using Xunit;
 
 namespace Humans.Application.Tests.Services.Tickets;
 
@@ -77,14 +75,28 @@ public sealed class TicketTransferServiceTests
             .Returns("alice@example.com");
 
         // Default: name/burner search returns empty
-        _profileService.SearchProfilesAsync(
+        _userService.SearchUsersAsync(
                 Arg.Any<string>(), Arg.Any<PersonSearchFields>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<HumanSearchResult>());
+            .Returns([]);
 
         // Default: no existing transfers from the sender (CreateRequestAsync's
         // duplicate-pending guard hits this on every Submit).
         _transferRepo.GetBySenderAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<TicketTransferRequest>());
+            .Returns([]);
+
+        // BuildRowDto + receiver lookup call GetUserInfosAsync. Default stub
+        // returns a UserInfo for each requested id; tests with explicit
+        // GetByIdAsync stubs above already drive display names through this
+        // service via UserInfo, so the dict mirrors that shape.
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                var ids = callInfo.Arg<IReadOnlyCollection<Guid>>();
+                IReadOnlyDictionary<Guid, UserInfo> dict = ids.ToDictionary(
+                    id => id,
+                    id => MakeUser(id, id.ToString()).ToUserInfo());
+                return new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(dict);
+            });
     }
 
     // ============================================================================
@@ -112,8 +124,6 @@ public sealed class TicketTransferServiceTests
                 new Profile { BurnerName = "Alice", FirstName = "Alice", LastName = "Smith" }));
         _userEmailService.GetPrimaryEmailAsync(userId, Arg.Any<CancellationToken>())
             .Returns("alice@example.com");
-        _profileService.GetProfileAsync(userId, Arg.Any<CancellationToken>())
-            .Returns((Profile?)null);
 
         var result = await _service.LookupReceiversAsync("alice@example.com", _senderId);
 
@@ -148,9 +158,9 @@ public sealed class TicketTransferServiceTests
     public async Task LookupReceiversAsync_BurnerName_SingleMatch_ReturnsOne()
     {
         var userId = Guid.NewGuid();
-        _profileService.SearchProfilesAsync(
+        _userService.SearchUsersAsync(
                 Arg.Any<string>(), Arg.Any<PersonSearchFields>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(new[] { MakeSearchResult(userId, "Sparkle Person") });
+            .Returns([MakeSearchResult(userId, "Sparkle Person")]);
         _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>())
             .Returns(MakeUser(userId, "Sparkle Person"));
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
@@ -159,8 +169,6 @@ public sealed class TicketTransferServiceTests
                 new Profile { BurnerName = "Sparkle Person", FirstName = "Sparkle", LastName = "Person" }));
         _userEmailService.GetPrimaryEmailAsync(userId, Arg.Any<CancellationToken>())
             .Returns("sp@example.com");
-        _profileService.GetProfileAsync(userId, Arg.Any<CancellationToken>())
-            .Returns((Profile?)null);
 
         var result = await _service.LookupReceiversAsync("sparkle", _senderId);
 
@@ -173,13 +181,12 @@ public sealed class TicketTransferServiceTests
     {
         var aId = Guid.NewGuid();
         var bId = Guid.NewGuid();
-        _profileService.SearchProfilesAsync(
+        _userService.SearchUsersAsync(
                 Arg.Any<string>(), Arg.Any<PersonSearchFields>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(new[]
-            {
+            .Returns([
                 MakeSearchResult(aId, "A"),
-                MakeSearchResult(bId, "B"),
-            });
+                MakeSearchResult(bId, "B")
+            ]);
         _userService.GetByIdAsync(aId, Arg.Any<CancellationToken>()).Returns(MakeUser(aId, "A"));
         _userService.GetByIdAsync(bId, Arg.Any<CancellationToken>()).Returns(MakeUser(bId, "B"));
         _userService.GetUserInfoAsync(aId, Arg.Any<CancellationToken>())
@@ -192,21 +199,19 @@ public sealed class TicketTransferServiceTests
                 new Profile { BurnerName = "B", FirstName = "Bbb", LastName = "Bbb" }));
         _userEmailService.GetPrimaryEmailAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns((string?)null);
-        _profileService.GetProfileAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns((Profile?)null);
 
         var result = await _service.LookupReceiversAsync("popular", _senderId);
 
         result.Should().HaveCount(2);
-        result.Select(r => r.UserId).Should().BeEquivalentTo(new[] { aId, bId });
+        result.Select(r => r.UserId).Should().BeEquivalentTo([aId, bId]);
     }
 
     [HumansFact]
     public async Task LookupReceiversAsync_BurnerName_ExcludesSender()
     {
-        _profileService.SearchProfilesAsync(
+        _userService.SearchUsersAsync(
                 Arg.Any<string>(), Arg.Any<PersonSearchFields>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(new[] { MakeSearchResult(_senderId, "Me") });
+            .Returns([MakeSearchResult(_senderId, "Me")]);
 
         var result = await _service.LookupReceiversAsync("me", _senderId);
 
@@ -373,8 +378,7 @@ public sealed class TicketTransferServiceTests
                 MakeUser(_receiverId, "Alice"),
                 new Profile { BurnerName = "Alice", FirstName = "Alice", LastName = "Smith" }));
         _transferRepo.GetBySenderAsync(_senderId, Arg.Any<CancellationToken>())
-            .Returns(new[]
-            {
+            .Returns([
                 new TicketTransferRequest
                 {
                     Id = Guid.NewGuid(),
@@ -383,8 +387,8 @@ public sealed class TicketTransferServiceTests
                     ReceiverUserId = Guid.NewGuid(),
                     Status = TicketTransferStatus.Pending,
                     RequestedAt = _now,
-                },
-            });
+                }
+            ]);
 
         var dto = new TicketTransferRequestDto(_attendeeId, _receiverId, "test");
 
@@ -690,11 +694,10 @@ public sealed class TicketTransferServiceTests
         transferredInAttendee.MatchedUserId = _senderId; // received via prior transfer
 
         _ticketRepo.GetAttendeesVisibleToUserAsync(_senderId, Arg.Any<CancellationToken>())
-            .Returns(new[] { ownAttendee, pendingAttendee, transferredInAttendee });
+            .Returns([ownAttendee, pendingAttendee, transferredInAttendee]);
 
         _transferRepo.GetBySenderAsync(_senderId, Arg.Any<CancellationToken>())
-            .Returns(new[]
-            {
+            .Returns([
                 new TicketTransferRequest
                 {
                     Id = pendingTransferId,
@@ -703,8 +706,8 @@ public sealed class TicketTransferServiceTests
                     ReceiverUserId = _receiverId,
                     Status = TicketTransferStatus.Pending,
                     RequestedAt = _now,
-                },
-            });
+                }
+            ]);
 
         var rows = await _service.GetMyAttendeesAsync(_senderId);
 
@@ -737,12 +740,11 @@ public sealed class TicketTransferServiceTests
         var attendeeId = Guid.NewGuid();
         var attendee = MakeAttendee(attendeeId, _orderId, _senderId, TicketAttendeeStatus.Valid);
         _ticketRepo.GetAttendeesVisibleToUserAsync(_senderId, Arg.Any<CancellationToken>())
-            .Returns(new[] { attendee });
+            .Returns([attendee]);
         var firstId = Guid.NewGuid();
         var secondId = Guid.NewGuid();
         _transferRepo.GetBySenderAsync(_senderId, Arg.Any<CancellationToken>())
-            .Returns(new[]
-            {
+            .Returns([
                 new TicketTransferRequest
                 {
                     Id = firstId,
@@ -760,8 +762,8 @@ public sealed class TicketTransferServiceTests
                     ReceiverUserId = Guid.NewGuid(),
                     Status = TicketTransferStatus.Pending,
                     RequestedAt = _now,
-                },
-            });
+                }
+            ]);
 
         var rows = await _service.GetMyAttendeesAsync(_senderId);
 
@@ -786,14 +788,14 @@ public sealed class TicketTransferServiceTests
 
     private static UserInfo WrapInUserInfo(User user, Profile? profile) => UserInfo.Create(
         user: user,
-        userEmails: Array.Empty<UserEmail>(),
-        eventParticipations: Array.Empty<EventParticipation>(),
-        externalLogins: Array.Empty<(string, string)>(),
+        userEmails: [],
+        eventParticipations: [],
+        externalLogins: [],
         profile: profile,
-        contactFields: Array.Empty<ContactField>(),
-        profileLanguages: Array.Empty<ProfileLanguage>(),
-        volunteerHistory: Array.Empty<VolunteerHistoryEntry>(),
-        communicationPreferences: Array.Empty<CommunicationPreference>());
+        contactFields: [],
+        profileLanguages: [],
+        volunteerHistory: [],
+        communicationPreferences: []);
 
     private static TicketAttendee MakeAttendee(
         Guid id, Guid orderId, Guid orderMatchedUserId, TicketAttendeeStatus status)

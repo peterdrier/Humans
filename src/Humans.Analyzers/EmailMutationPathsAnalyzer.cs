@@ -51,8 +51,8 @@ public sealed class EmailMutationPathsAnalyzer : DiagnosticAnalyzer
             "composition, invariant enforcement, and audit writes. Bypassing the service " +
             "skips all three.");
 
-    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
-        ImmutableArray.Create(ServiceCallerRule, RepositoryCallerRule);
+    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [ServiceCallerRule, RepositoryCallerRule
+    ];
 
     private const string ServiceInterface = "Humans.Application.Interfaces.Profiles.IUserEmailService";
     private const string RepositoryInterface = "Humans.Application.Interfaces.Repositories.IUserEmailRepository";

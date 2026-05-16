@@ -1,7 +1,5 @@
 @model Humans.Web.Controllers.WidgetGalleryViewModel
 @using Humans.Web.Authorization
-@using Humans.Web.TagHelpers
-@using Humans.Web.ViewComponents
 @using Microsoft.AspNetCore.Html
 @{
     ViewData["Title"] = "Widget Gallery";
@@ -203,12 +201,12 @@
             }
         }
         html.Append("</dl>");
-        return new Microsoft.AspNetCore.Html.HtmlString(html.ToString());
+        return new HtmlString(html.ToString());
     }
 
     private static IHtmlContent AuthLine(string text)
     {
-        return new Microsoft.AspNetCore.Html.HtmlString(
+        return new HtmlString(
             $"<div class=\"wg-auth-line\">{text}</div>");
     }
 }

@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Application.DTOs;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Mailer;
 using Humans.Application.Interfaces.Mailer.Dtos;
@@ -12,7 +11,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Xunit;
 
 namespace Humans.Application.Tests.Services.Mailer;
 
@@ -176,17 +174,17 @@ internal sealed class ThrottleHarness
     public static MailerLiteSubscriber Active(string email) =>
         new("ml-id", email, "active", "api",
             Instant.FromUtc(2026, 1, 1, 0, 0), null,
-            Instant.FromUtc(2026, 1, 1, 0, 0), null, null, Array.Empty<string>());
+            Instant.FromUtc(2026, 1, 1, 0, 0), null, null, []);
 
     public static MailerLiteSubscriber Unsubscribed(string email) =>
         new("ml-id", email, "unsubscribed", "api",
             Instant.FromUtc(2026, 1, 1, 0, 0),
             Instant.FromUtc(2026, 3, 1, 0, 0),
-            Instant.FromUtc(2026, 1, 1, 0, 0), null, null, Array.Empty<string>());
+            Instant.FromUtc(2026, 1, 1, 0, 0), null, null, []);
 
     public static MailerLiteSubscriber Unconfirmed(string email) =>
         new("ml-id", email, "unconfirmed", "form",
-            null, null, null, null, null, Array.Empty<string>());
+            null, null, null, null, null, []);
 
     public void SetMlSubscribers(params MailerLiteSubscriber[] subscribers)
     {

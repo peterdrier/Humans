@@ -199,10 +199,6 @@ public class TeamJoinRequestViewModel
 
 public class PendingRequestsViewModel : PagedListViewModel
 {
-    public PendingRequestsViewModel() : base()
-    {
-    }
-
     public List<TeamJoinRequestViewModel> Requests { get; set; } = [];
     public Guid? TeamIdFilter { get; set; }
     public string? TeamNameFilter { get; set; }
@@ -263,10 +259,6 @@ public class CallToActionViewModel
 public class TeamMembersViewModel
     : PagedListViewModel
 {
-    public TeamMembersViewModel() : base()
-    {
-    }
-
     public Guid TeamId { get; set; }
     public string TeamName { get; set; } = string.Empty;
     public string TeamSlug { get; set; } = string.Empty;

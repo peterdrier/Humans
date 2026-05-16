@@ -1,4 +1,3 @@
-using System.Reflection;
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Campaigns;
 using Humans.Application.Interfaces.Email;
@@ -10,7 +9,6 @@ using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Campaigns;
 using Microsoft.EntityFrameworkCore;
-using Xunit;
 
 namespace Humans.Application.Tests.Architecture;
 

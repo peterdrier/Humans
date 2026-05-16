@@ -23,7 +23,7 @@ public class AgentMessage
     public int DurationMs { get; set; }
 
     /// <summary>Tool targets fetched during this turn. Stored as JSON string[].</summary>
-    public string[] FetchedDocs { get; set; } = Array.Empty<string>();
+    public string[] FetchedDocs { get; set; } = [];
 
     public string? RefusalReason { get; set; }
 
