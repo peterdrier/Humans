@@ -70,6 +70,13 @@ public sealed class CachingCampService :
     private readonly ILogger<CachingCampService> _logger;
     private readonly SemaphoreSlim _settingsLock = new(1, 1);
     private CampSettingsInfo? _settings;
+    // Set of years the warmup populated into the dict. Years outside this set
+    // are NOT served from the snapshot — GetCampsForYearAsync falls back to
+    // the inner service so admin/year-driven flows that pass arbitrary years
+    // (CityPlanning, EventsApi, ContainerService) still see correct results.
+    // Replaced wholesale by WarmAllAsync; reads are tear-aware via the
+    // volatile reference swap.
+    private volatile IReadOnlySet<int>? _warmYears;
 
     public CachingCampService(
         ICampRepository repo,
@@ -98,6 +105,18 @@ public sealed class CachingCampService :
         int year, CancellationToken cancellationToken = default)
     {
         await EnsureWarmedAsync(cancellationToken);
+        // Warm scope is bounded to PublicYear ∪ OpenSeasons ∪ currentYear
+        // (see WarmAllAsync). Requests for years outside that set must not
+        // return an empty list — admin/year-driven flows (City Planning,
+        // Events lookups, CSV exports) pass arbitrary years. For cold years
+        // we fall back to the inner service so the result matches the
+        // un-cached behavior. The cache snapshot stays bounded; cold-year
+        // misses are rare and a single repo query is cheap.
+        if (!IsWarmYear(year))
+        {
+            return await WithInner(inner => inner.GetCampsForYearAsync(year, cancellationToken));
+        }
+
         var snapshot = Values;
         var result = new List<CampInfo>(snapshot.Count);
         foreach (var camp in snapshot)
@@ -110,6 +129,12 @@ public sealed class CachingCampService :
         return result;
     }
 
+    private bool IsWarmYear(int year)
+    {
+        var snapshot = _warmYears;
+        return snapshot is not null && snapshot.Contains(year);
+    }
+
 #pragma warning disable CS0618
     public async Task<IReadOnlyList<CampInfo>> GetCampsWithLeadsForYearAsync(
         int year, IReadOnlyList<CampSeasonStatus>? statusFilter = null,
@@ -119,6 +144,12 @@ public sealed class CachingCampService :
         // the legacy repo-side filter (any season for the year in the allowed
         // status set means the camp is included).
         await EnsureWarmedAsync(cancellationToken);
+        // Fall back to the inner service for cold years — same reasoning as
+        // GetCampsForYearAsync. Cold-year + statusFilter is rare; one query.
+        if (!IsWarmYear(year))
+        {
+            return await WithInner(inner => inner.GetCampsWithLeadsForYearAsync(year, statusFilter, cancellationToken));
+        }
         var snapshot = Values;
         var result = new List<CampInfo>(snapshot.Count);
         foreach (var camp in snapshot)
@@ -615,6 +646,10 @@ public sealed class CachingCampService :
             Set(campId, ProjectCampInfo(camp));
         }
 
+        // Publish the warm year set so GetCampsForYearAsync can detect
+        // cold-year requests and fall back to the inner service.
+        _warmYears = years;
+
         // Settings ride along with the per-camp warmup so /Admin/CacheStats
         // shows a fully-warm system rather than a half-loaded one.
         await LoadSettingsAsync(ct);
@@ -644,7 +679,14 @@ public sealed class CachingCampService :
     /// flips the warmed flag back to false; load-all readers observe that and
     /// re-warm via <see cref="TrackedCache{TKey,TValue}.EnsureWarmedAsync"/>.
     /// </summary>
-    private void RefreshAll() => Clear();
+    private void RefreshAll()
+    {
+        // Drop the warm-years marker too so a cold-year request between Clear
+        // and the next WarmAllAsync correctly falls back to the inner service
+        // rather than reading a stale "warm" claim against an empty dict.
+        _warmYears = null;
+        Clear();
+    }
 
     private async Task<CampSettingsInfo> LoadSettingsAsync(CancellationToken ct)
     {

@@ -46,10 +46,16 @@ public sealed class CampRepository : ICampRepository
 
     public async Task<Camp?> GetByIdAsync(Guid campId, CancellationToken ct = default)
     {
+        // Seasons.Members is loaded (active rows only) so the CachingCampService
+        // projection sees the same shape as the warmup path
+        // (GetCampsWithLeadsForYearAsync). Without it, RefreshEntryAsync rebuilds
+        // CampInfo with EeGrantedCount = 0 on every per-camp invalidation
+        // (e.g. EE grant/revoke), corrupting the cache until process restart.
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.Camps
             .AsNoTracking()
             .Include(b => b.Seasons)
+                .ThenInclude(s => s.Members.Where(m => m.Status == CampMemberStatus.Active))
             .Include(b => b.Leads.Where(l => l.LeftAt == null))
             .Include(b => b.HistoricalNames)
             .Include(b => b.Images.OrderBy(i => i.SortOrder))
