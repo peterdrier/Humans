@@ -79,6 +79,7 @@ public class TicketSyncServiceNullOrderTests : IDisposable
             settings,
             NullLogger<TicketSyncService>.Instance,
             new MemoryCache(new MemoryCacheOptions()),
+            Substitute.For<ITicketCacheInvalidator>(),
             _userService,
             _campaignService,
             _shiftManagementService);

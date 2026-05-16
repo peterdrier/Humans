@@ -1,0 +1,498 @@
+using System.Diagnostics.CodeAnalysis;
+using Humans.Application;
+using Humans.Application.DTOs;
+using Humans.Application.Extensions;
+using Humans.Application.Interfaces.Caching;
+using Humans.Application.Interfaces.Gdpr;
+using Humans.Application.Interfaces.Repositories;
+using Humans.Application.Interfaces.Tickets;
+using Humans.Domain.Entities;
+using Humans.Domain.Enums;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.DependencyInjection;
+using NodaTime;
+
+namespace Humans.Infrastructure.Services.Tickets;
+
+/// <summary>
+/// Singleton caching decorator for <see cref="ITicketQueryService"/>. Owns a
+/// per-order <see cref="TicketOrderInfo"/> projection (with attendees embedded)
+/// loaded once at warm time and refreshed wholesale on every section-level
+/// invalidation event (vendor sync, transfer approve, contact import apply,
+/// account-merge fold). Per-user <c>UserTicketCount</c> / <c>UserTicketHoldings</c>
+/// entries live as a separate short-TTL <see cref="IMemoryCache"/>-backed
+/// concern — they get evicted on transfer/merge but not absorbed into the
+/// main projection.
+/// </summary>
+/// <remarks>
+/// <para>
+/// Methods that previously read from short-TTL <see cref="IMemoryCache"/>
+/// entries in <see cref="Humans.Application.Services.Tickets.TicketQueryService"/>
+/// now answer from the in-memory projection. Methods whose results don't
+/// benefit from caching (paged admin lists, exports, dashboard stats, sales
+/// aggregates, sync-state probes) delegate to the inner via a keyed scope —
+/// matches <c>CachingTeamService</c>'s <c>WithInner</c> pattern.
+/// </para>
+/// <para>
+/// Implements <see cref="ITicketCacheInvalidator"/> alongside
+/// <see cref="ITicketQueryService"/> so the sync job and the account-merge
+/// fold can poke cache eviction through a narrow seam without taking a
+/// dependency on the full 28-method query surface.
+/// </para>
+/// </remarks>
+public sealed class CachingTicketQueryService
+    : TrackedCache<Guid, TicketOrderInfo>,
+      ITicketQueryService,
+      ITicketCacheInvalidator
+{
+    public const string InnerServiceKey = "ticket-query-inner";
+
+    private static readonly TimeSpan UserPerUserCacheTtl = TimeSpan.FromMinutes(5);
+
+    private readonly ITicketRepository _ticketRepository;
+    private readonly IMemoryCache _perUserCache;
+    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly SemaphoreSlim _loadLock = new(1, 1);
+    private volatile bool _isLoaded;
+
+    public CachingTicketQueryService(
+        ITicketRepository ticketRepository,
+        IMemoryCache perUserCache,
+        IServiceScopeFactory scopeFactory)
+        : base("Tickets.TicketOrderInfo")
+    {
+        _ticketRepository = ticketRepository;
+        _perUserCache = perUserCache;
+        _scopeFactory = scopeFactory;
+    }
+
+    // ==========================================================================
+    // Projection-served reads (answer from the in-memory TicketOrderInfo dict)
+    // ==========================================================================
+
+    public async Task<int> GetUserTicketCountAsync(Guid userId)
+    {
+        var cacheKey = CacheKeys.UserTicketCount(userId);
+        if (_perUserCache.TryGetExistingValue(cacheKey, out int cached))
+            return cached;
+
+        var count = await ComputeUserTicketCountAsync(userId);
+        _perUserCache.Set(cacheKey, count, UserPerUserCacheTtl);
+        return count;
+    }
+
+    private async Task<int> ComputeUserTicketCountAsync(Guid userId)
+    {
+        // Match on attendees only — a buyer who purchased tickets for others
+        // should NOT count as having a ticket themselves. Mirrors the prior
+        // TicketQueryService.GetUserTicketCountCoreAsync logic, but driven
+        // from the projection instead of two repo queries.
+        var orders = await GetOrdersAsync();
+
+        var matchedCount = orders.Values
+            .SelectMany(o => o.Attendees)
+            .Count(a => a.MatchedUserId == userId && IsValidOrCheckedIn(a.Status));
+        if (matchedCount > 0)
+            return matchedCount;
+
+        // Fallback: verified-emails ↔ attendee-emails match. The verified
+        // email set is per-user and cross-section (Profiles section owns it),
+        // so we resolve it through the keyed inner scope (which has access
+        // to IUserEmailService). The valid-attendee-email set is derivable
+        // from the projection.
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var userEmails = scope.ServiceProvider
+            .GetRequiredService<Humans.Application.Interfaces.Profiles.IUserEmailService>();
+
+        var verifiedEmails = await userEmails.GetVerifiedEmailsForUserAsync(userId);
+        if (verifiedEmails.Count == 0)
+            return 0;
+
+        var attendeeEmails = orders.Values
+            .SelectMany(o => o.Attendees)
+            .Where(a => IsValidOrCheckedIn(a.Status)
+                && !string.IsNullOrEmpty(a.AttendeeEmail))
+            .Select(a => a.AttendeeEmail!)
+            .ToList();
+        if (attendeeEmails.Count == 0)
+            return 0;
+
+        var verifiedSet = verifiedEmails.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        return attendeeEmails.Count(e => verifiedSet.Contains(e));
+    }
+
+    public async Task<HashSet<Guid>> GetUserIdsWithTicketsAsync()
+    {
+        var orders = await GetOrdersAsync();
+        var ids = new HashSet<Guid>();
+        foreach (var order in orders.Values)
+        {
+            foreach (var a in order.Attendees)
+            {
+                if (a.MatchedUserId is { } uid && IsValidOrCheckedIn(a.Status))
+                    ids.Add(uid);
+            }
+        }
+        return ids;
+    }
+
+    public async Task<HashSet<Guid>> GetAllMatchedUserIdsAsync()
+    {
+        var orders = await GetOrdersAsync();
+        var ids = new HashSet<Guid>();
+        foreach (var order in orders.Values)
+        {
+            if (order.MatchedUserId is { } orderUid) ids.Add(orderUid);
+            foreach (var a in order.Attendees)
+                if (a.MatchedUserId is { } attUid) ids.Add(attUid);
+        }
+        return ids;
+    }
+
+    public async Task<IReadOnlySet<Guid>> GetMatchedUserIdsForYearAsync(
+        int year, CancellationToken ct = default)
+    {
+        var start = Instant.FromUtc(year, 1, 1, 0, 0);
+        var end = Instant.FromUtc(year + 1, 1, 1, 0, 0);
+
+        var orders = await GetOrdersAsync();
+        var ids = new HashSet<Guid>();
+        foreach (var order in orders.Values)
+        {
+            if (order.PurchasedAt < start || order.PurchasedAt >= end)
+                continue;
+
+            if (order.MatchedUserId is { } orderUid) ids.Add(orderUid);
+            foreach (var a in order.Attendees)
+                if (a.MatchedUserId is { } attUid) ids.Add(attUid);
+        }
+        return ids;
+    }
+
+    public async Task<IReadOnlyList<int>> GetMatchedTicketYearsAsync(CancellationToken ct = default)
+    {
+        var orders = await GetOrdersAsync();
+        return orders.Values
+            .Where(o => o.MatchedUserId.HasValue
+                || o.Attendees.Any(a => a.MatchedUserId.HasValue))
+            .Select(o => o.PurchasedAt.InUtc().Year)
+            .Distinct()
+            .OrderByDescending(y => y)
+            .ToList();
+    }
+
+    public async Task<bool> HasTicketAttendeeMatchAsync(Guid userId)
+    {
+        var orders = await GetOrdersAsync();
+        foreach (var order in orders.Values)
+        {
+            if (order.MatchedUserId == userId) return true;
+            foreach (var a in order.Attendees)
+                if (a.MatchedUserId == userId) return true;
+        }
+        return false;
+    }
+
+    public async Task<bool> HasCurrentEventTicketAsync(Guid userId, CancellationToken ct = default)
+    {
+        var syncState = await _ticketRepository.GetSyncStateAsync(ct);
+        if (syncState is null || string.IsNullOrEmpty(syncState.VendorEventId))
+            return false;
+
+        var orders = await GetOrdersAsync();
+
+        var vendorEventId = syncState.VendorEventId;
+
+        // Paid order matched to user with at least one attendee on this event.
+        var hasPaidOrder = orders.Values.Any(o =>
+            o.PaymentStatus == TicketPaymentStatus.Paid
+            && o.MatchedUserId == userId
+            && string.Equals(o.VendorEventId, vendorEventId, StringComparison.Ordinal));
+        if (hasPaidOrder) return true;
+
+        // Fallback: Valid / CheckedIn attendee matched to user on this event.
+        return orders.Values.Any(o =>
+            string.Equals(o.VendorEventId, vendorEventId, StringComparison.Ordinal)
+            && o.Attendees.Any(a => a.MatchedUserId == userId && IsValidOrCheckedIn(a.Status)));
+    }
+
+    public async Task<List<UserTicketOrderSummary>> GetUserTicketOrderSummariesAsync(Guid userId)
+    {
+        var orders = await GetOrdersAsync();
+        return orders.Values
+            .Where(o => o.MatchedUserId == userId)
+            .OrderByDescending(o => o.PurchasedAt)
+            .Select(o => new UserTicketOrderSummary(
+                o.BuyerName ?? string.Empty,
+                o.PurchasedAt,
+                o.Attendees.Count,
+                o.TotalAmount,
+                o.Currency))
+            .ToList();
+    }
+
+    public async Task<UserTicketHoldings> GetUserTicketHoldingsAsync(
+        Guid userId, CancellationToken ct = default)
+    {
+        var cacheKey = CacheKeys.UserTicketHoldings(userId);
+        if (_perUserCache.TryGetExistingValue<UserTicketHoldings>(cacheKey, out var cached))
+            return cached;
+
+        var orders = await GetOrdersAsync();
+        var orderCount = orders.Values.Count(o => o.MatchedUserId == userId);
+
+        // Attendee visibility cascade: an order's attendees are visible to its
+        // buyer; an attendee's matched user always sees their own. The two
+        // sets can overlap. Mirror TicketAttendeeOwnership.IsCurrentOwner:
+        // matched attendee wins, falls back to the buyer for unmatched.
+        var visibleAttendees = orders.Values
+            .Where(o => o.MatchedUserId == userId
+                || o.Attendees.Any(a => a.MatchedUserId == userId))
+            .SelectMany(o => o.Attendees.Select(a => (Order: o, Attendee: a)))
+            .Where(pair => IsCurrentOwner(pair.Order, pair.Attendee, userId))
+            .Select(pair => pair.Attendee)
+            .OrderBy(a => a.Status == TicketAttendeeStatus.Void ? 1 : 0)
+            .ThenBy(a => a.AttendeeName, StringComparer.OrdinalIgnoreCase)
+            .Select(a => new UserTicketHoldingRow(
+                a.AttendeeName ?? string.Empty,
+                a.TicketTypeName ?? string.Empty,
+                a.Status))
+            .ToList();
+
+        var holdings = new UserTicketHoldings(orderCount, visibleAttendees);
+        _perUserCache.Set(cacheKey, holdings, UserPerUserCacheTtl);
+        return holdings;
+    }
+
+    public async Task<IReadOnlyList<Guid>> GetOpenTicketIdsForUserAsync(
+        Guid userId, CancellationToken ct = default)
+    {
+        var orders = await GetOrdersAsync();
+        return orders.Values
+            .Where(o => o.MatchedUserId == userId
+                && (o.PaymentStatus == TicketPaymentStatus.Paid
+                    || o.PaymentStatus == TicketPaymentStatus.Pending))
+            .Select(o => o.Id)
+            .ToList();
+    }
+
+    public async Task<IReadOnlyCollection<Guid>> GetMatchedUserIdsForPaidOrdersAsync(
+        CancellationToken ct = default)
+    {
+        var orders = await GetOrdersAsync();
+        return orders.Values
+            .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid && o.MatchedUserId.HasValue)
+            .Select(o => o.MatchedUserId!.Value)
+            .Distinct()
+            .ToList();
+    }
+
+    public async Task<IReadOnlyList<Instant>> GetPaidOrderDatesInWindowAsync(
+        Instant fromInclusive, Instant toExclusive, CancellationToken ct = default)
+    {
+        var orders = await GetOrdersAsync();
+        return orders.Values
+            .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid
+                && o.PurchasedAt >= fromInclusive
+                && o.PurchasedAt < toExclusive)
+            .Select(o => o.PurchasedAt)
+            .ToList();
+    }
+
+    // ==========================================================================
+    // Pass-through (no caching — paged admin lists, exports, aggregates, sync
+    // state probes; all delegate to the inner scoped service).
+    // ==========================================================================
+
+    public Task<List<string>> GetAvailableTicketTypesAsync() =>
+        WithInner(inner => inner.GetAvailableTicketTypesAsync());
+
+    public Task<TicketDashboardStats> GetDashboardStatsAsync() =>
+        WithInner(inner => inner.GetDashboardStatsAsync());
+
+    public Task<decimal> GetGrossTicketRevenueAsync() =>
+        WithInner(inner => inner.GetGrossTicketRevenueAsync());
+
+    public Task<BreakEvenResult> CalculateBreakEvenAsync(
+        int ticketsSold, decimal grossRevenue, string currency,
+        bool canAccessFinance, int fallbackTarget) =>
+        WithInner(inner => inner.CalculateBreakEvenAsync(
+            ticketsSold, grossRevenue, currency, canAccessFinance, fallbackTarget));
+
+    public Task<TicketSalesAggregates> GetSalesAggregatesAsync() =>
+        WithInner(inner => inner.GetSalesAggregatesAsync());
+
+    public Task<CodeTrackingData> GetCodeTrackingDataAsync(string? search) =>
+        WithInner(inner => inner.GetCodeTrackingDataAsync(search));
+
+    public Task<OrdersPageResult> GetOrdersPageAsync(
+        string? search, string sortBy, bool sortDesc,
+        int page, int pageSize,
+        string? filterPaymentStatus, string? filterTicketType, bool? filterMatched) =>
+        WithInner(inner => inner.GetOrdersPageAsync(
+            search, sortBy, sortDesc, page, pageSize,
+            filterPaymentStatus, filterTicketType, filterMatched));
+
+    public Task<AttendeesPageResult> GetAttendeesPageAsync(
+        string? search, string sortBy, bool sortDesc,
+        int page, int pageSize,
+        string? filterTicketType, string? filterStatus, bool? filterMatched, string? filterOrderId,
+        bool filterMultipleTickets = false) =>
+        WithInner(inner => inner.GetAttendeesPageAsync(
+            search, sortBy, sortDesc, page, pageSize,
+            filterTicketType, filterStatus, filterMatched, filterOrderId, filterMultipleTickets));
+
+    public Task<WhoHasntBoughtResult> GetWhoHasntBoughtAsync(
+        string? search, string? filterTeam, string? filterTier, string? filterTicketStatus,
+        int page, int pageSize) =>
+        WithInner(inner => inner.GetWhoHasntBoughtAsync(
+            search, filterTeam, filterTier, filterTicketStatus, page, pageSize));
+
+    public Task<List<AttendeeExportRow>> GetAttendeeExportDataAsync() =>
+        WithInner(inner => inner.GetAttendeeExportDataAsync());
+
+    public Task<List<OrderExportRow>> GetOrderExportDataAsync() =>
+        WithInner(inner => inner.GetOrderExportDataAsync());
+
+    public Task<Instant?> GetPostEventHoldDateAsync(CancellationToken ct = default) =>
+        WithInner(inner => inner.GetPostEventHoldDateAsync(ct));
+
+    public Task<UserTicketExportData> GetUserTicketExportDataAsync(
+        Guid userId, CancellationToken ct = default) =>
+        WithInner(inner => inner.GetUserTicketExportDataAsync(userId, ct));
+
+    public Task<IReadOnlyList<OrderDriftRow>> GetOrderDriftAsync(CancellationToken ct = default) =>
+        WithInner(inner => inner.GetOrderDriftAsync(ct));
+
+    // ==========================================================================
+    // Invalidation seams (ITicketQueryService + ITicketCacheInvalidator)
+    // ==========================================================================
+
+    public void InvalidateAfterTransfer(Guid senderUserId, Guid? receiverUserId)
+    {
+        InvalidateProjection();
+        _perUserCache.Remove(CacheKeys.UserTicketCount(senderUserId));
+        _perUserCache.Remove(CacheKeys.UserTicketHoldings(senderUserId));
+        if (receiverUserId is { } receiver)
+        {
+            _perUserCache.Remove(CacheKeys.UserTicketCount(receiver));
+            _perUserCache.Remove(CacheKeys.UserTicketHoldings(receiver));
+        }
+    }
+
+    public void InvalidateAfterContactImport() => InvalidateProjection();
+
+    public void InvalidateAll() => InvalidateProjection();
+
+    public void InvalidateAfterUserMerge(Guid sourceUserId, Guid targetUserId)
+    {
+        InvalidateProjection();
+        _perUserCache.Remove(CacheKeys.UserTicketCount(sourceUserId));
+        _perUserCache.Remove(CacheKeys.UserTicketHoldings(sourceUserId));
+        _perUserCache.Remove(CacheKeys.UserTicketCount(targetUserId));
+        _perUserCache.Remove(CacheKeys.UserTicketHoldings(targetUserId));
+    }
+
+    // ==========================================================================
+    // GDPR contributor — the export shape mirrors the inner exactly. Routes
+    // through the inner because Application registers the inner as the
+    // IUserDataContributor (the contributor surface is one entry per section,
+    // and the inner owns the export shape).
+    // ==========================================================================
+
+    // (Not implemented here — the inner TicketQueryService still implements
+    // IUserDataContributor and is registered separately at DI time. See
+    // TicketsSectionExtensions.)
+
+    // ==========================================================================
+    // Warmup + projection loading
+    // ==========================================================================
+
+    public async Task WarmAllAsync(CancellationToken ct = default)
+    {
+        if (_isLoaded) return;
+
+        await _loadLock.WaitAsync(ct);
+        try
+        {
+            if (_isLoaded) return;
+
+            var orders = await _ticketRepository.GetAllOrdersWithAttendeesAsync(ct);
+            foreach (var order in orders)
+                Set(order.Id, Project(order));
+
+            _isLoaded = true;
+        }
+        finally
+        {
+            _loadLock.Release();
+        }
+    }
+
+    private async Task<IReadOnlyDictionary<Guid, TicketOrderInfo>> GetOrdersAsync()
+    {
+        if (_isLoaded) return AsReadOnlyDictionary;
+        await WarmAllAsync(CancellationToken.None);
+        return AsReadOnlyDictionary;
+    }
+
+    private void InvalidateProjection()
+    {
+        _loadLock.Wait();
+        try
+        {
+            Clear();
+            _isLoaded = false;
+        }
+        finally
+        {
+            _loadLock.Release();
+        }
+    }
+
+    private static bool IsValidOrCheckedIn(TicketAttendeeStatus status) =>
+        status == TicketAttendeeStatus.Valid || status == TicketAttendeeStatus.CheckedIn;
+
+    // Mirror TicketAttendeeOwnership.IsCurrentOwner against the projection
+    // shape (TicketOrderInfo / TicketAttendeeInfo instead of entities).
+    // Matched attendee wins; unmatched attendees fall back to the order buyer.
+    private static bool IsCurrentOwner(TicketOrderInfo order, TicketAttendeeInfo attendee, Guid userId)
+    {
+        if (attendee.MatchedUserId is { } matchedUid)
+            return matchedUid == userId;
+        return order.MatchedUserId == userId;
+    }
+
+    private static TicketOrderInfo Project(TicketOrder o) => new(
+        Id: o.Id,
+        VendorOrderId: o.VendorOrderId,
+        BuyerName: o.BuyerName,
+        BuyerEmail: o.BuyerEmail,
+        TotalAmount: o.TotalAmount,
+        Currency: o.Currency,
+        DiscountCode: o.DiscountCode,
+        PaymentStatus: o.PaymentStatus,
+        VendorEventId: o.VendorEventId,
+        PurchasedAt: o.PurchasedAt,
+        MatchedUserId: o.MatchedUserId,
+        Attendees: o.Attendees.Select(a => new TicketAttendeeInfo(
+            Id: a.Id,
+            VendorTicketId: a.VendorTicketId,
+            AttendeeName: a.AttendeeName,
+            AttendeeEmail: a.AttendeeEmail,
+            TicketTypeName: a.TicketTypeName,
+            Price: a.Price,
+            Status: a.Status,
+            MatchedUserId: a.MatchedUserId)).ToList());
+
+    // ==========================================================================
+    // Inner-scope resolver
+    // ==========================================================================
+
+    private async Task<TResult> WithInner<TResult>(Func<ITicketQueryService, Task<TResult>> action)
+    {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<ITicketQueryService>(InnerServiceKey);
+        return await action(inner);
+    }
+}

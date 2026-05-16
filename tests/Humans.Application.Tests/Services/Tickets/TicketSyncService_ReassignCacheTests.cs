@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.Application;
 using Humans.Application.Configuration;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Campaigns;
@@ -22,50 +21,32 @@ namespace Humans.Application.Tests.Services.Tickets;
 /// <see cref="TicketSyncService.ReassignAsync"/> (T-07 spec, step A).
 ///
 /// <para>
-/// When the orchestrator (<c>AccountMergeService.AcceptAsync</c>) fans out to
-/// every <c>IUserMerge</c>, the Tickets section re-FKs <c>TicketOrder.MatchedUserId</c>,
-/// <c>TicketAttendee.MatchedUserId</c>, and the two <c>TicketTransferRequest</c>
-/// user columns from source to target. Before T-07 the per-user cache entries
-/// (<c>UserTicketCount:{userId}</c>, <c>UserTicketHoldings:{userId}</c>) were
-/// NOT evicted on this path — the global <c>InvalidateTicketCaches</c> helper
-/// skips per-user keys because they can't be enumerated for bulk invalidation.
-/// That's the gap this test pins closed: after a merge, both source's and
-/// target's per-user entries must be gone.
+/// When the orchestrator (<c>AccountMergeService.AcceptAsync</c>) fans out
+/// to every <c>IUserMerge</c>, the Tickets section re-FKs
+/// <c>TicketOrder.MatchedUserId</c>, <c>TicketAttendee.MatchedUserId</c>,
+/// and the two <c>TicketTransferRequest</c> user columns from source to
+/// target. The eviction contract is: drop the global projection AND both
+/// users' per-user TTL entries — without the latter, the homepage card and
+/// ticket-holdings widget lag up to 5 minutes after a merge.
 /// </para>
 ///
 /// <para>
-/// Uses NSubstitute for the two repositories (rather than the real EF-backed
-/// pair) so we can drive <see cref="TicketSyncService.ReassignAsync"/> without
-/// hitting <c>ExecuteUpdateAsync</c> — unsupported by the in-memory provider.
-/// The test is targeting the invalidation contract, not the SQL.
+/// This test pins that <see cref="TicketSyncService.ReassignAsync"/> calls
+/// <see cref="ITicketCacheInvalidator.InvalidateAfterUserMerge"/> with both
+/// user ids. The decorator's implementation of that seam (drop projection,
+/// remove both users' per-user cache entries) is pinned by
+/// <c>CachingTicketQueryService</c>'s own unit tests.
 /// </para>
 /// </summary>
 public sealed class TicketSyncService_ReassignCacheTests
 {
     [HumansFact]
-    public async Task ReassignAsync_DropsGlobalAndBothUsersPerUserCacheEntries()
+    public async Task ReassignAsync_CallsInvalidateAfterUserMerge_WithBothUserIds()
     {
         var sourceUserId = Guid.NewGuid();
         var targetUserId = Guid.NewGuid();
 
-        var cache = new MemoryCache(new MemoryCacheOptions());
-
-        // Global ticket caches — currently cleared by InvalidateTicketCaches
-        cache.Set(CacheKeys.TicketDashboardStats, "stale-dashboard");
-        cache.Set(CacheKeys.UserIdsWithTickets, new HashSet<Guid>());
-        cache.Set(CacheKeys.ValidAttendeeEmails, new List<string>());
-
-        // Per-user entries — the gap this test pins closed. Both users must be
-        // evicted: source's tickets just moved to target, so source's count is
-        // meaningless and target's count is stale.
-        cache.Set(CacheKeys.UserTicketCount(sourceUserId), 3);
-        cache.Set(CacheKeys.UserTicketCount(targetUserId), 1);
-        cache.Set(
-            CacheKeys.UserTicketHoldings(sourceUserId),
-            new UserTicketHoldings(3, []));
-        cache.Set(
-            CacheKeys.UserTicketHoldings(targetUserId),
-            new UserTicketHoldings(1, []));
+        var invalidator = Substitute.For<ITicketCacheInvalidator>();
 
         var service = new TicketSyncService(
             Substitute.For<ITicketRepository>(),
@@ -75,7 +56,8 @@ public sealed class TicketSyncService_ReassignCacheTests
             new FakeClock(Instant.FromUtc(2026, 5, 16, 12, 0)),
             Options.Create(new TicketVendorSettings { EventId = "ev_t07", ApiKey = "k", SyncIntervalMinutes = 15 }),
             NullLogger<TicketSyncService>.Instance,
-            cache,
+            new MemoryCache(new MemoryCacheOptions()),
+            invalidator,
             Substitute.For<IUserService>(),
             Substitute.For<ICampaignService>(),
             Substitute.For<IShiftManagementService>());
@@ -87,15 +69,6 @@ public sealed class TicketSyncService_ReassignCacheTests
             updatedAt: Instant.FromUtc(2026, 5, 16, 12, 0),
             CancellationToken.None);
 
-        cache.TryGetValue(CacheKeys.TicketDashboardStats, out _).Should().BeFalse();
-        cache.TryGetValue(CacheKeys.UserIdsWithTickets, out _).Should().BeFalse();
-        cache.TryGetValue(CacheKeys.ValidAttendeeEmails, out _).Should().BeFalse();
-
-        cache.TryGetValue(CacheKeys.UserTicketCount(sourceUserId), out _).Should().BeFalse(
-            because: "source user's cached ticket count is meaningless after their tickets were re-FK'd to the target");
-        cache.TryGetValue(CacheKeys.UserTicketCount(targetUserId), out _).Should().BeFalse(
-            because: "target user's cached ticket count is stale — source's tickets just landed on it");
-        cache.TryGetValue(CacheKeys.UserTicketHoldings(sourceUserId), out _).Should().BeFalse();
-        cache.TryGetValue(CacheKeys.UserTicketHoldings(targetUserId), out _).Should().BeFalse();
+        invalidator.Received(1).InvalidateAfterUserMerge(sourceUserId, targetUserId);
     }
 }

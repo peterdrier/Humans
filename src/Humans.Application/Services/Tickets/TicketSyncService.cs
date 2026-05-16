@@ -53,6 +53,7 @@ public sealed class TicketSyncService : ITicketSyncService, IUserMerge
     private readonly IClock _clock;
     private readonly TicketVendorSettings _settings;
     private readonly IMemoryCache _cache;
+    private readonly ITicketCacheInvalidator _ticketCache;
     private readonly IUserService _userService;
     private readonly ICampaignService _campaignService;
     private readonly IShiftManagementService _shiftManagementService;
@@ -67,6 +68,7 @@ public sealed class TicketSyncService : ITicketSyncService, IUserMerge
         IOptions<TicketVendorSettings> settings,
         ILogger<TicketSyncService> logger,
         IMemoryCache cache,
+        ITicketCacheInvalidator ticketCache,
         IUserService userService,
         ICampaignService campaignService,
         IShiftManagementService shiftManagementService)
@@ -78,6 +80,7 @@ public sealed class TicketSyncService : ITicketSyncService, IUserMerge
         _clock = clock;
         _settings = settings.Value;
         _cache = cache;
+        _ticketCache = ticketCache;
         _userService = userService;
         _campaignService = campaignService;
         _shiftManagementService = shiftManagementService;
@@ -197,8 +200,12 @@ public sealed class TicketSyncService : ITicketSyncService, IUserMerge
             await _ticketRepository.PersistSyncStateAsync(syncState, ct);
 
             // Invalidate all ticket-related caches after successful sync.
+            // The per-event vendor summary is owned by TicketTailorService
+            // (Infrastructure connector) and keyed on the vendor event id;
+            // keep it on IMemoryCache. The projection / per-user TTL entries
+            // belong to the decorator and are dropped through the invalidator.
             _cache.Remove(CacheKeys.TicketEventSummary(eventId));
-            _cache.InvalidateTicketCaches();
+            _ticketCache.InvalidateAll();
 
             var result = new TicketSyncResult(ordersSynced, attendeesSynced,
                 ordersMatched, attendeesMatched, codesRedeemed);
@@ -249,24 +256,14 @@ public sealed class TicketSyncService : ITicketSyncService, IUserMerge
         await _ticketRepository.ReassignToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
         await _transferRepository.ReassignUserAsync(sourceUserId, targetUserId, ct);
 
-        // Per-user ticket coverage / dashboard / who-hasn't-bought derive from
-        // MatchedUserId on orders + attendees, so all of them must refresh.
-        // Use the established InvalidateTicketCaches seam (see Tickets.md
-        // touch-and-clean guidance).
-        _cache.InvalidateTicketCaches();
-
-        // Also drop the source and target users' per-user cache entries
-        // (UserTicketCount, UserTicketHoldings). InvalidateTicketCaches above
-        // skips per-user keys because they can't be enumerated for bulk
-        // invalidation, but in the merge-fold path we know exactly which two
-        // users are affected: tickets just moved source → target, so the
-        // source's cached counts are now meaningless and the target's are
-        // stale. Without this the homepage card and ticket-holdings widget
-        // would lag by up to 5 minutes after a merge.
-        _cache.InvalidateUserTicketCount(sourceUserId);
-        _cache.Remove(CacheKeys.UserTicketHoldings(sourceUserId));
-        _cache.InvalidateUserTicketCount(targetUserId);
-        _cache.Remove(CacheKeys.UserTicketHoldings(targetUserId));
+        // Per-user ticket coverage / dashboard / who-hasn't-bought derive
+        // from MatchedUserId on orders + attendees, so the projection must
+        // refresh; tickets just moved source → target, so both users' per-
+        // user TTL entries (UserTicketCount, UserTicketHoldings) must also
+        // be evicted or the homepage card and ticket-holdings widget lag up
+        // to 5 minutes after the merge. Both concerns live behind the
+        // ITicketCacheInvalidator seam owned by the caching decorator.
+        _ticketCache.InvalidateAfterUserMerge(sourceUserId, targetUserId);
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────

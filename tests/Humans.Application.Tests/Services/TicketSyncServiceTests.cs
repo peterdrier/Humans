@@ -73,6 +73,7 @@ public class TicketSyncServiceTests : IDisposable
             settings,
             NullLogger<TicketSyncService>.Instance,
             new MemoryCache(new MemoryCacheOptions()),
+            Substitute.For<ITicketCacheInvalidator>(),
             _userService,
             _campaignService,
             _shiftManagementService);
@@ -284,6 +285,7 @@ public class TicketSyncServiceTests : IDisposable
             settings,
             NullLogger<TicketSyncService>.Instance,
             new MemoryCache(new MemoryCacheOptions()),
+            Substitute.For<ITicketCacheInvalidator>(),
             Substitute.For<IUserService>(),
             Substitute.For<ICampaignService>(),
             Substitute.For<IShiftManagementService>());
