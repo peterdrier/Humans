@@ -84,6 +84,7 @@ Atomic rules. Fetch the body when the description's trigger matches your task. S
 
 - [`about-page-license-attribution`](process/about-page-license-attribution.md) — after any NuGet update, add new versions + licenses to `Views/About/Index.cshtml`
 - [`after-prod-merge-reset`](process/after-prod-merge-reset.md) — after upstream PR lands: `git fetch upstream && git reset --hard upstream/main && git push origin main --force-with-lease`
+- [`cross-repo-pr-push-target`](process/cross-repo-pr-push-target.md) — when fixing a cross-repo PR (head on a contributor's fork), push to that fork's remote, NOT `origin`; check `isCrossRepository` first
 - [`diff-snapshot-after-ef-tool`](process/diff-snapshot-after-ef-tool.md) — after any `dotnet ef` tool run, `git diff HumansDbContextModelSnapshot.cs` before staging; empty migration body ≠ clean snapshot. Don't run EF tooling for code-only refactors (nav drop/rename, reorder) — pure C# changes can't change schema.
 - [`discord-release-notes-format`](process/discord-release-notes-format.md) — audience-grouped (coordinators/volunteers/under-the-hood/known-issues), plain-language, no emojis
 - [`dotnet-verbosity-quiet`](process/dotnet-verbosity-quiet.md) — always `-v quiet` on `dotnet build`/`test`; never pipe through `tail`/`head`/`grep`
