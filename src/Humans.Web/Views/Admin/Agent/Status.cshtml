@@ -1,0 +1,288 @@
+@model Humans.Web.Models.Agent.AdminAgentStatusViewModel
+@using Humans.Application.Models
+@{
+    ViewData["Title"] = "Agent — Status";
+    var report = Model.Report;
+    string Pct(double r) => (r * 100).ToString("0.0") + "%";
+    string Tokens(long t) => t.ToString("N0");
+    string Usd(decimal v) => "$" + v.ToString("N2");
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">Agent Status</h2>
+    <div class="btn-group btn-group-sm" role="group" aria-label="Agent admin nav">
+        <a asp-action="Settings" class="btn btn-outline-secondary">Settings</a>
+        <a asp-controller="Agent" asp-action="Conversations" class="btn btn-outline-secondary">Conversations</a>
+    </div>
+</div>
+
+@* System state ----------------------------------------------------------- *@
+<div class="card mb-3">
+    <div class="card-header">System state</div>
+    <div class="card-body">
+        <dl class="row mb-0">
+            <dt class="col-sm-3">Enabled</dt>
+            <dd class="col-sm-9">
+                @if (Model.Enabled)
+                {
+                    <span class="badge text-bg-success">Enabled</span>
+                }
+                else
+                {
+                    <span class="badge text-bg-secondary">Disabled</span>
+                }
+            </dd>
+            <dt class="col-sm-3">Model</dt>
+            <dd class="col-sm-9"><code>@Model.Model</code></dd>
+            <dt class="col-sm-3">Preload config</dt>
+            <dd class="col-sm-9">@Model.PreloadConfig</dd>
+            <dt class="col-sm-3">Daily message cap</dt>
+            <dd class="col-sm-9">@Model.Settings.DailyMessageCap</dd>
+            <dt class="col-sm-3">Hourly message cap</dt>
+            <dd class="col-sm-9">@Model.Settings.HourlyMessageCap</dd>
+            <dt class="col-sm-3">Daily token cap</dt>
+            <dd class="col-sm-9">@Tokens(Model.Settings.DailyTokenCap)</dd>
+            <dt class="col-sm-3">Retention</dt>
+            <dd class="col-sm-9">@Model.Settings.RetentionDays days</dd>
+            <dt class="col-sm-3">Settings last updated</dt>
+            <dd class="col-sm-9">@Model.Settings.UpdatedAt.ToAuditMinuteTimestamp()</dd>
+            <dt class="col-sm-3">Settings store warm</dt>
+            <dd class="col-sm-9">
+                @if (report.SettingsStoreWarm)
+                {
+                    <span class="badge text-bg-success">Warm</span>
+                }
+                else
+                {
+                    <span class="badge text-bg-warning">Not yet warmed</span>
+                }
+            </dd>
+        </dl>
+    </div>
+</div>
+
+@* Usage ------------------------------------------------------------------- *@
+<div class="card mb-3">
+    <div class="card-header">Usage</div>
+    <div class="card-body p-0">
+        <table class="table table-sm mb-0">
+            <thead>
+                <tr>
+                    <th scope="col">Window</th>
+                    <th scope="col" class="text-end">Conversations</th>
+                    <th scope="col" class="text-end">Messages</th>
+                    <th scope="col" class="text-end">Unique users</th>
+                    <th scope="col" class="text-end">Prompt tokens</th>
+                    <th scope="col" class="text-end">Output tokens</th>
+                    <th scope="col" class="text-end">Cached tokens</th>
+                    <th scope="col" class="text-end">Cache hit</th>
+                    <th scope="col" class="text-end">Avg turn</th>
+                    <th scope="col" class="text-end">P95 turn</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var (label, u) in new[]
+                {
+                    ("24h", report.Usage24h),
+                    ("7d",  report.Usage7d),
+                    ("30d", report.Usage30d),
+                })
+                {
+                    <tr>
+                        <th scope="row">@label</th>
+                        <td class="text-end">@u.ConversationCount</td>
+                        <td class="text-end">@u.MessageCount</td>
+                        <td class="text-end">@u.UniqueUserCount</td>
+                        <td class="text-end">@Tokens(u.PromptTokens)</td>
+                        <td class="text-end">@Tokens(u.OutputTokens)</td>
+                        <td class="text-end">@Tokens(u.CachedTokens)</td>
+                        <td class="text-end">@Pct(u.CacheHitRatio)</td>
+                        <td class="text-end">@u.AverageTurnMs ms</td>
+                        <td class="text-end">@u.P95TurnMs ms</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@* Spend ------------------------------------------------------------------- *@
+<div class="card mb-3">
+    <div class="card-header">Spend (estimated)</div>
+    <div class="card-body p-0">
+        <table class="table table-sm mb-0">
+            <thead>
+                <tr>
+                    <th scope="col">Window</th>
+                    <th scope="col" class="text-end">Input</th>
+                    <th scope="col" class="text-end">Output</th>
+                    <th scope="col" class="text-end">Cache read</th>
+                    <th scope="col" class="text-end">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var (label, s) in new[]
+                {
+                    ("24h", report.Spend24h),
+                    ("7d",  report.Spend7d),
+                    ("30d", report.Spend30d),
+                    ("MTD", report.SpendMtd),
+                })
+                {
+                    <tr>
+                        <th scope="row">@label</th>
+                        <td class="text-end">@Usd(s.InputUsd)</td>
+                        <td class="text-end">@Usd(s.OutputUsd)</td>
+                        <td class="text-end">@Usd(s.CacheReadUsd)</td>
+                        <td class="text-end fw-semibold">@Usd(s.TotalUsd)</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        <div class="card-footer text-muted small">
+            Estimated from per-message token counts × published per-model rates.
+            Cache-write tokens fold into Input at the standard input rate.
+        </div>
+    </div>
+</div>
+
+@* Anthropic balance ------------------------------------------------------- *@
+<div class="card mb-3">
+    <div class="card-header">Anthropic balance</div>
+    <div class="card-body">
+        @if (report.Balance.BalanceUsd is decimal bal)
+        {
+            <p class="mb-0 fs-4">@Usd(bal)</p>
+        }
+        else
+        {
+            <p class="mb-1 text-muted">Balance unavailable — @report.Balance.UnavailableReason.</p>
+            <a href="https://console.anthropic.com/settings/billing" target="_blank" rel="noopener" class="btn btn-outline-secondary btn-sm">
+                Open Anthropic Console
+            </a>
+        }
+    </div>
+</div>
+
+@* Refusals --------------------------------------------------------------- *@
+<div class="card mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Refusals (last 7d)</span>
+        <a asp-controller="Agent" asp-action="Conversations" asp-route-refusalsOnly="true" class="btn btn-outline-secondary btn-sm">
+            View refusals
+        </a>
+    </div>
+    <div class="card-body">
+        @if (report.Refusals7dCount == 0)
+        {
+            <p class="text-muted mb-0">No refusals in the last 7 days.</p>
+        }
+        else
+        {
+            <p class="mb-2"><strong>@report.Refusals7dCount</strong> refusals</p>
+            <table class="table table-sm mb-0" style="width: auto;">
+                <thead>
+                    <tr>
+                        <th scope="col">Reason</th>
+                        <th scope="col" class="text-end">Count</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in report.Refusals7d)
+                    {
+                        <tr>
+                            <td><code>@row.Reason</code></td>
+                            <td class="text-end">@row.Count</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>
+
+@* Top fetched docs ------------------------------------------------------ *@
+<div class="card mb-3">
+    <div class="card-header">Top fetched docs (last 7d)</div>
+    <div class="card-body">
+        @if (!report.TopDocs7d.Any())
+        {
+            <p class="text-muted mb-0">No tool fetches in the last 7 days.</p>
+        }
+        else
+        {
+            <table class="table table-sm mb-0" style="width: auto;">
+                <thead>
+                    <tr>
+                        <th scope="col">Slug</th>
+                        <th scope="col" class="text-end">Fetches</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var d in report.TopDocs7d)
+                    {
+                        <tr>
+                            <td><code>@d.Slug</code></td>
+                            <td class="text-end">@d.Count</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>
+
+@* Top users -------------------------------------------------------------- *@
+<div class="card mb-3">
+    <div class="card-header">Top users (last 7d)</div>
+    <div class="card-body">
+        @if (!report.TopUsers7d.Any())
+        {
+            <p class="text-muted mb-0">No activity in the last 7 days.</p>
+        }
+        else
+        {
+            <table class="table table-sm mb-0">
+                <thead>
+                    <tr>
+                        <th scope="col">Human</th>
+                        <th scope="col" class="text-end">Messages (7d)</th>
+                        <th scope="col" class="text-end">Daily remaining</th>
+                        <th scope="col" class="text-end">Hourly remaining</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var u in report.TopUsers7d)
+                    {
+                        <tr>
+                            <td><vc:human user-id="@u.UserId" link="Admin" /></td>
+                            <td class="text-end">@u.MessageCount</td>
+                            <td class="text-end">@u.MessagesTodayRemaining</td>
+                            <td class="text-end">@u.MessagesThisHourRemaining</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>
+
+@* Retention job --------------------------------------------------------- *@
+<div class="card mb-3">
+    <div class="card-header">Retention job</div>
+    <div class="card-body">
+        @if (report.Retention.LastRunAt is null)
+        {
+            <p class="text-muted mb-0">Job has not run yet since process start.</p>
+        }
+        else
+        {
+            <dl class="row mb-0">
+                <dt class="col-sm-3">Last run</dt>
+                <dd class="col-sm-9">@report.Retention.LastRunAt.Value.ToAuditMinuteTimestamp()</dd>
+                <dt class="col-sm-3">Last deleted count</dt>
+                <dd class="col-sm-9">@report.Retention.LastDeletedCount</dd>
+            </dl>
+        }
+    </div>
+</div>

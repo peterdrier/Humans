@@ -22,10 +22,18 @@ internal static class AgentSectionExtensions
 
         services.AddSingleton<IAgentSettingsStore, AgentSettingsStore>();
         services.AddSingleton<IAgentRateLimitStore, AgentRateLimitStore>();
+        services.AddSingleton<IAgentRetentionRunStore, AgentRetentionRunStore>();
 
         services.AddScoped<IAgentRepository, AgentRepository>();
         services.AddScoped<IAgentSettingsService, AgentSettingsService>();
         services.AddScoped<IAgentUserSnapshotProvider, AgentUserSnapshotProvider>();
+        services.AddScoped<IAgentAdminStatusService, AgentAdminStatusService>();
+
+        // Balance lookup needs HttpClient; the runtime path uses a typed
+        // factory injection inside the provider rather than HttpClient
+        // directly so unit tests can fake the underlying HttpMessageHandler.
+        services.AddHttpClient();
+        services.AddScoped<IAgentAnthropicBalanceProvider, Humans.Infrastructure.Services.Anthropic.AnthropicBalanceProvider>();
 
         services.AddSingleton<AgentSectionDocReader>();
         services.AddSingleton<AgentFeatureSpecReader>();

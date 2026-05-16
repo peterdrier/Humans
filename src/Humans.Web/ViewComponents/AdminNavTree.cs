@@ -54,8 +54,9 @@ public static class AdminNavTree
             new("Mailer",                "MailerAdmin", "Index",           null, null, "fa-solid fa-paper-plane",          PolicyNames.AdminOnly)
         ]),
         new("Agent", [
-            new("Agent Config",  "AdminAgent", "Settings",      null, null, "fa-solid fa-robot",    PolicyNames.AdminOnly),
-            new("Agent History", "Agent",      "Conversations", null, null, "fa-solid fa-comments", PolicyNames.AdminOnly)
+            new("Agent Status",  "AdminAgent", "Status",        null, null, "fa-solid fa-gauge-high", PolicyNames.AdminOnly),
+            new("Agent Config",  "AdminAgent", "Settings",      null, null, "fa-solid fa-robot",      PolicyNames.AdminOnly),
+            new("Agent History", "Agent",      "Conversations", null, null, "fa-solid fa-comments",   PolicyNames.AdminOnly)
         ]),
         new("People data", [
             new("Merge requests",        "AdminMerge", "Index",            null, null, "fa-solid fa-code-merge", PolicyNames.AdminOnly),

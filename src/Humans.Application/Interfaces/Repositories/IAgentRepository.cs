@@ -1,3 +1,4 @@
+using Humans.Application.Models;
 using Humans.Domain.Entities;
 using NodaTime;
 using Humans.Domain.Attributes;
@@ -55,4 +56,26 @@ public interface IAgentRepository : IRepository
         CancellationToken cancellationToken);
 
     Task<int> PurgeConversationsOlderThanAsync(Instant cutoff, CancellationToken cancellationToken);
+
+    // ---- Admin status (read-only, in-memory aggregated by callers) ----------
+
+    /// <summary>
+    /// Flat per-message projection over <c>agent_messages</c> created at or
+    /// after <paramref name="since"/>. The admin status view aggregates these
+    /// rows in memory across multiple windows (24h / 7d / 30d). Returned
+    /// ordered by <c>CreatedAt</c> descending so callers can early-stop when
+    /// computing the smaller windows.
+    /// </summary>
+    Task<IReadOnlyList<AgentStatusMessageRow>> ListMessagesSinceAsync(
+        Instant since, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Count of conversations whose <c>LastMessageAt</c> falls in the given
+    /// window. Used by the usage panel — separate from
+    /// <see cref="ListMessagesSinceAsync"/> because a conversation row can
+    /// fall in a window even if no new messages did (rare, but the
+    /// conversation count must come from the parent table).
+    /// </summary>
+    Task<int> CountConversationsInWindowAsync(
+        Instant since, Instant until, CancellationToken cancellationToken);
 }

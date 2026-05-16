@@ -60,7 +60,7 @@ Per-user message and token counters live in the Singleton `IAgentRateLimitStore`
 | Actor | Capability |
 |---|---|
 | Authenticated human | Send messages, read own history at `/Agent/Conversations`, drill into a single transcript at `/Agent/Conversation/{id}` (issue #632 — own conversations only; cross-user → 404) |
-| Admin | Configure settings, view all conversations at `/Agent/Conversations` (Human column + filters), drill into the diagnostic view at `/Agent/Conversations/{id}` (token counts, tool-call args, prompt preview), disable globally |
+| Admin | View operational status at `/Agent/Admin/Status` (usage / spend / refusals / top docs / top users / retention job / Anthropic balance), configure settings, view all conversations at `/Agent/Conversations` (Human column + filters), drill into the diagnostic view at `/Agent/Conversations/{id}` (token counts, tool-call args, prompt preview), disable globally |
 | Anyone else (anonymous) | Widget not rendered; endpoints return 401 |
 
 ## Invariants

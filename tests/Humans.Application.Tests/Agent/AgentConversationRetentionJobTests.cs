@@ -4,6 +4,7 @@ using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Repositories;
+using Humans.Infrastructure.Stores;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
@@ -37,10 +38,13 @@ public class AgentConversationRetentionJobTests
 
         var clock = new FakeClock(now);
         var repo = new AgentRepository(db, clock);
-        var job = new AgentConversationRetentionJob(repo, settings, clock, NullLogger<AgentConversationRetentionJob>.Instance);
+        var runStore = new AgentRetentionRunStore();
+        var job = new AgentConversationRetentionJob(repo, settings, runStore, clock, NullLogger<AgentConversationRetentionJob>.Instance);
         await job.ExecuteAsync(CancellationToken.None);
 
         (await db.AgentConversations.CountAsync()).Should().Be(1);
+        runStore.Snapshot.LastRunAt.Should().Be(now);
+        runStore.Snapshot.LastDeletedCount.Should().Be(1);
     }
 
     private static HumansDbContext InMemoryDb() =>
