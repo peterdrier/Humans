@@ -95,15 +95,19 @@ public class TeamsArchitectureTests
     /// <see cref="CachingTeamService"/>) so they hit the cache instead of the DB
     /// on every request. Repository injection inside the Teams section
     /// (<c>TeamService</c>, <c>CachingTeamService</c>, and the EF impl itself) is
-    /// the intended layering and is allowed.
+    /// the intended layering and is allowed. Scans all three production
+    /// assemblies — Application, Infrastructure, and Web — so a future regression
+    /// where a controller, page handler, or filter takes <see cref="ITeamRepository"/>
+    /// directly fails this test.
     /// </summary>
     [HumansFact]
     public void ITeamRepository_InjectedOnlyInsideTeamsSection()
     {
         var assembliesToScan = new[]
         {
-            typeof(TeamService).Assembly,           // Humans.Application
-            typeof(CachingTeamService).Assembly,    // Humans.Infrastructure
+            typeof(TeamService).Assembly,                                // Humans.Application
+            typeof(CachingTeamService).Assembly,                         // Humans.Infrastructure
+            typeof(Humans.Web.Controllers.HomeController).Assembly,      // Humans.Web
         };
 
         var violations = new List<string>();
