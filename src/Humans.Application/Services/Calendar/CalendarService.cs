@@ -121,11 +121,26 @@ public sealed class CalendarService : ICalendarService
 
         await _repo.AddAsync(ev, ct);
 
-        await _audit.LogAsync(
-            AuditAction.CalendarEventCreated, nameof(CalendarEvent), ev.Id,
-            $"Created calendar event '{ev.Title}'",
-            createdByUserId,
-            relatedEntityId: ev.OwningTeamId, relatedEntityType: nameof(Team));
+        // Audit is best-effort observability; the DB write is source of truth.
+        // If the audit log throws after the calendar row commits, we MUST NOT
+        // re-raise — doing so would (a) lie to the caller (their event exists)
+        // and (b) cause the §15 caching decorator to skip its post-write
+        // invalidation, leaving the cache silently stale. Mirrors the pattern
+        // in GoogleAdminService.ResetPasswordAsync. See PR #585 follow-up.
+        try
+        {
+            await _audit.LogAsync(
+                AuditAction.CalendarEventCreated, nameof(CalendarEvent), ev.Id,
+                $"Created calendar event '{ev.Title}'",
+                createdByUserId,
+                relatedEntityId: ev.OwningTeamId, relatedEntityType: nameof(Team));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogCritical(ex,
+                "Audit-log write failed AFTER calendar event {EventId} ('{Title}') was created by {UserId}. Row was committed; reconcile audit trail manually.",
+                ev.Id, ev.Title, createdByUserId);
+        }
 
         return ev;
     }
@@ -297,11 +312,21 @@ public sealed class CalendarService : ICalendarService
         if (!found || mutated is null)
             throw new InvalidOperationException($"CalendarEvent {id} not found.");
 
-        await _audit.LogAsync(
-            AuditAction.CalendarEventUpdated, nameof(CalendarEvent), mutated.Id,
-            $"Updated calendar event '{mutated.Title}'",
-            updatedByUserId,
-            relatedEntityId: mutated.OwningTeamId, relatedEntityType: nameof(Team));
+        // Audit best-effort: DB write already committed. See CreateEventAsync.
+        try
+        {
+            await _audit.LogAsync(
+                AuditAction.CalendarEventUpdated, nameof(CalendarEvent), mutated.Id,
+                $"Updated calendar event '{mutated.Title}'",
+                updatedByUserId,
+                relatedEntityId: mutated.OwningTeamId, relatedEntityType: nameof(Team));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogCritical(ex,
+                "Audit-log write failed AFTER calendar event {EventId} ('{Title}') was updated by {UserId}. Row was committed; reconcile audit trail manually.",
+                mutated.Id, mutated.Title, updatedByUserId);
+        }
 
         return mutated;
     }
@@ -345,11 +370,21 @@ public sealed class CalendarService : ICalendarService
         var result = await _repo.SoftDeleteAsync(id, now, ct);
         if (result is null) return;
 
-        await _audit.LogAsync(
-            AuditAction.CalendarEventDeleted, nameof(CalendarEvent), id,
-            $"Deleted calendar event '{result.Value.Title}'",
-            deletedByUserId,
-            relatedEntityId: result.Value.OwningTeamId, relatedEntityType: nameof(Team));
+        // Audit best-effort: soft-delete already committed. See CreateEventAsync.
+        try
+        {
+            await _audit.LogAsync(
+                AuditAction.CalendarEventDeleted, nameof(CalendarEvent), id,
+                $"Deleted calendar event '{result.Value.Title}'",
+                deletedByUserId,
+                relatedEntityId: result.Value.OwningTeamId, relatedEntityType: nameof(Team));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogCritical(ex,
+                "Audit-log write failed AFTER calendar event {EventId} ('{Title}') was deleted by {UserId}. Soft-delete was committed; reconcile audit trail manually.",
+                id, result.Value.Title, deletedByUserId);
+        }
     }
 
     public async Task CancelOccurrenceAsync(Guid eventId, Instant originalOccurrenceStartUtc, Guid userId, CancellationToken ct = default)
@@ -395,10 +430,23 @@ public sealed class CalendarService : ICalendarService
             apply: apply,
             ct: ct);
 
-        await _audit.LogAsync(
-            auditAction, nameof(CalendarEvent), eventId,
-            auditDescription,
-            userId);
+        // Audit best-effort: exception upsert already committed. See
+        // CreateEventAsync. Re-throwing here would also skip the §15 caching
+        // decorator's parent-event invalidation, leaving the parent's
+        // Exceptions list silently stale.
+        try
+        {
+            await _audit.LogAsync(
+                auditAction, nameof(CalendarEvent), eventId,
+                auditDescription,
+                userId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogCritical(ex,
+                "Audit-log write failed AFTER {AuditAction} on calendar event {EventId} by {UserId}. Exception upsert was committed; reconcile audit trail manually.",
+                auditAction, eventId, userId);
+        }
     }
 
     private static CalendarEventDetail ToDetail(CalendarEvent ev) => new(

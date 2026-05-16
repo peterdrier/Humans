@@ -1,5 +1,4 @@
 using Humans.Application.DTOs.Calendar;
-using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Calendar;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Repositories;
@@ -39,16 +38,18 @@ namespace Humans.Infrastructure.Services.Calendar;
 /// (<c>CreateEventAsync</c>, <c>UpdateEventAsync</c>, <c>DeleteEventAsync</c>,
 /// <c>CancelOccurrenceAsync</c>, <c>OverrideOccurrenceAsync</c>) delegate to
 /// the inner service via <see cref="IServiceScopeFactory"/>, then call
-/// <see cref="InvalidateEvent"/> with the affected event id.
+/// <see cref="TrackedCache{TKey, TValue}.ReplaceAsync"/> for the affected
+/// event id (which drives <see cref="LoadRowAsync"/> and tombstones via
+/// <see cref="TrackedCache{TKey, TValue}.DeleteKey"/> if the row is gone).
 /// </para>
 /// <para>
 /// <b>Exception writes evict the PARENT event</b>: the per-occurrence write
 /// methods (<c>CancelOccurrenceAsync</c> / <c>OverrideOccurrenceAsync</c>)
 /// upsert into the <c>calendar_event_exceptions</c> child table, but the
 /// cache is keyed by parent event id and embeds the <c>Exceptions</c> list
-/// inside <see cref="CalendarEventInfo"/>. <see cref="InvalidateEvent"/>
-/// refreshes the parent entry (which re-loads its full <c>Exceptions</c>
-/// list from the repository) — there is no separate exception cache row.
+/// inside <see cref="CalendarEventInfo"/>. <see cref="TrackedCache{TKey, TValue}.ReplaceAsync"/>
+/// re-loads the parent (and its current <c>Exceptions</c> list) via
+/// <see cref="LoadRowAsync"/> — there is no separate exception cache row.
 /// </para>
 /// <para>
 /// Future load: an iCal feed endpoint (planned — <c>User.ICalToken</c>
@@ -61,6 +62,13 @@ namespace Humans.Infrastructure.Services.Calendar;
 /// (and <see cref="ITeamService"/> for team-name stitching) per call via
 /// <see cref="IServiceScopeFactory"/>. <see cref="ICalendarRepository"/> is
 /// Singleton (IDbContextFactory-based), injected directly.
+/// </para>
+/// <para>
+/// Self-hosting: inherits <see cref="TrackedCache{TKey, TValue}"/>'s
+/// <see cref="Microsoft.Extensions.Hosting.IHostedService"/> implementation
+/// with <c>warmOnStartup: true</c>. Registered via
+/// <c>AddHostedService(sp => sp.GetRequiredService&lt;CachingCalendarService&gt;())</c>
+/// — no external warmup hosted service needed.
 /// </para>
 /// </remarks>
 public sealed class CachingCalendarService : TrackedCache<Guid, CalendarEventInfo>, ICalendarService
@@ -76,16 +84,12 @@ public sealed class CachingCalendarService : TrackedCache<Guid, CalendarEventInf
     private readonly ICalendarRepository _repo;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<CachingCalendarService> _logger;
-    private readonly SemaphoreSlim _loadLock = new(1, 1);
-    private volatile bool _isLoaded;
-
-    public bool IsWarmedUp => _isLoaded;
 
     public CachingCalendarService(
         ICalendarRepository repo,
         IServiceScopeFactory scopeFactory,
         ILogger<CachingCalendarService> logger)
-        : base("Calendar.CalendarEventInfo")
+        : base("Calendar.Event", warmOnStartup: true)
     {
         _repo = repo;
         _scopeFactory = scopeFactory;
@@ -99,7 +103,7 @@ public sealed class CachingCalendarService : TrackedCache<Guid, CalendarEventInf
     public async Task<IReadOnlyList<CalendarOccurrence>> GetOccurrencesInWindowAsync(
         Instant from, Instant to, Guid? teamId = null, CancellationToken ct = default)
     {
-        await EnsureLoadedAsync(ct);
+        await EnsureWarmedAsync(ct);
 
         // Snapshot-scan analog of CachingShiftViewService.InvalidateShift /
         // GetUsersAsync — filter the in-memory dict by the same predicate the
@@ -116,13 +120,11 @@ public sealed class CachingCalendarService : TrackedCache<Guid, CalendarEventInf
 
     public async Task<CalendarEventDetail?> GetEventByIdAsync(Guid id, CancellationToken ct = default)
     {
-        await EnsureLoadedAsync(ct);
-
-        if (!TryGet(id, out var info))
-        {
-            // Cache may have been invalidated; fall through to inner once.
-            return await WithInner(inner => inner.GetEventByIdAsync(id, ct));
-        }
+        // GetAsync drives LoadRowAsync on miss (per-key fallback for keys not
+        // yet warmed or evicted). After warmup completes this is a pure dict
+        // hit for keys we know about.
+        var info = await GetAsync(id, ct);
+        if (info is null) return null;
 
         return new CalendarEventDetail(
             Id: info.Id,
@@ -226,14 +228,16 @@ public sealed class CachingCalendarService : TrackedCache<Guid, CalendarEventInf
 
     /// <summary>
     /// Single invalidation entry point. Every write path on this decorator
-    /// calls it after delegating to the inner service. Re-fetches the event
-    /// from the repository:
+    /// calls it after delegating to the inner service. Routes through the
+    /// base <see cref="TrackedCache{TKey,TValue}.ReplaceAsync"/> primitive,
+    /// which drives <see cref="LoadRowAsync"/>:
     /// <list type="bullet">
     ///   <item>Row present (not soft-deleted) → upsert refreshed
     ///     <see cref="CalendarEventInfo"/> with its current
     ///     <c>Exceptions</c> list.</item>
-    ///   <item>Row absent (soft-deleted or never existed) → remove the
-    ///     entry from the cache.</item>
+    ///   <item>Row absent (soft-deleted or never existed) → tombstone via
+    ///     <see cref="TrackedCache{TKey,TValue}.DeleteKey"/> (preserves the
+    ///     warmed-all-rows invariant — the row really is gone).</item>
     /// </list>
     /// </summary>
     /// <remarks>
@@ -242,47 +246,56 @@ public sealed class CachingCalendarService : TrackedCache<Guid, CalendarEventInf
     /// upsert evicts and refreshes the <em>parent</em>, not a separate
     /// exception row.
     /// </remarks>
-    private async Task InvalidateEventAsync(Guid eventId, CancellationToken ct)
-    {
-        var fresh = await _repo.GetEventByIdAsync(eventId, ct);
-        if (fresh is null)
-        {
-            Invalidate(eventId);
-            return;
-        }
-
-        Set(eventId, CalendarOccurrenceExpander.ToInfo(fresh));
-    }
+    private Task InvalidateEventAsync(Guid eventId, CancellationToken ct) =>
+        ReplaceAsync(eventId, ct);
 
     // ==========================================================================
-    // Warmup
+    // Warmup + per-key load
     // ==========================================================================
 
-    public async Task WarmAllAsync(CancellationToken ct = default)
+    /// <summary>
+    /// Bulk-loads every non-soft-deleted <see cref="CalendarEvent"/> (with its
+    /// <c>Exceptions</c> collection) and projects to <see cref="CalendarEventInfo"/>.
+    /// Called by <see cref="TrackedCache{TKey,TValue}.EnsureWarmedAsync"/> at
+    /// startup and again on demand after <see cref="TrackedCache{TKey,TValue}.Clear"/>
+    /// drops the dict. The base owns concurrency coalescing via the warm
+    /// semaphore, so this body is invoked at most once at a time.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Warmup-vs-concurrent-write race (Codex P1 on PR #585): warmup reads a
+    /// DB snapshot at <c>T0</c> then upserts entries one-by-one at <c>T1+</c>.
+    /// A concurrent write whose post-commit <see cref="InvalidateEventAsync"/>
+    /// runs between <c>T0</c> and the foreach reaching that event's key has
+    /// already upserted a FRESHER projection via the base
+    /// <see cref="TrackedCache{TKey,TValue}.ReplaceAsync"/>. We must NOT
+    /// clobber that fresher value with our older snapshot row. Guard with
+    /// <see cref="TrackedCache{TKey,TValue}.ContainsKey"/> (does not affect
+    /// hit/miss counters) so write-wins ordering is preserved without any
+    /// load lock on writes.
+    /// </para>
+    /// </remarks>
+    protected override async Task WarmAllAsync(CancellationToken ct)
     {
-        if (_isLoaded) return;
-
-        await _loadLock.WaitAsync(ct);
-        try
+        var events = await _repo.GetAllAsync(ct);
+        foreach (var ev in events)
         {
-            if (_isLoaded) return;
-
-            var events = await _repo.GetAllAsync(ct);
-            foreach (var ev in events)
-                Set(ev.Id, CalendarOccurrenceExpander.ToInfo(ev));
-
-            _isLoaded = true;
-        }
-        finally
-        {
-            _loadLock.Release();
+            if (ContainsKey(ev.Id)) continue;
+            Set(ev.Id, CalendarOccurrenceExpander.ToInfo(ev));
         }
     }
 
-    private async Task EnsureLoadedAsync(CancellationToken ct)
+    /// <summary>
+    /// Per-key load. Drives <see cref="TrackedCache{TKey,TValue}.GetAsync"/>
+    /// on cache miss and <see cref="TrackedCache{TKey,TValue}.ReplaceAsync"/>
+    /// on the post-write refresh path. Returns null when the event is
+    /// soft-deleted or never existed (callers tombstone via
+    /// <see cref="TrackedCache{TKey,TValue}.DeleteKey"/>).
+    /// </summary>
+    protected override async ValueTask<CalendarEventInfo?> LoadRowAsync(Guid key, CancellationToken ct)
     {
-        if (_isLoaded) return;
-        await WarmAllAsync(ct);
+        var ev = await _repo.GetEventByIdAsync(key, ct);
+        return ev is null ? null : CalendarOccurrenceExpander.ToInfo(ev);
     }
 
     // ==========================================================================

@@ -6,6 +6,7 @@ using Humans.Application.Interfaces.Teams;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Services.Calendar;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
@@ -25,9 +26,11 @@ namespace Humans.Application.Tests.Services.Calendar;
 ///     the inner service).</item>
 ///   <item><c>GetOccurrencesInWindowAsync</c> answers from the cache snapshot
 ///     (does not call the inner service after warmup).</item>
-///   <item>Write paths invalidate via re-fetch from the repository.</item>
+///   <item>Write paths invalidate via <c>ReplaceAsync</c> (driving
+///     <c>LoadRowAsync</c> against the repository).</item>
 ///   <item>Exception writes (cancel / override) evict the PARENT event entry.</item>
-///   <item>Soft-deleted events are removed from the cache on invalidation.</item>
+///   <item>Soft-deleted events are removed from the cache on invalidation
+///     (tombstoned via <c>DeleteKey</c>, warmed flag preserved).</item>
 /// </list>
 /// </remarks>
 public class CachingCalendarServiceTests
@@ -51,6 +54,9 @@ public class CachingCalendarServiceTests
             scopeFactory,
             NullLogger<CachingCalendarService>.Instance);
     }
+
+    private static Task WarmAsync(CachingCalendarService sut) =>
+        ((IHostedService)sut).StartAsync(CancellationToken.None);
 
     private static CalendarEvent BuildEvent(
         Guid? id = null,
@@ -86,9 +92,8 @@ public class CachingCalendarServiceTests
             .Returns(new List<CalendarEvent> { e1, e2 });
 
         var sut = CreateSut();
-        await sut.WarmAllAsync();
+        await WarmAsync(sut);
 
-        sut.IsWarmedUp.Should().BeTrue();
         sut.Entries.Should().Be(2);
         sut.ContainsKey(e1.Id).Should().BeTrue();
         sut.ContainsKey(e2.Id).Should().BeTrue();
@@ -102,6 +107,7 @@ public class CachingCalendarServiceTests
             .Returns(new List<CalendarEvent> { ev });
 
         var sut = CreateSut();
+        await WarmAsync(sut);
 
         var detail = await sut.GetEventByIdAsync(ev.Id);
 
@@ -113,21 +119,27 @@ public class CachingCalendarServiceTests
     }
 
     [HumansFact]
-    public async Task GetEventByIdAsync_NotInCache_FallsThroughToInner()
+    public async Task GetEventByIdAsync_NotInCache_LoadsViaRepository()
     {
         // Empty warmup
         _repo.GetAllAsync(Arg.Any<CancellationToken>())
             .Returns(new List<CalendarEvent>());
 
         var unknownId = Guid.NewGuid();
-        _inner.GetEventByIdAsync(unknownId, Arg.Any<CancellationToken>())
-            .Returns((CalendarEventDetail?)null);
+        // LoadRowAsync drives the per-key fetch via the repository directly —
+        // not through the inner ICalendarService. (The inner service exists
+        // for writes; reads are cache-mediated.)
+        _repo.GetEventByIdAsync(unknownId, Arg.Any<CancellationToken>())
+            .Returns((CalendarEvent?)null);
 
         var sut = CreateSut();
+        await WarmAsync(sut);
+
         var result = await sut.GetEventByIdAsync(unknownId);
 
         result.Should().BeNull();
-        await _inner.Received(1).GetEventByIdAsync(unknownId, Arg.Any<CancellationToken>());
+        await _repo.Received(1).GetEventByIdAsync(unknownId, Arg.Any<CancellationToken>());
+        await _inner.DidNotReceive().GetEventByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -185,8 +197,8 @@ public class CachingCalendarServiceTests
         _inner.CreateEventAsync(dto, Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(created);
 
-        // After-write refresh: the decorator re-fetches the affected event
-        // from the repo and upserts it into the dict.
+        // After-write refresh: the decorator routes through ReplaceAsync, which
+        // drives LoadRowAsync → _repo.GetEventByIdAsync, then upserts into the dict.
         _repo.GetEventByIdAsync(created.Id, Arg.Any<CancellationToken>())
             .Returns(created);
 
@@ -212,13 +224,13 @@ public class CachingCalendarServiceTests
             .Returns((CalendarEvent?)null);
 
         var sut = CreateSut();
-        await sut.WarmAllAsync();
+        await WarmAsync(sut);
         sut.ContainsKey(ev.Id).Should().BeTrue();
 
         await sut.DeleteEventAsync(ev.Id, Guid.NewGuid());
 
         sut.ContainsKey(ev.Id).Should().BeFalse(
-            because: "soft-deleted event must be evicted from cache");
+            because: "soft-deleted event must be evicted from cache (tombstoned via DeleteKey)");
         await _inner.Received(1).DeleteEventAsync(ev.Id, Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
@@ -257,7 +269,7 @@ public class CachingCalendarServiceTests
             .Returns(after);
 
         var sut = CreateSut();
-        await sut.WarmAllAsync();
+        await WarmAsync(sut);
 
         await sut.CancelOccurrenceAsync(eventId, originalStart, Guid.NewGuid());
 
@@ -307,7 +319,7 @@ public class CachingCalendarServiceTests
             OverrideLocationUrl: null);
 
         var sut = CreateSut();
-        await sut.WarmAllAsync();
+        await WarmAsync(sut);
 
         await sut.OverrideOccurrenceAsync(eventId, originalStart, dto, Guid.NewGuid());
 
@@ -325,11 +337,87 @@ public class CachingCalendarServiceTests
 
         var sut = CreateSut();
 
-        await sut.WarmAllAsync();
-        await sut.WarmAllAsync();
-        await sut.WarmAllAsync();
+        await WarmAsync(sut);
+        await WarmAsync(sut);
+        await WarmAsync(sut);
 
-        // Second + third calls short-circuit on _isLoaded.
+        // Second + third StartAsync calls short-circuit on the warmed flag.
         await _repo.Received(1).GetAllAsync(Arg.Any<CancellationToken>());
+    }
+
+    // ==========================================================================
+    // PR #585 follow-up — warmup-vs-concurrent-write race invariant
+    // ==========================================================================
+    //
+    // Codex P1: warmup reads _repo.GetAllAsync() at T0 then loops Set(...) at
+    // T1+. If a concurrent mutation's post-write ReplaceAsync runs between T0
+    // and the foreach reaching that event's key, it has already upserted a
+    // FRESHER projection. Warmup must NOT clobber that with its older
+    // snapshot row.
+    //
+    // The fix is a ContainsKey guard in WarmAllAsync: skip keys already
+    // present (presumably set by a concurrent write that beat the foreach to
+    // that key). This test simulates the race ordering "write wins, then
+    // warmup runs" — verifies the entry pre-populated by Set is preserved.
+
+    [HumansFact]
+    public async Task WarmAllAsync_DoesNotOverwriteEntryAlreadySetByConcurrentWrite()
+    {
+        var teamId = Guid.NewGuid();
+        var sharedId = Guid.NewGuid();
+        var staleStart = Instant.FromUtc(2026, 6, 1, 10, 0);
+        var freshStart = Instant.FromUtc(2026, 6, 1, 14, 0); // moved 4h later
+
+        // The snapshot the warmup reads from the DB — represents a STALE row
+        // (the write below committed AFTER this read but before warmup's
+        // foreach reached this key).
+        var stale = BuildEvent(
+            id: sharedId, teamId: teamId, title: "Stale (snapshot)",
+            start: staleStart, end: staleStart.Plus(NodaTime.Duration.FromHours(1)));
+        _repo.GetAllAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<CalendarEvent> { stale });
+
+        var sut = CreateSut();
+
+        // Simulate a concurrent write whose Replace/Set landed FIRST: the
+        // fresh projection is already in the cache before warmup's foreach
+        // runs. TrackedCache exposes Set directly because it is the primitive
+        // ReplaceAsync uses on the load path.
+        var fresh = Humans.Application.Services.Calendar.CalendarOccurrenceExpander.ToInfo(
+            BuildEvent(
+                id: sharedId, teamId: teamId, title: "Fresh (write winner)",
+                start: freshStart, end: freshStart.Plus(NodaTime.Duration.FromHours(1))));
+        sut.Set(sharedId, fresh);
+
+        // Warmup runs. Without the guard it would Set(sharedId, stale) and
+        // clobber the fresh value. With the ContainsKey guard, the existing
+        // entry is preserved.
+        await WarmAsync(sut);
+
+        sut.TryGet(sharedId, out var actual).Should().BeTrue();
+        actual.Title.Should().Be("Fresh (write winner)",
+            because: "warmup must NOT clobber a fresher entry that a concurrent " +
+                     "write already upserted (Codex P1 on PR #585)");
+        actual.StartUtc.Should().Be(freshStart);
+    }
+
+    [HumansFact]
+    public async Task WarmAllAsync_AddsEntriesNotAlreadyPresent()
+    {
+        // Sibling test: the ContainsKey guard must not regress the normal
+        // path — brand-new keys (no prior Set) still get added by warmup.
+        var present = BuildEvent(title: "Already there");
+        var absent = BuildEvent(title: "Loaded by warmup");
+        _repo.GetAllAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<CalendarEvent> { present, absent });
+
+        var sut = CreateSut();
+        sut.Set(present.Id, Humans.Application.Services.Calendar.CalendarOccurrenceExpander.ToInfo(present));
+
+        await WarmAsync(sut);
+
+        sut.ContainsKey(present.Id).Should().BeTrue();
+        sut.ContainsKey(absent.Id).Should().BeTrue();
+        sut.Entries.Should().Be(2);
     }
 }
