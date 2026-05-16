@@ -26,6 +26,9 @@ public class AgentMessageConfiguration : IEntityTypeConfiguration<AgentMessage>
                 v => System.Text.Json.JsonSerializer.Deserialize<string[]>(v, (System.Text.Json.JsonSerializerOptions?)null) ?? Array.Empty<string>(),
                 new ValueComparer<string[]>(
                     (a, b) => ReferenceEquals(a, b) || (a != null && b != null && a.SequenceEqual(b, StringComparer.Ordinal)),
+                    // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
+                    // string[] elements are not annotated nullable but the deserialized JSON
+                    // payload can yield null entries; defensive.
                     v => v.Aggregate(0, (h, e) => HashCode.Combine(h, e == null ? 0 : StringComparer.Ordinal.GetHashCode(e))),
                     v => v.ToArray()));
 

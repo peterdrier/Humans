@@ -615,6 +615,9 @@ public sealed class CachingEventService : IEventService, IEventViewInvalidator, 
     {
         // The repo's approved query includes Category and EventVenue navs, so
         // these are populated. Fall back to the lookup dicts defensively.
+        // ReSharper disable once NullCoalescingConditionIsAlwaysNotNullAccordingToAPIContract
+        // Event.Category is declared `= null!` (EF nav); cached events come from a query
+        // that should have populated it, but the lookup-dict fallback covers stale cache.
         var category = ev.Category ??
             (categoriesById.TryGetValue(ev.CategoryId, out var c) ? c : null);
         EventVenue? venue = ev.EventVenue;

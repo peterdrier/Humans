@@ -137,6 +137,10 @@ src/**/bin\\Release/
 todos.md
 /.claude/scheduled_tasks.lock
 
+# JetBrains InspectCode output (jb inspectcode --output=insp.json)
+insp*.json
+insp*.xml
+
 # Skills installed via `npx skills add` (per-machine; symlinks tie to checkout path).
 # To rehydrate on a fresh clone: `npx skills add -y https://docs.stripe.com`.
 /.agents/

@@ -97,6 +97,9 @@ public sealed class CampaignRepository : ICampaignRepository
                 g.Campaign.Title,
                 g.Id,
                 g.UserId,
+                // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
+                // CampaignGrant.Code is declared `= null!` EF nav; in this projection EF
+                // translates `!= null` to `code_id IS NOT NULL`, which is genuine.
                 g.Code != null ? g.Code.Code : null,
                 g.RedeemedAt,
                 g.LatestEmailStatus))
@@ -290,6 +293,9 @@ public sealed class CampaignRepository : ICampaignRepository
 
         // Load unredeemed grants on active/completed campaigns. Filter by code
         // in memory so the DB query stays simple and collation-independent.
+        // ReSharper disable twice ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
+        // CampaignGrant.Code is declared `= null!` (EF nav); LEFT JOIN via Include may yield
+        // null when the campaign_code row has been hard-deleted out from under the grant.
         var unredeemed = (await ctx.CampaignGrants
             .Include(g => g.Code)
             .Include(g => g.Campaign)

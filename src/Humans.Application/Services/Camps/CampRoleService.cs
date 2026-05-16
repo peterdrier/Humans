@@ -193,7 +193,7 @@ public sealed class CampRoleService : ICampRoleService
             var filled = defAssignments.Select(a =>
             {
                 var displayName = users.TryGetValue(a.CampMember.UserId, out var u)
-                    ? u.BurnerName ?? "(unknown)"
+                    ? u.BurnerName
                     : "(unknown)";
                 return new CampRolesPanelSlot(a.Id, a.CampMemberId, a.CampMember.UserId, displayName);
             }).ToList();

@@ -93,8 +93,7 @@ public sealed class AgentUserSnapshotProvider : IAgentUserSnapshotProvider
 
         var now = _clock.GetCurrentInstant();
         var upcoming = signups
-            .Where(s => s.Shift is not null
-                && s.Shift.GetAbsoluteEnd(activeEvent) > now
+            .Where(s => s.Shift.GetAbsoluteEnd(activeEvent) > now
                 && s.Status is SignupStatus.Pending or SignupStatus.Confirmed)
             .ToList();
         if (upcoming.Count == 0)

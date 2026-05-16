@@ -196,7 +196,7 @@ public sealed class CachingConsentService
         string ipAddress, string userAgent, CancellationToken ct = default)
     {
         ConsentSubmitResult result;
-        IReadOnlySet<Guid>? sourceIds = null;
+        IReadOnlySet<Guid> sourceIds;
 
         // Resolve the merge-chain source ids OUTSIDE the submit so we know
         // every cache key affected by this write, then refresh all of them
@@ -219,11 +219,8 @@ public sealed class CachingConsentService
         if (result.Success)
         {
             await ReplaceAsync(userId, ct).ConfigureAwait(false);
-            if (sourceIds is not null)
-            {
-                foreach (var sourceId in sourceIds)
-                    await ReplaceAsync(sourceId, ct).ConfigureAwait(false);
-            }
+            foreach (var sourceId in sourceIds)
+                await ReplaceAsync(sourceId, ct).ConfigureAwait(false);
         }
 
         return result;

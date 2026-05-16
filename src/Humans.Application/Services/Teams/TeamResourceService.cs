@@ -131,7 +131,6 @@ public sealed partial class TeamResourceService : ITeamResourceService
         }
 
         var teamIds = memberships
-            .Where(m => m.Team is not null)
             .Select(m => m.TeamId)
             .Distinct()
             .ToList();
@@ -144,7 +143,6 @@ public sealed partial class TeamResourceService : ITeamResourceService
 
         // TeamMember → Team lookup (same-section) so we can surface Name/Slug.
         var teamByMembership = memberships
-            .Where(m => m.Team is not null)
             .GroupBy(m => m.TeamId)
             .ToDictionary(g => g.Key, g => g.First().Team);
 

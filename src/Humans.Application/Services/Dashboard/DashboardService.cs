@@ -121,16 +121,13 @@ public class DashboardService : IDashboardService
                 var urgentShifts = await _shiftMgmt.GetUrgentShiftsAsync(activeEvent.Id, limit: 3);
                 foreach (var u in urgentShifts)
                 {
-                    if (u.Shift is null)
-                    {
-                        _logger.LogWarning("Skipping urgent shift item because shift data was missing");
-                        continue;
-                    }
-
                     try
                     {
                         urgentItems.Add(new DashboardUrgentShift(
                             RotaName: u.Shift.Rota?.Name ?? "Unknown",
+                            // ReSharper disable once NullCoalescingConditionIsAlwaysNotNullAccordingToAPIContract
+                            // UrgentShift.DepartmentName is non-null `string` but producer returns
+                            // string.Empty on team-lookup miss; "Unknown" is the user-facing default.
                             DepartmentName: u.DepartmentName ?? "Unknown",
                             AbsoluteStart: u.Shift.GetAbsoluteStart(activeEvent),
                             RemainingSlots: u.RemainingSlots,
@@ -181,18 +178,8 @@ public class DashboardService : IDashboardService
                 {
                     try
                     {
-                        if (s.Shift is null)
-                        {
-                            _logger.LogWarning("Skipping signup {SignupId} on dashboard because shift data was missing", s.Id);
-                            continue;
-                        }
-
-                        if (s.Shift.Rota is null)
-                        {
-                            _logger.LogWarning("Skipping signup {SignupId} on dashboard because rota data was missing", s.Id);
-                            continue;
-                        }
-
+                        // Shift/Rota navs are populated by ShiftSignupRepository.GetByUserAsync
+                        // (Include chain) and the upstream .Where filtered to non-null Rota.
                         var item = new DashboardSignup(
                             RotaName: s.Shift.Rota.Name,
                             DepartmentName: teamNames.GetValueOrDefault(s.Shift.Rota.TeamId, "Unknown"),
