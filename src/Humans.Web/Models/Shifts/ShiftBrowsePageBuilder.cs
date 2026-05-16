@@ -41,7 +41,7 @@ public sealed class ShiftBrowsePageBuilder
         _teamService = teamService;
     }
 
-    public async Task<ShiftBrowseViewModel> BuildAsync(ShiftBrowsePageRequest request)
+    public async Task<ShiftBrowseViewModel> BuildAsync(ShiftBrowsePageRequest request, CancellationToken ct = default)
     {
         var es = request.EventSettings;
         var period = request.Period;
@@ -106,7 +106,7 @@ public sealed class ShiftBrowsePageBuilder
         // parent (memory/architecture/display-sort-in-controllers).
         var coveragePies = OrderPiesGroupedByParent(
             await _shiftManagement.GetDepartmentCoveragePiesAsync(
-                es.Id, filterFromDate, filterToDate));
+                es.Id, filterFromDate, filterToDate, ct: ct));
 
         return new ShiftBrowseViewModel
         {

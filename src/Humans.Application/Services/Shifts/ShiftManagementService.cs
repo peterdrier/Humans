@@ -1028,7 +1028,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
 
         // Brings rota-owning teams AND their parents into one lookup, so a
         // non-promoted sub-team rota can find its parent without a second hop.
-        var teamLookup = await TeamService.GetByIdsWithParentsAsync(teamIdsWithRotas);
+        var teamLookup = await TeamService.GetByIdsWithParentsAsync(teamIdsWithRotas, ct);
 
         var allRotas = await _repo.GetRotasWithShiftsAndSignupsAsync(
             eventSettingsId, teamIdsWithRotas.ToList(), ct);
