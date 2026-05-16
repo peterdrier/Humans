@@ -188,6 +188,14 @@ public sealed class CachingCampService :
         Guid userId, int year, CancellationToken cancellationToken = default)
     {
         await EnsureWarmedAsync(cancellationToken);
+        // Cold-year fallback — the snapshot only carries seasons for years in
+        // the warm scope (PublicYear ∪ OpenSeasons ∪ currentYear), so a query
+        // for a year outside that set would falsely return null. Same pattern
+        // as GetCampsForYearAsync / GetCampsWithLeadsForYearAsync.
+        if (!IsWarmYear(year))
+        {
+            return await WithInner(inner => inner.GetCampLeadSeasonIdForYearAsync(userId, year, cancellationToken));
+        }
         foreach (var camp in Values)
         {
             if (!camp.Leads.Any(l => l.UserId == userId)) continue;
