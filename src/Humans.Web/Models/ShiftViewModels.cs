@@ -190,6 +190,13 @@ public class ShiftBrowseViewModel
     public bool ShowSignups { get; set; }
 
     /// <summary>
+    /// Department coverage pies rendered above the page. One row per
+    /// top-level department + each promoted sub-team. Empty when the event
+    /// has no rotas that contribute pie hours.
+    /// </summary>
+    public IReadOnlyList<DepartmentCoveragePie> CoveragePies { get; set; } = [];
+
+    /// <summary>
     /// Current sort mode: "urgency" for most-needed-first, null/empty for default by-department grouping.
     /// </summary>
     public string? Sort { get; set; }

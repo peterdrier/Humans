@@ -26,7 +26,7 @@ public record ShiftTagPreferenceSummary(Guid Id, string Name);
 ///   <item>+1 GetOverallCoverageAsync for admin dashboard shift-coverage tile (peterdrier#349).</item>
 /// </list>
 /// </remarks>
-[SurfaceBudget(48)]
+[SurfaceBudget(49)]
 public interface IShiftManagementService : IApplicationService
 {
     // === Authorization ===
@@ -245,6 +245,21 @@ public interface IShiftManagementService : IApplicationService
         IReadOnlyCollection<Guid> teamIds,
         CancellationToken ct = default);
 
+    /// <summary>
+    /// Returns one row per department pie shown above the /Shifts page.
+    /// Pie-eligible teams = top-level departments + promoted sub-teams
+    /// (<see cref="Team.IsInDirectory"/>). Non-promoted sub-team rotas roll
+    /// up to their parent's pie. AdminOnly shifts and hidden rotas are
+    /// excluded. Date filters are applied per-shift via
+    /// <c>EventSettings.GateOpeningDate + DayOffset</c>.
+    /// Result order: each promoted sub-team follows its parent in the row.
+    /// </summary>
+    Task<IReadOnlyList<DepartmentCoveragePie>> GetDepartmentCoveragePiesAsync(
+        Guid eventSettingsId,
+        LocalDate? fromDate = null,
+        LocalDate? toDate = null,
+        CancellationToken ct = default);
+
     // === Coordinator Dashboard ===
 
     /// <summary>
@@ -396,6 +411,20 @@ public record ShiftsSummaryData(
     int ConfirmedCount,
     int PendingCount,
     int UniqueVolunteerCount);
+
+/// <summary>
+/// One pie shown above the /Shifts page. Hours are decimal so callers can
+/// render an exact percentage; the ratio <c>FilledHours / RequestedHours</c>
+/// is the disc fill.
+/// </summary>
+public record DepartmentCoveragePie(
+    Guid TeamId,
+    string TeamName,
+    string TeamSlug,
+    bool IsSubTeam,
+    Guid? ParentTeamId,
+    decimal RequestedHours,
+    decimal FilledHours);
 
 /// <summary>
 /// Per-day staffing hours grouped by shift priority for volume visualization.

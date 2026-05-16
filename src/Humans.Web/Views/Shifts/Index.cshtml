@@ -164,6 +164,8 @@
         }
     </form>
 
+    @await Html.PartialAsync("_DepartmentCoveragePieRow", Model)
+
     @* === Tag Filters with Preferences as Defaults === *@
     @if (Model.AllTags.Count > 0)
     {

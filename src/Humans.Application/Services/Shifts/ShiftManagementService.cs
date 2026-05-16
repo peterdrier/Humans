@@ -1009,6 +1009,81 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         CancellationToken ct = default) =>
         _repo.GetTeamIdsWithShiftsInEventAsync(eventSettingsId, teamIds, ct);
 
+    public async Task<IReadOnlyList<DepartmentCoveragePie>> GetDepartmentCoveragePiesAsync(
+        Guid eventSettingsId,
+        LocalDate? fromDate = null,
+        LocalDate? toDate = null,
+        CancellationToken ct = default)
+    {
+        var es = await _repo.GetEventSettingsByIdAsync(eventSettingsId, ct);
+        if (es is null) return [];
+
+        var teamIdsWithRotas = await _repo.GetTeamIdsWithRotasInEventAsync(eventSettingsId, ct);
+        if (teamIdsWithRotas.Count == 0) return [];
+
+        // Brings rota-owning teams AND their parents into one lookup, so a
+        // non-promoted sub-team rota can find its parent without a second hop.
+        var teamLookup = await TeamService.GetByIdsWithParentsAsync(teamIdsWithRotas);
+
+        var allRotas = await _repo.GetRotasWithShiftsAndSignupsAsync(
+            eventSettingsId, teamIdsWithRotas.ToList(), ct);
+
+        // Pie-eligible teams = top-level departments + promoted sub-teams.
+        var pieTeams = teamLookup.Values.Where(t => t.IsInDirectory).ToList();
+        var pieTeamIds = pieTeams.Select(t => t.Id).ToHashSet();
+
+        var requested = new Dictionary<Guid, decimal>();
+        var filled = new Dictionary<Guid, decimal>();
+        var allDayHours = (decimal)Duration.FromTicks(
+            Shift.AllDayWindowEnd.TickOfDay - Shift.AllDayWindowStart.TickOfDay).TotalHours;
+
+        foreach (var rota in allRotas.Where(r => r.IsVisibleToVolunteers))
+        {
+            if (!teamLookup.TryGetValue(rota.TeamId, out var rotaTeam)) continue;
+
+            // Bucket: own pie if eligible; otherwise nearest ancestor's pie.
+            Guid? bucketId = pieTeamIds.Contains(rotaTeam.Id)
+                ? rotaTeam.Id
+                : (rotaTeam.ParentTeamId is { } pid && pieTeamIds.Contains(pid) ? pid : null);
+            if (bucketId is null) continue;
+
+            foreach (var shift in rota.Shifts.Where(s => !s.AdminOnly))
+            {
+                if (fromDate is not null || toDate is not null)
+                {
+                    var shiftDate = es.GateOpeningDate.PlusDays(shift.DayOffset);
+                    if (fromDate is { } from && shiftDate < from) continue;
+                    if (toDate is { } to && shiftDate > to) continue;
+                }
+
+                var hours = shift.IsAllDay ? allDayHours : (decimal)shift.Duration.TotalHours;
+                requested[bucketId.Value] = requested.GetValueOrDefault(bucketId.Value)
+                    + hours * shift.MaxVolunteers;
+
+                var confirmed = shift.ShiftSignups.Count(ss => ss.Status == SignupStatus.Confirmed);
+                var capped = Math.Min(confirmed, shift.MaxVolunteers);
+                filled[bucketId.Value] = filled.GetValueOrDefault(bucketId.Value) + hours * capped;
+            }
+        }
+
+        return pieTeams
+            .Where(t => requested.GetValueOrDefault(t.Id) > 0)
+            .OrderBy(t => t.ParentTeamId is { } pid && teamLookup.TryGetValue(pid, out var parent)
+                ? parent.Name
+                : t.Name, StringComparer.Ordinal)
+            .ThenBy(t => t.ParentTeamId is null ? 0 : 1)
+            .ThenBy(t => t.Name, StringComparer.Ordinal)
+            .Select(t => new DepartmentCoveragePie(
+                TeamId: t.Id,
+                TeamName: t.Name,
+                TeamSlug: t.Slug,
+                IsSubTeam: t.ParentTeamId is not null,
+                ParentTeamId: t.ParentTeamId,
+                RequestedHours: requested[t.Id],
+                FilledHours: filled.GetValueOrDefault(t.Id)))
+            .ToList();
+    }
+
     public async Task<IReadOnlyList<(Guid TeamId, string TeamName)>> GetDepartmentsWithRotasAsync(
         Guid eventSettingsId)
     {

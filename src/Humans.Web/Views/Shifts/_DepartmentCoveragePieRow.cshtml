@@ -1,0 +1,58 @@
+@model Humans.Web.Models.ShiftBrowseViewModel
+
+@if (Model.CoveragePies.Count == 0)
+{
+    return;
+}
+
+<div class="dept-pie-tip" role="note">
+    <i class="bi bi-info-circle" aria-hidden="true"></i>
+    <span>@Localizer["Shifts_PieCoverage_TipFilter"]</span>
+</div>
+<div class="dept-pie-row" role="navigation" aria-label="@Localizer["Shifts_PieCoverage_RowAria"]">
+    @foreach (var pie in Model.CoveragePies)
+    {
+        var isSelected = Model.FilterDepartmentId == pie.TeamId;
+        var pct = pie.RequestedHours > 0
+            ? (int)Math.Round(pie.FilledHours / pie.RequestedHours * 100m, MidpointRounding.AwayFromZero)
+            : 0;
+        if (pct < 0) pct = 0;
+        if (pct > 100) pct = 100;
+        var requestedDisplay = pie.RequestedHours.ToString("0.#");
+        var filledDisplay = pie.FilledHours.ToString("0.#");
+        var ariaLabel = string.Format(
+            Localizer["Shifts_PieCoverage_Aria"].Value,
+            pie.TeamName, pct, filledDisplay, requestedDisplay);
+        var titleText = string.Format(
+            Localizer["Shifts_PieCoverage_Title"].Value,
+            pie.TeamName, filledDisplay, requestedDisplay, pct);
+        var deptValue = isSelected ? string.Empty : pie.TeamId.ToString();
+
+        <form method="get" asp-action="Index" class="dept-pie-form">
+            @if (!string.IsNullOrEmpty(Model.FilterPeriod))
+            {
+                <input type="hidden" name="period" value="@Model.FilterPeriod" />
+            }
+            @if (!string.IsNullOrEmpty(Model.FilterFromDate))
+            {
+                <input type="hidden" name="fromDate" value="@Model.FilterFromDate" />
+            }
+            @if (!string.IsNullOrEmpty(Model.FilterToDate))
+            {
+                <input type="hidden" name="toDate" value="@Model.FilterToDate" />
+            }
+            <input type="hidden" name="departmentId" value="@deptValue" />
+            <button type="submit"
+                    class="dept-pie@(isSelected ? " selected" : "")@(pie.IsSubTeam ? " is-subteam" : "")"
+                    aria-label="@ariaLabel"
+                    title="@titleText"
+                    style="--pct: @pct%;">
+                <span class="dept-pie-disc" aria-hidden="true"></span>
+                <span class="dept-pie-label">
+                    <span class="dept-pie-name">@pie.TeamName</span>
+                    <span class="dept-pie-stat">@filledDisplay / @requestedDisplay h</span>
+                </span>
+            </button>
+        </form>
+    }
+</div>

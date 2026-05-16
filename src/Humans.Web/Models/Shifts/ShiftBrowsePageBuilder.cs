@@ -99,6 +99,11 @@ public sealed class ShiftBrowsePageBuilder
         // VolunteerTagPreference.ShiftTagId.
         var (userSignupShiftIds, userSignupStatuses) = ShiftSignupHelper.ResolveActiveStatuses(request.UserSignups);
 
+        // Pies use the same date window as the shift list so the percentages
+        // line up with what the user is filtering to.
+        var coveragePies = await _shiftManagement.GetDepartmentCoveragePiesAsync(
+            es.Id, filterFromDate, filterToDate);
+
         return new ShiftBrowseViewModel
         {
             EventSettings = es,
@@ -121,7 +126,8 @@ public sealed class ShiftBrowsePageBuilder
             FilterTagIds = activeTagFilter,
             UserPreferredTagIds = request.UserTagPreferences.Select(t => t.ShiftTagId).ToHashSet(),
             MySignupCount = request.UserSignups.Count(s => s.Status is SignupStatus.Confirmed or SignupStatus.Pending),
-            UserActiveSignups = request.UserActiveSignups
+            UserActiveSignups = request.UserActiveSignups,
+            CoveragePies = coveragePies
         };
     }
 

@@ -1953,3 +1953,86 @@ tr[data-href] {
 .shift-tag-preferred {
     border-color: var(--h-gold-light, #d9c08e);
 }
+
+/* ── Department coverage pies (Volunteer /Shifts page) ─────────────── */
+.dept-pie-tip {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .3rem .7rem;
+    margin: .25rem 0 .6rem;
+    background: var(--h-alert-info-bg);
+    color: var(--h-alert-info-text);
+    border: 1px solid color-mix(in srgb, var(--h-alert-info-text) 20%, transparent);
+    border-radius: 999px;
+    font-size: .85rem;
+    line-height: 1.2;
+}
+.dept-pie-tip .bi { font-size: 1rem; }
+
+.dept-pie-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: .5rem;
+    margin: .5rem 0 1rem;
+}
+.dept-pie-form { margin: 0; display: contents; }
+.dept-pie {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: .5rem;
+    padding: .75rem .5rem;
+    aspect-ratio: 1 / 1;
+    width: 100%;
+    border: 1px solid var(--h-border);
+    border-radius: var(--h-radius);
+    background: var(--h-bg-card);
+    color: var(--h-text);
+    cursor: pointer;
+    transition: border-color 120ms ease, box-shadow 120ms ease, background 120ms ease;
+}
+.dept-pie:hover {
+    border-color: var(--h-gold);
+    background: var(--h-vellum);
+}
+.dept-pie.selected {
+    outline: 2px solid var(--h-gold);
+    outline-offset: 1px;
+    border-color: var(--h-gold);
+    background: var(--h-vellum);
+}
+.dept-pie.is-subteam .dept-pie-name {
+    font-style: italic;
+    opacity: .9;
+}
+.dept-pie-disc {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: conic-gradient(
+        var(--h-chart-success) 0 var(--pct, 0%),
+        var(--h-chart-muted) 0 100%
+    );
+}
+.dept-pie-label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    line-height: 1.15;
+    font-size: .85rem;
+    text-align: center;
+    width: 100%;
+    min-width: 0;
+}
+.dept-pie-name {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.dept-pie-stat {
+    color: var(--h-text-secondary);
+    font-size: .75rem;
+}
