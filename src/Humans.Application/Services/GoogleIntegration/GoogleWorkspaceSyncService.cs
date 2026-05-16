@@ -1806,6 +1806,10 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
 #pragma warning disable CS0618 // Cross-domain User nav populated in-memory by ITeamService (§6b).
         var user = tm.User;
 #pragma warning restore CS0618
+        // §6b stitcher can miss: User nav is annotated non-null but populated in-memory
+        // by ITeamService — if the stitch didn't include this row, user is null at runtime.
+        if (user is null)
+            return null;
         if (user.GoogleEmailStatus == GoogleEmailStatus.Rejected)
             return null;
 
