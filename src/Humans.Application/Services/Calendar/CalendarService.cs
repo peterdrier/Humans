@@ -8,7 +8,6 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Ical.Net.DataTypes;
 using Ical.Net.Evaluation;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using IcalEvent = Ical.Net.CalendarComponents.CalendarEvent;
@@ -31,18 +30,18 @@ namespace Humans.Application.Services.Calendar;
 ///   <item><see cref="IAuditLogService"/> — create / update / delete /
 ///     occurrence-cancel / occurrence-override mutations are audited.</item>
 /// </list>
-/// Caching: the short-TTL <see cref="IMemoryCache"/> entry
-/// <c>calendar:active-events</c> is a request-acceleration marker rather
-/// than a canonical domain projection, so §15 transparent-cache rules do
-/// not apply (design-rules §15f). It stays in-service per the §569 scope.
+/// Caching (T-08): this service is the <em>inner</em> behind the §15 caching
+/// decorator <c>CachingCalendarService</c> in Infrastructure. The decorator
+/// owns the canonical <see cref="CalendarEventInfo"/> read-model and answers
+/// reads from a snapshot; every mutating method on this type calls
+/// <c>CalendarRepository</c> and returns — invalidation is decorator-mediated
+/// (the decorator wraps each call and refreshes the affected event's cache
+/// entry afterward).
 /// </remarks>
 public sealed class CalendarService : ICalendarService
 {
-    private const string CacheKeyActiveEvents = "calendar:active-events";
-
     private readonly ICalendarRepository _repo;
     private readonly ITeamService _teamService;
-    private readonly IMemoryCache _cache;
     private readonly IClock _clock;
     private readonly IAuditLogService _audit;
     private readonly ILogger<CalendarService> _logger;
@@ -50,14 +49,12 @@ public sealed class CalendarService : ICalendarService
     public CalendarService(
         ICalendarRepository repo,
         ITeamService teamService,
-        IMemoryCache cache,
         IClock clock,
         IAuditLogService audit,
         ILogger<CalendarService> logger)
     {
         _repo = repo;
         _teamService = teamService;
-        _cache = cache;
         _clock = clock;
         _audit = audit;
         _logger = logger;
@@ -68,177 +65,22 @@ public sealed class CalendarService : ICalendarService
     {
         var events = await _repo.GetEventsInWindowAsync(from, to, teamId, ct);
 
+        var infos = events.Select(CalendarOccurrenceExpander.ToInfo).ToList();
+        var teamNames = await ResolveTeamNamesAsync(infos, ct);
+
+        return CalendarOccurrenceExpander.Expand(infos, from, to, teamNames, _logger);
+    }
+
+    private async Task<IReadOnlyDictionary<Guid, string>> ResolveTeamNamesAsync(
+        IReadOnlyList<CalendarEventInfo> events, CancellationToken ct)
+    {
         // In-memory join (§6b): resolve owning-team display names up front
         // via ITeamService instead of .Include(e => e.OwningTeam).
         var teamIds = events.Select(e => e.OwningTeamId).Distinct().ToList();
         var teamsById = await _teamService.GetTeamsAsync(ct);
-        var teamNames = teamIds
+        return teamIds
             .Where(teamsById.ContainsKey)
             .ToDictionary(id => id, id => teamsById[id].Name);
-
-        var results = new List<CalendarOccurrence>();
-
-        foreach (var e in events)
-        {
-            var owningTeamName = teamNames.TryGetValue(e.OwningTeamId, out var name)
-                ? name
-                : string.Empty;
-
-            if (string.IsNullOrWhiteSpace(e.RecurrenceRule))
-            {
-                // Half-open window [from, to): event overlaps when end > from AND start < to.
-                // Zero-duration events (start == end) are included if start is strictly inside.
-                var end = e.EndUtc ?? e.StartUtc;
-                if (end <= from || e.StartUtc >= to) continue;
-                results.Add(new CalendarOccurrence(
-                    EventId: e.Id,
-                    OccurrenceStartUtc: e.StartUtc,
-                    OccurrenceEndUtc: e.EndUtc,
-                    IsAllDay: e.IsAllDay,
-                    Title: e.Title,
-                    Description: e.Description,
-                    Location: e.Location,
-                    LocationUrl: e.LocationUrl,
-                    OwningTeamId: e.OwningTeamId,
-                    OwningTeamName: owningTeamName,
-                    IsRecurring: false,
-                    OriginalOccurrenceStartUtc: null));
-            }
-            else
-            {
-                var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(e.RecurrenceTimezone!);
-                if (zone is null)
-                {
-                    _logger.LogWarning(
-                        "CalendarEvent {Id} has unknown timezone {Tz}; skipping occurrence expansion",
-                        e.Id, e.RecurrenceTimezone);
-                    continue;
-                }
-
-                var dur = (e.EndUtc ?? e.StartUtc) - e.StartUtc;
-                var dtStartLocal = e.StartUtc.InZone(zone).LocalDateTime.ToDateTimeUnspecified();
-
-                var icalEv = new IcalEvent
-                {
-                    DtStart = new CalDateTime(dtStartLocal, e.RecurrenceTimezone, hasTime: true),
-                    Duration = Ical.Net.DataTypes.Duration.FromTimeSpanExact(TimeSpan.FromTicks(dur.BclCompatibleTicks)),
-                };
-                icalEv.RecurrenceRules.Add(new RecurrencePattern(e.RecurrenceRule!));
-
-                var fromLocal = from.InZone(zone).LocalDateTime.ToDateTimeUnspecified();
-                var toLocal = to.InZone(zone).LocalDateTime.ToDateTimeUnspecified();
-                var fromCalDt = new CalDateTime(fromLocal, e.RecurrenceTimezone, hasTime: true);
-
-                foreach (var iocc in icalEv.GetOccurrences(fromCalDt, new EvaluationOptions())
-                    .TakeWhile(o => o.Period.StartTime.Value < toLocal))
-                {
-                    // iocc.Period.StartTime.Value is DateTime Kind=Unspecified in the rule's TZ.
-                    var occLocal = LocalDateTime.FromDateTime(iocc.Period.StartTime.Value);
-                    var startInstant = occLocal.InZoneLeniently(zone).ToInstant();
-                    var endInstant = e.EndUtc is null
-                        ? (Instant?)null
-                        : startInstant.Plus(e.EndUtc.Value - e.StartUtc);
-
-                    results.Add(new CalendarOccurrence(
-                        EventId: e.Id,
-                        OccurrenceStartUtc: startInstant,
-                        OccurrenceEndUtc: endInstant,
-                        IsAllDay: e.IsAllDay,
-                        Title: e.Title,
-                        Description: e.Description,
-                        Location: e.Location,
-                        LocationUrl: e.LocationUrl,
-                        OwningTeamId: e.OwningTeamId,
-                        OwningTeamName: owningTeamName,
-                        IsRecurring: true,
-                        OriginalOccurrenceStartUtc: startInstant));
-                }
-            }
-        }
-
-        // Build a per-event exception lookup once.
-        var exceptionsByEvent = events
-            .ToDictionary(e => e.Id, e =>
-                e.Exceptions.ToDictionary(x => x.OriginalOccurrenceStartUtc));
-
-        var finalResults = new List<CalendarOccurrence>();
-        var handledExceptionKeys = new HashSet<(Guid EventId, Instant OriginalStart)>();
-
-        foreach (var occ in results)
-        {
-            if (!occ.IsRecurring || occ.OriginalOccurrenceStartUtc is null)
-            {
-                finalResults.Add(occ);
-                continue;
-            }
-
-            if (!exceptionsByEvent.TryGetValue(occ.EventId, out var perEvent) ||
-                !perEvent.TryGetValue(occ.OriginalOccurrenceStartUtc.Value, out var ex))
-            {
-                finalResults.Add(occ);
-                continue;
-            }
-
-            handledExceptionKeys.Add((occ.EventId, ex.OriginalOccurrenceStartUtc));
-
-            if (ex.IsCancelled) continue; // drop
-
-            // Apply overrides; if the override moves the occurrence outside the window, drop it.
-            // Half-open [from, to): include when newStart < to AND (newEnd ?? newStart) > from.
-            var newStart = ex.OverrideStartUtc ?? occ.OccurrenceStartUtc;
-            var newEnd = ex.OverrideEndUtc ?? occ.OccurrenceEndUtc;
-            if (newStart >= to || (newEnd ?? newStart) <= from) continue;
-
-            finalResults.Add(occ with
-            {
-                OccurrenceStartUtc = newStart,
-                OccurrenceEndUtc = newEnd,
-                Title = ex.OverrideTitle ?? occ.Title,
-                Description = ex.OverrideDescription ?? occ.Description,
-                Location = ex.OverrideLocation ?? occ.Location,
-                LocationUrl = ex.OverrideLocationUrl ?? occ.LocationUrl,
-            });
-        }
-
-        // Inject overrides whose ORIGINAL occurrence was outside the window but whose
-        // override MOVED the occurrence into the window (the expansion pipeline never
-        // materialized them, so the override loop above didn't see them either).
-        foreach (var ev in events)
-        {
-            var owningTeamName = teamNames.TryGetValue(ev.OwningTeamId, out var name)
-                ? name
-                : string.Empty;
-
-            foreach (var ex in ev.Exceptions)
-            {
-                if (handledExceptionKeys.Contains((ev.Id, ex.OriginalOccurrenceStartUtc))) continue;
-                if (ex.IsCancelled) continue;
-                if (ex.OverrideStartUtc is null) continue; // no move → no in-window occurrence to inject
-
-                var newStart = ex.OverrideStartUtc.Value;
-                var eventDuration = (ev.EndUtc ?? ev.StartUtc) - ev.StartUtc;
-                var newEnd = ex.OverrideEndUtc
-                    ?? (ev.EndUtc is null ? (Instant?)null : newStart.Plus(eventDuration));
-
-                if (newStart >= to || (newEnd ?? newStart) <= from) continue;
-
-                finalResults.Add(new CalendarOccurrence(
-                    EventId: ev.Id,
-                    OccurrenceStartUtc: newStart,
-                    OccurrenceEndUtc: newEnd,
-                    IsAllDay: ev.IsAllDay,
-                    Title: ex.OverrideTitle ?? ev.Title,
-                    Description: ex.OverrideDescription ?? ev.Description,
-                    Location: ex.OverrideLocation ?? ev.Location,
-                    LocationUrl: ex.OverrideLocationUrl ?? ev.LocationUrl,
-                    OwningTeamId: ev.OwningTeamId,
-                    OwningTeamName: owningTeamName,
-                    IsRecurring: true,
-                    OriginalOccurrenceStartUtc: ex.OriginalOccurrenceStartUtc));
-            }
-        }
-
-        return finalResults.OrderBy(o => o.OccurrenceStartUtc).ToList();
     }
 
     public async Task<CalendarEventDetail?> GetEventByIdAsync(Guid id, CancellationToken ct = default)
@@ -285,7 +127,6 @@ public sealed class CalendarService : ICalendarService
             createdByUserId,
             relatedEntityId: ev.OwningTeamId, relatedEntityType: nameof(Team));
 
-        InvalidateCache();
         return ev;
     }
 
@@ -315,8 +156,6 @@ public sealed class CalendarService : ICalendarService
             return CalendarEventMutationResult.Failed("Failed to create calendar event.");
         }
     }
-
-    private void InvalidateCache() => _cache.Remove(CacheKeyActiveEvents);
 
     // Parse-check the RRULE at write time so a malformed rule cannot persist and break
     // calendar reads (where occurrence expansion would throw). Ical.Net's RecurrencePattern
@@ -464,7 +303,6 @@ public sealed class CalendarService : ICalendarService
             updatedByUserId,
             relatedEntityId: mutated.OwningTeamId, relatedEntityType: nameof(Team));
 
-        InvalidateCache();
         return mutated;
     }
 
@@ -512,8 +350,6 @@ public sealed class CalendarService : ICalendarService
             $"Deleted calendar event '{result.Value.Title}'",
             deletedByUserId,
             relatedEntityId: result.Value.OwningTeamId, relatedEntityType: nameof(Team));
-
-        InvalidateCache();
     }
 
     public async Task CancelOccurrenceAsync(Guid eventId, Instant originalOccurrenceStartUtc, Guid userId, CancellationToken ct = default)
@@ -563,8 +399,6 @@ public sealed class CalendarService : ICalendarService
             auditAction, nameof(CalendarEvent), eventId,
             auditDescription,
             userId);
-
-        InvalidateCache();
     }
 
     private static CalendarEventDetail ToDetail(CalendarEvent ev) => new(

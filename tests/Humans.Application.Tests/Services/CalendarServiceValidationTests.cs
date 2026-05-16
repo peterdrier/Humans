@@ -5,7 +5,6 @@ using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Services.Calendar;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using NodaTime;
@@ -162,7 +161,6 @@ public class CalendarServiceValidationTests
         return new CalendarService(
             repo,
             Substitute.For<ITeamService>(),
-            new MemoryCache(new MemoryCacheOptions()),
             new FakeClock(Instant.FromUtc(2026, 5, 15, 12, 0)),
             Substitute.For<IAuditLogService>(),
             NullLogger<CalendarService>.Instance);

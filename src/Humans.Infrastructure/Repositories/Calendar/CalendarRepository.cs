@@ -61,6 +61,15 @@ public sealed class CalendarRepository : ICalendarRepository
             .FirstOrDefaultAsync(e => e.Id == id, ct);
     }
 
+    public async Task<IReadOnlyList<CalendarEvent>> GetAllAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await _factory.CreateDbContextAsync(ct);
+        return await ctx.CalendarEvents
+            .AsNoTracking()
+            .Include(e => e.Exceptions)
+            .ToListAsync(ct);
+    }
+
     // ==========================================================================
     // Writes — CalendarEvent
     // ==========================================================================
