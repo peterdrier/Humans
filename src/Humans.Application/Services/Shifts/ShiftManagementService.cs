@@ -633,6 +633,41 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         return (minDayOffset, maxDayOffset);
     }
 
+    /// <summary>
+    /// Builds the explicit list of day offsets covered by <paramref name="period"/>
+    /// (or all three periods when <paramref name="period"/> is null). Narrows
+    /// the list to the Build sub-period bounds when both <paramref name="period"/>
+    /// is <see cref="ShiftPeriod.Build"/> and <paramref name="subPeriod"/> is set.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This is the iteration-list counterpart to <see cref="GetDayOffsetBounds"/>,
+    /// which returns a min/max pair for repository queries. Callers that need to
+    /// iterate per-day (staffing data, staffing hours, coverage heatmap,
+    /// per-day department staffing) consume the list; callers that only need
+    /// query bounds keep using <c>GetDayOffsetBounds</c>.
+    /// </para>
+    /// </remarks>
+    private static List<int> BuildDayOffsetList(
+        ShiftPeriod? period, BuildSubPeriod? subPeriod, EventSettings es)
+    {
+        var offsets = new List<int>();
+        if (period is null or ShiftPeriod.Build)
+            for (var d = es.BuildStartOffset; d < 0; d++) offsets.Add(d);
+        if (period is null or ShiftPeriod.Event)
+            for (var d = 0; d <= es.EventEndOffset; d++) offsets.Add(d);
+        if (period is null or ShiftPeriod.Strike)
+            for (var d = es.EventEndOffset + 1; d <= es.StrikeEndOffset; d++) offsets.Add(d);
+
+        if (period == ShiftPeriod.Build && subPeriod is not null)
+        {
+            var (start, end) = BuildSubPeriodClassifier.BoundsFor(subPeriod.Value, es);
+            offsets = offsets.Where(d => d >= start && d < end).ToList();
+        }
+
+        return offsets;
+    }
+
     public async Task<IReadOnlyList<UrgentShift>> GetUrgentShiftsAsync(
         Guid eventSettingsId, int? limit = null,
         Guid? departmentId = null,
@@ -848,24 +883,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
 
         var tz = DateTimeZoneProviders.Tzdb[es.TimeZoneId];
 
-        // TODO(consolidation): these 6 day-offset-list builders inline BoundsFor directly
-        // rather than going through GetDayOffsetBounds, because they need an explicit
-        // iteration list (not a min/max tuple). Unifying would require a new helper overload.
-        var dayOffsets = new List<int>();
-        if (period is null or ShiftPeriod.Build)
-            for (var d = es.BuildStartOffset; d < 0; d++) dayOffsets.Add(d);
-        if (period is null or ShiftPeriod.Event)
-            for (var d = 0; d <= es.EventEndOffset; d++) dayOffsets.Add(d);
-        if (period is null or ShiftPeriod.Strike)
-            for (var d = es.EventEndOffset + 1; d <= es.StrikeEndOffset; d++) dayOffsets.Add(d);
-
-        // Narrow to sub-period bounds when set (only meaningful for Build).
-        if (period == ShiftPeriod.Build && subPeriod is not null)
-        {
-            var (start, end) = BuildSubPeriodClassifier.BoundsFor(subPeriod.Value, es);
-            dayOffsets = dayOffsets.Where(d => d >= start && d < end).ToList();
-        }
-
+        var dayOffsets = BuildDayOffsetList(period, subPeriod, es);
         if (dayOffsets.Count == 0) return [];
 
         var shifts = await _repo.GetShiftsForEventAsync(eventSettingsId, departmentId);
@@ -911,20 +929,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
 
         var tz = DateTimeZoneProviders.Tzdb[es.TimeZoneId];
 
-        var dayOffsets = new List<int>();
-        if (period is null or ShiftPeriod.Build)
-            for (var d = es.BuildStartOffset; d < 0; d++) dayOffsets.Add(d);
-        if (period is null or ShiftPeriod.Event)
-            for (var d = 0; d <= es.EventEndOffset; d++) dayOffsets.Add(d);
-        if (period is null or ShiftPeriod.Strike)
-            for (var d = es.EventEndOffset + 1; d <= es.StrikeEndOffset; d++) dayOffsets.Add(d);
-
-        if (period == ShiftPeriod.Build && subPeriod is not null)
-        {
-            var (start, end) = BuildSubPeriodClassifier.BoundsFor(subPeriod.Value, es);
-            dayOffsets = dayOffsets.Where(d => d >= start && d < end).ToList();
-        }
-
+        var dayOffsets = BuildDayOffsetList(period, subPeriod, es);
         if (dayOffsets.Count == 0) return [];
 
         var shifts = await _repo.GetShiftsForEventAsync(eventSettingsId, departmentId);
@@ -1501,18 +1506,9 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
 
         var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(es.TimeZoneId) ?? DateTimeZone.Utc;
 
-        var dayOffsets = new List<int>();
-        if (period is ShiftPeriod.Build)
-            for (var d = es.BuildStartOffset; d < 0; d++) dayOffsets.Add(d);
-        else
-            for (var d = es.EventEndOffset + 1; d <= es.StrikeEndOffset; d++) dayOffsets.Add(d);
-
-        if (period == ShiftPeriod.Build && subPeriod is not null)
-        {
-            var (start, end) = BuildSubPeriodClassifier.BoundsFor(subPeriod.Value, es);
-            dayOffsets = dayOffsets.Where(d => d >= start && d < end).ToList();
-        }
-
+        // Caller restricts to Build or Strike up-front (see early return above),
+        // so BuildDayOffsetList only fills one of its two relevant branches.
+        var dayOffsets = BuildDayOffsetList(period, subPeriod, es);
         if (dayOffsets.Count == 0) return [];
 
         var shifts = await _repo.GetVisibleShiftsForEventAsync(eventSettingsId);
@@ -1581,20 +1577,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
 
         var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(es.TimeZoneId) ?? DateTimeZone.Utc;
 
-        var dayOffsets = new List<int>();
-        if (period is null or ShiftPeriod.Build)
-            for (var d = es.BuildStartOffset; d < 0; d++) dayOffsets.Add(d);
-        if (period is null or ShiftPeriod.Event)
-            for (var d = 0; d <= es.EventEndOffset; d++) dayOffsets.Add(d);
-        if (period is null or ShiftPeriod.Strike)
-            for (var d = es.EventEndOffset + 1; d <= es.StrikeEndOffset; d++) dayOffsets.Add(d);
-
-        if (period == ShiftPeriod.Build && subPeriod is not null)
-        {
-            var (start, end) = BuildSubPeriodClassifier.BoundsFor(subPeriod.Value, es);
-            dayOffsets = dayOffsets.Where(d => d >= start && d < end).ToList();
-        }
-
+        var dayOffsets = BuildDayOffsetList(period, subPeriod, es);
         if (dayOffsets.Count == 0) return empty;
 
         var allShifts = await _repo.GetVisibleShiftsForEventAsync(eventSettingsId);
