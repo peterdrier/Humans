@@ -62,30 +62,18 @@ public static class MemoryCacheExtensions
         cache.Remove(CacheKeys.ActiveTeams);
     }
 
-    public static void InvalidateUserTicketCount(this IMemoryCache cache, Guid userId) =>
-        cache.Remove(CacheKeys.UserTicketCount(userId));
-
-    public static void InvalidateTicketDashboardStats(this IMemoryCache cache) =>
-        cache.Remove(CacheKeys.TicketDashboardStats);
-
-    public static void InvalidateUserIdsWithTickets(this IMemoryCache cache) =>
-        cache.Remove(CacheKeys.UserIdsWithTickets);
-
-    public static void InvalidateValidAttendeeEmails(this IMemoryCache cache) =>
-        cache.Remove(CacheKeys.ValidAttendeeEmails);
-
-    /// <summary>
-    /// Invalidate all ticket-related caches after a sync or data change.
-    /// Per-user UserTicketCount entries are NOT invalidated here because they use
-    /// per-user keys that can't be enumerated for bulk invalidation. They expire
-    /// naturally via their 5-minute TTL, which is acceptable at ~500-user scale.
-    /// </summary>
-    public static void InvalidateTicketCaches(this IMemoryCache cache)
-    {
-        cache.InvalidateTicketDashboardStats();
-        cache.InvalidateUserIdsWithTickets();
-        cache.InvalidateValidAttendeeEmails();
-    }
+    // Camp-cache invalidation extensions were retired in T-06 — eviction
+    // is now owned by CachingCampService (Infrastructure decorator) and
+    // reached through ICampInfoInvalidator. The CampSeasonsByYear /
+    // CampSettings keys are gone from CacheKeys as well (snapshot lives on
+    // the decorator).
+    //
+    // Ticket-cache invalidation extensions were retired in T-07 — eviction
+    // is now owned by CachingTicketQueryService (Infrastructure decorator)
+    // and reached through ITicketCacheInvalidator. The cache keys themselves
+    // (UserTicketCount, UserTicketHoldings, UserIdsWithTickets,
+    // ValidAttendeeEmails, TicketDashboardStats) remain on CacheKeys; the
+    // decorator pokes them directly via cache.Remove.
 
     public static void InvalidateNobodiesTeamEmails(this IMemoryCache cache) =>
         cache.Remove(CacheKeys.NobodiesTeamEmails);

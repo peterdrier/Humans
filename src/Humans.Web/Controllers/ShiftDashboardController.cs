@@ -128,6 +128,7 @@ public class ShiftDashboardController : HumansControllerBase
                 ShiftRoleChecks.CanViewMedical(User),
                 _userManager,
                 _shiftView,
+                _signupService,
                 _availabilityService);
             return ToVolunteerSearchActionResult(result);
         }

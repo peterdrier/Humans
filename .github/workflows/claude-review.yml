@@ -71,7 +71,15 @@ on:
   # below, which checks the actual push delta via the compare API.
 
 concurrency:
-  group: claude-review-${{ github.repository }}-${{ github.event.pull_request.number || github.event.issue.number }}
+  # Include event_name so pull_request, pull_request_target, and issue_comment
+  # events get separate slots per PR. Workflow-level concurrency is evaluated
+  # BEFORE job-level `if:`, so without this split, every PR comment (which
+  # queues an issue_comment run that then skips) would cancel an in-flight
+  # review via cancel-in-progress. Trade-off: a `/review` comment posted
+  # while a pull_request review is still running won't cancel that review —
+  # both run to completion. Cancel-in-progress still consolidates repeats
+  # within the same event type.
+  group: claude-review-${{ github.repository }}-${{ github.event.pull_request.number || github.event.issue.number }}-${{ github.event_name }}
   cancel-in-progress: true
 
 jobs:

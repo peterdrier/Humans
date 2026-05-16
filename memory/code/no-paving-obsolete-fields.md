@@ -1,6 +1,6 @@
 ---
 name: no-paving-obsolete-fields
-description: When migrating a read or write, use the canonical replacement field/predicate — not the obsolete one. Don't pave the cow path. Fires whenever code touches a `[Obsolete]`-flagged member, a `#pragma warning disable HUM_*_OBSOLETE` ed property, or a legacy helper that has a canonical successor (e.g. `Profile.IsSuspended` → `Profile.State`, `Profile.HasRequiredIdentityFields()` → `Profile.State == ProfileState.Stub`).
+description: When migrating a read or write, use the canonical replacement field/predicate — not the obsolete one. Don't pave the cow path. Fires whenever code touches a `[Obsolete]`-flagged member, a `#pragma warning disable HUM_*_OBSOLETE` ed property, or a legacy helper that has a canonical successor (e.g. `Profile.IsSuspended` → `Profile.State`).
 ---
 
 When migrating a caller to a new service / read-model / interface, do NOT carry the call site's pre-existing reliance on a legacy/obsolete field, predicate, or helper. Switch to the canonical replacement at the same time as the migration. New code is never written against the obsolete field — full stop, even if the obsolete one is "still there and still works."
@@ -10,7 +10,7 @@ When migrating a caller to a new service / read-model / interface, do NOT carry 
 **How to apply:**
 
 - `Profile.IsSuspended` (bool, `[Obsolete]`-flagged with `HUM_PROFILE_ISSUSPENDED`) → `Profile.State == ProfileState.Suspended`.
-- `Profile.HasRequiredIdentityFields()` (predicate) → `Profile.State == ProfileState.Stub` for the "is this a stub?" question; the State enum is the canonical lifecycle marker. The predicate exists to *derive* State; downstream code reads State.
+- "Has this user filled in their name?" → `UserInfo.HasRequiredNameFields` on the read side. Write paths inline the three null/whitespace checks at the callsite (`ProfileService.SaveProfileAsync`, `SetSuspendedAsync`). The former `Profile.HasRequiredIdentityFields()` entity method has been removed — see [`derived-predicates-on-userinfo`](../architecture/derived-predicates-on-userinfo.md).
 - `User.DisplayName` for public rendering → `UserInfo.BurnerName` / `<vc:human>` (see [`burnername-is-the-display-name`](../architecture/burnername-is-the-display-name.md)).
 - Any `[Obsolete]` attribute or `#pragma warning disable HUM_*_OBSOLETE` you see while editing is a stop-sign for the line under it: replace it with the canonical successor, don't propagate it.
 - If you genuinely can't find a canonical replacement — STOP and ask. Don't invent one and don't suppress the obsolete warning.

@@ -39,6 +39,11 @@ public interface IEventRepository : IRepository
 
     // ── Categories ────────────────────────────────────────────────────────
     Task<IReadOnlyList<EventCategory>> GetActiveCategoriesAsync(CancellationToken ct = default);
+    /// <summary>
+    /// All categories — active + inactive — with the <c>.Events</c> include.
+    /// Used by the admin list view AND <c>CachingEventService</c> snapshot
+    /// (the latter pays the small Include cost; ~30 categories at this scale).
+    /// </summary>
     Task<IReadOnlyList<EventCategory>> GetAllCategoriesAsync(CancellationToken ct = default);
     Task<EventCategory?> GetCategoryAsync(Guid id, CancellationToken ct = default);
     Task<bool> CategorySlugExistsAsync(string slug, Guid? excludeId, CancellationToken ct = default);
@@ -51,6 +56,11 @@ public interface IEventRepository : IRepository
 
     // ── Venues ────────────────────────────────────────────────────────────
     Task<IReadOnlyList<EventVenue>> GetActiveVenuesAsync(CancellationToken ct = default);
+    /// <summary>
+    /// All venues — active + inactive — with the <c>.Events</c> include.
+    /// Used by the admin list view AND <c>CachingEventService</c> snapshot
+    /// (the latter pays the small Include cost; ~30 venues at this scale).
+    /// </summary>
     Task<IReadOnlyList<EventVenue>> GetAllVenuesAsync(CancellationToken ct = default);
     Task<EventVenue?> GetVenueAsync(Guid id, CancellationToken ct = default);
     Task<int> GetMaxVenueOrderAsync(CancellationToken ct = default);

@@ -44,7 +44,6 @@ public sealed class TicketQueryServiceTests : IDisposable
 
         _service = new TicketQueryService(
             _repo,
-            new MemoryCache(new MemoryCacheOptions()),
             _budgetService,
             _campaignService,
             _userService,

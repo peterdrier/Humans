@@ -206,7 +206,7 @@ public sealed class ConsentService : IConsentService, IUserDataContributor
         // row is missing entirely — must still be refused so a ConsentRecord
         // is never written for a Profile with no verified legal name.
         var info = await _userService.GetUserInfoAsync(userId, ct);
-        if (info is null || !info.HasRequiredIdentityFields)
+        if (info is null || !info.HasRequiredNameFields)
             return new ConsentSubmitResult(false, ErrorKey: "StubProfile");
 
         var version = await _legalDocumentSyncService.GetVersionByIdAsync(documentVersionId, ct);

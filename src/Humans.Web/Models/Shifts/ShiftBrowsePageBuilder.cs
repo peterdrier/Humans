@@ -7,10 +7,18 @@ using NodaTime.Text;
 
 namespace Humans.Web.Models.Shifts;
 
+/// <summary>
+/// Inputs for <see cref="ShiftBrowsePageBuilder"/>. <see cref="UserTagPreferences"/>
+/// is the raw <see cref="VolunteerTagPreference"/> rows from the cached
+/// <c>ShiftUserView</c> (T-10, issue #720); the builder reads
+/// <see cref="VolunteerTagPreference.ShiftTagId"/> to build the preferred-tag
+/// id set on the view model.
+/// </summary>
 public sealed record ShiftBrowsePageRequest(
     EventSettings EventSettings,
     Guid UserId,
     IReadOnlyList<ShiftSignup> UserSignups,
+    IReadOnlyList<VolunteerTagPreference> UserTagPreferences,
     IReadOnlyList<UserSignupConflictItem> UserActiveSignups,
     Guid? DepartmentId,
     string? FromDate,
@@ -84,7 +92,11 @@ public sealed class ShiftBrowsePageBuilder
 
         var allDepartments = await GetDepartmentOptionsAsync(request.DepartmentId, departments, es.Id);
         var allTags = await _shiftManagement.GetTagsAsync();
-        var userPreferredTags = await _shiftManagement.GetVolunteerTagPreferencesAsync(request.UserId);
+        // T-10: preferred tag ids come from the cached ShiftUserView's
+        // TagPreferences (issue #720) — the controller already fetched the
+        // view for the signup read, so we reuse those rows here. The shape
+        // shift is harmless: ShiftTagPreferenceSummary.Id == ShiftTag.Id ==
+        // VolunteerTagPreference.ShiftTagId.
         var (userSignupShiftIds, userSignupStatuses) = ShiftSignupHelper.ResolveActiveStatuses(request.UserSignups);
 
         return new ShiftBrowseViewModel
@@ -107,7 +119,7 @@ public sealed class ShiftBrowsePageBuilder
                 : [],
             AllTags = allTags.OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase).ToList(),
             FilterTagIds = activeTagFilter,
-            UserPreferredTagIds = userPreferredTags.Select(t => t.Id).ToHashSet(),
+            UserPreferredTagIds = request.UserTagPreferences.Select(t => t.ShiftTagId).ToHashSet(),
             MySignupCount = request.UserSignups.Count(s => s.Status is SignupStatus.Confirmed or SignupStatus.Pending),
             UserActiveSignups = request.UserActiveSignups
         };

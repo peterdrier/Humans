@@ -13,13 +13,11 @@
             --container-fill-selected: var(--h-gold);
         }
         /* Override the main layout to occupy the whole screen space */
-        .main-content { display: flex; max-width: 100vw; padding: 0; }
-        main { display: flex; flex: 1; padding: 0; }
-        #map-page { display: flex; flex: 1; overflow: hidden; }
-        #container-sidebar { width: 280px; flex-shrink: 0; display: flex; flex-direction: column; overflow: hidden; }
-        #sidebar-unplaced, #sidebar-placed { overflow-y: auto; }
-        #map-container { flex: 1; position: relative; }
-        #map { height: 100%; width: 100%; }
+        body { height: 100vh; overflow: hidden; }
+        .main-content { display: flex; max-width: 100vw; padding: 0; min-height: 0; }
+        main { display: flex; flex: 1; padding: 0; min-height: 0; }
+        #map-page, #container-sidebar { min-height: 0; }
+        #container-sidebar { width: 280px; }
         #rotation-handle {
             position: absolute;
             width: 28px;
@@ -52,8 +50,8 @@
 
 @Html.AntiForgeryToken()
 
-<div id="map-page">
-    <div id="container-sidebar" class="border-end">
+<div id="map-page" class="d-flex flex-fill overflow-hidden">
+    <div id="container-sidebar" class="border-end d-flex flex-column overflow-hidden flex-shrink-0">
         <div class="px-3 py-2 border-bottom d-flex flex-column align-items-center gap-2">
             <div>
                 <div class="fw-semibold">@Localizer["Container_Breadcrumb"] @Model.Year</div>
@@ -75,15 +73,17 @@
                 </a>
             }
         </div>
-        <div id="sidebar-unplaced" class="list-group list-group-flush">
-            <div class="sidebar-section-label list-group-item py-1 text-uppercase text-muted small fw-semibold bg-body-tertiary">@Localizer["ContainerMap_Unplaced"]</div>
-        </div>
-        <div id="sidebar-placed" class="list-group list-group-flush">
-            <div class="sidebar-section-label list-group-item py-1 text-uppercase text-muted small fw-semibold bg-body-tertiary">@Localizer["ContainerMap_Placed"]</div>
+        <div class="overflow-auto">
+            <div id="sidebar-unplaced" class="list-group list-group-flush">
+                <div class="sidebar-section-label list-group-item py-1 text-uppercase text-muted small fw-semibold bg-body-tertiary">@Localizer["ContainerMap_Unplaced"]</div>
+            </div>
+            <div id="sidebar-placed" class="list-group list-group-flush border-top">
+                <div class="sidebar-section-label list-group-item py-1 text-uppercase text-muted small fw-semibold bg-body-tertiary">@Localizer["ContainerMap_Placed"]</div>
+            </div>
         </div>
     </div>
-    <div id="map-container">
-        <div id="map"
+    <div id="map-container" class="flex-fill position-relative">
+        <div id="map" class="h-100 w-100"
              data-year="@Model.Year"
              data-is-map-admin="@Model.IsMapAdmin.ToString().ToLower()"
              data-user-camp-id="@Model.UserCampId"></div>

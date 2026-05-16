@@ -344,16 +344,17 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
             }
         }
 
-        // Issue #635 (§15i): Stub → Active transition. When all required
-        // identity fields are populated and the profile is not Suspended,
-        // promote the lifecycle marker. Predicate lives on the Profile
-        // entity so the same rule serves the lazy-compute path in
-        // CachingUserService.ComputeProfileState.
+        // Issue #635 (§15i): Stub → Active transition. When BurnerName +
+        // FirstName + LastName are all populated and the profile is not
+        // Suspended, promote the lifecycle marker. UserInfo.HasRequiredNameFields
+        // is the read-side mirror of these same three checks.
         if (profile.State != ProfileState.Suspended)
         {
-            profile.State = profile.HasRequiredIdentityFields()
-                ? ProfileState.Active
-                : ProfileState.Stub;
+            var hasNames =
+                !string.IsNullOrWhiteSpace(profile.BurnerName)
+                && !string.IsNullOrWhiteSpace(profile.FirstName)
+                && !string.IsNullOrWhiteSpace(profile.LastName);
+            profile.State = hasNames ? ProfileState.Active : ProfileState.Stub;
         }
 
         await _profileRepository.UpdateAsync(profile, ct);
@@ -671,9 +672,11 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         }
         else
         {
-            profile.State = profile.HasRequiredIdentityFields()
-                ? ProfileState.Active
-                : ProfileState.Stub;
+            var hasNames =
+                !string.IsNullOrWhiteSpace(profile.BurnerName)
+                && !string.IsNullOrWhiteSpace(profile.FirstName)
+                && !string.IsNullOrWhiteSpace(profile.LastName);
+            profile.State = hasNames ? ProfileState.Active : ProfileState.Stub;
         }
 
         if (suspended)

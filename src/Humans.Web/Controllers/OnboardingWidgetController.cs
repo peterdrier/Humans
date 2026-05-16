@@ -74,13 +74,10 @@ public class OnboardingWidgetController : HumansControllerBase
     [HttpGet]
     public IActionResult Names()
     {
-        // Pre-fill from OAuth claims when present.
-        var vm = new NamesViewModel
-        {
-            FirstName = User.FindFirstValue(ClaimTypes.GivenName) ?? string.Empty,
-            LastName = User.FindFirstValue(ClaimTypes.Surname) ?? string.Empty,
-        };
-        return View(vm);
+        // Legal name must come from the user, not from OAuth claims — provider-
+        // supplied names are unverified and let users blow through the step
+        // without thinking. Force an explicit entry.
+        return View(new NamesViewModel());
     }
 
     [HttpPost]
@@ -186,7 +183,7 @@ public class OnboardingWidgetController : HumansControllerBase
         // Stub-profile users can't sign consents (defense-in-depth gate in
         // ConsentService.SubmitConsentAsync would refuse). Bounce them back to
         // the Names step where they belong instead of rendering a doomed form.
-        if (await IsStubAsync(userId, ct))
+        if (await IsNameMissingAsync(userId, ct))
             return RedirectToNamesForStub();
 
         var rows = await _consents.GetRequiredConsentRowsForUserAsync(userId, SystemTeamIds.Volunteers, ct);
@@ -230,7 +227,7 @@ public class OnboardingWidgetController : HumansControllerBase
         // Mirror the GET-side gate so a Stub user who reaches the form via a
         // stale page or back-button can't POST into the StubProfile refusal
         // path below.
-        if (await IsStubAsync(userId, ct))
+        if (await IsNameMissingAsync(userId, ct))
             return RedirectToNamesForStub();
 
         var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
@@ -263,10 +260,14 @@ public class OnboardingWidgetController : HumansControllerBase
         return RedirectToAction(nameof(Index));
     }
 
-    private async Task<bool> IsStubAsync(Guid userId, CancellationToken ct)
+    // "Can this user sign consents?" — gated on having a legal name on file,
+    // not on Profile.State == Stub. Matches the dispatcher's HasRequiredNameFields
+    // routing so an Active-state profile with blank name fields can't slip
+    // past the Names step here either.
+    private async Task<bool> IsNameMissingAsync(Guid userId, CancellationToken ct)
     {
         var info = await _userService.GetUserInfoAsync(userId, ct);
-        return info is null || info.IsStub;
+        return info is null || !info.HasRequiredNameFields;
     }
 
     private IActionResult RedirectToNamesForStub()

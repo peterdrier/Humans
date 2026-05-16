@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Application.DTOs.Shifts;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Domain.Entities;
@@ -96,12 +97,12 @@ public class ShiftSignupsBucketingTests
     [HumansFact]
     public async Task ServiceError_ReturnsEmptyModel()
     {
-        var signupService = Substitute.For<IShiftSignupService>();
+        var shiftView = Substitute.For<IShiftView>();
         var shiftMgmt = Substitute.For<IShiftManagementService>();
         shiftMgmt.GetActiveAsync()
             .Returns(Task.FromException<EventSettings?>(new InvalidOperationException("DB down")));
 
-        var model = await RunComponent([], shiftMgmt, signupService);
+        var model = await RunComponent([], shiftMgmt, shiftView);
 
         model.Upcoming.Should().BeEmpty();
         model.Pending.Should().BeEmpty();
@@ -111,17 +112,23 @@ public class ShiftSignupsBucketingTests
     private async Task<ShiftSignupsViewModel> RunComponent(
         List<ShiftSignup> signups,
         IShiftManagementService? shiftMgmt = null,
-        IShiftSignupService? signupService = null)
+        IShiftView? shiftView = null)
     {
         var callerProvidedMocks = shiftMgmt is not null;
-        signupService ??= Substitute.For<IShiftSignupService>();
+        shiftView ??= Substitute.For<IShiftView>();
         shiftMgmt ??= Substitute.For<IShiftManagementService>();
 
         if (!callerProvidedMocks)
         {
             shiftMgmt.GetActiveAsync().Returns(TestEvent);
-            signupService.GetByUserAsync(_userId, TestEvent.Id)
-                .Returns(signups);
+            shiftView.GetUserAsync(_userId, Arg.Any<CancellationToken>())
+                .Returns(new ValueTask<ShiftUserView>(new ShiftUserView(
+                    _userId,
+                    Profile: null,
+                    Availability: null,
+                    BuildStatus: null,
+                    TagPreferences: [],
+                    Signups: signups)));
         }
 
         var teamService = Substitute.For<ITeamService>();
@@ -142,7 +149,7 @@ public class ShiftSignupsBucketingTests
 
         var clock = new FakeClock(TestNow);
         var component = new ShiftSignupsViewComponent(
-            signupService, shiftMgmt, teamService, clock,
+            shiftView, shiftMgmt, teamService, clock,
             NullLogger<ShiftSignupsViewComponent>.Instance);
 
         // Minimal ViewComponentContext for View() to work

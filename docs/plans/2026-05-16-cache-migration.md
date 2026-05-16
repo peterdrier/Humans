@@ -207,7 +207,7 @@ Sites to migrate:
 
 ---
 
-### T-10 · Shifts — migrate ShiftsController + ViewComponent bypasses
+### T-10 · Shifts — migrate ShiftsController + ViewComponent bypasses [CLAIMED: refactor/cache-t10-shifts-legacy]
 
 **What**: Remaining legacy bypasses noted in the retrospective:
 - `ShiftsController` (×2) and `ShiftSignupsViewComponent` — `IShiftSignupService.GetByUserAsync`.

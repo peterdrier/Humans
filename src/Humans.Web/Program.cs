@@ -139,6 +139,9 @@ builder.Services.AddDbContext<HumansDbContext>((sp, options) =>
     // Issue #703: SaveChanges interceptor that signals UserInfo cache
     // invalidation for every persisted mutation to the 8 contributing tables.
     options.AddInterceptors(sp.GetRequiredService<UserInfoSaveChangesInterceptor>());
+    // T-04: SaveChanges interceptor that wholesale-flushes the Legal-document
+    // cache after any persisted write to legal_documents or document_versions.
+    options.AddInterceptors(sp.GetRequiredService<LegalDocumentSaveChangesInterceptor>());
     // Suppress "First/FirstOrDefault without OrderBy" warning — the codebase universally uses
     // .FirstOrDefaultAsync(e => e.Id == id) for PK lookups which are deterministic by definition.
     options.ConfigureWarnings(w => w.Ignore(CoreEventId.FirstWithoutOrderByAndFilterWarning));
@@ -164,6 +167,8 @@ builder.Services.AddDbContextFactory<HumansDbContext>((sp, options) =>
     });
     // Issue #703: same SaveChanges interceptor for the IDbContextFactory pipeline.
     options.AddInterceptors(sp.GetRequiredService<UserInfoSaveChangesInterceptor>());
+    // T-04: same Legal-cache invalidation interceptor for the IDbContextFactory pipeline.
+    options.AddInterceptors(sp.GetRequiredService<LegalDocumentSaveChangesInterceptor>());
     options.ConfigureWarnings(w => w.Ignore(CoreEventId.FirstWithoutOrderByAndFilterWarning));
 });
 

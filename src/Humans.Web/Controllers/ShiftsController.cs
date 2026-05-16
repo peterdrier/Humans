@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using Humans.Application;
+using Humans.Application.DTOs.Shifts;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
@@ -26,6 +27,7 @@ public class ShiftsController : HumansControllerBase
     private readonly IShiftManagementService _shiftMgmt;
     private readonly IShiftSignupService _signupService;
     private readonly IGeneralAvailabilityService _availabilityService;
+    private readonly IShiftView _shiftView;
     private readonly ITeamService _teamService;
     private readonly IAuditLogService _auditLogService;
     private readonly IUserService _userService;
@@ -38,6 +40,7 @@ public class ShiftsController : HumansControllerBase
         IShiftManagementService shiftMgmt,
         IShiftSignupService signupService,
         IGeneralAvailabilityService availabilityService,
+        IShiftView shiftView,
         ITeamService teamService,
         IAuditLogService auditLogService,
         IUserService userService,
@@ -50,6 +53,7 @@ public class ShiftsController : HumansControllerBase
         _shiftMgmt = shiftMgmt;
         _signupService = signupService;
         _availabilityService = availabilityService;
+        _shiftView = shiftView;
         _teamService = teamService;
         _auditLogService = auditLogService;
         _userService = userService;
@@ -68,13 +72,19 @@ public class ShiftsController : HumansControllerBase
             return currentUserNotFound;
         }
 
+        if (RedirectIfNameMissing(user) is { } nameGate) return nameGate;
+
         var es = await _shiftMgmt.GetActiveAsync();
         if (es is null) return View("NoActiveEvent");
 
         var isPrivileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User) ||
                            (await _shiftMgmt.GetCoordinatorTeamIdsAsync(user.Id)).Count > 0;
 
-        var userSignups = await _signupService.GetByUserAsync(user.Id, es.Id);
+        // T-10: signups + tag-preferences come from the cached ShiftUserView
+        // (issue #720). ShiftUserView.Signups is already scoped to the active
+        // event by the inner ShiftViewService; no further filtering needed.
+        var userView = await _shiftView.GetUserAsync(user.Id);
+        var userSignups = userView.Signups;
         var hasSignups = userSignups.Count > 0;
         var userActiveSignupsForUi = await LoadUserActiveSignupsForUiAsync(user.Id);
 
@@ -85,6 +95,7 @@ public class ShiftsController : HumansControllerBase
             es,
             user.Id,
             userSignups,
+            userView.TagPreferences,
             userActiveSignupsForUi,
             departmentId,
             fromDate,
@@ -102,6 +113,17 @@ public class ShiftsController : HumansControllerBase
     private static bool CanBrowseShifts(EventSettings eventSettings, bool isPrivileged, bool hasSignups) =>
         eventSettings.IsShiftBrowsingOpen || isPrivileged || hasSignups;
 
+    // Users without a legal name on file cannot browse or sign up for shifts —
+    // the signup record would lack the name the rota report needs. Bounce them
+    // into the onboarding widget with an info message; the widget dispatcher
+    // will land them on the Names step.
+    private IActionResult? RedirectIfNameMissing(UserInfo user)
+    {
+        if (user.HasRequiredNameFields) return null;
+        SetInfo(_localizer["Onboarding_NameRequiredBeforeShifts"].Value);
+        return RedirectToAction(nameof(OnboardingWidgetController.Index), "OnboardingWidget");
+    }
+
     [HttpPost("SignUp")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SignUp(Guid shiftId, Guid? departmentId, string? fromDate, string? toDate, string? period, [FromForm(Name = "tags")] List<Guid>? tagIds, [FromForm(Name = "periods")] List<string>? periods = null, string? sort = null)
@@ -111,6 +133,8 @@ public class ShiftsController : HumansControllerBase
         {
             return currentUserNotFound;
         }
+
+        if (RedirectIfNameMissing(user) is { } nameGate) return nameGate;
 
         var privileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User);
         var result = await _signupService.SignUpAsync(user.Id, shiftId, isPrivileged: privileged);
@@ -138,6 +162,8 @@ public class ShiftsController : HumansControllerBase
         {
             return currentUserNotFound;
         }
+
+        if (RedirectIfNameMissing(user) is { } nameGate) return nameGate;
 
         var privileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User);
         var result = await _signupService.SignUpRangeAsync(user.Id, rotaId, startDayOffset, endDayOffset, isPrivileged: privileged, skipConflicts: true);
@@ -251,9 +277,11 @@ public class ShiftsController : HumansControllerBase
 
         var es = await _shiftMgmt.GetActiveAsync();
 
-        var signups = es is not null
-            ? await _signupService.GetByUserAsync(user.Id, es.Id)
-            : [];
+        // T-10: cached ShiftUserView (issue #720). Signups are pre-filtered to
+        // the active event by the inner ShiftViewService — no active event
+        // yields an empty list.
+        var userView = await _shiftView.GetUserAsync(user.Id);
+        var signups = userView.Signups;
 
         var now = _clock.GetCurrentInstant();
         var model = new MyShiftsViewModel { EventSettings = es };
@@ -269,7 +297,7 @@ public class ShiftsController : HumansControllerBase
         model.Pending = buckets.Pending;
         model.Past = buckets.Past;
 
-        await PopulateAvailabilityAsync(model, user.Id, es);
+        PopulateAvailability(model, userView, es);
         await EnsureICalUrlAsync(model, user);
 
         return View(model);
@@ -286,13 +314,15 @@ public class ShiftsController : HumansControllerBase
             .ToDictionary(id => id, id => teamsById[id].Name);
     }
 
-    private async Task PopulateAvailabilityAsync(MyShiftsViewModel model, Guid userId, EventSettings? eventSettings)
+    private static void PopulateAvailability(MyShiftsViewModel model, ShiftUserView userView, EventSettings? eventSettings)
     {
         if (eventSettings is null) return;
 
-        var availability = await _availabilityService.GetByUserAsync(userId, eventSettings.Id);
-        if (availability is not null)
-            model.AvailableDayOffsets = availability.AvailableDayOffsets.ToList();
+        // T-10: GeneralAvailability comes from the cached ShiftUserView
+        // (issue #720). Inner ShiftViewService loads it scoped to the active
+        // event; null when the user has no row for the event.
+        if (userView.Availability is not null)
+            model.AvailableDayOffsets = userView.Availability.AvailableDayOffsets.ToList();
     }
 
     private async Task EnsureICalUrlAsync(MyShiftsViewModel model, UserInfo user)

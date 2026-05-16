@@ -178,19 +178,6 @@ public class Profile
     public ProfileState? State { get; set; }
 
     /// <summary>
-    /// True when <see cref="BurnerName"/>, <see cref="FirstName"/>, and
-    /// <see cref="LastName"/> are all populated (non-whitespace). The single
-    /// canonical predicate for Stub→Active eligibility — used by
-    /// <c>ProfileService.SaveProfileAsync</c>, <c>ProfileService.SetSuspendedAsync</c>,
-    /// and <c>CachingUserService.ComputeProfileState</c> so the rule cannot
-    /// drift between write paths and lazy-compute paths.
-    /// </summary>
-    public bool HasRequiredIdentityFields() =>
-        !string.IsNullOrWhiteSpace(BurnerName)
-        && !string.IsNullOrWhiteSpace(FirstName)
-        && !string.IsNullOrWhiteSpace(LastName);
-
-    /// <summary>
     /// Whether the member has been approved for volunteer enrollment.
     /// Set automatically when consent check is cleared. New profiles default to false.
     /// </summary>
