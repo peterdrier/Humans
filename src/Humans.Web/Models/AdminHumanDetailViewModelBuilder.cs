@@ -41,7 +41,7 @@ public static class AdminHumanDetailViewModelBuilder
         {
             UserId = info.Id,
             Email = effectiveEmail ?? string.Empty,
-            DisplayName = info.DisplayName,
+            DisplayName = info.BurnerName,
             ProfilePictureUrl = info.ProfilePictureUrl,
             CreatedAt = info.CreatedAt.ToDateTimeUtc(),
             LastLoginAt = info.LastLoginAt?.ToDateTimeUtc(),

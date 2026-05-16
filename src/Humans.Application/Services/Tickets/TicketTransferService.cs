@@ -652,7 +652,7 @@ public sealed class TicketTransferService : ITicketTransferService
         var primary = await _userEmailService.GetPrimaryEmailAsync(userId, ct);
         return new ReceiverLookupResultDto(
             UserId: userId,
-            DisplayName: info.DisplayName,
+            DisplayName: info.BurnerName,
             BurnerName: profile.BurnerName,
             PreferredEmail: primary,
             HasCustomProfilePicture: profile.HasCustomPicture,

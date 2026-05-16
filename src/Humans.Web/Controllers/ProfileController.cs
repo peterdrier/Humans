@@ -258,7 +258,7 @@ public class ProfileController : HumansControllerBase
             PendingConsentCount = pendingConsentCount,
             IsApproved = profile?.IsApproved ?? false,
             IsOwnProfile = true,
-            DisplayName = info.DisplayName,
+            DisplayName = info.BurnerName,
             CampaignGrants = campaignGrants,
         };
 
