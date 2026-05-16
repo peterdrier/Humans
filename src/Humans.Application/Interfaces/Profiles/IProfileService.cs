@@ -54,14 +54,13 @@ public interface IProfileService : IApplicationService, IUserMerge
         CancellationToken ct = default);
 
     /// <summary>
-    /// Returns the profile picture for the given profile, reading from the
-    /// filesystem store first and falling back to the DB column. On a
-    /// DB-fallback hit the bytes are migrated to the filesystem store so
-    /// subsequent requests use the fast path. Returns <c>null</c> when the
-    /// profile has no picture or has been anonymized (the DB content-type
-    /// column is null), so a stale on-disk file left behind by a failed
-    /// anonymization cleanup is not served. Centralizing the read path here
-    /// keeps controllers free of <see cref="IFileStorage"/>.
+    /// Returns the profile picture for the given profile, read from the
+    /// filesystem store. The DB <c>ProfilePictureContentType</c> column is
+    /// consulted first as a GDPR gate — if null (no picture, or anonymized)
+    /// the call returns <c>null</c> without touching disk so a stale on-disk
+    /// file left behind by a failed anonymization cleanup is not served.
+    /// Returns <c>null</c> when the file is missing on disk. Centralizing
+    /// the read path here keeps controllers free of <see cref="IFileStorage"/>.
     /// </summary>
     Task<(byte[] Data, string ContentType)?> GetProfilePictureAsync(Guid profileId, CancellationToken ct = default);
 

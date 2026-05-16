@@ -53,20 +53,13 @@ public interface IProfileRepository : IRepository
     Task<Guid?> GetOwnerUserIdAsync(Guid profileId, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns just the profile picture data and content type.
-    /// Read-only (AsNoTracking).
-    /// </summary>
-    Task<(byte[]? Data, string? ContentType)> GetProfilePictureDataAsync(
-        Guid profileId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns just the <c>ProfilePictureContentType</c> column for a profile —
-    /// scalar projection that avoids loading the bytea picture data. Returns
-    /// <c>null</c> if the profile does not exist or has no picture (including
-    /// when the picture was cleared by an anonymization run). Used by
-    /// <c>ProfileService.GetProfilePictureAsync</c> as a lightweight gate
-    /// before consulting the filesystem store, so an anonymized profile cannot
-    /// be served a stale on-disk file. Read-only (AsNoTracking).
+    /// Returns the <c>ProfilePictureContentType</c> column for a profile —
+    /// the GDPR gate consulted by <c>ProfileService.GetProfilePictureAsync</c>
+    /// before serving the on-disk file, and the source of the file extension.
+    /// Returns <c>null</c> if the profile does not exist or has no picture
+    /// (including when the picture was cleared by an anonymization run), so
+    /// an anonymized profile cannot be served a stale on-disk file. Read-only
+    /// (AsNoTracking).
     /// </summary>
     Task<string?> GetProfilePictureContentTypeAsync(
         Guid profileId, CancellationToken ct = default);

@@ -78,19 +78,6 @@ public sealed class ProfileRepository : IProfileRepository
             .FirstOrDefaultAsync(ct);
     }
 
-    public async Task<(byte[]? Data, string? ContentType)> GetProfilePictureDataAsync(
-        Guid profileId, CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var data = await ctx.Profiles
-            .AsNoTracking()
-            .Where(p => p.Id == profileId)
-            .Select(p => new { p.ProfilePictureData, p.ProfilePictureContentType })
-            .FirstOrDefaultAsync(ct);
-
-        return (data?.ProfilePictureData, data?.ProfilePictureContentType);
-    }
-
     public async Task<string?> GetProfilePictureContentTypeAsync(
         Guid profileId, CancellationToken ct = default)
     {
@@ -112,7 +99,7 @@ public sealed class ProfileRepository : IProfileRepository
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.Profiles
             .AsNoTracking()
-            .Where(p => userIdList.Contains(p.UserId) && p.ProfilePictureData != null)
+            .Where(p => userIdList.Contains(p.UserId) && p.ProfilePictureContentType != null)
             .Select(p => new { p.Id, p.UserId, p.UpdatedAt })
             .AsAsyncEnumerable()
             .Select(p => (p.Id, p.UserId, p.UpdatedAt.ToUnixTimeTicks()))
@@ -351,7 +338,6 @@ public sealed class ProfileRepository : IProfileRepository
         sourceProfile.AdminNotes = null;
         sourceProfile.Pronouns = null;
         sourceProfile.DateOfBirth = null;
-        sourceProfile.ProfilePictureData = null;
         sourceProfile.ProfilePictureContentType = null;
         sourceProfile.EmergencyContactName = null;
         sourceProfile.EmergencyContactPhone = null;
@@ -392,7 +378,6 @@ public sealed class ProfileRepository : IProfileRepository
         profile.AdminNotes = null;
         profile.Pronouns = null;
         profile.DateOfBirth = null;
-        profile.ProfilePictureData = null;
         profile.ProfilePictureContentType = null;
         profile.EmergencyContactName = null;
         profile.EmergencyContactPhone = null;

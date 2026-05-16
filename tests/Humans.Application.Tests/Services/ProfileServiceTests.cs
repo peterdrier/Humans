@@ -177,24 +177,11 @@ public class ProfileServiceTests : IDisposable
         profile.DateOfBirth.Should().BeNull();
     }
 
-    [HumansFact]
-    public async Task SaveProfileAsync_RemoveProfilePicture_ClearsData()
-    {
-        var userId = Guid.NewGuid();
-        await SeedUserWithProfileAsync(userId, withPicture: true);
-        var request = MakeRequest(removeProfilePicture: true);
-
-        await _service.SaveProfileAsync(userId, "Test", request, "en");
-
-        var profile = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
-        profile.ProfilePictureData.Should().BeNull();
-        profile.ProfilePictureContentType.Should().BeNull();
-    }
-
-    // --- Profile picture dual-write (phase 1 of issue nobodies-collective/Humans#527) ---
+    // --- Profile picture write paths (file share is the source of truth; the
+    // DB bytes column is obsolete and untouched by code) ---
 
     [HumansFact]
-    public async Task SaveProfileAsync_UploadsProfilePicture_DualWritesToDbAndFilesystem()
+    public async Task SaveProfileAsync_UploadsProfilePicture_WritesToFilesystem()
     {
         var userId = Guid.NewGuid();
         await SeedUserWithProfileAsync(userId);
@@ -204,32 +191,26 @@ public class ProfileServiceTests : IDisposable
         await _service.SaveProfileAsync(userId, "Test", request, "en");
 
         var profile = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
-        // DB was written
-        profile.ProfilePictureData.Should().BeEquivalentTo(payload);
+        // Content-type column is the "has picture" marker + extension source.
         profile.ProfilePictureContentType.Should().Be("image/jpeg");
-        // Filesystem was written with the same bytes, keyed under uploads/profile-pictures/
+        // Bytes live on the file share, keyed under uploads/profile-pictures/.
         var key = PicKey(profile.Id, "image/jpeg");
         _fileStorage.Files.Should().ContainKey(key);
         _fileStorage.Files[key].Should().BeEquivalentTo(payload);
     }
 
     [HumansFact]
-    public async Task SaveProfileAsync_RemoveProfilePicture_DeletesFromDbAndFilesystem()
+    public async Task SaveProfileAsync_RemoveProfilePicture_ClearsContentTypeAndDeletesFile()
     {
         var userId = Guid.NewGuid();
         var profileId = await SeedUserWithProfileAsync(userId, withPicture: true);
-        // Pre-seed the filesystem side at the same content-type the seeded
-        // profile uses (image/png — see SeedUserWithProfileAsync) so we can
-        // assert deletion.
-        await _fileStorage.SaveAsync(PicKey(profileId, "image/png"), [1]);
 
         var request = MakeRequest(removeProfilePicture: true);
         await _service.SaveProfileAsync(userId, "Test", request, "en");
 
         var profile = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
-        profile.ProfilePictureData.Should().BeNull();
         profile.ProfilePictureContentType.Should().BeNull();
-        _fileStorage.Files.Should().NotContainKey(PicKey(profile.Id, "image/png"));
+        _fileStorage.Files.Should().NotContainKey(PicKey(profileId, "image/png"));
     }
 
     // Threshold check (formerly SaveProfileAsync_CallsSetConsentCheckPending)
@@ -324,48 +305,34 @@ public class ProfileServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task GetProfilePictureAsync_DbOnly_ReturnsAndMigratesToFilesystem()
+    public async Task GetProfilePictureAsync_FilesystemMiss_ReturnsNull()
     {
-        // Migrate-on-read: the DB still has the bytes (legacy data, or a
-        // disk-restore scenario) but the filesystem store does not. The
-        // service must return the DB copy AND seed the store so the next
-        // read takes the fast path.
+        // Content-type gate passes but the file is gone — the picture is
+        // simply missing. (Pre-cleanup PR a DB-bytes fallback masked this;
+        // the file share is now the only source of truth.)
         var userId = Guid.NewGuid();
         await SeedUserWithProfileAsync(userId, withPicture: true);
         var profile = await _dbContext.Profiles.FirstAsync(p => p.UserId == userId);
 
-        _fileStorage.Files.ContainsKey(PicKey(profile.Id, "image/png")).Should().BeFalse();
+        await _fileStorage.DeleteAsync(PicKey(profile.Id, "image/png"));
 
         var result = await _service.GetProfilePictureAsync(profile.Id);
 
-        result.Should().NotBeNull();
-        result!.Value.Data.Should().BeEquivalentTo(new byte[] { 1, 2, 3 });
-        result.Value.ContentType.Should().Be("image/png");
-
-        // Migrate-on-read should have populated the store under the content-typed key.
-        _fileStorage.Files.TryGetValue(PicKey(profile.Id, "image/png"), out var stored).Should().BeTrue();
-        stored.Should().BeEquivalentTo(new byte[] { 1, 2, 3 });
+        result.Should().BeNull();
     }
 
     [HumansFact]
     public async Task GetProfilePictureAsync_AnonymizedProfile_ReturnsNullEvenWithStaleFile()
     {
-        // GDPR / issue nobodies-collective/Humans#527 fix-pass: after
-        // anonymization the DB content-type is null. If the on-disk file
-        // wasn't successfully removed (best-effort delete failed) the read
-        // path MUST NOT serve it. The DB content-type column is the gate.
+        // GDPR: after anonymization the content-type column is null. If the
+        // on-disk file wasn't successfully removed (best-effort delete failed)
+        // the read path MUST NOT serve it. The content-type column is the gate.
         var userId = Guid.NewGuid();
         await SeedUserWithProfileAsync(userId, withPicture: true);
         var profile = await _dbContext.Profiles.FirstAsync(p => p.UserId == userId);
 
-        // Seed a stale on-disk file as if a prior anonymization left it behind.
-        await _fileStorage.SaveAsync(PicKey(profile.Id, "image/png"), [7, 7, 7]);
-
-        // Now anonymize via the service and force the FS delete to fail by
-        // pre-removing the entry, then re-add it AFTER the anonymize call.
-        // Easiest path: clear DB columns directly on the tracked profile.
+        // Clear the gate as if anonymization had run.
         var tracked = await _dbContext.Profiles.FirstAsync(p => p.UserId == userId);
-        tracked.ProfilePictureData = null;
         tracked.ProfilePictureContentType = null;
         await _dbContext.SaveChangesAsync();
 
@@ -589,11 +556,14 @@ public class ProfileServiceTests : IDisposable
         };
         if (withPicture)
         {
-            profile.ProfilePictureData = [1, 2, 3];
             profile.ProfilePictureContentType = "image/png";
         }
         _dbContext.Profiles.Add(profile);
         await _dbContext.SaveChangesAsync();
+        if (withPicture)
+        {
+            await _fileStorage.SaveAsync(PicKey(profile.Id, "image/png"), [1, 2, 3]);
+        }
         return profile.Id;
     }
 

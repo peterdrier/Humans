@@ -142,7 +142,6 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         }
 
         var oldContentType = profile.ProfilePictureContentType;
-        profile.ProfilePictureData = pictureData;
         profile.ProfilePictureContentType = contentType;
         profile.UpdatedAt = _clock.GetCurrentInstant();
         await _profileRepository.UpdateAsync(profile, ct);
@@ -163,7 +162,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             _logger.LogWarning(ex,
-                "Failed to write profile picture to filesystem for {ProfileId}; DB write still applied",
+                "Failed to write profile picture to filesystem for {ProfileId}; content-type column is set but the file is missing — picture will not render",
                 profile.Id);
         }
 
@@ -173,48 +172,19 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
     public async Task<(byte[] Data, string ContentType)?> GetProfilePictureAsync(
         Guid profileId, CancellationToken ct = default)
     {
-        // Anonymization gate (GDPR): a cheap scalar projection of the DB
-        // content-type column is the source of truth for whether a picture
-        // should be served. If anonymization (or any future cleanup) has
-        // cleared the DB column, do not serve from disk even if a stale
-        // file remains.
+        // Anonymization gate (GDPR): the content-type column is the source of
+        // truth for whether a picture should be served. If anonymization (or
+        // any future cleanup) has cleared the column, do not serve from disk
+        // even if a stale file remains.
         var dbContentType = await _profileRepository.GetProfilePictureContentTypeAsync(profileId, ct);
         if (string.IsNullOrEmpty(dbContentType))
         {
             return null;
         }
 
-        // Filesystem fast path. Avoids loading the bytea column when the file
-        // is already on disk (the common case after migrate-on-read).
         var key = ProfilePictureKey(profileId, dbContentType);
         var fsBytes = await _fileStorage.TryReadAsync(key, ct);
-        if (fsBytes is not null)
-        {
-            return (fsBytes, dbContentType);
-        }
-
-        // DB fallback + migrate-on-read.
-        var (data, contentType) = await _profileRepository.GetProfilePictureDataAsync(profileId, ct);
-        if (data is null || string.IsNullOrEmpty(contentType))
-        {
-            return null;
-        }
-
-        try
-        {
-            await _fileStorage.SaveAsync(ProfilePictureKey(profileId, contentType), data, ct);
-            _logger.LogInformation(
-                "Profile picture {ProfileId} served from DB fallback; migrated to filesystem",
-                profileId);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            _logger.LogWarning(ex,
-                "Profile picture {ProfileId} served from DB fallback; migration to filesystem failed",
-                profileId);
-        }
-
-        return (data, contentType);
+        return fsBytes is not null ? (fsBytes, dbContentType) : null;
     }
 
     public async Task<ProfilePictureMigrationSnapshot> GetProfilePictureMigrationSnapshotAsync(
@@ -330,13 +300,13 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
             profile.DateOfBirth = null;
         }
 
-        // Handle profile picture. Phase 1 of issue nobodies-collective/Humans#527:
-        // dual-write to filesystem + DB so rollback stays safe. Phase 2 drops the
-        // DB columns once phase 1 has bedded in.
+        // Profile pictures live on the file share; the DB carries only the
+        // content-type marker so reads can find the file by extension and the
+        // GDPR gate has a single source of truth. The bytea column is dead —
+        // the column drop is a follow-up PR after prod soak.
         if (request.RemoveProfilePicture)
         {
             var oldContentType = profile.ProfilePictureContentType;
-            profile.ProfilePictureData = null;
             profile.ProfilePictureContentType = null;
             if (oldContentType is not null)
             {
@@ -347,7 +317,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
                     _logger.LogWarning(ex,
-                        "Failed to delete profile picture from filesystem for {ProfileId}; DB delete still applied",
+                        "Failed to delete profile picture from filesystem for {ProfileId}; content-type column has been cleared so the file will not be served",
                         profile.Id);
                 }
             }
@@ -355,7 +325,6 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         else if (request.ProfilePictureData is not null && request.ProfilePictureContentType is not null)
         {
             var oldContentType = profile.ProfilePictureContentType;
-            profile.ProfilePictureData = request.ProfilePictureData;
             profile.ProfilePictureContentType = request.ProfilePictureContentType;
             try
             {
@@ -375,7 +344,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 _logger.LogWarning(ex,
-                    "Failed to write profile picture to filesystem for {ProfileId}; DB write still applied",
+                    "Failed to write profile picture to filesystem for {ProfileId}; content-type column is set but the file is missing — picture will not render",
                     profile.Id);
             }
         }
@@ -742,15 +711,13 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
 
     public async Task<bool> AnonymizeExpiredProfileAsync(Guid userId, CancellationToken ct = default)
     {
-        // Anonymize clears ProfilePictureData / ProfilePictureContentType in
-        // the DB and best-effort wipes the filesystem copy (phase 1 of issue
-        // nobodies-collective/Humans#527). The DB clear alone is NOT
-        // sufficient under the FS-first read path: if this delete throws,
-        // the file remains on disk and TryReadAsync would otherwise serve it
-        // indefinitely. The read-path gate in GetProfilePictureAsync (which
-        // checks the DB content-type before consulting the filesystem)
-        // closes that loop — but we still log this failure as an Error so
-        // an operator can clean up the stale file out-of-band.
+        // Anonymize clears ProfilePictureContentType in the DB and best-effort
+        // wipes the filesystem copy. The DB clear alone is NOT sufficient on
+        // its own: if this delete throws, the file remains on disk. The
+        // read-path gate in GetProfilePictureAsync (which checks the
+        // content-type column before consulting the filesystem) closes that
+        // loop — but we still log this failure as an Error so an operator can
+        // clean up the stale file out-of-band.
         var profile = await _profileRepository.GetByUserIdReadOnlyAsync(userId, ct);
         var anonymized = await _profileRepository.AnonymizeForDeletionByUserIdAsync(userId, ct);
         if (anonymized && profile?.ProfilePictureContentType is not null)

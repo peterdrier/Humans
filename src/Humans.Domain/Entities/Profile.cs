@@ -108,14 +108,19 @@ public class Profile
     public string? EmergencyContactRelationship { get; set; }
 
     /// <summary>
-    /// Custom profile picture data (resized to 256x256, max 2MB).
-    /// Stored in database given small scale (~500 users).
+    /// Obsolete — pictures live on the file share keyed by
+    /// <c>uploads/profile-pictures/{Id}.{ext}</c>. The column is retained
+    /// only until a follow-up PR drops it after prod soak per
+    /// <c>memory/architecture/no-drops-until-prod-verified.md</c>; no code
+    /// path reads or writes it.
     /// </summary>
     [PersonalData]
     public byte[]? ProfilePictureData { get; set; }
 
     /// <summary>
     /// MIME content type of the custom profile picture (e.g., "image/jpeg").
+    /// Doubles as the "has picture?" predicate (non-null ⇒ a file exists at
+    /// the convention-derived path) and the source of the file extension.
     /// </summary>
     public string? ProfilePictureContentType { get; set; }
 
@@ -249,7 +254,7 @@ public class Profile
     /// <summary>
     /// Whether this profile has a custom uploaded profile picture.
     /// </summary>
-    public bool HasCustomProfilePicture => ProfilePictureData is not null && ProfilePictureData.Length > 0;
+    public bool HasCustomProfilePicture => ProfilePictureContentType is not null;
 
     /// <summary>
     /// Contact fields with visibility controls.

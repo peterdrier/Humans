@@ -78,9 +78,10 @@ public sealed record UserExternalLoginInfo(
 
 /// <summary>
 /// Immutable projection of a <see cref="Profile"/> row carried inside
-/// <see cref="UserInfo"/>. <c>ProfilePictureData</c> is intentionally excluded
-/// (large blob, served separately); only <c>BirthdayDay</c> / <c>BirthdayMonth</c>
-/// are carried (year-of-birth excluded by design).
+/// <see cref="UserInfo"/>. Picture bytes are not carried — pictures live on
+/// the file share and are served via <c>ProfileController.Picture</c>; only
+/// <c>BirthdayDay</c> / <c>BirthdayMonth</c> are carried (year-of-birth
+/// excluded by design).
 /// </summary>
 public sealed record ProfileInfo(
     Guid Id,
@@ -430,7 +431,7 @@ public sealed record UserInfo(
                 EmergencyContactName: profile.EmergencyContactName,
                 EmergencyContactPhone: profile.EmergencyContactPhone,
                 EmergencyContactRelationship: profile.EmergencyContactRelationship,
-                HasCustomPicture: profile.ProfilePictureData is not null && profile.ProfilePictureData.Length > 0,
+                HasCustomPicture: profile.ProfilePictureContentType is not null,
                 ProfilePictureContentType: profile.ProfilePictureContentType,
                 CreatedAt: profile.CreatedAt,
                 UpdatedAt: profile.UpdatedAt,
