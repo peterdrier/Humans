@@ -43,7 +43,12 @@
     <!-- HUM_USER_NORMALIZEDEMAIL: User.NormalizedEmail is shadow-populated by -->
     <!--   Identity; application-code reads are not canonical but a few legacy -->
     <!--   reads remain. Issue #635 §15i. -->
-    <NoWarn>$(NoWarn);CS1591;MA0048;MA0016;MA0026;MA0051;VSTHRD200;HUM_PROFILE_ISSUSPENDED;HUM_USER_NORMALIZEDEMAIL</NoWarn>
+    <!-- HUM_USER_DISPLAYNAME: render-path callers drained to UserInfo.BurnerName; -->
+    <!--   remaining legitimate consumers (Identity claims, merge/purge/delete -->
+    <!--   labels, GDPR export, dev seeders, email greetings on User-typed -->
+    <!--   handles, admin merge UI) stay until UserInfo handles are threaded -->
+    <!--   through every Application-layer service entry point. Issue #691. -->
+    <NoWarn>$(NoWarn);CS1591;MA0048;MA0016;MA0026;MA0051;VSTHRD200;HUM_PROFILE_ISSUSPENDED;HUM_USER_NORMALIZEDEMAIL;HUM_USER_DISPLAYNAME;HUM_USERINFO_DISPLAYNAME</NoWarn>
   </PropertyGroup>
 
   <!-- Embed git commit hash into InformationalVersion at build time (skip when already set via -p:SourceRevisionId) -->
