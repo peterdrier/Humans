@@ -45,6 +45,7 @@ public static class ShiftVolunteerSearchBuilder
         bool canViewMedical,
         UserManager<User> userManager,
         IShiftView shiftView,
+        IShiftSignupService signupService,
         IGeneralAvailabilityService availabilityService)
     {
         if (!query.HasSearchTerm())
@@ -53,7 +54,8 @@ public static class ShiftVolunteerSearchBuilder
         if (shift is null)
             return VolunteerSearchBuildResult.NotFound;
 
-        var eventSettings = shift.Rota.EventSettings ?? await getActiveEventSettings();
+        var activeEvent = await getActiveEventSettings();
+        var eventSettings = shift.Rota.EventSettings ?? activeEvent;
         if (eventSettings is null)
             return VolunteerSearchBuildResult.NotFound;
 
@@ -61,9 +63,11 @@ public static class ShiftVolunteerSearchBuilder
             shift,
             query.Trim(),
             eventSettings,
+            activeEvent,
             canViewMedical,
             userManager,
             shiftView,
+            signupService,
             availabilityService);
 
         return VolunteerSearchBuildResult.Success(results);
@@ -73,9 +77,11 @@ public static class ShiftVolunteerSearchBuilder
         Shift shift,
         string query,
         EventSettings eventSettings,
+        EventSettings? activeEvent,
         bool canViewMedical,
         UserManager<User> userManager,
         IShiftView shiftView,
+        IShiftSignupService signupService,
         IGeneralAvailabilityService availabilityService)
     {
         var shiftStart = shift.GetAbsoluteStart(eventSettings);
@@ -96,12 +102,29 @@ public static class ShiftVolunteerSearchBuilder
         var userIds = users.Select(u => u.Id).ToList();
         var views = await shiftView.GetUsersAsync(userIds);
 
+        // The cached ShiftUserView.Signups is scoped to the currently active
+        // event (ShiftViewService.GetUserAsync). When the target shift belongs
+        // to a different event (e.g. admin searching a past/future event's
+        // shift), fall back to a per-user signup query for that event so
+        // BookedShiftCount/HasOverlap stay accurate (Codex P2, PR #579).
+        var targetIsActive = activeEvent is not null && eventSettings.Id == activeEvent.Id;
+        Dictionary<Guid, IReadOnlyList<ShiftSignup>>? targetEventSignups = null;
+        if (!targetIsActive)
+        {
+            targetEventSignups = new Dictionary<Guid, IReadOnlyList<ShiftSignup>>(userIds.Count);
+            foreach (var id in userIds)
+                targetEventSignups[id] = await signupService.GetByUserAsync(id, eventSettings.Id);
+        }
+
         var results = new List<VolunteerSearchResult>();
         foreach (var user in users)
         {
             var view = views[user.Id];
             var profile = view.Profile;
-            var confirmedSignups = view.Signups
+            var signupsForEvent = targetIsActive
+                ? view.Signups
+                : targetEventSignups![user.Id];
+            var confirmedSignups = signupsForEvent
                 .Where(s => s.Status == SignupStatus.Confirmed
                     && s.Shift?.Rota?.EventSettingsId == eventSettings.Id)
                 .ToList();
