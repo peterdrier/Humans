@@ -1,15 +1,12 @@
 using Humans.Application.Configuration;
-using Humans.Application.Services.Teams;
+using Humans.Application.Interfaces.GoogleIntegration;
+using Humans.Application.Interfaces.Teams;
+using Humans.Application.Services.GoogleIntegration;
 using Humans.Infrastructure.Configuration;
+using Humans.Infrastructure.GoogleIntegration;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Services;
 using Humans.Infrastructure.Services.GoogleWorkspace;
-using GoogleWorkspaceUserService = Humans.Application.Services.GoogleIntegration.GoogleWorkspaceUserService;
-using GoogleWorkspaceSyncService = Humans.Application.Services.GoogleIntegration.GoogleWorkspaceSyncService;
-using GoogleGroupSyncService = Humans.Application.Services.GoogleIntegration.GoogleGroupSyncService;
-using Humans.Application.Interfaces.GoogleIntegration;
-using Humans.Application.Interfaces.Teams;
-using Humans.Infrastructure.GoogleIntegration;
 
 namespace Humans.Web.Extensions.Infrastructure;
 

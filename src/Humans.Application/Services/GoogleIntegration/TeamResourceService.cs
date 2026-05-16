@@ -11,16 +11,28 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 
-namespace Humans.Application.Services.Teams;
+namespace Humans.Application.Services.GoogleIntegration;
 
 /// <summary>
 /// Application-layer service for linking and managing pre-shared Google
-/// resources for teams. Owns the <c>google_resources</c> table (design-rules
-/// §8). Google API calls are routed through
+/// resources for teams. Owns the <c>google_resources</c> table at the
+/// service layer (design-rules §8). Google API calls are routed through
 /// <see cref="ITeamResourceGoogleClient"/> so the <c>Humans.Application</c>
 /// project stays framework-free — the real Google-backed implementation and
 /// the dev/test stub both live in <c>Humans.Infrastructure</c>.
 /// </summary>
+/// <remarks>
+/// Section: <c>GoogleIntegration</c>. <c>google_resources</c> is a Team
+/// Resources sub-aggregate per Teams docs, but the table is heavily
+/// Google-API-coupled — its repository
+/// (<see cref="IGoogleResourceRepository"/>, EF impl in
+/// <c>Humans.Infrastructure.Repositories.GoogleIntegration</c>) and the
+/// connector clients live in the GoogleIntegration section. To keep HUM0017
+/// happy without manufacturing a service-vs-section mismatch, the service
+/// also lives in <c>Humans.Application.Services.GoogleIntegration</c>; see
+/// <c>memory/architecture/team-resources-google-integration-section.md</c>
+/// for the rationale.
+/// </remarks>
 public sealed partial class TeamResourceService : ITeamResourceService
 {
     private readonly IGoogleResourceRepository _repository;
@@ -40,18 +52,7 @@ public sealed partial class TeamResourceService : ITeamResourceService
         => _serviceProvider.GetRequiredService<IRoleAssignmentService>();
 
     public TeamResourceService(
-        // IGoogleResourceRepository is [Section("GoogleIntegration")]-tagged but
-        // google_resources is Teams-owned (see docs/sections/Teams.md "Owned
-        // tables", design-rules, and the RepositoryOwners architecture-test map
-        // which lists IGoogleResourceRepository as Teams). The section tag is a
-        // stale label from where the EF impl lives. TeamResourceArchitectureTests
-        // explicitly pins TeamResourceService taking IGoogleResourceRepository as
-        // a ctor param; introducing an IGoogleResourceService indirection would
-        // break that pinned invariant and add a pass-through with no other
-        // consumer.
-#pragma warning disable HUM0017 // see ctor comment + memory/architecture/google-resources-teams-owned.md
         IGoogleResourceRepository repository,
-#pragma warning restore HUM0017
         ITeamResourceGoogleClient googleClient,
         IGoogleDrivePermissionsClient drivePermissions,
         ITeamService teamService,

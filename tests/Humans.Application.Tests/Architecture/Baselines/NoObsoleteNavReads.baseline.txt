@@ -67,9 +67,9 @@ src/Humans.Application/Services/Teams/TeamPageService.cs:Team#2
 src/Humans.Application/Services/Teams/TeamPageService.cs:Team#3
 src/Humans.Application/Services/Teams/TeamPageService.cs:Team#4
 src/Humans.Application/Services/Teams/TeamPageService.cs:Team#5
-src/Humans.Application/Services/Teams/TeamResourceService.cs:Team#1
-src/Humans.Application/Services/Teams/TeamResourceService.cs:Team#2
-src/Humans.Application/Services/Teams/TeamResourceService.cs:Team#3
+src/Humans.Application/Services/GoogleIntegration/TeamResourceService.cs:Team#1
+src/Humans.Application/Services/GoogleIntegration/TeamResourceService.cs:Team#2
+src/Humans.Application/Services/GoogleIntegration/TeamResourceService.cs:Team#3
 src/Humans.Application/Services/Teams/TeamService.cs:Team#1
 src/Humans.Application/Services/Teams/TeamService.cs:Team#10
 src/Humans.Application/Services/Teams/TeamService.cs:Team#11
