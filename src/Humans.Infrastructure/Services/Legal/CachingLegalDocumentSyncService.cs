@@ -53,8 +53,6 @@ public sealed class CachingLegalDocumentSyncService
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IClock _clock;
     private readonly ILogger<CachingLegalDocumentSyncService> _logger;
-    private readonly SemaphoreSlim _loadLock = new(1, 1);
-    private volatile bool _isLoaded;
 
     // Version-id → document-id index. Rebuilt with the main dict on warm so
     // GetVersionByIdAsync can answer without scanning every document.
@@ -66,7 +64,7 @@ public sealed class CachingLegalDocumentSyncService
         IServiceScopeFactory scopeFactory,
         IClock clock,
         ILogger<CachingLegalDocumentSyncService> logger)
-        : base("Legal.LegalDocumentInfo")
+        : base("Legal.LegalDocumentInfo", warmOnStartup: true)
     {
         _repository = repository;
         _scopeFactory = scopeFactory;
@@ -187,17 +185,13 @@ public sealed class CachingLegalDocumentSyncService
 
     public void InvalidateAll()
     {
-        _loadLock.Wait();
-        try
-        {
-            Clear();
-            _versionToDocument = new Dictionary<Guid, Guid>();
-            _isLoaded = false;
-        }
-        finally
-        {
-            _loadLock.Release();
-        }
+        // Clear() flips the warmed flag back to false and increments the
+        // bulk-invalidation counter; the next read drives a fresh
+        // WarmAllAsync via EnsureWarmedAsync. Reset the version index here
+        // so we don't briefly serve stale version-id→document-id lookups
+        // against an empty primary dict.
+        _versionToDocument = new Dictionary<Guid, Guid>();
+        Clear();
     }
 
     // ==========================================================================
@@ -207,54 +201,44 @@ public sealed class CachingLegalDocumentSyncService
     private async Task<IReadOnlyDictionary<Guid, LegalDocumentInfo>> GetActiveRequiredDocumentsAsync(
         CancellationToken ct)
     {
-        if (_isLoaded)
-            return AsReadOnlyDictionary;
-
-        await WarmAllAsync(ct);
+        await EnsureWarmedAsync(ct);
         return AsReadOnlyDictionary;
     }
 
-    public async Task WarmAllAsync(CancellationToken ct = default)
+    /// <summary>
+    /// Bulk-loads every active+required <see cref="LegalDocumentInfo"/>. Called by
+    /// <see cref="TrackedCache{TKey,TValue}.EnsureWarmedAsync"/> at startup
+    /// (because the base ctor passes <c>warmOnStartup: true</c>) and again on
+    /// demand after <see cref="InvalidateAll"/> drops the dict. The base owns
+    /// concurrency coalescing via its warm semaphore, so this body is invoked
+    /// at most once at a time.
+    /// </summary>
+    protected override async Task WarmAllAsync(CancellationToken ct)
     {
-        if (_isLoaded)
-            return;
+        // Pull every active+required document with versions. The repo
+        // GetActiveRequiredDocumentsAsync read does NOT walk the
+        // deprecated team nav on LegalDocument; team display names are
+        // stitched here via ITeamService so the cache warm path stays
+        // free of the cross-domain nav (docs/sections/LegalAndConsent.md
+        // "Touch-and-clean guidance").
+        var docs = await _repository.GetActiveRequiredDocumentsAsync(ct);
 
-        await _loadLock.WaitAsync(ct);
-        try
+        // Resolve team display names via ITeamService — scoped, so
+        // pulled through a fresh DI scope per-warm.
+        IReadOnlyDictionary<Guid, string> teamNames = await ResolveTeamNamesAsync(docs, ct);
+
+        var versionIndex = new Dictionary<Guid, Guid>();
+
+        foreach (var doc in docs)
         {
-            if (_isLoaded)
-                return;
-
-            // Pull every active+required document with versions. The repo
-            // GetActiveRequiredDocumentsAsync read does NOT walk the
-            // deprecated team nav on LegalDocument; team display names are
-            // stitched here via ITeamService so the cache warm path stays
-            // free of the cross-domain nav (docs/sections/LegalAndConsent.md
-            // "Touch-and-clean guidance").
-            var docs = await _repository.GetActiveRequiredDocumentsAsync(ct);
-
-            // Resolve team display names via ITeamService — scoped, so
-            // pulled through a fresh DI scope per-warm.
-            IReadOnlyDictionary<Guid, string> teamNames = await ResolveTeamNamesAsync(docs, ct);
-
-            var versionIndex = new Dictionary<Guid, Guid>();
-
-            foreach (var doc in docs)
-            {
-                teamNames.TryGetValue(doc.TeamId, out var teamName);
-                var info = BuildLegalDocumentInfo(doc, teamName ?? string.Empty);
-                Set(doc.Id, info);
-                foreach (var v in info.Versions)
-                    versionIndex[v.Id] = doc.Id;
-            }
-
-            _versionToDocument = versionIndex;
-            _isLoaded = true;
+            teamNames.TryGetValue(doc.TeamId, out var teamName);
+            var info = BuildLegalDocumentInfo(doc, teamName ?? string.Empty);
+            Set(doc.Id, info);
+            foreach (var v in info.Versions)
+                versionIndex[v.Id] = doc.Id;
         }
-        finally
-        {
-            _loadLock.Release();
-        }
+
+        _versionToDocument = versionIndex;
     }
 
     private async Task<IReadOnlyDictionary<Guid, string>> ResolveTeamNamesAsync(

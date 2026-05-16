@@ -70,7 +70,7 @@ public sealed class CachingConsentService
         IClock clock,
         IServiceScopeFactory scopeFactory,
         ILogger<CachingConsentService> logger)
-        : base("Consent.UserConsentInfo")
+        : base("Consent.UserConsentInfo", warmOnStartup: false)
     {
         // ILegalDocumentSyncService and IClock are Singletons — inject directly.
         // _scopeFactory is still needed to resolve the keyed Scoped inner
@@ -90,11 +90,11 @@ public sealed class CachingConsentService
     public async Task<IReadOnlySet<Guid>> GetConsentedVersionIdsAsync(
         Guid userId, CancellationToken ct = default)
     {
-        if (TryGet(userId, out var hit))
-            return hit.ConsentedVersionIds;
-
-        var loaded = await LoadAndCacheAsync(userId, ct);
-        return loaded.ConsentedVersionIds;
+        // Base GetAsync handles TryGet → miss → LoadRowAsync → Set, including
+        // hit/miss counter bookkeeping. LoadRowAsync returns a freshly-frozen
+        // UserConsentInfo so the cached set is independent of the repo result.
+        var info = await GetAsync(userId, ct).ConfigureAwait(false);
+        return info?.ConsentedVersionIds ?? new HashSet<Guid>();
     }
 
     public async Task<IReadOnlyDictionary<Guid, IReadOnlySet<Guid>>> GetConsentMapForUsersAsync(
@@ -107,15 +107,8 @@ public sealed class CachingConsentService
         foreach (var userId in userIds)
         {
             if (result.ContainsKey(userId)) continue;
-            if (TryGet(userId, out var hit))
-            {
-                result[userId] = hit.ConsentedVersionIds;
-            }
-            else
-            {
-                var loaded = await LoadAndCacheAsync(userId, ct);
-                result[userId] = loaded.ConsentedVersionIds;
-            }
+            var info = await GetAsync(userId, ct).ConfigureAwait(false);
+            result[userId] = info?.ConsentedVersionIds ?? new HashSet<Guid>();
         }
         return result;
     }
@@ -185,11 +178,18 @@ public sealed class CachingConsentService
     // ==========================================================================
 
     /// <summary>
-    /// Submits a consent record and <b>synchronously</b> evicts the affected
-    /// user(s) from the cache before returning. Controllers redirect
+    /// Submits a consent record and <b>synchronously</b> refreshes the
+    /// affected cache entries before returning. Controllers redirect
     /// immediately after this call returns; any async/fire-and-forget
-    /// invalidation here would race the redirect and serve a stale
-    /// "still required" banner on the next page.
+    /// refresh here would race the redirect and serve a stale "still
+    /// required" banner on the next page.
+    ///
+    /// <para>Post-#587, the right primitive on a <c>warmOnStartup: false</c>
+    /// cache for a known-mutated row is <see cref="TrackedCache{TKey,TValue}.ReplaceAsync"/>:
+    /// it drives <see cref="LoadRowAsync"/> and atomically swaps in the
+    /// fresh value (or tombstones the key if the loader returns null).
+    /// Awaiting it inline guarantees the cache is correct before the
+    /// controller redirects.</para>
     /// </summary>
     public async Task<ConsentSubmitResult> SubmitConsentAsync(
         Guid userId, Guid documentVersionId, bool explicitConsent,
@@ -199,7 +199,7 @@ public sealed class CachingConsentService
         IReadOnlySet<Guid>? sourceIds = null;
 
         // Resolve the merge-chain source ids OUTSIDE the submit so we know
-        // every cache key affected by this write, then evict all of them
+        // every cache key affected by this write, then refresh all of them
         // inline below. We also need the SAME source-id set the inner uses
         // to decide AlreadyConsented; resolving it once here and trusting
         // the inner is consistent (both go through IUserService).
@@ -213,16 +213,16 @@ public sealed class CachingConsentService
                 userId, documentVersionId, explicitConsent, ipAddress, userAgent, ct);
         }
 
-        // Invalidate on success only — a failed submit (StubProfile,
-        // NotFound, AlreadyConsented) did not change the user's consented
-        // set, so the cache entry is still correct.
+        // Refresh on success only — a failed submit (StubProfile, NotFound,
+        // AlreadyConsented) did not change the user's consented set, so the
+        // cache entry is still correct.
         if (result.Success)
         {
-            InvalidateUser(userId);
+            await ReplaceAsync(userId, ct).ConfigureAwait(false);
             if (sourceIds is not null)
             {
                 foreach (var sourceId in sourceIds)
-                    InvalidateUser(sourceId);
+                    await ReplaceAsync(sourceId, ct).ConfigureAwait(false);
             }
         }
 
@@ -235,6 +235,10 @@ public sealed class CachingConsentService
 
     public void InvalidateUser(Guid userId)
     {
+        // warmOnStartup:false — dropping the key is safe; the next read
+        // lazy-loads via LoadRowAsync. No need to drive ReplaceAsync from
+        // the synchronous invalidator surface (callers like AccountMerge
+        // hold no CancellationToken contract for an awaited refresh).
         Invalidate(userId);
     }
 
@@ -244,10 +248,19 @@ public sealed class CachingConsentService
     }
 
     // ==========================================================================
-    // Load + chain-follow resolution at refresh time
+    // Per-user loader plugged into TrackedCache.GetAsync / ReplaceAsync
     // ==========================================================================
 
-    private async Task<UserConsentInfo> LoadAndCacheAsync(Guid userId, CancellationToken ct)
+    /// <summary>
+    /// Base-class loader. Resolves the merge-chain source ids, reads the
+    /// consented-version set from the repo, and returns a defensively-frozen
+    /// <see cref="UserConsentInfo"/>. <see cref="TrackedCache{TKey,TValue}.GetAsync"/>
+    /// and <see cref="TrackedCache{TKey,TValue}.ReplaceAsync"/> both route
+    /// through this — the synchronous SubmitConsent refresh path and the
+    /// lazy first-read path use the same loader.
+    /// </summary>
+    protected override async ValueTask<UserConsentInfo?> LoadRowAsync(
+        Guid userId, CancellationToken ct)
     {
         // Resolve the source-id chain BEFORE the repo read so we know whether
         // the union path or the single-id path applies — same logic as the
@@ -277,9 +290,7 @@ public sealed class CachingConsentService
         // alias to it. Always-copy makes the cached snapshot independent of
         // the repo's lifetime semantics. Cost is trivial at 500-user scale.
         var frozen = new HashSet<Guid>(versions);
-        var info = new UserConsentInfo(userId, frozen);
-        Set(userId, info);
-        return info;
+        return new UserConsentInfo(userId, frozen);
     }
 
     // ==========================================================================
