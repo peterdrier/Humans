@@ -99,7 +99,7 @@ public class ConsentControllerTests
         user: new User
         {
             Id = profile.UserId,
-            DisplayName = profile.BurnerName ?? "",
+            DisplayName = profile.BurnerName,
             PreferredLanguage = "en",
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             GoogleEmailStatus = GoogleEmailStatus.Unknown,

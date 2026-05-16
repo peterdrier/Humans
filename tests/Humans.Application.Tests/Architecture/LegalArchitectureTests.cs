@@ -107,6 +107,9 @@ public class LegalArchitectureTests
             .Cast<RouteAttribute>()
             .Single();
 
+        // ReSharper disable once NullCoalescingConditionIsAlwaysNotNullAccordingToAPIContract
+        // RouteAttribute.Template is annotated non-null but is actually nullable at runtime
+        // (the attribute supports a parameterless ctor that leaves Template null).
         return route.Template ?? string.Empty;
     }
 }

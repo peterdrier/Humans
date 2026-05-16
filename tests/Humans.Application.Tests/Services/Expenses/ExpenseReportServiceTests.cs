@@ -67,7 +67,7 @@ public class ExpenseReportServiceTests
         user: new User
         {
             Id = profile.UserId,
-            DisplayName = profile.BurnerName ?? "",
+            DisplayName = profile.BurnerName,
             PreferredLanguage = "en",
             CreatedAt = FakeNow,
             GoogleEmailStatus = GoogleEmailStatus.Unknown,

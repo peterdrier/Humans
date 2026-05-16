@@ -126,7 +126,7 @@ public class EmailProvisioningServiceTests
         user: new User
         {
             Id = userId,
-            DisplayName = profile.BurnerName ?? "",
+            DisplayName = profile.BurnerName,
             PreferredLanguage = "en",
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             GoogleEmailStatus = GoogleEmailStatus.Unknown,

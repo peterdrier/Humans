@@ -864,6 +864,9 @@ public sealed class TicketTransferServiceTests
         _userService.GetByIdAsync(request.SenderUserId, Arg.Any<CancellationToken>())
             .Returns(MakeUser(request.SenderUserId, "Bob"));
 
+        // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
+        // OriginalTicketAttendee is declared `= null!` (EF required nav). Tests construct
+        // requests without setting it; this guard wires up the attendee when caller didn't.
         if (request.OriginalTicketAttendee is null)
         {
             var attendee = MakeAttendee(
