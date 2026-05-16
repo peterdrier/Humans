@@ -68,15 +68,6 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         _logger = logger;
     }
 
-    public async Task<Profile?> GetProfileAsync(Guid userId, CancellationToken ct = default)
-    {
-        return await _profileRepository.GetByUserIdReadOnlyAsync(userId, ct);
-    }
-
-    public async Task<IReadOnlyDictionary<Guid, Profile>> GetByUserIdsAsync(
-        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
-        await _profileRepository.GetByUserIdsAsync(userIds, ct);
-
     public async Task SetMembershipTierAsync(
         Guid userId, MembershipTier tier, CancellationToken ct = default)
     {

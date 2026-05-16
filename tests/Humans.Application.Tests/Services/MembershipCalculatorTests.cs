@@ -10,7 +10,6 @@ using Humans.Application.Interfaces.Consent;
 using Humans.Application.Interfaces.Legal;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Interfaces.Governance;
-using Humans.Application.Interfaces.Profiles;
 
 namespace Humans.Application.Tests.Services;
 
@@ -18,7 +17,6 @@ public class MembershipCalculatorTests
 {
     private readonly FakeClock _clock;
     private readonly MembershipCalculator _service;
-    private readonly IProfileService _profileService = Substitute.For<IProfileService>();
     private readonly IMembershipQuery _membershipQuery = Substitute.For<IMembershipQuery>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IConsentService _consentService = Substitute.For<IConsentService>();
@@ -39,7 +37,6 @@ public class MembershipCalculatorTests
         serviceProvider.GetService(typeof(IConsentService)).Returns(_consentService);
 
         _service = new MembershipCalculator(
-            _profileService,
             _membershipQuery,
             _userService,
             _legalDocumentSyncService,
@@ -55,14 +52,14 @@ public class MembershipCalculatorTests
                 return profile is null ? null : WrapInUserInfo(profile);
             });
 
-        _profileService.GetByUserIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(ci =>
             {
                 var ids = ci.Arg<IReadOnlyCollection<Guid>>();
                 var map = ids
                     .Where(_profilesByUserId.ContainsKey)
-                    .ToDictionary(id => id, id => _profilesByUserId[id]);
-                return Task.FromResult<IReadOnlyDictionary<Guid, Profile>>(map);
+                    .ToDictionary(id => id, id => WrapInUserInfo(_profilesByUserId[id]));
+                return new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(map);
             });
 
         _membershipQuery.GetUserTeamsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())

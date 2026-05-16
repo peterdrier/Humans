@@ -2,7 +2,6 @@ using Humans.Application.Configuration;
 using Humans.Application.Helpers;
 using Humans.Application.Interfaces.Dashboard;
 using Humans.Application.Interfaces.Governance;
-using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Tickets;
@@ -23,7 +22,6 @@ namespace Humans.Application.Services.Dashboard;
 /// </summary>
 public class DashboardService : IDashboardService
 {
-    private readonly IProfileService _profileService;
     private readonly IMembershipCalculator _membershipCalculator;
     private readonly IApplicationDecisionService _applicationDecisionService;
     private readonly IShiftManagementService _shiftMgmt;
@@ -36,7 +34,6 @@ public class DashboardService : IDashboardService
     private readonly ILogger<DashboardService> _logger;
 
     public DashboardService(
-        IProfileService profileService,
         IMembershipCalculator membershipCalculator,
         IApplicationDecisionService applicationDecisionService,
         IShiftManagementService shiftMgmt,
@@ -48,7 +45,6 @@ public class DashboardService : IDashboardService
         IClock clock,
         ILogger<DashboardService> logger)
     {
-        _profileService = profileService;
         _membershipCalculator = membershipCalculator;
         _applicationDecisionService = applicationDecisionService;
         _shiftMgmt = shiftMgmt;
@@ -68,7 +64,8 @@ public class DashboardService : IDashboardService
     {
         _ = isPrivileged; // Retained for future privileged-only fields; no current effect.
 
-        var profile = await _profileService.GetProfileAsync(userId, cancellationToken);
+        var userInfo = await _userService.GetUserInfoAsync(userId, cancellationToken);
+        var profile = userInfo?.Profile;
         var shiftTagPreferences = await _shiftMgmt.GetVolunteerTagPreferencesAsync(userId);
         var dashboardProfile = profile is null
             ? null

@@ -1,8 +1,9 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.AuditLog;
-using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.AuditLog;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
@@ -32,13 +33,9 @@ public class AuditViewerServiceTests
         auditLog.GetByUserAsync(viewer, 10, Arg.Any<CancellationToken>())
             .Returns([ToSnapshot(entry)]);
 
-        var profileService = Substitute.For<IProfileService>();
-        profileService.GetByUserIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, Profile>
-            {
-                [actor] = new Profile { UserId = actor, BurnerName = "Frank" },
-                [viewer] = new Profile { UserId = viewer, BurnerName = "Peter" }
-            });
+        var userService = StubUserService(
+            (actor, "Frank"),
+            (viewer, "Peter"));
 
         var teamService = Substitute.For<ITeamService>();
         teamService.GetByIdsWithParentsAsync(Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
@@ -48,7 +45,7 @@ public class AuditViewerServiceTests
         teamResourceService.GetResourceNamesByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, string>());
 
-        var service = new AuditViewerService(auditLog, profileService, teamService, teamResourceService);
+        var service = new AuditViewerService(auditLog, userService, teamService, teamResourceService);
 
         var events = await service.GetForUserAsync(viewer, 10);
 
@@ -66,16 +63,16 @@ public class AuditViewerServiceTests
         auditLog.GetByUserAsync(Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns([]);
 
-        var profileService = Substitute.For<IProfileService>();
+        var userService = Substitute.For<IUserService>();
         var teamService = Substitute.For<ITeamService>();
         var teamResourceService = Substitute.For<ITeamResourceService>();
-        var service = new AuditViewerService(auditLog, profileService, teamService, teamResourceService);
+        var service = new AuditViewerService(auditLog, userService, teamService, teamResourceService);
 
         var events = await service.GetForUserAsync(Guid.NewGuid(), 10);
 
         events.Should().BeEmpty();
         // No name lookups should fire on empty input — short-circuit guard.
-        await profileService.DidNotReceive().GetByUserIdsAsync(
+        await userService.DidNotReceive().GetUserInfosAsync(
             Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>());
     }
 
@@ -93,8 +90,8 @@ public class AuditViewerServiceTests
             relatedEntityType: "User",
             description: "shift 'Cantina dinner'");
 
-        var (auditLog, profileService, teamService, teamResourceService) = MakeServices(entry, actor, viewer, "Frank", "Peter");
-        var service = new AuditViewerService(auditLog, profileService, teamService, teamResourceService);
+        var (auditLog, userService, teamService, teamResourceService) = MakeServices(entry, actor, viewer, "Frank", "Peter");
+        var service = new AuditViewerService(auditLog, userService, teamService, teamResourceService);
 
         var events = await service.GetForUserAsync(viewer, 10);
         var line = events[0].RenderPlainText(viewerUserId: viewer);
@@ -123,9 +120,7 @@ public class AuditViewerServiceTests
         var auditLog = Substitute.For<IAuditLogService>();
         auditLog.GetByResourceAsync(resourceId).Returns([ToSnapshot(entry)]);
 
-        var profileService = Substitute.For<IProfileService>();
-        profileService.GetByUserIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, Profile>());
+        var userService = StubUserService();
 
         var teamService = Substitute.For<ITeamService>();
         teamService.GetByIdsWithParentsAsync(Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
@@ -135,7 +130,7 @@ public class AuditViewerServiceTests
         teamResourceService.GetResourceNamesByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, string>());
 
-        var service = new AuditViewerService(auditLog, profileService, teamService, teamResourceService);
+        var service = new AuditViewerService(auditLog, userService, teamService, teamResourceService);
 
         var events = await service.GetForResourceAsync(resourceId);
 
@@ -162,9 +157,7 @@ public class AuditViewerServiceTests
         auditLog.GetFilteredAsync(null, 1, 50, Arg.Any<CancellationToken>())
             .Returns(([ToSnapshot(entry)], 1, 0));
 
-        var profileService = Substitute.For<IProfileService>();
-        profileService.GetByUserIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, Profile> { [actor] = new Profile { UserId = actor, BurnerName = "Frank" } });
+        var userService = StubUserService((actor, "Frank"));
 
         var teamService = Substitute.For<ITeamService>();
         teamService.GetByIdsWithParentsAsync(Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
@@ -174,7 +167,7 @@ public class AuditViewerServiceTests
         teamResourceService.GetResourceNamesByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, string>());
 
-        var service = new AuditViewerService(auditLog, profileService, teamService, teamResourceService);
+        var service = new AuditViewerService(auditLog, userService, teamService, teamResourceService);
 
         var result = await service.GetPageAsync(null, 1, 50);
 
@@ -183,20 +176,16 @@ public class AuditViewerServiceTests
         result.Items[0].ActorDisplayName.Should().Be("Frank");
     }
 
-    private static (IAuditLogService, IProfileService, ITeamService, ITeamResourceService) MakeServices(
+    private static (IAuditLogService, IUserService, ITeamService, ITeamResourceService) MakeServices(
         AuditLogEntry entry, Guid actor, Guid viewer, string actorName, string viewerName)
     {
         var auditLog = Substitute.For<IAuditLogService>();
         auditLog.GetByUserAsync(viewer, Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns([ToSnapshot(entry)]);
 
-        var profileService = Substitute.For<IProfileService>();
-        profileService.GetByUserIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, Profile>
-            {
-                [actor] = new Profile { UserId = actor, BurnerName = actorName },
-                [viewer] = new Profile { UserId = viewer, BurnerName = viewerName }
-            });
+        var userService = StubUserService(
+            (actor, actorName),
+            (viewer, viewerName));
 
         var teamService = Substitute.For<ITeamService>();
         teamService.GetByIdsWithParentsAsync(Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
@@ -206,7 +195,20 @@ public class AuditViewerServiceTests
         teamResourceService.GetResourceNamesByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, string>());
 
-        return (auditLog, profileService, teamService, teamResourceService);
+        return (auditLog, userService, teamService, teamResourceService);
+    }
+
+    private static IUserService StubUserService(params (Guid Id, string BurnerName)[] users)
+    {
+        var userService = Substitute.For<IUserService>();
+        var dict = users.ToDictionary(
+            u => u.Id,
+            u => UserInfoStubHelpers.MakeUserInfo(
+                u.Id,
+                profile: new Profile { UserId = u.Id, BurnerName = u.BurnerName }));
+        userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(dict));
+        return userService;
     }
 
     private static AuditLogEntry MakeEntry(

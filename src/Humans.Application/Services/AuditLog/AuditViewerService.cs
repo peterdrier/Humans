@@ -1,6 +1,6 @@
 using Humans.Application.Interfaces.AuditLog;
-using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Teams;
+using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 
 namespace Humans.Application.Services.AuditLog;
@@ -11,25 +11,25 @@ namespace Humans.Application.Services.AuditLog;
 /// <remarks>
 /// Pure read-side service — wraps <see cref="IAuditLogService"/> for the raw
 /// queries and resolves actor, subject, and target-team names via
-/// <see cref="IProfileService"/> and <see cref="ITeamService"/>. No DB access,
+/// <see cref="IUserService"/> and <see cref="ITeamService"/>. No DB access,
 /// no caching, no merge-chain logic of its own — those concerns stay in
 /// <see cref="IAuditLogService"/> where the audit-log table is owned.
 /// </remarks>
 public sealed class AuditViewerService : IAuditViewerService
 {
     private readonly IAuditLogService _auditLog;
-    private readonly IProfileService _profileService;
+    private readonly IUserService _userService;
     private readonly ITeamService _teamService;
     private readonly ITeamResourceService _teamResourceService;
 
     public AuditViewerService(
         IAuditLogService auditLog,
-        IProfileService profileService,
+        IUserService userService,
         ITeamService teamService,
         ITeamResourceService teamResourceService)
     {
         _auditLog = auditLog;
-        _profileService = profileService;
+        _userService = userService;
         _teamService = teamService;
         _teamResourceService = teamResourceService;
     }
@@ -220,14 +220,14 @@ public sealed class AuditViewerService : IAuditViewerService
     private async Task<Dictionary<Guid, string>> GetUserDisplayNamesAsync(
         IReadOnlyList<Guid> userIds, CancellationToken ct)
     {
-        // Use IProfileService so BurnerName is returned when the profile has one
+        // BurnerName is returned when the profile has one
         // (memory/architecture/burnername-is-the-display-name.md). For users
         // without a profile, or with a null BurnerName (Stub), the entry is
         // absent from the dict — callers already handle null display names.
-        var profiles = await _profileService.GetByUserIdsAsync(userIds, ct);
-        return profiles
-            .Where(kvp => !string.IsNullOrWhiteSpace(kvp.Value.BurnerName))
-            .ToDictionary(kvp => kvp.Key, kvp => kvp.Value.BurnerName!);
+        var users = await _userService.GetUserInfosAsync(userIds, ct);
+        return users
+            .Where(kvp => !string.IsNullOrWhiteSpace(kvp.Value.Profile?.BurnerName))
+            .ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Profile!.BurnerName!);
     }
 
     private async Task<Dictionary<Guid, (string Name, string Slug)>> GetTeamNamesAsync(

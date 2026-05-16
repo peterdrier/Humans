@@ -28,7 +28,6 @@ public sealed class GoogleGroupSyncService : IGoogleGroupSync
     private readonly ITeamService _teamService;
     private readonly IUserService _userService;
     private readonly IUserEmailService _userEmailService;
-    private readonly IProfileService _profileService;
     private readonly ISyncSettingsService _syncSettingsService;
     private readonly IAuditLogService _auditLogService;
     private readonly IGoogleRemovalNotificationService _removalNotifications;
@@ -46,7 +45,6 @@ public sealed class GoogleGroupSyncService : IGoogleGroupSync
         ITeamService teamService,
         IUserService userService,
         IUserEmailService userEmailService,
-        IProfileService profileService,
         ISyncSettingsService syncSettingsService,
         IAuditLogService auditLogService,
         IGoogleRemovalNotificationService removalNotifications,
@@ -63,7 +61,6 @@ public sealed class GoogleGroupSyncService : IGoogleGroupSync
         _teamService = teamService;
         _userService = userService;
         _userEmailService = userEmailService;
-        _profileService = profileService;
         _syncSettingsService = syncSettingsService;
         _auditLogService = auditLogService;
         _removalNotifications = removalNotifications;
@@ -358,7 +355,6 @@ public sealed class GoogleGroupSyncService : IGoogleGroupSync
 
         var users = await _userService.GetUserInfosAsync(userIds, ct);
         var emailsByUserId = await _userEmailService.GetEntitiesByUserIdsAsync(userIds, ct);
-        var profilesByUserId = await _profileService.GetByUserIdsAsync(userIds, ct);
 
         var result = new Dictionary<Guid, ExpectedMember>();
         foreach (var userId in userIds)
@@ -367,16 +363,15 @@ public sealed class GoogleGroupSyncService : IGoogleGroupSync
                 continue;
             if (user.GoogleEmailStatus == GoogleEmailStatus.Rejected || user.IsDeletionPending || user.MergedToUserId is not null)
                 continue;
-            profilesByUserId.TryGetValue(userId, out var profile);
-            if (profile is not null && IsSuspended(profile))
+            if (user.IsSuspended)
                 continue;
 
             var email = TryGetGoogleEmail(userId, emailsByUserId);
             if (email is null)
                 continue;
 
-            var displayName = profile is not null && !string.IsNullOrWhiteSpace(profile.BurnerName)
-                ? profile.BurnerName
+            var displayName = !string.IsNullOrWhiteSpace(user.Profile?.BurnerName)
+                ? user.Profile!.BurnerName
                 : user.DisplayName;
 
             result[user.Id] = new ExpectedMember(user.Id, email, displayName, user.ProfilePictureUrl);
@@ -416,16 +411,6 @@ public sealed class GoogleGroupSyncService : IGoogleGroupSync
                 .OrderBy(e => e.Email, StringComparer.OrdinalIgnoreCase)
                 .Select(e => e.Email)
                 .FirstOrDefault();
-    }
-
-    private static bool IsSuspended(Profile profile)
-    {
-        if (profile.State == ProfileState.Suspended)
-            return true;
-
-#pragma warning disable HUM_PROFILE_ISSUSPENDED
-        return profile.IsSuspended;
-#pragma warning restore HUM_PROFILE_ISSUSPENDED
     }
 
     private async Task<ResourceSyncDiff> BuildCollisionDiffAsync(

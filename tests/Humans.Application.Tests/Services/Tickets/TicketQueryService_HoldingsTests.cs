@@ -36,7 +36,6 @@ public sealed class TicketQueryService_HoldingsTests
             Substitute.For<ICampaignService>(),
             Substitute.For<IUserService>(),
             Substitute.For<IUserEmailService>(),
-            Substitute.For<IProfileService>(),
             Substitute.For<ITeamService>(),
             Substitute.For<IShiftManagementService>(),
             SystemClock.Instance);

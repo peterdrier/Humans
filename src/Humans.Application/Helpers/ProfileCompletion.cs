@@ -1,3 +1,4 @@
+using Humans.Application;
 using Humans.Domain.Entities;
 
 namespace Humans.Application.Helpers;
@@ -60,6 +61,34 @@ public static class ProfileCompletion
             (profile.VolunteerHistory.Count > 0 || profile.NoPriorBurnExperience, 2),
 
             // Shift tag preferences (separate table; caller passes a bool).
+            (hasShiftTagPreferences, 1),
+        };
+
+        var earned = checks.Where(c => c.Filled).Sum(c => c.Weight);
+        var total = checks.Sum(c => c.Weight);
+        return (int)Math.Round(100.0 * earned / total);
+    }
+
+    public static int ComputePercent(ProfileInfo? profile, bool hasShiftTagPreferences)
+    {
+        if (profile is null) return 0;
+
+        var checks = new (bool Filled, int Weight)[]
+        {
+            (!string.IsNullOrWhiteSpace(profile.BurnerName), 1),
+            (!string.IsNullOrWhiteSpace(profile.FirstName), 1),
+            (!string.IsNullOrWhiteSpace(profile.LastName), 1),
+            (profile.HasCustomPicture, 5),
+            (!string.IsNullOrWhiteSpace(profile.Pronouns), 1),
+            (!string.IsNullOrWhiteSpace(profile.Bio), 2),
+            (!string.IsNullOrWhiteSpace(profile.City) && !string.IsNullOrWhiteSpace(profile.CountryCode), 1),
+            (profile.BirthdayDay.HasValue && profile.BirthdayMonth.HasValue, 1),
+            (!string.IsNullOrWhiteSpace(profile.ContributionInterests), 2),
+            (!string.IsNullOrWhiteSpace(profile.EmergencyContactName)
+                || !string.IsNullOrWhiteSpace(profile.EmergencyContactPhone)
+                || !string.IsNullOrWhiteSpace(profile.EmergencyContactRelationship), 1),
+            (profile.Languages.Count > 0, 1),
+            (profile.VolunteerHistory.Count > 0 || profile.NoPriorBurnExperience, 2),
             (hasShiftTagPreferences, 1),
         };
 

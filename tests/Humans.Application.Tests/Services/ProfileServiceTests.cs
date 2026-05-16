@@ -243,31 +243,6 @@ public class ProfileServiceTests : IDisposable
     // issue nobodies-collective/Humans#685. Deletion request/cancel moved to
     // IAccountDeletionService (covered by AccountDeletionServiceTests).
 
-    // --- Simple lookups ---
-
-    [HumansFact]
-    public async Task GetProfileAsync_ExistingUser_ReturnsProfile()
-    {
-        var userId = Guid.NewGuid();
-        await SeedUserWithProfileAsync(userId);
-
-        var result = await _service.GetProfileAsync(userId);
-
-        result.Should().NotBeNull();
-        result!.UserId.Should().Be(userId);
-    }
-
-    [HumansFact]
-    public async Task GetProfileAsync_NoProfile_ReturnsNull()
-    {
-        var userId = Guid.NewGuid();
-        await SeedUserAsync(userId);
-
-        var result = await _service.GetProfileAsync(userId);
-
-        result.Should().BeNull();
-    }
-
     [HumansFact]
     public async Task GetProfilePictureAsync_WithPicture_ReturnsData()
     {

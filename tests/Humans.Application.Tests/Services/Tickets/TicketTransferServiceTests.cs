@@ -124,8 +124,6 @@ public sealed class TicketTransferServiceTests
                 new Profile { BurnerName = "Alice", FirstName = "Alice", LastName = "Smith" }));
         _userEmailService.GetPrimaryEmailAsync(userId, Arg.Any<CancellationToken>())
             .Returns("alice@example.com");
-        _profileService.GetProfileAsync(userId, Arg.Any<CancellationToken>())
-            .Returns((Profile?)null);
 
         var result = await _service.LookupReceiversAsync("alice@example.com", _senderId);
 
@@ -171,8 +169,6 @@ public sealed class TicketTransferServiceTests
                 new Profile { BurnerName = "Sparkle Person", FirstName = "Sparkle", LastName = "Person" }));
         _userEmailService.GetPrimaryEmailAsync(userId, Arg.Any<CancellationToken>())
             .Returns("sp@example.com");
-        _profileService.GetProfileAsync(userId, Arg.Any<CancellationToken>())
-            .Returns((Profile?)null);
 
         var result = await _service.LookupReceiversAsync("sparkle", _senderId);
 
@@ -203,8 +199,6 @@ public sealed class TicketTransferServiceTests
                 new Profile { BurnerName = "B", FirstName = "Bbb", LastName = "Bbb" }));
         _userEmailService.GetPrimaryEmailAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns((string?)null);
-        _profileService.GetProfileAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns((Profile?)null);
 
         var result = await _service.LookupReceiversAsync("popular", _senderId);
 

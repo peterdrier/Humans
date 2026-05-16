@@ -194,8 +194,8 @@ public class ExpenseReportServiceTests
         var submitter = Guid.NewGuid();
         var id = await _sut.CreateDraftAsync(submitter, category.Id, null);
         var report = await _sut.GetAsync(id);
-        _profileService.GetProfileAsync(submitter, Arg.Any<CancellationToken>())
-            .Returns(new Profile { Id = Guid.NewGuid(), UserId = submitter, Iban = "ES9121000418450200051332" });
+        _userService.GetUserInfoAsync(submitter, Arg.Any<CancellationToken>())
+            .Returns(WrapInUserInfo(new Profile { Id = Guid.NewGuid(), UserId = submitter, Iban = "ES9121000418450200051332" }));
 
         var result = await _sut.GetDetailViewDataAsync(submitter, report!);
 
@@ -747,8 +747,8 @@ public class ExpenseReportServiceTests
     public async Task SaveSubmitterIbanWithResultAsync_ReturnsValidationFailure_WhenIbanInvalid()
     {
         var submitter = Guid.NewGuid();
-        _profileService.GetProfileAsync(submitter, Arg.Any<CancellationToken>())
-            .Returns(new Profile { Id = Guid.NewGuid(), UserId = submitter, Iban = "ES9121000418450200051332" });
+        _userService.GetUserInfoAsync(submitter, Arg.Any<CancellationToken>())
+            .Returns(WrapInUserInfo(new Profile { Id = Guid.NewGuid(), UserId = submitter, Iban = "ES9121000418450200051332" }));
 
         var result = await _sut.SaveSubmitterIbanWithResultAsync(submitter, "not-an-iban");
 
@@ -762,8 +762,8 @@ public class ExpenseReportServiceTests
     public async Task GetSubmitterIbanViewAsync_ReturnsMaskedIban_WhenProfileHasIban()
     {
         var submitter = Guid.NewGuid();
-        _profileService.GetProfileAsync(submitter, Arg.Any<CancellationToken>())
-            .Returns(new Profile { Id = Guid.NewGuid(), UserId = submitter, Iban = "ES9121000418450200051332" });
+        _userService.GetUserInfoAsync(submitter, Arg.Any<CancellationToken>())
+            .Returns(WrapInUserInfo(new Profile { Id = Guid.NewGuid(), UserId = submitter, Iban = "ES9121000418450200051332" }));
 
         var result = await _sut.GetSubmitterIbanViewAsync(submitter);
 

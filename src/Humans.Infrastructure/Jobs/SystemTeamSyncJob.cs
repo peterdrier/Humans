@@ -101,6 +101,12 @@ public class SystemTeamSyncJob : ISystemTeamSync
     private IProfileService ProfileService =>
         _serviceProvider.GetRequiredService<IProfileService>();
 
+    // Direct repository read for the destructive Volunteers reconciliation: a
+    // startup UserInfo cache that came up empty would otherwise deprovision
+    // every Volunteers member. See SyncVolunteersTeamAsync below.
+    private IProfileRepository ProfileRepository =>
+        _serviceProvider.GetRequiredService<IProfileRepository>();
+
     private ITeamResourceService TeamResourceService =>
         _serviceProvider.GetRequiredService<ITeamResourceService>();
 
@@ -262,7 +268,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
         // users-table scan is trivial next to that risk.
         var allUsers = await _userService.GetAllUsersAsync(cancellationToken);
         var allUserIds = allUsers.Select(u => u.Id).ToList();
-        var profiles = await ProfileService.GetByUserIdsAsync(allUserIds, cancellationToken);
+        var profiles = await ProfileRepository.GetByUserIdsAsync(allUserIds, cancellationToken);
         var candidateIds = allUserIds
             .Where(id => profiles.TryGetValue(id, out var p)
                 && !p.IsSuspended
@@ -464,7 +470,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
             return;
         }
 
-        var profiles = await ProfileService.GetByUserIdsAsync([userId], cancellationToken);
+        var profiles = await ProfileRepository.GetByUserIdsAsync([userId], cancellationToken);
         profiles.TryGetValue(userId, out var profile);
 
         // Volunteers admission no longer requires Profile.IsApproved (CC clearance).
@@ -536,7 +542,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
         var hasApprovedApp = await ApplicationDecisionService
             .HasActiveApprovedTierAsync(userId, tier, today, cancellationToken);
 
-        var profiles = await ProfileService.GetByUserIdsAsync([userId], cancellationToken);
+        var profiles = await ProfileRepository.GetByUserIdsAsync([userId], cancellationToken);
         profiles.TryGetValue(userId, out var profile);
 
         var isEligible = hasApprovedApp

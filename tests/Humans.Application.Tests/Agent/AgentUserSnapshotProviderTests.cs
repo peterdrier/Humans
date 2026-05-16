@@ -2,12 +2,12 @@ using AwesomeAssertions;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Consent;
 using Humans.Application.Interfaces.Feedback;
-using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Models;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Services.Agent;
@@ -148,10 +148,11 @@ public class AgentUserSnapshotProviderTests
         IReadOnlyList<Guid>? openTicketIds = null,
         IReadOnlyList<TeamMembership>? teamMemberships = null)
     {
-        var profiles = Substitute.For<IProfileService>();
         var users = Substitute.For<IUserService>();
-        users.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(new User { Id = userId, DisplayName = "T", PreferredLanguage = "es" });
+        users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(
+                new User { Id = userId, DisplayName = "T", PreferredLanguage = "es" }
+                    .ToUserInfo()));
         var roles = Substitute.For<IRoleAssignmentService>();
         roles.GetActiveForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns([]);
@@ -181,7 +182,7 @@ public class AgentUserSnapshotProviderTests
         var clock = new FakeClock(Instant.FromUtc(2026, 6, 1, 0, 0));
 
         return new AgentUserSnapshotProvider(
-            profiles, users, roles, teams, consents, feedback, tickets,
+            users, roles, teams, consents, feedback, tickets,
             shiftSignups, shiftMgmt, clock);
     }
 

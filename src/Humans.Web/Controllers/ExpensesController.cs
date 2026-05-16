@@ -1,7 +1,6 @@
 using System.Text;
 using Humans.Application.Interfaces.Budget;
 using Humans.Application.Interfaces.Expenses;
-using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Expenses.Dtos;
 using Humans.Domain.Entities;
@@ -23,7 +22,6 @@ public sealed class ExpensesController : HumansControllerBase
 {
     private readonly IExpenseReportService _service;
     private readonly IBudgetService _budgetService;
-    private readonly IProfileService _profileService;
     private readonly IUserService _userService;
     private readonly IClock _clock;
     private readonly IAuthorizationService _authService;
@@ -35,7 +33,6 @@ public sealed class ExpensesController : HumansControllerBase
         IUserService userService,
         IExpenseReportService service,
         IBudgetService budgetService,
-        IProfileService profileService,
         IClock clock,
         IAuthorizationService authService,
         ISepaPaymentFileBuilder sepaBuilder,
@@ -45,7 +42,6 @@ public sealed class ExpensesController : HumansControllerBase
     {
         _service = service;
         _budgetService = budgetService;
-        _profileService = profileService;
         _userService = userService;
         _clock = clock;
         _authService = authService;
@@ -767,15 +763,12 @@ public sealed class ExpensesController : HumansControllerBase
         var ids = reports.Select(r => r.SubmitterUserId).Distinct().ToList();
         if (ids.Count == 0) return new Dictionary<Guid, string>();
 
-        var profiles = await _profileService.GetByUserIdsAsync(ids);
-        var users = await _userService.GetByIdsAsync(ids);
+        var users = await _userService.GetUserInfosAsync(ids);
         return ids.ToDictionary(
             id => id,
-            id => profiles.TryGetValue(id, out var p) && !string.IsNullOrWhiteSpace(p.BurnerName)
-                ? p.BurnerName
-                : users.TryGetValue(id, out var u) && !string.IsNullOrWhiteSpace(u.DisplayName)
-                    ? u.DisplayName
-                    : "(unknown)");
+            id => users.TryGetValue(id, out var u) && !string.IsNullOrWhiteSpace(u.BurnerName)
+                ? u.BurnerName
+                : "(unknown)");
     }
 
     private async Task PopulateEditModelAsync(ExpenseEditViewModel model, ExpenseReportDto report)

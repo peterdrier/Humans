@@ -31,7 +31,6 @@ public class FeedbackServiceTests : IDisposable
     private readonly IUserService _userService;
     private readonly IUserEmailService _userEmailService;
     private readonly ITeamService _teamService;
-    private readonly IProfileService _profileService;
     private readonly INotificationService _notificationService;
     private readonly INavBadgeCacheInvalidator _navBadge;
     private readonly IFeedbackRepository _repository;
@@ -130,26 +129,13 @@ public class FeedbackServiceTests : IDisposable
                     t.ParentTeamId));
             });
 
-        _profileService = Substitute.For<IProfileService>();
-        _profileService
-            .GetByUserIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(call =>
-            {
-                var ids = (IReadOnlyCollection<Guid>)call[0]!;
-                IReadOnlyDictionary<Guid, Profile> dict = _dbContext.Profiles
-                    .AsNoTracking()
-                    .Where(p => ids.Contains(p.UserId))
-                    .ToDictionary(p => p.UserId);
-                return Task.FromResult(dict);
-            });
-
         _notificationService = Substitute.For<INotificationService>();
         _navBadge = Substitute.For<INavBadgeCacheInvalidator>();
 
         _repository = new FeedbackRepository(new TestDbContextFactory(options));
 
         _service = new FeedbackApplicationService(
-            _repository, _userService, _userEmailService, _teamService, _profileService,
+            _repository, _userService, _userEmailService, _teamService,
             _emailService, _notificationService, _auditLog, _navBadge, _clock, env,
             NullLogger<FeedbackApplicationService>.Instance);
     }

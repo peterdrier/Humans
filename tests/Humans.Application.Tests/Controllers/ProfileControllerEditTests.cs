@@ -157,8 +157,6 @@ public class ProfileControllerEditTests
     [HumansFact]
     public async Task Edit_InitialSetup_Volunteer_DoesNotDispatchTierApplication()
     {
-        // Initial setup is signalled by GetProfileAsync returning null.
-        _profileService.GetProfileAsync(_userId, Arg.Any<CancellationToken>()).Returns((Profile?)null);
 
         var model = MakeValidModel(MembershipTier.Volunteer);
 
@@ -173,7 +171,6 @@ public class ProfileControllerEditTests
     [HumansFact]
     public async Task Edit_InitialSetup_Colaborador_NoExistingApp_CallsSubmitAsync()
     {
-        _profileService.GetProfileAsync(_userId, Arg.Any<CancellationToken>()).Returns((Profile?)null);
         _applicationDecisionService.GetUserApplicationsAsync(_userId, Arg.Any<CancellationToken>())
             .Returns([]);
 
@@ -200,7 +197,6 @@ public class ProfileControllerEditTests
         // pending applications by replaying the form. ApplicationDecisionService
         // also rejects with AlreadyPending as a backstop, but the controller
         // shouldn't lean on that.
-        _profileService.GetProfileAsync(_userId, Arg.Any<CancellationToken>()).Returns((Profile?)null);
 
         var existingDraftId = Guid.NewGuid();
         var existingDraft = new UserApplicationSnapshot(
@@ -265,7 +261,6 @@ public class ProfileControllerEditTests
     [HumansFact]
     public async Task Edit_Post_WithShiftTagIds_CallsSetVolunteerTagPreferencesAsync()
     {
-        _profileService.GetProfileAsync(_userId, Arg.Any<CancellationToken>()).Returns((Profile?)null);
         _applicationDecisionService.GetUserApplicationsAsync(_userId, Arg.Any<CancellationToken>())
             .Returns([]);
 
@@ -284,7 +279,6 @@ public class ProfileControllerEditTests
     [HumansFact]
     public async Task Edit_Post_WithEmptyShiftTagIds_CallsSetVolunteerTagPreferencesAsyncWithEmptyList()
     {
-        _profileService.GetProfileAsync(_userId, Arg.Any<CancellationToken>()).Returns((Profile?)null);
         _applicationDecisionService.GetUserApplicationsAsync(_userId, Arg.Any<CancellationToken>())
             .Returns([]);
 

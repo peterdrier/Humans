@@ -1,7 +1,6 @@
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Governance;
 using Humans.Domain.Constants;
-using ProfileEntity = Humans.Domain.Entities.Profile;
 
 namespace Humans.Application.Services.Profiles;
 
@@ -26,7 +25,6 @@ public static class AdminHumanListAssembler
 {
     public static async Task<IReadOnlyList<AdminHumanRow>> AssembleAsync(
         IReadOnlyCollection<UserInfo> allUsers,
-        IReadOnlyDictionary<Guid, ProfileEntity> profilesByUserId,
         IReadOnlyDictionary<Guid, string> notificationEmailsByUserId,
         IReadOnlySet<Guid>? searchUserIds,
         string? statusFilter,
@@ -34,7 +32,6 @@ public static class AdminHumanListAssembler
         CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(allUsers);
-        ArgumentNullException.ThrowIfNull(profilesByUserId);
         ArgumentNullException.ThrowIfNull(notificationEmailsByUserId);
         ArgumentNullException.ThrowIfNull(membershipCalculator);
 
@@ -62,9 +59,8 @@ public static class AdminHumanListAssembler
 
         return rows.Select(u =>
         {
-            profilesByUserId.TryGetValue(u.Id, out var profile);
-            var hasProfile = profile is not null;
-            var isApproved = profile?.IsApproved ?? false;
+            var hasProfile = u.Profile is not null;
+            var isApproved = u.Profile?.IsApproved ?? false;
 
             var email = notificationEmailsByUserId.TryGetValue(u.Id, out var primary)
                 ? primary

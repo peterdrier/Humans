@@ -1,5 +1,4 @@
 using Humans.Application.Interfaces.Admin;
-using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
@@ -10,18 +9,15 @@ public sealed class AdminDatabaseDiagnosticsService : IAdminDatabaseDiagnosticsS
 {
     private readonly IAdminDatabaseDiagnosticsRepository _repository;
     private readonly IUserService _userService;
-    private readonly IProfileService _profileService;
     private readonly ITicketQueryService _ticketQueryService;
 
     public AdminDatabaseDiagnosticsService(
         IAdminDatabaseDiagnosticsRepository repository,
         IUserService userService,
-        IProfileService profileService,
         ITicketQueryService ticketQueryService)
     {
         _repository = repository;
         _userService = userService;
-        _profileService = profileService;
         _ticketQueryService = ticketQueryService;
     }
 
@@ -34,9 +30,6 @@ public sealed class AdminDatabaseDiagnosticsService : IAdminDatabaseDiagnosticsS
     public async Task<AudienceSegmentation> GetAudienceSegmentationAsync(int? year, CancellationToken ct = default)
     {
         var allUsers = _userService.GetAllUserInfos();
-        var allUserIds = allUsers.Select(u => u.Id).ToArray();
-        var profilesByUserId = await _profileService.GetByUserIdsAsync(allUserIds, ct);
-        var profileUserIds = profilesByUserId.Keys.ToHashSet();
         IReadOnlySet<Guid> ticketUserIds = year.HasValue
             ? await _ticketQueryService.GetMatchedUserIdsForYearAsync(year.Value, ct)
             : await _ticketQueryService.GetAllMatchedUserIdsAsync();
@@ -48,7 +41,7 @@ public sealed class AdminDatabaseDiagnosticsService : IAdminDatabaseDiagnosticsS
 
         foreach (var user in allUsers)
         {
-            var hasProfile = profileUserIds.Contains(user.Id);
+            var hasProfile = user.Profile is not null;
             var hasTicket = ticketUserIds.Contains(user.Id);
 
             if (hasProfile) withProfile++;

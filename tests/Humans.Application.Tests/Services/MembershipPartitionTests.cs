@@ -10,7 +10,7 @@ using Humans.Application.Interfaces.Consent;
 using Humans.Application.Interfaces.Legal;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Interfaces.Governance;
-using Humans.Application.Interfaces.Profiles;
+using Humans.Domain.Enums;
 
 namespace Humans.Application.Tests.Services;
 
@@ -18,7 +18,6 @@ public class MembershipPartitionTests
 {
     private readonly FakeClock _clock;
     private readonly MembershipCalculator _service;
-    private readonly IProfileService _profileService = Substitute.For<IProfileService>();
     private readonly IMembershipQuery _membershipQuery = Substitute.For<IMembershipQuery>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IConsentService _consentService = Substitute.For<IConsentService>();
@@ -37,40 +36,23 @@ public class MembershipPartitionTests
         serviceProvider.GetService(typeof(IConsentService)).Returns(_consentService);
 
         _service = new MembershipCalculator(
-            _profileService,
             _membershipQuery,
             _userService,
             _legalDocumentSyncService,
             serviceProvider,
             _clock);
 
-        _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(ci =>
-            {
-                var ids = ci.Arg<IReadOnlyCollection<Guid>>();
-                var map = ids
-                    .Where(_usersById.ContainsKey)
-                    .ToDictionary(id => id, id => _usersById[id]);
-                return Task.FromResult<IReadOnlyDictionary<Guid, User>>(map);
-            });
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(ci =>
             {
                 var ids = ci.Arg<IReadOnlyCollection<Guid>>();
                 IReadOnlyDictionary<Guid, UserInfo> map = ids
                     .Where(_usersById.ContainsKey)
-                    .ToDictionary(id => id, id => _usersById[id].ToUserInfo());
+                    .ToDictionary(
+                        id => id,
+                        id => _usersById[id].ToUserInfo(
+                            profile: _profilesByUserId.GetValueOrDefault(id)));
                 return new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(map);
-            });
-
-        _profileService.GetByUserIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(ci =>
-            {
-                var ids = ci.Arg<IReadOnlyCollection<Guid>>();
-                var map = ids
-                    .Where(_profilesByUserId.ContainsKey)
-                    .ToDictionary(id => id, id => _profilesByUserId[id]);
-                return Task.FromResult<IReadOnlyDictionary<Guid, Profile>>(map);
             });
 
         _legalDocumentSyncService.GetRequiredDocumentVersionsForTeamAsync(
@@ -304,7 +286,7 @@ public class MembershipPartitionTests
             FirstName = "Test",
             LastName = "User",
             IsApproved = isApproved,
-            IsSuspended = isSuspended,
+            State = isSuspended ? ProfileState.Suspended : ProfileState.Active,
             CreatedAt = _clock.GetCurrentInstant(),
             UpdatedAt = _clock.GetCurrentInstant()
         };

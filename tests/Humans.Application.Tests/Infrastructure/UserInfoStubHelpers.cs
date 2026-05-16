@@ -15,13 +15,28 @@ namespace Humans.Application.Tests.Infrastructure;
 /// </summary>
 internal static class UserInfoStubHelpers
 {
-    public static UserInfo ToUserInfo(this User user, IReadOnlyList<UserEmail>? userEmails = null)
+    public static UserInfo ToUserInfo(
+        this User user,
+        IReadOnlyList<UserEmail>? userEmails = null,
+        Profile? profile = null)
         => UserInfo.Create(
             user,
             userEmails ?? user.UserEmails?.ToList() ?? [],
             [],
             [],
-            profile: null,
+            profile: profile,
+            [],
+            [],
+            [],
+            []);
+
+    public static UserInfo MakeUserInfo(Guid userId, Profile? profile = null, string displayName = "User")
+        => UserInfo.Create(
+            new User { Id = userId, DisplayName = displayName, PreferredLanguage = "en" },
+            [],
+            [],
+            [],
+            profile: profile,
             [],
             [],
             [],
@@ -29,7 +44,7 @@ internal static class UserInfoStubHelpers
 
     /// <summary>
     /// Stubs GetUserInfosAsync to read from the provided DbContext options (new context per call,
-    /// includes UserEmails).
+    /// includes UserEmails + Profile slice).
     /// </summary>
     public static IUserService StubGetUserInfosFromDb(this IUserService userService, DbContextOptions<HumansDbContext> options)
     {
@@ -46,9 +61,12 @@ internal static class UserInfoStubHelpers
                     .Include(u => u.UserEmails)
                     .Where(u => ids.Contains(u.Id))
                     .ToList();
+                var profiles = db.Profiles.AsNoTracking()
+                    .Where(p => ids.Contains(p.UserId))
+                    .ToDictionary(p => p.UserId);
                 IReadOnlyDictionary<Guid, UserInfo> dict = users.ToDictionary(
                     u => u.Id,
-                    u => u.ToUserInfo(u.UserEmails.ToList()));
+                    u => u.ToUserInfo(u.UserEmails.ToList(), profiles.GetValueOrDefault(u.Id)));
                 return new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(dict);
             });
         return userService;
@@ -72,9 +90,12 @@ internal static class UserInfoStubHelpers
                     .Include(u => u.UserEmails)
                     .Where(u => ids.Contains(u.Id))
                     .ToList();
+                var profiles = dbContext.Profiles.AsNoTracking()
+                    .Where(p => ids.Contains(p.UserId))
+                    .ToDictionary(p => p.UserId);
                 IReadOnlyDictionary<Guid, UserInfo> dict = users.ToDictionary(
                     u => u.Id,
-                    u => u.ToUserInfo(u.UserEmails.ToList()));
+                    u => u.ToUserInfo(u.UserEmails.ToList(), profiles.GetValueOrDefault(u.Id)));
                 return new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(dict);
             });
         return userService;
