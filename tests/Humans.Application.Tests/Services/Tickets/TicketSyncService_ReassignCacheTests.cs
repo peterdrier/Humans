@@ -7,7 +7,6 @@ using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Tickets;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;
@@ -56,7 +55,6 @@ public sealed class TicketSyncService_ReassignCacheTests
             new FakeClock(Instant.FromUtc(2026, 5, 16, 12, 0)),
             Options.Create(new TicketVendorSettings { EventId = "ev_t07", ApiKey = "k", SyncIntervalMinutes = 15 }),
             NullLogger<TicketSyncService>.Instance,
-            new MemoryCache(new MemoryCacheOptions()),
             invalidator,
             Substitute.For<IUserService>(),
             Substitute.For<ICampaignService>(),

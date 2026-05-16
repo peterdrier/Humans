@@ -36,7 +36,6 @@ namespace Humans.Application.Tests.Architecture.Rules;
 ///   <item><see cref="NotificationService"/> — notification preferences cache</item>
 ///   <item><see cref="ShiftManagementService"/> — shift data cache</item>
 ///   <item><see cref="TicketQueryService"/> — ticket query cache</item>
-///   <item><see cref="TicketSyncService"/> — sync state cache</item>
 /// </list>
 /// </para>
 ///
@@ -63,8 +62,7 @@ public class ApplicationServicesTakeNoMemoryCacheRule
         typeof(NotificationMeterProvider),
         typeof(NotificationService),
         typeof(ShiftManagementService),
-        typeof(TicketQueryService),
-        typeof(TicketSyncService)
+        typeof(TicketQueryService)
     ];
 
     [HumansFact]

@@ -174,6 +174,65 @@ public class TicketQueryArchitectureTests
     }
 
     [HumansFact]
+    public void CachingTicketQueryService_HasCurrentEventTicketAsync_DoesNotCallRepositoryOrFilter()
+    {
+        // §5a rule 4: decorators contain zero business logic. The previous
+        // body of HasCurrentEventTicketAsync on the decorator did a live
+        // GetSyncStateAsync round-trip AND applied payment/attendee-status
+        // filtering — both belong on the inner. This pin walks the IL of
+        // the decorator method and confirms none of its referenced methods
+        // resolve to ITicketRepository (any method on it) — the only call
+        // surface should be the inner ITicketQueryService.
+        var method = typeof(CachingTicketQueryService)
+            .GetMethod(nameof(CachingTicketQueryService.HasCurrentEventTicketAsync));
+        method.Should().NotBeNull();
+
+        var body = method!.GetMethodBody();
+        body.Should().NotBeNull();
+
+        var il = body!.GetILAsByteArray()!;
+        var module = method.Module;
+
+        // Walk the IL collecting any method-token references. Tokens for
+        // method-call opcodes (call 0x28, callvirt 0x6F, newobj 0x73, ldftn,
+        // ldvirtftn) are followed by a 4-byte metadata token. We resolve
+        // each token and check the declaring type.
+        var repositoryCalls = new List<string>();
+        for (var i = 0; i < il.Length; i++)
+        {
+            var op = il[i];
+            var isCall = op is 0x28 or 0x6F or 0x73;
+            var isLdftn = op == 0xFE && i + 1 < il.Length && (il[i + 1] == 0x06 || il[i + 1] == 0x07);
+
+            if (isCall && i + 4 < il.Length)
+            {
+                var token = BitConverter.ToInt32(il, i + 1);
+                try
+                {
+                    var resolved = module.ResolveMethod(token);
+                    if (resolved?.DeclaringType is { } dt &&
+                        typeof(ITicketRepository).IsAssignableFrom(dt))
+                    {
+                        repositoryCalls.Add($"{resolved.DeclaringType.Name}.{resolved.Name}");
+                    }
+                }
+                catch
+                {
+                    // Token couldn't be resolved (generic context); ignore.
+                }
+                i += 4;
+            }
+            else if (isLdftn && i + 5 < il.Length)
+            {
+                i += 5;
+            }
+        }
+
+        repositoryCalls.Should().BeEmpty(
+            because: "HasCurrentEventTicketAsync on the decorator must be a pure pass-through (§5a rule 4); active-event resolution and payment/attendee-status filtering belong on the inner TicketQueryService, not the cache wrapper");
+    }
+
+    [HumansFact]
     public void TicketSyncService_TakesITicketCacheInvalidator()
     {
         // The Tickets-section write site (sync job + IUserMerge fold) must

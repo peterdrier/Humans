@@ -51,4 +51,15 @@ public interface ITicketCacheInvalidator
     /// <c>IUserMerge</c> implementation).
     /// </summary>
     void InvalidateAfterUserMerge(Guid sourceUserId, Guid targetUserId);
+
+    /// <summary>
+    /// Drops the cached vendor event summary keyed on
+    /// <paramref name="vendorEventId"/>. The summary lives on the
+    /// connector's <c>IMemoryCache</c> (Infrastructure) and is keyed by
+    /// the vendor event id; the sync service has no business holding
+    /// <c>IMemoryCache</c> itself (design-rules §15c — Application is
+    /// cache-unaware), so it pokes through this seam after a successful
+    /// sync. The decorator owns the eviction call to <c>IMemoryCache</c>.
+    /// </summary>
+    void InvalidateVendorEventSummary(string vendorEventId);
 }

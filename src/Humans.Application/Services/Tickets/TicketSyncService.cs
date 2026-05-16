@@ -11,7 +11,6 @@ using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Domain.Helpers;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NodaTime;
@@ -52,7 +51,6 @@ public sealed class TicketSyncService : ITicketSyncService, IUserMerge
     private readonly IStripeService _stripeService;
     private readonly IClock _clock;
     private readonly TicketVendorSettings _settings;
-    private readonly IMemoryCache _cache;
     private readonly ITicketCacheInvalidator _ticketCache;
     private readonly IUserService _userService;
     private readonly ICampaignService _campaignService;
@@ -67,7 +65,6 @@ public sealed class TicketSyncService : ITicketSyncService, IUserMerge
         IClock clock,
         IOptions<TicketVendorSettings> settings,
         ILogger<TicketSyncService> logger,
-        IMemoryCache cache,
         ITicketCacheInvalidator ticketCache,
         IUserService userService,
         ICampaignService campaignService,
@@ -79,7 +76,6 @@ public sealed class TicketSyncService : ITicketSyncService, IUserMerge
         _stripeService = stripeService;
         _clock = clock;
         _settings = settings.Value;
-        _cache = cache;
         _ticketCache = ticketCache;
         _userService = userService;
         _campaignService = campaignService;
@@ -200,11 +196,12 @@ public sealed class TicketSyncService : ITicketSyncService, IUserMerge
             await _ticketRepository.PersistSyncStateAsync(syncState, ct);
 
             // Invalidate all ticket-related caches after successful sync.
-            // The per-event vendor summary is owned by TicketTailorService
-            // (Infrastructure connector) and keyed on the vendor event id;
-            // keep it on IMemoryCache. The projection / per-user TTL entries
-            // belong to the decorator and are dropped through the invalidator.
-            _cache.Remove(CacheKeys.TicketEventSummary(eventId));
+            // The per-event vendor summary lives on the connector's shared
+            // IMemoryCache (Infrastructure) keyed on the vendor event id;
+            // the projection / per-user TTL entries live behind the decorator.
+            // Application stays cache-unaware (§15c) — both pokes route
+            // through the invalidator seam.
+            _ticketCache.InvalidateVendorEventSummary(eventId);
             _ticketCache.InvalidateAll();
 
             var result = new TicketSyncResult(ordersSynced, attendeesSynced,

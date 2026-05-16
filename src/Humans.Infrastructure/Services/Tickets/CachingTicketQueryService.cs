@@ -212,28 +212,13 @@ public sealed class CachingTicketQueryService
         return false;
     }
 
-    public async Task<bool> HasCurrentEventTicketAsync(Guid userId, CancellationToken ct = default)
-    {
-        var syncState = await _orders.Repository.GetSyncStateAsync(ct);
-        if (syncState is null || string.IsNullOrEmpty(syncState.VendorEventId))
-            return false;
-
-        var orders = await GetOrdersAsync();
-
-        var vendorEventId = syncState.VendorEventId;
-
-        // Paid order matched to user with at least one attendee on this event.
-        var hasPaidOrder = orders.Values.Any(o =>
-            o.PaymentStatus == TicketPaymentStatus.Paid
-            && o.MatchedUserId == userId
-            && string.Equals(o.VendorEventId, vendorEventId, StringComparison.Ordinal));
-        if (hasPaidOrder) return true;
-
-        // Fallback: Valid / CheckedIn attendee matched to user on this event.
-        return orders.Values.Any(o =>
-            string.Equals(o.VendorEventId, vendorEventId, StringComparison.Ordinal)
-            && o.Attendees.Any(a => a.MatchedUserId == userId && IsValidOrCheckedIn(a.Status)));
-    }
+    public Task<bool> HasCurrentEventTicketAsync(Guid userId, CancellationToken ct = default) =>
+        // Pass-through (§5a rule 4): the decision of "which event is current"
+        // and the payment/attendee-status filtering are business logic owned
+        // by the inner service. Caching the answer in the projection would
+        // require the decorator to track the active vendor-event id and
+        // reproduce the inner's filtering — both belong on the inner.
+        WithInner(inner => inner.HasCurrentEventTicketAsync(userId, ct));
 
     public async Task<List<UserTicketOrderSummary>> GetUserTicketOrderSummariesAsync(Guid userId)
     {
@@ -417,6 +402,9 @@ public sealed class CachingTicketQueryService
         _perUserCache.Remove(CacheKeys.UserTicketHoldings(targetUserId));
     }
 
+    public void InvalidateVendorEventSummary(string vendorEventId) =>
+        _perUserCache.Remove(CacheKeys.TicketEventSummary(vendorEventId));
+
     // ==========================================================================
     // GDPR contributor — the export shape mirrors the inner exactly. Routes
     // through the inner because Application registers the inner as the
@@ -506,12 +494,12 @@ public sealed class CachingTicketQueryService
     // ==========================================================================
     private sealed class OrdersCache : TrackedCache<Guid, TicketOrderInfo>
     {
-        public ITicketRepository Repository { get; }
+        private readonly ITicketRepository _repository;
 
         public OrdersCache(ITicketRepository repository)
             : base("Tickets.Orders", warmOnStartup: true)
         {
-            Repository = repository;
+            _repository = repository;
         }
 
         /// <summary>
@@ -524,7 +512,7 @@ public sealed class CachingTicketQueryService
         /// </summary>
         protected override async Task WarmAllAsync(CancellationToken ct)
         {
-            var orders = await Repository.GetAllOrdersWithAttendeesAsync(ct);
+            var orders = await _repository.GetAllOrdersWithAttendeesAsync(ct);
             foreach (var order in orders)
                 Set(order.Id, Project(order));
         }
