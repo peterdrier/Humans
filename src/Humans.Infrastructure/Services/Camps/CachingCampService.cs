@@ -497,16 +497,22 @@ public sealed class CachingCampService :
     public async Task WithdrawCampMembershipRequestAsync(
         Guid campMemberId, Guid userId, CancellationToken cancellationToken = default)
     {
+        // Member's camp is not in the API surface — match RemoveHistoricalNameAsync /
+        // DeleteImageAsync and fall back to RefreshAll. Membership churn is rare.
         await WithInner(inner => inner.WithdrawCampMembershipRequestAsync(campMemberId, userId, cancellationToken));
-        // Member's camp is not part of the API; the interceptor handles
-        // camp_members writes for cache invalidation.
+        RefreshAll();
     }
 
     public async Task<CampMembershipMutationResult> LeaveCampAsync(
         Guid campMemberId, Guid userId, CancellationToken cancellationToken = default)
     {
+        // Leaving an Active member with HasEarlyEntry = true moves
+        // CampSeasonInfo.EeGrantedCount; campId not on the API surface, so
+        // RefreshAll. Guard on Succeeded so a failed precondition (member not
+        // Active, etc.) doesn't trigger an unnecessary full re-warm.
         var result = await WithInner(inner => inner.LeaveCampAsync(campMemberId, userId, cancellationToken));
-        // Interceptor catches the camp_members write.
+        if (result.Succeeded)
+            RefreshAll();
         return result;
     }
 
