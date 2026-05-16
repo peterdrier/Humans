@@ -255,6 +255,11 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
         return await TeamDirectoryBuilder.BuildAsync(teamsById, RoleAssignmentService, userId, cancellationToken);
     }
 
+    // T-01 (cache-migration): production callers route through
+    // CachingTeamService.GetTeamDetailAsync, which projects entirely from the
+    // TeamInfo snapshot. This inner implementation is retained as the
+    // canonical reference for projection semantics and is still exercised by
+    // TeamServiceTests; it is not on the production read path.
     public async Task<TeamDetailResult?> GetTeamDetailAsync(
         string slug,
         Guid? userId,
