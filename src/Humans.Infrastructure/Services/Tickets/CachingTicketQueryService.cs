@@ -187,10 +187,13 @@ public sealed class CachingTicketQueryService
 
     public async Task<IReadOnlyList<int>> GetMatchedTicketYearsAsync(CancellationToken ct = default)
     {
+        // Mirror inner contract: years in which a matched ticket *order* was
+        // purchased (buyer-matched). Attendee-only matches are intentionally
+        // excluded so the admin audience-segmentation year picker stays
+        // consistent with TicketRepository.GetMatchedOrderYearsAsync.
         var orders = await GetOrdersAsync();
         return orders.Values
-            .Where(o => o.MatchedUserId.HasValue
-                || o.Attendees.Any(a => a.MatchedUserId.HasValue))
+            .Where(o => o.MatchedUserId.HasValue)
             .Select(o => o.PurchasedAt.InUtc().Year)
             .Distinct()
             .OrderByDescending(y => y)
