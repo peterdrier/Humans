@@ -2,6 +2,7 @@ using AwesomeAssertions;
 using Humans.Application.DTOs.Shifts;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Shifts;
+using Humans.Infrastructure.Services.Agent;
 using Humans.Infrastructure.Services.Shifts;
 using Xunit;
 using GeneralAvailabilityService = Humans.Application.Services.Shifts.GeneralAvailabilityService;
@@ -162,5 +163,30 @@ public class ShiftViewArchitectureTests
 
         paramTypes.Should().Contain(typeof(IShiftViewInvalidator),
             because: "every Shifts-section service that mutates a row owned by the section must hold a reference to IShiftViewInvalidator (issue #720)");
+    }
+
+    // ── T-09 ratchet — agent surface reads through the cached view ──────────
+
+    // The agent surface used to call IShiftSignupService.GetByUserAsync on
+    // every snapshot / get_shift_details turn. T-09 (issue #720) migrated
+    // those reads to the cached IShiftView. Pin the dependency direction so
+    // the next refactor can't quietly regress the hot path.
+    public static TheoryData<Type> AgentTypesThatReadShiftSignups =>
+    [
+        typeof(AgentUserSnapshotProvider),
+        typeof(AgentToolDispatcher),
+    ];
+
+    [HumansTheory]
+    [MemberData(nameof(AgentTypesThatReadShiftSignups))]
+    public void Agent_signup_readers_take_IShiftView_not_IShiftSignupService(Type agentType)
+    {
+        var ctor = agentType.GetConstructors().Single();
+        var paramTypes = ctor.GetParameters().Select(p => p.ParameterType).ToList();
+
+        paramTypes.Should().Contain(typeof(IShiftView),
+            because: $"T-09 (issue #720): {agentType.Name} reads user signups from the cached IShiftView");
+        paramTypes.Should().NotContain(typeof(IShiftSignupService),
+            because: $"T-09 (issue #720): {agentType.Name} no longer needs IShiftSignupService — the cached IShiftView covers every read it used to make");
     }
 }

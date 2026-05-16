@@ -23,6 +23,7 @@ public class ShiftAdminController : HumansTeamControllerBase
     private readonly ITeamService _teamService;
     private readonly IShiftManagementService _shiftMgmt;
     private readonly IShiftSignupService _signupService;
+    private readonly IShiftView _shiftView;
     private readonly IGeneralAvailabilityService _availabilityService;
     private readonly UserManager<User> _userManager;
     private readonly IClock _clock;
@@ -33,6 +34,7 @@ public class ShiftAdminController : HumansTeamControllerBase
         ITeamService teamService,
         IShiftManagementService shiftMgmt,
         IShiftSignupService signupService,
+        IShiftView shiftView,
         IGeneralAvailabilityService availabilityService,
         IUserService userService,
         UserManager<User> userManager,
@@ -45,6 +47,7 @@ public class ShiftAdminController : HumansTeamControllerBase
         _teamService = teamService;
         _shiftMgmt = shiftMgmt;
         _signupService = signupService;
+        _shiftView = shiftView;
         _availabilityService = availabilityService;
         _userManager = userManager;
         _clock = clock;
@@ -561,8 +564,7 @@ public class ShiftAdminController : HumansTeamControllerBase
                 _shiftMgmt.GetActiveAsync,
                 ShiftRoleChecks.CanViewMedical(User),
                 _userManager,
-                _shiftMgmt,
-                _signupService,
+                _shiftView,
                 _availabilityService);
             return ToVolunteerSearchActionResult(result);
         }
