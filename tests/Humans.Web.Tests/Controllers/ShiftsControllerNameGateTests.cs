@@ -63,6 +63,8 @@ public class ShiftsControllerNameGateTests
         http.RequestServices = services.BuildServiceProvider();
         ctrl.ControllerContext = new ControllerContext { HttpContext = http };
         ctrl.TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>());
+        // Pre-set Url so RedirectToAction doesn't resolve IUrlHelperFactory from RequestServices.
+        ctrl.Url = Substitute.For<IUrlHelper>();
         return ctrl;
     }
 
@@ -105,8 +107,9 @@ public class ShiftsControllerNameGateTests
         var result = await ctrl.Index(
             departmentId: null, fromDate: null, toDate: null, period: null);
 
-        var redirect = Assert.IsType<RedirectResult>(result);
-        Assert.Equal("/OnboardingWidget", redirect.Url);
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal(nameof(OnboardingWidgetController.Index), redirect.ActionName);
+        Assert.Equal("OnboardingWidget", redirect.ControllerName);
         await _shiftMgmt.DidNotReceiveWithAnyArgs().GetActiveAsync();
     }
 
@@ -120,8 +123,9 @@ public class ShiftsControllerNameGateTests
             shiftId: Guid.NewGuid(), departmentId: null, fromDate: null, toDate: null,
             period: null, tagIds: null);
 
-        var redirect = Assert.IsType<RedirectResult>(result);
-        Assert.Equal("/OnboardingWidget", redirect.Url);
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal(nameof(OnboardingWidgetController.Index), redirect.ActionName);
+        Assert.Equal("OnboardingWidget", redirect.ControllerName);
         await _signupService.DidNotReceiveWithAnyArgs().SignUpAsync(default, default, default);
     }
 
@@ -135,8 +139,9 @@ public class ShiftsControllerNameGateTests
             rotaId: Guid.NewGuid(), startDayOffset: 0, endDayOffset: 1,
             departmentId: null, fromDate: null, toDate: null, period: null, tagIds: null);
 
-        var redirect = Assert.IsType<RedirectResult>(result);
-        Assert.Equal("/OnboardingWidget", redirect.Url);
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal(nameof(OnboardingWidgetController.Index), redirect.ActionName);
+        Assert.Equal("OnboardingWidget", redirect.ControllerName);
         await _signupService.DidNotReceiveWithAnyArgs().SignUpRangeAsync(
             default, default, default, default, default, default);
     }

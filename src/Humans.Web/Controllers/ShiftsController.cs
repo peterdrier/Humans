@@ -112,7 +112,7 @@ public class ShiftsController : HumansControllerBase
     {
         if (user.HasRequiredNameFields) return null;
         SetInfo(_localizer["Onboarding_NameRequiredBeforeShifts"].Value);
-        return Redirect("/OnboardingWidget");
+        return RedirectToAction(nameof(OnboardingWidgetController.Index), "OnboardingWidget");
     }
 
     [HttpPost("SignUp")]

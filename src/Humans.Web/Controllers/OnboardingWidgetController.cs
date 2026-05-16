@@ -260,10 +260,14 @@ public class OnboardingWidgetController : HumansControllerBase
         return RedirectToAction(nameof(Index));
     }
 
+    // "Can this user sign consents?" — gated on having a legal name on file,
+    // not on Profile.State == Stub. Matches the dispatcher's HasRequiredNameFields
+    // routing so an Active-state profile with blank name fields can't slip
+    // past the Names step here either.
     private async Task<bool> IsStubAsync(Guid userId, CancellationToken ct)
     {
         var info = await _userService.GetUserInfoAsync(userId, ct);
-        return info is null || info.IsStub;
+        return info is null || !info.HasRequiredNameFields;
     }
 
     private IActionResult RedirectToNamesForStub()
