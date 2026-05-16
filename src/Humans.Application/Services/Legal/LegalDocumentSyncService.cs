@@ -5,6 +5,7 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Application.Interfaces.Legal;
 using Humans.Application.Interfaces.Notifications;
+using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 
 namespace Humans.Application.Services.Legal;
@@ -22,6 +23,7 @@ public sealed class LegalDocumentSyncService : ILegalDocumentSyncService
     private readonly ILegalDocumentRepository _repository;
     private readonly IGitHubLegalDocumentConnector _gitHub;
     private readonly INotificationService _notificationService;
+    private readonly ITeamService _teamService;
     private readonly IUserService _userService;
     private readonly IClock _clock;
     private readonly ILogger<LegalDocumentSyncService> _logger;
@@ -30,6 +32,7 @@ public sealed class LegalDocumentSyncService : ILegalDocumentSyncService
         ILegalDocumentRepository repository,
         IGitHubLegalDocumentConnector gitHub,
         INotificationService notificationService,
+        ITeamService teamService,
         IUserService userService,
         IClock clock,
         ILogger<LegalDocumentSyncService> logger)
@@ -37,6 +40,7 @@ public sealed class LegalDocumentSyncService : ILegalDocumentSyncService
         _repository = repository;
         _gitHub = gitHub;
         _notificationService = notificationService;
+        _teamService = teamService;
         _userService = userService;
         _clock = clock;
         _logger = logger;
@@ -196,19 +200,25 @@ public sealed class LegalDocumentSyncService : ILegalDocumentSyncService
         IReadOnlyCollection<Guid> teamIds, CancellationToken cancellationToken = default)
     {
         var documents = await _repository.GetActiveRequiredDocumentsForTeamsAsync(teamIds, cancellationToken);
-        return documents.Select(ToActiveRequiredDocumentSnapshot).ToList();
-    }
+        if (documents.Count == 0) return [];
 
-#pragma warning disable CS0618 // Cross-domain nav read: LegalDocument.Team is included on this read path; stitching off the cached UserInfo here would be a layer-skip.
-    private static ActiveRequiredLegalDocumentSnapshot ToActiveRequiredDocumentSnapshot(LegalDocument document) =>
-        new(
-            document.Id,
-            document.Name,
-            document.TeamId,
-            document.Team.Name,
-            document.LastSyncedAt,
-            document.Versions.Select(ToVersionSnapshot).ToList());
-#pragma warning restore CS0618
+        // Stitch team names via ITeamService instead of the obsolete
+        // LegalDocument-to-Team nav (memory/architecture/no-cross-section-ef-joins.md).
+        var distinctTeamIds = documents.Select(d => d.TeamId).Distinct().ToList();
+        var teams = await _teamService.GetByIdsWithParentsAsync(distinctTeamIds, cancellationToken);
+
+        return documents.Select(d =>
+        {
+            var teamName = teams.TryGetValue(d.TeamId, out var team) ? team.Name : string.Empty;
+            return new ActiveRequiredLegalDocumentSnapshot(
+                d.Id,
+                d.Name,
+                d.TeamId,
+                teamName,
+                d.LastSyncedAt,
+                d.Versions.Select(ToVersionSnapshot).ToList());
+        }).ToList();
+    }
 
     private static LegalDocumentSnapshot ToDocumentSnapshot(LegalDocument document) =>
         new(

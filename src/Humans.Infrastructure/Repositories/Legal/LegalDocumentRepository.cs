@@ -91,10 +91,11 @@ public sealed class LegalDocumentRepository : ILegalDocumentRepository
         if (teamIds.Count == 0) return [];
 
         await using var ctx = await _factory.CreateDbContextAsync(ct);
+        // LegalDocument.Team is a cross-section nav — callers stitch team
+        // names via ITeamService (memory/architecture/no-cross-section-ef-joins.md).
         return await ctx.LegalDocuments
             .AsNoTracking()
             .Where(d => d.IsActive && d.IsRequired && teamIds.Contains(d.TeamId))
-            .Include(d => d.Team)
             .Include(d => d.Versions)
             .ToListAsync(ct);
     }
