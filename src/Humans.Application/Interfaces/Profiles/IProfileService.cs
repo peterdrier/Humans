@@ -18,18 +18,6 @@ namespace Humans.Application.Interfaces.Profiles;
 /// </remarks>
 public interface IProfileService : IApplicationService, IUserMerge
 {
-    Task<Profile?> GetProfileAsync(Guid userId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Batched profile fetch keyed by user id. Missing users are absent
-    /// from the returned dictionary. Used by cross-section services that
-    /// need to stitch profile slices in memory instead of pulling them
-    /// through a cross-domain <c>.Include</c> chain.
-    /// </summary>
-    Task<IReadOnlyDictionary<Guid, Profile>> GetByUserIdsAsync(
-        IReadOnlyCollection<Guid> userIds,
-        CancellationToken ct = default);
-
     /// <summary>
     /// Issue #635 (§15i): idempotently materialize a <see cref="ProfileState.Stub"/>
     /// Profile row for the given user. Called by User-creation paths

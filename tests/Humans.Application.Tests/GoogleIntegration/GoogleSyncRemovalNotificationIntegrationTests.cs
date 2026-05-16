@@ -34,7 +34,6 @@ public sealed class GoogleSyncRemovalNotificationIntegrationTests
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
-    private readonly IProfileService _profileService = Substitute.For<IProfileService>();
     private readonly ISyncSettingsService _syncSettingsService = Substitute.For<ISyncSettingsService>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
@@ -73,7 +72,6 @@ public sealed class GoogleSyncRemovalNotificationIntegrationTests
             _teamService,
             _userService,
             _userEmailService,
-            _profileService,
             _syncSettingsService,
             _auditLogService,
             notifications,

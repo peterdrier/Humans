@@ -189,7 +189,6 @@ public class ProfileController : HumansControllerBase
     {
         var allUsers = _userService.GetAllUserInfos();
         var allUserIds = allUsers.Select(u => u.Id).ToList();
-        var profilesByUserId = await _profileService.GetByUserIdsAsync(allUserIds, ct);
         var notificationEmails =
             await _userEmailService.GetNotificationEmailsByUserIdsAsync(allUserIds, ct);
 
@@ -220,7 +219,6 @@ public class ProfileController : HumansControllerBase
 
         return await AdminHumanListAssembler.AssembleAsync(
             allUsers,
-            profilesByUserId,
             notificationEmails,
             searchUserIds,
             statusFilter,

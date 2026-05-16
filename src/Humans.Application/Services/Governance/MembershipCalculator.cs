@@ -7,7 +7,6 @@ using Humans.Application.Interfaces.Consent;
 using Humans.Application.Interfaces.Legal;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Interfaces.Governance;
-using Humans.Application.Interfaces.Profiles;
 
 namespace Humans.Application.Services.Governance;
 
@@ -28,7 +27,6 @@ namespace Humans.Application.Services.Governance;
 /// </summary>
 public sealed class MembershipCalculator : IMembershipCalculator
 {
-    private readonly IProfileService _profileService;
     // Team + role reads go through IMembershipQuery (not ITeamService /
     // IRoleAssignmentService directly) to break a circular DI graph: both of
     // those services inject ISystemTeamSync, whose implementation injects
@@ -46,14 +44,12 @@ public sealed class MembershipCalculator : IMembershipCalculator
     private readonly IClock _clock;
 
     public MembershipCalculator(
-        IProfileService profileService,
         IMembershipQuery membershipQuery,
         IUserService userService,
         ILegalDocumentSyncService legalDocumentSyncService,
         IServiceProvider serviceProvider,
         IClock clock)
     {
-        _profileService = profileService;
         _membershipQuery = membershipQuery;
         _userService = userService;
         _legalDocumentSyncService = legalDocumentSyncService;
@@ -354,22 +350,22 @@ public sealed class MembershipCalculator : IMembershipCalculator
     {
         var allIds = userIds.ToList();
 
-        // Pull users and profiles through their owning services — no direct
-        // DbContext access. Missing entities are simply absent from the maps.
+        // Pull users (UserInfo carries the profile slice) through the cache —
+        // no direct DbContext access. Missing entities are simply absent from
+        // the map.
         var usersById = await _userService.GetUserInfosAsync(allIds, ct);
-        var profilesByUserId = await _profileService.GetByUserIdsAsync(allIds, ct);
 
         // 1. PendingDeletion — DeletionRequestedAt is not null (highest priority)
         var pendingDeletion = allIds
             .Where(id => usersById.TryGetValue(id, out var u) && u.DeletionRequestedAt != null)
             .ToHashSet();
 
-        // 2. IncompleteSignup — no Profile entity
+        // 2. IncompleteSignup — no Profile slice
         var remaining = allIds.Where(id => !pendingDeletion.Contains(id)).ToList();
         var incompleteSignup = new HashSet<Guid>();
         foreach (var id in remaining)
         {
-            if (!profilesByUserId.ContainsKey(id))
+            if (!usersById.TryGetValue(id, out var u) || u.Profile is null)
             {
                 incompleteSignup.Add(id);
             }
@@ -377,11 +373,11 @@ public sealed class MembershipCalculator : IMembershipCalculator
 
         remaining = remaining.Where(id => !incompleteSignup.Contains(id)).ToList();
 
-        // 3. Suspended — Profile.IsSuspended
+        // 3. Suspended — UserInfo.IsSuspended (State == Suspended)
         var suspended = new HashSet<Guid>();
         foreach (var id in remaining)
         {
-            if (profilesByUserId[id].IsSuspended)
+            if (usersById[id].IsSuspended)
             {
                 suspended.Add(id);
             }
@@ -393,9 +389,10 @@ public sealed class MembershipCalculator : IMembershipCalculator
         var pendingApproval = new HashSet<Guid>();
         foreach (var id in remaining)
         {
-            if (!profilesByUserId[id].IsApproved)
+            var profile = usersById[id].Profile!;
+            if (!profile.IsApproved)
             {
-                if (profilesByUserId[id].RejectedAt is not null)
+                if (profile.RejectedAt is not null)
                 {
                     incompleteSignup.Add(id);
                 }

@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Governance;
-using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Governance;
@@ -36,15 +35,6 @@ public class MembershipCalculatorArchitectureTests
                 p => (p.ParameterType.Namespace ?? string.Empty)
                     .StartsWith("Humans.Application.Interfaces.Repositories", StringComparison.Ordinal),
                 because: "MembershipCalculator owns no data — it must read only through other sections' service interfaces");
-    }
-
-    [HumansFact]
-    public void MembershipCalculator_TakesProfileService()
-    {
-        var ctor = typeof(MembershipCalculator).GetConstructors().Single();
-        ctor.GetParameters().Select(p => p.ParameterType)
-            .Should().Contain(typeof(IProfileService),
-                because: "profile reads go through IProfileService per design-rules §9");
     }
 
     [HumansFact]

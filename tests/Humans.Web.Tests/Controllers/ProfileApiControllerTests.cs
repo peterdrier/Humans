@@ -223,9 +223,6 @@ public class ProfileApiControllerTests
             .Should().BeAssignableTo<IEnumerable<HumanLookupSearchResult>>().Subject.Single();
         row.Detail.Should().Be("primary@example.com");
 
-        // GetByUserIdsAsync (DB-bound) is bypassed — ProfileId comes from HumanSearchResult.
-        await _profileService.DidNotReceive().GetByUserIdsAsync(
-            Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

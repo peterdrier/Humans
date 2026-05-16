@@ -28,7 +28,6 @@ public sealed class TicketQueryServiceTests : IDisposable
     private readonly ICampaignService _campaignService = Substitute.For<ICampaignService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
-    private readonly IProfileService _profileService = Substitute.For<IProfileService>();
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly IShiftManagementService _shiftManagementService = Substitute.For<IShiftManagementService>();
     private readonly TicketQueryService _service;
@@ -49,7 +48,6 @@ public sealed class TicketQueryServiceTests : IDisposable
             _campaignService,
             _userService,
             _userEmailService,
-            _profileService,
             _teamService,
             _shiftManagementService,
             SystemClock.Instance);
@@ -69,10 +67,6 @@ public sealed class TicketQueryServiceTests : IDisposable
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, User>());
         _userService.StubGetUserInfosFromDb(_options);
-
-        _profileService.GetByUserIdsAsync(
-                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, Profile>());
 
         _userEmailService.GetNotificationEmailsByUserIdsAsync(
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
@@ -600,23 +594,15 @@ public sealed class TicketQueryServiceTests : IDisposable
         _userService.GetAllUsersAsync(Arg.Any<CancellationToken>())
             .Returns(allUsers);
         _userService.GetAllUserInfos()
-            .Returns(allUsers.Select(u => u.ToUserInfo()).ToList());
-
-        _teamService.GetTeamAsync(SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
-            .Returns(VolunteersTeam(userIds));
-
-        var profilesByUserId = users
-            .Select(u => (UserId: u.Id, Profile: new Profile
+            .Returns(allUsers.Select(u => u.ToUserInfo(profile: new Profile
             {
                 Id = Guid.NewGuid(),
                 UserId = u.Id,
                 MembershipTier = MembershipTier.Volunteer,
-            }))
-            .ToDictionary(t => t.UserId, t => t.Profile);
+            })).ToList());
 
-        _profileService.GetByUserIdsAsync(
-                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(profilesByUserId);
+        _teamService.GetTeamAsync(SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
+            .Returns(VolunteersTeam(userIds));
 
         _userEmailService.GetNotificationEmailsByUserIdsAsync(
                 Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())

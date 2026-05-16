@@ -29,6 +29,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
     private readonly ICommunicationPreferenceRepository _communicationPreferenceRepository;
     private readonly IAuditLogService _auditLogService;
     private readonly IFileStorage _fileStorage;
+    private readonly IUserInfoInvalidator _userInfoInvalidator;
     private readonly IClock _clock;
     private readonly ILogger<ProfileService> _logger;
 
@@ -54,6 +55,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         ICommunicationPreferenceRepository communicationPreferenceRepository,
         IAuditLogService auditLogService,
         IFileStorage fileStorage,
+        IUserInfoInvalidator userInfoInvalidator,
         IClock clock,
         ILogger<ProfileService> logger)
     {
@@ -64,18 +66,10 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         _communicationPreferenceRepository = communicationPreferenceRepository;
         _auditLogService = auditLogService;
         _fileStorage = fileStorage;
+        _userInfoInvalidator = userInfoInvalidator;
         _clock = clock;
         _logger = logger;
     }
-
-    public async Task<Profile?> GetProfileAsync(Guid userId, CancellationToken ct = default)
-    {
-        return await _profileRepository.GetByUserIdReadOnlyAsync(userId, ct);
-    }
-
-    public async Task<IReadOnlyDictionary<Guid, Profile>> GetByUserIdsAsync(
-        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
-        await _profileRepository.GetByUserIdsAsync(userIds, ct);
 
     public async Task SetMembershipTierAsync(
         Guid userId, MembershipTier tier, CancellationToken ct = default)
@@ -91,8 +85,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         profile.MembershipTier = tier;
         profile.UpdatedAt = _clock.GetCurrentInstant();
         await _profileRepository.UpdateAsync(profile, ct);
-
-        // Store update handled by CachingUserService decorator
+        await _userInfoInvalidator.InvalidateAsync(userId, ct);
     }
 
     public async Task EnsureStubProfileAsync(Guid userId, CancellationToken ct = default)
@@ -114,6 +107,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
                 State = ProfileState.Stub,
             };
             await _profileRepository.AddAsync(profile, ct);
+            await _userInfoInvalidator.InvalidateAsync(userId, ct);
         }
         finally
         {
@@ -145,6 +139,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         profile.ProfilePictureContentType = contentType;
         profile.UpdatedAt = _clock.GetCurrentInstant();
         await _profileRepository.UpdateAsync(profile, ct);
+        await _userInfoInvalidator.InvalidateAsync(userId, ct);
 
         try
         {
@@ -366,7 +361,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         // Update display name on user (cross-section → IUserService)
         await _userService.UpdateDisplayNameAsync(userId, displayName, ct);
 
-        // Cache invalidation and store update handled by CachingUserService decorator
+        await _userInfoInvalidator.InvalidateAsync(userId, ct);
 
         _logger.LogInformation("User {UserId} updated their profile", userId);
 
@@ -402,6 +397,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         if (profile is null) return;
 
         await _profileRepository.ReconcileCVEntriesAsync(profile.Id, entries, ct);
+        await _userInfoInvalidator.InvalidateAsync(userId, ct);
     }
 
     public async Task<IReadOnlyList<ProfileLanguageSnapshot>> GetProfileLanguagesAsync(
@@ -415,8 +411,13 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
             l.Proficiency)).ToList();
     }
 
-    public Task SaveProfileLanguagesAsync(Guid profileId, IReadOnlyList<ProfileLanguage> languages, CancellationToken ct = default) =>
-        _profileRepository.ReplaceLanguagesAsync(profileId, languages, ct);
+    public async Task SaveProfileLanguagesAsync(Guid profileId, IReadOnlyList<ProfileLanguage> languages, CancellationToken ct = default)
+    {
+        await _profileRepository.ReplaceLanguagesAsync(profileId, languages, ct);
+        var ownerUserId = await _profileRepository.GetOwnerUserIdAsync(profileId, ct);
+        if (ownerUserId is { } userId)
+            await _userInfoInvalidator.InvalidateAsync(userId, ct);
+    }
 
     // ==========================================================================
     // Volunteer Event Profiles — cross-section reads (§15 Step 1 quarantine)
@@ -544,8 +545,8 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
     // ==========================================================================
     // Onboarding-section support methods — profile mutations that OnboardingService
     // delegates here so each section owns its DbSet writes (design-rules §2c).
-    // Cache invalidation (UserInfo refresh, nav-badge, notification meter) is
-    // handled by the CachingUserService decorator's wrappers for these methods.
+    // Each write invalidates the UserInfo cache so downstream readers see the
+    // committed state immediately.
     // ==========================================================================
 
     public async Task<OnboardingResult> RecordConsentCheckAsync(
@@ -578,6 +579,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         profile.UpdatedAt = now;
 
         await _profileRepository.UpdateAsync(profile, ct);
+        await _userInfoInvalidator.InvalidateAsync(userId, ct);
 
         await _auditLogService.LogAsync(
             cleared ? AuditAction.ConsentCheckCleared : AuditAction.ConsentCheckFlagged,
@@ -611,6 +613,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         profile.UpdatedAt = now;
 
         await _profileRepository.UpdateAsync(profile, ct);
+        await _userInfoInvalidator.InvalidateAsync(userId, ct);
 
         await _auditLogService.LogAsync(
             AuditAction.SignupRejected, nameof(Profile), userId,
@@ -635,6 +638,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         profile.UpdatedAt = now;
 
         await _profileRepository.UpdateAsync(profile, ct);
+        await _userInfoInvalidator.InvalidateAsync(userId, ct);
 
         await _auditLogService.LogAsync(
             AuditAction.VolunteerApproved, nameof(User), userId,
@@ -677,6 +681,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         profile.UpdatedAt = _clock.GetCurrentInstant();
 
         await _profileRepository.UpdateAsync(profile, ct);
+        await _userInfoInvalidator.InvalidateAsync(userId, ct);
 
         await _auditLogService.LogAsync(
             suspended ? AuditAction.MemberSuspended : AuditAction.MemberUnsuspended,
@@ -702,6 +707,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         profile.ConsentCheckStatus = ConsentCheckStatus.Pending;
         profile.UpdatedAt = _clock.GetCurrentInstant();
         await _profileRepository.UpdateAsync(profile, ct);
+        await _userInfoInvalidator.InvalidateAsync(userId, ct);
 
         _logger.LogInformation(
             "User {UserId} has all consents signed, consent check set to Pending", userId);
@@ -720,6 +726,8 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         // clean up the stale file out-of-band.
         var profile = await _profileRepository.GetByUserIdReadOnlyAsync(userId, ct);
         var anonymized = await _profileRepository.AnonymizeForDeletionByUserIdAsync(userId, ct);
+        if (anonymized)
+            await _userInfoInvalidator.InvalidateAsync(userId, ct);
         if (anonymized && profile?.ProfilePictureContentType is not null)
         {
             try
@@ -763,28 +771,39 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         _ => string.Empty
     };
 
-    public Task<IReadOnlySet<Guid>> SuspendForMissingConsentAsync(
+    public async Task<IReadOnlySet<Guid>> SuspendForMissingConsentAsync(
         IReadOnlyCollection<Guid> userIds,
         Instant now,
-        CancellationToken ct = default) =>
-        _profileRepository.SuspendManyAsync(userIds, now, ct);
+        CancellationToken ct = default)
+    {
+        var mutated = await _profileRepository.SuspendManyAsync(userIds, now, ct);
+        foreach (var id in mutated)
+            await _userInfoInvalidator.InvalidateAsync(id, ct);
+        return mutated;
+    }
 
-    public Task<IReadOnlyList<(Guid UserId, MembershipTier NewTier)>>
+    public async Task<IReadOnlyList<(Guid UserId, MembershipTier NewTier)>>
         DowngradeTierForExpiredAsync(
             MembershipTier currentTier,
             IReadOnlyCollection<Guid> userIdsToKeep,
             IReadOnlyDictionary<Guid, MembershipTier> fallbackTierByUser,
             Instant now,
-            CancellationToken ct = default) =>
-        _profileRepository.DowngradeTierForExpiredAsync(
+            CancellationToken ct = default)
+    {
+        var downgrades = await _profileRepository.DowngradeTierForExpiredAsync(
             currentTier, userIdsToKeep, fallbackTierByUser, now, ct);
+        foreach (var (userId, _) in downgrades)
+            await _userInfoInvalidator.InvalidateAsync(userId, ct);
+        return downgrades;
+    }
 
-    // Cache invalidation (UserInfo refresh for both source and target) is
-    // handled by the CachingUserService decorator's wrapper for this
-    // method — ProfileService is the inner / non-cached implementation.
-    public Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
-        CancellationToken ct) =>
-        _profileRepository.ReassignSubAggregatesToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
+    public async Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
+        CancellationToken ct)
+    {
+        await _profileRepository.ReassignSubAggregatesToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
+        await _userInfoInvalidator.InvalidateAsync(sourceUserId, ct);
+        await _userInfoInvalidator.InvalidateAsync(targetUserId, ct);
+    }
 
     public async Task<bool> SetIbanAsync(Guid userId, string? iban, CancellationToken ct = default)
     {
@@ -802,6 +821,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
         profile.Iban = normalized;
         profile.UpdatedAt = _clock.GetCurrentInstant();
         await _profileRepository.UpdateAsync(profile, ct);
+        await _userInfoInvalidator.InvalidateAsync(userId, ct);
 
         await _auditLogService.LogAsync(
             isClearing ? AuditAction.IbanRemove : AuditAction.IbanSet,

@@ -8,12 +8,12 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Constants;
 using Humans.Domain.Enums;
 using Humans.Application.Interfaces.Budget;
+using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Campaigns;
 using Humans.Application.Interfaces.Shifts;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
-using Humans.Application.Interfaces.Profiles;
 
 namespace Humans.Application.Services.Tickets;
 
@@ -41,7 +41,6 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
     private readonly ICampaignService _campaignService;
     private readonly IUserService _userService;
     private readonly IUserEmailService _userEmailService;
-    private readonly IProfileService _profileService;
     private readonly ITeamService _teamService;
     private readonly IShiftManagementService _shiftManagementService;
     private readonly IClock _clock;
@@ -53,7 +52,6 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
         ICampaignService campaignService,
         IUserService userService,
         IUserEmailService userEmailService,
-        IProfileService profileService,
         ITeamService teamService,
         IShiftManagementService shiftManagementService,
         IClock clock)
@@ -64,7 +62,6 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
         _campaignService = campaignService;
         _userService = userService;
         _userEmailService = userEmailService;
-        _profileService = profileService;
         _teamService = teamService;
         _shiftManagementService = shiftManagementService;
         _clock = clock;
@@ -620,8 +617,8 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
             };
         }
 
-        // Stitch in memory: profiles (for tier), notification emails, team memberships.
-        var profiles = await _profileService.GetByUserIdsAsync(candidateIds);
+        // Stitch in memory: notification emails, team memberships. MembershipTier
+        // rides along on the cached UserInfo.Profile.
         var emailsById = await _userEmailService.GetNotificationEmailsByUserIdsAsync(candidateIds);
         var candidateIdSet = candidateIds.ToHashSet();
         var teamsByIdLookup = await _teamService.GetTeamsAsync();
@@ -643,11 +640,10 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
         var usersById = allUsers.ToDictionary(u => u.Id);
 
         var rows = candidateIds
-            .Where(id => profiles.ContainsKey(id))
+            .Where(id => usersById.TryGetValue(id, out var u) && u.Profile is not null)
             .Select(id =>
             {
                 var user = usersById[id];
-                var profile = profiles[id];
                 emailsById.TryGetValue(id, out var email);
                 teamsByUser.TryGetValue(id, out var teamNames);
 
@@ -658,7 +654,7 @@ public sealed class TicketQueryService : ITicketQueryService, IUserDataContribut
                     Name = user.DisplayName,
                     Email = email ?? string.Empty,
                     TeamNames = teamNames ?? [],
-                    Tier = profile.MembershipTier,
+                    Tier = user.Profile!.MembershipTier,
                 };
             })
             .ToList();

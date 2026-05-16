@@ -104,7 +104,7 @@ public sealed class OnboardingService : IOnboardingService
 
     public async Task<ReviewDetailData> GetReviewDetailAsync(Guid userId, CancellationToken ct = default)
     {
-        var profile = await _profileService.GetProfileAsync(userId, ct);
+        var profile = (await _userService.GetUserInfoAsync(userId, ct))?.Profile;
 
         if (profile is null)
             return new ReviewDetailData(null, 0, 0, null);

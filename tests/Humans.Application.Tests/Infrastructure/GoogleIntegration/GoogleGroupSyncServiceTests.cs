@@ -25,7 +25,7 @@ public sealed class GoogleGroupSyncServiceTests
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
-    private readonly IProfileService _profileService = Substitute.For<IProfileService>();
+    private readonly Dictionary<Guid, Profile> _profilesByUserId = new();
     private readonly ISyncSettingsService _syncSettingsService = Substitute.For<ISyncSettingsService>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
     private readonly IGoogleRemovalNotificationService _removalNotifications = Substitute.For<IGoogleRemovalNotificationService>();
@@ -438,7 +438,6 @@ public sealed class GoogleGroupSyncServiceTests
         _teamService,
         _userService,
         _userEmailService,
-        _profileService,
         _syncSettingsService,
         _auditLogService,
         _removalNotifications,
@@ -471,7 +470,9 @@ public sealed class GoogleGroupSyncServiceTests
                 var requested = call.ArgAt<IReadOnlyCollection<Guid>>(0).ToHashSet();
                 IReadOnlyDictionary<Guid, UserInfo> dict = userEntities
                     .Where(kv => requested.Contains(kv.Key))
-                    .ToDictionary(kv => kv.Key, kv => kv.Value.ToUserInfo());
+                    .ToDictionary(
+                        kv => kv.Key,
+                        kv => kv.Value.ToUserInfo(profile: _profilesByUserId.GetValueOrDefault(kv.Key)));
                 return new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(dict);
             });
 
@@ -501,38 +502,33 @@ public sealed class GoogleGroupSyncServiceTests
                         ]);
             });
 
-        _profileService.GetByUserIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(call =>
+        foreach (var u in users)
+        {
+            _profilesByUserId[u.UserId] = new Profile
             {
-                var requested = call.ArgAt<IReadOnlyCollection<Guid>>(0);
-                return requested.ToDictionary(id => id, id => new Profile
-                {
-                    Id = Guid.NewGuid(),
-                    UserId = id,
-                    State = ProfileState.Active,
-                    CreatedAt = _clock.GetCurrentInstant(),
-                    UpdatedAt = _clock.GetCurrentInstant()
-                });
-            });
+                Id = Guid.NewGuid(),
+                UserId = u.UserId,
+                State = ProfileState.Active,
+                CreatedAt = _clock.GetCurrentInstant(),
+                UpdatedAt = _clock.GetCurrentInstant()
+            };
+        }
     }
 
     private void StubProfiles(params (Guid UserId, string? BurnerName)[] profiles)
     {
-        _profileService.GetByUserIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(call =>
+        foreach (var p in profiles)
+        {
+            _profilesByUserId[p.UserId] = new Profile
             {
-                var requested = call.ArgAt<IReadOnlyCollection<Guid>>(0);
-                var byUserId = profiles.ToDictionary(p => p.UserId, p => p.BurnerName);
-                return requested.ToDictionary(id => id, id => new Profile
-                {
-                    Id = Guid.NewGuid(),
-                    UserId = id,
-                    BurnerName = byUserId.GetValueOrDefault(id) ?? string.Empty,
-                    State = ProfileState.Active,
-                    CreatedAt = _clock.GetCurrentInstant(),
-                    UpdatedAt = _clock.GetCurrentInstant()
-                });
-            });
+                Id = Guid.NewGuid(),
+                UserId = p.UserId,
+                BurnerName = p.BurnerName ?? string.Empty,
+                State = ProfileState.Active,
+                CreatedAt = _clock.GetCurrentInstant(),
+                UpdatedAt = _clock.GetCurrentInstant()
+            };
+        }
     }
 
     private void StubGroup(string groupKey, string groupId, params GroupMembership[] currentMembers)

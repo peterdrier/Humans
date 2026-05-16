@@ -8,7 +8,6 @@ using Humans.Web.Authorization;
 using Humans.Web.Models;
 using Humans.Application.Interfaces.Feedback;
 using Humans.Application.Interfaces.Teams;
-using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Users;
 
 namespace Humans.Web.Controllers;
@@ -19,7 +18,6 @@ public class FeedbackController : HumansControllerBase
 {
     private readonly IFeedbackService _feedbackService;
     private readonly ITeamService _teamService;
-    private readonly IProfileService _profileService;
     private readonly IUserService _userService;
     private readonly IStringLocalizer<SharedResource> _localizer;
     private readonly ILogger<FeedbackController> _logger;
@@ -27,7 +25,6 @@ public class FeedbackController : HumansControllerBase
     public FeedbackController(
         IFeedbackService feedbackService,
         ITeamService teamService,
-        IProfileService profileService,
         IUserService userService,
         IStringLocalizer<SharedResource> localizer,
         ILogger<FeedbackController> logger)
@@ -35,7 +32,6 @@ public class FeedbackController : HumansControllerBase
     {
         _feedbackService = feedbackService;
         _teamService = teamService;
-        _profileService = profileService;
         _userService = userService;
         _localizer = localizer;
         _logger = logger;
@@ -50,26 +46,14 @@ public class FeedbackController : HumansControllerBase
     /// population queries. Population goes through the UserInfo snapshot +
     /// <c>IUserService.GetByIdsAsync</c> primitives.
     /// </summary>
-    private async Task<List<AssigneeOption>> GetActiveAssigneeOptionsAsync(CancellationToken ct = default)
+    private Task<List<AssigneeOption>> GetActiveAssigneeOptionsAsync(CancellationToken ct = default)
     {
-        var activeIds = _userService.GetAllUserInfos()
+        var options = _userService.GetAllUserInfos()
             .Where(u => u.IsActive)
-            .Select(u => u.Id)
-            .ToList();
-        if (activeIds.Count == 0) return [];
-
-        var users = await _userService.GetByIdsAsync(activeIds, ct);
-        var profiles = await _profileService.GetByUserIdsAsync(activeIds, ct);
-
-        return users.Values
-            .Select(u =>
-            {
-                var burnerName = profiles.TryGetValue(u.Id, out var p) ? p.BurnerName : null;
-                var displayName = !string.IsNullOrWhiteSpace(burnerName) ? burnerName : u.DisplayName;
-                return new AssigneeOption { Id = u.Id, DisplayName = displayName };
-            })
+            .Select(u => new AssigneeOption { Id = u.Id, DisplayName = u.BurnerName })
             .OrderBy(o => o.DisplayName, StringComparer.OrdinalIgnoreCase)
             .ToList();
+        return Task.FromResult(options);
     }
 
     [HttpGet("")]
