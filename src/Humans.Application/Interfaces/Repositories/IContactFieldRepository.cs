@@ -1,6 +1,7 @@
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
+using Humans.Domain.Attributes;
 
 namespace Humans.Application.Interfaces.Repositories;
 
@@ -8,6 +9,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// Repository for the <c>contact_fields</c> table.
 /// The only non-test file that may write to this DbSet.
 /// </summary>
+[Section("Profiles")]
 public interface IContactFieldRepository : IRepository
 {
     /// <summary>

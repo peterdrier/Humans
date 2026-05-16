@@ -2,6 +2,7 @@ using Humans.Application.Architecture;
 using Humans.Application.DTOs.Events;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Domain.Attributes;
 
 namespace Humans.Application.Interfaces.Repositories;
 
@@ -24,6 +25,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// </list>
 /// </remarks>
 [SurfaceBudget(44)]
+[Section("Events")]
 public interface IEventRepository : IRepository
 {
     // ── Settings ─────────────────────────────────────────────────────────

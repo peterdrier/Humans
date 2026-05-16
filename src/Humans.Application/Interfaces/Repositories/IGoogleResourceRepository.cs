@@ -2,6 +2,7 @@ using Humans.Application.Architecture;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
+using Humans.Domain.Attributes;
 
 namespace Humans.Application.Interfaces.Repositories;
 
@@ -27,6 +28,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// </list>
 /// </remarks>
 [SurfaceBudget(22)]
+[Section("GoogleIntegration")]
 public interface IGoogleResourceRepository : IRepository
 {
     // ==========================================================================

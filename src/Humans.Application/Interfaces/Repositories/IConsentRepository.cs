@@ -1,4 +1,5 @@
 using Humans.Domain.Entities;
+using Humans.Domain.Attributes;
 
 namespace Humans.Application.Interfaces.Repositories;
 
@@ -22,6 +23,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// <c>HumansDbContext</c> remains Scoped.
 /// </para>
 /// </remarks>
+[Section("Consent")]
 public interface IConsentRepository : IRepository
 {
     // ==========================================================================

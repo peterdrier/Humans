@@ -1,4 +1,5 @@
 using Humans.Domain.Entities;
+using Humans.Domain.Attributes;
 
 namespace Humans.Application.Interfaces.Repositories;
 
@@ -16,6 +17,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// "display-info" DTO and the merge table sits alongside user identity in the
 /// table ownership map (§8, Users/Identity section).
 /// </remarks>
+[Section("Profiles")]
 public interface IAccountMergeRepository : IRepository
 {
     /// <summary>

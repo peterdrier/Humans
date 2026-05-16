@@ -1,6 +1,7 @@
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
+using Humans.Domain.Attributes;
 
 namespace Humans.Application.Interfaces.Repositories;
 
@@ -14,6 +15,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// navigation — callers resolve display names via <c>IUserService</c>. See
 /// <c>docs/architecture/design-rules.md</c> §3 and §6 for the canonical shape.
 /// </remarks>
+[Section("GoogleIntegration")]
 public interface ISyncSettingsRepository : IRepository
 {
     /// <summary>

@@ -1,6 +1,7 @@
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
+using Humans.Domain.Attributes;
 
 namespace Humans.Application.Interfaces.Repositories;
 
@@ -16,6 +17,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// <see cref="Humans.Application.Services.Users.UserService"/> can apply the
 /// status/source business rules before persisting.
 /// </remarks>
+[Section("Users")]
 public interface IUserRepository : IRepository
 {
     // ==========================================================================

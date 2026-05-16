@@ -1,8 +1,11 @@
 using Humans.Application.Services.Expenses.Dtos;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Domain.Attributes;
 
 namespace Humans.Application.Interfaces.Repositories;
+
+[Section("Expenses")]
 
 public interface IExpenseRepository : IRepository
 {

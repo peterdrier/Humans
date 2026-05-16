@@ -1,5 +1,6 @@
 using Humans.Domain.Entities;
 using NodaTime;
+using Humans.Domain.Attributes;
 
 namespace Humans.Application.Interfaces.Repositories;
 
@@ -23,6 +24,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// via <see cref="Teams.ITeamService"/> per design-rules §6.
 /// </para>
 /// </remarks>
+[Section("Calendar")]
 public interface ICalendarRepository : IRepository
 {
     // ==========================================================================
