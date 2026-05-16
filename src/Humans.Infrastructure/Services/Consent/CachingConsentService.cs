@@ -59,16 +59,26 @@ public sealed class CachingConsentService
     public const string InnerServiceKey = "consent-inner";
 
     private readonly IConsentRepository _repository;
+    private readonly ILegalDocumentSyncService _legalDocumentSync;
+    private readonly IClock _clock;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<CachingConsentService> _logger;
 
     public CachingConsentService(
         IConsentRepository repository,
+        ILegalDocumentSyncService legalDocumentSync,
+        IClock clock,
         IServiceScopeFactory scopeFactory,
         ILogger<CachingConsentService> logger)
         : base("Consent.UserConsentInfo")
     {
+        // ILegalDocumentSyncService and IClock are Singletons — inject directly.
+        // _scopeFactory is still needed to resolve the keyed Scoped inner
+        // IConsentService and Scoped IUserService for the SubmitConsent /
+        // pass-through / chain-resolve paths.
         _repository = repository;
+        _legalDocumentSync = legalDocumentSync;
+        _clock = clock;
         _scopeFactory = scopeFactory;
         _logger = logger;
     }
@@ -114,16 +124,13 @@ public sealed class CachingConsentService
         Guid userId, Guid teamId, CancellationToken ct = default)
     {
         // Compose the cached consented-version set with the cached active +
-        // required-document list (served by CachingLegalDocumentSyncService
-        // through the scope). Both halves are cache hits in the warm path;
-        // we never re-enter the inner ConsentService here so the repo isn't
-        // touched.
-        await using var scope = _scopeFactory.CreateAsyncScope();
-        var legal = scope.ServiceProvider.GetRequiredService<ILegalDocumentSyncService>();
-        var documents = await legal.GetActiveRequiredDocumentsForTeamsAsync([teamId], ct);
+        // required-document list (served by CachingLegalDocumentSyncService,
+        // injected directly as a Singleton). Both halves are cache hits in
+        // the warm path; we never re-enter the inner ConsentService here so
+        // the repo isn't touched.
+        var documents = await _legalDocumentSync.GetActiveRequiredDocumentsForTeamsAsync([teamId], ct);
         var consentedVersionIds = await GetConsentedVersionIdsAsync(userId, ct);
-        var clock = scope.ServiceProvider.GetRequiredService<IClock>();
-        var now = clock.GetCurrentInstant();
+        var now = _clock.GetCurrentInstant();
 
         var rows = new List<RequiredConsentRow>(documents.Count);
         foreach (var doc in documents)
@@ -263,10 +270,13 @@ public sealed class CachingConsentService
             versions = await _repository.GetExplicitlyConsentedVersionIdsForUserIdsAsync(allIds, ct);
         }
 
-        // Defensively freeze: repo returns IReadOnlySet<Guid>, but if a future
-        // impl returns a mutable HashSet we want our cached entry shielded
-        // from caller mutation.
-        var frozen = versions is HashSet<Guid> ? versions : new HashSet<Guid>(versions);
+        // Defensively freeze with a copy on every load. The repo currently
+        // returns a fresh HashSet, but we don't trust that across future
+        // changes: if a repo impl ever retains and mutates the returned
+        // set (e.g., adds an internal cache layer), our cached entry would
+        // alias to it. Always-copy makes the cached snapshot independent of
+        // the repo's lifetime semantics. Cost is trivial at 500-user scale.
+        var frozen = new HashSet<Guid>(versions);
         var info = new UserConsentInfo(userId, frozen);
         Set(userId, info);
         return info;
