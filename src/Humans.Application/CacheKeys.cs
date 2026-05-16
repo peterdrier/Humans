@@ -7,11 +7,8 @@ public static class CacheKeys
     public static string NotificationBadgeCounts(Guid userId) => $"NotificationBadge:{userId:N}";
     public const string NotificationMeters = "NotificationMeters";
     public const string ActiveTeams = "ActiveTeams";
-    public const string CampSettings = "CampSettings";
 
     public static string TicketEventSummary(string eventId) => $"TicketEventSummary:{eventId}";
-
-    public static string CampSeasonsByYear(int year) => $"camps_year_{year}";
 
     public static string UserTicketCount(Guid userId) => $"UserTicketCount:{userId:N}";
     public static string UserTicketHoldings(Guid userId) => $"UserTicketHoldings:{userId:N}";
@@ -65,9 +62,7 @@ public static class CacheKeys
             ["NotificationBadge"] = new("2 min", CacheKeyType.PerUser),
             ["NotificationMeters"] = new("2 min", CacheKeyType.Static),
             ["ActiveTeams"] = new("10 min", CacheKeyType.Static),
-            ["CampSettings"] = new("5 min", CacheKeyType.Static),
             ["TicketEventSummary"] = new("15 min", CacheKeyType.PerEntity),
-            ["camps_year"] = new("5 min", CacheKeyType.PerEntity),
             ["UserTicketCount"] = new("5 min", CacheKeyType.PerUser),
             ["UserTicketHoldings"] = new("5 min", CacheKeyType.PerUser),
             ["TicketDashboardStats"] = new("5 min", CacheKeyType.Static),

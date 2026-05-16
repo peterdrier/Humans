@@ -62,12 +62,6 @@ public static class MemoryCacheExtensions
         cache.Remove(CacheKeys.ActiveTeams);
     }
 
-    public static void InvalidateCampSeasonsByYear(this IMemoryCache cache, int year) =>
-        cache.Remove(CacheKeys.CampSeasonsByYear(year));
-
-    public static void InvalidateCampSettings(this IMemoryCache cache) =>
-        cache.Remove(CacheKeys.CampSettings);
-
     public static void InvalidateUserTicketCount(this IMemoryCache cache, Guid userId) =>
         cache.Remove(CacheKeys.UserTicketCount(userId));
 

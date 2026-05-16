@@ -13,7 +13,6 @@ using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Domain.ValueObjects;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 
@@ -38,10 +37,14 @@ namespace Humans.Application.Services.Camps;
 ///     <c>uploads/camps/{campId}/</c> and are publicly served as static
 ///     files at <c>/uploads/camps/...</c>).</item>
 /// </list>
-/// Caching: short-TTL <see cref="IMemoryCache"/> is used for "camps for
-/// year" and "camp settings" reads (<c>~5 min</c>). At ~100 camps these
-/// are request-acceleration caches, not canonical domain caches, so §15
-/// transparent-cache rules do not apply (see design-rules §15f).
+/// Caching: T-06 (2026-05-16) replaces the legacy in-service short-TTL
+/// <c>IMemoryCache</c> with the canonical §15 caching decorator,
+/// <c>CachingCampService</c>. This inner service is cache-unaware — every
+/// read goes to <see cref="ICampRepository"/> on every call. The decorator
+/// owns the cached per-camp projection and a <c>SaveChangesAsync</c>
+/// interceptor handles invalidation for both camp-section writes and the
+/// cross-table <c>CampMember.HasEarlyEntry</c> dependency that
+/// <c>CampSeasonInfo.EeGrantedCount</c> projects.
 /// </remarks>
 public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
 {
@@ -55,11 +58,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
     private readonly ICampLeadJoinRequestsBadgeCacheInvalidator _leadBadgeInvalidator;
     private readonly Lazy<ICampRoleService> _campRoleService;
     private readonly IClock _clock;
-    private readonly IMemoryCache _cache;
     private readonly ILogger<CampService> _logger;
-
-    private static readonly TimeSpan CampsForYearCacheTtl = TimeSpan.FromMinutes(5);
-    private static readonly TimeSpan CampSettingsCacheTtl = TimeSpan.FromMinutes(5);
 
     private static readonly HashSet<string> AllowedImageContentTypes =
         new(StringComparer.OrdinalIgnoreCase) { "image/jpeg", "image/png", "image/webp" };
@@ -77,7 +76,6 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         ICampLeadJoinRequestsBadgeCacheInvalidator leadBadgeInvalidator,
         Lazy<ICampRoleService> campRoleService,
         IClock clock,
-        IMemoryCache cache,
         ILogger<CampService> logger)
     {
         _repo = repo;
@@ -90,7 +88,6 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         _leadBadgeInvalidator = leadBadgeInvalidator;
         _campRoleService = campRoleService;
         _clock = clock;
-        _cache = cache;
         _logger = logger;
     }
 
@@ -167,7 +164,6 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
 
         await _systemTeamSync.SyncMembershipForUserAsync(
             createdByUserId, SystemTeamType.BarrioLeads, cancellationToken);
-        InvalidateCache(year);
 
         return camp;
     }
@@ -322,22 +318,25 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
     public async Task<IReadOnlyList<CampInfo>> GetCampsForYearAsync(
         int year, CancellationToken cancellationToken = default)
     {
-        var camps = await GetCampEntitiesForYearAsync(year, cancellationToken);
-        return camps.Select(camp => CreateCampInfo(camp, includeLeads: false)).ToList();
+        // T-06: always populate leads. CampInfo.Leads is non-nullable now;
+        // GetCampsWithLeadsForYearAsync remains as an [Obsolete] alias for
+        // back-compat (with an optional status filter that callers can do
+        // in-memory).
+        var camps = await _repo.GetCampsWithLeadsForYearAsync(
+            year, statusFilter: null, cancellationToken);
+        return camps.Select(CreateCampInfo).ToList();
     }
 
     private async Task<List<Camp>> GetCampEntitiesForYearAsync(
         int year, CancellationToken cancellationToken = default)
     {
-        var cached = await _cache.GetOrCreateAsync(
-            CacheKeys.CampSeasonsByYear(year),
-            async entry =>
-            {
-                entry.AbsoluteExpirationRelativeToNow = CampsForYearCacheTtl;
-                return await _repo.GetAllCampsForYearAsync(year, cancellationToken);
-            });
-
-        return cached is null ? [] : cached.ToList();
+        // T-06: cache-unaware inner — the §15 caching decorator
+        // (CachingCampService) owns the per-camp projection and answers
+        // cached year queries by filtering its snapshot. Direct repo call
+        // here is correct (per §15c: inner must function without the
+        // decorator).
+        var camps = await _repo.GetAllCampsForYearAsync(year, cancellationToken);
+        return camps.ToList();
     }
 
     public async Task<IReadOnlyList<(Guid CampId, string CampName, string CampSlug, Guid CampSeasonId)>>
@@ -379,6 +378,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
     }
 
     /// <inheritdoc />
+#pragma warning disable CS0618
     public async Task<IReadOnlyList<CampInfo>> GetCampsWithLeadsForYearAsync(
         int year,
         IReadOnlyList<CampSeasonStatus>? statusFilter = null,
@@ -386,21 +386,19 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
     {
         var camps = await _repo.GetCampsWithLeadsForYearAsync(
             year, statusFilter, cancellationToken);
-        return camps.Select(camp => CreateCampInfo(camp, includeLeads: true)).ToList();
+        return camps.Select(CreateCampInfo).ToList();
     }
+#pragma warning restore CS0618
 
     public async Task<CampSettingsInfo> GetSettingsAsync(CancellationToken cancellationToken = default)
     {
-        var cached = await _cache.GetOrCreateAsync(
-            CacheKeys.CampSettings,
-            async entry =>
-            {
-                entry.AbsoluteExpirationRelativeToNow = CampSettingsCacheTtl;
-                var settings = await _repo.GetSettingsReadOnlyAsync(cancellationToken);
-                return settings is null ? null : CreateCampSettingsInfo(settings);
-            });
-
-        return cached ?? throw new InvalidOperationException("Camp settings not found.");
+        // T-06: cache-unaware inner — CachingCampService caches the
+        // singleton CampSettings projection and answers from its slot
+        // without entering this path.
+        var settings = await _repo.GetSettingsReadOnlyAsync(cancellationToken);
+        if (settings is null)
+            throw new InvalidOperationException("Camp settings not found.");
+        return CreateCampSettingsInfo(settings);
     }
 
     public async Task<IReadOnlyList<CampSeasonInfo>> GetPendingSeasonsAsync(CancellationToken cancellationToken = default)
@@ -483,7 +481,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             camp.TimesAtNowhere);
     }
 
-    private static CampInfo CreateCampInfo(Camp camp, bool includeLeads)
+    private static CampInfo CreateCampInfo(Camp camp)
     {
         return new CampInfo(
             camp.Id,
@@ -492,10 +490,8 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             camp.ContactPhone,
             camp.IsSwissCamp,
             camp.TimesAtNowhere,
-            camp.Seasons.Select(s => CreateCampSeasonInfo(s, camp.Slug, includeEarlyEntryGrantCount: includeLeads)).ToList(),
-            includeLeads
-                ? camp.Leads.Select(l => new CampLeadInfo(l.Id, l.UserId)).ToList()
-                : null);
+            camp.Seasons.Select(s => CreateCampSeasonInfo(s, camp.Slug, includeEarlyEntryGrantCount: true)).ToList(),
+            camp.Leads.Select(l => new CampLeadInfo(l.Id, l.UserId)).ToList());
     }
 
     private static CampLookup CreateCampLookup(Camp camp) =>
@@ -764,8 +760,6 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             "CampService",
             relatedEntityId: campId, relatedEntityType: nameof(Camp));
 
-        InvalidateCache(year);
-
         return newSeason;
     }
 
@@ -810,7 +804,6 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             "CampService",
             relatedEntityId: campId, relatedEntityType: nameof(Camp));
 
-        InvalidateCache(year);
     }
 
     public async Task ApproveSeasonAsync(
@@ -848,7 +841,6 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             reviewedByUserId,
             relatedEntityId: campId, relatedEntityType: nameof(Camp));
 
-        InvalidateCache(year);
     }
 
     public async Task RejectSeasonAsync(
@@ -888,7 +880,6 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
 
         await NotifyPendingRequestersOfSeasonClosureAsync(seasonId, campId, year, cancellationToken);
 
-        InvalidateCache(year);
     }
 
     public async Task WithdrawSeasonAsync(Guid seasonId, CancellationToken cancellationToken = default)
@@ -924,7 +915,6 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
 
         await NotifyPendingRequestersOfSeasonClosureAsync(seasonId, campId, year, cancellationToken);
 
-        InvalidateCache(year);
     }
 
     private async Task NotifyPendingRequestersOfSeasonClosureAsync(
@@ -1002,7 +992,6 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             "CampService",
             relatedEntityId: campId, relatedEntityType: nameof(Camp));
 
-        InvalidateCache(year);
     }
 
     // ==========================================================================
@@ -1036,8 +1025,6 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
                 AuditAction.CampUpdated, nameof(Camp), input.CampId,
                 $"Updated camp {input.CampId}",
                 "CampService");
-
-            await InvalidateCampYearCachesAsync(input.CampId, cancellationToken);
 
             await UpdateSeasonAsync(input.SeasonId, input.SeasonData, cancellationToken);
             await ChangeSeasonNameIfAllowedAsync(input.SeasonId, input.SeasonName, cancellationToken);
@@ -1075,8 +1062,6 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
 
     public async Task DeleteCampAsync(Guid campId, CancellationToken cancellationToken = default)
     {
-        var campYears = await _repo.GetCampYearsAsync(campId, cancellationToken);
-
         var deletedImagePaths = await _repo.DeleteCampAsync(campId, cancellationToken);
         if (deletedImagePaths is null)
         {
@@ -1102,7 +1087,6 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             $"Camp {campId} permanently deleted",
             "CampService");
 
-        InvalidateCampYearCaches(campYears);
     }
 
     // ==========================================================================
@@ -1297,8 +1281,6 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             "CampService",
             relatedEntityId: campId, relatedEntityType: nameof(Camp));
 
-        await InvalidateCampYearCachesAsync(campId, cancellationToken);
-
         return CampImageUploadResult.Success(image);
     }
 
@@ -1324,14 +1306,12 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             "CampService",
             relatedEntityId: result.CampId, relatedEntityType: nameof(Camp));
 
-        await InvalidateCampYearCachesAsync(result.CampId, cancellationToken);
     }
 
     public async Task ReorderImagesAsync(
         Guid campId, List<Guid> imageIdsInOrder, CancellationToken cancellationToken = default)
     {
         await _repo.ReorderImagesAsync(campId, imageIdsInOrder, cancellationToken);
-        await InvalidateCampYearCachesAsync(campId, cancellationToken);
     }
 
     // ==========================================================================
@@ -1341,7 +1321,6 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
     public async Task SetPublicYearAsync(int year, CancellationToken cancellationToken = default)
     {
         await _repo.SetPublicYearAsync(year, cancellationToken);
-        _cache.InvalidateCampSettings();
     }
 
     public async Task OpenSeasonAsync(int year, CancellationToken cancellationToken = default)
@@ -1349,7 +1328,6 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         var changed = await _repo.OpenSeasonAsync(year, cancellationToken);
         if (changed)
         {
-            _cache.InvalidateCampSettings();
         }
     }
 
@@ -1358,7 +1336,6 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         var changed = await _repo.CloseSeasonAsync(year, cancellationToken);
         if (changed)
         {
-            _cache.InvalidateCampSettings();
         }
     }
 
@@ -1366,7 +1343,6 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         int year, LocalDate lockDate, CancellationToken cancellationToken = default)
     {
         await _repo.SetNameLockDateForYearAsync(year, lockDate, cancellationToken);
-        InvalidateCache(year);
     }
 
     public async Task<Dictionary<int, LocalDate?>> GetNameLockDatesAsync(
@@ -1439,31 +1415,11 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             "CampService",
             relatedEntityId: campId, relatedEntityType: nameof(Camp));
 
-        InvalidateCache(year);
     }
 
     // ==========================================================================
     // Private helpers
     // ==========================================================================
-
-    private void InvalidateCache(int year)
-    {
-        _cache.InvalidateCampSeasonsByYear(year);
-    }
-
-    private async Task InvalidateCampYearCachesAsync(Guid campId, CancellationToken cancellationToken)
-    {
-        var years = await _repo.GetCampYearsAsync(campId, cancellationToken);
-        InvalidateCampYearCaches(years);
-    }
-
-    private void InvalidateCampYearCaches(IEnumerable<int> years)
-    {
-        foreach (var year in years)
-        {
-            InvalidateCache(year);
-        }
-    }
 
     private static CampSeason CreateSeasonFromData(
         Guid campId, int year, string name, CampSeasonData data, Instant now)
@@ -1996,8 +1952,6 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
         CancellationToken cancellationToken = default)
     {
         await _repo.SetEeStartDateAsync(eeStartDate, cancellationToken);
-        _cache.InvalidateCampSettings();
-
         var settings = await _repo.GetSettingsReadOnlyAsync(cancellationToken)
             ?? throw new InvalidOperationException("Camp settings not found.");
         await _auditLog.LogAsync(
@@ -2029,7 +1983,6 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             $"EE slot count changed from {oldValue} to {newValue}.",
             actorUserId,
             relatedEntityId: campId, relatedEntityType: nameof(Camp));
-        await InvalidateCampYearCachesAsync(campId, cancellationToken);
     }
 
     public async Task<SetEarlyEntryOutcome> SetEarlyEntryAsync(

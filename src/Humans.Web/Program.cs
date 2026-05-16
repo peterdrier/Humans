@@ -139,6 +139,11 @@ builder.Services.AddDbContext<HumansDbContext>((sp, options) =>
     // Issue #703: SaveChanges interceptor that signals UserInfo cache
     // invalidation for every persisted mutation to the 8 contributing tables.
     options.AddInterceptors(sp.GetRequiredService<UserInfoSaveChangesInterceptor>());
+    // T-06: SaveChanges interceptor that signals CampInfo cache invalidation
+    // for every persisted mutation to the Camps tables — including the
+    // cross-table camp_members.HasEarlyEntry dependency that EeGrantedCount
+    // projects from (see CampInfo remarks).
+    options.AddInterceptors(sp.GetRequiredService<CampInfoSaveChangesInterceptor>());
     // Suppress "First/FirstOrDefault without OrderBy" warning — the codebase universally uses
     // .FirstOrDefaultAsync(e => e.Id == id) for PK lookups which are deterministic by definition.
     options.ConfigureWarnings(w => w.Ignore(CoreEventId.FirstWithoutOrderByAndFilterWarning));
@@ -164,6 +169,8 @@ builder.Services.AddDbContextFactory<HumansDbContext>((sp, options) =>
     });
     // Issue #703: same SaveChanges interceptor for the IDbContextFactory pipeline.
     options.AddInterceptors(sp.GetRequiredService<UserInfoSaveChangesInterceptor>());
+    // T-06: same CampInfo interceptor for the IDbContextFactory pipeline.
+    options.AddInterceptors(sp.GetRequiredService<CampInfoSaveChangesInterceptor>());
     options.ConfigureWarnings(w => w.Ignore(CoreEventId.FirstWithoutOrderByAndFilterWarning));
 });
 
