@@ -2,7 +2,8 @@
 
 @{
     ViewData["Title"] = Localizer["Shifts_Title"].Value;
-    var es = Model.EventSettings;
+    // This view is only rendered for the active event; controller guards against null.
+    var es = Model.EventSettings!;
     var isUrgencySort = string.Equals(Model.Sort, "urgency", StringComparison.OrdinalIgnoreCase);
 
     // Phase date ranges for display on cards
@@ -285,7 +286,7 @@
         });
     </script>
 
-    @if (!Model.EventSettings.IsShiftBrowsingOpen)
+    @if (!es.IsShiftBrowsingOpen)
     {
         <div class="alert alert-danger">@Localizer["Shifts_NotOpenYet"]</div>
     }

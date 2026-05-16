@@ -517,9 +517,6 @@ public sealed class TicketTransferService : ITicketTransferService
 
     private async Task WriteToVendorAsync(TicketTransferRequest request, CancellationToken ct)
     {
-        // ReSharper disable once NullCoalescingConditionIsAlwaysNotNullAccordingToAPIContract
-        // TicketTransferRequest.OriginalTicketAttendee is declared `= null!` (EF nav); when
-        // the request was fetched without Include, fall back to a direct repo lookup.
         var attendee = request.OriginalTicketAttendee
             ?? await _ticketRepo.GetAttendeeByIdAsync(request.OriginalTicketAttendeeId, ct)
             ?? throw new InvalidOperationException("Original attendee missing during vendor writeback.");
@@ -691,9 +688,6 @@ public sealed class TicketTransferService : ITicketTransferService
         return result;
     }
 
-    // ReSharper disable once NullCoalescingConditionIsAlwaysNotNullAccordingToAPIContract
-    // TicketTransferRequest.OriginalTicketAttendee is declared `= null!` (EF nav); when
-    // the request was fetched without Include, fall back to a direct repo lookup.
     private async Task<TicketAttendee> ResolveAttendeeAsync(
         TicketTransferRequest r, CancellationToken ct) =>
         r.OriginalTicketAttendee

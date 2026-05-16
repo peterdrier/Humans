@@ -88,13 +88,10 @@ public class TeamConfiguration : IEntityTypeConfiguration<Team>
             .HasConversion(
                 v => v == null ? null : JsonSerializer.Serialize(v, JsonEnumOptions),
                 v => v == null ? null : JsonSerializer.Deserialize<List<CallToAction>>(v, JsonEnumOptions),
-                new ValueComparer<List<CallToAction>>(
+                new ValueComparer<List<CallToAction>?>(
                     (a, b) => (a == null && b == null) || (a != null && b != null && a.SequenceEqual(b)),
-                    // ReSharper disable twice ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
-                    // ValueComparer's generic parameter is non-null but the conversion target
-                    // List<CallToAction>? is nullable; EF passes null through to the comparer.
                     v => v == null ? 0 : v.Aggregate(0, (hash, item) => HashCode.Combine(hash, item.Text, item.Url, item.Style)),
-                    v => v == null ? null! : v.Select(c => new CallToAction { Text = c.Text, Url = c.Url, Style = c.Style }).ToList()));
+                    v => v == null ? null : v.Select(c => new CallToAction { Text = c.Text, Url = c.Url, Style = c.Style }).ToList()));
 
         builder.Property(t => t.ParentTeamId);
 

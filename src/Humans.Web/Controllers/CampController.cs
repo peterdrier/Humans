@@ -416,7 +416,7 @@ public class CampController : HumansCampControllerBase
             .Select(m => new CampMemberPickerOption(
                 m.Id,
                 m.UserId,
-                users.TryGetValue(m.UserId, out var u) ? u.BurnerName ?? "(unknown)" : "(unknown)"))
+                users.TryGetValue(m.UserId, out var u) ? u.BurnerName : "(unknown)"))
             .OrderBy(o => o.DisplayName, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
@@ -729,7 +729,7 @@ public class CampController : HumansCampControllerBase
     [Authorize]
     [HttpPost("{slug}/Images/Upload")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> UploadImage(string slug, IFormFile file)
+    public async Task<IActionResult> UploadImage(string slug, IFormFile? file)
     {
         var (errorResult, _, camp) = await ResolveCampManagementAsync(slug);
         if (errorResult is not null)

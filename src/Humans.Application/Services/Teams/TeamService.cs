@@ -2114,10 +2114,6 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
     {
         var members = definitions
             .SelectMany(d => d.Assignments.Select(a => a.TeamMember))
-            // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
-            // TeamRoleAssignment.TeamMember is declared `= null!` (EF nav); defensive in
-            // case the caller passes assignments without TeamMember included.
-            .Where(m => m is not null)
             .ToList();
         if (members.Count == 0)
             return;

@@ -163,12 +163,12 @@ public class CityPlanningController : HumansControllerBase
 
     [HttpPost("BarrioMap/Admin/UploadLimitZone")]
     [ValidateAntiForgeryToken]
-    public Task<IActionResult> UploadLimitZone(IFormFile file, CancellationToken cancellationToken) =>
+    public Task<IActionResult> UploadLimitZone(IFormFile? file, CancellationToken cancellationToken) =>
         UploadGeoJsonAsync(file, "Limit zone", _cityPlanningService.UpdateLimitZoneAsync, cancellationToken);
 
     [HttpPost("BarrioMap/Admin/UploadOfficialZones")]
     [ValidateAntiForgeryToken]
-    public Task<IActionResult> UploadOfficialZones(IFormFile file, CancellationToken cancellationToken) =>
+    public Task<IActionResult> UploadOfficialZones(IFormFile? file, CancellationToken cancellationToken) =>
         UploadGeoJsonAsync(file, "Official zones", _cityPlanningService.UpdateOfficialZonesAsync, cancellationToken);
 
     [HttpGet("BarrioMap/Admin/DownloadLimitZone")]
@@ -226,7 +226,7 @@ public class CityPlanningController : HumansControllerBase
     /// JSON shape check, redirect target) is identical.
     /// </summary>
     private async Task<IActionResult> UploadGeoJsonAsync(
-        IFormFile file,
+        IFormFile? file,
         string namePretty,
         Func<string, Guid, CancellationToken, Task> updateAsync,
         CancellationToken ct)

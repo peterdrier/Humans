@@ -178,7 +178,7 @@ public class TeamController : HumansControllerBase
             ShowCoordinatorsOnPublicPage = team.ShowCoordinatorsOnPublicPage,
             PageContent = team.PageContent,
             PageContentHtml = pageContentHtml,
-            CallsToAction = team.CallsToAction ?? [],
+            CallsToAction = team.CallsToAction,
             PageContentUpdatedAt = team.PageContentUpdatedAt?.ToDateTimeUtc(),
             PageContentUpdatedByDisplayName = teamPage.PageContentUpdatedByDisplayName,
             IsAuthenticated = teamPage.IsAuthenticated,

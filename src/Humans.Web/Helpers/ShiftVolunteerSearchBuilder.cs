@@ -55,9 +55,7 @@ public static class ShiftVolunteerSearchBuilder
             return VolunteerSearchBuildResult.NotFound;
 
         var activeEvent = await getActiveEventSettings();
-        var eventSettings = shift.Rota.EventSettings ?? activeEvent;
-        if (eventSettings is null)
-            return VolunteerSearchBuildResult.NotFound;
+        var eventSettings = shift.Rota.EventSettings;
 
         var results = await BuildAsync(
             shift,

@@ -1806,11 +1806,6 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
 #pragma warning disable CS0618 // Cross-domain User nav populated in-memory by ITeamService (§6b).
         var user = tm.User;
 #pragma warning restore CS0618
-        // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
-        // tm.User is annotated non-null but is an in-memory-populated cross-domain nav;
-        // not all call paths guarantee population.
-        if (user is null)
-            return null;
         if (user.GoogleEmailStatus == GoogleEmailStatus.Rejected)
             return null;
 

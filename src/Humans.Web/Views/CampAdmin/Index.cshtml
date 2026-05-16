@@ -112,7 +112,7 @@
                                     @camp.Name
                                 </a>
                             </td>
-                            <td>@((camp.BlurbShort ?? "").Length > 100 ? camp.BlurbShort![..100] + "..." : camp.BlurbShort)</td>
+                            <td>@(camp.BlurbShort.Length > 100 ? camp.BlurbShort[..100] + "..." : camp.BlurbShort)</td>
                             <td>
                                 <input type="text" class="form-control form-control-sm" form="approve-@camp.SeasonId" name="notes" placeholder="Optional notes" />
                             </td>
@@ -169,7 +169,7 @@
                                     @camp.Name
                                 </a>
                             </td>
-                            <td>@((camp.BlurbShort ?? "").Length > 100 ? camp.BlurbShort![..100] + "..." : camp.BlurbShort)</td>
+                            <td>@(camp.BlurbShort.Length > 100 ? camp.BlurbShort[..100] + "..." : camp.BlurbShort)</td>
                             <td class="text-end">
                                 <form asp-controller="CampAdmin" asp-action="Reactivate" asp-route-seasonId="@camp.SeasonId" method="post" class="d-inline">
                                     @Html.AntiForgeryToken()

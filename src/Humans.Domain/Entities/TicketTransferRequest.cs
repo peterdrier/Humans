@@ -19,8 +19,9 @@ public class TicketTransferRequest
     /// <summary>FK to the TicketAttendee being transferred (the original issued ticket).</summary>
     public Guid OriginalTicketAttendeeId { get; init; }
 
-    /// <summary>Navigation to the original attendee row.</summary>
-    public TicketAttendee OriginalTicketAttendee { get; set; } = null!;
+    /// <summary>Navigation to the original attendee row. Nullable because not all
+    /// query paths Include() it; consumers fall back to a direct repo lookup.</summary>
+    public TicketAttendee? OriginalTicketAttendee { get; set; }
 
     /// <summary>Humans user sending the ticket (the buyer / current holder).</summary>
     public Guid SenderUserId { get; init; }

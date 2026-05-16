@@ -549,7 +549,7 @@ public sealed class DevPersonaSeeder
             .Where(u => !(u.Email ?? string.Empty).StartsWith("dev-guest-", StringComparison.OrdinalIgnoreCase))
             .OrderBy(u => u.DisplayName, StringComparer.Ordinal)
             .Take(100)
-            .Select(u => (u.Id, u.DisplayName ?? u.Email ?? "Unknown", u.Email ?? string.Empty))
+            .Select(u => (u.Id, u.DisplayName, u.Email ?? string.Empty))
             .ToList();
         return result;
     }

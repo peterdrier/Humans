@@ -23,7 +23,7 @@ public sealed class TicketTransferRepository : ITicketTransferRepository
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.TicketTransferRequests
             .Include(r => r.OriginalTicketAttendee)
-                .ThenInclude(a => a.TicketOrder)
+                .ThenInclude(a => a!.TicketOrder)
             .FirstOrDefaultAsync(r => r.Id == id, ct);
     }
 
@@ -40,7 +40,7 @@ public sealed class TicketTransferRepository : ITicketTransferRepository
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.TicketTransferRequests
             .Include(r => r.OriginalTicketAttendee)
-                .ThenInclude(a => a.TicketOrder)
+                .ThenInclude(a => a!.TicketOrder)
             .Where(r => r.Status == status)
             .ToListAsync(ct);
     }

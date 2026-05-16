@@ -472,7 +472,6 @@ public sealed class CachingEventService : IEventService, IEventViewInvalidator, 
             var settings = await _repo.GetGuideSettingsAsync(ct);
             var approved = await _repo.GetApprovedEventsAsync(null, null, null, null, [], ct);
 
-            var categoriesById = categories.ToDictionary(c => c.Id);
             var venuesById = venues.ToDictionary(v => v.Id);
 
             _categories = categories.Select(CategoryEntityToView).ToList();
@@ -481,7 +480,7 @@ public sealed class CachingEventService : IEventService, IEventViewInvalidator, 
 
             _eventCache.Clear();
             foreach (var ev in approved)
-                _eventCache.Set(ev.Id, BuildEventView(ev, categoriesById, venuesById));
+                _eventCache.Set(ev.Id, BuildEventView(ev, venuesById));
 
             _isLoaded = true;
         }
@@ -568,10 +567,9 @@ public sealed class CachingEventService : IEventService, IEventViewInvalidator, 
         }
 
         // All-rows lookup — an approved event can reference a now-inactive
-        // category/venue, and we still want its flattened fields populated.
-        var categoriesById = (await _repo.GetAllCategoriesAsync(ct)).ToDictionary(c => c.Id);
+        // venue, and we still want its flattened fields populated.
         var venuesById = (await _repo.GetAllVenuesAsync(ct)).ToDictionary(v => v.Id);
-        _eventCache.Set(eventId, BuildEventView(ev, categoriesById, venuesById));
+        _eventCache.Set(eventId, BuildEventView(ev, venuesById));
     }
 
     private async Task RefreshAllEventsAsync(CancellationToken ct)
@@ -588,14 +586,13 @@ public sealed class CachingEventService : IEventService, IEventViewInvalidator, 
         }
 
         var approved = await _repo.GetApprovedEventsAsync(null, null, null, null, [], ct);
-        var categoriesById = (await _repo.GetAllCategoriesAsync(ct)).ToDictionary(c => c.Id);
         var venuesById = (await _repo.GetAllVenuesAsync(ct)).ToDictionary(v => v.Id);
 
         // Rebuild the whole approved set — category / venue renames touch
         // every event row's flattened fields.
         var fresh = new ConcurrentDictionary<Guid, ApprovedEventView>();
         foreach (var ev in approved)
-            fresh[ev.Id] = BuildEventView(ev, categoriesById, venuesById);
+            fresh[ev.Id] = BuildEventView(ev, venuesById);
 
         // Replace via clear + set rather than swapping the underlying dict —
         // TrackedCache owns its dict and exposes only Clear / Set / Invalidate.
@@ -610,16 +607,12 @@ public sealed class CachingEventService : IEventService, IEventViewInvalidator, 
 
     private static ApprovedEventView BuildEventView(
         Event ev,
-        IReadOnlyDictionary<Guid, EventCategory> categoriesById,
         IReadOnlyDictionary<Guid, EventVenue> venuesById)
     {
         // The repo's approved query includes Category and EventVenue navs, so
-        // these are populated. Fall back to the lookup dicts defensively.
-        // ReSharper disable once NullCoalescingConditionIsAlwaysNotNullAccordingToAPIContract
-        // Event.Category is declared `= null!` (EF nav); cached events come from a query
-        // that should have populated it, but the lookup-dict fallback covers stale cache.
-        var category = ev.Category ??
-            (categoriesById.TryGetValue(ev.CategoryId, out var c) ? c : null);
+        // Event.Category (required EF nav) is populated. EventVenue is optional
+        // and is filled in from venuesById when the nav isn't loaded.
+        var category = ev.Category;
         EventVenue? venue = ev.EventVenue;
         if (venue is null && ev.GuideSharedVenueId is { } venueId
             && venuesById.TryGetValue(venueId, out var v))
@@ -633,9 +626,9 @@ public sealed class CachingEventService : IEventService, IEventViewInvalidator, 
             GuideSharedVenueId: ev.GuideSharedVenueId,
             SubmitterUserId: ev.SubmitterUserId,
             CategoryId: ev.CategoryId,
-            CategorySlug: category?.Slug ?? string.Empty,
-            CategoryName: category?.Name ?? string.Empty,
-            CategoryIsSensitive: category?.IsSensitive ?? false,
+            CategorySlug: category.Slug,
+            CategoryName: category.Name,
+            CategoryIsSensitive: category.IsSensitive,
             VenueName: venue?.Name,
             Title: ev.Title,
             Description: ev.Description,

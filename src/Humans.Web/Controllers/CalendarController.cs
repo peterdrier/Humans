@@ -290,7 +290,7 @@ public class CalendarController : HumansControllerBase
         start = default;
         end = null;
 
-        var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(form.RecurrenceTimezone ?? string.Empty);
+        var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(form.RecurrenceTimezone);
         if (zone is null)
         {
             ModelState.AddModelError(nameof(form.RecurrenceTimezone), "Unknown IANA timezone.");

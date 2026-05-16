@@ -170,7 +170,7 @@ public class TimeSlotEntry
 
 public class ShiftBrowseViewModel
 {
-    public EventSettings EventSettings { get; set; } = null!;
+    public EventSettings? EventSettings { get; set; }
     public List<DepartmentShiftGroup> Departments { get; set; } = [];
     public List<DepartmentOption> AllDepartments { get; set; } = [];
     public Guid? FilterDepartmentId { get; set; }
@@ -459,7 +459,7 @@ public class ShiftInfoViewModel
     /// <summary>Merge a time preference and toggle quirks back into a flat quirks array.</summary>
     public static List<string> MergeQuirks(string? timePreference, List<string> toggleQuirks)
     {
-        var result = new List<string>(toggleQuirks ?? []);
+        var result = new List<string>(toggleQuirks);
         if (!string.IsNullOrEmpty(timePreference))
             result.Add(timePreference);
         return result;

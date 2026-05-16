@@ -771,7 +771,7 @@ public sealed class GoogleAdminService : IGoogleAdminService
                         renames.Add(new EmailRenameInfo
                         {
                             UserId = user.Id,
-                            DisplayName = user.DisplayName ?? "Unknown",
+                            DisplayName = user.DisplayName,
                             OldEmail = user.GoogleEmail!,
                             NewEmail = account.PrimaryEmail,
                             AffectedResourceCount = affectedResources

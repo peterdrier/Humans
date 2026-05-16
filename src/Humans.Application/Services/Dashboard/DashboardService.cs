@@ -125,10 +125,7 @@ public class DashboardService : IDashboardService
                     {
                         urgentItems.Add(new DashboardUrgentShift(
                             RotaName: u.Shift.Rota?.Name ?? "Unknown",
-                            // ReSharper disable once NullCoalescingConditionIsAlwaysNotNullAccordingToAPIContract
-                            // UrgentShift.DepartmentName is non-null `string` but producer returns
-                            // string.Empty on team-lookup miss; "Unknown" is the user-facing default.
-                            DepartmentName: u.DepartmentName ?? "Unknown",
+                            DepartmentName: u.DepartmentName,
                             AbsoluteStart: u.Shift.GetAbsoluteStart(activeEvent),
                             RemainingSlots: u.RemainingSlots,
                             UrgencyScore: u.UrgencyScore));
