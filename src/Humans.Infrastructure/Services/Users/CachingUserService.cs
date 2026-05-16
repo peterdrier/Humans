@@ -98,10 +98,10 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
         return await inner.GetUserInfoAsync(userId, ct);
     }
 
-    /// <inheritdoc cref="IUserService.GetAllUserInfos" />
-    public IReadOnlyCollection<UserInfo> GetAllUserInfos()
+    /// <inheritdoc cref="IUserService.GetAllUserInfosAsync" />
+    public async Task<IReadOnlyCollection<UserInfo>> GetAllUserInfosAsync(CancellationToken ct = default)
     {
-        RequireWarmedUp();
+        await EnsureWarmedAsync(ct).ConfigureAwait(false);
         return Values.ToArray();
     }
 
@@ -136,13 +136,13 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
     }
 
     /// <inheritdoc cref="IUserService.SearchUsersAsync" />
-    public Task<IReadOnlyList<HumanSearchResult>> SearchUsersAsync(
+    public async Task<IReadOnlyList<HumanSearchResult>> SearchUsersAsync(
         string query, PersonSearchFields fields, int limit = 10, CancellationToken ct = default)
     {
         if (fields == PersonSearchFields.None || string.IsNullOrWhiteSpace(query) || limit <= 0)
-            return Task.FromResult<IReadOnlyList<HumanSearchResult>>([]);
+            return [];
 
-        RequireWarmedUp();
+        await EnsureWarmedAsync(ct).ConfigureAwait(false);
 
         var includeAdmin = (fields & PersonSearchFields.Admin) != PersonSearchFields.None;
 
@@ -153,7 +153,7 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
         {
             if (TryGet(idGuid, out var byId) && byId.Profile is not null && byId.Profile.RejectedAt is null)
             {
-                return Task.FromResult<IReadOnlyList<HumanSearchResult>>([
+                return [
                     new HumanSearchResult(
                         UserId: byId.Id,
                         ProfileId: byId.Profile.Id,
@@ -162,9 +162,9 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
                         MatchField: "User ID",
                         MatchSnippet: null,
                         MatchedEmail: null)
-                ]);
+                ];
             }
-            return Task.FromResult<IReadOnlyList<HumanSearchResult>>([]);
+            return [];
         }
 
         var results = new List<HumanSearchResult>();
@@ -198,7 +198,7 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
             if (results.Count >= limit) break;
         }
 
-        return Task.FromResult<IReadOnlyList<HumanSearchResult>>(results);
+        return results;
     }
 
     /// <summary>
@@ -459,9 +459,9 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.GetByIdsWithEmailsAsync(userIds, ct));
 
-    public Task<List<EventParticipation>> GetAllParticipationsForYearAsync(int year, CancellationToken ct = default)
+    public async Task<List<EventParticipation>> GetAllParticipationsForYearAsync(int year, CancellationToken ct = default)
     {
-        RequireWarmedUp();
+        await EnsureWarmedAsync(ct).ConfigureAwait(false);
         var snapshot = Values;
         var result = new List<EventParticipation>();
         foreach (var u in snapshot)
@@ -480,7 +480,7 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
                 });
             }
         }
-        return Task.FromResult(result);
+        return result;
     }
 
     public Task<IReadOnlyList<User>> GetAllUsersAsync(CancellationToken ct = default) =>
@@ -499,17 +499,17 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
         Instant now, CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.GetAccountsDueForAnonymizationAsync(now, ct));
 
-    public Task<IReadOnlySet<Guid>> GetMergedSourceIdsAsync(
+    public async Task<IReadOnlySet<Guid>> GetMergedSourceIdsAsync(
         Guid targetUserId, CancellationToken ct = default)
     {
-        RequireWarmedUp();
+        await EnsureWarmedAsync(ct).ConfigureAwait(false);
         var ids = new HashSet<Guid>();
         foreach (var u in Values)
         {
             if (u.MergedToUserId == targetUserId)
                 ids.Add(u.Id);
         }
-        return Task.FromResult<IReadOnlySet<Guid>>(ids);
+        return ids;
     }
 
     public Task<IReadOnlyList<Guid>> GetUsersWithLoginsButNoEmailsAsync(CancellationToken ct = default) =>

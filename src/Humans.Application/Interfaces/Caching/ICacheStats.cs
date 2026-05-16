@@ -17,9 +17,8 @@ public interface ICacheStats
     long KeyInvalidations { get; }
 
     /// <summary>Count of bulk flushes via <c>Clear()</c>. A bulk flush also
-    /// flips the cache back to "cold" — load-all callers will throw
-    /// <c>CantLoadAllException</c> (or trigger an on-demand re-warm, depending
-    /// on the subclass) until the next successful warmup.</summary>
+    /// flips the cache back to "cold"; the next load-all read drives a
+    /// re-warm via <c>EnsureWarmed</c> / <c>EnsureWarmedAsync</c>.</summary>
     long BulkInvalidations { get; }
 
     double HitRatePercent { get; }

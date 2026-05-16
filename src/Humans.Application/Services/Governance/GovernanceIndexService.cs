@@ -27,7 +27,7 @@ public sealed class GovernanceIndexService : IGovernanceIndexService
         var latestApplication = applications.Count > 0 ? applications[0] : null;
         var statutesContent = await _legalDocService.GetDocumentContentAsync("statutes");
 
-        var snapshot = _userService.GetAllUserInfos();
+        var snapshot = await _userService.GetAllUserInfosAsync(ct).ConfigureAwait(false);
         var colaboradorCount = snapshot.Count(u => u.Profile?.MembershipTier == MembershipTier.Colaborador);
         var asociadoCount = snapshot.Count(u => u.Profile?.MembershipTier == MembershipTier.Asociado);
 

@@ -46,14 +46,14 @@ public class FeedbackController : HumansControllerBase
     /// population queries. Population goes through the UserInfo snapshot +
     /// <c>IUserService.GetByIdsAsync</c> primitives.
     /// </summary>
-    private Task<List<AssigneeOption>> GetActiveAssigneeOptionsAsync(CancellationToken ct = default)
+    private async Task<List<AssigneeOption>> GetActiveAssigneeOptionsAsync(CancellationToken ct = default)
     {
-        var options = _userService.GetAllUserInfos()
+        var options = (await _userService.GetAllUserInfosAsync(ct).ConfigureAwait(false))
             .Where(u => u.IsActive)
             .Select(u => new AssigneeOption { Id = u.Id, DisplayName = u.BurnerName })
             .OrderBy(o => o.DisplayName, StringComparer.OrdinalIgnoreCase)
             .ToList();
-        return Task.FromResult(options);
+        return options;
     }
 
     [HttpGet("")]

@@ -113,7 +113,7 @@ public sealed class TicketDashboardPageBuilder
 
     private async Task<UserSetMembership> BuildSetMembershipAsync()
     {
-        var snapshot = _userService.GetAllUserInfos();
+        var snapshot = await _userService.GetAllUserInfosAsync().ConfigureAwait(false);
         var activeEvent = await _shiftManagement.GetActiveAsync();
         var activeYear = activeEvent?.Year ?? 0;
         var shiftViews = await _shiftView.GetUsersAsync(snapshot.Select(u => u.Id));

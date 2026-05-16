@@ -35,9 +35,9 @@ public interface IUserService : IApplicationService, IUserMerge
     /// debug surfaces, and cross-section aggregates read from this snapshot
     /// rather than re-querying the contributing tables. Returns a new
     /// collection per call — the underlying dictionary is mutable and callers
-    /// iterate without locking.
+    /// iterate without locking. Drives warmup on demand if the cache is cold.
     /// </summary>
-    IReadOnlyCollection<UserInfo> GetAllUserInfos();
+    Task<IReadOnlyCollection<UserInfo>> GetAllUserInfosAsync(CancellationToken ct = default);
 
     /// <summary>
     /// Batched <see cref="UserInfo"/> lookup. Returns a dictionary keyed by

@@ -13,7 +13,7 @@ namespace Humans.Web.Controllers;
 /// Diagnostic debug surface for the in-memory <see cref="UserInfo"/> cache.
 /// Flat paginated/sortable table of every cached user — used to verify the
 /// cache holds the expected data after imports and migrations. Every column
-/// comes from <see cref="IUserService.GetAllUserInfos"/>; nothing on this
+/// comes from <see cref="IUserService.GetAllUserInfosAsync"/>; nothing on this
 /// page makes a secondary query.
 /// </summary>
 [Authorize(Policy = PolicyNames.AdminOnly)]
@@ -33,13 +33,14 @@ public sealed class UsersAdminDebugController : HumansControllerBase
     }
 
     [HttpGet("")]
-    public IActionResult Index(int page = 1, int pageSize = DefaultPageSize,
-                               string sort = "displayName", string dir = "asc")
+    public async Task<IActionResult> Index(int page = 1, int pageSize = DefaultPageSize,
+                               string sort = "displayName", string dir = "asc",
+                               CancellationToken ct = default)
     {
         pageSize = Math.Clamp(pageSize, MinPageSize, MaxPageSize);
         if (page < 1) page = 1;
 
-        var snapshot = _userService.GetAllUserInfos();
+        var snapshot = await _userService.GetAllUserInfosAsync(ct);
         var allRows = snapshot.Select(UserDebugRow.From).ToList();
 
         var sorted = ApplySort(allRows, sort, dir);

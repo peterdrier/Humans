@@ -64,7 +64,8 @@ internal static class UsersSectionExtensions
 
         // CachingUserService is itself the IHostedService — TrackedCache's
         // StartAsync triggers WarmAllAsync when warmOnStartup: true. Load-all
-        // reads throw CantLoadAllException until warmup completes.
+        // reads call EnsureWarmed / EnsureWarmedAsync, which drives warmup on
+        // demand if startup hasn't yet completed.
         services.AddHostedService(sp => sp.GetRequiredService<CachingUserService>());
 
         // Account deletion orchestrator (issue nobodies-collective/Humans#582). Single entry point for

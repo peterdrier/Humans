@@ -1043,7 +1043,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
     public async Task<IReadOnlyList<UserEmailOrphan>> GetOrphanUserEmailsAsync(CancellationToken ct = default)
     {
         var allEmails = await _repository.GetAllAsync(ct);
-        var liveUserIds = _userService.GetAllUserInfos()
+        var liveUserIds = (await _userService.GetAllUserInfosAsync(ct).ConfigureAwait(false))
             .Where(u => u.MergedToUserId is null)
             .Select(u => u.Id)
             .ToHashSet();

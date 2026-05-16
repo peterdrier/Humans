@@ -257,12 +257,13 @@ public sealed class NotificationMeterProvider : INotificationMeterProvider
 
     private async Task<MeterCounts> ComputeCountsAsync(CancellationToken cancellationToken)
     {
-        var consentReviewsPending = _userService.GetAllUserInfos().Count(u => u.NeedsConsentReview);
+        var allUserInfos = await _userService.GetAllUserInfosAsync(cancellationToken).ConfigureAwait(false);
+        var consentReviewsPending = allUserInfos.Count(u => u.NeedsConsentReview);
 
         // Pending deletions derived from the cached UserInfo snapshot —
         // ConsentReviewsPending above already reads the same snapshot, and the
         // meter result itself is cached for CacheDuration anyway.
-        var pendingDeletions = _userService.GetAllUserInfos()
+        var pendingDeletions = allUserInfos
             .Count(u => u.DeletionRequestedAt != null);
 
         var failedSyncEvents = await _googleSyncService.GetFailedSyncEventCountAsync(cancellationToken);

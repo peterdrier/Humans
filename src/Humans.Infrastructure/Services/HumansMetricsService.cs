@@ -241,7 +241,7 @@ public sealed class HumansMetricsService : IHumansMetrics, IDisposable
             // humans_total by status — read off the cached UserInfo snapshot
             // instead of issuing two table scans against the users table per
             // refresh tick.
-            var userInfos = userService.GetAllUserInfos();
+            var userInfos = await userService.GetAllUserInfosAsync().ConfigureAwait(false);
             var allUserIds = userInfos.Select(u => u.Id).ToList();
             var profileData = await db.Profiles
                 .Select(p => new { p.UserId, p.IsApproved, p.IsSuspended })

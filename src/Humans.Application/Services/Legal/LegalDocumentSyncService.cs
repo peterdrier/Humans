@@ -372,7 +372,7 @@ public sealed class LegalDocumentSyncService : ILegalDocumentSyncService
     {
         try
         {
-            var approvedUserIds = _userService.GetAllUserInfos()
+            var approvedUserIds = (await _userService.GetAllUserInfosAsync(cancellationToken).ConfigureAwait(false))
                 .Where(u => u.IsActive)
                 .Select(u => u.Id)
                 .ToList();

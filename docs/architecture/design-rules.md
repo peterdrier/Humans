@@ -502,9 +502,9 @@ Key rules the example demonstrates:
 
 - Repositories used by the decorator must themselves be Singleton (`IDbContextFactory`-based) so they can be injected directly without scope plumbing.
 - Scoped dependencies (the inner service) are resolved per-call via `IServiceScopeFactory.CreateAsyncScope()` — never captured in a Singleton field.
-- Reads: dict hit returns synchronously via `TrackedCache.TryGet`; miss falls through `GetAsync` → `LoadRowAsync` (override) and populates the dict. Load-all reads call `RequireWarmedUp()` and throw `CantLoadAllException` if the cache is cold.
-- Writes: delegate to the inner service, then call a private `RefreshEntryAsync` that reloads from repositories and upserts. If the row no longer exists, evict via `Invalidate(key)`.
-- Warming: `TrackedCache` itself implements `IHostedService`. Register the decorator as a hosted service (`services.AddHostedService(sp => sp.GetRequiredService<CachingFoo>())`) — startup triggers `WarmAllAsync` via `EnsureWarmedAsync`, which flips the warmed flag on success. No separate `*WarmupHostedService` class. Failures during startup are non-fatal (host still starts) but `CantLoadAllException` is thrown from load-all reads until the next successful warmup.
+- Reads: dict hit returns synchronously via `TrackedCache.TryGet`; miss falls through `GetAsync` → `LoadRowAsync` (override) and populates the dict. Load-all reads `await EnsureWarmedAsync(ct)`, which drives `WarmAllAsync` on demand if the cache is cold and is a no-op once warmed.
+- Writes: delegate to the inner service, then replace the affected entry via `Replace(key, value)` (caller-computed value) or `ReplaceAsync(key, ct)` (reloads via `LoadRowAsync`). Bare `Invalidate(key)` is for lazy-per-key caches or for tombstoning a row whose source has been confirmed deleted — on a warmed cache, removing without replacing breaks the all-rows invariant.
+- Warming: `TrackedCache` itself implements `IHostedService`. Register the decorator as a hosted service (`services.AddHostedService(sp => sp.GetRequiredService<CachingFoo>())`) — startup triggers `WarmAllAsync` via `EnsureWarmedAsync`, which flips the warmed flag on success. No separate `*WarmupHostedService` class. Startup-warmup failures are recovered transparently: the next load-all read drives warmup on demand.
 - Composing decorators that hold multiple inner `TrackedCache` instances (e.g. `CachingShiftViewService`) implement `IHostedService` directly with the same shape.
 
 ### 15e. Invalidator — One-Way Cross-Section Signal

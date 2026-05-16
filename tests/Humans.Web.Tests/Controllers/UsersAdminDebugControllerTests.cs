@@ -64,18 +64,19 @@ public class UsersAdminDebugControllerTests
     }
 
     [HumansFact]
-    public void Index_returns_paged_rows_from_snapshot()
+    public async Task Index_returns_paged_rows_from_snapshot()
     {
         var users = Enumerable.Range(0, 60)
             .Select(i => MakeUserInfo(Guid.NewGuid(), $"User {i:D3}", hasProfile: i % 2 == 0, hasTicket: i % 3 == 0))
             .ToArray();
 
         var userService = Substitute.For<IUserService>();
-        userService.GetAllUserInfos().Returns(users);
+        userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>(users));
 
         var controller = new UsersAdminDebugController(userService);
 
-        var result = controller.Index(page: 1, pageSize: 50, sort: "displayName", dir: "asc") as ViewResult;
+        var result = await controller.Index(page: 1, pageSize: 50, sort: "displayName", dir: "asc") as ViewResult;
 
         result.Should().NotBeNull();
         var vm = result!.Model.Should().BeOfType<UsersDebugViewModel>().Subject;
@@ -86,7 +87,7 @@ public class UsersAdminDebugControllerTests
     }
 
     [HumansFact]
-    public void Index_sort_displayName_descending_reverses_order()
+    public async Task Index_sort_displayName_descending_reverses_order()
     {
         var users = new[]
         {
@@ -95,31 +96,33 @@ public class UsersAdminDebugControllerTests
             MakeUserInfo(Guid.NewGuid(), "Carol", hasProfile: true, hasTicket: false),
         };
         var userService = Substitute.For<IUserService>();
-        userService.GetAllUserInfos().Returns(users);
+        userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>(users));
 
         var controller = new UsersAdminDebugController(userService);
 
-        var result = controller.Index(page: 1, pageSize: 50, sort: "displayName", dir: "desc") as ViewResult;
+        var result = await controller.Index(page: 1, pageSize: 50, sort: "displayName", dir: "desc") as ViewResult;
 
         var vm = (UsersDebugViewModel)result!.Model!;
         vm.Rows.Select(r => r.DisplayName).Should().Equal("Carol", "Bob", "Alice");
     }
 
     [HumansFact]
-    public void Index_clamps_pageSize_outside_10_to_200_range()
+    public async Task Index_clamps_pageSize_outside_10_to_200_range()
     {
         var users = Enumerable.Range(0, 5)
             .Select(i => MakeUserInfo(Guid.NewGuid(), $"User {i}", true, false))
             .ToArray();
         var userService = Substitute.For<IUserService>();
-        userService.GetAllUserInfos().Returns(users);
+        userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>(users));
 
         var controller = new UsersAdminDebugController(userService);
 
-        var tooSmall = (UsersDebugViewModel)((ViewResult)controller.Index(1, 1, "displayName", "asc")).Model!;
+        var tooSmall = (UsersDebugViewModel)((ViewResult)await controller.Index(1, 1, "displayName", "asc")).Model!;
         tooSmall.PageSize.Should().Be(10);
 
-        var tooBig = (UsersDebugViewModel)((ViewResult)controller.Index(1, 9999, "displayName", "asc")).Model!;
+        var tooBig = (UsersDebugViewModel)((ViewResult)await controller.Index(1, 9999, "displayName", "asc")).Model!;
         tooBig.PageSize.Should().Be(200);
     }
 }

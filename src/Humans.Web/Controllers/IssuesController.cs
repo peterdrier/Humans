@@ -257,7 +257,7 @@ public class IssuesController : HumansControllerBase
 
     private async Task PopulateAssigneeOptionsAsync(IssueDetailViewModel vm)
     {
-        var activeIds = _users.GetAllUserInfos()
+        var activeIds = (await _users.GetAllUserInfosAsync().ConfigureAwait(false))
             .Where(u => u.IsActive)
             .Select(u => u.Id)
             .ToList();

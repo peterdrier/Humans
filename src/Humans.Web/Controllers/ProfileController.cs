@@ -187,7 +187,7 @@ public class ProfileController : HumansControllerBase
     private async Task<IReadOnlyList<AdminHumanRow>> BuildAdminHumansAsync(
         string? search, string? statusFilter, CancellationToken ct)
     {
-        var allUsers = _userService.GetAllUserInfos();
+        var allUsers = await _userService.GetAllUserInfosAsync(ct).ConfigureAwait(false);
         var allUserIds = allUsers.Select(u => u.Id).ToList();
         var notificationEmails =
             await _userEmailService.GetNotificationEmailsByUserIdsAsync(allUserIds, ct);

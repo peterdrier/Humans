@@ -69,7 +69,7 @@ public sealed class MailerAdminController : HumansControllerBase
             mlError = FormatMailerLiteError(ex);
         }
 
-        var mlContacts = _users.GetAllUserInfos()
+        var mlContacts = (await _users.GetAllUserInfosAsync(ct).ConfigureAwait(false))
             .Count(u => u.ContactSource == ContactSource.MailerLite);
         var optedIn = await _prefs.GetCountByCategoryAndStateAsync(MessageCategory.Marketing, optedOut: false, ct);
         var optedOut = await _prefs.GetCountByCategoryAndStateAsync(MessageCategory.Marketing, optedOut: true, ct);

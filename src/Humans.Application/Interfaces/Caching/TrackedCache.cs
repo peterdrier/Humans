@@ -48,9 +48,9 @@ public class TrackedCache<TKey, TValue> : IHostedService, ICacheStats where TKey
     /// <param name="name">Stable identifier used by <c>/Admin/CacheStats</c>.</param>
     /// <param name="warmOnStartup">When true, the host's
     /// <see cref="Microsoft.Extensions.Hosting.IHostedService.StartAsync"/>
-    /// triggers <see cref="WarmAllAsync"/>; load-all reads throw
-    /// <see cref="CantLoadAllException"/> until that succeeds. When false the
-    /// cache is lazy-per-key and <see cref="IsWarmedUp"/> is always true.</param>
+    /// triggers <see cref="WarmAllAsync"/> at boot. Either way load-all readers
+    /// call <see cref="EnsureWarmedAsync"/> which is a no-op once warmed and
+    /// otherwise drives <see cref="WarmAllAsync"/> on demand.</param>
     public TrackedCache(string name, bool warmOnStartup)
     {
         Name = name;
@@ -68,13 +68,12 @@ public class TrackedCache<TKey, TValue> : IHostedService, ICacheStats where TKey
         : 0;
 
     /// <summary>
-    /// True when a load-all read is safe to serve. For caches that warm on
-    /// startup, becomes true after <see cref="WarmAllAsync"/> succeeds and
-    /// goes back to false after <see cref="Clear"/>. For caches that do not
-    /// warm on startup (lazy-per-key), this is always true — the cache has
-    /// no "all rows" contract to enforce.
+    /// True after <see cref="WarmAllAsync"/> has run to completion at least
+    /// once. Flips back to false on <see cref="Clear"/>. Load-all readers do
+    /// not check this directly — they call <see cref="EnsureWarmedAsync"/>,
+    /// which drives warmup on demand.
     /// </summary>
-    protected bool IsWarmedUp => _warmedUp || !_warmOnStartup;
+    protected bool IsWarmedUp => _warmedUp;
 
     /// <summary>
     /// Snapshot of cached values. Backed by <see cref="ConcurrentDictionary{TKey,TValue}.Values"/>
@@ -105,17 +104,6 @@ public class TrackedCache<TKey, TValue> : IHostedService, ICacheStats where TKey
     public KeyValuePair<TKey, TValue>[] Snapshot() => _dict.ToArray();
 
     /// <summary>
-    /// Throws <see cref="CantLoadAllException"/> if the cache is not warmed.
-    /// Subclasses call this from load-all reads (e.g. <c>GetAllUserInfos</c>)
-    /// to enforce the "all rows or throw" contract.
-    /// </summary>
-    protected void RequireWarmedUp()
-    {
-        if (!IsWarmedUp)
-            throw CantLoadAllException.ForCache(Name);
-    }
-
-    /// <summary>
     /// Cache lookup. Increments <see cref="Hits"/> on success,
     /// <see cref="Misses"/> on miss.
     /// </summary>
@@ -139,10 +127,17 @@ public class TrackedCache<TKey, TValue> : IHostedService, ICacheStats where TKey
     public void Set(TKey key, TValue value) => _dict[key] = value;
 
     /// <summary>
-    /// Remove a single key. Increments <see cref="KeyInvalidations"/> if an
-    /// entry was actually removed. Does not affect <see cref="IsWarmedUp"/>
-    /// — a single-row tombstone is a valid post-write state for a fully-warmed
-    /// cache.
+    /// Bare remove primitive — drops the entry without reloading. Increments
+    /// <see cref="KeyInvalidations"/> if an entry was actually removed. Does
+    /// not affect <see cref="IsWarmedUp"/>.
+    ///
+    /// <para>On a warmed cache, removing without replacing leaves a hole that
+    /// breaks the all-rows invariant — load-all readers will return N-1 rows.
+    /// Warmed-cache decorators should prefer <see cref="Replace"/> (with a
+    /// freshly-computed value) or <see cref="ReplaceAsync"/> (which reloads
+    /// via <see cref="LoadRowAsync"/>); plain <see cref="Invalidate"/> is for
+    /// lazy-per-key caches or for tombstoning a row whose source has been
+    /// confirmed deleted.</para>
     /// </summary>
     public bool Invalidate(TKey key)
     {
@@ -155,18 +150,39 @@ public class TrackedCache<TKey, TValue> : IHostedService, ICacheStats where TKey
     }
 
     /// <summary>
-    /// Clear the entire dict and flip <see cref="IsWarmedUp"/> back to false
-    /// (for caches that warm on startup). Increments
-    /// <see cref="BulkInvalidations"/> by one regardless of how many entries
-    /// were present. Subclasses that want re-warm-on-clear semantics call
-    /// <see cref="EnsureWarmedAsync"/> from their next read; subclasses that
-    /// don't will throw <see cref="CantLoadAllException"/> from load-all
-    /// reads until the next successful warmup.
+    /// Replace an entry with a caller-supplied value, preserving the warmed
+    /// invariant. Use when the caller has the new value in hand (e.g. just
+    /// rebuilt it from a write path). For reload-from-source semantics use
+    /// <see cref="ReplaceAsync"/>.
+    /// </summary>
+    public void Replace(TKey key, TValue value) => Set(key, value);
+
+    /// <summary>
+    /// Replace an entry by reloading via <see cref="LoadRowAsync"/>. If the
+    /// loader returns null (row was deleted), the entry is removed via
+    /// <see cref="Invalidate"/>. The replacement primitive for warmed caches
+    /// that have a per-key loader.
+    /// </summary>
+    public async Task<TValue?> ReplaceAsync(TKey key, CancellationToken ct = default)
+    {
+        var loaded = await LoadRowAsync(key, ct).ConfigureAwait(false);
+        if (loaded is not null) Set(key, loaded);
+        else Invalidate(key);
+        return loaded;
+    }
+
+    /// <summary>
+    /// Clear the entire dict and flip <see cref="IsWarmedUp"/> back to false.
+    /// Increments <see cref="BulkInvalidations"/> by one regardless of how
+    /// many entries were present. The flag is flipped before the dict is
+    /// emptied so a concurrent reader that races a clear sees "cold" (and
+    /// triggers re-warm via <see cref="EnsureWarmedAsync"/>) rather than "warm
+    /// with an empty dict".
     /// </summary>
     public void Clear()
     {
-        _dict.Clear();
         _warmedUp = false;
+        _dict.Clear();
         Interlocked.Increment(ref _bulkInvalidations);
     }
 
@@ -205,8 +221,8 @@ public class TrackedCache<TKey, TValue> : IHostedService, ICacheStats where TKey
     /// Idempotent warmup with semaphore-coalesced concurrency. Calls the
     /// subclass's <see cref="WarmAllAsync"/> and flips <see cref="IsWarmedUp"/>
     /// on success. Called by <see cref="IHostedService.StartAsync"/> at app
-    /// startup; subclasses with re-warm-on-clear semantics call it from their
-    /// read paths.
+    /// startup; load-all readers call it on demand to recover from a
+    /// <see cref="Clear"/> or a startup that failed to warm.
     /// </summary>
     protected async Task EnsureWarmedAsync(CancellationToken ct)
     {

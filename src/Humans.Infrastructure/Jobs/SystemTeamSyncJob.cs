@@ -254,28 +254,13 @@ public class SystemTeamSyncJob : ISystemTeamSync
         // Flagged + RejectedAt exclusions preserve the CC's existing kick-out
         // levers (FlagConsentCheckAsync and RejectSignupAsync set those fields
         // before calling DeprovisionApprovalGatedSystemTeamsAsync).
-        //
-        // Destructive reconciliation guard: GetAllUserInfos() throws
-        // CantLoadAllException when the UserInfo cache has not warmed (startup
-        // failure). The job runs hourly so a skipped run is cheap; the next
-        // run after warmup recovers.
-        List<Guid> candidateIds;
-        try
-        {
-            candidateIds = _userService.GetAllUserInfos()
-                .Where(u => u.Profile is not null
-                    && !u.IsSuspended
-                    && u.Profile.ConsentCheckStatus != ConsentCheckStatus.Flagged
-                    && u.Profile.RejectedAt is null)
-                .Select(u => u.Id)
-                .ToList();
-        }
-        catch (CantLoadAllException)
-        {
-            _logger.LogWarning("Skipping Volunteers team sync: UserInfo cache is not warmed");
-            report?.Steps.Add(step);
-            return;
-        }
+        var candidateIds = (await _userService.GetAllUserInfosAsync(cancellationToken).ConfigureAwait(false))
+            .Where(u => u.Profile is not null
+                && !u.IsSuspended
+                && u.Profile.ConsentCheckStatus != ConsentCheckStatus.Flagged
+                && u.Profile.RejectedAt is null)
+            .Select(u => u.Id)
+            .ToList();
 
         var eligibleSet = await MembershipCalculator.GetUsersWithAllRequiredConsentsForTeamAsync(
             candidateIds, SystemTeamIds.Volunteers, cancellationToken);
@@ -395,7 +380,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
             .GetActiveApprovedTierUserIdsAsync(tier, today, cancellationToken);
 
         // Filter by profile status to match per-user sync behavior.
-        var activeSet = _userService.GetAllUserInfos()
+        var activeSet = (await _userService.GetAllUserInfosAsync(cancellationToken).ConfigureAwait(false))
             .Where(u => u.IsActive)
             .Select(u => u.Id)
             .ToHashSet();

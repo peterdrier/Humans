@@ -26,7 +26,7 @@ public sealed class EmailProblemsService : IEmailProblemsService
     {
         var problems = new List<EmailProblem>();
 
-        var allInfos = _userService.GetAllUserInfos();
+        var allInfos = await _userService.GetAllUserInfosAsync(ct).ConfigureAwait(false);
         var profiled = allInfos.Where(i => i.Profile is not null).ToList();
 
         foreach (var p in profiled)
@@ -156,7 +156,7 @@ public sealed class EmailProblemsService : IEmailProblemsService
         // admin-invoked and the per-row audit lives at the controller level.
         _ = actorUserId;
 
-        var allInfos = _userService.GetAllUserInfos();
+        var allInfos = await _userService.GetAllUserInfosAsync(ct).ConfigureAwait(false);
         var backfilled = new List<(Guid, string)>();
 
         foreach (var info in allInfos)

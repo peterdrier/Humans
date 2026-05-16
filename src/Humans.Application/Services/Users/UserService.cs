@@ -105,9 +105,9 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
             communicationPreferences);
     }
 
-    public IReadOnlyCollection<UserInfo> GetAllUserInfos() =>
+    public Task<IReadOnlyCollection<UserInfo>> GetAllUserInfosAsync(CancellationToken ct = default) =>
         throw new NotSupportedException(
-            "GetAllUserInfos is only meaningful through CachingUserService. " +
+            "GetAllUserInfosAsync is only meaningful through CachingUserService. " +
             "If this is being called on the inner UserService it indicates a DI " +
             "registration mistake — IUserService should resolve to CachingUserService.");
 

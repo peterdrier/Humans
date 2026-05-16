@@ -371,7 +371,7 @@ public class TeamController : HumansControllerBase
             currentMonth = _clock.GetCurrentInstant().InZone(currentZone).Month;
 
         // Load all active profiles that have a date of birth — read off the cached UserInfo snapshot.
-        var profilesWithBirthdays = _userService.GetAllUserInfos()
+        var profilesWithBirthdays = (await _userService.GetAllUserInfosAsync(ct).ConfigureAwait(false))
             .Where(u => u.Profile is { IsApproved: true, State: not ProfileState.Suspended }
                         && u.Profile.BirthdayMonth == currentMonth
                         && u.Profile.BirthdayDay.HasValue)
@@ -457,7 +457,7 @@ public class TeamController : HumansControllerBase
     [HttpGet("Map")]
     public async Task<IActionResult> Map(CancellationToken ct)
     {
-        var profiles = _userService.GetAllUserInfos()
+        var profiles = (await _userService.GetAllUserInfosAsync(ct).ConfigureAwait(false))
             .Where(u => u.Profile is { IsApproved: true, Latitude: not null, Longitude: not null, State: not ProfileState.Suspended })
             .Select(u => new LocationProfileInfo(
                 u.Id,

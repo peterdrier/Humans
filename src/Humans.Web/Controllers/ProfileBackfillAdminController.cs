@@ -85,9 +85,9 @@ public sealed class ProfileBackfillAdminController : HumansControllerBase
         return RedirectToAction(nameof(Index));
     }
 
-    private Task<IReadOnlyList<MissingProfileRow>> GetUsersMissingProfileAsync(CancellationToken ct)
+    private async Task<IReadOnlyList<MissingProfileRow>> GetUsersMissingProfileAsync(CancellationToken ct)
     {
-        IReadOnlyList<MissingProfileRow> rows = _userService.GetAllUserInfos()
+        IReadOnlyList<MissingProfileRow> rows = (await _userService.GetAllUserInfosAsync(ct).ConfigureAwait(false))
             .Where(u => u.Profile is null)
             .Select(u => new MissingProfileRow(
                 u.Id,
@@ -97,7 +97,7 @@ public sealed class ProfileBackfillAdminController : HumansControllerBase
                 u.ContactSource))
             .OrderByDescending(r => r.CreatedAt)
             .ToList();
-        return Task.FromResult(rows);
+        return rows;
     }
 }
 

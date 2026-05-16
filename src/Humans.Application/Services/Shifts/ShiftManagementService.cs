@@ -1463,7 +1463,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
             eventSettingsId, startInstant, endInstant, minDayOffset, maxDayOffset);
 
         var ticketsInWindow = await TicketQueryService.GetPaidOrderDatesInWindowAsync(startInstant, endInstant);
-        var loginsInWindow = UserService.GetAllUserInfos()
+        var loginsInWindow = (await UserService.GetAllUserInfosAsync().ConfigureAwait(false))
             .Where(u => u.LastLoginAt >= startInstant && u.LastLoginAt < endInstant)
             .Select(u => u.LastLoginAt!.Value)
             .ToList();

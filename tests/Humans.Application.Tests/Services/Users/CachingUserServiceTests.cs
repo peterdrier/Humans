@@ -245,23 +245,36 @@ public class CachingUserServiceTests
     }
 
     [HumansFact]
-    public async Task LoadAllReads_ThrowCantLoadAllException_BeforeWarmup()
+    public async Task LoadAllReads_TriggerWarmupOnDemand_WhenCold()
     {
+        var userA = SampleUser();
+        var userB = SampleUser();
+        _userRepo.GetAllAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<User> { userA, userB });
+        _userEmailRepo.GetAllAsync(Arg.Any<CancellationToken>())
+            .Returns([]);
+        _userRepo.GetExternalLoginsByUserIdsAsync(
+                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, IReadOnlyList<(string Provider, string ProviderKey)>>());
+        _userRepo.GetEventParticipationsByUserIdsAsync(
+                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, IReadOnlyList<EventParticipation>>());
+        _profileRepo.GetAllAsync(Arg.Any<CancellationToken>())
+            .Returns([]);
+        _contactFieldRepo.GetAllAsync(Arg.Any<CancellationToken>())
+            .Returns([]);
+
         var sut = CreateSut();
 
-        // No StartAsync / MarkWarmedForTesting — cache is cold.
-        Action getAll = () => sut.GetAllUserInfos();
-        Func<Task> search = async () =>
-            await sut.SearchUsersAsync("foo", PersonSearchFields.PublicAll);
-        Func<Task> participations = async () =>
-            await sut.GetAllParticipationsForYearAsync(2026);
-        Func<Task> merged = async () =>
-            await sut.GetMergedSourceIdsAsync(Guid.NewGuid());
+        // No StartAsync — cache is cold. The first load-all read drives warmup.
+        var all = await sut.GetAllUserInfosAsync();
+        all.Should().HaveCount(2);
 
-        getAll.Should().Throw<Humans.Application.Interfaces.Caching.CantLoadAllException>();
-        await search.Should().ThrowAsync<Humans.Application.Interfaces.Caching.CantLoadAllException>();
-        await participations.Should().ThrowAsync<Humans.Application.Interfaces.Caching.CantLoadAllException>();
-        await merged.Should().ThrowAsync<Humans.Application.Interfaces.Caching.CantLoadAllException>();
+        // Subsequent load-all reads do not re-drive warmup.
+        await _userRepo.Received(1).GetAllAsync(Arg.Any<CancellationToken>());
+        var again = await sut.GetAllUserInfosAsync();
+        again.Should().HaveCount(2);
+        await _userRepo.Received(1).GetAllAsync(Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

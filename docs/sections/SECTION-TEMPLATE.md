@@ -178,7 +178,7 @@ Use this single block; delete the (B) and (C) blocks below.
 - Service(s) live in `Humans.Application.Services.<Section>/` and never import `Microsoft.EntityFrameworkCore`.
 - `I<Section>Repository` (impl in `Humans.Infrastructure/Repositories/`) is the only code path that touches this section's tables via `DbContext`.
 - **Decorator decision** — one of:
-  - Caching decorator (`Caching<Section>Service`, Singleton, dict-backed). Pattern per design-rules §15d. Warmup via `<Name>WarmupHostedService`.
+  - Caching decorator (`Caching<Section>Service`, Singleton, dict-backed). Pattern per design-rules §15d. Inherits `TrackedCache<TKey,TValue>` which itself implements `IHostedService`; register the decorator as a hosted service via `services.AddHostedService(sp => sp.GetRequiredService<Caching<Section>Service>())`. No separate `*WarmupHostedService` class.
   - No caching decorator. Rationale: <low-traffic, admin-only, sequential queue drain, etc.>
 - **Cross-domain navs** — stripped or `[Obsolete]`-marked: <list>. Display stitching routes through `<IUserService.GetByIdsAsync, ITeamService.GetTeamNamesByIdsAsync, …>`.
 - **Cross-section calls** — the public interfaces this section consumes: `<IUserService, ITeamService, ...>`.
