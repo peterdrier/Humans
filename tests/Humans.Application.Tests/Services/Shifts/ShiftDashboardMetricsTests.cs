@@ -1010,6 +1010,8 @@ public class ShiftDashboardMetricsTests : IDisposable
         private readonly HumansDbContext _db;
         public FakeUserService(HumansDbContext db) => _db = db;
 
+        public bool IsWarmedUp => true;
+
         public ValueTask<UserInfo?> GetUserInfoAsync(Guid userId, CancellationToken ct = default)
             => throw new NotSupportedException();
 

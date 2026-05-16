@@ -60,6 +60,8 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<CachingUserService> _logger;
 
+    public bool IsWarmedUp { get; private set; }
+
     public CachingUserService(
         IUserRepository userRepository,
         IUserEmailRepository userEmailRepository,
@@ -336,7 +338,13 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
     public async Task WarmAllAsync(CancellationToken ct = default)
     {
         var users = await _userRepository.GetAllAsync(ct);
-        if (users.Count == 0) return;
+        if (users.Count == 0)
+        {
+            // Empty system (fresh dev DB / new deploy) is a legitimate warm
+            // state — flag flips, jobs may safely run against an empty cache.
+            IsWarmedUp = true;
+            return;
+        }
 
         var userIds = users.Select(u => u.Id).ToList();
 
@@ -392,6 +400,8 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
                 profile, contactFields, languages, volunteerHistory,
                 preferences));
         }
+
+        IsWarmedUp = true;
     }
 
     // ==========================================================================

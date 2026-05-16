@@ -101,12 +101,6 @@ public class SystemTeamSyncJob : ISystemTeamSync
     private IProfileService ProfileService =>
         _serviceProvider.GetRequiredService<IProfileService>();
 
-    // Direct repository read for the destructive Volunteers reconciliation: a
-    // startup UserInfo cache that came up empty would otherwise deprovision
-    // every Volunteers member. See SyncVolunteersTeamAsync below.
-    private IProfileRepository ProfileRepository =>
-        _serviceProvider.GetRequiredService<IProfileRepository>();
-
     private ITeamResourceService TeamResourceService =>
         _serviceProvider.GetRequiredService<ITeamResourceService>();
 
@@ -260,20 +254,24 @@ public class SystemTeamSyncJob : ISystemTeamSync
         // Flagged + RejectedAt exclusions preserve the CC's existing kick-out
         // levers (FlagConsentCheckAsync and RejectSignupAsync set those fields
         // before calling DeprovisionApprovalGatedSystemTeamsAsync).
-        // Read straight from the DB rather than the UserInfo cache: this is a
-        // destructive reconciliation that removes every Volunteers-team member
-        // not in candidateIds. UserInfoWarmupHostedService is explicitly
-        // non-fatal, so a startup warmup failure leaves GetAllUserInfos() empty
-        // and would deprovision the entire team. The hourly cost of one
-        // users-table scan is trivial next to that risk.
-        var allUsers = await _userService.GetAllUsersAsync(cancellationToken);
-        var allUserIds = allUsers.Select(u => u.Id).ToList();
-        var profiles = await ProfileRepository.GetByUserIdsAsync(allUserIds, cancellationToken);
-        var candidateIds = allUserIds
-            .Where(id => profiles.TryGetValue(id, out var p)
-                && !p.IsSuspended
-                && p.ConsentCheckStatus != ConsentCheckStatus.Flagged
-                && p.RejectedAt is null)
+        //
+        // Destructive reconciliation guard: if the UserInfo cache has not warmed
+        // (startup failure), GetAllUserInfos() returns empty and would
+        // deprovision every Volunteers-team member. The job runs hourly, so a
+        // skipped run is cheap; the next run after warmup recovers.
+        if (!_userService.IsWarmedUp)
+        {
+            _logger.LogWarning("Skipping Volunteers team sync: UserInfo cache is not warmed");
+            report?.Steps.Add(step);
+            return;
+        }
+
+        var candidateIds = _userService.GetAllUserInfos()
+            .Where(u => u.Profile is not null
+                && !u.IsSuspended
+                && u.Profile.ConsentCheckStatus != ConsentCheckStatus.Flagged
+                && u.Profile.RejectedAt is null)
+            .Select(u => u.Id)
             .ToList();
 
         var eligibleSet = await MembershipCalculator.GetUsersWithAllRequiredConsentsForTeamAsync(
@@ -470,8 +468,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
             return;
         }
 
-        var profiles = await ProfileRepository.GetByUserIdsAsync([userId], cancellationToken);
-        profiles.TryGetValue(userId, out var profile);
+        var profile = (await _userService.GetUserInfoAsync(userId, cancellationToken))?.Profile;
 
         // Volunteers admission no longer requires Profile.IsApproved (CC clearance).
         // Profile.IsApproved is tracked as the CC's audit annotation but is not
@@ -479,7 +476,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
         // signups remain excluded so DeprovisionApprovalGatedSystemTeamsAsync
         // (called from FlagConsentCheckAsync / RejectSignupAsync after those
         // mutations) actually removes the user from Volunteers.
-        var isEligible = profile is { IsSuspended: false, RejectedAt: null }
+        var isEligible = profile is { RejectedAt: null, State: not ProfileState.Suspended }
             && profile.ConsentCheckStatus != ConsentCheckStatus.Flagged
             && await MembershipCalculator.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, cancellationToken);
 
@@ -542,11 +539,10 @@ public class SystemTeamSyncJob : ISystemTeamSync
         var hasApprovedApp = await ApplicationDecisionService
             .HasActiveApprovedTierAsync(userId, tier, today, cancellationToken);
 
-        var profiles = await ProfileRepository.GetByUserIdsAsync([userId], cancellationToken);
-        profiles.TryGetValue(userId, out var profile);
+        var profile = (await _userService.GetUserInfoAsync(userId, cancellationToken))?.Profile;
 
         var isEligible = hasApprovedApp
-            && profile is { IsApproved: true, IsSuspended: false }
+            && profile is { IsApproved: true, State: not ProfileState.Suspended }
             && await MembershipCalculator.HasAllRequiredConsentsForTeamAsync(userId, teamId, cancellationToken);
 
         var eligibleUserIds = isEligible ? [userId] : new List<Guid>();
