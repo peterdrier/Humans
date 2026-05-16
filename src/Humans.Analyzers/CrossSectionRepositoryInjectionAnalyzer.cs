@@ -170,6 +170,13 @@ public sealed class CrossSectionRepositoryInjectionAnalyzer : DiagnosticAnalyzer
     /// Returns the section segment of <c>Humans.Application.Services.{Section}[.*]</c>
     /// or null if the type is not in a sectioned service namespace.
     /// </summary>
+    /// <remarks>
+    /// Applies the same section-fold as
+    /// <c>ServiceBoundaryArchitectureTests.ServiceSection</c>:
+    /// <c>Users</c>, <c>Profile</c>, and <c>Profiles</c> all resolve to
+    /// <c>"Humans"</c> because Users + Profiles are one ownership section
+    /// (see <c>memory/architecture/users-profiles-one-section.md</c>).
+    /// </remarks>
     private static string? ExtractServiceSection(INamedTypeSymbol type)
     {
         var ns = type.ContainingNamespace?.ToDisplayString();
@@ -181,7 +188,8 @@ public sealed class CrossSectionRepositoryInjectionAnalyzer : DiagnosticAnalyzer
             return null;
 
         var dot = ns.IndexOf('.', startIndex);
-        return dot < 0 ? ns.Substring(startIndex) : ns.Substring(startIndex, dot - startIndex);
+        var raw = dot < 0 ? ns.Substring(startIndex) : ns.Substring(startIndex, dot - startIndex);
+        return FoldSection(raw);
     }
 
     private static string? ReadSection(ITypeSymbol type, INamedTypeSymbol sectionAttr)
@@ -192,8 +200,28 @@ public sealed class CrossSectionRepositoryInjectionAnalyzer : DiagnosticAnalyzer
                 continue;
             if (attr.ConstructorArguments.Length == 0)
                 continue;
-            return attr.ConstructorArguments[0].Value as string;
+            return FoldSection(attr.ConstructorArguments[0].Value as string);
         }
         return null;
+    }
+
+    /// <summary>
+    /// Mirrors <c>ServiceBoundaryArchitectureTests.ServiceSection</c>: the
+    /// Users + Profiles ownership merger means a service in
+    /// <c>Services.Users</c> or <c>Services.Profiles</c> and a repository
+    /// tagged <c>[Section("Users")]</c> or <c>[Section("Profiles")]</c> all
+    /// resolve to the unified <c>"Humans"</c> section, which the analyzer
+    /// treats as a single intra-section domain. Per
+    /// <c>memory/architecture/users-profiles-one-section.md</c>.
+    /// </summary>
+    private static string? FoldSection(string? raw)
+    {
+        if (raw is null)
+            return null;
+        return raw switch
+        {
+            "Users" or "Profile" or "Profiles" => "Humans",
+            _ => raw,
+        };
     }
 }

@@ -15,7 +15,7 @@ namespace Humans.Application.Interfaces.Repositories;
 /// <see cref="ReconcileCVEntriesAsync"/>. Language writes are handled by
 /// <see cref="ReplaceLanguagesAsync"/>.
 /// </remarks>
-[Section("Profiles")]
+[Section("Humans")]
 public interface IProfileRepository : IRepository
 {
     /// <summary>

@@ -49,19 +49,13 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
 
     public UserService(
         IUserRepository repo,
-        // UserService is the IUserService implementation and the UserInfo composer.
-        // The next four repositories are Profiles-section-tagged but Users+Profiles
-        // are one ownership section ("Humans") per
-        // memory/architecture/users-profiles-one-section.md. Routing these through
-        // IProfileService / IUserEmailService would create a DI cycle (those
-        // services already depend on IUserService). Wrapping in IUserService
-        // pass-throughs is explicitly forbidden by that same atom.
-#pragma warning disable HUM0017 // see ctor comment + memory/architecture/users-profiles-one-section.md
+        // Users + Profiles are one ownership section ("Humans") per
+        // memory/architecture/users-profiles-one-section.md. All five repos
+        // below carry [Section("Humans")] so HUM0017 sees them as intra-section.
         IUserEmailRepository userEmailRepo,
         IProfileRepository profileRepo,
         IContactFieldRepository contactFieldRepo,
         ICommunicationPreferenceRepository communicationPreferenceRepo,
-#pragma warning restore HUM0017
         IUserInfoInvalidator userInfoInvalidator,
         IAdminAuthorizationService adminAuthorization,
         IClock clock,
