@@ -208,6 +208,133 @@ public class CrossSectionRepositoryInjectionAnalyzerTests
     }
 
     [HumansFact]
+    public async Task Users_and_profiles_fold_to_one_section_for_intra_section_injection()
+    {
+        // The arch-test ServiceBoundaryArchitectureTests.ServiceSection folds
+        // Users + Profile + Profiles to "Humans" (one ownership section). The
+        // analyzer must apply the same fold so that a Services.Users service
+        // injecting a [Section("Humans")]-tagged repo (e.g. IUserEmailRepository)
+        // is not flagged as cross-section.
+        var source = """
+            namespace Humans.Domain.Attributes
+            {
+                [System.AttributeUsage(System.AttributeTargets.Interface | System.AttributeTargets.Class)]
+                public sealed class SectionAttribute : System.Attribute
+                {
+                    public SectionAttribute(string name) { Name = name; }
+                    public string Name { get; }
+                }
+            }
+
+            namespace Humans.Application.Interfaces
+            {
+                public interface IApplicationService { }
+            }
+
+            namespace Humans.Application.Interfaces.Repositories
+            {
+                public interface IRepository { }
+
+                [Humans.Domain.Attributes.Section("Humans")]
+                public interface IUserRepository : IRepository { }
+
+                [Humans.Domain.Attributes.Section("Humans")]
+                public interface IUserEmailRepository : IRepository { }
+
+                [Humans.Domain.Attributes.Section("Humans")]
+                public interface IProfileRepository : IRepository { }
+            }
+
+            namespace Humans.Application.Interfaces.Users
+            {
+                public interface IUserService : Humans.Application.Interfaces.IApplicationService { }
+            }
+
+            namespace Humans.Application.Services.Users
+            {
+                public sealed class UserService : Humans.Application.Interfaces.Users.IUserService
+                {
+                    public UserService(
+                        Humans.Application.Interfaces.Repositories.IUserRepository users,
+                        Humans.Application.Interfaces.Repositories.IUserEmailRepository emails,
+                        Humans.Application.Interfaces.Repositories.IProfileRepository profiles) { }
+                }
+            }
+
+            namespace Humans.Application.Services.Profiles
+            {
+                public sealed class ProfileService : Humans.Application.Interfaces.Users.IUserService
+                {
+                    public ProfileService(
+                        Humans.Application.Interfaces.Repositories.IUserRepository users,
+                        Humans.Application.Interfaces.Repositories.IProfileRepository profiles) { }
+                }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new CrossSectionRepositoryInjectionAnalyzer(),
+            "Humans.Application",
+            source);
+
+        diagnostics.Where(d => IsHum0017(d)).Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Legacy_section_tag_on_repo_is_folded_to_humans()
+    {
+        // Defense-in-depth: even if a repository is tagged with the legacy
+        // [Section("Profiles")] or [Section("Users")] value (pre-merger), the
+        // analyzer's fold treats it as "Humans" so a Services.Users service
+        // injecting it is not flagged as cross-section. This keeps the rule
+        // stable across the gradual users-profiles-one-section retag rollout.
+        var source = """
+            namespace Humans.Domain.Attributes
+            {
+                [System.AttributeUsage(System.AttributeTargets.Interface | System.AttributeTargets.Class)]
+                public sealed class SectionAttribute : System.Attribute
+                {
+                    public SectionAttribute(string name) { Name = name; }
+                    public string Name { get; }
+                }
+            }
+
+            namespace Humans.Application.Interfaces
+            {
+                public interface IApplicationService { }
+            }
+
+            namespace Humans.Application.Interfaces.Repositories
+            {
+                public interface IRepository { }
+
+                [Humans.Domain.Attributes.Section("Profiles")]
+                public interface IProfileRepository : IRepository { }
+            }
+
+            namespace Humans.Application.Interfaces.Users
+            {
+                public interface IUserService : Humans.Application.Interfaces.IApplicationService { }
+            }
+
+            namespace Humans.Application.Services.Users
+            {
+                public sealed class UserService : Humans.Application.Interfaces.Users.IUserService
+                {
+                    public UserService(Humans.Application.Interfaces.Repositories.IProfileRepository profiles) { }
+                }
+            }
+            """;
+
+        var diagnostics = await AnalyzerTestHarness.RunAsync(
+            new CrossSectionRepositoryInjectionAnalyzer(),
+            "Humans.Application",
+            source);
+
+        diagnostics.Where(d => IsHum0017(d)).Should().BeEmpty();
+    }
+
+    [HumansFact]
     public async Task Default_severity_is_warning()
     {
         var source = Stubs + """

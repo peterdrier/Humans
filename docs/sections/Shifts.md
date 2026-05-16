@@ -238,6 +238,12 @@ Selected routes:
 - All 9 dashboard analytics methods on `IShiftManagementService` accept an optional `BuildSubPeriod? subPeriod = null` parameter. When set, it narrows the filter to that sub-window using `BuildSubPeriodClassifier.BoundsFor`. Sub-period is meaningful only when `period == ShiftPeriod.Build` — calls with sub-period set against any other period are treated as if sub-period is null. Sub-period bypasses the dashboard cache (4× key fan-out is not worth it for a side filter).
 - `DevelopmentDashboardSeeder` and its `POST /dev/seed/dashboard` endpoint are gated to `IWebHostEnvironment.IsDevelopment()` AND the `DevAuth:Enabled` setting. QA, preview, and production environments cannot invoke it regardless of role. The endpoint also requires `ShiftDashboardAccess`.
 - Pending status on a Public rota indicates either (a) a coordinator-approval-required rota, or (b) a mid-widget volunteer whose required Volunteer consents have not landed yet. Case (b) auto-promotes to Confirmed when consents complete via `IShiftSignupService.PromoteWidgetPendingSignupsAfterAdmissionAsync`, called from `ConsentService.SubmitConsentAsync`.
+- **Department coverage pies** (rendered above `/Shifts`, see [feature](../features/shifts/department-coverage-pies.md)):
+  - Pie eligibility = `Team.IsInDirectory` (top-level department OR promoted sub-team). Non-promoted sub-team rotas roll up into the parent's pie; if no eligible ancestor exists, the rota is dropped from pies.
+  - `AdminOnly` shifts and rotas with `IsVisibleToVolunteers = false` contribute zero hours regardless of viewer privilege.
+  - Confirmed signups are capped at `MaxVolunteers` per shift before they roll into `FilledHours`, so a pie never exceeds 100 %.
+  - All-day shifts contribute the standard 08:00–18:00 window's duration per slot, never `Shift.Duration` directly.
+  - Service (`IShiftManagementService.GetDepartmentCoveragePiesAsync`) returns rows in natural `TeamName` order; the "promoted sub-team next to its parent" display ordering is applied in `ShiftBrowsePageBuilder.OrderPiesGroupedByParent` (display ordering belongs in view-model assembly).
 
 ## Negative Access Rules
 

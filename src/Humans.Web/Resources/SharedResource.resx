@@ -1739,6 +1739,13 @@
   <data name="Shifts_BrowseTitle" xml:space="preserve"><value>Browse Volunteer Options</value></data>
   <data name="Shifts_Department" xml:space="preserve"><value>Department</value></data>
   <data name="Shifts_AllDepartments" xml:space="preserve"><value>All Departments</value></data>
+  <data name="Shifts_PieCoverage_RowAria" xml:space="preserve"><value>Department coverage pies — click a pie to filter the page</value></data>
+  <data name="Shifts_PieCoverage_Aria" xml:space="preserve"><value>{0}: {1}% covered, {2} of {3} hours</value></data>
+  <data name="Shifts_PieCoverage_Title" xml:space="preserve"><value>{0} — {1} h / {2} h ({3}%)</value></data>
+  <data name="Shifts_PieCoverage_TipFilter" xml:space="preserve"><value>Tip — click a chart to filter to that department; click it again to clear.</value></data>
+  <data name="Shifts_PieCoverage_TipDismiss" xml:space="preserve"><value>Dismiss tip</value></data>
+  <data name="Shifts_FilterChip_Prefix" xml:space="preserve"><value>Filter:</value></data>
+  <data name="Shifts_FilterChip_Clear" xml:space="preserve"><value>Clear department filter</value></data>
   <data name="Shifts_From" xml:space="preserve"><value>From</value></data>
   <data name="Shifts_To" xml:space="preserve"><value>To</value></data>
   <data name="Shifts_ClearFilters" xml:space="preserve"><value>Clear Filters</value></data>

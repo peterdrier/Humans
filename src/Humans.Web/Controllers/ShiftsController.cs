@@ -105,7 +105,8 @@ public class ShiftsController : HumansControllerBase
             tagIds,
             sort,
             periods,
-            isPrivileged));
+            isPrivileged),
+            HttpContext.RequestAborted);
 
         return View(model);
     }

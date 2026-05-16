@@ -3,7 +3,7 @@ using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Infrastructure.Repositories.GoogleIntegration;
-using TeamResourceService = Humans.Application.Services.Teams.TeamResourceService;
+using TeamResourceService = Humans.Application.Services.GoogleIntegration.TeamResourceService;
 
 namespace Humans.Application.Tests.Architecture;
 
@@ -16,8 +16,12 @@ namespace Humans.Application.Tests.Architecture;
 /// Team resource management splits into three clean pieces:
 /// <list type="bullet">
 ///   <item><description>
-///     <see cref="ITeamResourceService"/> in <c>Humans.Application.Services.Teams</c>
-///     owns business rules + persistence orchestration.
+///     <see cref="ITeamResourceService"/> in <c>Humans.Application.Services.GoogleIntegration</c>
+///     owns business rules + persistence orchestration. The service was
+///     relocated from <c>Services.Teams</c> to <c>Services.GoogleIntegration</c>
+///     so HUM0017 sees its <see cref="IGoogleResourceRepository"/> injection
+///     as intra-section (see
+///     <c>memory/architecture/team-resources-google-integration-section.md</c>).
 ///   </description></item>
 ///   <item><description>
 ///     <see cref="IGoogleResourceRepository"/> in <c>Humans.Application.Interfaces.Repositories</c>

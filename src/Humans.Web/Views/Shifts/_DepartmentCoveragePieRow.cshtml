@@ -1,0 +1,76 @@
+@model Humans.Web.Models.ShiftBrowseViewModel
+
+@if (Model.CoveragePies.Count == 0)
+{
+    return;
+}
+
+<div class="dept-pie-tip" role="note" data-dept-pie-tip hidden>
+    <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+    <span>@Localizer["Shifts_PieCoverage_TipFilter"]</span>
+    <button type="button" class="dept-pie-tip-dismiss"
+            aria-label="@Localizer["Shifts_PieCoverage_TipDismiss"]"
+            data-dept-pie-tip-dismiss>&times;</button>
+</div>
+<form method="get" asp-action="Index" class="dept-pie-row" role="group"
+      aria-label="@Localizer["Shifts_PieCoverage_RowAria"]">
+    @if (!string.IsNullOrEmpty(Model.FilterPeriod))
+    {
+        <input type="hidden" name="period" value="@Model.FilterPeriod" />
+    }
+    @if (!string.IsNullOrEmpty(Model.FilterFromDate))
+    {
+        <input type="hidden" name="fromDate" value="@Model.FilterFromDate" />
+    }
+    @if (!string.IsNullOrEmpty(Model.FilterToDate))
+    {
+        <input type="hidden" name="toDate" value="@Model.FilterToDate" />
+    }
+    @foreach (var pie in Model.CoveragePies)
+    {
+        var isSelected = Model.FilterDepartmentId == pie.TeamId;
+        var pct = Math.Clamp(pie.FillPercent, 0, 100);
+        var requestedDisplay = pie.RequestedHours.ToString("0.#");
+        var filledDisplay = pie.FilledHours.ToString("0.#");
+        var ariaLabel = string.Format(
+            Localizer["Shifts_PieCoverage_Aria"].Value,
+            pie.TeamName, pct, filledDisplay, requestedDisplay);
+        var titleText = string.Format(
+            Localizer["Shifts_PieCoverage_Title"].Value,
+            pie.TeamName, filledDisplay, requestedDisplay, pct);
+        var deptValue = isSelected ? string.Empty : pie.TeamId.ToString();
+        var coverageClass = pct >= 100 ? " coverage-complete"
+                          : pct < 25 ? " coverage-critical"
+                          : pct < 50 ? " coverage-warning"
+                          : string.Empty;
+
+        <button type="submit"
+                name="departmentId"
+                value="@deptValue"
+                class="dept-pie@(isSelected ? " selected" : "")@(pie.IsSubTeam ? " is-subteam" : "")@coverageClass"
+                aria-label="@ariaLabel"
+                title="@titleText"
+                style="--pct: @pct%;">
+            <span class="dept-pie-disc" aria-hidden="true"></span>
+            <span class="dept-pie-label">
+                <span class="dept-pie-name">@pie.TeamName</span>
+                <span class="dept-pie-stat">@filledDisplay h / @requestedDisplay h</span>
+            </span>
+        </button>
+    }
+</form>
+
+<script>
+    (function () {
+        var key = 'humans.pieTipDismissed';
+        var tip = document.querySelector('[data-dept-pie-tip]');
+        if (!tip) return;
+        if (localStorage.getItem(key) !== '1') tip.removeAttribute('hidden');
+        var btn = tip.querySelector('[data-dept-pie-tip-dismiss]');
+        if (!btn) return;
+        btn.addEventListener('click', function () {
+            try { localStorage.setItem(key, '1'); } catch (_) { /* private mode */ }
+            tip.setAttribute('hidden', '');
+        });
+    })();
+</script>

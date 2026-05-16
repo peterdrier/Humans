@@ -12,30 +12,25 @@ namespace Humans.Application.Interfaces.Repositories;
 /// repository can be registered Singleton while <c>HumansDbContext</c> stays
 /// Scoped — every method opens its own short-lived context.
 /// <para>
-/// EventSettings is owned by the Shifts/Calendar section; the two
-/// <c>*EventSettings*</c> methods below are a documented stop-gap — they read
-/// the foreign table directly because no supplier service exists yet. Tracked
-/// in <see href="https://github.com/nobodies-collective/Humans/issues/719"/>.
+/// EventSettings is owned by the Shifts section; <see cref="EventService"/>
+/// stitches in EventSettings reads via <c>IShiftManagementService</c>. This
+/// repository never touches <c>event_settings</c> directly
+/// (memory/architecture/no-cross-section-ef-joins.md).
 /// </para>
 /// </summary>
 /// <remarks>
 /// Surface-budget recent history (newest first):
 /// <list type="bullet">
+///   <item>2026-05-16 — 44→42 after peterdrier#719: dropped GetActiveEventSettingsAsync and GetEventSettingsByIdAsync; EventService now routes EventSettings reads through IShiftManagementService.</item>
 ///   <item>2026-05-14 — initial budget pinned at 44 after Stage 3 atomic-method rewrite (replaced SaveChangesAsync/Add/Remove passthroughs with Add/Save/Delete/Upsert methods) and Stage 5 GDPR contributor add-on (section-align Events, issue #539).</item>
 /// </list>
 /// </remarks>
-[SurfaceBudget(44)]
+[SurfaceBudget(42)]
 [Section("Events")]
 public interface IEventRepository : IRepository
 {
     // ── Settings ─────────────────────────────────────────────────────────
     Task<EventGuideSettings?> GetGuideSettingsAsync(CancellationToken ct = default);
-
-    // TODO: switch to IEventSettingsService once #719 ships.
-    Task<IReadOnlyList<EventSettings>> GetActiveEventSettingsAsync(CancellationToken ct = default);
-
-    // TODO: switch to IEventSettingsService once #719 ships.
-    Task<EventSettings?> GetEventSettingsByIdAsync(Guid id, CancellationToken ct = default);
 
     Task UpsertGuideSettingsAsync(EventGuideSettings settings, CancellationToken ct = default);
 

@@ -38,6 +38,10 @@ public sealed class DuplicateAccountService : IDuplicateAccountService
     private readonly IClock _clock;
 
     public DuplicateAccountService(
+        // Users + Profiles are one ownership section ("Humans") per
+        // memory/architecture/users-profiles-one-section.md. IUserRepository
+        // carries [Section("Humans")] so HUM0017 sees the injection from this
+        // Services.Profiles host as intra-section.
         IUserRepository userRepository,
         IUserService userService,
         IUserEmailRepository userEmailRepository,

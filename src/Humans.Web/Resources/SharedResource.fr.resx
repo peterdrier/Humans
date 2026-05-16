@@ -4182,6 +4182,27 @@
   <data name="Shifts_AllDepartments" xml:space="preserve">
     <value>Tous les départements</value>
   </data>
+  <data name="Shifts_PieCoverage_RowAria" xml:space="preserve">
+    <value>Couverture par département — cliquez sur un cercle pour filtrer</value>
+  </data>
+  <data name="Shifts_PieCoverage_Aria" xml:space="preserve">
+    <value>{0} : {1}% couvert, {2} sur {3} heures</value>
+  </data>
+  <data name="Shifts_PieCoverage_Title" xml:space="preserve">
+    <value>{0} — {1} h / {2} h ({3}%)</value>
+  </data>
+  <data name="Shifts_PieCoverage_TipFilter" xml:space="preserve">
+    <value>Astuce — cliquez sur un graphique pour filtrer ce département ; cliquez à nouveau pour effacer.</value>
+  </data>
+  <data name="Shifts_PieCoverage_TipDismiss" xml:space="preserve">
+    <value>Masquer l'astuce</value>
+  </data>
+  <data name="Shifts_FilterChip_Prefix" xml:space="preserve">
+    <value>Filtre :</value>
+  </data>
+  <data name="Shifts_FilterChip_Clear" xml:space="preserve">
+    <value>Effacer le filtre de département</value>
+  </data>
   <data name="Shifts_From" xml:space="preserve">
     <value>De</value>
   </data>

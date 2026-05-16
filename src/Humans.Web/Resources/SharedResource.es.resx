@@ -4182,6 +4182,27 @@
   <data name="Shifts_AllDepartments" xml:space="preserve">
     <value>Todos los departamentos</value>
   </data>
+  <data name="Shifts_PieCoverage_RowAria" xml:space="preserve">
+    <value>Cobertura por departamento — haz clic en un círculo para filtrar</value>
+  </data>
+  <data name="Shifts_PieCoverage_Aria" xml:space="preserve">
+    <value>{0}: {1}% cubierto, {2} de {3} horas</value>
+  </data>
+  <data name="Shifts_PieCoverage_Title" xml:space="preserve">
+    <value>{0} — {1} h / {2} h ({3}%)</value>
+  </data>
+  <data name="Shifts_PieCoverage_TipFilter" xml:space="preserve">
+    <value>Consejo — haz clic en un gráfico para filtrar por ese departamento; vuelve a hacer clic para borrar.</value>
+  </data>
+  <data name="Shifts_PieCoverage_TipDismiss" xml:space="preserve">
+    <value>Descartar consejo</value>
+  </data>
+  <data name="Shifts_FilterChip_Prefix" xml:space="preserve">
+    <value>Filtro:</value>
+  </data>
+  <data name="Shifts_FilterChip_Clear" xml:space="preserve">
+    <value>Quitar filtro de departamento</value>
+  </data>
   <data name="Shifts_From" xml:space="preserve">
     <value>Desde</value>
   </data>

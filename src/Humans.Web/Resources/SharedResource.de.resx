@@ -4182,6 +4182,27 @@
   <data name="Shifts_AllDepartments" xml:space="preserve">
     <value>Alle Abteilungen</value>
   </data>
+  <data name="Shifts_PieCoverage_RowAria" xml:space="preserve">
+    <value>Abdeckung pro Abteilung — klicken zum Filtern</value>
+  </data>
+  <data name="Shifts_PieCoverage_Aria" xml:space="preserve">
+    <value>{0}: {1}% abgedeckt, {2} von {3} Stunden</value>
+  </data>
+  <data name="Shifts_PieCoverage_Title" xml:space="preserve">
+    <value>{0} — {1} h / {2} h ({3}%)</value>
+  </data>
+  <data name="Shifts_PieCoverage_TipFilter" xml:space="preserve">
+    <value>Tipp — klicke auf ein Diagramm, um diese Abteilung zu filtern; klicke erneut zum Aufheben.</value>
+  </data>
+  <data name="Shifts_PieCoverage_TipDismiss" xml:space="preserve">
+    <value>Tipp ausblenden</value>
+  </data>
+  <data name="Shifts_FilterChip_Prefix" xml:space="preserve">
+    <value>Filter:</value>
+  </data>
+  <data name="Shifts_FilterChip_Clear" xml:space="preserve">
+    <value>Abteilungsfilter entfernen</value>
+  </data>
   <data name="Shifts_From" xml:space="preserve">
     <value>Von</value>
   </data>

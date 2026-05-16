@@ -74,6 +74,7 @@ public class ConsentServiceTests : IDisposable
                 if (teamIds.Count == 0)
                     return (IReadOnlyList<ActiveRequiredLegalDocumentSnapshot>)[];
 
+#pragma warning disable CS0618 // Test stub uses LegalDocument.Team to populate the snapshot's TeamName; production stitches via ITeamService.
                 var documents = await _dbContext.LegalDocuments
                     .AsNoTracking()
                     .Where(d => d.IsActive && d.IsRequired && teamIds.Contains(d.TeamId))
@@ -82,6 +83,7 @@ public class ConsentServiceTests : IDisposable
                     .ToListAsync();
 
                 return documents.Select(ToActiveRequiredDocumentSnapshot).ToList();
+#pragma warning restore CS0618
             });
 
         var factory = new TestDbContextFactory(options);
@@ -269,6 +271,7 @@ public class ConsentServiceTests : IDisposable
         });
     }
 
+#pragma warning disable CS0618 // Test stub mirrors the legacy Include(d => d.Team) read path; prod stitches via ITeamService.
     private static ActiveRequiredLegalDocumentSnapshot ToActiveRequiredDocumentSnapshot(LegalDocument document) =>
         new(
             document.Id,
@@ -287,6 +290,7 @@ public class ConsentServiceTests : IDisposable
                 v.RequiresReConsent,
                 v.CreatedAt,
                 v.ChangesSummary)).ToList());
+#pragma warning restore CS0618
 
     [HumansFact]
     public async Task SubmitConsentAsync_RecordsMetric()

@@ -5,25 +5,17 @@
         <div class="card-body">
             @if (Model.ParentTeamName != null)
             {
-                <h5 class="card-title mb-0">
-                    <a asp-action="Details" asp-route-slug="@Model.ParentTeamSlug" class="text-decoration-none">
+                <div class="small text-muted mb-1">
+                    <a asp-action="Details" asp-route-slug="@Model.ParentTeamSlug" class="text-muted text-decoration-none">
                         @Model.ParentTeamName
-                    </a>
-                </h5>
-                <div class="ms-3 mt-1">
-                    <a asp-action="Details" asp-route-slug="@Model.Slug" class="text-muted text-decoration-none">
-                        @Model.Name
                     </a>
                 </div>
             }
-            else
-            {
-                <h5 class="card-title mb-0">
-                    <a asp-action="Details" asp-route-slug="@Model.Slug" class="text-decoration-none">
-                        @Model.Name
-                    </a>
-                </h5>
-            }
+            <h5 class="card-title mb-0">
+                <a asp-action="Details" asp-route-slug="@Model.Slug" class="text-decoration-none">
+                    @Model.Name
+                </a>
+            </h5>
             @if (!string.IsNullOrEmpty(Model.Description))
             {
                 <p class="card-text text-muted small mt-2 mb-0">

@@ -165,6 +165,27 @@
         }
     </form>
 
+    @if (Model.FilterDepartmentId is { } depId)
+    {
+        var deptName = Model.AllDepartments.FirstOrDefault(d => d.TeamId == depId)?.Name ?? "";
+        var clearRoute = new Dictionary<string, string?>();
+        if (!string.IsNullOrEmpty(Model.FilterPeriod)) clearRoute["period"] = Model.FilterPeriod;
+        if (!string.IsNullOrEmpty(Model.FilterFromDate)) clearRoute["fromDate"] = Model.FilterFromDate;
+        if (!string.IsNullOrEmpty(Model.FilterToDate)) clearRoute["toDate"] = Model.FilterToDate;
+        if (!string.IsNullOrEmpty(Model.Sort)) clearRoute["sort"] = Model.Sort;
+        for (var i = 0; i < Model.FilterTagIds.Count; i++) clearRoute[$"tags[{i}]"] = Model.FilterTagIds[i].ToString();
+        for (var i = 0; i < activePeriods.Count; i++) clearRoute[$"periods[{i}]"] = activePeriods[i];
+
+        <a asp-action="Index" asp-all-route-data="clearRoute"
+           class="dept-filter-chip"
+           aria-label="@Localizer["Shifts_FilterChip_Clear"]">
+            <span class="dept-filter-chip-label">@Localizer["Shifts_FilterChip_Prefix"] @deptName</span>
+            <span class="dept-filter-chip-x" aria-hidden="true">&times;</span>
+        </a>
+    }
+
+    @await Html.PartialAsync("_DepartmentCoveragePieRow", Model)
+
     @* === Tag Filters with Preferences as Defaults === *@
     @if (Model.AllTags.Count > 0)
     {

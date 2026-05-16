@@ -49,6 +49,9 @@ public sealed class UserService : IUserService, IUserDataContributor, IUserMerge
 
     public UserService(
         IUserRepository repo,
+        // Users + Profiles are one ownership section ("Humans") per
+        // memory/architecture/users-profiles-one-section.md. All five repos
+        // below carry [Section("Humans")] so HUM0017 sees them as intra-section.
         IUserEmailRepository userEmailRepo,
         IProfileRepository profileRepo,
         IContactFieldRepository contactFieldRepo,

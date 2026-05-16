@@ -1,5 +1,6 @@
 using Humans.Application.Architecture;
 using Humans.Application.DTOs;
+using Humans.Application.Interfaces.GoogleIntegration;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;

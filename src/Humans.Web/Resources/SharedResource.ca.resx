@@ -4182,6 +4182,27 @@
   <data name="Shifts_AllDepartments" xml:space="preserve">
     <value>Tots els departaments</value>
   </data>
+  <data name="Shifts_PieCoverage_RowAria" xml:space="preserve">
+    <value>Cobertura per departament — fes clic en un cercle per filtrar</value>
+  </data>
+  <data name="Shifts_PieCoverage_Aria" xml:space="preserve">
+    <value>{0}: {1}% cobert, {2} de {3} hores</value>
+  </data>
+  <data name="Shifts_PieCoverage_Title" xml:space="preserve">
+    <value>{0} — {1} h / {2} h ({3}%)</value>
+  </data>
+  <data name="Shifts_PieCoverage_TipFilter" xml:space="preserve">
+    <value>Consell — fes clic en un gràfic per filtrar per aquest departament; torna a fer-hi clic per esborrar.</value>
+  </data>
+  <data name="Shifts_PieCoverage_TipDismiss" xml:space="preserve">
+    <value>Descarta el consell</value>
+  </data>
+  <data name="Shifts_FilterChip_Prefix" xml:space="preserve">
+    <value>Filtre:</value>
+  </data>
+  <data name="Shifts_FilterChip_Clear" xml:space="preserve">
+    <value>Treu el filtre de departament</value>
+  </data>
   <data name="Shifts_From" xml:space="preserve">
     <value>Des de</value>
   </data>

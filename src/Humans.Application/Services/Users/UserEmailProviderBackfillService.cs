@@ -45,6 +45,10 @@ public sealed class UserEmailProviderBackfillService : IUserEmailProviderBackfil
 
     public UserEmailProviderBackfillService(
         IUserRepository userRepository,
+        // Users + Profiles are one ownership section ("Humans") per
+        // memory/architecture/users-profiles-one-section.md. IUserEmailRepository
+        // carries [Section("Humans")] so HUM0017 sees the injection as
+        // intra-section.
         IUserEmailRepository userEmailRepository,
         UserManager<User> userManager,
         IAuditLogService auditLogService,
