@@ -41,10 +41,13 @@ namespace Humans.Application.Services.Camps;
 /// <c>IMemoryCache</c> with the canonical §15 caching decorator,
 /// <c>CachingCampService</c>. This inner service is cache-unaware — every
 /// read goes to <see cref="ICampRepository"/> on every call. The decorator
-/// owns the cached per-camp projection and a <c>SaveChangesAsync</c>
-/// interceptor handles invalidation for both camp-section writes and the
-/// cross-table <c>CampMember.HasEarlyEntry</c> dependency that
-/// <c>CampSeasonInfo.EeGrantedCount</c> projects.
+/// owns the cached per-camp projection. Invalidation is decorator-only:
+/// every mutating <see cref="ICampService"/> method in
+/// <c>CachingCampService</c> calls <c>InvalidateCampAsync</c>
+/// (or <c>InvalidateSettingsAsync</c>) inline after the inner write. No
+/// <c>SaveChanges</c> interceptor backstop —
+/// <c>CampsArchitectureTests.ICampRepository_HasNoUnexpectedConsumers</c>
+/// pins the no-bypass rule instead.
 /// </remarks>
 public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
 {
@@ -1325,18 +1328,12 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
 
     public async Task OpenSeasonAsync(int year, CancellationToken cancellationToken = default)
     {
-        var changed = await _repo.OpenSeasonAsync(year, cancellationToken);
-        if (changed)
-        {
-        }
+        await _repo.OpenSeasonAsync(year, cancellationToken);
     }
 
     public async Task CloseSeasonAsync(int year, CancellationToken cancellationToken = default)
     {
-        var changed = await _repo.CloseSeasonAsync(year, cancellationToken);
-        if (changed)
-        {
-        }
+        await _repo.CloseSeasonAsync(year, cancellationToken);
     }
 
     public async Task SetNameLockDateAsync(
