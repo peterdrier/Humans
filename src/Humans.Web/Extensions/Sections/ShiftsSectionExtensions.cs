@@ -70,6 +70,12 @@ internal static class ShiftsSectionExtensions
         // Surface both ShiftView caches (User + Rota) on /Admin/CacheStats.
         services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingShiftViewService>().UserCacheStats);
         services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingShiftViewService>().RotaCacheStats);
+
+        // CachingShiftViewService implements IHostedService for symmetry with
+        // CachingUserService / CachingTeamService. Composition forces it to
+        // own this directly (can't multi-inherit TrackedCache). Today both
+        // inner caches are lazy-per-key — StartAsync is a no-op.
+        services.AddHostedService(sp => sp.GetRequiredService<CachingShiftViewService>());
         services.AddScoped<ShiftBrowsePageBuilder>();
         services.AddScoped<ShiftAdminPageBuilder>();
         services.AddScoped<ShiftDashboardPageBuilder>();

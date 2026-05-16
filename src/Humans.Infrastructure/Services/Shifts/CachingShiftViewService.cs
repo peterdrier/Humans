@@ -2,6 +2,7 @@ using Humans.Application.DTOs.Shifts;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Shifts;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace Humans.Infrastructure.Services.Shifts;
@@ -28,7 +29,7 @@ namespace Humans.Infrastructure.Services.Shifts;
 /// measurements call for it (issue #720, open Q 2).
 /// </para>
 /// </remarks>
-public sealed class CachingShiftViewService : IShiftView, IShiftViewInvalidator
+public sealed class CachingShiftViewService : IShiftView, IShiftViewInvalidator, IHostedService
 {
     /// <summary>
     /// DI service key under which the undecorated (inner) <see cref="IShiftView"/>
@@ -41,8 +42,10 @@ public sealed class CachingShiftViewService : IShiftView, IShiftViewInvalidator
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<CachingShiftViewService> _logger;
 
-    private readonly TrackedCache<Guid, ShiftUserView> _userCache = new("ShiftView.UserView");
-    private readonly TrackedCache<Guid, ShiftRotaView> _rotaCache = new("ShiftView.RotaView");
+    private readonly TrackedCache<Guid, ShiftUserView> _userCache =
+        new("ShiftView.UserView", warmOnStartup: false);
+    private readonly TrackedCache<Guid, ShiftRotaView> _rotaCache =
+        new("ShiftView.RotaView", warmOnStartup: false);
 
     public ICacheStats UserCacheStats => _userCache;
     public ICacheStats RotaCacheStats => _rotaCache;
@@ -165,4 +168,17 @@ public sealed class CachingShiftViewService : IShiftView, IShiftViewInvalidator
         _userCache.Clear();
         _rotaCache.Clear();
     }
+
+    // ==========================================================================
+    // IHostedService — composition forces the decorator to own this directly
+    // (can't multi-inherit TrackedCache). Today both inner caches are
+    // lazy-per-key, so StartAsync is a no-op; the surface exists so DI
+    // registration parallels CachingUserService / CachingTeamService and so
+    // any future warmup strategy plugs in here rather than as a separate
+    // hosted service.
+    // ==========================================================================
+
+    Task IHostedService.StartAsync(CancellationToken ct) => Task.CompletedTask;
+
+    Task IHostedService.StopAsync(CancellationToken ct) => Task.CompletedTask;
 }

@@ -384,7 +384,8 @@ public class AdminController : HumansControllerBase
                         Entries = s.Entries,
                         Hits = s.Hits,
                         Misses = s.Misses,
-                        Invalidations = s.Invalidations,
+                        KeyInvalidations = s.KeyInvalidations,
+                        BulkInvalidations = s.BulkInvalidations,
                         HitRatePercent = s.HitRatePercent,
                     })
                     .ToList()

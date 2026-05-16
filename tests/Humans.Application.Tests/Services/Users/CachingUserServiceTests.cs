@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
@@ -228,7 +229,7 @@ public class CachingUserServiceTests
             .Returns([]);
 
         var sut = CreateSut();
-        await sut.WarmAllAsync();
+        await ((IHostedService)sut).StartAsync(CancellationToken.None);
 
         await _userRepo.Received(1).GetEventParticipationsByUserIdsAsync(
             Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>());
@@ -241,6 +242,41 @@ public class CachingUserServiceTests
         hitA.Should().NotBeNull();
         hitB.Should().NotBeNull();
         await _inner.DidNotReceive().GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task LoadAllReads_ThrowCantLoadAllException_BeforeWarmup()
+    {
+        var sut = CreateSut();
+
+        // No StartAsync / MarkWarmedForTesting — cache is cold.
+        Action getAll = () => sut.GetAllUserInfos();
+        Func<Task> search = async () =>
+            await sut.SearchUsersAsync("foo", PersonSearchFields.PublicAll);
+        Func<Task> participations = async () =>
+            await sut.GetAllParticipationsForYearAsync(2026);
+        Func<Task> merged = async () =>
+            await sut.GetMergedSourceIdsAsync(Guid.NewGuid());
+
+        getAll.Should().Throw<Humans.Application.Interfaces.Caching.CantLoadAllException>();
+        await search.Should().ThrowAsync<Humans.Application.Interfaces.Caching.CantLoadAllException>();
+        await participations.Should().ThrowAsync<Humans.Application.Interfaces.Caching.CantLoadAllException>();
+        await merged.Should().ThrowAsync<Humans.Application.Interfaces.Caching.CantLoadAllException>();
+    }
+
+    [HumansFact]
+    public async Task SingleKeyReads_StillWorkBeforeWarmup()
+    {
+        var userId = Guid.NewGuid();
+        var info = SampleUserInfo(userId);
+        _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(info));
+
+        var sut = CreateSut();
+
+        // Cache is cold — GetUserInfoAsync lazy-fills, no warmup gate.
+        var first = await sut.GetUserInfoAsync(userId);
+        first.Should().BeSameAs(info);
     }
 
     [HumansFact]
@@ -508,6 +544,11 @@ public class CachingUserServiceTests
         _inner.GetUserInfoAsync(info.Id, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(info));
         await sut.GetUserInfoAsync(info.Id);
+        // SearchUsersAsync / GetAllUserInfos / GetAllParticipationsForYearAsync /
+        // GetMergedSourceIdsAsync gate on IsWarmedUp — these search tests seed
+        // a single entry directly via GetUserInfoAsync instead of driving a
+        // full WarmAllAsync, so flip the flag manually here.
+        sut.MarkWarmedForTesting();
     }
 
     [HumansFact]

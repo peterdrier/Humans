@@ -5,7 +5,6 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Caching;
-using Humans.Infrastructure.HostedServices;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Repositories.Teams;
 using Humans.Infrastructure.Services.Teams;
@@ -42,7 +41,10 @@ internal static class TeamsSectionExtensions
         // Surface TeamInfo cache diagnostics on /Admin/CacheStats.
         services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingTeamService>());
 
-        services.AddHostedService<TeamsWarmupHostedService>();
+        // CachingTeamService is itself the IHostedService — TrackedCache's
+        // StartAsync triggers WarmAllAsync when warmOnStartup: true. After a
+        // bulk invalidation, the next read lazily re-warms via EnsureWarmedAsync.
+        services.AddHostedService(sp => sp.GetRequiredService<CachingTeamService>());
 
         services.AddScoped<ITeamPageService, TeamsTeamPageService>();
 

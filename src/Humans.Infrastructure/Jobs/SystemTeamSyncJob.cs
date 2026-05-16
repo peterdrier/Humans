@@ -255,24 +255,27 @@ public class SystemTeamSyncJob : ISystemTeamSync
         // levers (FlagConsentCheckAsync and RejectSignupAsync set those fields
         // before calling DeprovisionApprovalGatedSystemTeamsAsync).
         //
-        // Destructive reconciliation guard: if the UserInfo cache has not warmed
-        // (startup failure), GetAllUserInfos() returns empty and would
-        // deprovision every Volunteers-team member. The job runs hourly, so a
-        // skipped run is cheap; the next run after warmup recovers.
-        if (!_userService.IsWarmedUp)
+        // Destructive reconciliation guard: GetAllUserInfos() throws
+        // CantLoadAllException when the UserInfo cache has not warmed (startup
+        // failure). The job runs hourly so a skipped run is cheap; the next
+        // run after warmup recovers.
+        List<Guid> candidateIds;
+        try
+        {
+            candidateIds = _userService.GetAllUserInfos()
+                .Where(u => u.Profile is not null
+                    && !u.IsSuspended
+                    && u.Profile.ConsentCheckStatus != ConsentCheckStatus.Flagged
+                    && u.Profile.RejectedAt is null)
+                .Select(u => u.Id)
+                .ToList();
+        }
+        catch (CantLoadAllException)
         {
             _logger.LogWarning("Skipping Volunteers team sync: UserInfo cache is not warmed");
             report?.Steps.Add(step);
             return;
         }
-
-        var candidateIds = _userService.GetAllUserInfos()
-            .Where(u => u.Profile is not null
-                && !u.IsSuspended
-                && u.Profile.ConsentCheckStatus != ConsentCheckStatus.Flagged
-                && u.Profile.RejectedAt is null)
-            .Select(u => u.Id)
-            .ToList();
 
         var eligibleSet = await MembershipCalculator.GetUsersWithAllRequiredConsentsForTeamAsync(
             candidateIds, SystemTeamIds.Volunteers, cancellationToken);

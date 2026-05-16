@@ -12,7 +12,16 @@ public interface ICacheStats
     int Entries { get; }
     long Hits { get; }
     long Misses { get; }
-    long Invalidations { get; }
+
+    /// <summary>Count of single-key removals via <c>Invalidate(key)</c>.</summary>
+    long KeyInvalidations { get; }
+
+    /// <summary>Count of bulk flushes via <c>Clear()</c>. A bulk flush also
+    /// flips the cache back to "cold" — load-all callers will throw
+    /// <c>CantLoadAllException</c> (or trigger an on-demand re-warm, depending
+    /// on the subclass) until the next successful warmup.</summary>
+    long BulkInvalidations { get; }
+
     double HitRatePercent { get; }
     void ResetCounters();
 }

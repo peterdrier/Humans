@@ -60,8 +60,6 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<CachingUserService> _logger;
 
-    public bool IsWarmedUp { get; private set; }
-
     public CachingUserService(
         IUserRepository userRepository,
         IUserEmailRepository userEmailRepository,
@@ -70,7 +68,7 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
         ICommunicationPreferenceRepository communicationPreferenceRepository,
         IServiceScopeFactory scopeFactory,
         ILogger<CachingUserService> logger)
-        : base("User.UserInfo")
+        : base("User.UserInfo", warmOnStartup: true)
     {
         _userRepository = userRepository;
         _userEmailRepository = userEmailRepository;
@@ -85,26 +83,27 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
     // UserInfo reads
     // ==========================================================================
 
-    public ValueTask<UserInfo?> GetUserInfoAsync(Guid userId, CancellationToken ct = default)
-    {
-        if (TryGet(userId, out var hit))
-            return new ValueTask<UserInfo?>(hit);
+    public ValueTask<UserInfo?> GetUserInfoAsync(Guid userId, CancellationToken ct = default) =>
+        GetAsync(userId, ct);
 
-        return new ValueTask<UserInfo?>(LoadAndCacheAsync(userId, ct));
-    }
-
-    private async Task<UserInfo?> LoadAndCacheAsync(Guid userId, CancellationToken ct)
+    /// <summary>
+    /// Per-key loader plugged into <see cref="TrackedCache{TKey,TValue}.GetAsync"/>.
+    /// Resolves the Scoped inner <see cref="IUserService"/> per call; the base
+    /// caches the result via <see cref="TrackedCache{TKey,TValue}.Set"/>.
+    /// </summary>
+    protected override async ValueTask<UserInfo?> LoadRowAsync(Guid userId, CancellationToken ct)
     {
         await using var scope = _scopeFactory.CreateAsyncScope();
         var inner = scope.ServiceProvider.GetRequiredKeyedService<IUserService>(InnerServiceKey);
-        var result = await inner.GetUserInfoAsync(userId, ct);
-        if (result is not null)
-            Set(userId, result);
-        return result;
+        return await inner.GetUserInfoAsync(userId, ct);
     }
 
     /// <inheritdoc cref="IUserService.GetAllUserInfos" />
-    public IReadOnlyCollection<UserInfo> GetAllUserInfos() => Values.ToArray();
+    public IReadOnlyCollection<UserInfo> GetAllUserInfos()
+    {
+        RequireWarmedUp();
+        return Values.ToArray();
+    }
 
     /// <inheritdoc cref="IUserService.GetUserInfosAsync" />
     public async ValueTask<IReadOnlyDictionary<Guid, UserInfo>> GetUserInfosAsync(
@@ -124,9 +123,12 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
         {
             foreach (var id in misses)
             {
-                var info = await LoadAndCacheAsync(id, ct);
+                var info = await LoadRowAsync(id, ct).ConfigureAwait(false);
                 if (info is not null)
+                {
+                    Set(id, info);
                     result[id] = info;
+                }
             }
         }
 
@@ -139,6 +141,8 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
     {
         if (fields == PersonSearchFields.None || string.IsNullOrWhiteSpace(query) || limit <= 0)
             return Task.FromResult<IReadOnlyList<HumanSearchResult>>([]);
+
+        RequireWarmedUp();
 
         var includeAdmin = (fields & PersonSearchFields.Admin) != PersonSearchFields.None;
 
@@ -335,16 +339,18 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
     /// once and indexes by userId so per-user materialization is allocation-only.
     /// Trivial at ~500-user scale.
     /// </summary>
-    public async Task WarmAllAsync(CancellationToken ct = default)
+    /// <remarks>
+    /// Invoked by <see cref="TrackedCache{TKey,TValue}.EnsureWarmedAsync"/> via
+    /// the <see cref="Microsoft.Extensions.Hosting.IHostedService"/> contract
+    /// inherited from <see cref="TrackedCache{TKey,TValue}"/>. The base flips
+    /// the warmed flag on success. An empty system (fresh dev DB / new deploy)
+    /// is a legitimate warm state — this method simply returns early and the
+    /// flag still flips.
+    /// </remarks>
+    protected override async Task WarmAllAsync(CancellationToken ct)
     {
         var users = await _userRepository.GetAllAsync(ct);
-        if (users.Count == 0)
-        {
-            // Empty system (fresh dev DB / new deploy) is a legitimate warm
-            // state — flag flips, jobs may safely run against an empty cache.
-            IsWarmedUp = true;
-            return;
-        }
+        if (users.Count == 0) return;
 
         var userIds = users.Select(u => u.Id).ToList();
 
@@ -400,8 +406,6 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
                 profile, contactFields, languages, volunteerHistory,
                 preferences));
         }
-
-        IsWarmedUp = true;
     }
 
     // ==========================================================================
@@ -457,6 +461,7 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
 
     public Task<List<EventParticipation>> GetAllParticipationsForYearAsync(int year, CancellationToken ct = default)
     {
+        RequireWarmedUp();
         var snapshot = Values;
         var result = new List<EventParticipation>();
         foreach (var u in snapshot)
@@ -497,6 +502,7 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
     public Task<IReadOnlySet<Guid>> GetMergedSourceIdsAsync(
         Guid targetUserId, CancellationToken ct = default)
     {
+        RequireWarmedUp();
         var ids = new HashSet<Guid>();
         foreach (var u in Values)
         {

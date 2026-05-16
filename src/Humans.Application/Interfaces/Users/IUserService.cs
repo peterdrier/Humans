@@ -19,19 +19,6 @@ namespace Humans.Application.Interfaces.Users;
 public interface IUserService : IApplicationService, IUserMerge
 {
     /// <summary>
-    /// True once the UserInfo cache has been fully populated by the startup
-    /// warmup. Stays false if warmup failed or has not yet completed. Reads
-    /// against <see cref="GetAllUserInfos"/> are only trustworthy as a
-    /// "complete picture" when this is true — destructive bulk reconciliation
-    /// jobs MUST guard on this flag, otherwise an empty post-warmup-failure
-    /// cache will be misread as "no one is eligible" and deprovision every
-    /// affected user. Per-user reads (<see cref="GetUserInfoAsync"/>,
-    /// <see cref="GetUserInfosAsync"/>) lazily fill the cache and are safe
-    /// regardless.
-    /// </summary>
-    bool IsWarmedUp { get; }
-
-    /// <summary>
     /// Returns the unified <see cref="UserInfo"/> read-model for the given
     /// user, stitched from <c>users</c>, <c>user_emails</c>,
     /// <c>event_participations</c>, <c>user_logins</c>, <c>profiles</c>,

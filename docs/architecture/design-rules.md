@@ -494,17 +494,18 @@ The application service (`UserService`, `ProfileService`, `ContactFieldService`,
 
 ### 15d. Caching Decorator Rules
 
-A section's caching decorator is a **Singleton** that owns a private `ConcurrentDictionary<Guid, TInfo>` keyed by the aggregate's identity. The dict persists across HTTP requests. There is no separate store interface, no store class, no `IMemoryCache` for canonical domain data. A narrow `*WarmupHostedService` populates the dict once at startup.
+A section's caching decorator is a **Singleton** that inherits (or composes) `TrackedCache<TKey, TValue>` — a primitive owning a private `ConcurrentDictionary<TKey, TValue>` keyed by the aggregate's identity, with hit/miss/invalidation counters and built-in startup-warmup machinery. The dict persists across HTTP requests. There is no separate store interface, no store class, no `IMemoryCache` for canonical domain data.
 
-**Live example:** `CachingUserService` — Singleton, holds `ConcurrentDictionary<Guid, UserInfo>`, owns the unified User+Profile read-model spanning 8 contributing tables. See `src/Humans.Infrastructure/Services/Users/CachingUserService.cs` for the canonical pattern (constructor, scope-factory-resolved inner, `RefreshEntryAsync`, `WarmAllAsync`, `IUserInfoInvalidator` aliasing).
+**Live example:** `CachingUserService` — Singleton, inherits `TrackedCache<Guid, UserInfo>`, owns the unified User+Profile read-model spanning 8 contributing tables. See `src/Humans.Infrastructure/Services/Users/CachingUserService.cs` for the canonical pattern (constructor passing `warmOnStartup: true`, scope-factory-resolved inner, `RefreshEntryAsync`, `WarmAllAsync` override, `IUserInfoInvalidator` aliasing).
 
 Key rules the example demonstrates:
 
 - Repositories used by the decorator must themselves be Singleton (`IDbContextFactory`-based) so they can be injected directly without scope plumbing.
 - Scoped dependencies (the inner service) are resolved per-call via `IServiceScopeFactory.CreateAsyncScope()` — never captured in a Singleton field.
-- Reads: dict hit returns synchronously (`ValueTask.FromResult`); miss wraps the inner call and populates the dict.
-- Writes: delegate to the inner service, then call a private `RefreshEntryAsync` that reloads from repositories and upserts. If the row no longer exists, evict.
-- Warming: eager at startup via a `*WarmupHostedService`. Failures log + swallow; lazy population on miss still works.
+- Reads: dict hit returns synchronously via `TrackedCache.TryGet`; miss falls through `GetAsync` → `LoadRowAsync` (override) and populates the dict. Load-all reads call `RequireWarmedUp()` and throw `CantLoadAllException` if the cache is cold.
+- Writes: delegate to the inner service, then call a private `RefreshEntryAsync` that reloads from repositories and upserts. If the row no longer exists, evict via `Invalidate(key)`.
+- Warming: `TrackedCache` itself implements `IHostedService`. Register the decorator as a hosted service (`services.AddHostedService(sp => sp.GetRequiredService<CachingFoo>())`) — startup triggers `WarmAllAsync` via `EnsureWarmedAsync`, which flips the warmed flag on success. No separate `*WarmupHostedService` class. Failures during startup are non-fatal (host still starts) but `CantLoadAllException` is thrown from load-all reads until the next successful warmup.
+- Composing decorators that hold multiple inner `TrackedCache` instances (e.g. `CachingShiftViewService`) implement `IHostedService` directly with the same shape.
 
 ### 15e. Invalidator — One-Way Cross-Section Signal
 
@@ -530,7 +531,7 @@ Implemented by the section's caching decorator. External sections inject the inv
 Do not expose EF entity types from section service read APIs — the canonical
 `Info` projection is the boundary.
 
-Old names that no longer exist: `CachedProfile`, `IProfileStore`, `ProfileStore`, `ProfileStoreWarmupHostedService`, `IVolunteerHistoryService`, `VolunteerHistoryService`, `FullProfile`, `IFullProfileInvalidator`, `CachingProfileService`, `FullProfileWarmupHostedService`, `PersonSearchMatcher`.
+Old names that no longer exist: `CachedProfile`, `IProfileStore`, `ProfileStore`, `ProfileStoreWarmupHostedService`, `IVolunteerHistoryService`, `VolunteerHistoryService`, `FullProfile`, `IFullProfileInvalidator`, `CachingProfileService`, `FullProfileWarmupHostedService`, `PersonSearchMatcher`, `UserInfoWarmupHostedService`, `TeamsWarmupHostedService`.
 
 ### 15g. Known Deferrals
 

@@ -30,14 +30,12 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
     private readonly ITeamRepository _teamRepository;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<CachingTeamService> _logger;
-    private readonly SemaphoreSlim _loadLock = new(1, 1);
-    private volatile bool _isLoaded;
 
     public CachingTeamService(
         ITeamRepository teamRepository,
         IServiceScopeFactory scopeFactory,
         ILogger<CachingTeamService> logger)
-        : base("Team.TeamInfo")
+        : base("Team.TeamInfo", warmOnStartup: true)
     {
         _teamRepository = teamRepository;
         _scopeFactory = scopeFactory;
@@ -567,22 +565,14 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
 
     public void InvalidateActiveTeamsCache() => InvalidateTeamsCache();
 
-    private void InvalidateTeamsCache()
-    {
-        // This API is sync because legacy invalidation callers only expose void.
-        // The lock is held for the in-memory clear only except when racing startup
-        // warmup; ASP.NET Core has no sync context, and the warm set is small.
-        _loadLock.Wait();
-        try
-        {
-            Clear();
-            _isLoaded = false;
-        }
-        finally
-        {
-            _loadLock.Release();
-        }
-    }
+    /// <summary>
+    /// Drop the cached team set and let the next read trigger a fresh
+    /// <see cref="WarmAllAsync"/>. The base's <see cref="TrackedCache{TKey,TValue}.Clear"/>
+    /// flips the warmed flag back to false; <see cref="GetTeamsByIdAsync"/>
+    /// observes that and re-warms via
+    /// <see cref="TrackedCache{TKey,TValue}.EnsureWarmedAsync"/>.
+    /// </summary>
+    private void InvalidateTeamsCache() => Clear();
 
     public async Task<int> RevokeAllMembershipsAsync(
         Guid userId,
@@ -639,50 +629,38 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
 
     private async Task<IReadOnlyDictionary<Guid, TeamInfo>> GetTeamsByIdAsync(CancellationToken ct)
     {
-        if (_isLoaded)
-            return AsReadOnlyDictionary;
-
-        await WarmAllAsync(ct);
+        await EnsureWarmedAsync(ct);
         return AsReadOnlyDictionary;
     }
 
-    public async Task WarmAllAsync(CancellationToken ct = default)
+    /// <summary>
+    /// Bulk-loads every active team's projected <see cref="TeamInfo"/>. Called by
+    /// <see cref="TrackedCache{TKey,TValue}.EnsureWarmedAsync"/> at startup and
+    /// again on demand after <see cref="InvalidateTeamsCache"/> drops the dict
+    /// (post-write re-warm pattern). The base owns concurrency coalescing via
+    /// the warm semaphore, so this body is invoked at most once at a time.
+    /// </summary>
+    protected override async Task WarmAllAsync(CancellationToken ct)
     {
-        if (_isLoaded)
-            return;
+        var teams = await _teamRepository.GetAllWithMembersAsync(ct);
+        var allUserIds = teams
+            .SelectMany(t => t.Members.Where(m => m.LeftAt is null).Select(m => m.UserId))
+            .Distinct()
+            .ToList();
 
-        await _loadLock.WaitAsync(ct);
-        try
-        {
-            if (_isLoaded)
-                return;
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
+        var users = allUserIds.Count == 0
+            ? new Dictionary<Guid, Application.UserInfo>()
+            : await userService.GetUserInfosAsync(allUserIds, ct);
+        var managementHolders = await _teamRepository.GetActiveManagementRoleHolderUserIdsByTeamAsync(ct);
+        var roleDefinitionsByTeam = await _teamRepository.GetAllRoleDefinitionsByTeamAsync(ct);
 
-            var teams = await _teamRepository.GetAllWithMembersAsync(ct);
-            var allUserIds = teams
-                .SelectMany(t => t.Members.Where(m => m.LeftAt is null).Select(m => m.UserId))
-                .Distinct()
-                .ToList();
-
-            await using var scope = _scopeFactory.CreateAsyncScope();
-            var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
-            var users = allUserIds.Count == 0
-                ? new Dictionary<Guid, Application.UserInfo>()
-                : await userService.GetUserInfosAsync(allUserIds, ct);
-            var managementHolders = await _teamRepository.GetActiveManagementRoleHolderUserIdsByTeamAsync(ct);
-            var roleDefinitionsByTeam = await _teamRepository.GetAllRoleDefinitionsByTeamAsync(ct);
-
-            // No defensive Clear() — InvalidateTeamsCache already emptied the cache
-            // before flipping _isLoaded to false (or the cache is empty on first
-            // startup). Set is upsert, so any rare leftover entry is overwritten.
-            foreach (var team in teams)
-                Set(team.Id, BuildTeamInfo(team, users, managementHolders, roleDefinitionsByTeam));
-
-            _isLoaded = true;
-        }
-        finally
-        {
-            _loadLock.Release();
-        }
+        // No defensive Clear() — InvalidateTeamsCache already emptied the cache
+        // before flipping the warmed flag to false (or the cache is empty on first
+        // startup). Set is upsert, so any rare leftover entry is overwritten.
+        foreach (var team in teams)
+            Set(team.Id, BuildTeamInfo(team, users, managementHolders, roleDefinitionsByTeam));
     }
 
     private bool IsUserCoordinatorOfActiveTeam(
