@@ -67,6 +67,7 @@ public sealed class CachingCampService :
 
     private readonly ICampRepository _repo;
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly IClock _clock;
     private readonly ILogger<CachingCampService> _logger;
     private readonly SemaphoreSlim _settingsLock = new(1, 1);
     private CampSettingsInfo? _settings;
@@ -81,11 +82,13 @@ public sealed class CachingCampService :
     public CachingCampService(
         ICampRepository repo,
         IServiceScopeFactory scopeFactory,
+        IClock clock,
         ILogger<CachingCampService> logger)
         : base("Camp.CampInfo", warmOnStartup: true)
     {
         _repo = repo;
         _scopeFactory = scopeFactory;
+        _clock = clock;
         _logger = logger;
     }
 
@@ -655,7 +658,7 @@ public sealed class CachingCampService :
         await LoadSettingsAsync(ct);
     }
 
-    private static int SystemClockYear() => DateTime.UtcNow.Year;
+    private int SystemClockYear() => _clock.GetCurrentInstant().InUtc().Year;
 
     private async Task RefreshEntryAsync(Guid campId, CancellationToken ct)
     {

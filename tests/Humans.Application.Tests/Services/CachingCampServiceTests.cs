@@ -55,6 +55,7 @@ public sealed class CachingCampServiceTests : IDisposable
         _service = new CachingCampService(
             repo,
             _serviceProvider.GetRequiredService<IServiceScopeFactory>(),
+            _clock,
             NullLogger<CachingCampService>.Instance);
     }
 
