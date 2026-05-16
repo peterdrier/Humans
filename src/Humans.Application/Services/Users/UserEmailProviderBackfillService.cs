@@ -45,7 +45,18 @@ public sealed class UserEmailProviderBackfillService : IUserEmailProviderBackfil
 
     public UserEmailProviderBackfillService(
         IUserRepository userRepository,
+        // IUserEmailRepository is Profiles-section-tagged but Users+Profiles are
+        // one ownership section ("Humans") per
+        // memory/architecture/users-profiles-one-section.md. This is a one-shot
+        // legacy backfill that reads UserEmail shadow columns
+        // (GetLegacyBackfillSnapshotsByUserIdAsync) and writes Provider /
+        // ProviderKey / IsGoogle on UserEmail rows; routing through
+        // IUserEmailService would mean adding three pass-throughs that get
+        // deleted once PR 7 of the email-identity-decoupling spec drops the
+        // legacy columns — pure churn forbidden by the atom.
+#pragma warning disable HUM0017 // see ctor comment + memory/architecture/users-profiles-one-section.md
         IUserEmailRepository userEmailRepository,
+#pragma warning restore HUM0017
         UserManager<User> userManager,
         IAuditLogService auditLogService,
         IClock clock,

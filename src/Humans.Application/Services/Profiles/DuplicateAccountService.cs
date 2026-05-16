@@ -38,7 +38,16 @@ public sealed class DuplicateAccountService : IDuplicateAccountService
     private readonly IClock _clock;
 
     public DuplicateAccountService(
+        // IUserRepository is Users-section-tagged but Users+Profiles are one
+        // ownership section ("Humans") per
+        // memory/architecture/users-profiles-one-section.md. Wrapping
+        // IUserRepository calls in new IUserService pass-throughs is explicitly
+        // forbidden by that atom. The two calls here (GetByIdAsync for the
+        // source/target user + ReassignLoginsToUserAsync inside the merge
+        // transaction) are deliberately direct.
+#pragma warning disable HUM0017 // see ctor comment + memory/architecture/users-profiles-one-section.md
         IUserRepository userRepository,
+#pragma warning restore HUM0017
         IUserService userService,
         IUserEmailRepository userEmailRepository,
         IProfileRepository profileRepository,

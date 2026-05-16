@@ -40,7 +40,18 @@ public sealed partial class TeamResourceService : ITeamResourceService
         => _serviceProvider.GetRequiredService<IRoleAssignmentService>();
 
     public TeamResourceService(
+        // IGoogleResourceRepository is [Section("GoogleIntegration")]-tagged but
+        // google_resources is Teams-owned (see docs/sections/Teams.md "Owned
+        // tables", design-rules, and the RepositoryOwners architecture-test map
+        // which lists IGoogleResourceRepository as Teams). The section tag is a
+        // stale label from where the EF impl lives. TeamResourceArchitectureTests
+        // explicitly pins TeamResourceService taking IGoogleResourceRepository as
+        // a ctor param; introducing an IGoogleResourceService indirection would
+        // break that pinned invariant and add a pass-through with no other
+        // consumer.
+#pragma warning disable HUM0017 // see ctor comment + memory/architecture/google-resources-teams-owned.md
         IGoogleResourceRepository repository,
+#pragma warning restore HUM0017
         ITeamResourceGoogleClient googleClient,
         IGoogleDrivePermissionsClient drivePermissions,
         ITeamService teamService,
