@@ -6,7 +6,6 @@ using Humans.Application.Services.Issues;
 using Humans.Application.Services.Legal;
 using Humans.Application.Services.Notifications;
 using Humans.Application.Services.Shifts;
-using Humans.Application.Services.Tickets;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace Humans.Application.Tests.Architecture.Rules;
@@ -61,8 +60,7 @@ public class ApplicationServicesTakeNoMemoryCacheRule
         typeof(NotificationInboxService),
         typeof(NotificationMeterProvider),
         typeof(NotificationService),
-        typeof(ShiftManagementService),
-        typeof(TicketQueryService)
+        typeof(ShiftManagementService)
     ];
 
     [HumansFact]
