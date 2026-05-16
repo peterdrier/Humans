@@ -31,13 +31,6 @@ public interface IProfileRepository : IRepository
     Task<Profile?> GetByUserIdReadOnlyAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
-    /// Batched profile fetch keyed by user id. Missing users are absent from
-    /// the returned dictionary. Read-only (AsNoTracking).
-    /// </summary>
-    Task<IReadOnlyDictionary<Guid, Profile>> GetByUserIdsAsync(
-        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
-
-    /// <summary>
     /// Loads every profile with aggregate-local <c>VolunteerHistory</c> and
     /// <c>Languages</c> collections. Used by the startup warmup hosted service
     /// to populate the profile cache. Trivial at ~500-user scale.
