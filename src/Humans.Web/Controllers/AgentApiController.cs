@@ -54,7 +54,7 @@ public class AgentApiController : ControllerBase
         if (conv is null) return NotFound();
 
         var users = await ResolveUsersAsync([conv.UserId], ct);
-        var displayName = users.TryGetValue(conv.UserId, out var u) ? u.DisplayName : null;
+        var displayName = users.TryGetValue(conv.UserId, out var u) ? u.BurnerName : null;
 
         return Ok(new
         {
@@ -107,7 +107,7 @@ public class AgentApiController : ControllerBase
         {
             c.Id,
             c.UserId,
-            UserDisplayName = users.TryGetValue(c.UserId, out var u) ? u.DisplayName : null,
+            UserDisplayName = users.TryGetValue(c.UserId, out var u) ? u.BurnerName : null,
             c.Locale,
             StartedAt = c.StartedAt.ToDateTimeUtc(),
             LastMessageAt = c.LastMessageAt.ToDateTimeUtc(),

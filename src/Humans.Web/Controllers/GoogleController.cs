@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
+using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Extensions;
 using Humans.Domain.Entities;
@@ -70,8 +71,8 @@ public class GoogleController : HumansControllerBase
             .Distinct()
             .ToList();
         var updatedByUsers = updatedByUserIds.Count > 0
-            ? await userService.GetByIdsAsync(updatedByUserIds)
-            : new Dictionary<Guid, User>();
+            ? await userService.GetUserInfosAsync(updatedByUserIds)
+            : new Dictionary<Guid, UserInfo>();
 
         var viewModel = new SyncSettingsViewModel
         {
@@ -82,7 +83,7 @@ public class GoogleController : HumansControllerBase
                 CurrentMode = s.SyncMode,
                 UpdatedAt = s.UpdatedAt.ToDateTimeUtc(),
                 UpdatedByName = s.UpdatedByUserId is { } uid && updatedByUsers.TryGetValue(uid, out var u)
-                    ? u.DisplayName
+                    ? u.BurnerName
                     : null
             }).ToList()
         };

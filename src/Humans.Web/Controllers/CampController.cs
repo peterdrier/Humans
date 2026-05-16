@@ -226,7 +226,7 @@ public class CampController : HumansCampControllerBase
                 camp.ContactEmail,
                 campDisplayName,
                 currentUser.Id,
-                currentUser.DisplayName,
+                currentUser.BurnerName,
                 senderEmail,
                 model.Message,
                 model.IncludeContactInfo,
@@ -416,7 +416,7 @@ public class CampController : HumansCampControllerBase
             .Select(m => new CampMemberPickerOption(
                 m.Id,
                 m.UserId,
-                users.TryGetValue(m.UserId, out var u) ? u.DisplayName ?? "(unknown)" : "(unknown)"))
+                users.TryGetValue(m.UserId, out var u) ? u.BurnerName ?? "(unknown)" : "(unknown)"))
             .OrderBy(o => o.DisplayName, StringComparer.OrdinalIgnoreCase)
             .ToList();
 

@@ -83,7 +83,7 @@ public class GuestController : HumansControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to load Guest dashboard for user {UserId}", user.Id);
-            return View(new GuestDashboardViewModel { DisplayName = user.DisplayName });
+            return View(new GuestDashboardViewModel { DisplayName = user.BurnerName });
         }
     }
 
@@ -252,7 +252,7 @@ public class GuestController : HumansControllerBase
     {
         var viewModel = new GuestDashboardViewModel
         {
-            DisplayName = user.DisplayName,
+            DisplayName = user.BurnerName,
         };
 
         // Ticket status: check for matched ticket orders and attendees

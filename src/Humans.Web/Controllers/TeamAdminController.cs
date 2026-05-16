@@ -245,7 +245,7 @@ public class TeamAdminController : HumansTeamControllerBase
             ParentDepartmentName = parentDepartmentName,
             ParentDepartmentSlug = parentDepartmentSlug,
             IsSensitive = team.IsSensitive,
-            ActorDisplayName = user.DisplayName
+            ActorDisplayName = user.BurnerName
         };
 
         return View(viewModel);
