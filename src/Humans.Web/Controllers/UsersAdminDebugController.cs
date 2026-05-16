@@ -65,7 +65,10 @@ public sealed class UsersAdminDebugController : HumansControllerBase
             "marketing" => rows.OrderBy(r => NullableBool(r.MarketingOptedOut)),
             "burnerName" => rows.OrderBy(r => r.BurnerName, StringComparer.OrdinalIgnoreCase),
             "legalName" => rows.OrderBy(r => r.LegalName, StringComparer.OrdinalIgnoreCase),
+            "hasName" => rows.OrderBy(r => NullableBool(r.HasName)),
             "hasConsent" => rows.OrderBy(r => NullableBool(r.HasConsent)),
+            "createdAt" => rows.OrderBy(r => r.CreatedAt),
+            "lastLoginAt" => rows.OrderBy(r => r.LastLoginAt ?? NodaTime.Instant.MinValue),
             _ => rows.OrderBy(r => r.DisplayName, StringComparer.OrdinalIgnoreCase),
         };
 
