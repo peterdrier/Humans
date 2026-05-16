@@ -1,28 +1,27 @@
-using System.Diagnostics.CodeAnalysis;
 using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces.Caching;
-using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using NodaTime;
 
 namespace Humans.Infrastructure.Services.Tickets;
 
 /// <summary>
-/// Singleton caching decorator for <see cref="ITicketQueryService"/>. Owns a
-/// per-order <see cref="TicketOrderInfo"/> projection (with attendees embedded)
-/// loaded once at warm time and refreshed wholesale on every section-level
-/// invalidation event (vendor sync, transfer approve, contact import apply,
-/// account-merge fold). Per-user <c>UserTicketCount</c> / <c>UserTicketHoldings</c>
-/// entries live as a separate short-TTL <see cref="IMemoryCache"/>-backed
-/// concern — they get evicted on transfer/merge but not absorbed into the
-/// main projection.
+/// Singleton caching decorator for <see cref="ITicketQueryService"/>. Composes
+/// a <see cref="TrackedCache{TKey,TValue}"/> for the per-order
+/// <see cref="TicketOrderInfo"/> projection (warmed at startup, refreshed
+/// wholesale on every section-level invalidation event — vendor sync, transfer
+/// approve, contact import apply, account-merge fold) plus an
+/// <see cref="IMemoryCache"/>-backed short-TTL per-user concern
+/// (<c>UserTicketCount</c> / <c>UserTicketHoldings</c>) evicted on
+/// transfer/merge but deliberately left to TTL on bulk sync.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -39,31 +38,48 @@ namespace Humans.Infrastructure.Services.Tickets;
 /// fold can poke cache eviction through a narrow seam without taking a
 /// dependency on the full 28-method query surface.
 /// </para>
+/// <para>
+/// Composition (multiple inner caches with different shapes) forces the
+/// decorator to own <see cref="IHostedService"/> directly — can't multi-inherit
+/// <see cref="TrackedCache{TKey,TValue}"/>. <see cref="IHostedService.StartAsync"/>
+/// drives the orders cache's startup warmup; the inner
+/// <see cref="OrdersCache"/> is not registered as a hosted service itself
+/// (avoiding double-warmup). Mirrors <c>CachingShiftViewService</c> post-PR
+/// nobodies-collective/Humans#587.
+/// </para>
 /// </remarks>
 public sealed class CachingTicketQueryService
-    : TrackedCache<Guid, TicketOrderInfo>,
-      ITicketQueryService,
-      ITicketCacheInvalidator
+    : ITicketQueryService,
+      ITicketCacheInvalidator,
+      IHostedService
 {
     public const string InnerServiceKey = "ticket-query-inner";
 
     private static readonly TimeSpan UserPerUserCacheTtl = TimeSpan.FromMinutes(5);
 
-    private readonly ITicketRepository _ticketRepository;
     private readonly IMemoryCache _perUserCache;
     private readonly IServiceScopeFactory _scopeFactory;
-    private readonly SemaphoreSlim _loadLock = new(1, 1);
-    private volatile bool _isLoaded;
+    private readonly OrdersCache _orders;
+
+    /// <summary>
+    /// Stats for the projection cache, surfaced on <c>/Admin/CacheStats</c>.
+    /// Composition pattern: the outer decorator is not itself a
+    /// <see cref="TrackedCache{TKey,TValue}"/>, so it explicitly exposes each
+    /// composed cache's stats.
+    /// </summary>
+    public ICacheStats OrdersCacheStats => _orders;
+
+    /// <summary>Pass-through for tests that assert on the projection's entry count.</summary>
+    public int Entries => _orders.Entries;
 
     public CachingTicketQueryService(
         ITicketRepository ticketRepository,
         IMemoryCache perUserCache,
         IServiceScopeFactory scopeFactory)
-        : base("Tickets.TicketOrderInfo")
     {
-        _ticketRepository = ticketRepository;
         _perUserCache = perUserCache;
         _scopeFactory = scopeFactory;
+        _orders = new OrdersCache(ticketRepository);
     }
 
     // ==========================================================================
@@ -195,7 +211,7 @@ public sealed class CachingTicketQueryService
 
     public async Task<bool> HasCurrentEventTicketAsync(Guid userId, CancellationToken ct = default)
     {
-        var syncState = await _ticketRepository.GetSyncStateAsync(ct);
+        var syncState = await _orders.Repository.GetSyncStateAsync(ct);
         if (syncState is null || string.IsNullOrEmpty(syncState.VendorEventId))
             return false;
 
@@ -366,11 +382,16 @@ public sealed class CachingTicketQueryService
 
     // ==========================================================================
     // Invalidation seams (ITicketQueryService + ITicketCacheInvalidator)
+    //
+    // Bulk drops use TrackedCache.Clear(), which flips the warmed flag to
+    // false; the next read calls EnsureWarmedAsync via GetOrdersAsync and the
+    // base coalesces concurrent warmers. No bespoke lock needed — the base
+    // owns the warmup semaphore.
     // ==========================================================================
 
     public void InvalidateAfterTransfer(Guid senderUserId, Guid? receiverUserId)
     {
-        InvalidateProjection();
+        _orders.Clear();
         _perUserCache.Remove(CacheKeys.UserTicketCount(senderUserId));
         _perUserCache.Remove(CacheKeys.UserTicketHoldings(senderUserId));
         if (receiverUserId is { } receiver)
@@ -380,13 +401,13 @@ public sealed class CachingTicketQueryService
         }
     }
 
-    public void InvalidateAfterContactImport() => InvalidateProjection();
+    public void InvalidateAfterContactImport() => _orders.Clear();
 
-    public void InvalidateAll() => InvalidateProjection();
+    public void InvalidateAll() => _orders.Clear();
 
     public void InvalidateAfterUserMerge(Guid sourceUserId, Guid targetUserId)
     {
-        InvalidateProjection();
+        _orders.Clear();
         _perUserCache.Remove(CacheKeys.UserTicketCount(sourceUserId));
         _perUserCache.Remove(CacheKeys.UserTicketHoldings(sourceUserId));
         _perUserCache.Remove(CacheKeys.UserTicketCount(targetUserId));
@@ -408,46 +429,21 @@ public sealed class CachingTicketQueryService
     // Warmup + projection loading
     // ==========================================================================
 
-    public async Task WarmAllAsync(CancellationToken ct = default)
+    /// <summary>
+    /// Composition forces the decorator to own <see cref="IHostedService"/>
+    /// directly. Drives the inner orders cache's startup warmup; the inner
+    /// is not registered as a hosted service (would double-warm).
+    /// </summary>
+    Task IHostedService.StartAsync(CancellationToken ct) =>
+        ((IHostedService)_orders).StartAsync(ct);
+
+    Task IHostedService.StopAsync(CancellationToken ct) => Task.CompletedTask;
+
+    private async Task<IReadOnlyDictionary<Guid, TicketOrderInfo>> GetOrdersAsync(
+        CancellationToken ct = default)
     {
-        if (_isLoaded) return;
-
-        await _loadLock.WaitAsync(ct);
-        try
-        {
-            if (_isLoaded) return;
-
-            var orders = await _ticketRepository.GetAllOrdersWithAttendeesAsync(ct);
-            foreach (var order in orders)
-                Set(order.Id, Project(order));
-
-            _isLoaded = true;
-        }
-        finally
-        {
-            _loadLock.Release();
-        }
-    }
-
-    private async Task<IReadOnlyDictionary<Guid, TicketOrderInfo>> GetOrdersAsync()
-    {
-        if (_isLoaded) return AsReadOnlyDictionary;
-        await WarmAllAsync(CancellationToken.None);
-        return AsReadOnlyDictionary;
-    }
-
-    private void InvalidateProjection()
-    {
-        _loadLock.Wait();
-        try
-        {
-            Clear();
-            _isLoaded = false;
-        }
-        finally
-        {
-            _loadLock.Release();
-        }
+        await _orders.EnsureWarmedPublicAsync(ct);
+        return _orders.AsReadOnlyDictionary;
     }
 
     private static bool IsValidOrCheckedIn(TicketAttendeeStatus status) =>
@@ -494,5 +490,43 @@ public sealed class CachingTicketQueryService
         await using var scope = _scopeFactory.CreateAsyncScope();
         var inner = scope.ServiceProvider.GetRequiredKeyedService<ITicketQueryService>(InnerServiceKey);
         return await action(inner);
+    }
+
+    // ==========================================================================
+    // Inner projection cache (composition).
+    //
+    // Private nested class because the warmup loader needs to override
+    // TrackedCache.WarmAllAsync (protected virtual), and exposing the
+    // protected EnsureWarmedAsync entry-point requires a subclass anyway.
+    // Keeping it nested keeps the projection shape + load query co-located
+    // with the decorator that owns the projection's invalidation seam.
+    // ==========================================================================
+    private sealed class OrdersCache : TrackedCache<Guid, TicketOrderInfo>
+    {
+        public ITicketRepository Repository { get; }
+
+        public OrdersCache(ITicketRepository repository)
+            : base("Tickets.Orders", warmOnStartup: true)
+        {
+            Repository = repository;
+        }
+
+        /// <summary>
+        /// Bulk-loads every order with attendees, projected into
+        /// <see cref="TicketOrderInfo"/>. Driven by
+        /// <see cref="TrackedCache{TKey,TValue}.EnsureWarmedAsync"/> at startup
+        /// and again on demand after any <c>Clear()</c> (post-write re-warm
+        /// pattern). The base owns concurrency coalescing via the warm
+        /// semaphore.
+        /// </summary>
+        protected override async Task WarmAllAsync(CancellationToken ct)
+        {
+            var orders = await Repository.GetAllOrdersWithAttendeesAsync(ct);
+            foreach (var order in orders)
+                Set(order.Id, Project(order));
+        }
+
+        /// <summary>Public seam for the outer decorator's load-all read path.</summary>
+        public Task EnsureWarmedPublicAsync(CancellationToken ct) => EnsureWarmedAsync(ct);
     }
 }

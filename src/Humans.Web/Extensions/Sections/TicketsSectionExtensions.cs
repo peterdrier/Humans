@@ -1,10 +1,10 @@
+using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Tickets;
 using Humans.Application.Interfaces.Users;
 using Humans.Application.Services.Tickets;
 using Humans.Application.Services.Users;
-using Humans.Infrastructure.HostedServices;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Repositories.Tickets;
 using Humans.Infrastructure.Services.Tickets;
@@ -43,7 +43,12 @@ internal static class TicketsSectionExtensions
         services.AddSingleton<ITicketQueryService>(sp => sp.GetRequiredService<CachingTicketQueryService>());
         services.AddSingleton<ITicketCacheInvalidator>(sp => sp.GetRequiredService<CachingTicketQueryService>());
 
-        services.AddHostedService<TicketsWarmupHostedService>();
+        // Composition pattern (mirrors CachingShiftViewService post-PR
+        // nobodies-collective/Humans#587): the decorator owns IHostedService
+        // directly and drives the inner orders cache's warmup. The inner
+        // TrackedCache is NOT registered as a hosted service — would double-warm.
+        services.AddHostedService(sp => sp.GetRequiredService<CachingTicketQueryService>());
+        services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingTicketQueryService>().OrdersCacheStats);
 
         // TicketTransferService + repository (§15b: repo is Singleton; service is Scoped).
         services.AddSingleton<ITicketTransferRepository, TicketTransferRepository>();
