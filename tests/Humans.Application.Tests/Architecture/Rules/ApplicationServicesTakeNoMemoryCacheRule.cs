@@ -34,7 +34,6 @@ namespace Humans.Application.Tests.Architecture.Rules;
 ///   <item><see cref="NotificationMeterProvider"/> — meter cache</item>
 ///   <item><see cref="NotificationService"/> — notification preferences cache</item>
 ///   <item><see cref="ShiftManagementService"/> — shift data cache</item>
-///   <item><see cref="TicketQueryService"/> — ticket query cache</item>
 /// </list>
 /// </para>
 ///

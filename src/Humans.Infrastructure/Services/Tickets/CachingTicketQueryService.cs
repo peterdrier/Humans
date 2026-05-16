@@ -99,10 +99,9 @@ public sealed class CachingTicketQueryService
 
     private async Task<int> ComputeUserTicketCountAsync(Guid userId)
     {
-        // Match on attendees only — a buyer who purchased tickets for others
-        // should NOT count as having a ticket themselves. Mirrors the prior
-        // TicketQueryService.GetUserTicketCountCoreAsync logic, but driven
-        // from the projection instead of two repo queries.
+        // Hot path: count valid/checked-in attendees matched to the user from
+        // the projection. A buyer who purchased tickets for others should NOT
+        // count as having a ticket themselves — match on attendees only.
         var orders = await GetOrdersAsync();
 
         var matchedCount = orders.Values
@@ -111,30 +110,11 @@ public sealed class CachingTicketQueryService
         if (matchedCount > 0)
             return matchedCount;
 
-        // Fallback: verified-emails ↔ attendee-emails match. The verified
-        // email set is per-user and cross-section (Profiles section owns it),
-        // so we resolve it through the keyed inner scope (which has access
-        // to IUserEmailService). The valid-attendee-email set is derivable
-        // from the projection.
-        await using var scope = _scopeFactory.CreateAsyncScope();
-        var userEmails = scope.ServiceProvider
-            .GetRequiredService<Humans.Application.Interfaces.Profiles.IUserEmailService>();
-
-        var verifiedEmails = await userEmails.GetVerifiedEmailsForUserAsync(userId);
-        if (verifiedEmails.Count == 0)
-            return 0;
-
-        var attendeeEmails = orders.Values
-            .SelectMany(o => o.Attendees)
-            .Where(a => IsValidOrCheckedIn(a.Status)
-                && !string.IsNullOrEmpty(a.AttendeeEmail))
-            .Select(a => a.AttendeeEmail!)
-            .ToList();
-        if (attendeeEmails.Count == 0)
-            return 0;
-
-        var verifiedSet = verifiedEmails.ToHashSet(StringComparer.OrdinalIgnoreCase);
-        return attendeeEmails.Count(e => verifiedSet.Contains(e));
+        // Fallback (email-matching) is business logic (§5a rule 4) — delegate
+        // to the inner. The _perUserCache wrapping in GetUserTicketCountAsync
+        // still caches the result for subsequent calls regardless of which
+        // path produced it.
+        return await WithInner(inner => inner.GetUserTicketCountAsync(userId));
     }
 
     public async Task<HashSet<Guid>> GetUserIdsWithTicketsAsync()

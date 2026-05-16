@@ -48,9 +48,9 @@ public sealed class CachingTicketQueryServiceTests
         _repo = Substitute.For<ITicketRepository>();
         _perUserCache = new MemoryCache(new MemoryCacheOptions());
 
-        // The decorator resolves IUserEmailService through the scope factory
-        // when computing GetUserTicketCount's email-fallback path. Tests that
-        // don't drive that path can leave it un-registered.
+        // The decorator delegates the GetUserTicketCount email-fallback path
+        // to the keyed inner via WithInner. Tests that don't drive that path
+        // (matchedCount > 0 from the projection) can leave the inner unregistered.
         var services = new ServiceCollection();
         services.AddSingleton(_perUserCache);
         var scopeFactory = services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>();
