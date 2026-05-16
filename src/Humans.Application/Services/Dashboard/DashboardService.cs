@@ -66,12 +66,17 @@ public class DashboardService : IDashboardService
 
         var userInfo = await _userService.GetUserInfoAsync(userId, cancellationToken);
         var profile = userInfo?.Profile;
-        var shiftTagPreferences = await _shiftMgmt.GetVolunteerTagPreferencesAsync(userId);
+        // T-09 (issue #720): read tag-preference count from the cached
+        // ShiftUserView rather than the repo-backed
+        // IShiftManagementService.GetVolunteerTagPreferencesAsync — same data,
+        // cache hit replaces a DB round trip on every dashboard render.
+        var userView = await _shiftView.GetUserAsync(userId, cancellationToken);
+        var hasShiftTagPreferences = userView.TagPreferences.Count > 0;
         var dashboardProfile = profile is null
             ? null
             : new DashboardProfile(
                 ProfileComplete: !string.IsNullOrEmpty(profile.FirstName),
-                CompletionPercent: ProfileCompletion.ComputePercent(profile, shiftTagPreferences.Count > 0),
+                CompletionPercent: ProfileCompletion.ComputePercent(profile, hasShiftTagPreferences),
                 ConsentCheckStatus: profile.ConsentCheckStatus,
                 IsRejected: profile.RejectedAt is not null,
                 RejectionReason: profile.RejectionReason);
@@ -152,7 +157,6 @@ public class DashboardService : IDashboardService
                 // memory. Shift.Rota.EventSettings is loaded by the inner
                 // ShiftViewService. Cache hits complete synchronously via
                 // ValueTask (no Task allocation, no thread hop).
-                var userView = await _shiftView.GetUserAsync(userId, cancellationToken);
                 var userSignups = userView.Signups
                     .Where(s => s.Shift?.Rota?.EventSettingsId == activeEvent.Id)
                     .ToList();

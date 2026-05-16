@@ -31,7 +31,7 @@ public sealed class AgentToolDispatcher : IAgentToolDispatcher
     private readonly AgentSectionDocReader _sections;
     private readonly AgentFeatureSpecReader _features;
     private readonly IAuditViewerService _auditViewer;
-    private readonly IShiftSignupService _shiftSignups;
+    private readonly IShiftView _shiftView;
     private readonly IShiftManagementService _shiftManagement;
     private readonly ILogger<AgentToolDispatcher> _logger;
 
@@ -39,14 +39,14 @@ public sealed class AgentToolDispatcher : IAgentToolDispatcher
         AgentSectionDocReader sections,
         AgentFeatureSpecReader features,
         IAuditViewerService auditViewer,
-        IShiftSignupService shiftSignups,
+        IShiftView shiftView,
         IShiftManagementService shiftManagement,
         ILogger<AgentToolDispatcher> logger)
     {
         _sections = sections;
         _features = features;
         _auditViewer = auditViewer;
-        _shiftSignups = shiftSignups;
+        _shiftView = shiftView;
         _shiftManagement = shiftManagement;
         _logger = logger;
     }
@@ -152,7 +152,11 @@ public sealed class AgentToolDispatcher : IAgentToolDispatcher
         if (activeEvent is null)
             return new AnthropicToolResult(callId, "No active event configured.", IsError: true);
 
-        var signups = await _shiftSignups.GetByUserAsync(userId, activeEvent.Id);
+        // T-09 (issue #720): read signups from the cached ShiftUserView
+        // rather than IShiftSignupService.GetByUserAsync. The view already
+        // filters Signups to the active event (see ShiftViewService).
+        var userView = await _shiftView.GetUserAsync(userId, ct);
+        var signups = userView.Signups;
 
         // Try block first. Filter to active states so RenderShiftDetails
         // reports a status consistent with the snapshot tail (which also

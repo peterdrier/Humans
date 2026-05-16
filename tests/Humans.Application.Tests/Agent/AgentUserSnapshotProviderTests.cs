@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Application.DTOs.Shifts;
 using Humans.Application.Interfaces.Auth;
 using Humans.Application.Interfaces.Consent;
 using Humans.Application.Interfaces.Feedback;
@@ -173,8 +174,18 @@ public class AgentUserSnapshotProviderTests
         tickets.GetOpenTicketIdsForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(openTicketIds ?? []);
 
-        var shiftSignups = Substitute.For<IShiftSignupService>();
-        shiftSignups.GetByUserAsync(userId, activeEvent?.Id).Returns(signups);
+        var shiftView = Substitute.For<IShiftView>();
+        // Pre-built view: the inner ShiftViewService filters Signups to the
+        // active event, so tests with no active event still pass an empty view.
+        var view = new ShiftUserView(
+            UserId: userId,
+            Profile: null,
+            Availability: null,
+            BuildStatus: null,
+            TagPreferences: [],
+            Signups: activeEvent is null ? [] : signups);
+        shiftView.GetUserAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<ShiftUserView>(view));
 
         var shiftMgmt = Substitute.For<IShiftManagementService>();
         shiftMgmt.GetActiveAsync().Returns(activeEvent);
@@ -183,7 +194,7 @@ public class AgentUserSnapshotProviderTests
 
         return new AgentUserSnapshotProvider(
             users, roles, teams, consents, feedback, tickets,
-            shiftSignups, shiftMgmt, clock);
+            shiftView, shiftMgmt, clock);
     }
 
     private static EventSettings MakeEventSettings() => new()
