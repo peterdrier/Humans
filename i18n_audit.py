@@ -12,6 +12,7 @@ LOCALES = {
     "de": ROOT / "SharedResource.de.resx",
     "fr": ROOT / "SharedResource.fr.resx",
     "it": ROOT / "SharedResource.it.resx",
+    "ca": ROOT / "SharedResource.ca.resx",
 }
 REPORT_FILE = Path("i18n-audit-report.md")
 
@@ -153,7 +154,7 @@ def build_report(default_info, results):
     total_identical = 0
     total_ph = 0
 
-    for locale in ["es", "de", "fr", "it"]:
+    for locale in ["es", "de", "fr", "it", "ca"]:
         r = results[locale]
         total_missing += len(r["missing_added"])
         total_orphaned += len(r["orphaned_removed"])

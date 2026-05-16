@@ -46,7 +46,7 @@
   <data name="Common_Add" xml:space="preserve"><value>Ajouter</value></data>
   <data name="Common_Delete" xml:space="preserve"><value>Supprimer</value></data>
   <data name="Common_Back" xml:space="preserve"><value>Retour</value></data>
-  <data name="Common_ExportGeoJson" xml:space="preserve"><value>Export GeoJSON</value></data>
+  <data name="Common_ExportGeoJson" xml:space="preserve"><value>Exporter en GeoJSON</value></data>
   <data name="Common_Submit" xml:space="preserve"><value>Envoyer</value></data>
   <data name="Common_NotProvided" xml:space="preserve"><value>Non renseign&#xE9;</value></data>
   <data name="Common_Error" xml:space="preserve"><value>Une erreur est survenue. Veuillez réessayer plus tard.</value></data>
@@ -65,7 +65,7 @@
   <data name="Nav_Governance" xml:space="preserve"><value>Gouvernance</value></data>
   <data name="Nav_Privacy" xml:space="preserve"><value>Confidentialit&#xE9;</value></data>
   <data name="Nav_About" xml:space="preserve"><value>&#xC0; propos</value></data>
-  <data name="Nav_Admin" xml:space="preserve"><value>Admin</value></data>
+  <data name="Nav_Admin" xml:space="preserve"><value>Administration</value></data>
   <data name="Nav_OnboardingReview" xml:space="preserve"><value>File d'attente</value></data>
   <data name="Nav_MyFeedback" xml:space="preserve"><value>Mon feedback</value></data>
   <data name="Nav_Issues" xml:space="preserve"><value>Tickets</value></data>
@@ -143,6 +143,8 @@
   <data name="Dashboard_ProfileCard" xml:space="preserve"><value>Profil</value></data>
   <data name="Dashboard_ProfileComplete" xml:space="preserve"><value>Votre profil est complet.</value></data>
   <data name="Dashboard_ProfileIncomplete" xml:space="preserve"><value>Compl&#xE9;tez votre profil pour nous aider &#xE0; mieux vous conna&#xEE;tre.</value></data>
+  <data name="Dashboard_ProfileCompletionPercent" xml:space="preserve"><value>Your profile is {0}% complete</value><comment>{0} = percentage 0-99</comment></data>
+  <data name="Dashboard_FinishProfile" xml:space="preserve"><value>Finish profile</value></data>
   <data name="Dashboard_ViewProfile" xml:space="preserve"><value>Voir le profil</value></data>
   <data name="Dashboard_ConsentsCard" xml:space="preserve"><value>Accords</value></data>
   <data name="Dashboard_ConsentsNeeded" xml:space="preserve"><value>&lt;strong&gt;{0}&lt;/strong&gt; document(s) sur {1} n&#xE9;cessitent votre consentement.</value><comment>{0} = pending count, {1} = total required</comment></data>
@@ -174,7 +176,6 @@
   <data name="Dashboard_RejectedTitle" xml:space="preserve"><value>Inscription refus&#xE9;e</value></data>
   <data name="Dashboard_RejectedMessage" xml:space="preserve"><value>Votre inscription a &#xE9;t&#xE9; examin&#xE9;e et n'a pas &#xE9;t&#xE9; approuv&#xE9;e. Si vous avez des questions, veuillez contacter l'&#xE9;quipe d'administration.</value></data>
   <data name="Dashboard_RejectionReason" xml:space="preserve"><value>Motif</value></data>
-
   <data name="Dashboard_Subtitle" xml:space="preserve"><value>Voilà ce qui se passe.</value></data>
   <data name="Dashboard_AgreementSingular" xml:space="preserve"><value>accord à revoir</value></data>
   <data name="Dashboard_AgreementPlural" xml:space="preserve"><value>accords à revoir</value></data>
@@ -254,6 +255,7 @@
   <data name="Profile_Title" xml:space="preserve"><value>Mon profil</value></data>
   <data name="ProfileEdit_Title" xml:space="preserve"><value>Modifier le profil</value></data>
   <data name="ProfilePrivacy_Title" xml:space="preserve"><value>Mes donn&#xE9;es</value></data>
+  <data name="Emails_Title" xml:space="preserve"><value>Adresses e-mail</value></data>
   <data name="VerifyEmail_Title" xml:space="preserve"><value>V&#xE9;rification de l'adresse e-mail</value></data>
   <data name="VerifyEmail_GoToSettings" xml:space="preserve"><value>Acc&#xE9;der aux param&#xE8;tres de l'e-mail pr&#xE9;f&#xE9;r&#xE9;</value></data>
   <data name="VerifyEmail_GoHome" xml:space="preserve"><value>Retour &#xE0; l'accueil</value></data>
@@ -276,6 +278,8 @@
   <data name="Profile_ContactInformation" xml:space="preserve"><value>Coordonn&#xE9;es</value></data>
   <data name="Profile_NoContactInfo" xml:space="preserve"><value>Aucune coordonn&#xE9;e ajout&#xE9;e pour le moment.</value></data>
   <data name="Profile_AddSome" xml:space="preserve"><value>En ajouter</value></data>
+  <data name="Profile_NotificationTarget" xml:space="preserve"><value>Les notifications système sont envoyées à cette adresse</value></data>
+  <data name="Profile_NotificationTargetShort" xml:space="preserve"><value>Notifications</value></data>
   <data name="Profile_Teams" xml:space="preserve"><value>&#xC9;quipes</value></data>
   <data name="Profile_Coordinator" xml:space="preserve"><value>Coordinateur</value></data>
   <data name="Profile_MembershipTier" xml:space="preserve"><value>Niveau d'adh&#xE9;sion</value></data>
@@ -324,6 +328,8 @@
   <data name="ProfileEdit_AddContactField" xml:space="preserve"><value>Ajouter un champ de contact</value></data>
   <data name="ProfileEdit_BurnerCVHelp" xml:space="preserve"><value>Documentez votre participation aux &#xE9;v&#xE9;nements, r&#xF4;les et camps. Les entr&#xE9;es sont tri&#xE9;es par date (les plus r&#xE9;centes en premier).</value></data>
   <data name="ProfileEdit_AddEntry" xml:space="preserve"><value>Ajouter une entr&#xE9;e</value></data>
+  <data name="ProfileEdit_ManageEmails" xml:space="preserve"><value>Adresses e-mail</value></data>
+  <data name="ProfileEdit_ManageEmailsHelp" xml:space="preserve"><value>Ajouter des adresses e-mail, définir les préférences de notification et contrôler la visibilité du profil.</value></data>
 
   <!-- Profile Privacy View -->
   <data name="ProfilePrivacy_Lead" xml:space="preserve"><value>G&#xE9;rez vos donn&#xE9;es personnelles et vos param&#xE8;tres de confidentialit&#xE9;.</value></data>
@@ -357,7 +363,19 @@
   <data name="ProfilePrivacy_DeletionAccessRevoked" xml:space="preserve"><value>Vos appartenances aux &#xE9;quipes et attributions de r&#xF4;les ont &#xE9;t&#xE9; r&#xE9;voqu&#xE9;es.</value></data>
   <data name="ProfilePrivacy_CancelNoRestore" xml:space="preserve"><value>L'annulation ne restaurera pas vos anciennes appartenances aux &#xE9;quipes. Vous devrez rejoindre les &#xE9;quipes &#xE0; nouveau.</value></data>
 
-  <!-- Preferred Email View -->
+  <!-- Emails View -->
+  <data name="Emails_Description" xml:space="preserve"><value>Gérez vos adresses e-mail. Votre adresse de connexion est toujours incluse. Ajoutez des e-mails supplémentaires, définissez laquelle reçoit les notifications et contrôlez la visibilité du profil.</value></data>
+  <data name="Emails_YourEmails" xml:space="preserve"><value>Vos adresses e-mail</value></data>
+  <data name="Emails_AddNew" xml:space="preserve"><value>Ajouter une adresse e-mail</value></data>
+  <data name="Emails_MergeWarningTitle" xml:space="preserve"><value>Fusionner des comptes ?</value></data>
+  <data name="Emails_MergeWarningBody" xml:space="preserve"><value>La fusion de comptes sert à combiner deux comptes appartenant à la même personne (par exemple, un ancien et un nouvel e-mail, tous deux les vôtres). Ce n'est pas un moyen de partager ou de transférer des billets, des réservations ou d'autres éléments entre deux personnes différentes. Le transfert de billets entre humains est une fonctionnalité distincte, bientôt disponible.</value></data>
+  <data name="Emails_VerificationWillBeSent" xml:space="preserve"><value>Un e-mail de vérification sera envoyé à cette adresse.</value></data>
+  <data name="Emails_SendVerification" xml:space="preserve"><value>Envoyer un e-mail de vérification</value></data>
+  <data name="Emails_ResendCooldown" xml:space="preserve"><value>Vous pourrez demander un nouvel e-mail de vérification dans {0} minute(s).</value></data>
+  <data name="Emails_BackToEdit" xml:space="preserve"><value>Retour à la modification du profil</value></data>
+  <data name="Emails_ManageEmails" xml:space="preserve"><value>Adresses e-mail</value></data>
+  <data name="Emails_ManageEmailsHelp" xml:space="preserve"><value>Ajouter des adresses e-mail supplémentaires, gérer les notifications et définir la visibilité du profil.</value></data>
+  <data name="Emails_ManageLater" xml:space="preserve"><value>Vous pourrez ajouter et gérer des adresses e-mail supplémentaires depuis votre profil après avoir terminé la configuration.</value></data>
 
   <!-- Profile Controller TempData -->
   <data name="Profile_Updated" xml:space="preserve"><value>Profil mis &#xE0; jour avec succ&#xE8;s.</value></data>
@@ -491,6 +509,8 @@
   <data name="Consent_ReviewAndConsent" xml:space="preserve"><value>Consulter et consentir</value></data>
   <data name="Consent_PendingCount" xml:space="preserve"><value>{0} document(s) n&#xE9;cessitent votre consentement. Veuillez les consulter et donner votre consentement pour maintenir votre adh&#xE9;sion active.</value><comment>{0} = pending document count</comment></data>
   <data name="Consent_AllConsented" xml:space="preserve"><value>Vous avez consenti &#xE0; tous les documents requis.</value></data>
+  <data name="Consent_ActionRequired" xml:space="preserve"><value>Action requise</value></data>
+  <data name="Consent_LastUpdated" xml:space="preserve"><value>Dernière mise à jour</value></data>
   <data name="Consent_History" xml:space="preserve"><value>Historique des consentements</value></data>
   <data name="Consent_NoRecords" xml:space="preserve"><value>Aucun enregistrement de consentement pour le moment.</value></data>
   <data name="Consent_AboutTitle" xml:space="preserve"><value>&#xC0; propos du consentement</value></data>
@@ -560,6 +580,7 @@
   <data name="TeamDetail_PendingRequests" xml:space="preserve"><value>Demandes en attente</value></data>
   <data name="TeamDetail_ManageResources" xml:space="preserve"><value>G&#xE9;rer les ressources</value></data>
   <data name="TeamDetail_Resources" xml:space="preserve"><value>Ressources</value></data>
+  <data name="TeamDetail_ManageConsents" xml:space="preserve"><value>Documents juridiques</value></data>
 
   <!-- My Teams View -->
   <data name="MyTeams_TeamMemberships" xml:space="preserve"><value>Adh&#xE9;sions aux &#xE9;quipes</value></data>
@@ -621,7 +642,7 @@
   <!-- Admin                    -->
   <!-- ======================== -->
   <data name="AdminDashboard_Title" xml:space="preserve"><value>Tableau de bord administrateur</value></data>
-  <data name="AdminHumans_Title" xml:space="preserve"><value>Humans</value></data>
+  <data name="AdminHumans_Title" xml:space="preserve"><value>Membres</value></data>
   <data name="AdminHumans_AllStatuses" xml:space="preserve"><value>Tous</value></data>
   <data name="AdminHumans_Active" xml:space="preserve"><value>Actifs</value></data>
   <data name="AdminHumans_PendingApproval" xml:space="preserve"><value>En attente d&#x27;approbation</value></data>
@@ -916,7 +937,9 @@
   <data name="TeamAdmin_GroupEmailHelp" xml:space="preserve"><value>Saisissez l'adresse e-mail du Google Group. Le compte de service doit &#xEA;tre Gestionnaire du groupe.</value></data>
   <data name="TeamAdmin_LinkGroup" xml:space="preserve"><value>Lier le groupe</value></data>
 
-  <!-- Profile Picture & DOB -->
+  <!-- ======================== -->
+  <!-- Profile Picture & DOB   -->
+  <!-- ======================== -->
   <data name="Profile_ProfilePicture" xml:space="preserve"><value>Photo de profil</value></data>
   <data name="Profile_DateOfBirth" xml:space="preserve"><value>Anniversaire</value></data>
   <data name="Profile_PictureTooLarge" xml:space="preserve"><value>La photo de profil doit faire moins de 20 Mo.</value></data>
@@ -933,6 +956,8 @@
   <data name="Profile_ImportGooglePhoto_InvalidFormat" xml:space="preserve"><value>Ta photo Google n'a pas pu &#xEA;tre trait&#xE9;e : format non pris en charge ou mauvaise r&#xE9;ponse de Google.</value></data>
   <data name="Profile_ImportGooglePhoto_NotGoogleUrl" xml:space="preserve"><value>Impossible d'importer ta photo Google : l'URL de l'avatar enregistr&#xE9;e ne ressemble pas &#xE0; une adresse Google. T&#xE9;l&#xE9;charge-en une directement.</value></data>
   <data name="ProfileEdit_DateOfBirthHelp" xml:space="preserve"><value>Visible uniquement par vous et le conseil d'administration. Utilis&#xE9; pour le calendrier des anniversaires.</value></data>
+  <data name="Profile_Month" xml:space="preserve"><value>Mois</value></data>
+  <data name="Profile_Day" xml:space="preserve"><value>Jour</value></data>
   <data name="TeamDetail_TeamCoordinators" xml:space="preserve"><value>Coordinateurs</value></data>
 
   <!-- Team Public Pages -->
@@ -958,7 +983,9 @@
   <data name="ProfileEdit_EmergencyContactHelp" xml:space="preserve"><value>Indiquez une personne &#xE0; contacter en cas d'urgence lors d'&#xE9;v&#xE9;nements.</value></data>
   <data name="Profile_EmergencyContactBoardOnly" xml:space="preserve"><value>Visible uniquement par vous et le conseil d'administration.</value></data>
 
-  <!-- Birthday Calendar -->
+  <!-- ======================== -->
+  <!-- Birthday Calendar        -->
+  <!-- ======================== -->
   <data name="Birthdays_Title" xml:space="preserve"><value>Calendrier des anniversaires</value></data>
   <data name="Birthdays_Count" xml:space="preserve"><value>{0} anniversaires en {1}</value></data>
   <data name="Birthdays_Count_One" xml:space="preserve"><value>{0} anniversaire en {1}</value></data>
@@ -1082,122 +1109,131 @@
   <data name="Email_ReasonLine" xml:space="preserve"><value>&lt;p&gt;&lt;strong&gt;Motif :&lt;/strong&gt; {0}&lt;/p&gt;</value><comment>{0} = reason text (HTML-encoded by caller)</comment></data>
   <data name="Email_ResourcesSection" xml:space="preserve"><value>&lt;p&gt;Votre &#xE9;quipe dispose des ressources suivantes :&lt;/p&gt;&lt;ul&gt;{0}&lt;/ul&gt;</value><comment>{0} = resource list items HTML</comment></data>
 
-  <data name="Email_ApplicationSubmitted_Body" xml:space="preserve"><value>&lt;h2&gt;Nouvelle demande d'adh&#xE9;sion&lt;/h2&gt;
-&lt;p&gt;Une nouvelle demande d'adh&#xE9;sion a &#xE9;t&#xE9; soumise.&lt;/p&gt;
+  <data name="Email_ApplicationSubmitted_Body" xml:space="preserve"><value>&lt;h2&gt;New Membership Application&lt;/h2&gt;
+&lt;p&gt;A new membership application has been submitted.&lt;/p&gt;
 &lt;ul&gt;
-    &lt;li&gt;&lt;strong&gt;Candidat :&lt;/strong&gt; {0}&lt;/li&gt;
-    &lt;li&gt;&lt;strong&gt;ID de demande :&lt;/strong&gt; {1}&lt;/li&gt;
+    &lt;li&gt;&lt;strong&gt;Applicant:&lt;/strong&gt; {0}&lt;/li&gt;
+    &lt;li&gt;&lt;strong&gt;Application ID:&lt;/strong&gt; {1}&lt;/li&gt;
 &lt;/ul&gt;
-&lt;p&gt;&lt;a href="{2}/Governance/Applications/Admin/{1}"&gt;Examiner la demande&lt;/a&gt;&lt;/p&gt;</value><comment>{0} = applicant name, {1} = application ID, {2} = base URL</comment></data>
+&lt;p&gt;&lt;a href="{2}/Governance/Applications/Admin/{1}"&gt;Review Application&lt;/a&gt;&lt;/p&gt;</value><comment>{0} = applicant name, {1} = application ID, {2} = base URL</comment></data>
 
-  <data name="Email_ApplicationApproved_Body" xml:space="preserve"><value>&lt;h2&gt;Votre demande a &#xE9;t&#xE9; approuv&#xE9;e !&lt;/h2&gt;
-&lt;p&gt;Bonjour {0},&lt;/p&gt;
-&lt;p&gt;Nous avons le plaisir de vous informer que votre demande de {1} a &#xE9;t&#xE9; approuv&#xE9;e. Bienvenue chez Humans !&lt;/p&gt;
-&lt;p&gt;Vous pouvez d&#xE9;sormais acc&#xE9;der &#xE0; votre profil et explorer les &#xE9;quipes :&lt;/p&gt;
+  <data name="Email_ApplicationApproved_Body" xml:space="preserve"><value>&lt;h2&gt;Your Application Has Been Approved!&lt;/h2&gt;
+&lt;p&gt;Dear {0},&lt;/p&gt;
+&lt;p&gt;We're delighted to inform you that your {1} application has been approved. Welcome to Humans!&lt;/p&gt;
+&lt;p&gt;You can now access your profile and explore teams:&lt;/p&gt;
 &lt;ul&gt;
-    &lt;li&gt;&lt;a href="{2}/Profile"&gt;Voir votre profil&lt;/a&gt;&lt;/li&gt;
-    &lt;li&gt;&lt;a href="{2}/Teams"&gt;Parcourir les &#xE9;quipes&lt;/a&gt;&lt;/li&gt;
-    &lt;li&gt;&lt;a href="{2}/Consent"&gt;Consulter les documents l&#xE9;gaux&lt;/a&gt;&lt;/li&gt;
+    &lt;li&gt;&lt;a href="{2}/Profile"&gt;View Your Profile&lt;/a&gt;&lt;/li&gt;
+    &lt;li&gt;&lt;a href="{2}/Teams"&gt;Browse Teams&lt;/a&gt;&lt;/li&gt;
+    &lt;li&gt;&lt;a href="{2}/Consent"&gt;Review Legal Documents&lt;/a&gt;&lt;/li&gt;
 &lt;/ul&gt;
-&lt;p&gt;Si vous avez des questions, n'h&#xE9;sitez pas &#xE0; nous contacter.&lt;/p&gt;
-&lt;p&gt;Bienvenue !&lt;br/&gt;L'&#xE9;quipe Humans&lt;/p&gt;</value><comment>{0} = user name, {1} = tier, {2} = base URL</comment></data>
+&lt;p&gt;If you have any questions, don't hesitate to reach out.&lt;/p&gt;
+&lt;p&gt;Welcome aboard!&lt;br/&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = tier, {2} = base URL</comment></data>
 
-  <data name="Email_ApplicationRejected_Body" xml:space="preserve"><value>&lt;h2&gt;Mise &#xE0; jour de la demande&lt;/h2&gt;
-&lt;p&gt;Bonjour {0},&lt;/p&gt;
-&lt;p&gt;Merci de votre int&#xE9;r&#xEA;t. Apr&#xE8;s un examen attentif, nous avons le regret de vous informer que nous ne pouvons pas approuver votre demande de {1} pour le moment.&lt;/p&gt;
+  <data name="Email_ApplicationRejected_Body" xml:space="preserve"><value>&lt;h2&gt;Application Update&lt;/h2&gt;
+&lt;p&gt;Dear {0},&lt;/p&gt;
+&lt;p&gt;Thank you for your interest in joining us. After careful review, we regret to inform you that we are unable to approve your {1} application at this time.&lt;/p&gt;
 {2}
-&lt;p&gt;Si vous avez des questions ou souhaitez discuter de cette d&#xE9;cision, contactez-nous &#xE0; &lt;a href="mailto:{3}"&gt;{3}&lt;/a&gt;.&lt;/p&gt;
-&lt;p&gt;Cordialement,&lt;br/&gt;L'&#xE9;quipe Humans&lt;/p&gt;</value><comment>{0} = user name, {1} = tier, {2} = reason HTML (or empty), {3} = admin email</comment></data>
+&lt;p&gt;If you have any questions or would like to discuss this decision, please contact us at &lt;a href="mailto:{3}"&gt;{3}&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;Best regards,&lt;br/&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = tier, {2} = reason HTML (or empty), {3} = admin email</comment></data>
 
-  <data name="Email_SignupRejected_Body" xml:space="preserve"><value>&lt;h2&gt;Mise &#xE0; jour de l'inscription&lt;/h2&gt;
-&lt;p&gt;Bonjour {0},&lt;/p&gt;
-&lt;p&gt;Merci de votre int&#xE9;r&#xEA;t. Apr&#xE8;s un examen attentif, nous avons le regret de vous informer que nous ne pouvons pas approuver votre inscription pour le moment.&lt;/p&gt;
+  <data name="Email_SignupRejected_Body" xml:space="preserve"><value>&lt;h2&gt;Signup Update&lt;/h2&gt;
+&lt;p&gt;Dear {0},&lt;/p&gt;
+&lt;p&gt;Thank you for your interest in joining us. After careful review, we regret to inform you that we are unable to approve your signup at this time.&lt;/p&gt;
 {1}
-&lt;p&gt;Si vous avez des questions ou souhaitez discuter de cette d&#xE9;cision, contactez-nous &#xE0; &lt;a href="mailto:{2}"&gt;{2}&lt;/a&gt;.&lt;/p&gt;
-&lt;p&gt;Cordialement,&lt;br/&gt;L'&#xE9;quipe Humans&lt;/p&gt;</value><comment>{0} = user name, {1} = reason HTML (or empty), {2} = admin email</comment></data>
+&lt;p&gt;If you have any questions or would like to discuss this decision, please contact us at &lt;a href="mailto:{2}"&gt;{2}&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;Best regards,&lt;br/&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = reason HTML (or empty), {2} = admin email</comment></data>
 
-  <data name="Email_ReConsentsRequired_Body" xml:space="preserve"><value>&lt;h2&gt;Mise &#xE0; jour des documents l&#xE9;gaux&lt;/h2&gt;
-&lt;p&gt;Bonjour {0},&lt;/p&gt;
-&lt;p&gt;Nous avons mis &#xE0; jour les documents requis suivants :&lt;/p&gt;
+  <data name="Email_ReConsentsRequired_Body" xml:space="preserve"><value>&lt;h2&gt;Legal Document Update&lt;/h2&gt;
+&lt;p&gt;Dear {0},&lt;/p&gt;
+&lt;p&gt;We have updated the following required documents:&lt;/p&gt;
 &lt;ul&gt;
     {1}
 &lt;/ul&gt;
-&lt;p&gt;En tant que human, vous devez consulter et accepter ces documents mis &#xE0; jour pour maintenir votre statut actif.&lt;/p&gt;
-&lt;p&gt;&lt;a href="{2}/Consent"&gt;Consulter et accepter&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;Si vous avez des questions sur les modifications, contactez-nous.&lt;/p&gt;
-&lt;p&gt;Merci,&lt;br/&gt;L'&#xE9;quipe Humans&lt;/p&gt;</value><comment>{0} = user name, {1} = document list items HTML, {2} = base URL</comment></data>
+&lt;p&gt;As a human, you need to review and accept these updated documents to maintain your active status.&lt;/p&gt;
+&lt;p&gt;&lt;a href="{2}/Consent"&gt;Review and Accept&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;If you have any questions about the changes, please contact us.&lt;/p&gt;
+&lt;p&gt;Thank you,&lt;br/&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = document list items HTML, {2} = base URL</comment></data>
 
-  <data name="Email_ReConsentReminder_Body" xml:space="preserve"><value>&lt;h2&gt;Rappel de consentement&lt;/h2&gt;
-&lt;p&gt;Bonjour {0},&lt;/p&gt;
-&lt;p&gt;Ceci est un rappel : il vous reste &lt;strong&gt;{1} jours&lt;/strong&gt; pour consulter et accepter les documents mis &#xE0; jour suivants :&lt;/p&gt;
+  <data name="Email_ReConsentReminder_Body" xml:space="preserve"><value>&lt;h2&gt;Consent Reminder&lt;/h2&gt;
+&lt;p&gt;Dear {0},&lt;/p&gt;
+&lt;p&gt;This is a reminder that you have &lt;strong&gt;{1} days&lt;/strong&gt; remaining to review and accept the following updated documents:&lt;/p&gt;
 &lt;ul&gt;
     {2}
 &lt;/ul&gt;
-&lt;p&gt;Si vous n'acceptez pas ces documents avant la date limite, votre acc&#xE8;s pourra &#xEA;tre temporairement suspendu.&lt;/p&gt;
-&lt;p&gt;&lt;a href="{3}/Consent"&gt;Consulter les documents maintenant&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;Merci,&lt;br/&gt;L'&#xE9;quipe Humans&lt;/p&gt;</value><comment>{0} = user name, {1} = days remaining, {2} = document list items HTML, {3} = base URL</comment></data>
+&lt;p&gt;If you do not accept these documents before the deadline, your access may be temporarily suspended.&lt;/p&gt;
+&lt;p&gt;&lt;a href="{3}/Consent"&gt;Review Documents Now&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;Thank you,&lt;br/&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = days remaining, {2} = document list items HTML, {3} = base URL</comment></data>
 
-  <data name="Email_Welcome_Body" xml:space="preserve"><value>&lt;h2&gt;Bienvenue !&lt;/h2&gt;
-&lt;p&gt;Bonjour {0},&lt;/p&gt;
-&lt;p&gt;Bienvenue sur le portail Humans !&lt;/p&gt;
-&lt;p&gt;Voici ce que vous pouvez faire :&lt;/p&gt;
+  <data name="Email_Welcome_Body" xml:space="preserve"><value>&lt;h2&gt;Welcome!&lt;/h2&gt;
+&lt;p&gt;Dear {0},&lt;/p&gt;
+&lt;p&gt;Welcome to the Humans portal!&lt;/p&gt;
+&lt;p&gt;Here's what you can do:&lt;/p&gt;
 &lt;ul&gt;
-    &lt;li&gt;&lt;a href="{1}/Profile"&gt;Compl&#xE9;ter votre profil&lt;/a&gt;&lt;/li&gt;
-    &lt;li&gt;&lt;a href="{1}/Teams"&gt;Rejoindre des &#xE9;quipes et groupes de travail&lt;/a&gt;&lt;/li&gt;
-    &lt;li&gt;&lt;a href="{1}/Consent"&gt;Consulter les documents l&#xE9;gaux&lt;/a&gt;&lt;/li&gt;
+    &lt;li&gt;&lt;a href="{1}/Profile"&gt;Complete your profile&lt;/a&gt;&lt;/li&gt;
+    &lt;li&gt;&lt;a href="{1}/Teams"&gt;Join teams and working groups&lt;/a&gt;&lt;/li&gt;
+    &lt;li&gt;&lt;a href="{1}/Consent"&gt;Review legal documents&lt;/a&gt;&lt;/li&gt;
 &lt;/ul&gt;
-&lt;p&gt;Si vous avez des questions, n'h&#xE9;sitez pas &#xE0; nous contacter.&lt;/p&gt;
-&lt;p&gt;Cordialement,&lt;br/&gt;L'&#xE9;quipe Humans&lt;/p&gt;</value><comment>{0} = user name, {1} = base URL</comment></data>
+&lt;p&gt;If you have any questions, feel free to reach out to us.&lt;/p&gt;
+&lt;p&gt;Best regards,&lt;br/&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = base URL</comment></data>
 
-  <data name="Email_AccessSuspended_Body" xml:space="preserve"><value>&lt;h2&gt;Acc&#xE8;s suspendu&lt;/h2&gt;
-&lt;p&gt;Bonjour {0},&lt;/p&gt;
-&lt;p&gt;Votre acc&#xE8;s a &#xE9;t&#xE9; temporairement suspendu.&lt;/p&gt;
-&lt;p&gt;&lt;strong&gt;Motif :&lt;/strong&gt; {1}&lt;/p&gt;
-&lt;p&gt;Pour r&#xE9;tablir votre acc&#xE8;s, veuillez effectuer l'action requise :&lt;/p&gt;
+  <data name="Email_AccessSuspended_Body" xml:space="preserve"><value>&lt;h2&gt;Access Suspended&lt;/h2&gt;
+&lt;p&gt;Dear {0},&lt;/p&gt;
+&lt;p&gt;Your access has been temporarily suspended.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Reason:&lt;/strong&gt; {1}&lt;/p&gt;
+&lt;p&gt;To restore your access, please take the required action:&lt;/p&gt;
 &lt;ul&gt;
-    &lt;li&gt;&lt;a href="{2}/Consent"&gt;Consulter les exigences de consentement en attente&lt;/a&gt;&lt;/li&gt;
+    &lt;li&gt;&lt;a href="{2}/Consent"&gt;Review pending consent requirements&lt;/a&gt;&lt;/li&gt;
 &lt;/ul&gt;
-&lt;p&gt;Si vous pensez qu'il s'agit d'une erreur, contactez-nous &#xE0; &lt;a href="mailto:{3}"&gt;{3}&lt;/a&gt;.&lt;/p&gt;
-&lt;p&gt;L'&#xE9;quipe Humans&lt;/p&gt;</value><comment>{0} = user name, {1} = reason, {2} = base URL, {3} = admin email</comment></data>
+&lt;p&gt;If you believe this is an error or have questions, please contact us at &lt;a href="mailto:{3}"&gt;{3}&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = reason, {2} = base URL, {3} = admin email</comment></data>
 
-  <data name="Email_EmailVerification_Body" xml:space="preserve"><value>&lt;h2&gt;V&#xE9;rification de l'adresse e-mail&lt;/h2&gt;
-&lt;p&gt;Bonjour {0},&lt;/p&gt;
-&lt;p&gt;Vous avez demand&#xE9; &#xE0; d&#xE9;finir &lt;strong&gt;{1}&lt;/strong&gt; comme adresse e-mail pr&#xE9;f&#xE9;r&#xE9;e.&lt;/p&gt;
-&lt;p&gt;Cliquez sur le lien ci-dessous pour v&#xE9;rifier cette adresse :&lt;/p&gt;
-&lt;p&gt;&lt;a href="{2}" style="display:inline-block; padding:12px 24px; background-color:#0d6efd; color:#ffffff; text-decoration:none; border-radius:6px; font-weight:bold; font-size:16px;"&gt;V&#xE9;rifier l'adresse e-mail&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;Ce lien expire dans 24 heures.&lt;/p&gt;
-&lt;p&gt;Si vous n'avez pas demand&#xE9; ce changement, vous pouvez ignorer cet e-mail.&lt;/p&gt;
-&lt;p&gt;L'&#xE9;quipe Humans&lt;/p&gt;</value><comment>{0} = user name, {1} = email address, {2} = verification URL</comment></data>
+  <data name="Email_EmailVerification_Body" xml:space="preserve"><value>&lt;h2&gt;Email Verification&lt;/h2&gt;
+&lt;p&gt;Dear {0},&lt;/p&gt;
+&lt;p&gt;You requested to add &lt;strong&gt;{1}&lt;/strong&gt; to your account.&lt;/p&gt;
+&lt;p&gt;Please click the link below to verify this email address:&lt;/p&gt;
+&lt;p&gt;&lt;a href="{2}" style="display:inline-block; padding:12px 24px; background-color:#0d6efd; color:#ffffff; text-decoration:none; border-radius:6px; font-weight:bold; font-size:16px;"&gt;Verify Email Address&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;This link will expire in 24 hours.&lt;/p&gt;
+&lt;p&gt;If you did not request this change, you can safely ignore this email.&lt;/p&gt;
+&lt;p&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = email address, {2} = verification URL</comment></data>
 
-  <data name="Email_AccountDeletionRequested_Body" xml:space="preserve"><value>&lt;h2&gt;Demande de suppression de compte re&#xE7;ue&lt;/h2&gt;
-&lt;p&gt;Bonjour {0},&lt;/p&gt;
-&lt;p&gt;Nous avons re&#xE7;u votre demande de suppression de compte. Votre compte et toutes les donn&#xE9;es associ&#xE9;es seront d&#xE9;finitivement supprim&#xE9;s le &lt;strong&gt;{1}&lt;/strong&gt;.&lt;/p&gt;
-&lt;p&gt;Si vous changez d'avis, vous pouvez annuler cette demande avant la date de suppression :&lt;/p&gt;
-&lt;p&gt;&lt;a href="{2}/Profile/Privacy"&gt;Annuler la demande de suppression&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;Apr&#xE8;s la suppression, cette action ne peut pas &#xEA;tre annul&#xE9;e et toutes vos donn&#xE9;es seront d&#xE9;finitivement supprim&#xE9;es.&lt;/p&gt;
-&lt;p&gt;L'&#xE9;quipe Humans&lt;/p&gt;</value><comment>{0} = user name, {1} = formatted deletion date, {2} = base URL</comment></data>
+  <data name="Email_EmailVerification_Merge_Body" xml:space="preserve"><value>&lt;h2&gt;Account Merge Verification&lt;/h2&gt;
+&lt;p&gt;Dear {0},&lt;/p&gt;
+&lt;p&gt;You requested to add &lt;strong&gt;{1}&lt;/strong&gt; to your account. This email address is currently linked to another account.&lt;/p&gt;
+&lt;p&gt;If you verify this email, a merge request will be submitted for admin review. Once approved, data from the other account will be merged into yours and the duplicate account will be archived.&lt;/p&gt;
+&lt;p&gt;Please click the link below to verify and request the merge:&lt;/p&gt;
+&lt;p&gt;&lt;a href="{2}" style="display:inline-block; padding:12px 24px; background-color:#0d6efd; color:#ffffff; text-decoration:none; border-radius:6px; font-weight:bold; font-size:16px;"&gt;Verify and Request Merge&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;This link will expire in 24 hours.&lt;/p&gt;
+&lt;p&gt;If you did not request this, you can safely ignore this email. No changes will be made.&lt;/p&gt;
+&lt;p&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = email address, {2} = verification URL</comment></data>
 
-  <data name="Email_AccountDeleted_Body" xml:space="preserve"><value>&lt;h2&gt;Compte supprim&#xE9;&lt;/h2&gt;
-&lt;p&gt;Bonjour {0},&lt;/p&gt;
-&lt;p&gt;Comme demand&#xE9;, votre compte Humans a &#xE9;t&#xE9; d&#xE9;finitivement supprim&#xE9;. Toutes vos donn&#xE9;es personnelles ont &#xE9;t&#xE9; retir&#xE9;es de nos syst&#xE8;mes.&lt;/p&gt;
-&lt;p&gt;Merci d'avoir fait partie de notre communaut&#xE9;. Si vous souhaitez nous rejoindre &#xE0; nouveau, vous &#xEA;tes bienvenu(e) pour cr&#xE9;er un nouveau compte.&lt;/p&gt;
-&lt;p&gt;Cordialement,&lt;br/&gt;L'&#xE9;quipe Humans&lt;/p&gt;</value><comment>{0} = user name</comment></data>
+  <data name="Email_AccountDeletionRequested_Body" xml:space="preserve"><value>&lt;h2&gt;Account Deletion Request Received&lt;/h2&gt;
+&lt;p&gt;Dear {0},&lt;/p&gt;
+&lt;p&gt;We have received your request to delete your account. Your account and all associated data will be permanently deleted on &lt;strong&gt;{1}&lt;/strong&gt;.&lt;/p&gt;
+&lt;p&gt;If you change your mind, you can cancel this request before the deletion date by visiting:&lt;/p&gt;
+&lt;p&gt;&lt;a href="{2}/Profile/Privacy"&gt;Cancel Deletion Request&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;After deletion, this action cannot be undone and all your data will be permanently removed.&lt;/p&gt;
+&lt;p&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = formatted deletion date, {2} = base URL</comment></data>
 
-  <data name="Email_AddedToTeam_Body" xml:space="preserve"><value>&lt;h2&gt;Bienvenue dans {1} !&lt;/h2&gt;
-&lt;p&gt;Bonjour {0},&lt;/p&gt;
-&lt;p&gt;Vous avez &#xE9;t&#xE9; ajout&#xE9;(e) &#xE0; l'&#xE9;quipe &lt;strong&gt;{1}&lt;/strong&gt;.&lt;/p&gt;
+  <data name="Email_AccountDeleted_Body" xml:space="preserve"><value>&lt;h2&gt;Account Deleted&lt;/h2&gt;
+&lt;p&gt;Dear {0},&lt;/p&gt;
+&lt;p&gt;As requested, your Humans account has been permanently deleted. All your personal data has been removed from our systems.&lt;/p&gt;
+&lt;p&gt;Thank you for being part of our community. If you ever wish to rejoin, you're welcome to create a new account.&lt;/p&gt;
+&lt;p&gt;Best wishes,&lt;br/&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name</comment></data>
+
+  <data name="Email_AddedToTeam_Body" xml:space="preserve"><value>&lt;h2&gt;Welcome to {1}!&lt;/h2&gt;
+&lt;p&gt;Dear {0},&lt;/p&gt;
+&lt;p&gt;You have been added to the &lt;strong&gt;{1}&lt;/strong&gt; team.&lt;/p&gt;
 {2}
-&lt;p&gt;&lt;a href="{3}"&gt;Voir la page de l'&#xE9;quipe&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;L'&#xE9;quipe Humans&lt;/p&gt;</value><comment>{0} = user name, {1} = team name, {2} = resources HTML (or empty), {3} = team URL</comment></data>
+&lt;p&gt;&lt;a href="{3}"&gt;View Team Page&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = team name, {2} = resources HTML (or empty), {3} = team URL</comment></data>
 
-  <data name="Email_TermRenewalReminder_Body" xml:space="preserve"><value>&lt;h2&gt;Renouvellement du mandat&lt;/h2&gt;
-&lt;p&gt;Bonjour {0},&lt;/p&gt;
-&lt;p&gt;Votre mandat de &lt;strong&gt;{1}&lt;/strong&gt; expire le &lt;strong&gt;{2}&lt;/strong&gt;.&lt;/p&gt;
-&lt;p&gt;Si vous souhaitez continuer en tant que {1}, veuillez soumettre une demande de renouvellement avant la fin de votre mandat.&lt;/p&gt;
-&lt;p&gt;&lt;a href="{3}/Governance/Applications/Create"&gt;Soumettre une demande de renouvellement&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;Sans renouvellement, vous resterez un human actif mais n'aurez plus l'acc&#xE8;s de niveau {1}.&lt;/p&gt;
-&lt;p&gt;Merci pour votre engagement !&lt;br/&gt;L'&#xE9;quipe Humans&lt;/p&gt;</value><comment>{0} = user name, {1} = tier name, {2} = expiry date, {3} = base URL</comment></data>
-
+  <data name="Email_TermRenewalReminder_Body" xml:space="preserve"><value>&lt;h2&gt;Membership Term Renewal&lt;/h2&gt;
+&lt;p&gt;Dear {0},&lt;/p&gt;
+&lt;p&gt;Your &lt;strong&gt;{1}&lt;/strong&gt; term is expiring on &lt;strong&gt;{2}&lt;/strong&gt;.&lt;/p&gt;
+&lt;p&gt;If you would like to continue as a {1}, please submit a renewal application before your term ends.&lt;/p&gt;
+&lt;p&gt;&lt;a href="{3}/Governance/Applications/Create"&gt;Submit Renewal Application&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;If you do not renew, you will remain an active human but will no longer have {1}-level access.&lt;/p&gt;
+&lt;p&gt;Thank you for your continued involvement!&lt;br/&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = tier name, {2} = expiry date, {3} = base URL</comment></data>
 
   <!-- Navigation restructure -->
   <data name="Nav_Review" xml:space="preserve"><value>Examen</value></data>
@@ -1235,6 +1271,22 @@
   <data name="TeamAdmin_MemberAdded" xml:space="preserve"><value>Membre ajout&#xE9; avec succ&#xE8;s.</value></data>
   <data name="TeamAdmin_NoResults" xml:space="preserve"><value>Aucun human trouv&#xE9;</value></data>
   <data name="TeamAdmin_Add" xml:space="preserve"><value>Ajouter</value></data>
+
+  <!-- Facilitated Messaging -->
+  <data name="Email_FacilitatedMessage_Subject" xml:space="preserve"><value>Message Humans de : {0}</value></data>
+  <data name="Email_FacilitatedMessage_Body" xml:space="preserve"><value>&lt;h2&gt;Message de {1}&lt;/h2&gt;&lt;p&gt;Bonjour {0},&lt;/p&gt;&lt;p&gt;{1} vous a envoyé un message via Humans :&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{2}&lt;/p&gt;&lt;hr /&gt;{3}</value></data>
+  <data name="Email_FacilitatedMessage_NoContactInfo" xml:space="preserve"><value>Cet humain a choisi de ne pas partager ses coordonnées.</value></data>
+  <data name="SendMessage_Title" xml:space="preserve"><value>Envoyer un message à {0}</value></data>
+  <data name="SendMessage_Breadcrumb" xml:space="preserve"><value>Envoyer un message</value></data>
+  <data name="SendMessage_Heading" xml:space="preserve"><value>Envoyer un message à {0}</value></data>
+  <data name="SendMessage_MessageLabel" xml:space="preserve"><value>Message</value></data>
+  <data name="SendMessage_PlainTextOnly" xml:space="preserve"><value>Texte brut uniquement. Maximum 2000 caractères.</value></data>
+  <data name="SendMessage_IncludeContactInfo" xml:space="preserve"><value>Inclure mes coordonnées</value></data>
+  <data name="SendMessage_IncludeContactInfoHelp" xml:space="preserve"><value>Votre nom et votre e-mail seront inclus pour que la personne puisse vous répondre directement.</value></data>
+  <data name="SendMessage_Send" xml:space="preserve"><value>Envoyer le message</value></data>
+  <data name="SendMessage_Success" xml:space="preserve"><value>Votre message a été envoyé à {0}.</value></data>
+  <data name="SendMessage_Button" xml:space="preserve"><value>Envoyer un message à {0}</value></data>
+
   <data name="Search_Title" xml:space="preserve"><value>Rechercher des Humans</value></data>
   <data name="Search_Placeholder" xml:space="preserve"><value>Rechercher par nom, ville, intérêts, bio...</value></data>
   <data name="Search_NoResults" xml:space="preserve"><value>Aucun human trouvé correspondant à votre recherche.</value></data>
@@ -1268,113 +1320,105 @@
 
   <!-- Feedback Email -->
   <data name="Email_FeedbackResponse_Subject" xml:space="preserve"><value>Mise à jour de votre feedback</value></data>
-  <data name="Email_FeedbackResponse_Body" xml:space="preserve"><value>&lt;h2&gt;Mise à jour de votre Feedback&lt;/h2&gt;
-&lt;p&gt;Bonjour {0},&lt;/p&gt;
-&lt;p&gt;Nous avons examiné votre feedback :&lt;/p&gt;
+  <data name="Email_FeedbackResponse_Body" xml:space="preserve"><value>&lt;h2&gt;Update on Your Feedback&lt;/h2&gt;
+&lt;p&gt;Dear {0},&lt;/p&gt;
+&lt;p&gt;We've reviewed your feedback:&lt;/p&gt;
 &lt;blockquote style="border-left: 3px solid #ccc; padding-left: 12px; color: #666;"&gt;{1}&lt;/blockquote&gt;
-&lt;p&gt;&lt;strong&gt;Notre réponse :&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Our response:&lt;/strong&gt;&lt;/p&gt;
 &lt;p&gt;{2}&lt;/p&gt;
-&lt;p&gt;Merci de nous aider à nous améliorer !&lt;/p&gt;
-&lt;p&gt;L'équipe Humans&lt;/p&gt;</value><comment>{0} = user name, {1} = original description, {2} = response message</comment></data>
+&lt;p&gt;Thank you for helping us improve!&lt;/p&gt;
+&lt;p&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = original description, {2} = response message</comment></data>
 
   <!-- Issue Comment Email -->
   <data name="Email_IssueComment_Subject" xml:space="preserve"><value>Nouveau commentaire sur votre issue : {0}</value></data>
-  <data name="Email_IssueComment_Body" xml:space="preserve"><value>&lt;h2&gt;Nouveau commentaire sur votre issue&lt;/h2&gt;
-&lt;p&gt;Bonjour {0},&lt;/p&gt;
-&lt;p&gt;Il y a un nouveau commentaire sur votre issue :&lt;/p&gt;
-&lt;p&gt;&lt;strong&gt;Issue :&lt;/strong&gt; {1}&lt;/p&gt;
-&lt;p&gt;&lt;strong&gt;Commentaire :&lt;/strong&gt;&lt;/p&gt;
+  <data name="Email_IssueComment_Body" xml:space="preserve"><value>&lt;h2&gt;New comment on your issue&lt;/h2&gt;
+&lt;p&gt;Hi {0},&lt;/p&gt;
+&lt;p&gt;There's a new comment on your issue:&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Issue:&lt;/strong&gt; {1}&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Comment:&lt;/strong&gt;&lt;/p&gt;
 &lt;blockquote style="border-left: 3px solid #ccc; padding-left: 12px; color: #666;"&gt;{2}&lt;/blockquote&gt;
-&lt;p&gt;&lt;a href="{3}"&gt;Ouvrir l'issue&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;— L'équipe Humans&lt;/p&gt;</value><comment>{0} = display name, {1} = issue title, {2} = comment HTML, {3} = issue URL</comment></data>
+&lt;p&gt;&lt;a href="{3}"&gt;Open issue&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;— The Humans team&lt;/p&gt;</value><comment>{0} = display name, {1} = issue title, {2} = comment HTML, {3} = issue URL</comment></data>
 
   <!-- Feedback Widget -->
-  <data name="Feedback_Button" xml:space="preserve"><value>Feedback</value></data>
-  <data name="Feedback_Title" xml:space="preserve"><value>Envoyer un Feedback</value></data>
+  <data name="Feedback_Button" xml:space="preserve"><value>Retours</value></data>
+  <data name="Feedback_Title" xml:space="preserve"><value>Envoyer un retour</value></data>
   <data name="Feedback_Category" xml:space="preserve"><value>Catégorie</value></data>
   <data name="Feedback_Category_Bug" xml:space="preserve"><value>Rapport de bug</value></data>
   <data name="Feedback_Category_FeatureRequest" xml:space="preserve"><value>Demande de fonctionnalité</value></data>
-  <data name="Feedback_Category_Question" xml:space="preserve"><value>Question</value></data>
-  <data name="Feedback_Description" xml:space="preserve"><value>Description</value></data>
+  <data name="Feedback_Category_Question" xml:space="preserve"><value>Poser une question</value></data>
+  <data name="Feedback_Description" xml:space="preserve"><value>Description détaillée</value></data>
   <data name="Feedback_DescriptionPlaceholder" xml:space="preserve"><value>Dites-nous ce qui s'est passé ou ce que vous aimeriez voir...</value></data>
   <data name="Feedback_Screenshot" xml:space="preserve"><value>Capture d'écran (facultatif)</value></data>
   <data name="Feedback_ScreenshotHelp" xml:space="preserve"><value>JPEG, PNG ou WebP. Max 10 Mo.</value></data>
   <data name="Feedback_Cancel" xml:space="preserve"><value>Annuler</value></data>
   <data name="Feedback_Submit" xml:space="preserve"><value>Envoyer</value></data>
-  <data name="Feedback_Submitted" xml:space="preserve"><value>Merci ! Votre feedback a été envoyé.</value></data>
-  <data name="Feedback_Error" xml:space="preserve"><value>Une erreur est survenue lors de l'envoi de votre feedback. Veuillez réessayer.</value></data>
+  <data name="Feedback_Submitted" xml:space="preserve"><value>Merci ! Votre retour a été envoyé.</value></data>
+  <data name="Feedback_Error" xml:space="preserve"><value>Une erreur est survenue lors de l'envoi de votre retour. Veuillez réessayer.</value></data>
 
+  <!-- Agent Widget -->
+  <data name="Agent_ConversationBackToHistory" xml:space="preserve"><value>Retour à l'historique</value></data>
+  <data name="Agent_ConversationEmpty" xml:space="preserve"><value>Aucun message dans cette conversation.</value></data>
+  <data name="Agent_ConversationHandedOffToFeedback" xml:space="preserve"><value>Transféré vers un rapport de retour</value></data>
+  <data name="Agent_ConversationRefusedLabel" xml:space="preserve"><value>L'assistant a refusé de répondre à ce tour.</value></data>
+  <data name="Agent_ConversationTitle" xml:space="preserve"><value>Conversation avec l'assistant</value></data>
+  <data name="Agent_ConversationToolCallsSummary" xml:space="preserve"><value>{0} appel(s) d'outil</value></data>
+  <data name="Agent_ConversationTranscript" xml:space="preserve"><value>Transcription</value></data>
+  <data name="Agent_ContextCardCaveat" xml:space="preserve"><value>Ceci est votre contexte actuel. Si vos rôles ou équipes ont changé depuis cette conversation, l'assistant a vu une version différente à ce moment-là.</value></data>
+  <data name="Agent_ContextCardEmpty" xml:space="preserve"><value>Aucun contexte personnel n'est actuellement envoyé à l'assistant.</value></data>
+  <data name="Agent_ContextCardSummary" xml:space="preserve"><value>Votre contexte (tel que l'assistant vous voit maintenant)</value></data>
+  <data name="Agent_HistoryEmpty" xml:space="preserve"><value>Aucune conversation.</value></data>
+  <data name="Agent_HistoryLastMessage" xml:space="preserve"><value>Dernier message</value></data>
+  <data name="Agent_HistoryMessages" xml:space="preserve"><value>Messages</value></data>
+  <data name="Agent_HistoryStarted" xml:space="preserve"><value>Début</value></data>
+  <data name="Agent_HistoryTitle" xml:space="preserve"><value>Assistant — Mes conversations</value></data>
+  <data name="Agent_InputPlaceholder" xml:space="preserve"><value>Posez une question sur le fonctionnement…</value></data>
+  <data name="Agent_PanelTitle" xml:space="preserve"><value>Assistant</value></data>
+  <data name="Agent_TermsLink" xml:space="preserve"><value>Conditions IA</value></data>
+  <data name="Agent_Send" xml:space="preserve"><value>Envoyer</value></data>
+  <data name="Agent_ViewHistory" xml:space="preserve"><value>Historique</value></data>
+  <data name="Agent_WidgetButton" xml:space="preserve"><value>Ouvrir l'assistant</value></data>
+  <data name="Help_WidgetButton" xml:space="preserve"><value>Aide</value></data>
+  <data name="Help_Menu_TalkWithAgent" xml:space="preserve"><value>Parler avec l'Assistant</value></data>
+  <data name="Help_Menu_CreateIssue" xml:space="preserve"><value>Créer un signalement</value></data>
+  <data name="Help_Agent_IssueProposed" xml:space="preserve"><value>Je ne peux pas répondre à cela moi-même. J'ai rédigé un signalement pour l'équipe — relis-le et envoie-le, s'il te plaît.</value></data>
+  <data name="Nav_Agent" xml:space="preserve"><value>Assistant</value></data>
+
+  <!-- Magic Link Auth -->
+  <data name="Email_MagicLinkLogin_Subject" xml:space="preserve"><value>Votre lien de connexion pour Nobodies</value></data>
+  <data name="Email_MagicLinkLogin_Body" xml:space="preserve"><value>&lt;p&gt;Bonjour {0},&lt;/p&gt;&lt;p&gt;Cliquez sur le lien ci-dessous pour vous connecter :&lt;/p&gt;&lt;p&gt;&lt;a href="{1}"&gt;Se connecter à Nobodies&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Ce lien expire dans 15 minutes et ne peut être utilisé qu'une seule fois.&lt;/p&gt;&lt;p&gt;Si vous n'avez pas demandé ceci, vous pouvez ignorer cet e-mail.&lt;/p&gt;</value></data>
+  <data name="Email_MagicLinkSignup_Subject" xml:space="preserve"><value>Bienvenue chez Nobodies — confirmez votre e-mail</value></data>
+  <data name="Email_MagicLinkSignup_Body" xml:space="preserve"><value>&lt;p&gt;Bienvenue chez Nobodies !&lt;/p&gt;&lt;p&gt;Cliquez sur le lien ci-dessous pour créer votre compte :&lt;/p&gt;&lt;p&gt;&lt;a href="{0}"&gt;Créer votre compte&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Ce lien expire dans 15 minutes et ne peut être utilisé qu'une seule fois.&lt;/p&gt;&lt;p&gt;Si vous n'avez pas demandé ceci, vous pouvez ignorer cet e-mail.&lt;/p&gt;</value></data>
+  <data name="Login_MagicLink_Title" xml:space="preserve"><value>Ou se connecter par e-mail</value></data>
+  <data name="Login_MagicLink_Placeholder" xml:space="preserve"><value>votre@email.com</value></data>
+  <data name="Login_MagicLink_Submit" xml:space="preserve"><value>M'envoyer un lien de connexion</value></data>
+  <data name="MagicLinkSent_Title" xml:space="preserve"><value>Vérifiez vos e-mails</value></data>
   <data name="MagicLinkSent_Message" xml:space="preserve"><value>Nous avons envoyé un lien à cette adresse e-mail depuis humans@nobodies.team. Vérifiez votre boîte de réception (et le dossier spam).</value></data>
+  <data name="MagicLinkError_Title" xml:space="preserve"><value>Lien expiré ou invalide</value></data>
+  <data name="MagicLinkError_Message" xml:space="preserve"><value>Ce lien de connexion a expiré ou a déjà été utilisé.</value></data>
+  <data name="MagicLinkError_RequestNew" xml:space="preserve"><value>Demander un nouveau lien</value></data>
+  <data name="CompleteSignup_Title" xml:space="preserve"><value>Finaliser votre inscription</value></data>
+  <data name="CompleteSignup_DisplayNameLabel" xml:space="preserve"><value>Nom d'affichage</value></data>
+  <data name="CompleteSignup_Submit" xml:space="preserve"><value>Créer un compte</value></data>
+  <data name="MagicLinkSent_BackToLogin" xml:space="preserve"><value>Retour à la connexion</value></data>
+  <data name="MagicLinkSent_Expiry" xml:space="preserve"><value>Votre lien expire à {0}.</value></data>
+  <data name="MagicLinkConfirm_Title" xml:space="preserve"><value>Se connecter</value></data>
+  <data name="MagicLinkConfirm_Message" xml:space="preserve"><value>Cliquez sur le bouton ci-dessous pour vous connecter à votre compte.</value></data>
+  <data name="MagicLinkConfirm_SignIn" xml:space="preserve"><value>Se connecter</value></data>
 
   <!-- Workspace Credentials -->
   <data name="Email_WorkspaceCredentials_Subject" xml:space="preserve"><value>Ton compte @nobodies.team est prêt</value></data>
-  <data name="Email_WorkspaceCredentials_Body" xml:space="preserve"><value>&lt;h2&gt;Ton compte @nobodies.team est prêt&lt;/h2&gt;
-&lt;p&gt;Bonjour {0},&lt;/p&gt;
-&lt;p&gt;Ton compte Google Workspace a été créé :&lt;/p&gt;
-&lt;p&gt;&lt;strong&gt;Nom d'utilisateur :&lt;/strong&gt; {1}&lt;br/&gt;
-&lt;strong&gt;Mot de passe temporaire :&lt;/strong&gt; {2}&lt;/p&gt;
-&lt;p&gt;Connecte-toi sur &lt;a href="https://mail.google.com/"&gt;mail.google.com&lt;/a&gt; — tu devras changer ton mot de passe lors de la première connexion.&lt;/p&gt;
-&lt;p&gt;Notre organisation a l'authentification à deux facteurs (2FA) activée. Tu devras également configurer un second facteur (comme un téléphone ou une application d'authentification) lors de la connexion.&lt;/p&gt;
-&lt;p&gt;L'équipe Humans&lt;/p&gt;</value><comment>{0} = user name, {1} = workspace email, {2} = temporary password</comment></data>
+  <data name="Email_WorkspaceCredentials_Body" xml:space="preserve"><value>&lt;h2&gt;Your @nobodies.team account is ready&lt;/h2&gt;
+&lt;p&gt;Hi {0},&lt;/p&gt;
+&lt;p&gt;Your Google Workspace account has been created:&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Username:&lt;/strong&gt; {1}&lt;br/&gt;
+&lt;strong&gt;Temporary password:&lt;/strong&gt; {2}&lt;/p&gt;
+&lt;p&gt;Sign in at &lt;a href="https://mail.google.com/"&gt;mail.google.com&lt;/a&gt; and you will be asked to change your password on first login.&lt;/p&gt;
+&lt;p&gt;Our organization has two-factor authentication (2FA) enabled, so you will also need to set up a second factor (such as a phone or authenticator app) during sign-in.&lt;/p&gt;
+&lt;p&gt;The Humans team&lt;/p&gt;</value><comment>{0} = user name, {1} = workspace email, {2} = temporary password</comment></data>
 
   <!-- Camp Cards -->
   <data name="CampCard_NeedsPhoto" xml:space="preserve"><value>Ce barrio a besoin d'une photo !</value></data>
-
-  <data name="CompleteSignup_DisplayNameLabel" xml:space="preserve"><value>Nom d'affichage</value></data>
-  <data name="CompleteSignup_Submit" xml:space="preserve"><value>Créer un compte</value></data>
-  <data name="CompleteSignup_Title" xml:space="preserve"><value>Finaliser votre inscription</value></data>
-  <data name="Consent_ActionRequired" xml:space="preserve"><value>Action requise</value></data>
-  <data name="Consent_LastUpdated" xml:space="preserve"><value>Dernière mise à jour</value></data>
-  <data name="Email_EmailVerification_Merge_Body" xml:space="preserve"><value>&lt;h2&gt;Vérification de fusion de comptes&lt;/h2&gt;&lt;p&gt;Bonjour {0},&lt;/p&gt;&lt;p&gt;Vous avez demandé à ajouter &lt;strong&gt;{1}&lt;/strong&gt; à votre compte. Cette adresse e-mail est actuellement liée à un autre compte.&lt;/p&gt;&lt;p&gt;Si vous vérifiez cet e-mail, une demande de fusion sera soumise pour examen par un administrateur. Une fois approuvée, les données de l'autre compte seront fusionnées dans le vôtre et le compte en double sera archivé.&lt;/p&gt;&lt;p&gt;Veuillez cliquer sur le lien ci-dessous pour vérifier et demander la fusion :&lt;/p&gt;&lt;p&gt;&lt;a href="{2}" style="display:inline-block; padding:12px 24px; background-color:#0d6efd; color:#ffffff; text-decoration:none; border-radius:6px; font-weight:bold; font-size:16px;"&gt;Vérifier et demander la fusion&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Ce lien expire dans 24 heures.&lt;/p&gt;&lt;p&gt;Si vous n'avez pas fait cette demande, vous pouvez ignorer cet e-mail. Aucune modification ne sera effectuée.&lt;/p&gt;&lt;p&gt;L'équipe Humans&lt;/p&gt;</value></data>
-  <data name="Email_FacilitatedMessage_Body" xml:space="preserve"><value>&lt;h2&gt;Message de {1}&lt;/h2&gt;&lt;p&gt;Bonjour {0},&lt;/p&gt;&lt;p&gt;{1} vous a envoyé un message via Humans :&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{2}&lt;/p&gt;&lt;hr /&gt;{3}</value></data>
-  <data name="Email_FacilitatedMessage_NoContactInfo" xml:space="preserve"><value>Cet humain a choisi de ne pas partager ses coordonnées.</value></data>
-  <data name="Email_FacilitatedMessage_Subject" xml:space="preserve"><value>Message Humans de : {0}</value></data>
-  <data name="Email_MagicLinkLogin_Body" xml:space="preserve"><value>&lt;p&gt;Bonjour {0},&lt;/p&gt;&lt;p&gt;Cliquez sur le lien ci-dessous pour vous connecter :&lt;/p&gt;&lt;p&gt;&lt;a href="{1}"&gt;Se connecter à Nobodies&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Ce lien expire dans 15 minutes et ne peut être utilisé qu'une seule fois.&lt;/p&gt;&lt;p&gt;Si vous n'avez pas demandé ceci, vous pouvez ignorer cet e-mail.&lt;/p&gt;</value></data>
-  <data name="Email_MagicLinkLogin_Subject" xml:space="preserve"><value>Votre lien de connexion pour Nobodies</value></data>
-  <data name="Email_MagicLinkSignup_Body" xml:space="preserve"><value>&lt;p&gt;Bienvenue chez Nobodies !&lt;/p&gt;&lt;p&gt;Cliquez sur le lien ci-dessous pour créer votre compte :&lt;/p&gt;&lt;p&gt;&lt;a href="{0}"&gt;Créer votre compte&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Ce lien expire dans 15 minutes et ne peut être utilisé qu'une seule fois.&lt;/p&gt;&lt;p&gt;Si vous n'avez pas demandé ceci, vous pouvez ignorer cet e-mail.&lt;/p&gt;</value></data>
-  <data name="Email_MagicLinkSignup_Subject" xml:space="preserve"><value>Bienvenue chez Nobodies — confirmez votre e-mail</value></data>
-  <data name="Emails_AddNew" xml:space="preserve"><value>Ajouter une adresse e-mail</value></data>
-  <data name="Emails_BackToEdit" xml:space="preserve"><value>Retour à la modification du profil</value></data>
-  <data name="Emails_Description" xml:space="preserve"><value>Gérez vos adresses e-mail. Votre adresse de connexion est toujours incluse. Ajoutez des e-mails supplémentaires, définissez laquelle reçoit les notifications et contrôlez la visibilité du profil.</value></data>
-  <data name="Emails_ManageEmails" xml:space="preserve"><value>Adresses e-mail</value></data>
-  <data name="Emails_ManageEmailsHelp" xml:space="preserve"><value>Ajouter des adresses e-mail supplémentaires, gérer les notifications et définir la visibilité du profil.</value></data>
-  <data name="Emails_ManageLater" xml:space="preserve"><value>Vous pourrez ajouter et gérer des adresses e-mail supplémentaires depuis votre profil après avoir terminé la configuration.</value></data>
-  <data name="Emails_MergeWarningBody" xml:space="preserve"><value>La fusion de comptes sert à combiner deux comptes appartenant à la même personne (par exemple, un ancien et un nouvel e-mail, tous deux les vôtres). Ce n'est pas un moyen de partager ou de transférer des billets, des réservations ou d'autres éléments entre deux personnes différentes. Le transfert de billets entre humains est une fonctionnalité distincte, bientôt disponible.</value></data>
-  <data name="Emails_MergeWarningTitle" xml:space="preserve"><value>Fusionner des comptes ?</value></data>
-  <data name="Emails_ResendCooldown" xml:space="preserve"><value>Vous pourrez demander un nouvel e-mail de vérification dans {0} minute(s).</value></data>
-  <data name="Emails_SendVerification" xml:space="preserve"><value>Envoyer un e-mail de vérification</value></data>
-  <data name="Emails_Title" xml:space="preserve"><value>Adresses e-mail</value></data>
-  <data name="Emails_VerificationWillBeSent" xml:space="preserve"><value>Un e-mail de vérification sera envoyé à cette adresse.</value></data>
-  <data name="Emails_YourEmails" xml:space="preserve"><value>Vos adresses e-mail</value></data>
-  <data name="Login_MagicLink_Placeholder" xml:space="preserve"><value>votre@email.com</value></data>
-  <data name="Login_MagicLink_Submit" xml:space="preserve"><value>M'envoyer un lien de connexion</value></data>
-  <data name="Login_MagicLink_Title" xml:space="preserve"><value>Ou se connecter par e-mail</value></data>
-  <data name="MagicLinkConfirm_Message" xml:space="preserve"><value>Cliquez sur le bouton ci-dessous pour vous connecter à votre compte.</value></data>
-  <data name="MagicLinkConfirm_SignIn" xml:space="preserve"><value>Se connecter</value></data>
-  <data name="MagicLinkConfirm_Title" xml:space="preserve"><value>Se connecter</value></data>
-  <data name="MagicLinkError_Message" xml:space="preserve"><value>Ce lien de connexion a expiré ou a déjà été utilisé.</value></data>
-  <data name="MagicLinkError_RequestNew" xml:space="preserve"><value>Demander un nouveau lien</value></data>
-  <data name="MagicLinkError_Title" xml:space="preserve"><value>Lien expiré ou invalide</value></data>
-  <data name="MagicLinkSent_BackToLogin" xml:space="preserve"><value>Retour à la connexion</value></data>
-  <data name="MagicLinkSent_Expiry" xml:space="preserve"><value>Votre lien expire à {0}.</value></data>
-  <data name="MagicLinkSent_Title" xml:space="preserve"><value>Vérifiez vos e-mails</value></data>
-  <data name="ProfileEdit_ManageEmails" xml:space="preserve"><value>Adresses e-mail</value></data>
-  <data name="ProfileEdit_ManageEmailsHelp" xml:space="preserve"><value>Ajouter des adresses e-mail, définir les préférences de notification et contrôler la visibilité du profil.</value></data>
-  <data name="Profile_Day" xml:space="preserve"><value>Jour</value></data>
-  <data name="Profile_Month" xml:space="preserve"><value>Mois</value></data>
-  <data name="Profile_NotificationTarget" xml:space="preserve"><value>Les notifications système sont envoyées à cette adresse</value></data>
-  <data name="Profile_NotificationTargetShort" xml:space="preserve"><value>Notifications</value></data>
-  <data name="SendMessage_Breadcrumb" xml:space="preserve"><value>Envoyer un message</value></data>
-  <data name="SendMessage_Button" xml:space="preserve"><value>Envoyer un message à {0}</value></data>
-  <data name="SendMessage_Heading" xml:space="preserve"><value>Envoyer un message à {0}</value></data>
-  <data name="SendMessage_IncludeContactInfo" xml:space="preserve"><value>Inclure mes coordonnées</value></data>
-  <data name="SendMessage_IncludeContactInfoHelp" xml:space="preserve"><value>Votre nom et votre e-mail seront inclus pour que la personne puisse vous répondre directement.</value></data>
-  <data name="SendMessage_MessageLabel" xml:space="preserve"><value>Message</value></data>
-  <data name="SendMessage_PlainTextOnly" xml:space="preserve"><value>Texte brut uniquement. Maximum 2000 caractères.</value></data>
-  <data name="SendMessage_Send" xml:space="preserve"><value>Envoyer le message</value></data>
-  <data name="SendMessage_Success" xml:space="preserve"><value>Votre message a été envoyé à {0}.</value></data>
-  <data name="SendMessage_Title" xml:space="preserve"><value>Envoyer un message à {0}</value></data>
-  <data name="TeamDetail_ManageConsents" xml:space="preserve"><value>Documents juridiques</value></data>
 
   <!-- ======================== -->
   <!-- Things To Do Wizard      -->
@@ -1453,6 +1497,7 @@
   <!-- ======================== -->
   <!-- CityPlanning                -->
   <!-- ======================== -->
+  <!-- Map page -->
   <data name="CityPlanning_BarrioMapTitle" xml:space="preserve"><value>Carte de placement des barrios</value></data>
   <data name="CityPlanning_PlacementPhase" xml:space="preserve"><value>Phase de placement</value></data>
   <data name="CityPlanning_StatusOpen" xml:space="preserve"><value>Ouverte</value></data>
@@ -1470,6 +1515,8 @@
   <data name="CityPlanning_AdminLink" xml:space="preserve"><value>Admin</value></data>
   <data name="CityPlanning_GoToPlacementMap" xml:space="preserve"><value>Aller au placement des barrios</value></data>
   <data name="CityPlanning_GoToContainerMap" xml:space="preserve"><value>Aller au placement des conteneurs</value></data>
+  <data name="CityPlanning_PlacementPhaseInfo" xml:space="preserve"><value>Placement phase info</value></data>
+  <!-- Admin page -->
   <data name="CityPlanning_Admin_Title" xml:space="preserve"><value>Admin Carte des Barrios</value></data>
   <data name="CityPlanning_Admin_ViewMap" xml:space="preserve"><value>Voir la carte</value></data>
   <data name="CityPlanning_Admin_PlacementPhaseCard" xml:space="preserve"><value>Phase de Placement</value></data>
@@ -1532,8 +1579,10 @@
   <data name="CityPlanning_Admin_ImportUpdating" xml:space="preserve"><value>Mise à jour de {0} polygone(s)…</value></data>
   <data name="CityPlanning_Admin_ImportSuccess" xml:space="preserve"><value>{0} polygone(s) mis à jour.</value></data>
   <data name="CityPlanning_Admin_ImportPartialFailure" xml:space="preserve"><value>{0} mis à jour, {1} en échec : {2}.</value></data>
+  <!-- History offcanvas -->
   <data name="CityPlanning_HistoryTitle" xml:space="preserve"><value>Historique des polygones</value></data>
   <data name="CityPlanning_Loading" xml:space="preserve"><value>Chargement…</value></data>
+  <!-- Help modal -->
   <data name="CityPlanning_Help_WhenIsIt" xml:space="preserve"><value>C'est quand ?</value></data>
   <data name="CityPlanning_Help_Opens" xml:space="preserve"><value>Ouvre :</value></data>
   <data name="CityPlanning_Help_Closes" xml:space="preserve"><value>Ferme :</value></data>
@@ -1642,6 +1691,8 @@
   <data name="CommPrefs_OneClick_Hint" xml:space="preserve"><value>Désabonnement en un clic, ou ajustez les détails dans la matrice ci-dessous.</value></data>
   <data name="CommPrefs_OneClick_Button" xml:space="preserve"><value>Se désabonner de {0}</value></data>
   <data name="CommPrefs_OneClick_Done" xml:space="preserve"><value>Désabonné. Vous pouvez réactiver n'importe quelle catégorie ci-dessous.</value></data>
+  <data name="CommPrefs_UpdateSource" xml:space="preserve"><value>Source</value></data>
+  <data name="CommPrefs_UpdatedAt" xml:space="preserve"><value>Updated</value></data>
 
   <data name="Emails_Header_Email" xml:space="preserve"><value>E-mail</value></data>
   <data name="Emails_Header_Status" xml:space="preserve"><value>Statut</value></data>
@@ -1711,7 +1762,7 @@
   <data name="Shifts_Date" xml:space="preserve"><value>Date</value></data>
   <data name="Shifts_Filled" xml:space="preserve"><value>Rempli</value></data>
   <data name="Shifts_Days" xml:space="preserve"><value>jours</value></data>
-  <data name="Shifts_Total" xml:space="preserve"><value>total</value></data>
+  <data name="Shifts_Total" xml:space="preserve"><value>Total</value></data>
     <data name="Shifts_SignedUpAllDays" xml:space="preserve"><value>Inscrit ({0} jours)</value><comment>{0} = count</comment></data>
     <data name="Shifts_SignedUpPartial" xml:space="preserve"><value>Inscrit ({0} sur {1})</value><comment>{0} = count</comment></data>
   <data name="Shifts_Full" xml:space="preserve"><value>Complet</value></data>
@@ -1783,7 +1834,7 @@
   <data name="ShiftDash_DateTime" xml:space="preserve"><value>Date / Heure</value></data>
   <data name="ShiftDash_Slots" xml:space="preserve"><value>Places</value></data>
   <data name="ShiftDash_Priority" xml:space="preserve"><value>Priorité</value></data>
-  <data name="ShiftDash_Voluntell" xml:space="preserve"><value>Voluntell</value></data>
+  <data name="ShiftDash_Voluntell" xml:space="preserve"><value>Désignation d'office</value></data>
   <data name="ShiftDash_SearchHumans" xml:space="preserve"><value>Rechercher des humans pour : {0}</value><comment>{0} = shift/rota name</comment></data>
   <data name="ShiftDash_SearchPlaceholder" xml:space="preserve"><value>Tapez un nom (min. 2 caractères)...</value></data>
   <data name="ShiftDash_NoHumansFound" xml:space="preserve"><value>Aucun humans trouvé.</value></data>
@@ -1870,39 +1921,11 @@
   <data name="Privacy_ContactBody" xml:space="preserve"><value>Pour toute question ou préoccupation concernant cette politique, contactez notre Délégué à la Protection des Données à {0}.</value><comment>{0} = DPO email</comment></data>
   <data name="Privacy_ComplaintBody" xml:space="preserve"><value>Si vous n'êtes pas satisfait de notre réponse, vous avez le droit de déposer une plainte auprès de l'Agence Espagnole de Protection des Données (AEPD) à {0}.</value><comment>{0} = AEPD URL</comment></data>
 
-  <!-- Agent Widget -->
-  <data name="Agent_ConversationBackToHistory" xml:space="preserve"><value>Retour à l'historique</value></data>
-  <data name="Agent_ConversationEmpty" xml:space="preserve"><value>Aucun message dans cette conversation.</value></data>
-  <data name="Agent_ConversationHandedOffToFeedback" xml:space="preserve"><value>Transféré vers un rapport de retour</value></data>
-  <data name="Agent_ConversationRefusedLabel" xml:space="preserve"><value>L'assistant a refusé de répondre à ce tour.</value></data>
-  <data name="Agent_ConversationTitle" xml:space="preserve"><value>Conversation avec l'assistant</value></data>
-  <data name="Agent_ConversationToolCallsSummary" xml:space="preserve"><value>{0} appel(s) d'outil</value></data>
-  <data name="Agent_ConversationTranscript" xml:space="preserve"><value>Transcription</value></data>
-  <data name="Agent_ContextCardCaveat" xml:space="preserve"><value>Ceci est votre contexte actuel. Si vos rôles ou équipes ont changé depuis cette conversation, l'assistant a vu une version différente à ce moment-là.</value></data>
-  <data name="Agent_ContextCardEmpty" xml:space="preserve"><value>Aucun contexte personnel n'est actuellement envoyé à l'assistant.</value></data>
-  <data name="Agent_ContextCardSummary" xml:space="preserve"><value>Votre contexte (tel que l'assistant vous voit maintenant)</value></data>
-  <data name="Agent_HistoryEmpty" xml:space="preserve"><value>Aucune conversation.</value></data>
-  <data name="Agent_HistoryLastMessage" xml:space="preserve"><value>Dernier message</value></data>
-  <data name="Agent_HistoryMessages" xml:space="preserve"><value>Messages</value></data>
-  <data name="Agent_HistoryStarted" xml:space="preserve"><value>Début</value></data>
-  <data name="Agent_HistoryTitle" xml:space="preserve"><value>Assistant — Mes conversations</value></data>
-  <data name="Agent_InputPlaceholder" xml:space="preserve"><value>Posez une question sur le fonctionnement…</value></data>
-  <data name="Agent_PanelTitle" xml:space="preserve"><value>Assistant</value></data>
-  <data name="Agent_TermsLink" xml:space="preserve"><value>Conditions IA</value></data>
-  <data name="Agent_ViewHistory" xml:space="preserve"><value>Historique</value></data>
-  <data name="Agent_Send" xml:space="preserve"><value>Envoyer</value></data>
-  <data name="Agent_WidgetButton" xml:space="preserve"><value>Ouvrir l'assistant</value></data>
-  <data name="Help_WidgetButton" xml:space="preserve"><value>Aide</value></data>
-  <data name="Help_Menu_TalkWithAgent" xml:space="preserve"><value>Parler avec l'Assistant</value></data>
-  <data name="Help_Menu_CreateIssue" xml:space="preserve"><value>Créer un signalement</value></data>
-  <data name="Help_Agent_IssueProposed" xml:space="preserve"><value>Je ne peux pas répondre à cela moi-même. J'ai rédigé un signalement pour l'équipe — relis-le et envoie-le, s'il te plaît.</value></data>
-  <data name="Nav_Agent" xml:space="preserve"><value>Assistant</value></data>
-
 
   <data name="ShiftDash_Overview_ShiftsFilled" xml:space="preserve"><value>Places remplies</value></data>
   <data name="ShiftDash_Overview_TicketHolders" xml:space="preserve"><value>Détenteurs de billets</value></data>
   <data name="ShiftDash_Overview_TicketHoldersSubline" xml:space="preserve"><value>humans qui ont payé</value></data>
-  <data name="ShiftDash_Overview_TicketHoldersEngaged" xml:space="preserve"><value>Ticket holding humans</value></data>
+  <data name="ShiftDash_Overview_TicketHoldersEngaged" xml:space="preserve"><value>Humains détenteurs de billets</value></data>
   <data name="ShiftDash_Overview_EngagedSubline" xml:space="preserve"><value>{0} humans ne se sont pas inscrits</value><comment>{0} = count</comment></data>
   <data name="ShiftDash_Overview_NonTicketSignups" xml:space="preserve"><value>Inscriptions sans billet</value></data>
   <data name="ShiftDash_Overview_NonTicketSubline" xml:space="preserve"><value>inscrits sans billet (pour l'instant)</value></data>
@@ -1917,8 +1940,39 @@
   <data name="ShiftDash_PeriodFilter_EventShifts" xml:space="preserve"><value>Événement</value></data>
   <data name="ShiftDash_PeriodFilter_Strike" xml:space="preserve"><value>Démontage</value></data>
 
+  <data name="ShiftDash_SubPeriodFilter_Label" xml:space="preserve"><value>Phase de montage :</value></data>
+  <data name="ShiftDash_SubPeriodFilter_All" xml:space="preserve"><value>Tout le montage</value></data>
+  <data name="ShiftDash_SubPeriodFilter_FirstCrew" xml:space="preserve"><value>Première équipe</value></data>
+  <data name="ShiftDash_SubPeriodFilter_SetupWeek" xml:space="preserve"><value>Semaine de montage</value></data>
+  <data name="ShiftDash_SubPeriodFilter_PreEventWeek" xml:space="preserve"><value>Semaine pré-événement</value></data>
+  <data name="ShiftDash_SubPeriodFilter_FinishingWeekend" xml:space="preserve"><value>Weekend de finition</value></data>
+
   <data name="ShiftDash_Departments_Title" xml:space="preserve"><value>Départements</value></data>
   <data name="ShiftDash_Departments_SortNote" xml:space="preserve"><value>triés par % de places remplies le plus bas en premier</value></data>
+  <data name="ShiftDash_Countdown_Label" xml:space="preserve"><value>Compte à rebours avant l'arrivée sur le terrain</value></data>
+  <data name="ShiftDash_Countdown_Days" xml:space="preserve"><value>{0} jours</value><comment>{0} = whole days</comment></data>
+  <data name="ShiftDash_Countdown_Weeks" xml:space="preserve"><value>({0} semaines)</value></data>
+  <data name="ShiftDash_Countdown_WeeksAndDays" xml:space="preserve"><value>({0} semaines, {1} jours)</value></data>
+  <data name="ShiftDash_Countdown_FirstDay" xml:space="preserve"><value>premier jour de montage : {0}</value></data>
+  <data name="ShiftDash_Countdown_Today" xml:space="preserve"><value>Arrivée sur le terrain — aujourd'hui !</value></data>
+  <data name="ShiftDash_Countdown_InProgress" xml:space="preserve"><value>Événement en cours — jour {0} depuis le début du montage</value></data>
+  <data name="ShiftDash_DeptStaffingByDay_Title" xml:space="preserve"><value>Présence sur le terrain par jour</value></data>
+  <data name="ShiftDash_DeptStaffingByDay_Subtitle" xml:space="preserve"><value>empilé par département — inscriptions confirmées uniquement</value></data>
+  <data name="ShiftDash_DurationMix_Title" xml:space="preserve"><value>Mixage des durées de shifts</value></data>
+  <data name="ShiftDash_DurationMix_Subtitle" xml:space="preserve"><value>répartition des shifts entre journée complète et horaire, pour cette période</value></data>
+  <data name="ShiftDash_DurationMix_Col_Duration" xml:space="preserve"><value>Durée</value></data>
+  <data name="ShiftDash_DurationMix_Col_Slots" xml:space="preserve"><value>Créneaux</value></data>
+  <data name="ShiftDash_DurationMix_Col_Filled" xml:space="preserve"><value>Remplis</value></data>
+  <data name="ShiftDash_DurationMix_Col_Pct" xml:space="preserve"><value>%</value></data>
+  <data name="ShiftDash_DurationMix_FullDay" xml:space="preserve"><value>Journée complète</value></data>
+  <data name="ShiftDash_DurationMix_HourLabel" xml:space="preserve"><value>{0} h</value><comment>{0} = whole hours</comment></data>
+  <data name="ShiftDash_DurationMix_Total" xml:space="preserve"><value>Total</value></data>
+  <data name="ShiftDash_Heatmap_Title" xml:space="preserve"><value>Carte thermique de couverture</value></data>
+  <data name="ShiftDash_Heatmap_Subtitle" xml:space="preserve"><value>remplissage des créneaux par planning par jour — vert = 80%+, jaune = 60–79%, rouge = en dessous, gris = pas de shift ce jour-là</value></data>
+  <data name="ShiftDash_Heatmap_Col_Team" xml:space="preserve"><value>Équipe</value></data>
+  <data name="ShiftDash_Heatmap_Tooltip_Filled" xml:space="preserve"><value>{0} — {1} / {2} créneaux remplis</value></data>
+  <data name="ShiftDash_Heatmap_Tooltip_None" xml:space="preserve"><value>{0} — pas de shift ce jour-là</value></data>
+  <data name="ShiftDash_Heatmap_Legend" xml:space="preserve"><value>Survolez une cellule pour les détails. Faites défiler horizontalement pour voir tous les jours.</value></data>
   <data name="ShiftDash_Departments_Col_Department" xml:space="preserve"><value>Département</value></data>
   <data name="ShiftDash_Departments_Col_Total" xml:space="preserve"><value>Total</value></data>
   <data name="ShiftDash_Departments_Col_Filled" xml:space="preserve"><value>Remplis</value></data>
@@ -1978,9 +2032,22 @@
   <data name="EmailGrid_SetGoogleRejected" xml:space="preserve"><value>Impossible de définir l'e-mail de service Google — ligne inconnue ou non vérifiée.</value></data>
   <data name="EmailGrid_UnlinkRejected" xml:space="preserve"><value>Impossible de dissocier — ligne inconnue ou sans fournisseur de connexion.</value></data>
   <data name="EmailGrid_GoogleServiceUpdated" xml:space="preserve"><value>E-mail de service Google mis à jour. La synchronisation sera relancée avec le nouvel e-mail.</value></data>
+  <data name="EmailGrid_GoogleFlagCleared" xml:space="preserve"><value>Indicateur d'identité Google effacé de cette ligne.</value></data>
+  <data name="EmailGrid_SetPrimary" xml:space="preserve"><value>Définir comme principal</value></data>
+  <data name="EmailGrid_SetGoogle" xml:space="preserve"><value>Définir pour Google</value></data>
+  <data name="EmailGrid_ClearGoogleRejected" xml:space="preserve"><value>Impossible d'effacer l'indicateur Google — la ligne est inconnue ou non marquée actuellement.</value></data>
+  <data name="EmailGrid_PrimaryFlagCleared" xml:space="preserve"><value>Indicateur principal effacé de cette ligne.</value></data>
+  <data name="EmailGrid_ClearPrimaryRejected" xml:space="preserve"><value>Impossible d'effacer l'indicateur principal — la ligne est inconnue ou non marquée actuellement.</value></data>
+  <data name="EmailGrid_Clear" xml:space="preserve"><value>Effacer</value></data>
+  <data name="EmailGrid_ConfirmClearGoogle" xml:space="preserve"><value>Effacer l'indicateur d'identité Google de cette ligne d'e-mail ?</value></data>
+  <data name="EmailGrid_ConfirmClearPrimary" xml:space="preserve"><value>Effacer l'indicateur principal de cette ligne d'e-mail ?</value></data>
   <data name="EmailGrid_UnlinkSuccess" xml:space="preserve"><value>Fournisseur de connexion dissocié.</value></data>
   <data name="EmailGrid_DeleteRejectedHasProvider" xml:space="preserve"><value>Cet e-mail est lié à un fournisseur de connexion. Utilisez Dissocier à la place.</value></data>
   <data name="EmailGrid_AdminAddSentVerification" xml:space="preserve"><value>E-mail de vérification envoyé à l'utilisateur.</value></data>
+  <data name="EmailGrid_AdminVerify" xml:space="preserve"><value>Vérifier</value></data>
+  <data name="EmailGrid_ConfirmAdminVerify" xml:space="preserve"><value>Marquer manuellement cet e-mail comme vérifié sans que l'utilisateur clique sur le lien ?</value></data>
+  <data name="EmailGrid_AdminVerifySuccess" xml:space="preserve"><value>E-mail vérifié manuellement.</value></data>
+  <data name="EmailGrid_AdminVerifyMergeRequested" xml:space="preserve"><value>Cette adresse est déjà vérifiée sur un autre compte. Une demande de fusion a été créée au lieu de la vérification.</value></data>
   <data name="EmailGrid_LinkFailed" xml:space="preserve"><value>Nous n'avons pas pu associer ce compte Google. Veuillez réessayer.</value></data>
   <data name="AdminDetail_ManageEmails" xml:space="preserve"><value>Gérer les e-mails</value></data>
 
@@ -2045,7 +2112,7 @@
   <data name="Issue_Tips_Bullet4" xml:space="preserve"><value>Un incident par signalement — des problèmes différents doivent être signalés séparément.</value></data>
   <data name="Issue_NotEmail_Notice" xml:space="preserve"><value>Ce n'est pas un email — les réponses se font ici, dans la conversation de l'incident.</value></data>
 
-  <!-- Issues — messages d'état du contrôleur (TempData) -->
+  <!-- Issues — controller status messages (TempData) -->
   <data name="Issue_Submitted" xml:space="preserve"><value>Incident envoyé. Merci !</value></data>
   <data name="Issue_Error" xml:space="preserve"><value>Une erreur est survenue. Veuillez réessayer.</value></data>
   <data name="Issue_Comment_Posted" xml:space="preserve"><value>Commentaire publié.</value></data>
@@ -2068,134 +2135,134 @@
 
   <!-- Google sync removal notifications (issue peterdrier/Humans#639) -->
   <data name="Email_GoogleGroupRemoval_LossOfAccess_Subject" xml:space="preserve"><value>Tu as été retiré·e du groupe {0}</value><comment>{0} = group email</comment></data>
-  <data name="Email_GoogleGroupRemoval_LossOfAccess_Body" xml:space="preserve"><value>&lt;h2&gt;Accès au groupe retiré&lt;/h2&gt;
-&lt;p&gt;Bonjour {0},&lt;/p&gt;
-&lt;p&gt;Ton accès au Groupe Google &lt;strong&gt;{1}&lt;/strong&gt; (&lt;code&gt;{2}&lt;/code&gt;) a été retiré.&lt;/p&gt;
-&lt;p&gt;C'était une action automatique basée sur tes équipes et rôles actuels chez Nobodies. Tu ne recevras plus les messages envoyés à ce groupe.&lt;/p&gt;
-&lt;p&gt;Si tu penses que c'est une erreur, contacte la personne qui coordonne ton équipe.&lt;/p&gt;
-&lt;p&gt;L'équipe Humans&lt;/p&gt;</value><comment>{0} = user name, {1} = group display name, {2} = group email</comment></data>
+  <data name="Email_GoogleGroupRemoval_LossOfAccess_Body" xml:space="preserve"><value>&lt;h2&gt;Group access removed&lt;/h2&gt;
+&lt;p&gt;Hi {0},&lt;/p&gt;
+&lt;p&gt;Your access to the Google Group &lt;strong&gt;{1}&lt;/strong&gt; (&lt;code&gt;{2}&lt;/code&gt;) has been removed.&lt;/p&gt;
+&lt;p&gt;This was an automatic action based on your current team and role assignments at Nobodies. You will no longer receive messages sent to this group.&lt;/p&gt;
+&lt;p&gt;If you believe this was done in error, please contact your team coordinator.&lt;/p&gt;
+&lt;p&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = group display name, {2} = group email</comment></data>
 
   <data name="Email_GoogleDriveRemoval_LossOfAccess_Subject" xml:space="preserve"><value>Ton accès à {0} a été retiré</value><comment>{0} = folder name</comment></data>
-  <data name="Email_GoogleDriveRemoval_LossOfAccess_Body" xml:space="preserve"><value>&lt;h2&gt;Accès à Drive retiré&lt;/h2&gt;
-&lt;p&gt;Bonjour {0},&lt;/p&gt;
-&lt;p&gt;Ton accès au dossier partagé &lt;strong&gt;{1}&lt;/strong&gt; a été retiré.&lt;/p&gt;
-&lt;p&gt;C'était une action automatique basée sur tes équipes et rôles actuels chez Nobodies.&lt;/p&gt;
-&lt;p&gt;Si tu penses que c'est une erreur, contacte la personne qui coordonne ton équipe.&lt;/p&gt;
-&lt;p&gt;L'équipe Humans&lt;/p&gt;</value><comment>{0} = user name, {1} = folder name</comment></data>
+  <data name="Email_GoogleDriveRemoval_LossOfAccess_Body" xml:space="preserve"><value>&lt;h2&gt;Drive access removed&lt;/h2&gt;
+&lt;p&gt;Hi {0},&lt;/p&gt;
+&lt;p&gt;Your access to the shared folder &lt;strong&gt;{1}&lt;/strong&gt; has been removed.&lt;/p&gt;
+&lt;p&gt;This was an automatic action based on your current team and role assignments at Nobodies.&lt;/p&gt;
+&lt;p&gt;If you believe this was done in error, please contact your team coordinator.&lt;/p&gt;
+&lt;p&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = folder name</comment></data>
 
   <data name="Email_GoogleAccessRemoval_SecondaryCleanup_Subject" xml:space="preserve"><value>{0} n'a plus accès aux groupes de Nobodies</value><comment>{0} = removed email</comment></data>
-  <data name="Email_GoogleAccessRemoval_SecondaryCleanup_Body" xml:space="preserve"><value>&lt;h2&gt;Adresse secondaire nettoyée&lt;/h2&gt;
-&lt;p&gt;Bonjour {0},&lt;/p&gt;
-&lt;p&gt;L'adresse &lt;strong&gt;{1}&lt;/strong&gt; a été retirée des groupes et dossiers partagés de Nobodies.&lt;/p&gt;
-&lt;p&gt;Ton adresse principale chez Nobodies est désormais &lt;strong&gt;{2}&lt;/strong&gt;, et ton accès aux groupes et dossiers partagés via cette adresse n'a pas changé. Ce message sert juste à te laisser une trace de l'adresse qui a été nettoyée.&lt;/p&gt;
-&lt;p&gt;Si tu penses que {1} aurait dû conserver l'accès, contacte la personne qui coordonne ton équipe.&lt;/p&gt;
-&lt;p&gt;L'équipe Humans&lt;/p&gt;</value><comment>{0} = user name, {1} = removed email, {2} = current Google email</comment></data>
+  <data name="Email_GoogleAccessRemoval_SecondaryCleanup_Body" xml:space="preserve"><value>&lt;h2&gt;Secondary email tidied up&lt;/h2&gt;
+&lt;p&gt;Hi {0},&lt;/p&gt;
+&lt;p&gt;The address &lt;strong&gt;{1}&lt;/strong&gt; has been removed from Nobodies groups and shared folders.&lt;/p&gt;
+&lt;p&gt;Your primary Nobodies email is now &lt;strong&gt;{2}&lt;/strong&gt;, and your access to groups and shared folders through that address is unchanged. This message is just so you have a record of which address was tidied up.&lt;/p&gt;
+&lt;p&gt;If you believe {1} should still have had access, please contact your team coordinator.&lt;/p&gt;
+&lt;p&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = removed email, {2} = current Google email</comment></data>
 
   <!-- ======================== -->
   <!-- Onboarding Widget Banner -->
   <!-- ======================== -->
-  <data name="OnboardingBanner_Text" xml:space="preserve"><value>Finish setting up your account to access shifts and team features.</value><comment>TODO: translate</comment></data>
-  <data name="OnboardingBanner_Cta" xml:space="preserve"><value>Continue setup →</value><comment>TODO: translate</comment></data>
+  <data name="OnboardingBanner_Text" xml:space="preserve"><value>Terminez la configuration de votre compte pour accéder aux créneaux et aux fonctionnalités d'équipe.</value></data>
+  <data name="OnboardingBanner_Cta" xml:space="preserve"><value>Continuer la configuration →</value></data>
 
 
   <!-- ======================== -->
   <!-- Volunteer Tracking       -->
   <!-- ======================== -->
-  <data name="VolTrack_Title" xml:space="preserve"><value>Volunteer Tracking</value><comment>TODO: translate</comment></data>
-  <data name="VolTrack_Breadcrumb_Shifts" xml:space="preserve"><value>Shifts</value><comment>TODO: translate</comment></data>
-  <data name="VolTrack_Breadcrumb_ShiftDashboard" xml:space="preserve"><value>Shift Dashboard</value><comment>TODO: translate</comment></data>
-  <data name="VolTrack_Breadcrumb_VolunteerTracking" xml:space="preserve"><value>Volunteer Tracking</value><comment>TODO: translate</comment></data>
-  <data name="VolTrack_NoActiveEvent" xml:space="preserve"><value>No active event.</value><comment>TODO: translate</comment></data>
-  <data name="VolTrack_AllClear" xml:space="preserve"><value>Everyone is on track.</value><comment>TODO: translate</comment></data>
-  <data name="VolTrack_UnknownUser" xml:space="preserve"><value>(unknown)</value><comment>TODO: translate</comment></data>
+  <data name="VolTrack_Title" xml:space="preserve"><value>Suivi des bénévoles</value></data>
+  <data name="VolTrack_Breadcrumb_Shifts" xml:space="preserve"><value>Créneaux</value></data>
+  <data name="VolTrack_Breadcrumb_ShiftDashboard" xml:space="preserve"><value>Tableau de bord des créneaux</value></data>
+  <data name="VolTrack_Breadcrumb_VolunteerTracking" xml:space="preserve"><value>Suivi des bénévoles</value></data>
+  <data name="VolTrack_NoActiveEvent" xml:space="preserve"><value>Aucun événement actif.</value></data>
+  <data name="VolTrack_AllClear" xml:space="preserve"><value>Tout le monde est à jour.</value></data>
+  <data name="VolTrack_UnknownUser" xml:space="preserve"><value>(inconnu)</value></data>
 
-  <data name="VolTrack_AsOfToday" xml:space="preserve"><value>As of {0}</value><comment>TODO: translate</comment></data>
-  <data name="VolTrack_Counts_MainTotal" xml:space="preserve"><value>Volunteers tracked</value></data>
-  <data name="VolTrack_Counts_WithGaps" xml:space="preserve"><value>With gaps</value></data>
-  <data name="VolTrack_Counts_OnCampSetup" xml:space="preserve"><value>On camp set-up today</value></data>
-  <data name="VolTrack_Counts_Unbooked" xml:space="preserve"><value>Declared but unbooked</value></data>
+  <data name="VolTrack_AsOfToday" xml:space="preserve"><value>En date du {0}</value></data>
+  <data name="VolTrack_Counts_MainTotal" xml:space="preserve"><value>Bénévoles suivis</value></data>
+  <data name="VolTrack_Counts_WithGaps" xml:space="preserve"><value>Avec des trous</value></data>
+  <data name="VolTrack_Counts_OnCampSetup" xml:space="preserve"><value>En montage de camp aujourd'hui</value></data>
+  <data name="VolTrack_Counts_Unbooked" xml:space="preserve"><value>Déclarés mais non réservés</value></data>
 
-  <data name="VolTrack_Filter_HideNoGaps" xml:space="preserve"><value>Hide volunteers with no gaps</value><comment>TODO: translate</comment></data>
-  <data name="VolTrack_Filter_HideCampSetup" xml:space="preserve"><value>Hide volunteers with a camp set-up date</value><comment>TODO: translate</comment></data>
-  <data name="VolTrack_Filter_HideUnbookedSection" xml:space="preserve"><value>Hide declared-but-unbooked section</value><comment>TODO: translate</comment></data>
-  <data name="VolTrack_Filter_Apply" xml:space="preserve"><value>Apply</value><comment>TODO: translate</comment></data>
-  <data name="VolTrack_Filter_Active" xml:space="preserve"><value>Filters active</value><comment>TODO: translate</comment></data>
-  <data name="VolTrack_Filter_Clear" xml:space="preserve"><value>Clear filters</value><comment>TODO: translate</comment></data>
+  <data name="VolTrack_Filter_HideNoGaps" xml:space="preserve"><value>Masquer les bénévoles sans trous</value></data>
+  <data name="VolTrack_Filter_HideCampSetup" xml:space="preserve"><value>Masquer les bénévoles avec une date de montage de camp</value></data>
+  <data name="VolTrack_Filter_HideUnbookedSection" xml:space="preserve"><value>Masquer la section déclarés mais non réservés</value></data>
+  <data name="VolTrack_Filter_Apply" xml:space="preserve"><value>Appliquer</value></data>
+  <data name="VolTrack_Filter_Active" xml:space="preserve"><value>Filtres actifs</value></data>
+  <data name="VolTrack_Filter_Clear" xml:space="preserve"><value>Effacer les filtres</value></data>
 
-  <data name="VolTrack_Main_Title" xml:space="preserve"><value>Schedule gaps</value><comment>TODO: translate</comment></data>
-  <data name="VolTrack_Main_Subtitle" xml:space="preserve"><value>{0} volunteers shown</value><comment>{0} = count</comment></data>
-  <data name="VolTrack_Main_Empty" xml:space="preserve"><value>No volunteers with build-period signups.</value><comment>TODO: translate</comment></data>
-  <data name="VolTrack_Search_Placeholder" xml:space="preserve"><value>Search by name or playa name…</value><comment>TODO: translate</comment></data>
-  <data name="VolTrack_Search_NoMatch" xml:space="preserve"><value>No volunteers match “{0}”.</value><comment>TODO: translate</comment></data>
-  <data name="VolTrack_Col_Volunteer" xml:space="preserve"><value>Volunteer</value><comment>TODO: translate</comment></data>
-  <data name="VolTrack_GapBadge" xml:space="preserve"><value>{0} gaps</value><comment>{0} = count</comment></data>
-  <data name="VolTrack_CampSetupTooltip" xml:space="preserve"><value>On camp set-up since {0}</value><comment>{0} = date</comment></data>
+  <data name="VolTrack_Main_Title" xml:space="preserve"><value>Trous d'emploi du temps</value></data>
+  <data name="VolTrack_Main_Subtitle" xml:space="preserve"><value>{0} bénévoles affichés</value><comment>{0} = count</comment></data>
+  <data name="VolTrack_Main_Empty" xml:space="preserve"><value>Aucun bénévole avec des inscriptions en période de montage.</value></data>
+  <data name="VolTrack_Search_Placeholder" xml:space="preserve"><value>Rechercher par nom ou nom de playa…</value></data>
+  <data name="VolTrack_Search_NoMatch" xml:space="preserve"><value>Aucun bénévole ne correspond à « {0} ».</value></data>
+  <data name="VolTrack_Col_Volunteer" xml:space="preserve"><value>Bénévole</value></data>
+  <data name="VolTrack_GapBadge" xml:space="preserve"><value>{0} trous</value><comment>{0} = count</comment></data>
+  <data name="VolTrack_CampSetupTooltip" xml:space="preserve"><value>En montage de camp depuis le {0}</value><comment>{0} = date</comment></data>
 
-  <data name="VolTrack_Unbooked_Heading" xml:space="preserve"><value>Declared participating, not booked yet</value><comment>TODO: translate</comment></data>
-  <data name="VolTrack_Unbooked_Subtitle" xml:space="preserve"><value>Volunteers who said they're attending and have availability filled in but haven't signed up for any shifts.</value><comment>TODO: translate</comment></data>
-  <data name="VolTrack_Unbooked_Title" xml:space="preserve"><value>Available but unbooked</value><comment>TODO: translate</comment></data>
-  <data name="VolTrack_Unbooked_Subtitle_Count" xml:space="preserve"><value>{0} volunteers shown</value><comment>{0} = count</comment></data>
-  <data name="VolTrack_Unbooked_Empty" xml:space="preserve"><value>No declared-but-unbooked volunteers.</value><comment>TODO: translate</comment></data>
-  <data name="VolTrack_AvailableDaysBadge" xml:space="preserve"><value>{0} avail.</value><comment>{0} = count</comment></data>
-  <data name="VolTrack_AvailableDaysTooltip" xml:space="preserve"><value>Available days inside build period</value><comment>TODO: translate</comment></data>
-  <data name="VolTrack_UnbookedBadge" xml:space="preserve"><value>{0} unbooked</value><comment>{0} = count</comment></data>
-  <data name="VolTrack_UnbookedTooltip" xml:space="preserve"><value>Available days that aren't booked</value><comment>TODO: translate</comment></data>
+  <data name="VolTrack_Unbooked_Heading" xml:space="preserve"><value>Déclarés participants, pas encore réservés</value></data>
+  <data name="VolTrack_Unbooked_Subtitle" xml:space="preserve"><value>Bénévoles ayant indiqué leur présence et leurs disponibilités, mais qui ne se sont inscrits à aucun créneau.</value></data>
+  <data name="VolTrack_Unbooked_Title" xml:space="preserve"><value>Disponibles mais non réservés</value></data>
+  <data name="VolTrack_Unbooked_Subtitle_Count" xml:space="preserve"><value>{0} bénévoles affichés</value><comment>{0} = count</comment></data>
+  <data name="VolTrack_Unbooked_Empty" xml:space="preserve"><value>Aucun bénévole déclaré mais non réservé.</value></data>
+  <data name="VolTrack_AvailableDaysBadge" xml:space="preserve"><value>{0} dispo.</value><comment>{0} = count</comment></data>
+  <data name="VolTrack_AvailableDaysTooltip" xml:space="preserve"><value>Jours disponibles pendant la période de montage</value></data>
+  <data name="VolTrack_UnbookedBadge" xml:space="preserve"><value>{0} non réservés</value><comment>{0} = count</comment></data>
+  <data name="VolTrack_UnbookedTooltip" xml:space="preserve"><value>Jours disponibles non réservés</value></data>
 
-  <data name="VolTrack_State_DayOff" xml:space="preserve"><value>Day off</value><comment>TODO: translate</comment></data>
-  <data name="VolTrack_Legend_DayOff" xml:space="preserve"><value>Day off (acknowledged)</value><comment>TODO: translate</comment></data>
-  <data name="VolTrack_Popover_MarkDayOff" xml:space="preserve"><value>Mark day off</value><comment>TODO: translate</comment></data>
-  <data name="VolTrack_Popover_CancelDayOff" xml:space="preserve"><value>Cancel day off</value><comment>TODO: translate</comment></data>
-  <data name="VolTrack_Popover_ReasonLabel" xml:space="preserve"><value>Reason (optional)</value><comment>TODO: translate</comment></data>
-  <data name="VolTrack_Popover_DayOffBlockedBySignups" xml:space="preserve"><value>Bail this signup before marking a day off</value><comment>TODO: translate</comment></data>
-  <data name="VolTrack_Msg_DayOffMarked" xml:space="preserve"><value>Day off marked.</value><comment>TODO: translate</comment></data>
-  <data name="VolTrack_Msg_DayOffCleared" xml:space="preserve"><value>Day off cleared.</value><comment>TODO: translate</comment></data>
-  <data name="VolTrack_DayOffBadge" xml:space="preserve"><value>{0} day off</value><comment>TODO: translate</comment></data>
-  <data name="VolTrack_Err_DayOffWithSignups" xml:space="preserve"><value>Volunteer has signups on that day — bail them first.</value><comment>TODO: translate</comment></data>
-  <data name="VolTrack_Err_DayOffOutsideBuild" xml:space="preserve"><value>Day off must be inside the build period.</value><comment>TODO: translate</comment></data>
-  <data name="VolTrack_AuditAction_DayOffMarked" xml:space="preserve"><value>Day off marked</value><comment>TODO: translate</comment></data>
-  <data name="VolTrack_AuditAction_DayOffCleared" xml:space="preserve"><value>Day off cleared</value><comment>TODO: translate</comment></data>
-  <data name="VolTrack_State_Confirmed" xml:space="preserve"><value>Confirmed</value><comment>TODO: translate</comment></data>
-  <data name="VolTrack_State_Pending" xml:space="preserve"><value>Pending</value><comment>TODO: translate</comment></data>
-  <data name="VolTrack_State_Gap" xml:space="preserve"><value>Gap</value><comment>TODO: translate</comment></data>
-  <data name="VolTrack_State_CampSetup" xml:space="preserve"><value>Camp set-up</value><comment>TODO: translate</comment></data>
-  <data name="VolTrack_State_Outside" xml:space="preserve"><value>Outside window</value><comment>TODO: translate</comment></data>
-  <data name="VolTrack_State_Expected" xml:space="preserve"><value>Expected</value><comment>TODO: translate</comment></data>
-  <data name="VolTrack_State_AvailableUnbooked" xml:space="preserve"><value>Available, not booked</value><comment>TODO: translate</comment></data>
-  <data name="VolTrack_State_AvailableExpected" xml:space="preserve"><value>Available (future)</value><comment>TODO: translate</comment></data>
-  <data name="VolTrack_State_NotAvailable" xml:space="preserve"><value>Not available</value><comment>TODO: translate</comment></data>
+  <data name="VolTrack_State_DayOff" xml:space="preserve"><value>Jour de repos</value></data>
+  <data name="VolTrack_Legend_DayOff" xml:space="preserve"><value>Jour de repos (validé)</value></data>
+  <data name="VolTrack_Popover_MarkDayOff" xml:space="preserve"><value>Marquer comme jour de repos</value></data>
+  <data name="VolTrack_Popover_CancelDayOff" xml:space="preserve"><value>Annuler le jour de repos</value></data>
+  <data name="VolTrack_Popover_ReasonLabel" xml:space="preserve"><value>Raison (facultatif)</value></data>
+  <data name="VolTrack_Popover_DayOffBlockedBySignups" xml:space="preserve"><value>Annuler cette inscription avant de marquer un jour de repos</value></data>
+  <data name="VolTrack_Msg_DayOffMarked" xml:space="preserve"><value>Jour de repos marqué.</value></data>
+  <data name="VolTrack_Msg_DayOffCleared" xml:space="preserve"><value>Jour de repos annulé.</value></data>
+  <data name="VolTrack_DayOffBadge" xml:space="preserve"><value>{0} jour(s) de repos</value></data>
+  <data name="VolTrack_Err_DayOffWithSignups" xml:space="preserve"><value>Le bénévole a des inscriptions ce jour-là — annulez-les d'abord.</value></data>
+  <data name="VolTrack_Err_DayOffOutsideBuild" xml:space="preserve"><value>Le jour de repos doit se situer pendant la période de montage.</value></data>
+  <data name="VolTrack_AuditAction_DayOffMarked" xml:space="preserve"><value>Jour de repos marqué</value></data>
+  <data name="VolTrack_AuditAction_DayOffCleared" xml:space="preserve"><value>Jour de repos annulé</value></data>
+  <data name="VolTrack_State_Confirmed" xml:space="preserve"><value>Confirmé</value></data>
+  <data name="VolTrack_State_Pending" xml:space="preserve"><value>En attente</value></data>
+  <data name="VolTrack_State_Gap" xml:space="preserve"><value>Trou</value></data>
+  <data name="VolTrack_State_CampSetup" xml:space="preserve"><value>Montage de camp</value></data>
+  <data name="VolTrack_State_Outside" xml:space="preserve"><value>Hors période</value></data>
+  <data name="VolTrack_State_Expected" xml:space="preserve"><value>Attendu</value></data>
+  <data name="VolTrack_State_AvailableUnbooked" xml:space="preserve"><value>Disponible, non réservé</value></data>
+  <data name="VolTrack_State_AvailableExpected" xml:space="preserve"><value>Disponible (futur)</value></data>
+  <data name="VolTrack_State_NotAvailable" xml:space="preserve"><value>Non disponible</value></data>
 
-  <data name="VolTrack_Popover_Rotas" xml:space="preserve"><value>Rotas:</value><comment>TODO: translate</comment></data>
-  <data name="VolTrack_Popover_Available" xml:space="preserve"><value>Volunteer marked available</value><comment>TODO: translate</comment></data>
-  <data name="VolTrack_Popover_MarkCampSetup" xml:space="preserve"><value>Mark went to camp set-up from this day</value><comment>TODO: translate</comment></data>
-  <data name="VolTrack_Popover_MoveCampSetup" xml:space="preserve"><value>Move camp set-up to this day</value><comment>TODO: translate</comment></data>
-  <data name="VolTrack_Popover_ClearCampSetup" xml:space="preserve"><value>Clear camp set-up</value><comment>TODO: translate</comment></data>
-  <data name="VolTrack_Popover_OpenDashboard" xml:space="preserve"><value>Find shifts to voluntell</value><comment>TODO: translate</comment></data>
-  <data name="VolTrack_Scroll_Left" xml:space="preserve"><value>Scroll left</value><comment>TODO: translate</comment></data>
-  <data name="VolTrack_Scroll_Right" xml:space="preserve"><value>Scroll right</value><comment>TODO: translate</comment></data>
+  <data name="VolTrack_Popover_Rotas" xml:space="preserve"><value>Roulements :</value></data>
+  <data name="VolTrack_Popover_Available" xml:space="preserve"><value>Bénévole marqué comme disponible</value></data>
+  <data name="VolTrack_Popover_MarkCampSetup" xml:space="preserve"><value>Marquer comme allé au montage du camp à partir de ce jour</value></data>
+  <data name="VolTrack_Popover_MoveCampSetup" xml:space="preserve"><value>Déplacer le montage du camp à ce jour</value></data>
+  <data name="VolTrack_Popover_ClearCampSetup" xml:space="preserve"><value>Effacer le montage du camp</value></data>
+  <data name="VolTrack_Popover_OpenDashboard" xml:space="preserve"><value>Trouver des créneaux pour le voluntell</value></data>
+  <data name="VolTrack_Scroll_Left" xml:space="preserve"><value>Défiler à gauche</value></data>
+  <data name="VolTrack_Scroll_Right" xml:space="preserve"><value>Défiler à droite</value></data>
 
-  <data name="VolTrack_Legend_Title" xml:space="preserve"><value>Legend</value><comment>TODO: translate</comment></data>
-  <data name="VolTrack_Legend_Confirmed" xml:space="preserve"><value>Confirmed signup</value><comment>TODO: translate</comment></data>
-  <data name="VolTrack_Legend_Pending" xml:space="preserve"><value>Pending signup</value><comment>TODO: translate</comment></data>
-  <data name="VolTrack_Legend_Gap" xml:space="preserve"><value>No coverage on a day they should have been here</value><comment>TODO: translate</comment></data>
-  <data name="VolTrack_Legend_AvailableUnbooked" xml:space="preserve"><value>Available, no signup yet</value><comment>TODO: translate</comment></data>
-  <data name="VolTrack_Legend_CampSetup" xml:space="preserve"><value>On camp set-up</value><comment>TODO: translate</comment></data>
-  <data name="VolTrack_Legend_OutsideOrExpected" xml:space="preserve"><value>Outside their active window</value><comment>TODO: translate</comment></data>
+  <data name="VolTrack_Legend_Title" xml:space="preserve"><value>Légende</value></data>
+  <data name="VolTrack_Legend_Confirmed" xml:space="preserve"><value>Inscription confirmée</value></data>
+  <data name="VolTrack_Legend_Pending" xml:space="preserve"><value>Inscription en attente</value></data>
+  <data name="VolTrack_Legend_Gap" xml:space="preserve"><value>Pas de couverture un jour où ils auraient dû être là</value></data>
+  <data name="VolTrack_Legend_AvailableUnbooked" xml:space="preserve"><value>Disponible, pas encore d'inscription</value></data>
+  <data name="VolTrack_Legend_CampSetup" xml:space="preserve"><value>En montage de camp</value></data>
+  <data name="VolTrack_Legend_OutsideOrExpected" xml:space="preserve"><value>En dehors de leur créneau d'activité</value></data>
 
 
-  <data name="VolTrack_Msg_CampSetupSaved" xml:space="preserve"><value>Camp set-up date saved.</value><comment>TODO: translate</comment></data>
-  <data name="VolTrack_Msg_CampSetupCleared" xml:space="preserve"><value>Camp set-up date cleared.</value><comment>TODO: translate</comment></data>
+  <data name="VolTrack_Msg_CampSetupSaved" xml:space="preserve"><value>Date d'installation du camp enregistrée.</value></data>
+  <data name="VolTrack_Msg_CampSetupCleared" xml:space="preserve"><value>Date d'installation du camp effacée.</value></data>
 
-  <data name="VolTrack_Err_BadRequest" xml:space="preserve"><value>Invalid request.</value><comment>TODO: translate</comment></data>
-  <data name="VolTrack_Err_BadDate" xml:space="preserve"><value>Invalid date format.</value><comment>TODO: translate</comment></data>
-  <data name="VolTrack_Err_Unknown" xml:space="preserve"><value>Something went wrong. Please try again.</value><comment>TODO: translate</comment></data>
-  <data name="VolTrack_Err_SetupAtOrAfterGateOpen" xml:space="preserve"><value>Set-up date must be inside the build period (before gate-open day).</value><comment>TODO: translate</comment></data>
-  <data name="VolTrack_Err_SetupBeforeFirstSignup" xml:space="preserve"><value>Set-up date must be on or after the volunteer's first build signup.</value><comment>TODO: translate</comment></data>
+  <data name="VolTrack_Err_BadRequest" xml:space="preserve"><value>Requête invalide.</value></data>
+  <data name="VolTrack_Err_BadDate" xml:space="preserve"><value>Format de date invalide.</value></data>
+  <data name="VolTrack_Err_Unknown" xml:space="preserve"><value>Une erreur s'est produite. Veuillez réessayer.</value></data>
+  <data name="VolTrack_Err_SetupAtOrAfterGateOpen" xml:space="preserve"><value>La date d'installation doit être comprise dans la période de montage (avant l'ouverture des portes).</value></data>
+  <data name="VolTrack_Err_SetupBeforeFirstSignup" xml:space="preserve"><value>La date d'installation doit être égale ou postérieure à la première inscription de montage du bénévole.</value></data>
 
-  <data name="ShiftDash_VolTrackEntry_Title" xml:space="preserve"><value>Volunteer Tracking</value><comment>TODO: translate</comment></data>
-  <data name="ShiftDash_VolTrackEntry_Subtitle" xml:space="preserve"><value>Identify gaps, mark camp set-up dates, surface declared-but-unbooked volunteers.</value><comment>TODO: translate</comment></data>
-  <data name="ShiftDash_VolTrackEntry_Open" xml:space="preserve"><value>Open</value><comment>TODO: translate</comment></data>
+  <data name="ShiftDash_VolTrackEntry_Title" xml:space="preserve"><value>Suivi des bénévoles</value></data>
+  <data name="ShiftDash_VolTrackEntry_Subtitle" xml:space="preserve"><value>Identifier les lacunes, marquer les dates d'installation du camp, faire ressortir les bénévoles déclarés mais non inscrits.</value></data>
+  <data name="ShiftDash_VolTrackEntry_Open" xml:space="preserve"><value>Ouvrir</value></data>
 
-  <data name="VolTrack_AuditAction_CampSetupSet" xml:space="preserve"><value>Camp set-up date set</value><comment>TODO: translate</comment></data>
-  <data name="VolTrack_AuditAction_CampSetupCleared" xml:space="preserve"><value>Camp set-up date cleared</value><comment>TODO: translate</comment></data>
+  <data name="VolTrack_AuditAction_CampSetupSet" xml:space="preserve"><value>Date d'installation du camp définie</value></data>
+  <data name="VolTrack_AuditAction_CampSetupCleared" xml:space="preserve"><value>Date d'installation du camp effacée</value></data>
 
 </root>
