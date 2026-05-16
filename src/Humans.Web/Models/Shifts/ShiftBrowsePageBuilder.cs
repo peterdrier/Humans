@@ -101,8 +101,12 @@ public sealed class ShiftBrowsePageBuilder
 
         // Pies use the same date window as the shift list so the percentages
         // line up with what the user is filtering to.
-        var coveragePies = await _shiftManagement.GetDepartmentCoveragePiesAsync(
-            es.Id, filterFromDate, filterToDate);
+        // Service returns natural-name-ordered rows; apply the display
+        // grouping here so each promoted sub-team renders right after its
+        // parent (memory/architecture/display-sort-in-controllers).
+        var coveragePies = OrderPiesGroupedByParent(
+            await _shiftManagement.GetDepartmentCoveragePiesAsync(
+                es.Id, filterFromDate, filterToDate));
 
         return new ShiftBrowseViewModel
         {
@@ -208,6 +212,20 @@ public sealed class ShiftBrowsePageBuilder
 
         return activePeriods;
     }
+
+    /// <summary>
+    /// Orders pies for display: each promoted sub-team is placed immediately
+    /// after its parent (using the parent's name as the group key), instead
+    /// of strict alphabetical order. Multiple sub-teams under the same parent
+    /// sort alphabetically. <c>internal</c> so unit tests can target it.
+    /// </summary>
+    internal static IReadOnlyList<DepartmentCoveragePie> OrderPiesGroupedByParent(
+        IReadOnlyList<DepartmentCoveragePie> pies) =>
+        pies
+            .OrderBy(p => p.ParentTeamName ?? p.TeamName, StringComparer.Ordinal)
+            .ThenBy(p => p.IsSubTeam ? 1 : 0)
+            .ThenBy(p => p.TeamName, StringComparer.Ordinal)
+            .ToList();
 
     private static (LocalDate From, LocalDate To) GetPeriodDateRange(EventSettings es, ShiftPeriod period)
     {

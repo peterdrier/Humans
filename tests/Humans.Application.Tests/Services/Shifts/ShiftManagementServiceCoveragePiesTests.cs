@@ -146,8 +146,10 @@ public class ShiftManagementServiceCoveragePiesTests : IDisposable
     }
 
     [HumansFact]
-    public async Task PromotedSubteam_SortsImmediatelyAfterItsParent_NotByOwnName()
+    public async Task ResultSortedAlphabetically_ByTeamName_ParentNamePopulatedForSubteams()
     {
+        // Service returns natural-name-ordered rows; the "sub-team next to
+        // parent" rule is applied later in the view-model assembly layer.
         var (es, _, _) = SeedDeptScenario();
         var mango = new Team
         {
@@ -176,9 +178,13 @@ public class ShiftManagementServiceCoveragePiesTests : IDisposable
 
         var result = await _service.GetDepartmentCoveragePiesAsync(es.Id);
 
-        // Pure alphabetical would give Apple Slice, Banana, Mango.
-        // Grouped: each promoted subteam follows its parent in the row.
-        result.Select(r => r.TeamName).Should().Equal("Banana", "Mango", "Apple Slice");
+        result.Select(r => r.TeamName).Should().Equal("Apple Slice", "Banana", "Mango");
+        result.Single(r => string.Equals(r.TeamName, "Apple Slice", StringComparison.Ordinal))
+            .ParentTeamName.Should().Be("Mango");
+        result.Single(r => string.Equals(r.TeamName, "Banana", StringComparison.Ordinal))
+            .ParentTeamName.Should().BeNull();
+        result.Single(r => string.Equals(r.TeamName, "Mango", StringComparison.Ordinal))
+            .ParentTeamName.Should().BeNull();
     }
 
     [HumansFact]

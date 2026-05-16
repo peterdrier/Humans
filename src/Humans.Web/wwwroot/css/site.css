@@ -1968,7 +1968,7 @@ tr[data-href] {
     font-size: .85rem;
     line-height: 1.2;
 }
-.dept-pie-tip .bi { font-size: 1rem; }
+.dept-pie-tip .fa-solid { font-size: 1rem; }
 
 .dept-pie-row {
     display: grid;

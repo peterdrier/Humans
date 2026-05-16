@@ -1066,19 +1066,21 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
             }
         }
 
+        // Natural name order. Display-layer ordering rule (sub-team next to
+        // parent) lives in the view-model assembly per
+        // memory/architecture/display-sort-in-controllers.
         return pieTeams
             .Where(t => requested.GetValueOrDefault(t.Id) > 0)
-            .OrderBy(t => t.ParentTeamId is { } pid && teamLookup.TryGetValue(pid, out var parent)
-                ? parent.Name
-                : t.Name, StringComparer.Ordinal)
-            .ThenBy(t => t.ParentTeamId is null ? 0 : 1)
-            .ThenBy(t => t.Name, StringComparer.Ordinal)
+            .OrderBy(t => t.Name, StringComparer.Ordinal)
             .Select(t => new DepartmentCoveragePie(
                 TeamId: t.Id,
                 TeamName: t.Name,
                 TeamSlug: t.Slug,
                 IsSubTeam: t.ParentTeamId is not null,
                 ParentTeamId: t.ParentTeamId,
+                ParentTeamName: t.ParentTeamId is { } pid && teamLookup.TryGetValue(pid, out var parent)
+                    ? parent.Name
+                    : null,
                 RequestedHours: requested[t.Id],
                 FilledHours: filled.GetValueOrDefault(t.Id)))
             .ToList();
