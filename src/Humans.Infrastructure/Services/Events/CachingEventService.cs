@@ -529,7 +529,7 @@ public sealed class CachingEventService : IEventService, IEventViewInvalidator, 
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            _logger.LogWarning(ex,
+            _logger.LogError(ex,
                 "CachingEventService: failed to load EventSettings {EventSettingsId} for guide-settings cache; TimeZoneId left null",
                 settings.EventSettingsId);
         }
