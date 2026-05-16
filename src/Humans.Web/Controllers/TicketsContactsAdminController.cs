@@ -37,7 +37,9 @@ public sealed class TicketsContactsAdminController : HumansControllerBase
             .ThenBy(d => d.Email, StringComparer.OrdinalIgnoreCase)
             .Select(d => new AttendeeImportDecisionRow(
                 d.AttendeeId, d.Email, d.AttendeeName, d.VendorTicketId,
-                d.Outcome, d.TargetUserId, d.UnverifiedRowUserId, d.AmbiguousUserIds))
+                d.Outcome, d.TargetUserId, d.UnverifiedRowUserId, d.AmbiguousUserIds,
+                GroupSize: 1 + (d.AdditionalAttendeeIds?.Count ?? 0),
+                ObservedNames: d.ObservedNames))
             .ToList();
 
         return View("~/Views/Tickets/Admin/Contacts.cshtml",

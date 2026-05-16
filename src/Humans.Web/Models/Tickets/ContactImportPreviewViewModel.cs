@@ -14,4 +14,6 @@ public sealed record AttendeeImportDecisionRow(
     AttendeeImportOutcome Outcome,
     Guid? TargetUserId,
     Guid? UnverifiedRowUserId,
-    IReadOnlyList<Guid>? AmbiguousUserIds);
+    IReadOnlyList<Guid>? AmbiguousUserIds,
+    int GroupSize,
+    IReadOnlyList<string>? ObservedNames);

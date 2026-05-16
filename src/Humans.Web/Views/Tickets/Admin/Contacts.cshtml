@@ -66,8 +66,34 @@
                                class="form-check-input row-check" />
                     }
                 </td>
-                <td>@(row.Email ?? "—")</td>
-                <td>@(row.AttendeeName ?? "—")</td>
+                <td>
+                    @(row.Email ?? "—")
+                    @if (row.GroupSize > 1)
+                    {
+                        <span class="badge text-bg-info ms-1" title="@row.GroupSize tickets share this email">×@row.GroupSize</span>
+                    }
+                </td>
+                <td>
+                    @if (row.ObservedNames is { Count: > 1 } names)
+                    {
+                        <details>
+                            <summary>
+                                @(row.AttendeeName ?? "—")
+                                <span class="badge text-bg-warning ms-1" title="Multiple distinct names observed">@names.Count names</span>
+                            </summary>
+                            <ul class="mb-0 small text-muted">
+                                @foreach (var n in names)
+                                {
+                                    <li>@n</li>
+                                }
+                            </ul>
+                        </details>
+                    }
+                    else
+                    {
+                        @(row.AttendeeName ?? "—")
+                    }
+                </td>
                 <td>
                     @switch (row.Outcome)
                     {

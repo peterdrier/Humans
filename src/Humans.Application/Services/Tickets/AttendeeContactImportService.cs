@@ -54,11 +54,31 @@ public sealed class AttendeeContactImportService : IAttendeeContactImportService
             throw new InvalidOperationException("No active vendor event id — sync has not run.");
 
         var unmatched = await _ticketRepository.GetUnmatchedActiveAttendeesAsync(eventId, ct);
-        var decisions = new List<AttendeeImportDecision>(unmatched.Count);
+        var decisions = new List<AttendeeImportDecision>();
 
-        foreach (var a in unmatched)
+        // Rows without an email cannot be grouped — emit one decision each.
+        foreach (var a in unmatched.Where(a => string.IsNullOrWhiteSpace(a.AttendeeEmail)))
         {
-            decisions.Add(await ClassifyAsync(a, ct));
+            decisions.Add(await ClassifyAsync(a, [], [], ct));
+        }
+
+        // Rows with an email: group by normalized email so one buyer = one decision.
+        var grouped = unmatched
+            .Where(a => !string.IsNullOrWhiteSpace(a.AttendeeEmail))
+            .GroupBy(a => a.AttendeeEmail!.Trim(), StringComparer.OrdinalIgnoreCase);
+
+        foreach (var group in grouped)
+        {
+            var members = group.ToList();
+            var lead = members[0];
+            var additional = members.Skip(1).Select(m => m.Id).ToList();
+            var observed = members
+                .Select(ResolveDisplayName)
+                .Where(n => !string.IsNullOrWhiteSpace(n))
+                .Select(n => n!)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            decisions.Add(await ClassifyAsync(lead, additional, observed, ct));
         }
 
         return new AttendeeImportPlan(decisions, unmatched.Count);
@@ -90,24 +110,39 @@ public sealed class AttendeeContactImportService : IAttendeeContactImportService
         {
             attempted++;
 
-            if (!freshById.TryGetValue(d.AttendeeId, out var attendee))
+            // Collect the group: lead + any additional attendees in the same email
+            // group (one buyer with multiple tickets on the same email).
+            var groupIds = new List<Guid>(1 + (d.AdditionalAttendeeIds?.Count ?? 0))
+                { d.AttendeeId };
+            if (d.AdditionalAttendeeIds is { Count: > 0 } more) groupIds.AddRange(more);
+
+            // Filter to the subset still present with the same email at apply time.
+            // Per-attendee drift (email change or row deletion) is tolerated as long
+            // as the lead is intact — the others are logged and skipped.
+            var resolved = new List<TicketAttendee>();
+            foreach (var gid in groupIds)
             {
-                vanished++;
-                _logger.LogWarning(
-                    "Attendee {AttendeeId} ({Email}) vanished between plan and apply",
-                    d.AttendeeId, d.Email);
-                continue;
+                if (!freshById.TryGetValue(gid, out var ga))
+                {
+                    _logger.LogWarning(
+                        "Attendee {AttendeeId} ({Email}) vanished between plan and apply",
+                        gid, d.Email);
+                    continue;
+                }
+                if (!string.Equals(ga.AttendeeEmail, d.Email, StringComparison.OrdinalIgnoreCase))
+                {
+                    _logger.LogWarning(
+                        "Attendee {AttendeeId} email drifted between plan ({PlanEmail}) and apply ({FreshEmail}); skipping",
+                        gid, d.Email, ga.AttendeeEmail);
+                    continue;
+                }
+                resolved.Add(ga);
             }
 
-            // If the attendee's email changed between plan and apply, the plan's
-            // decision (TargetUserId / UnverifiedEmailIdToDelete / etc.) was computed
-            // against a stale email and may attach the wrong user. Treat as vanished.
-            if (!string.Equals(attendee.AttendeeEmail, d.Email, StringComparison.OrdinalIgnoreCase))
+            // If nothing in the group survived, the decision as a whole is void.
+            if (resolved.Count == 0)
             {
                 vanished++;
-                _logger.LogWarning(
-                    "Attendee {AttendeeId} email drifted between plan ({PlanEmail}) and apply ({FreshEmail}); treating as vanished",
-                    d.AttendeeId, d.Email, attendee.AttendeeEmail);
                 continue;
             }
 
@@ -131,9 +166,13 @@ public sealed class AttendeeContactImportService : IAttendeeContactImportService
 
                     case AttendeeImportOutcome.AttachVerified:
                         {
-                            attendee.MatchedUserId = d.TargetUserId!.Value;
-                            toUpsert.Add(attendee);
-                            newlyMatchedUserIds.Add(d.TargetUserId.Value);
+                            var targetUserId = d.TargetUserId!.Value;
+                            foreach (var ga in resolved)
+                            {
+                                ga.MatchedUserId = targetUserId;
+                                toUpsert.Add(ga);
+                            }
+                            newlyMatchedUserIds.Add(targetUserId);
                             attached++;
                             break;
                         }
@@ -147,8 +186,11 @@ public sealed class AttendeeContactImportService : IAttendeeContactImportService
                             }
                             var (newUser, wasCreated) = await _provisioning.FindOrCreateUserByEmailAsync(
                                 d.Email!, d.AttendeeName, ContactSource.TicketTailor, ct);
-                            attendee.MatchedUserId = newUser.Id;
-                            toUpsert.Add(attendee);
+                            foreach (var ga in resolved)
+                            {
+                                ga.MatchedUserId = newUser.Id;
+                                toUpsert.Add(ga);
+                            }
                             newlyMatchedUserIds.Add(newUser.Id);
                             if (wasCreated) created++;
                             replaced++;
@@ -159,8 +201,11 @@ public sealed class AttendeeContactImportService : IAttendeeContactImportService
                         {
                             var (newUser, wasCreated) = await _provisioning.FindOrCreateUserByEmailAsync(
                                 d.Email!, d.AttendeeName, ContactSource.TicketTailor, ct);
-                            attendee.MatchedUserId = newUser.Id;
-                            toUpsert.Add(attendee);
+                            foreach (var ga in resolved)
+                            {
+                                ga.MatchedUserId = newUser.Id;
+                                toUpsert.Add(ga);
+                            }
                             newlyMatchedUserIds.Add(newUser.Id);
                             if (wasCreated) created++;
                             break;
@@ -216,9 +261,15 @@ public sealed class AttendeeContactImportService : IAttendeeContactImportService
         return result;
     }
 
-    private async Task<AttendeeImportDecision> ClassifyAsync(TicketAttendee a, CancellationToken ct)
+    private async Task<AttendeeImportDecision> ClassifyAsync(
+        TicketAttendee a,
+        IReadOnlyList<Guid> additionalAttendeeIds,
+        IReadOnlyList<string> observedNames,
+        CancellationToken ct)
     {
         var name = ResolveDisplayName(a);
+        var addl = additionalAttendeeIds.Count > 0 ? additionalAttendeeIds : null;
+        var names = observedNames.Count > 0 ? observedNames : null;
 
         if (string.IsNullOrWhiteSpace(a.AttendeeEmail))
         {
@@ -228,7 +279,9 @@ public sealed class AttendeeContactImportService : IAttendeeContactImportService
                 TargetUserId: null,
                 UnverifiedEmailIdToDelete: null,
                 UnverifiedRowUserId: null,
-                AmbiguousUserIds: null);
+                AmbiguousUserIds: null,
+                AdditionalAttendeeIds: addl,
+                ObservedNames: names);
         }
 
         var verifiedUserIds = await _userEmails.GetDistinctVerifiedUserIdsAsync(a.AttendeeEmail, ct);
@@ -241,7 +294,9 @@ public sealed class AttendeeContactImportService : IAttendeeContactImportService
                 TargetUserId: null,
                 UnverifiedEmailIdToDelete: null,
                 UnverifiedRowUserId: null,
-                AmbiguousUserIds: verifiedUserIds);
+                AmbiguousUserIds: verifiedUserIds,
+                AdditionalAttendeeIds: addl,
+                ObservedNames: names);
         }
 
         if (verifiedUserIds.Count == 1)
@@ -253,7 +308,9 @@ public sealed class AttendeeContactImportService : IAttendeeContactImportService
                 TargetUserId: liveTarget,
                 UnverifiedEmailIdToDelete: null,
                 UnverifiedRowUserId: null,
-                AmbiguousUserIds: null);
+                AmbiguousUserIds: null,
+                AdditionalAttendeeIds: addl,
+                ObservedNames: names);
         }
 
         var existingRow = await _userEmails.FindAnyEmailRowByAddressAsync(a.AttendeeEmail, ct);
@@ -265,7 +322,9 @@ public sealed class AttendeeContactImportService : IAttendeeContactImportService
                 TargetUserId: null,
                 UnverifiedEmailIdToDelete: emailId,
                 UnverifiedRowUserId: uid,
-                AmbiguousUserIds: null);
+                AmbiguousUserIds: null,
+                AdditionalAttendeeIds: addl,
+                ObservedNames: names);
         }
 
         return new AttendeeImportDecision(
@@ -274,7 +333,9 @@ public sealed class AttendeeContactImportService : IAttendeeContactImportService
             TargetUserId: null,
             UnverifiedEmailIdToDelete: null,
             UnverifiedRowUserId: null,
-            AmbiguousUserIds: null);
+            AmbiguousUserIds: null,
+            AdditionalAttendeeIds: addl,
+            ObservedNames: names);
     }
 
     private async Task<Guid> ResolveTombstoneAsync(Guid userId, CancellationToken ct)
