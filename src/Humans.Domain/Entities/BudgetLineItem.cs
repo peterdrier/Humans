@@ -20,8 +20,8 @@ public class BudgetLineItem
     /// <see cref="ResponsibleTeamId"/>. Retained only so EF's configured FK
     /// constraint stays modelled.
     /// </summary>
-    [Obsolete("Cross-domain nav. Use ResponsibleTeamId + ITeamService to resolve the team.")]
     [Architecture.ExpiresOn("2026-06-01", reason: "Stream C typed-FK conversion — readers must stitch via ITeamService.")]
+    [Obsolete("Cross-domain nav. Use ResponsibleTeamId + ITeamService to resolve the team.")]
     public Team? ResponsibleTeam { get; set; }
     public string? Notes { get; set; }
 

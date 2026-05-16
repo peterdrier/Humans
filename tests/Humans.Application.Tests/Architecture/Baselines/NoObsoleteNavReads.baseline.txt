@@ -107,7 +107,6 @@ src/Humans.Infrastructure/Data/Configurations/Teams/TeamRoleDefinitionConfigurat
 src/Humans.Infrastructure/Jobs/TermRenewalReminderJob.cs:User#1
 src/Humans.Infrastructure/Repositories/Budget/BudgetRepository.cs:ActorUser#1
 src/Humans.Infrastructure/Repositories/Budget/BudgetRepository.cs:Team#1
-src/Humans.Infrastructure/Repositories/Budget/BudgetRepository.cs:Team#2
 src/Humans.Infrastructure/Repositories/Calendar/CalendarRepository.cs:OwningTeam#1
 src/Humans.Infrastructure/Repositories/Campaigns/CampaignRepository.cs:User#1
 src/Humans.Infrastructure/Repositories/Camps/CampRepository.cs:User#1

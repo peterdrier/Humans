@@ -44,8 +44,8 @@ public class GoogleResource
     /// only so EF's configured relationship keeps the FK constraint (see
     /// <see cref="Humans.Infrastructure"/> GoogleResourceConfiguration / TeamConfiguration).
     /// </summary>
-    [Obsolete("Cross-domain nav. Use TeamId + ITeamService to resolve the team.")]
     [Architecture.ExpiresOn("2026-06-01", reason: "Stream C typed-FK conversion — readers must stitch via ITeamService.")]
+    [Obsolete("Cross-domain nav. Use TeamId + ITeamService to resolve the team.")]
     public Team Team { get; set; } = null!;
 
     /// <summary>

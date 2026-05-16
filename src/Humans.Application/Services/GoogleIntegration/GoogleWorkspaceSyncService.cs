@@ -7,7 +7,6 @@ using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
-using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Domain.Helpers;
@@ -639,7 +638,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         // Resolve TeamInfo for this resource's team (cross-section via cache).
         var teamsById = await _teamService.GetTeamsAsync(cancellationToken);
         var teamGoogleGroupEmail = teamsById.TryGetValue(resource.TeamId, out var teamInfo)
-            ? ComputeGoogleGroupEmail(teamInfo)
+            ? teamInfo.GoogleGroupEmail
             : null;
 
         var now = _clock.GetCurrentInstant();
@@ -668,17 +667,6 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
 
         return await SyncDriveResourceGroupAsync(allWithSameGoogleId, teamsById, action, now, allMembers, allChildMembers, cancellationToken);
     }
-
-    /// <summary>
-    /// Computes the Google Group email for a team from its prefix + domain
-    /// constant. Mirrors the now-pragma-wrapped <c>Team.GoogleGroupEmail</c>
-    /// computed property so callers can stay on the <see cref="TeamInfo"/>
-    /// cache without touching the entity.
-    /// </summary>
-    private static string? ComputeGoogleGroupEmail(TeamInfo team) =>
-        team.GoogleGroupPrefix is null
-            ? null
-            : $"{team.GoogleGroupPrefix}@{DomainConstants.GoogleGroupDomain}";
 
     private async Task<ResourceSyncDiff> ReconcileGroupResourceAsync(
         GoogleResource resource,
@@ -1160,7 +1148,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         var reports = new List<GroupSettingsDriftReport>();
         foreach (var resource in filtered)
         {
-            var groupEmail = ComputeGoogleGroupEmail(teamsById[resource.TeamId]);
+            var groupEmail = teamsById[resource.TeamId].GoogleGroupEmail;
             if (string.IsNullOrEmpty(groupEmail))
             {
                 var prefix = resource.Url?.Split("/g/").LastOrDefault();

@@ -1,5 +1,6 @@
 using Humans.Application.Architecture;
 using Humans.Application.DTOs;
+using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Domain.ValueObjects;
@@ -37,7 +38,18 @@ public record TeamInfo(
     string? PageContent = null,
     IReadOnlyList<CallToAction>? CallsToAction = null,
     Instant? PageContentUpdatedAt = null,
-    Guid? PageContentUpdatedByUserId = null);
+    Guid? PageContentUpdatedByUserId = null)
+{
+    /// <summary>
+    /// Full Google Group email address, or null if no prefix is set. Mirrors
+    /// the canonical formula on <see cref="Team.GoogleGroupEmail"/> so callers
+    /// stitching via the cache get the same value without touching the entity.
+    /// </summary>
+    public string? GoogleGroupEmail =>
+        GoogleGroupPrefix is null
+            ? null
+            : $"{GoogleGroupPrefix}@{DomainConstants.GoogleGroupDomain}";
+}
 
 public record TeamMemberInfo(
     Guid TeamMemberId, Guid UserId, string DisplayName,

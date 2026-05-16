@@ -257,8 +257,8 @@ public sealed class BudgetService : IBudgetService, IUserDataContributor
         if (category is null)
             return null;
 
-        // Stitch ResponsibleTeam names cross-section via ITeamService (the
-        // repository no longer Includes the obsolete BudgetLineItem.ResponsibleTeam nav).
+        // Stitch responsible-team names cross-section via ITeamService (the
+        // repository no longer Includes the obsolete nav on BudgetLineItem).
         var teamIds = category.LineItems
             .Select(li => li.ResponsibleTeamId)
             .Where(tid => tid.HasValue)
