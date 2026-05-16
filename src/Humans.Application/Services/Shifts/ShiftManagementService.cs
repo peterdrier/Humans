@@ -52,6 +52,11 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
         [ShiftPriority.Essential] = 6
     };
 
+    // Width of the all-day shift window, used by the pie-row math. Inputs are
+    // static constants so this evaluates once per process.
+    private static readonly decimal AllDayShiftHours = (decimal)Duration.FromTicks(
+        Shift.AllDayWindowEnd.TickOfDay - Shift.AllDayWindowStart.TickOfDay).TotalHours;
+
     private readonly IShiftManagementRepository _repo;
     private readonly IAuditLogService _auditLogService;
     private readonly IAdminAuthorizationService _adminAuthorization;
@@ -1034,8 +1039,6 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
 
         var requested = new Dictionary<Guid, decimal>();
         var filled = new Dictionary<Guid, decimal>();
-        var allDayHours = (decimal)Duration.FromTicks(
-            Shift.AllDayWindowEnd.TickOfDay - Shift.AllDayWindowStart.TickOfDay).TotalHours;
 
         foreach (var rota in allRotas.Where(r => r.IsVisibleToVolunteers))
         {
@@ -1056,7 +1059,7 @@ public sealed class ShiftManagementService : IShiftManagementService, IShiftAuth
                     if (toDate is { } to && shiftDate > to) continue;
                 }
 
-                var hours = shift.IsAllDay ? allDayHours : (decimal)shift.Duration.TotalHours;
+                var hours = shift.IsAllDay ? AllDayShiftHours : (decimal)shift.Duration.TotalHours;
                 requested[bucketId.Value] = requested.GetValueOrDefault(bucketId.Value)
                     + hours * shift.MaxVolunteers;
 

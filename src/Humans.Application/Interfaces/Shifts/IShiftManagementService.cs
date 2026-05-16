@@ -426,7 +426,20 @@ public record DepartmentCoveragePie(
     Guid? ParentTeamId,
     string? ParentTeamName,
     decimal RequestedHours,
-    decimal FilledHours);
+    decimal FilledHours)
+{
+    /// <summary>
+    /// Filled / requested as an integer 0..100. Single source of truth for
+    /// the disc fill — service caps the inputs so the ratio is bounded, but
+    /// we clamp here too in case a future contributor wires a different
+    /// input path.
+    /// </summary>
+    public int FillPercent => RequestedHours > 0
+        ? Math.Clamp(
+            (int)Math.Round(FilledHours / RequestedHours * 100m, MidpointRounding.AwayFromZero),
+            0, 100)
+        : 0;
+}
 
 /// <summary>
 /// Per-day staffing hours grouped by shift priority for volume visualization.

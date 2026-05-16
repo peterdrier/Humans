@@ -146,6 +146,54 @@ public class ShiftManagementServiceCoveragePiesTests : IDisposable
     }
 
     [HumansFact]
+    public async Task NonPromotedSubteam_WhenParentOwnsNoRota_StillRollsUpToParent()
+    {
+        // Parent (Art) owns NO rota of its own; only the non-promoted subteam
+        // (Art / Lighting) has a rota. GetByIdsWithParentsAsync must include
+        // Art in the team lookup so the bucket rollup finds a target —
+        // otherwise the subteam's hours would be silently dropped.
+        var (es, art, lighting) = SeedDeptScenario(withSubteam: true, subteamPromoted: false);
+        AddShift(AddRota(es, lighting!, RotaPeriod.Event, name: "LightingRota"),
+            dayOffset: 0, maxVolunteers: 3, durationHours: 4.0);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.GetDepartmentCoveragePiesAsync(es.Id);
+
+        result.Should().HaveCount(1);
+        result[0].TeamId.Should().Be(art.Id);
+        result[0].IsSubTeam.Should().BeFalse();
+        result[0].RequestedHours.Should().Be(12m); // 3 × 4, rolled up from the subteam
+    }
+
+    [HumansFact]
+    public async Task FillPercent_ClampedZeroToHundred_AndRoundedAwayFromZero()
+    {
+        // Service caps confirmed at MaxVolunteers, so 0..100 is already the
+        // service contract — this guards the DTO clamp.
+        var (es, art, _) = SeedDeptScenario();
+        var rota = AddRota(es, art, RotaPeriod.Event);
+        var shift = AddShift(rota, dayOffset: 0, maxVolunteers: 3, durationHours: 4.0);
+        AddConfirmedSignup(shift); // 1/3 → 33.3% → 33 (away from zero)
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.GetDepartmentCoveragePiesAsync(es.Id);
+
+        result[0].FillPercent.Should().Be(33);
+    }
+
+    [HumansFact]
+    public async Task FillPercent_NoRequestedHours_ReturnsZero()
+    {
+        var pie = new DepartmentCoveragePie(
+            TeamId: Guid.NewGuid(), TeamName: "X", TeamSlug: "x",
+            IsSubTeam: false, ParentTeamId: null, ParentTeamName: null,
+            RequestedHours: 0m, FilledHours: 0m);
+
+        await Task.CompletedTask;
+        pie.FillPercent.Should().Be(0);
+    }
+
+    [HumansFact]
     public async Task ResultSortedAlphabetically_ByTeamName_ParentNamePopulatedForSubteams()
     {
         // Service returns natural-name-ordered rows; the "sub-team next to
