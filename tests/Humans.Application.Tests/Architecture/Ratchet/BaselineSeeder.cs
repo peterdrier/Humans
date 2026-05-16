@@ -83,6 +83,24 @@ public class BaselineSeeder
             "tests/Humans.Application.Tests/Architecture/Baselines/CrossSectionRepositoryInjection.baseline.txt",
             ServiceBoundaryArchitectureTests.ScanCrossSectionRepositoryInjections(),
             "no new cross-section repository injections in Application services (docs/architecture/service-entity-boundary-ratchet.md)");
+
+        WriteBaseline(
+            repoRoot,
+            "tests/Humans.Application.Tests/Architecture/Baselines/NoDisplayNameReads.baseline.txt",
+            NoDisplayNameReadsRule.Scan(repoRoot),
+            "no application code reads .DisplayName outside IUserService consumption (memory/architecture/iuserservice-onestop-userinfo.md)");
+
+        WriteBaseline(
+            repoRoot,
+            "tests/Humans.Application.Tests/Architecture/Baselines/NoProfileIsSuspendedReads.baseline.txt",
+            NoProfileIsSuspendedReadsRule.Scan(repoRoot),
+            "no application code reads Profile.IsSuspended (replaced by Profile.State per §15i FullProfile landmark)");
+
+        WriteBaseline(
+            repoRoot,
+            "tests/Humans.Application.Tests/Architecture/Baselines/NoAdminUrlSectionRoutes.baseline.txt",
+            NoAdminUrlSectionRoutesRule.Scan(repoRoot),
+            "no [Route(\"Admin/...\")] outside the legacy dashboard controllers (memory/architecture/no-admin-url-section.md)");
     }
 
     private static void WriteBaseline(string repoRoot, string relativePath, IEnumerable<string> violations, string ruleSummary)
