@@ -4192,7 +4192,10 @@
     <value>{0} — {1} h / {2} h ({3}%)</value>
   </data>
   <data name="Shifts_PieCoverage_TipFilter" xml:space="preserve">
-    <value>Tipp — klicke auf ein Diagramm unten, um die Schichten dieser Abteilung zu filtern.</value>
+    <value>Tipp — klicke auf ein Diagramm, um diese Abteilung zu filtern; klicke erneut zum Aufheben.</value>
+  </data>
+  <data name="Shifts_PieCoverage_TipDismiss" xml:space="preserve">
+    <value>Tipp ausblenden</value>
   </data>
   <data name="Shifts_From" xml:space="preserve">
     <value>Von</value>

@@ -5,11 +5,14 @@
     return;
 }
 
-<div class="dept-pie-tip" role="note">
+<div class="dept-pie-tip" role="note" data-dept-pie-tip hidden>
     <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
     <span>@Localizer["Shifts_PieCoverage_TipFilter"]</span>
+    <button type="button" class="dept-pie-tip-dismiss"
+            aria-label="@Localizer["Shifts_PieCoverage_TipDismiss"]"
+            data-dept-pie-tip-dismiss>&times;</button>
 </div>
-<div class="dept-pie-row" role="navigation" aria-label="@Localizer["Shifts_PieCoverage_RowAria"]">
+<div class="dept-pie-row" role="group" aria-label="@Localizer["Shifts_PieCoverage_RowAria"]">
     @foreach (var pie in Model.CoveragePies)
     {
         var isSelected = Model.FilterDepartmentId == pie.TeamId;
@@ -27,6 +30,7 @@
             Localizer["Shifts_PieCoverage_Title"].Value,
             pie.TeamName, filledDisplay, requestedDisplay, pct);
         var deptValue = isSelected ? string.Empty : pie.TeamId.ToString();
+        var coverageClass = pct < 25 ? " coverage-critical" : pct < 50 ? " coverage-warning" : string.Empty;
 
         <form method="get" asp-action="Index" class="dept-pie-form">
             @if (!string.IsNullOrEmpty(Model.FilterPeriod))
@@ -43,7 +47,7 @@
             }
             <input type="hidden" name="departmentId" value="@deptValue" />
             <button type="submit"
-                    class="dept-pie@(isSelected ? " selected" : "")@(pie.IsSubTeam ? " is-subteam" : "")"
+                    class="dept-pie@(isSelected ? " selected" : "")@(pie.IsSubTeam ? " is-subteam" : "")@coverageClass"
                     aria-label="@ariaLabel"
                     title="@titleText"
                     style="--pct: @pct%;">
@@ -56,3 +60,18 @@
         </form>
     }
 </div>
+
+<script>
+    (function () {
+        var key = 'humans.pieTipDismissed';
+        var tip = document.querySelector('[data-dept-pie-tip]');
+        if (!tip) return;
+        if (localStorage.getItem(key) !== '1') tip.removeAttribute('hidden');
+        var btn = tip.querySelector('[data-dept-pie-tip-dismiss]');
+        if (!btn) return;
+        btn.addEventListener('click', function () {
+            try { localStorage.setItem(key, '1'); } catch (_) { /* private mode */ }
+            tip.setAttribute('hidden', '');
+        });
+    })();
+</script>

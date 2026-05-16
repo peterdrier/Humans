@@ -4192,7 +4192,10 @@
     <value>{0} — {1} h / {2} h ({3}%)</value>
   </data>
   <data name="Shifts_PieCoverage_TipFilter" xml:space="preserve">
-    <value>Consell — fes clic en qualsevol gràfic de sota per filtrar els torns d'aquest departament.</value>
+    <value>Consell — fes clic en un gràfic per filtrar per aquest departament; torna a fer-hi clic per esborrar.</value>
+  </data>
+  <data name="Shifts_PieCoverage_TipDismiss" xml:space="preserve">
+    <value>Descarta el consell</value>
   </data>
   <data name="Shifts_From" xml:space="preserve">
     <value>Des de</value>

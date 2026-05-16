@@ -4192,7 +4192,10 @@
     <value>{0} — {1} h / {2} h ({3}%)</value>
   </data>
   <data name="Shifts_PieCoverage_TipFilter" xml:space="preserve">
-    <value>Suggerimento — clicca su un grafico qui sotto per filtrare i turni di quel dipartimento.</value>
+    <value>Suggerimento — clicca su un grafico per filtrare quel dipartimento; clicca di nuovo per cancellare.</value>
+  </data>
+  <data name="Shifts_PieCoverage_TipDismiss" xml:space="preserve">
+    <value>Ignora il suggerimento</value>
   </data>
   <data name="Shifts_From" xml:space="preserve">
     <value>Da</value>

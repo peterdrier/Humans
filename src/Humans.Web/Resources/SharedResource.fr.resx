@@ -4192,7 +4192,10 @@
     <value>{0} — {1} h / {2} h ({3}%)</value>
   </data>
   <data name="Shifts_PieCoverage_TipFilter" xml:space="preserve">
-    <value>Astuce — cliquez sur un graphique ci-dessous pour filtrer les créneaux de ce département.</value>
+    <value>Astuce — cliquez sur un graphique pour filtrer ce département ; cliquez à nouveau pour effacer.</value>
+  </data>
+  <data name="Shifts_PieCoverage_TipDismiss" xml:space="preserve">
+    <value>Masquer l'astuce</value>
   </data>
   <data name="Shifts_From" xml:space="preserve">
     <value>De</value>

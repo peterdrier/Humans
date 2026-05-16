@@ -1959,7 +1959,7 @@ tr[data-href] {
     display: inline-flex;
     align-items: center;
     gap: .4rem;
-    padding: .3rem .7rem;
+    padding: .3rem .35rem .3rem .7rem;
     margin: .25rem 0 .6rem;
     background: var(--h-alert-info-bg);
     color: var(--h-alert-info-text);
@@ -1968,7 +1968,22 @@ tr[data-href] {
     font-size: .85rem;
     line-height: 1.2;
 }
+.dept-pie-tip[hidden] { display: none; }
 .dept-pie-tip .fa-solid { font-size: 1rem; }
+.dept-pie-tip-dismiss {
+    appearance: none;
+    background: transparent;
+    border: 0;
+    color: inherit;
+    font-size: 1.1rem;
+    line-height: 1;
+    padding: 0 .25rem;
+    margin-left: .25rem;
+    cursor: pointer;
+    opacity: .65;
+    transition: opacity 120ms ease;
+}
+.dept-pie-tip-dismiss:hover { opacity: 1; }
 
 .dept-pie-row {
     display: grid;
@@ -2003,9 +2018,11 @@ tr[data-href] {
     border-color: var(--h-gold);
     background: var(--h-vellum);
 }
+.dept-pie.is-subteam {
+    border-inline-start: 3px solid var(--h-gold-light);
+}
 .dept-pie.is-subteam .dept-pie-name {
     font-style: italic;
-    opacity: .9;
 }
 .dept-pie-disc {
     width: 56px;
@@ -2013,6 +2030,18 @@ tr[data-href] {
     border-radius: 50%;
     background: conic-gradient(
         var(--h-chart-success) 0 var(--pct, 0%),
+        var(--h-chart-muted) 0 100%
+    );
+}
+.dept-pie.coverage-warning .dept-pie-disc {
+    background: conic-gradient(
+        var(--h-amber) 0 var(--pct, 0%),
+        var(--h-chart-muted) 0 100%
+    );
+}
+.dept-pie.coverage-critical .dept-pie-disc {
+    background: conic-gradient(
+        var(--h-rust) 0 var(--pct, 0%),
         var(--h-chart-muted) 0 100%
     );
 }

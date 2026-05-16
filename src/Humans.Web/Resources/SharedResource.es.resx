@@ -4192,7 +4192,10 @@
     <value>{0} — {1} h / {2} h ({3}%)</value>
   </data>
   <data name="Shifts_PieCoverage_TipFilter" xml:space="preserve">
-    <value>Consejo — haz clic en cualquier gráfico de abajo para filtrar los turnos por ese departamento.</value>
+    <value>Consejo — haz clic en un gráfico para filtrar por ese departamento; vuelve a hacer clic para borrar.</value>
+  </data>
+  <data name="Shifts_PieCoverage_TipDismiss" xml:space="preserve">
+    <value>Descartar consejo</value>
   </data>
   <data name="Shifts_From" xml:space="preserve">
     <value>Desde</value>
