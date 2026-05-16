@@ -253,6 +253,11 @@ builder.Services.AddAuthentication()
                     logger.LogWarning(
                         "Google sign-in correlation cookie missing from {ClientIp} (stale or duplicate request)", clientIp);
                 }
+                else if (context.Failure is OperationCanceledException)
+                {
+                    // User closed tab / network dropped mid-callback. Same expected-user-behavior
+                    // category as access_denied / correlation. No log — see #728.
+                }
                 else
                 {
                     logger.LogWarning(
@@ -617,6 +622,13 @@ app.Services.GetRequiredService<IHumansMetrics>();
 // Forwarded headers must be first (for reverse proxy)
 app.UseForwardedHeaders();
 
+// Request logging must wrap UseExceptionHandler so the exception handlers
+// (CancellationExceptionHandler in particular) get to set the response
+// status BEFORE Serilog's finally block records the event. With the order
+// reversed, OCEs surfaced as Error+500 because Serilog's catch observed the
+// exception in flight before the handler could swap status to 499. See #728.
+app.UseSerilogRequestLogging();
+
 if (app.Environment.IsDevelopment())
 {
     app.UseDeveloperExceptionPage();
@@ -686,9 +698,6 @@ app.UseCors();
 
 // Rate limiting
 app.UseRateLimiter();
-
-// Serilog request logging
-app.UseSerilogRequestLogging();
 
 app.UseAuthentication();
 app.UseAuthorization();
