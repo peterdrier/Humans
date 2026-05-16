@@ -58,6 +58,7 @@ public class ProfileServiceTests : IDisposable
             _contactFieldRepository, _communicationPreferenceRepository,
             _auditLogService,
             _fileStorage,
+            Substitute.For<IUserInfoInvalidator>(),
             _clock,
             NullLogger<ProfileService>.Instance);
 
@@ -525,6 +526,7 @@ public class ProfileServiceTests : IDisposable
         _contactFieldRepository, _communicationPreferenceRepository,
         _auditLogService,
         _fileStorage,
+        Substitute.For<IUserInfoInvalidator>(),
         _clock,
         NullLogger<ProfileService>.Instance);
 
@@ -671,6 +673,7 @@ public class ProfileServiceTests : IDisposable
             _contactFieldRepository, _communicationPreferenceRepository,
             _auditLogService,
             _fileStorage,
+            Substitute.For<IUserInfoInvalidator>(),
             _clock,
             NullLogger<ProfileService>.Instance);
 
