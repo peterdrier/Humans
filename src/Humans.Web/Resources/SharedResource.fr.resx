@@ -73,7 +73,7 @@
     <value>Retour</value>
   </data>
   <data name="Common_ExportGeoJson" xml:space="preserve">
-    <value>Exporter en GeoJSON</value>
+    <value>Export GeoJSON</value>
   </data>
   <data name="Common_Submit" xml:space="preserve">
     <value>Envoyer</value>
@@ -118,7 +118,7 @@
     <value>À propos</value>
   </data>
   <data name="Nav_Admin" xml:space="preserve">
-    <value>Administration</value>
+    <value>Admin</value>
   </data>
   <data name="Nav_OnboardingReview" xml:space="preserve">
     <value>File d'attente</value>
@@ -1339,6 +1339,9 @@
   <data name="Consent_StubProfile_AddName" xml:space="preserve">
     <value>Ajoutez votre nom légal avant de signer les consentements.</value>
   </data>
+  <data name="Onboarding_NameRequiredBeforeShifts" xml:space="preserve">
+    <value>Add your name first — we need it before you can sign up for shifts.</value>
+  </data>
   <data name="Teams_Title" xml:space="preserve">
     <value>Équipes</value>
   </data>
@@ -1593,7 +1596,7 @@
     <value>Tableau de bord administrateur</value>
   </data>
   <data name="AdminHumans_Title" xml:space="preserve">
-    <value>Membres</value>
+    <value>Humans</value>
   </data>
   <data name="AdminHumans_AllStatuses" xml:space="preserve">
     <value>Tous</value>
@@ -3115,7 +3118,7 @@
     <comment>{0} = display name, {1} = issue title, {2} = comment HTML, {3} = issue URL</comment>
   </data>
   <data name="Feedback_Button" xml:space="preserve">
-    <value>Retours</value>
+    <value>Feedback</value>
   </data>
   <data name="Feedback_Title" xml:space="preserve">
     <value>Envoyer un Feedback</value>
@@ -3130,10 +3133,10 @@
     <value>Demande de fonctionnalité</value>
   </data>
   <data name="Feedback_Category_Question" xml:space="preserve">
-    <value>Poser une question</value>
+    <value>Question</value>
   </data>
   <data name="Feedback_Description" xml:space="preserve">
-    <value>Description détaillée</value>
+    <value>Description</value>
   </data>
   <data name="Feedback_DescriptionPlaceholder" xml:space="preserve">
     <value>Dites-nous ce qui s'est passé ou ce que vous aimeriez voir...</value>
@@ -4257,7 +4260,7 @@
     <value>jours</value>
   </data>
   <data name="Shifts_Total" xml:space="preserve">
-    <value>Total</value>
+    <value>total</value>
   </data>
   <data name="Shifts_SignedUpAllDays" xml:space="preserve">
     <value>Inscrit ({0} jours)</value>
@@ -4476,7 +4479,7 @@
     <value>Priorité</value>
   </data>
   <data name="ShiftDash_Voluntell" xml:space="preserve">
-    <value>Désignation d'office</value>
+    <value>Voluntell</value>
   </data>
   <data name="ShiftDash_SearchHumans" xml:space="preserve">
     <value>Rechercher des humans pour : {0}</value>
@@ -4738,7 +4741,7 @@
     <value>humans qui ont payé</value>
   </data>
   <data name="ShiftDash_Overview_TicketHoldersEngaged" xml:space="preserve">
-    <value>Humains détenteurs de billets</value>
+    <value>Ticket holding humans</value>
   </data>
   <data name="ShiftDash_Overview_EngagedSubline" xml:space="preserve">
     <value>{0} humans ne se sont pas inscrits</value>
@@ -4778,22 +4781,22 @@
     <value>Démontage</value>
   </data>
   <data name="ShiftDash_SubPeriodFilter_Label" xml:space="preserve">
-    <value>Phase de montage :</value>
+    <value>Set-up phase:</value>
   </data>
   <data name="ShiftDash_SubPeriodFilter_All" xml:space="preserve">
-    <value>Tout le montage</value>
+    <value>All set-up</value>
   </data>
   <data name="ShiftDash_SubPeriodFilter_FirstCrew" xml:space="preserve">
-    <value>Première équipe</value>
+    <value>First crew</value>
   </data>
   <data name="ShiftDash_SubPeriodFilter_SetupWeek" xml:space="preserve">
-    <value>Semaine de montage</value>
+    <value>Set-up week</value>
   </data>
   <data name="ShiftDash_SubPeriodFilter_PreEventWeek" xml:space="preserve">
-    <value>Semaine pré-événement</value>
+    <value>Pre-event week</value>
   </data>
   <data name="ShiftDash_SubPeriodFilter_FinishingWeekend" xml:space="preserve">
-    <value>Weekend de finition</value>
+    <value>Finishing weekend</value>
   </data>
   <data name="ShiftDash_Departments_Title" xml:space="preserve">
     <value>Départements</value>
@@ -4802,7 +4805,7 @@
     <value>triés par % de places remplies le plus bas en premier</value>
   </data>
   <data name="ShiftDash_Countdown_Label" xml:space="preserve">
-    <value>Compte à rebours avant l'arrivée sur le terrain</value>
+    <value>Countdown to feet on the ground</value>
   </data>
   <data name="ShiftDash_Countdown_Days" xml:space="preserve">
     <value>{0} jours</value>
@@ -4824,31 +4827,31 @@
     <value>Événement en cours — jour {0} depuis le début du montage</value>
   </data>
   <data name="ShiftDash_DeptStaffingByDay_Title" xml:space="preserve">
-    <value>Présence sur le terrain par jour</value>
+    <value>People on site by day</value>
   </data>
   <data name="ShiftDash_DeptStaffingByDay_Subtitle" xml:space="preserve">
-    <value>empilé par département — inscriptions confirmées uniquement</value>
+    <value>stacked by department — confirmed signups only</value>
   </data>
   <data name="ShiftDash_DurationMix_Title" xml:space="preserve">
-    <value>Mixage des durées de shifts</value>
+    <value>Shift duration mix</value>
   </data>
   <data name="ShiftDash_DurationMix_Subtitle" xml:space="preserve">
-    <value>répartition des shifts entre journée complète et horaire, pour cette période</value>
+    <value>how shifts are split between full-day and hourly, for this period</value>
   </data>
   <data name="ShiftDash_DurationMix_Col_Duration" xml:space="preserve">
-    <value>Durée</value>
+    <value>Duration</value>
   </data>
   <data name="ShiftDash_DurationMix_Col_Slots" xml:space="preserve">
-    <value>Créneaux</value>
+    <value>Slots</value>
   </data>
   <data name="ShiftDash_DurationMix_Col_Filled" xml:space="preserve">
-    <value>Remplis</value>
+    <value>Filled</value>
   </data>
   <data name="ShiftDash_DurationMix_Col_Pct" xml:space="preserve">
     <value>%</value>
   </data>
   <data name="ShiftDash_DurationMix_FullDay" xml:space="preserve">
-    <value>Journée complète</value>
+    <value>Full day</value>
   </data>
   <data name="ShiftDash_DurationMix_HourLabel" xml:space="preserve">
     <value>{0} h</value>
@@ -4858,13 +4861,13 @@
     <value>Total</value>
   </data>
   <data name="ShiftDash_Heatmap_Title" xml:space="preserve">
-    <value>Carte thermique de couverture</value>
+    <value>Coverage heatmap</value>
   </data>
   <data name="ShiftDash_Heatmap_Subtitle" xml:space="preserve">
-    <value>remplissage des créneaux par planning par jour — vert = 80%+, jaune = 60–79%, rouge = en dessous, gris = pas de shift ce jour-là</value>
+    <value>slot fill per rota per day — green = 80%+, yellow = 60–79%, red = below, grey = no shift that day</value>
   </data>
   <data name="ShiftDash_Heatmap_Col_Team" xml:space="preserve">
-    <value>Équipe</value>
+    <value>Team</value>
   </data>
   <data name="ShiftDash_Heatmap_Tooltip_Filled" xml:space="preserve">
     <value>{0} — {1} / {2} places occupées</value>
@@ -4873,7 +4876,7 @@
     <value>{0} — aucun tour ce jour-là</value>
   </data>
   <data name="ShiftDash_Heatmap_Legend" xml:space="preserve">
-    <value>Survolez une cellule pour les détails. Faites défiler horizontalement pour voir tous les jours.</value>
+    <value>Hover a cell for details. Scroll horizontally to see all days.</value>
   </data>
   <data name="ShiftDash_Departments_Col_Department" xml:space="preserve">
     <value>Département</value>
@@ -5052,31 +5055,31 @@
     <value>E-mail de service Google mis à jour. La synchronisation sera relancée avec le nouvel e-mail.</value>
   </data>
   <data name="EmailGrid_GoogleFlagCleared" xml:space="preserve">
-    <value>Indicateur d'identité Google effacé de cette ligne.</value>
+    <value>Google identity flag cleared from that row.</value>
   </data>
   <data name="EmailGrid_SetPrimary" xml:space="preserve">
-    <value>Définir comme principal</value>
+    <value>Set primary</value>
   </data>
   <data name="EmailGrid_SetGoogle" xml:space="preserve">
-    <value>Définir pour Google</value>
+    <value>Set Google</value>
   </data>
   <data name="EmailGrid_ClearGoogleRejected" xml:space="preserve">
-    <value>Impossible d'effacer l'indicateur Google — la ligne est inconnue ou non marquée actuellement.</value>
+    <value>Could not clear Google flag — the row is unknown or not currently flagged.</value>
   </data>
   <data name="EmailGrid_PrimaryFlagCleared" xml:space="preserve">
-    <value>Indicateur principal effacé de cette ligne.</value>
+    <value>Primary flag cleared from that row.</value>
   </data>
   <data name="EmailGrid_ClearPrimaryRejected" xml:space="preserve">
-    <value>Impossible d'effacer l'indicateur principal — la ligne est inconnue ou non marquée actuellement.</value>
+    <value>Could not clear primary flag — the row is unknown or not currently flagged.</value>
   </data>
   <data name="EmailGrid_Clear" xml:space="preserve">
-    <value>Effacer</value>
+    <value>Clear</value>
   </data>
   <data name="EmailGrid_ConfirmClearGoogle" xml:space="preserve">
-    <value>Effacer l'indicateur d'identité Google de cette ligne d'e-mail ?</value>
+    <value>Clear the Google identity flag from this email row?</value>
   </data>
   <data name="EmailGrid_ConfirmClearPrimary" xml:space="preserve">
-    <value>Effacer l'indicateur principal de cette ligne d'e-mail ?</value>
+    <value>Clear the primary flag from this email row?</value>
   </data>
   <data name="EmailGrid_UnlinkSuccess" xml:space="preserve">
     <value>Fournisseur de connexion dissocié.</value>
@@ -5088,16 +5091,16 @@
     <value>E-mail de vérification envoyé à l'utilisateur.</value>
   </data>
   <data name="EmailGrid_AdminVerify" xml:space="preserve">
-    <value>Vérifier</value>
+    <value>Verify</value>
   </data>
   <data name="EmailGrid_ConfirmAdminVerify" xml:space="preserve">
-    <value>Marquer manuellement cet e-mail comme vérifié sans que l'utilisateur clique sur le lien ?</value>
+    <value>Manually mark this email verified without the user clicking the link?</value>
   </data>
   <data name="EmailGrid_AdminVerifySuccess" xml:space="preserve">
-    <value>E-mail vérifié manuellement.</value>
+    <value>Email manually verified.</value>
   </data>
   <data name="EmailGrid_AdminVerifyMergeRequested" xml:space="preserve">
-    <value>Cette adresse est déjà vérifiée sur un autre compte. Une demande de fusion a été créée au lieu de la vérification.</value>
+    <value>This address is already verified on another account. A merge request was created instead of verifying.</value>
   </data>
   <data name="EmailGrid_LinkFailed" xml:space="preserve">
     <value>Nous n'avons pas pu associer ce compte Google. Veuillez réessayer.</value>
@@ -5377,11 +5380,11 @@
     <comment>{0} = user name, {1} = removed email, {2} = current Google email</comment>
   </data>
   <data name="OnboardingBanner_Text" xml:space="preserve">
-    <value>Terminez la configuration de votre compte pour accéder aux créneaux et aux fonctionnalités d'équipe.</value>
+    <value>Finish setting up your account to access shifts and team features.</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="OnboardingBanner_Cta" xml:space="preserve">
-    <value>Continuer la configuration →</value>
+    <value>Continue setup →</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_Title" xml:space="preserve">
@@ -5389,331 +5392,331 @@
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_Breadcrumb_Shifts" xml:space="preserve">
-    <value>Créneaux</value>
+    <value>Shifts</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_Breadcrumb_ShiftDashboard" xml:space="preserve">
-    <value>Tableau de bord des créneaux</value>
+    <value>Shift Dashboard</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_Breadcrumb_VolunteerTracking" xml:space="preserve">
-    <value>Suivi des bénévoles</value>
+    <value>Volunteer Tracking</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_NoActiveEvent" xml:space="preserve">
-    <value>Aucun événement actif.</value>
+    <value>No active event.</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_AllClear" xml:space="preserve">
-    <value>Tout le monde est à jour.</value>
+    <value>Everyone is on track.</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_UnknownUser" xml:space="preserve">
-    <value>(inconnu)</value>
+    <value>(unknown)</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_AsOfToday" xml:space="preserve">
-    <value>En date du {0}</value>
+    <value>As of {0}</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_Counts_MainTotal" xml:space="preserve">
-    <value>Bénévoles suivis</value>
+    <value>Volunteers tracked</value>
   </data>
   <data name="VolTrack_Counts_WithGaps" xml:space="preserve">
-    <value>Avec des trous</value>
+    <value>With gaps</value>
   </data>
   <data name="VolTrack_Counts_OnCampSetup" xml:space="preserve">
-    <value>En montage de camp aujourd'hui</value>
+    <value>On camp set-up today</value>
   </data>
   <data name="VolTrack_Counts_Unbooked" xml:space="preserve">
-    <value>Déclarés mais non réservés</value>
+    <value>Declared but unbooked</value>
   </data>
   <data name="VolTrack_Filter_HideNoGaps" xml:space="preserve">
-    <value>Masquer les bénévoles sans trous</value>
+    <value>Hide volunteers with no gaps</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_Filter_HideCampSetup" xml:space="preserve">
-    <value>Masquer les bénévoles avec une date de montage de camp</value>
+    <value>Hide volunteers with a camp set-up date</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_Filter_HideUnbookedSection" xml:space="preserve">
-    <value>Masquer la section déclarés mais non réservés</value>
+    <value>Hide declared-but-unbooked section</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_Filter_Apply" xml:space="preserve">
-    <value>Appliquer</value>
+    <value>Apply</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_Filter_Active" xml:space="preserve">
-    <value>Filtres actifs</value>
+    <value>Filters active</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_Filter_Clear" xml:space="preserve">
-    <value>Effacer les filtres</value>
+    <value>Clear filters</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_Main_Title" xml:space="preserve">
-    <value>Trous d'emploi du temps</value>
+    <value>Schedule gaps</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_Main_Subtitle" xml:space="preserve">
-    <value>{0} bénévoles affichés</value>
+    <value>{0} volunteers shown</value>
     <comment>{0} = count</comment>
   </data>
   <data name="VolTrack_Main_Empty" xml:space="preserve">
-    <value>Aucun bénévole avec des inscriptions en période de montage.</value>
+    <value>No volunteers with build-period signups.</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_Search_Placeholder" xml:space="preserve">
-    <value>Rechercher par nom ou nom de playa…</value>
+    <value>Search by name or playa name…</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_Search_NoMatch" xml:space="preserve">
-    <value>Aucun bénévole ne correspond à « {0} ».</value>
+    <value>No volunteers match “{0}”.</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_Col_Volunteer" xml:space="preserve">
-    <value>Bénévole</value>
+    <value>Volunteer</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_GapBadge" xml:space="preserve">
-    <value>{0} trous</value>
+    <value>{0} gaps</value>
     <comment>{0} = count</comment>
   </data>
   <data name="VolTrack_CampSetupTooltip" xml:space="preserve">
-    <value>En montage de camp depuis le {0}</value>
+    <value>On camp set-up since {0}</value>
     <comment>{0} = date</comment>
   </data>
   <data name="VolTrack_Unbooked_Heading" xml:space="preserve">
-    <value>Déclarés participants, pas encore réservés</value>
+    <value>Declared participating, not booked yet</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_Unbooked_Subtitle" xml:space="preserve">
-    <value>Bénévoles ayant indiqué leur présence et leurs disponibilités, mais qui ne se sont inscrits à aucun créneau.</value>
+    <value>Volunteers who said they're attending and have availability filled in but haven't signed up for any shifts.</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_Unbooked_Title" xml:space="preserve">
-    <value>Disponibles mais non réservés</value>
+    <value>Available but unbooked</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_Unbooked_Subtitle_Count" xml:space="preserve">
-    <value>{0} bénévoles affichés</value>
+    <value>{0} volunteers shown</value>
     <comment>{0} = count</comment>
   </data>
   <data name="VolTrack_Unbooked_Empty" xml:space="preserve">
-    <value>Aucun bénévole déclaré mais non réservé.</value>
+    <value>No declared-but-unbooked volunteers.</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_AvailableDaysBadge" xml:space="preserve">
-    <value>{0} dispo.</value>
+    <value>{0} avail.</value>
     <comment>{0} = count</comment>
   </data>
   <data name="VolTrack_AvailableDaysTooltip" xml:space="preserve">
-    <value>Jours disponibles pendant la période de montage</value>
+    <value>Available days inside build period</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_UnbookedBadge" xml:space="preserve">
-    <value>{0} non réservés</value>
+    <value>{0} unbooked</value>
     <comment>{0} = count</comment>
   </data>
   <data name="VolTrack_UnbookedTooltip" xml:space="preserve">
-    <value>Jours disponibles non réservés</value>
+    <value>Available days that aren't booked</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_State_DayOff" xml:space="preserve">
-    <value>Jour de repos</value>
+    <value>Day off</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_Legend_DayOff" xml:space="preserve">
-    <value>Jour de repos (validé)</value>
+    <value>Day off (acknowledged)</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_Popover_MarkDayOff" xml:space="preserve">
-    <value>Marquer comme jour de repos</value>
+    <value>Mark day off</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_Popover_CancelDayOff" xml:space="preserve">
-    <value>Annuler le jour de repos</value>
+    <value>Cancel day off</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_Popover_ReasonLabel" xml:space="preserve">
-    <value>Raison (facultatif)</value>
+    <value>Reason (optional)</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_Popover_DayOffBlockedBySignups" xml:space="preserve">
-    <value>Annuler cette inscription avant de marquer un jour de repos</value>
+    <value>Bail this signup before marking a day off</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_Msg_DayOffMarked" xml:space="preserve">
-    <value>Jour de repos marqué.</value>
+    <value>Day off marked.</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_Msg_DayOffCleared" xml:space="preserve">
-    <value>Jour de repos annulé.</value>
+    <value>Day off cleared.</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_DayOffBadge" xml:space="preserve">
-    <value>{0} jour(s) de repos</value>
+    <value>{0} day off</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_Err_DayOffWithSignups" xml:space="preserve">
-    <value>Le bénévole a des inscriptions ce jour-là — annulez-les d'abord.</value>
+    <value>Volunteer has signups on that day — bail them first.</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_Err_DayOffOutsideBuild" xml:space="preserve">
-    <value>Le jour de repos doit se situer pendant la période de montage.</value>
+    <value>Day off must be inside the build period.</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_AuditAction_DayOffMarked" xml:space="preserve">
-    <value>Jour de repos marqué</value>
+    <value>Day off marked</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_AuditAction_DayOffCleared" xml:space="preserve">
-    <value>Jour de repos annulé</value>
+    <value>Day off cleared</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_State_Confirmed" xml:space="preserve">
-    <value>Confirmé</value>
+    <value>Confirmed</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_State_Pending" xml:space="preserve">
-    <value>En attente</value>
+    <value>Pending</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_State_Gap" xml:space="preserve">
-    <value>Trou</value>
+    <value>Gap</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_State_CampSetup" xml:space="preserve">
-    <value>Montage de camp</value>
+    <value>Camp set-up</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_State_Outside" xml:space="preserve">
-    <value>Hors période</value>
+    <value>Outside window</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_State_Expected" xml:space="preserve">
-    <value>Attendu</value>
+    <value>Expected</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_State_AvailableUnbooked" xml:space="preserve">
-    <value>Disponible, non réservé</value>
+    <value>Available, not booked</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_State_AvailableExpected" xml:space="preserve">
-    <value>Disponible (futur)</value>
+    <value>Available (future)</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_State_NotAvailable" xml:space="preserve">
-    <value>Non disponible</value>
+    <value>Not available</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_Popover_Rotas" xml:space="preserve">
-    <value>Roulements :</value>
+    <value>Rotas:</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_Popover_Available" xml:space="preserve">
-    <value>Bénévole marqué comme disponible</value>
+    <value>Volunteer marked available</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_Popover_MarkCampSetup" xml:space="preserve">
-    <value>Marquer comme allé au montage du camp à partir de ce jour</value>
+    <value>Mark went to camp set-up from this day</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_Popover_MoveCampSetup" xml:space="preserve">
-    <value>Déplacer le montage du camp à ce jour</value>
+    <value>Move camp set-up to this day</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_Popover_ClearCampSetup" xml:space="preserve">
-    <value>Effacer le montage du camp</value>
+    <value>Clear camp set-up</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_Popover_OpenDashboard" xml:space="preserve">
-    <value>Trouver des créneaux pour le voluntell</value>
+    <value>Find shifts to voluntell</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_Scroll_Left" xml:space="preserve">
-    <value>Défiler à gauche</value>
+    <value>Scroll left</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_Scroll_Right" xml:space="preserve">
-    <value>Défiler à droite</value>
+    <value>Scroll right</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_Legend_Title" xml:space="preserve">
-    <value>Légende</value>
+    <value>Legend</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_Legend_Confirmed" xml:space="preserve">
-    <value>Inscription confirmée</value>
+    <value>Confirmed signup</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_Legend_Pending" xml:space="preserve">
-    <value>Inscription en attente</value>
+    <value>Pending signup</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_Legend_Gap" xml:space="preserve">
-    <value>Pas de couverture un jour où ils auraient dû être là</value>
+    <value>No coverage on a day they should have been here</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_Legend_AvailableUnbooked" xml:space="preserve">
-    <value>Disponible, pas encore d'inscription</value>
+    <value>Available, no signup yet</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_Legend_CampSetup" xml:space="preserve">
-    <value>En montage de camp</value>
+    <value>On camp set-up</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_Legend_OutsideOrExpected" xml:space="preserve">
-    <value>En dehors de leur créneau d'activité</value>
+    <value>Outside their active window</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_Msg_CampSetupSaved" xml:space="preserve">
-    <value>Date d'installation du camp enregistrée.</value>
+    <value>Camp set-up date saved.</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_Msg_CampSetupCleared" xml:space="preserve">
-    <value>Date d'installation du camp effacée.</value>
+    <value>Camp set-up date cleared.</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_Err_BadRequest" xml:space="preserve">
-    <value>Requête invalide.</value>
+    <value>Invalid request.</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_Err_BadDate" xml:space="preserve">
-    <value>Format de date invalide.</value>
+    <value>Invalid date format.</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_Err_Unknown" xml:space="preserve">
-    <value>Une erreur s'est produite. Veuillez réessayer.</value>
+    <value>Something went wrong. Please try again.</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_Err_SetupAtOrAfterGateOpen" xml:space="preserve">
-    <value>La date d'installation doit être comprise dans la période de montage (avant l'ouverture des portes).</value>
+    <value>Set-up date must be inside the build period (before gate-open day).</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_Err_SetupBeforeFirstSignup" xml:space="preserve">
-    <value>La date d'installation doit être égale ou postérieure à la première inscription de montage du bénévole.</value>
+    <value>Set-up date must be on or after the volunteer's first build signup.</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="ShiftDash_VolTrackEntry_Title" xml:space="preserve">
-    <value>Suivi des bénévoles</value>
+    <value>Volunteer Tracking</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="ShiftDash_VolTrackEntry_Subtitle" xml:space="preserve">
-    <value>Identifier les lacunes, marquer les dates d'installation du camp, faire ressortir les bénévoles déclarés mais non inscrits.</value>
+    <value>Identify gaps, mark camp set-up dates, surface declared-but-unbooked volunteers.</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="ShiftDash_VolTrackEntry_Open" xml:space="preserve">
-    <value>Ouvrir</value>
+    <value>Open</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_AuditAction_CampSetupSet" xml:space="preserve">
-    <value>Date d'installation du camp définie</value>
+    <value>Camp set-up date set</value>
     <comment>TODO: translate</comment>
   </data>
   <data name="VolTrack_AuditAction_CampSetupCleared" xml:space="preserve">
-    <value>Date d'installation du camp effacée</value>
+    <value>Camp set-up date cleared</value>
     <comment>TODO: translate</comment>
   </data>
 </root>

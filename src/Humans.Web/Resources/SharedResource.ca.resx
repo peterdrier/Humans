@@ -1339,6 +1339,9 @@
   <data name="Consent_StubProfile_AddName" xml:space="preserve">
     <value>Afegeix el teu nom legal abans de signar consentiments.</value>
   </data>
+  <data name="Onboarding_NameRequiredBeforeShifts" xml:space="preserve">
+    <value>Add your name first — we need it before you can sign up for shifts.</value>
+  </data>
   <data name="Teams_Title" xml:space="preserve">
     <value>Equips</value>
   </data>
