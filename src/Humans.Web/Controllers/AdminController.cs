@@ -384,7 +384,7 @@ public class AdminController : HumansControllerBase
                         Entries = s.Entries,
                         Hits = s.Hits,
                         Misses = s.Misses,
-                        KeyInvalidations = s.KeyInvalidations,
+                        KeyRemovals = s.KeyRemovals,
                         BulkInvalidations = s.BulkInvalidations,
                         HitRatePercent = s.HitRatePercent,
                     })

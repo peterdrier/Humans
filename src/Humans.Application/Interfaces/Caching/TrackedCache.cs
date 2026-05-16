@@ -35,7 +35,7 @@ public class TrackedCache<TKey, TValue> : IHostedService, ICacheStats where TKey
     private volatile bool _warmedUp;
     private long _hits;
     private long _misses;
-    private long _keyInvalidations;
+    private long _keyRemovals;
     private long _bulkInvalidations;
 
     public string Name { get; }
@@ -60,7 +60,7 @@ public class TrackedCache<TKey, TValue> : IHostedService, ICacheStats where TKey
     public int Entries => _dict.Count;
     public long Hits => Interlocked.Read(ref _hits);
     public long Misses => Interlocked.Read(ref _misses);
-    public long KeyInvalidations => Interlocked.Read(ref _keyInvalidations);
+    public long KeyRemovals => Interlocked.Read(ref _keyRemovals);
     public long BulkInvalidations => Interlocked.Read(ref _bulkInvalidations);
 
     public double HitRatePercent => Hits + Misses > 0
@@ -127,23 +127,40 @@ public class TrackedCache<TKey, TValue> : IHostedService, ICacheStats where TKey
     public void Set(TKey key, TValue value) => _dict[key] = value;
 
     /// <summary>
-    /// Bare remove primitive — drops the entry without reloading. Increments
-    /// <see cref="KeyInvalidations"/> if an entry was actually removed. Does
-    /// not affect <see cref="IsWarmedUp"/>.
+    /// Lazy-cache evict — drops the entry; the next read lazy-loads. The
+    /// right primitive for caches with <c>warmOnStartup: false</c> where
+    /// there is no all-rows invariant to preserve.
     ///
-    /// <para>On a warmed cache, removing without replacing leaves a hole that
-    /// breaks the all-rows invariant — load-all readers will return N-1 rows.
-    /// Warmed-cache decorators should prefer <see cref="Replace"/> (with a
-    /// freshly-computed value) or <see cref="ReplaceAsync"/> (which reloads
-    /// via <see cref="LoadRowAsync"/>); plain <see cref="Invalidate"/> is for
-    /// lazy-per-key caches or for tombstoning a row whose source has been
-    /// confirmed deleted.</para>
+    /// <para>On a warmed cache (<c>warmOnStartup: true</c>) this is a misuse
+    /// — removing a row that still exists breaks the all-rows invariant. As
+    /// a defensive guard the warmed flag is cleared so the next load-all
+    /// read drives a full re-warm. The right primitives on a warmed cache
+    /// are <see cref="DeleteKey"/> (row is genuinely gone) or
+    /// <see cref="Replace"/> / <see cref="ReplaceAsync"/> (row was updated).</para>
     /// </summary>
     public bool Invalidate(TKey key)
     {
         if (_dict.TryRemove(key, out _))
         {
-            Interlocked.Increment(ref _keyInvalidations);
+            Interlocked.Increment(ref _keyRemovals);
+            if (_warmOnStartup) _warmedUp = false;
+            return true;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Tombstone a key whose source row is gone. Drops the entry without
+    /// touching <see cref="IsWarmedUp"/> — the all-rows invariant is
+    /// preserved precisely because the underlying row no longer exists, so
+    /// a warmed cache with N-1 entries after this call is still correct.
+    /// The right primitive for warmed caches when a deletion is confirmed.
+    /// </summary>
+    public bool DeleteKey(TKey key)
+    {
+        if (_dict.TryRemove(key, out _))
+        {
+            Interlocked.Increment(ref _keyRemovals);
             return true;
         }
         return false;
@@ -159,15 +176,15 @@ public class TrackedCache<TKey, TValue> : IHostedService, ICacheStats where TKey
 
     /// <summary>
     /// Replace an entry by reloading via <see cref="LoadRowAsync"/>. If the
-    /// loader returns null (row was deleted), the entry is removed via
-    /// <see cref="Invalidate"/>. The replacement primitive for warmed caches
+    /// loader returns null (row was deleted), the entry is tombstoned via
+    /// <see cref="DeleteKey"/>. The replacement primitive for warmed caches
     /// that have a per-key loader.
     /// </summary>
     public async Task<TValue?> ReplaceAsync(TKey key, CancellationToken ct = default)
     {
         var loaded = await LoadRowAsync(key, ct).ConfigureAwait(false);
         if (loaded is not null) Set(key, loaded);
-        else Invalidate(key);
+        else DeleteKey(key);
         return loaded;
     }
 
@@ -190,7 +207,7 @@ public class TrackedCache<TKey, TValue> : IHostedService, ICacheStats where TKey
     {
         Interlocked.Exchange(ref _hits, 0);
         Interlocked.Exchange(ref _misses, 0);
-        Interlocked.Exchange(ref _keyInvalidations, 0);
+        Interlocked.Exchange(ref _keyRemovals, 0);
         Interlocked.Exchange(ref _bulkInvalidations, 0);
     }
 

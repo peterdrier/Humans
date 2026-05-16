@@ -13,8 +13,8 @@ public interface ICacheStats
     long Hits { get; }
     long Misses { get; }
 
-    /// <summary>Count of single-key removals via <c>Invalidate(key)</c>.</summary>
-    long KeyInvalidations { get; }
+    /// <summary>Count of single-key removals via <c>Invalidate(key)</c> or <c>DeleteKey(key)</c>.</summary>
+    long KeyRemovals { get; }
 
     /// <summary>Count of bulk flushes via <c>Clear()</c>. A bulk flush also
     /// flips the cache back to "cold"; the next load-all read drives a

@@ -136,51 +136,42 @@ public class CachingUserServiceTests
         var userId = Guid.NewGuid();
         _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(SampleUserInfo(userId)));
-        _userRepo.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns((User?)null);
 
         var sut = CreateSut();
         await sut.GetUserInfoAsync(userId); // prime
 
-        await ((IUserInfoInvalidator)sut).InvalidateAsync(userId);
-
-        // Next read should miss the dict and delegate again.
+        // User has been deleted in the source; inner now returns null.
         _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>((UserInfo?)null));
-        (await sut.GetUserInfoAsync(userId)).Should().BeNull();
 
-        await _inner.Received(2).GetUserInfoAsync(userId, Arg.Any<CancellationToken>());
+        await ((IUserInfoInvalidator)sut).InvalidateAsync(userId);
+
+        // Entry should be tombstoned by ReplaceAsync's null-load path.
+        (await sut.GetUserInfoAsync(userId)).Should().BeNull();
     }
 
     [HumansFact]
     public async Task InvalidateAsync_ExistingUser_ReloadsEntry()
     {
         var userId = Guid.NewGuid();
+        var stale = SampleUserInfo(userId, "Before");
+        var fresh = SampleUserInfo(userId, "After");
 
-        // Prime with a stale entry first.
+        // Prime with the stale entry.
         _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(SampleUserInfo(userId, "Before")));
-
-        var freshUser = SampleUser(userId);
-        freshUser.DisplayName = "After";
-        _userRepo.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(freshUser);
-        _userEmailRepo.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
-            .Returns([]);
-        _userRepo.GetEventParticipationsByUserIdAsync(userId, Arg.Any<CancellationToken>())
-            .Returns([]);
-        _userRepo.GetExternalLoginsByUserIdsAsync(
-                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, IReadOnlyList<(string Provider, string ProviderKey)>>());
-        _profileRepo.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
-            .Returns((Profile?)null);
+            .Returns(new ValueTask<UserInfo?>(stale));
 
         var sut = CreateSut();
         await sut.GetUserInfoAsync(userId);
 
+        // Source row updated: inner now returns the fresh UserInfo.
+        _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(fresh));
+
         await ((IUserInfoInvalidator)sut).InvalidateAsync(userId);
 
-        var fresh = await sut.GetUserInfoAsync(userId);
-        fresh!.DisplayName.Should().Be("After");
-        await _inner.Received(1).GetUserInfoAsync(userId, Arg.Any<CancellationToken>());
+        var hit = await sut.GetUserInfoAsync(userId);
+        hit!.DisplayName.Should().Be("After");
     }
 
     [HumansFact]

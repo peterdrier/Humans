@@ -302,7 +302,7 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
         var user = await _userRepository.GetByIdAsync(userId, ct);
         if (user is null)
         {
-            Invalidate(userId);
+            DeleteKey(userId);
             return;
         }
 
@@ -413,7 +413,7 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
     // ==========================================================================
 
     /// <inheritdoc cref="IUserInfoInvalidator.InvalidateAsync" />
-    public Task InvalidateAsync(
+    public async Task InvalidateAsync(
         Guid userId,
         CancellationToken ct = default,
         [CallerMemberName] string memberName = "",
@@ -423,7 +423,9 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
             "UserInfo invalidate userId={UserId} caller={CallerMember} file={CallerFile}",
             userId, memberName, Path.GetFileName(filePath));
 
-        return RefreshEntryAsync(userId, ct);
+        // Warmed cache, row updated: replace in-place via the base primitive
+        // (LoadRowAsync → Set, or DeleteKey if the inner returns null).
+        await ReplaceAsync(userId, ct).ConfigureAwait(false);
     }
 
     // ==========================================================================
@@ -650,7 +652,7 @@ public sealed class CachingUserService : TrackedCache<Guid, UserInfo>, IUserServ
         var deleted = await WithInnerAsync(inner => inner.DeleteUsersAsync(userIds, ct));
         foreach (var userId in userIds)
         {
-            Invalidate(userId);
+            DeleteKey(userId);
         }
         return deleted;
     }
