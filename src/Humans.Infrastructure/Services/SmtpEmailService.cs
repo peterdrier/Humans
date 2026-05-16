@@ -241,6 +241,18 @@ public class SmtpEmailService : IEmailService
         _metrics.RecordEmailSent("facilitated_message");
     }
 
+    public async Task SendCoordinatorRotaMessageAsync(
+        CoordinatorRotaMessageRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var content = _renderer.RenderCoordinatorRotaMessage(
+            request.RecipientName, request.SenderName, request.SenderEmail,
+            request.RotaName, request.MessageText, request.ShiftLines, request.Culture);
+        await SendEmailAsync(request.RecipientEmail, content.Subject, content.HtmlBody, cancellationToken, request.SenderEmail);
+        _metrics.RecordEmailSent("coordinator_rota_message");
+    }
+
     public async Task SendMagicLinkLoginAsync(
         string toEmail, string displayName, string magicLinkUrl,
         string? culture = null, CancellationToken ct = default)

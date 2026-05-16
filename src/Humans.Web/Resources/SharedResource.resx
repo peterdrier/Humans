@@ -2272,5 +2272,19 @@
 
   <data name="VolTrack_AuditAction_CampSetupSet" xml:space="preserve"><value>Camp set-up date set</value></data>
   <data name="VolTrack_AuditAction_CampSetupCleared" xml:space="preserve"><value>Camp set-up date cleared</value></data>
+  <!-- Coordinator Rota Message ("Email a rota") -->
+  <data name="Email_CoordinatorRotaMessage_Subject" xml:space="preserve"><value>A message about your shifts on {0}</value><comment>{0} = rota name (HTML-encoded)</comment></data>
+  <data name="Email_CoordinatorRotaMessage_Body" xml:space="preserve"><value>&lt;p&gt;Dear {0},&lt;/p&gt;&lt;p&gt;A message from the coordinator of &lt;strong&gt;{2}&lt;/strong&gt;:&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{3}&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;FYI, your shifts on this rota are:&lt;/p&gt;{4}&lt;p&gt;Thank you,&lt;/p&gt;{5}</value><comment>{0}=recipient name, {1}=sender name, {2}=rota name, {3}=message body, {4}=shift list HTML, {5}=sender contact block HTML</comment></data>
+  <data name="Email_CoordinatorRotaMessage_NoShifts" xml:space="preserve"><value>(no shifts on this rota yet)</value></data>
+  <data name="EmailRota_Title" xml:space="preserve"><value>Email rota: {0}</value><comment>{0} = rota name</comment></data>
+  <data name="EmailRota_Heading" xml:space="preserve"><value>Email everyone on rota: {0}</value><comment>{0} = rota name</comment></data>
+  <data name="EmailRota_RecipientsHeading" xml:space="preserve"><value>Recipients ({0})</value><comment>{0} = recipient count</comment></data>
+  <data name="EmailRota_NoRecipients" xml:space="preserve"><value>No one is signed up to this rota yet.</value></data>
+  <data name="EmailRota_MessageLabel" xml:space="preserve"><value>Your message</value></data>
+  <data name="EmailRota_MessageHelp" xml:space="preserve"><value>Plain text only. Each recipient will see this body plus their own shift list on this rota.</value></data>
+  <data name="EmailRota_Button" xml:space="preserve"><value>Email a rota</value></data>
+  <data name="EmailRota_Send" xml:space="preserve"><value>Send to {0} recipient(s)</value><comment>{0} = recipient count</comment></data>
+  <data name="EmailRota_Success" xml:space="preserve"><value>Queued {0} email(s) to recipients on rota '{1}'.</value><comment>{0} = recipient count, {1} = rota name</comment></data>
+  <data name="EmailRota_NoActiveSignups" xml:space="preserve"><value>This rota has no active signups to email.</value></data>
 
 </root>

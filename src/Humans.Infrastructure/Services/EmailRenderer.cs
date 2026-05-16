@@ -177,6 +177,39 @@ public class EmailRenderer : IEmailRenderer
                 Lf("Email_FacilitatedMessage_Body", HtmlEncode(recipientName), HtmlEncode(senderName), sanitizedMessage, contactInfoHtml));
         });
 
+    public EmailContent RenderCoordinatorRotaMessage(
+        string recipientName,
+        string senderName,
+        string? senderEmail,
+        string rotaName,
+        string messageText,
+        IReadOnlyList<string> shiftLines,
+        string? culture = null)
+        => RenderLocalized(culture, () =>
+        {
+            ArgumentNullException.ThrowIfNull(shiftLines);
+
+            var sanitizedMessage = HtmlEncode(messageText).Replace("\n", "<br />", StringComparison.Ordinal);
+
+            var shiftListHtml = shiftLines.Count == 0
+                ? $"<p><em>{HtmlEncode(L("Email_CoordinatorRotaMessage_NoShifts"))}</em></p>"
+                : "<ul>" + string.Concat(shiftLines.Select(line => $"<li>{HtmlEncode(line)}</li>")) + "</ul>";
+
+            var senderLine = !string.IsNullOrEmpty(senderEmail)
+                ? $"<p><strong>{HtmlEncode(senderName)}</strong> &mdash; <a href=\"mailto:{HtmlEncode(senderEmail)}\">{HtmlEncode(senderEmail)}</a></p>"
+                : $"<p><strong>{HtmlEncode(senderName)}</strong></p>";
+
+            return new EmailContent(
+                Lf("Email_CoordinatorRotaMessage_Subject", HtmlEncode(rotaName)),
+                Lf("Email_CoordinatorRotaMessage_Body",
+                    HtmlEncode(recipientName),
+                    HtmlEncode(senderName),
+                    HtmlEncode(rotaName),
+                    sanitizedMessage,
+                    shiftListHtml,
+                    senderLine));
+        });
+
     public EmailContent RenderMagicLinkLogin(string displayName, string magicLinkUrl, string? culture = null)
         => RenderLocalized(culture, () => new EmailContent(
             L("Email_MagicLinkLogin_Subject"),

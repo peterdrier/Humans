@@ -217,6 +217,18 @@ public class StubEmailService : IEmailService
         return Task.CompletedTask;
     }
 
+    public Task SendCoordinatorRotaMessageAsync(
+        CoordinatorRotaMessageRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        _logger.LogInformation(
+            "[STUB] Would send coordinator rota message to {Email} ({RecipientName}) from {SenderName} for rota {RotaName} ({ShiftCount} shifts) [Culture: {Culture}]",
+            request.RecipientEmail, request.RecipientName, request.SenderName, request.RotaName,
+            request.ShiftLines.Count, request.Culture);
+        return Task.CompletedTask;
+    }
+
     public Task SendMagicLinkLoginAsync(
         string toEmail, string displayName, string magicLinkUrl,
         string? culture = null, CancellationToken ct = default)

@@ -80,6 +80,13 @@ internal static class ShiftsSectionExtensions
         services.AddScoped<ShiftAdminPageBuilder>();
         services.AddScoped<ShiftDashboardPageBuilder>();
 
+        // Issue nobodies-collective/Humans#732 — coordinator "email a rota" action.
+        // Pure orchestrator: enumerates active signups on a rota and fans out one
+        // outbox email per recipient via IEmailService. Scoped so it can pull the
+        // request-scoped IShiftSignupRepository + IUserService.
+        services.AddScoped<IRotaCoordinatorMessageService,
+            Humans.Application.Services.Shifts.RotaCoordinatorMessageService>();
+
         return services;
     }
 }

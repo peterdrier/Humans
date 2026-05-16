@@ -173,4 +173,5 @@ public enum AuditAction
     ContainerPlacementSaved,
     ContainerPlacementCleared,
     ContainerPlacementNotesUpdated,
+    CoordinatorRotaMessageSent,
 }
