@@ -163,6 +163,7 @@ public class ShiftSignupServiceFilterIncompleteOnboardingTests : IDisposable
         await _service.FilterToIncompleteOnboardingAsync(signups);
 
         await _membership.Received(1).GetUsersWithAllRequiredConsentsForTeamAsync(
+            // ReSharper disable once PossibleMultipleEnumeration — Arg.Is requires an expression-tree lambda.
             Arg.Is<IEnumerable<Guid>>(ids => ids.Distinct().Count() == ids.Count() && ids.Count() == 2),
             SystemTeamIds.Volunteers,
             Arg.Any<CancellationToken>());

@@ -112,7 +112,7 @@ public class ShiftManagementServiceTests : IDisposable
         var adminAuthorization = Substitute.For<IAdminAuthorizationService>();
         using var cache = new MemoryCache(new MemoryCacheOptions());
 
-        var periods = new ShiftPeriod?[] { null }.Concat(Enum.GetValues<ShiftPeriod>().Cast<ShiftPeriod?>());
+        var periods = new ShiftPeriod?[] { null }.Concat(Enum.GetValues<ShiftPeriod>().Cast<ShiftPeriod?>()).ToList();
         foreach (var period in periods)
         {
             cache.Set(ShiftManagementService.OverviewCacheKey(eventId, period), new object());

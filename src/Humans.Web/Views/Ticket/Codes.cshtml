@@ -98,29 +98,29 @@
                 </tr>
             </thead>
             <tbody>
-                @foreach (var code in Model.Codes)
+                @foreach (var tc in Model.Codes)
                 {
                     <tr>
-                        <td><code>@code.Code</code></td>
+                        <td><code>@tc.Code</code></td>
                         <td>
-                            <vc:human user-id="@code.RecipientUserId" link="Admin" />
+                            <vc:human user-id="@tc.RecipientUserId" link="Admin" />
                         </td>
-                        <td>@code.CampaignTitle</td>
+                        <td>@tc.CampaignTitle</td>
                         <td>
                             @{
-                                var badgeClass = code.Status switch
+                                var badgeClass = tc.Status switch
                                 {
                                     "Redeemed" => "bg-success",
                                     "Sent" or "Delivered" => "bg-primary",
                                     _ => "bg-secondary"
                                 };
                             }
-                            <span class="badge @badgeClass">@code.Status</span>
+                            <span class="badge @badgeClass">@tc.Status</span>
                         </td>
                         <td>
-                            @if (code.RedeemedAt.HasValue)
+                            @if (tc.RedeemedAt.HasValue)
                             {
-                                @code.RedeemedAt.Value.ToDisplayDate()
+                                @tc.RedeemedAt.Value.ToDisplayDate()
                             }
                             else
                             {
@@ -128,10 +128,10 @@
                             }
                         </td>
                         <td>
-                            @if (code.RedeemedByName != null)
+                            @if (tc.RedeemedByName != null)
                             {
-                                <text>@code.RedeemedByName</text>
-                                <br /><small class="text-muted">@code.RedeemedByEmail</small>
+                                <text>@tc.RedeemedByName</text>
+                                <br /><small class="text-muted">@tc.RedeemedByEmail</small>
                             }
                             else
                             {
@@ -139,9 +139,9 @@
                             }
                         </td>
                         <td>
-                            @if (code.RedeemedOrderVendorId != null)
+                            @if (tc.RedeemedOrderVendorId != null)
                             {
-                                <small><code>@code.RedeemedOrderVendorId</code></small>
+                                <small><code>@tc.RedeemedOrderVendorId</code></small>
                             }
                             else
                             {

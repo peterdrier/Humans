@@ -89,7 +89,7 @@ else
 
                                     <dt class="col-sm-3">Submitter</dt>
                                     <dd class="col-sm-9">
-                                        <a asp-controller="Human" asp-action="View" asp-route-id="@evt.SubmitterUserId">@evt.SubmitterName</a>
+                                        <vc:human user-id="@evt.SubmitterUserId" link="Admin" />
                                     </dd>
 
                                     @if (evt.CampName != null)

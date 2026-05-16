@@ -581,7 +581,9 @@ public sealed class BudgetService : IBudgetService, IUserDataContributor
 
     public BudgetSummaryResult ComputeBudgetSummary(IEnumerable<BudgetGroup> groups)
     {
-        var budgetLineItems = groups
+        var groupsList = groups as IReadOnlyCollection<BudgetGroup> ?? groups.ToList();
+
+        var budgetLineItems = groupsList
             .SelectMany(g => g.Categories)
             .SelectMany(c => c.LineItems)
             .Where(li => !li.IsCashflowOnly)
@@ -607,7 +609,7 @@ public sealed class BudgetService : IBudgetService, IUserDataContributor
         var netBalance = totalIncome + totalExpenses;
 
         // Build income slices.
-        var incomeCategories = groups
+        var incomeCategories = groupsList
             .SelectMany(g => g.Categories)
             .Select(c => new { c.Name, Total = c.LineItems.Where(li => li.Amount > 0 && !li.IsCashflowOnly).Sum(li => li.Amount) })
             .Where(c => c.Total > 0)
@@ -628,7 +630,7 @@ public sealed class BudgetService : IBudgetService, IUserDataContributor
             .ToList();
 
         // Build expense slices.
-        var expenseCategories = groups
+        var expenseCategories = groupsList
             .SelectMany(g => g.Categories)
             .Select(c => new { c.Name, Total = Math.Abs(c.LineItems.Where(li => li.Amount < 0 && !li.IsCashflowOnly).Sum(li => li.Amount)) })
             .Where(c => c.Total > 0)

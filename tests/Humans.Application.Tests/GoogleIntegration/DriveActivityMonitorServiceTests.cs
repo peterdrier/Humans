@@ -315,6 +315,7 @@ public class DriveActivityMonitorServiceTests
         await Task.Yield();
         throw new InvalidOperationException("boom");
 #pragma warning disable CS0162 // Unreachable code — required for iterator signature.
+        // ReSharper disable once HeuristicUnreachableCode
         yield break;
 #pragma warning restore CS0162
     }
@@ -324,6 +325,7 @@ public class DriveActivityMonitorServiceTests
         await Task.Yield();
         throw new DriveActivityResourceNotFoundException(googleItemId);
 #pragma warning disable CS0162
+        // ReSharper disable once HeuristicUnreachableCode
         yield break;
 #pragma warning restore CS0162
     }

@@ -35,9 +35,9 @@ public static class AdminHumanListAssembler
         ArgumentNullException.ThrowIfNull(notificationEmailsByUserId);
         ArgumentNullException.ThrowIfNull(membershipCalculator);
 
-        IEnumerable<UserInfo> candidates = searchUserIds is null
+        var candidates = (searchUserIds is null
             ? allUsers
-            : allUsers.Where(u => searchUserIds.Contains(u.Id));
+            : allUsers.Where(u => searchUserIds.Contains(u.Id))).ToList();
 
         var ids = candidates.Select(u => u.Id).ToList();
         var partition = await membershipCalculator.PartitionUsersAsync(ids, ct);
@@ -53,7 +53,7 @@ public static class AdminHumanListAssembler
             _ => null,
         };
 
-        var rows = statusIds is null
+        IEnumerable<UserInfo> rows = statusIds is null
             ? candidates
             : candidates.Where(u => statusIds.Contains(u.Id));
 

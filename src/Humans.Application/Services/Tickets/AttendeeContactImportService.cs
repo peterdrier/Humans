@@ -257,7 +257,7 @@ public sealed class AttendeeContactImportService : IAttendeeContactImportService
         }
 
         var existingRow = await _userEmails.FindAnyEmailRowByAddressAsync(a.AttendeeEmail, ct);
-        if (existingRow is var (uid, emailId) && existingRow is not null)
+        if (existingRow is var (uid, emailId))
         {
             return new AttendeeImportDecision(
                 a.Id, a.AttendeeEmail, name, a.VendorTicketId,
