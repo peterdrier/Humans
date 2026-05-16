@@ -549,6 +549,104 @@
 
         @if (!Model.IsAdminContext)
         {
+            @* Issue nobodies-collective/Humans#731: user-facing Linked        *@
+            @* Accounts dashboard. Lists AspNetUserLogins rows for the         *@
+            @* current user; the existing per-email-row Unlink (in the grid   *@
+            @* above) is keyed off UserEmail rows, this is keyed off the      *@
+            @* authoritative OAuth-identity store. CanUnlink server-validated *@
+            @* against the auth-method invariant.                             *@
+            <div class="card mb-4" id="linked-accounts">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fa-solid fa-link me-2"></i>@Localizer["LinkedAccounts_Title"]</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="px-3 pt-3">
+                        <small class="text-muted">@Localizer["LinkedAccounts_Description"]</small>
+                    </div>
+                    @if (!Model.LinkedAccounts.Any())
+                    {
+                        <div class="p-3 text-muted">@Localizer["LinkedAccounts_Empty"]</div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>@Localizer["LinkedAccounts_Provider"]</th>
+                                        <th>@Localizer["LinkedAccounts_Account"]</th>
+                                        <th>@Localizer["LinkedAccounts_LinkedOn"]</th>
+                                        <th class="text-end">@Localizer["LinkedAccounts_Actions"]</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                @foreach (var acct in Model.LinkedAccounts)
+                                {
+                                    <tr>
+                                        <td>
+                                            @if (string.Equals(acct.Provider, "Google", StringComparison.OrdinalIgnoreCase))
+                                            {
+                                                <i class="fa-brands fa-google me-1"></i>
+                                            }
+                                            else
+                                            {
+                                                <i class="fa-solid fa-key me-1"></i>
+                                            }
+                                            @acct.Provider
+                                        </td>
+                                        <td>
+                                            @if (!string.IsNullOrEmpty(acct.Email))
+                                            {
+                                                <code>@acct.Email</code>
+                                            }
+                                            else if (!string.IsNullOrEmpty(acct.ProviderDisplayName))
+                                            {
+                                                @acct.ProviderDisplayName
+                                            }
+                                            else
+                                            {
+                                                <code class="text-muted">@acct.ProviderKeyHash</code>
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (acct.LinkedAt.HasValue)
+                                            {
+                                                @acct.LinkedAt.Value.ToDateTimeUtc().ToString("yyyy-MM-dd")
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">—</span>
+                                            }
+                                        </td>
+                                        <td class="text-end">
+                                            @if (acct.CanUnlink)
+                                            {
+                                                <form asp-action="UnlinkLinkedAccount" method="post" class="d-inline"
+                                                      data-confirm="@Localizer["LinkedAccounts_ConfirmUnlink"].Value">
+                                                    @Html.AntiForgeryToken()
+                                                    <input type="hidden" name="provider" value="@acct.Provider" />
+                                                    <input type="hidden" name="providerKey" value="@acct.ProviderKey" />
+                                                    <button type="submit" class="btn btn-outline-warning btn-sm">
+                                                        <i class="fa-solid fa-link-slash me-1"></i>@Localizer["EmailGrid_Unlink"]
+                                                    </button>
+                                                </form>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted small" title="@Localizer["LinkedAccounts_LastSignInMethod"].Value">
+                                                    <i class="fa-solid fa-lock me-1"></i>@Localizer["LinkedAccounts_LastSignInMethod"]
+                                                </span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+
             <div class="card mb-4">
                 <div class="card-header">
                     <h5 class="mb-0"><i class="fa-brands fa-google me-2"></i>@Localizer["EmailGrid_LinkGoogleAccount"]</h5>
