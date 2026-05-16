@@ -4197,6 +4197,12 @@
   <data name="Shifts_PieCoverage_TipDismiss" xml:space="preserve">
     <value>Descarta el consell</value>
   </data>
+  <data name="Shifts_FilterChip_Prefix" xml:space="preserve">
+    <value>Filtre:</value>
+  </data>
+  <data name="Shifts_FilterChip_Clear" xml:space="preserve">
+    <value>Treu el filtre de departament</value>
+  </data>
   <data name="Shifts_From" xml:space="preserve">
     <value>Des de</value>
   </data>

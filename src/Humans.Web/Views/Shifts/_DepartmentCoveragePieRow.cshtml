@@ -12,7 +12,20 @@
             aria-label="@Localizer["Shifts_PieCoverage_TipDismiss"]"
             data-dept-pie-tip-dismiss>&times;</button>
 </div>
-<div class="dept-pie-row" role="group" aria-label="@Localizer["Shifts_PieCoverage_RowAria"]">
+<form method="get" asp-action="Index" class="dept-pie-row" role="group"
+      aria-label="@Localizer["Shifts_PieCoverage_RowAria"]">
+    @if (!string.IsNullOrEmpty(Model.FilterPeriod))
+    {
+        <input type="hidden" name="period" value="@Model.FilterPeriod" />
+    }
+    @if (!string.IsNullOrEmpty(Model.FilterFromDate))
+    {
+        <input type="hidden" name="fromDate" value="@Model.FilterFromDate" />
+    }
+    @if (!string.IsNullOrEmpty(Model.FilterToDate))
+    {
+        <input type="hidden" name="toDate" value="@Model.FilterToDate" />
+    }
     @foreach (var pie in Model.CoveragePies)
     {
         var isSelected = Model.FilterDepartmentId == pie.TeamId;
@@ -30,36 +43,26 @@
             Localizer["Shifts_PieCoverage_Title"].Value,
             pie.TeamName, filledDisplay, requestedDisplay, pct);
         var deptValue = isSelected ? string.Empty : pie.TeamId.ToString();
-        var coverageClass = pct < 25 ? " coverage-critical" : pct < 50 ? " coverage-warning" : string.Empty;
+        var coverageClass = pct >= 100 ? " coverage-complete"
+                          : pct < 25 ? " coverage-critical"
+                          : pct < 50 ? " coverage-warning"
+                          : string.Empty;
 
-        <form method="get" asp-action="Index" class="dept-pie-form">
-            @if (!string.IsNullOrEmpty(Model.FilterPeriod))
-            {
-                <input type="hidden" name="period" value="@Model.FilterPeriod" />
-            }
-            @if (!string.IsNullOrEmpty(Model.FilterFromDate))
-            {
-                <input type="hidden" name="fromDate" value="@Model.FilterFromDate" />
-            }
-            @if (!string.IsNullOrEmpty(Model.FilterToDate))
-            {
-                <input type="hidden" name="toDate" value="@Model.FilterToDate" />
-            }
-            <input type="hidden" name="departmentId" value="@deptValue" />
-            <button type="submit"
-                    class="dept-pie@(isSelected ? " selected" : "")@(pie.IsSubTeam ? " is-subteam" : "")@coverageClass"
-                    aria-label="@ariaLabel"
-                    title="@titleText"
-                    style="--pct: @pct%;">
-                <span class="dept-pie-disc" aria-hidden="true"></span>
-                <span class="dept-pie-label">
-                    <span class="dept-pie-name">@pie.TeamName</span>
-                    <span class="dept-pie-stat">@filledDisplay / @requestedDisplay h</span>
-                </span>
-            </button>
-        </form>
+        <button type="submit"
+                name="departmentId"
+                value="@deptValue"
+                class="dept-pie@(isSelected ? " selected" : "")@(pie.IsSubTeam ? " is-subteam" : "")@coverageClass"
+                aria-label="@ariaLabel"
+                title="@titleText"
+                style="--pct: @pct%;">
+            <span class="dept-pie-disc" aria-hidden="true"></span>
+            <span class="dept-pie-label">
+                <span class="dept-pie-name">@pie.TeamName</span>
+                <span class="dept-pie-stat">@filledDisplay h / @requestedDisplay h</span>
+            </span>
+        </button>
     }
-</div>
+</form>
 
 <script>
     (function () {

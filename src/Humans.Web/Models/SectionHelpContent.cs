@@ -113,8 +113,9 @@ public static class SectionHelpContent
 
             1. Browse available shifts on the **Shifts** page
             2. Filter by date, department, or shift type to find what suits you
-            3. Click on a shift to see details and sign up
-            4. Some shifts require coordinator approval before your signup is confirmed
+            3. Or click a department pie above the list to filter by that department; click it again to clear
+            4. Click on a shift to see details and sign up
+            5. Some shifts require coordinator approval before your signup is confirmed
 
             ### Managing Your Shifts
 
