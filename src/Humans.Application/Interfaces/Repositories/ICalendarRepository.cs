@@ -53,6 +53,15 @@ public interface ICalendarRepository : IRepository
     /// </summary>
     Task<CalendarEvent?> GetEventByIdAsync(Guid id, CancellationToken ct = default);
 
+    /// <summary>
+    /// Returns every non-soft-deleted <see cref="CalendarEvent"/>, with its
+    /// <c>Exceptions</c> collection included. Used by the Calendar caching
+    /// decorator's warmup path — the cache holds all events keyed by id and
+    /// answers window queries via in-memory snapshot scan. Read-only
+    /// (<c>AsNoTracking</c>). The <c>OwningTeam</c> navigation is not loaded.
+    /// </summary>
+    Task<IReadOnlyList<CalendarEvent>> GetAllAsync(CancellationToken ct = default);
+
     // ==========================================================================
     // Writes — CalendarEvent
     // ==========================================================================

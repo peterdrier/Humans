@@ -8,6 +8,7 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Application.Interfaces.AuditLog;
 using Humans.Application.Interfaces.Auth;
+using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Notifications;
 using Humans.Application.Interfaces.Profiles;
 using Humans.Application.Interfaces.Teams;
@@ -56,6 +57,7 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
     private readonly ITeamService _teamService;
     private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly INotificationService _notificationService;
+    private readonly IConsentCacheInvalidator _consentCacheInvalidator;
 
     public AccountMergeService(
         IAccountMergeRepository mergeRepository,
@@ -68,7 +70,8 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
         IUserService userService,
         ITeamService teamService,
         IRoleAssignmentService roleAssignmentService,
-        INotificationService notificationService)
+        INotificationService notificationService,
+        IConsentCacheInvalidator consentCacheInvalidator)
     {
         _mergeRepository = mergeRepository;
         _userEmailRepository = userEmailRepository;
@@ -81,6 +84,7 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
         _teamService = teamService;
         _roleAssignmentService = roleAssignmentService;
         _notificationService = notificationService;
+        _consentCacheInvalidator = consentCacheInvalidator;
     }
 
     public async Task<IReadOnlyList<AccountMergeRequestSnapshot>> GetPendingRequestsAsync(CancellationToken ct = default)
@@ -236,6 +240,14 @@ public sealed class AccountMergeService : IAccountMergeService, IUserDataContrib
             _roleAssignmentService.InvalidateClaimsCacheForUser(targetUserId);
             _roleAssignmentService.InvalidateNavBadgeCache();
             _notificationService.InvalidateBadgeCachesForUsers([sourceUserId, targetUserId]);
+
+            // T-04: source's UserConsentInfo is now a tombstone; target's
+            // entry must rebuild against the post-merge chain so its
+            // consented-version set includes the source's records (which
+            // remain at source per design-rules §12 — DB triggers reject
+            // any rewrite).
+            _consentCacheInvalidator.InvalidateUser(sourceUserId);
+            _consentCacheInvalidator.InvalidateUser(targetUserId);
         }
         finally
         {

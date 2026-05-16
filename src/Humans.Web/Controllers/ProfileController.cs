@@ -61,6 +61,7 @@ public class ProfileController : HumansControllerBase
     private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly IShiftSignupService _shiftSignupService;
     private readonly IShiftManagementService _shiftMgmt;
+    private readonly IShiftView _shiftView;
     private readonly IGdprExportService _gdprExportService;
     private readonly IConfiguration _configuration;
     private readonly ConfigurationRegistry _configRegistry;
@@ -121,6 +122,7 @@ public class ProfileController : HumansControllerBase
         IRoleAssignmentService roleAssignmentService,
         IShiftSignupService shiftSignupService,
         IShiftManagementService shiftMgmt,
+        IShiftView shiftView,
         IGdprExportService gdprExportService,
         IConfiguration configuration,
         ConfigurationRegistry configRegistry,
@@ -154,6 +156,7 @@ public class ProfileController : HumansControllerBase
         _roleAssignmentService = roleAssignmentService;
         _shiftSignupService = shiftSignupService;
         _shiftMgmt = shiftMgmt;
+        _shiftView = shiftView;
         _gdprExportService = gdprExportService;
         _configuration = configuration;
         _configRegistry = configRegistry;
@@ -282,7 +285,13 @@ public class ProfileController : HumansControllerBase
 
         var applications = await _applicationDecisionService.GetUserApplicationsAsync(user.Id, ct);
         var allShiftTags = await _shiftMgmt.GetTagsAsync();
-        var preferredShiftTags = await _shiftMgmt.GetVolunteerTagPreferencesAsync(user.Id);
+        // T-09 (issue #720): read tag preferences from the cached
+        // ShiftUserView rather than the repo-backed
+        // IShiftManagementService.GetVolunteerTagPreferencesAsync.
+        var userShiftView = await _shiftView.GetUserAsync(user.Id, ct);
+        var preferredShiftTags = userShiftView.TagPreferences
+            .Select(p => new ShiftTagPreferenceSummary(p.ShiftTagId, p.ShiftTag?.Name ?? string.Empty))
+            .ToList();
         var externalLogins = await _userManager.GetLoginsAsync(user);
 
         var viewModel = ProfileEditViewModelBuilder.Build(

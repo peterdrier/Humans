@@ -80,6 +80,7 @@ public class ProfileControllerPopoverTests
             Substitute.For<IRoleAssignmentService>(),
             Substitute.For<IShiftSignupService>(),
             Substitute.For<IShiftManagementService>(),
+            Substitute.For<IShiftView>(),
             Substitute.For<IGdprExportService>(),
             Substitute.For<IConfiguration>(),
             new ConfigurationRegistry(),

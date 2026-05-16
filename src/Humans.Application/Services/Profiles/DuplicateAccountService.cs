@@ -64,13 +64,14 @@ public sealed class DuplicateAccountService : IDuplicateAccountService
     public async Task<IReadOnlyList<DuplicateAccountGroup>> DetectDuplicatesAsync(CancellationToken ct = default)
     {
         // At ~500 users, loading all data into memory is cheap and avoids
-        // complex SQL for gmail/googlemail equivalence.
-        var allUsers = await _userRepository.GetAllAsync(ct);
-        var users = allUsers
+        // complex SQL for gmail/googlemail equivalence. Reads off the
+        // UserInfo snapshot — same source-of-truth used by every other
+        // cross-user diagnostic surface (T-05 cache migration).
+        var allInfos = await _userService.GetAllUserInfosAsync(ct);
+        var users = allInfos
             .Where(u => !string.IsNullOrEmpty(u.Email) &&
                         !u.Email!.EndsWith("@merged.local", StringComparison.OrdinalIgnoreCase))
             .ToList();
-        var userEmails = await _userEmailRepository.GetAllAsync(ct);
 
         // Build map: normalized email -> list of (userId, source description)
         var emailToUsers = new Dictionary<string, List<(Guid UserId, string Source)>>(StringComparer.Ordinal);
@@ -84,19 +85,19 @@ public sealed class DuplicateAccountService : IDuplicateAccountService
                 emailToUsers[normalized] = list;
             }
             list.Add((u.Id, $"User.Email ({u.Email})"));
-        }
 
-        foreach (var ue in userEmails)
-        {
-            var normalized = EmailNormalization.NormalizeForComparison(ue.Email);
-            if (!emailToUsers.TryGetValue(normalized, out var list))
+            foreach (var ue in u.UserEmails)
             {
-                list = [];
-                emailToUsers[normalized] = list;
+                var ueNormalized = EmailNormalization.NormalizeForComparison(ue.Email);
+                if (!emailToUsers.TryGetValue(ueNormalized, out var ueList))
+                {
+                    ueList = [];
+                    emailToUsers[ueNormalized] = ueList;
+                }
+                var verifiedTag = ue.IsVerified ? "verified" : "unverified";
+                var googleTag = ue.IsGoogle ? ", Google" : "";
+                ueList.Add((u.Id, $"UserEmail ({ue.Email}, {verifiedTag}{googleTag})"));
             }
-            var verifiedTag = ue.IsVerified ? "verified" : "unverified";
-            var googleTag = ue.IsGoogle ? ", Google" : "";
-            list.Add((ue.UserId, $"UserEmail ({ue.Email}, {verifiedTag}{googleTag})"));
         }
 
         // Find emails that appear on more than one distinct user
@@ -115,10 +116,8 @@ public sealed class DuplicateAccountService : IDuplicateAccountService
             .ToList();
         var involvedUserSet = involvedUserIds.ToHashSet();
 
-        var userMap = users.Where(u => involvedUserSet.Contains(u.Id))
+        var infoMap = users.Where(u => involvedUserSet.Contains(u.Id))
             .ToDictionary(u => u.Id);
-
-        var profiles = await _profileRepository.GetByUserIdsAsync(involvedUserIds, ct);
 
         // Per-user team membership counts (active only). Few involved users;
         // per-user calls are trivial at this scale.
@@ -166,10 +165,10 @@ public sealed class DuplicateAccountService : IDuplicateAccountService
                         [
                             BuildAccountInfo(id1,
                                 entries.Where(e => e.UserId == id1).Select(e => e.Source).ToList(),
-                                userMap, profiles, teamCounts, roleAssignmentCounts),
+                                infoMap, teamCounts, roleAssignmentCounts),
                             BuildAccountInfo(id2,
                                 entries.Where(e => e.UserId == id2).Select(e => e.Source).ToList(),
-                                userMap, profiles, teamCounts, roleAssignmentCounts)
+                                infoMap, teamCounts, roleAssignmentCounts)
                         ]
                     };
                 }
@@ -333,23 +332,22 @@ public sealed class DuplicateAccountService : IDuplicateAccountService
     private static DuplicateAccountInfo BuildAccountInfo(
         Guid userId,
         List<string> emailSources,
-        Dictionary<Guid, User> userMap,
-        IReadOnlyDictionary<Guid, Profile> profiles,
+        Dictionary<Guid, UserInfo> infoMap,
         Dictionary<Guid, int> teamCounts,
         Dictionary<Guid, int> roleAssignmentCounts)
     {
-        userMap.TryGetValue(userId, out var user);
-        profiles.TryGetValue(userId, out var profile);
+        infoMap.TryGetValue(userId, out var info);
+        var profile = info?.Profile;
 
         string? membershipStatus = null;
         string? membershipTier = null;
         var hasProfile = profile is not null;
         var isProfileComplete = false;
 
-        if (profile is not null)
+        if (info is not null && profile is not null)
         {
             membershipTier = profile.MembershipTier.ToString();
-            membershipStatus = profile.IsSuspended ? "Suspended"
+            membershipStatus = info.IsSuspended ? "Suspended"
                 : profile.IsApproved ? "Active" : "Pending";
             isProfileComplete = !string.IsNullOrEmpty(profile.FirstName) &&
                                 !string.IsNullOrEmpty(profile.LastName);
@@ -358,13 +356,13 @@ public sealed class DuplicateAccountService : IDuplicateAccountService
         return new DuplicateAccountInfo
         {
             UserId = userId,
-            DisplayName = user?.DisplayName ?? "Unknown",
-            Email = user?.Email,
-            ProfilePictureUrl = user?.ProfilePictureUrl,
+            DisplayName = info?.DisplayName ?? "Unknown",
+            Email = info?.Email,
+            ProfilePictureUrl = info?.ProfilePictureUrl,
             MembershipTier = membershipTier,
             MembershipStatus = membershipStatus,
-            LastLogin = user?.LastLoginAt?.ToDateTimeUtc(),
-            CreatedAt = user?.CreatedAt.ToDateTimeUtc(),
+            LastLogin = info?.LastLoginAt?.ToDateTimeUtc(),
+            CreatedAt = info?.CreatedAt.ToDateTimeUtc(),
             TeamCount = teamCounts.GetValueOrDefault(userId),
             RoleAssignmentCount = roleAssignmentCounts.GetValueOrDefault(userId),
             HasProfile = hasProfile,

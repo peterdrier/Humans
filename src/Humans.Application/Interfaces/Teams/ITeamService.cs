@@ -2,10 +2,24 @@ using Humans.Application.Architecture;
 using Humans.Application.DTOs;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Domain.ValueObjects;
 using NodaTime;
 
 namespace Humans.Application.Interfaces.Teams;
 
+/// <summary>
+/// Cached team read-model used by <c>CachingTeamService</c> to project
+/// every Teams-section read entirely from memory.
+/// </summary>
+/// <remarks>
+/// <para>Cache size estimate (T-01, 500-user scale):</para>
+/// <list type="bullet">
+/// <item><description>~50 teams × ~30 fields ≈ ~3 KB per record, plus ~10 members × ~250 B ≈ ~2.5 KB.</description></item>
+/// <item><description><c>RoleDefinitions</c> adds ~5 defs × ~200 B + their assignments (~5 × ~80 B) ≈ ~1.4 KB per team.</description></item>
+/// <item><description><c>PageContent</c> is the largest variable field — markdown, capped in practice at a few KB; budget ~5 KB per team.</description></item>
+/// <item><description>Full population footprint: ~50 teams × ~12 KB ≈ ~0.6 MB. Well under the 50 MB per-projection budget.</description></item>
+/// </list>
+/// </remarks>
 public record TeamInfo(
     Guid Id, string Name, string? Description, string Slug,
     bool IsActive, bool IsSystemTeam, SystemTeamType SystemTeamType, bool RequiresApproval,
@@ -17,7 +31,13 @@ public record TeamInfo(
     Instant? UpdatedAt = null,
     string? CustomSlug = null,
     IReadOnlySet<Guid>? ManagementRoleHolderUserIds = null,
-    IReadOnlyList<TeamRoleDefinitionSnapshot>? RoleDefinitions = null);
+    IReadOnlyList<TeamRoleDefinitionSnapshot>? RoleDefinitions = null,
+    IReadOnlyList<Guid>? ChildTeamIds = null,
+    bool ShowCoordinatorsOnPublicPage = true,
+    string? PageContent = null,
+    IReadOnlyList<CallToAction>? CallsToAction = null,
+    Instant? PageContentUpdatedAt = null,
+    Guid? PageContentUpdatedByUserId = null);
 
 public record TeamMemberInfo(
     Guid TeamMemberId, Guid UserId, string DisplayName,

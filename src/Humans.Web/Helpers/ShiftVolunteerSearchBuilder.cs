@@ -8,6 +8,13 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Humans.Web.Helpers;
 
+// T-09 (issue #720): the per-user voluntell search loop used to issue two
+// DB calls per candidate (GetShiftProfileAsync + IShiftSignupService.GetByUserAsync).
+// It now reads from the cached IShiftView via a single bulk GetUsersAsync —
+// cache hits complete synchronously via ValueTask. MedicalConditions are
+// redacted at the projection layer here so the shared cached view is never
+// mutated.
+
 public enum VolunteerSearchBuildStatus
 {
     Success,
@@ -37,7 +44,7 @@ public static class ShiftVolunteerSearchBuilder
         Func<Task<EventSettings?>> getActiveEventSettings,
         bool canViewMedical,
         UserManager<User> userManager,
-        IShiftManagementService shiftManagementService,
+        IShiftView shiftView,
         IShiftSignupService signupService,
         IGeneralAvailabilityService availabilityService)
     {
@@ -47,7 +54,8 @@ public static class ShiftVolunteerSearchBuilder
         if (shift is null)
             return VolunteerSearchBuildResult.NotFound;
 
-        var eventSettings = shift.Rota.EventSettings ?? await getActiveEventSettings();
+        var activeEvent = await getActiveEventSettings();
+        var eventSettings = shift.Rota.EventSettings ?? activeEvent;
         if (eventSettings is null)
             return VolunteerSearchBuildResult.NotFound;
 
@@ -55,9 +63,10 @@ public static class ShiftVolunteerSearchBuilder
             shift,
             query.Trim(),
             eventSettings,
+            activeEvent,
             canViewMedical,
             userManager,
-            shiftManagementService,
+            shiftView,
             signupService,
             availabilityService);
 
@@ -68,9 +77,10 @@ public static class ShiftVolunteerSearchBuilder
         Shift shift,
         string query,
         EventSettings eventSettings,
+        EventSettings? activeEvent,
         bool canViewMedical,
         UserManager<User> userManager,
-        IShiftManagementService shiftManagementService,
+        IShiftView shiftView,
         IShiftSignupService signupService,
         IGeneralAvailabilityService availabilityService)
     {
@@ -86,12 +96,38 @@ public static class ShiftVolunteerSearchBuilder
         var poolVolunteers = await availabilityService.GetAvailableForDayAsync(eventSettings.Id, shift.DayOffset);
         var poolUserIds = poolVolunteers.Select(p => p.UserId).ToHashSet();
 
+        // Bulk-fetch the cached view for every candidate user — replaces the
+        // per-user GetShiftProfileAsync + GetByUserAsync round trips with one
+        // cache-friendly call (T-09, issue #720).
+        var userIds = users.Select(u => u.Id).ToList();
+        var views = await shiftView.GetUsersAsync(userIds);
+
+        // The cached ShiftUserView.Signups is scoped to the currently active
+        // event (ShiftViewService.GetUserAsync). When the target shift belongs
+        // to a different event (e.g. admin searching a past/future event's
+        // shift), fall back to a per-user signup query for that event so
+        // BookedShiftCount/HasOverlap stay accurate (Codex P2, PR #579).
+        var targetIsActive = activeEvent is not null && eventSettings.Id == activeEvent.Id;
+        Dictionary<Guid, IReadOnlyList<ShiftSignup>>? targetEventSignups = null;
+        if (!targetIsActive)
+        {
+            targetEventSignups = new Dictionary<Guid, IReadOnlyList<ShiftSignup>>(userIds.Count);
+            foreach (var id in userIds)
+                targetEventSignups[id] = await signupService.GetByUserAsync(id, eventSettings.Id);
+        }
+
         var results = new List<VolunteerSearchResult>();
         foreach (var user in users)
         {
-            var profile = await shiftManagementService.GetShiftProfileAsync(user.Id, includeMedical: canViewMedical);
-            var userSignups = await signupService.GetByUserAsync(user.Id, eventSettings.Id);
-            var confirmedSignups = userSignups.Where(s => s.Status == SignupStatus.Confirmed).ToList();
+            var view = views[user.Id];
+            var profile = view.Profile;
+            var signupsForEvent = targetIsActive
+                ? view.Signups
+                : targetEventSignups![user.Id];
+            var confirmedSignups = signupsForEvent
+                .Where(s => s.Status == SignupStatus.Confirmed
+                    && s.Shift?.Rota?.EventSettingsId == eventSettings.Id)
+                .ToList();
 
             var hasOverlap = confirmedSignups.Any(signup =>
             {
@@ -111,7 +147,9 @@ public static class ShiftVolunteerSearchBuilder
                 BookedShiftCount = confirmedSignups.Count,
                 HasOverlap = hasOverlap,
                 IsInPool = poolUserIds.Contains(user.Id),
-                MedicalConditions = profile?.MedicalConditions
+                // canViewMedical gates MedicalConditions here so the shared
+                // cached view's Profile is never mutated (would poison the cache).
+                MedicalConditions = canViewMedical ? profile?.MedicalConditions : null
             });
         }
 

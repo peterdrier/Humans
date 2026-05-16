@@ -43,21 +43,6 @@ public sealed class ProfileRepository : IProfileRepository
             .FirstOrDefaultAsync(p => p.UserId == userId, ct);
     }
 
-    public async Task<IReadOnlyDictionary<Guid, Profile>> GetByUserIdsAsync(
-        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
-    {
-        if (userIds.Count == 0)
-            return new Dictionary<Guid, Profile>();
-
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var list = await ctx.Profiles
-            .AsNoTracking()
-            .Where(p => userIds.Contains(p.UserId))
-            .ToListAsync(ct);
-
-        return list.ToDictionary(p => p.UserId);
-    }
-
     public async Task<IReadOnlyList<Profile>> GetAllAsync(CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);

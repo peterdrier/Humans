@@ -99,6 +99,7 @@ public class ProfileControllerEditTests
             Substitute.For<IRoleAssignmentService>(),
             Substitute.For<IShiftSignupService>(),
             _shiftMgmt,
+            Substitute.For<IShiftView>(),
             Substitute.For<IGdprExportService>(),
             _configuration,
             new ConfigurationRegistry(),

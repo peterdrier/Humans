@@ -160,13 +160,12 @@ public class AgentToolDispatcherTests
             .Select(i => MakeSignup(viewer, blockId, MakeShift(rota, dayOffset: -10 + i, isAllDay: true), Humans.Domain.Enums.SignupStatus.Confirmed))
             .ToList();
 
-        var shiftSignups = Substitute.For<Interfaces.Shifts.IShiftSignupService>();
-        shiftSignups.GetByUserAsync(viewer, ev.Id).Returns((IReadOnlyList<Humans.Domain.Entities.ShiftSignup>)signups);
+        var shiftView = MakeViewFor(viewer, signups);
 
         var shiftMgmt = Substitute.For<Interfaces.Shifts.IShiftManagementService>();
         shiftMgmt.GetActiveAsync().Returns(ev);
 
-        var dispatcher = MakeDispatcher(shiftSignups: shiftSignups, shiftManagement: shiftMgmt);
+        var dispatcher = MakeDispatcher(shiftView: shiftView, shiftManagement: shiftMgmt);
 
         var result = await dispatcher.DispatchAsync(
             new AnthropicToolCall("t1", AgentToolNames.GetShiftDetails,
@@ -193,14 +192,12 @@ public class AgentToolDispatcherTests
             MakeShift(rota, dayOffset: 0, isAllDay: false, startTime: new NodaTime.LocalTime(9, 0), durationHours: 4),
             Humans.Domain.Enums.SignupStatus.Pending);
 
-        var shiftSignups = Substitute.For<Interfaces.Shifts.IShiftSignupService>();
-        shiftSignups.GetByUserAsync(viewer, ev.Id)
-            .Returns((IReadOnlyList<Humans.Domain.Entities.ShiftSignup>)[signup]);
+        var shiftView = MakeViewFor(viewer, [signup]);
 
         var shiftMgmt = Substitute.For<Interfaces.Shifts.IShiftManagementService>();
         shiftMgmt.GetActiveAsync().Returns(ev);
 
-        var dispatcher = MakeDispatcher(shiftSignups: shiftSignups, shiftManagement: shiftMgmt);
+        var dispatcher = MakeDispatcher(shiftView: shiftView, shiftManagement: shiftMgmt);
 
         var result = await dispatcher.DispatchAsync(
             new AnthropicToolCall("t1", AgentToolNames.GetShiftDetails,
@@ -221,14 +218,12 @@ public class AgentToolDispatcherTests
         var viewer = Guid.NewGuid();
         var ev = MakeEventSettings();
 
-        var shiftSignups = Substitute.For<Interfaces.Shifts.IShiftSignupService>();
-        shiftSignups.GetByUserAsync(viewer, ev.Id)
-            .Returns((IReadOnlyList<Humans.Domain.Entities.ShiftSignup>)[]);
+        var shiftView = MakeViewFor(viewer, []);
 
         var shiftMgmt = Substitute.For<Interfaces.Shifts.IShiftManagementService>();
         shiftMgmt.GetActiveAsync().Returns(ev);
 
-        var dispatcher = MakeDispatcher(shiftSignups: shiftSignups, shiftManagement: shiftMgmt);
+        var dispatcher = MakeDispatcher(shiftView: shiftView, shiftManagement: shiftMgmt);
 
         var result = await dispatcher.DispatchAsync(
             new AnthropicToolCall("t1", AgentToolNames.GetShiftDetails,
@@ -251,15 +246,13 @@ public class AgentToolDispatcherTests
         var foreignBlockId = Guid.NewGuid();
         var ev = MakeEventSettings();
 
-        var shiftSignups = Substitute.For<Interfaces.Shifts.IShiftSignupService>();
-        // Viewer has zero signups.
-        shiftSignups.GetByUserAsync(viewer, ev.Id)
-            .Returns((IReadOnlyList<Humans.Domain.Entities.ShiftSignup>)[]);
+        // Viewer has zero signups in their cached view.
+        var shiftView = MakeViewFor(viewer, []);
 
         var shiftMgmt = Substitute.For<Interfaces.Shifts.IShiftManagementService>();
         shiftMgmt.GetActiveAsync().Returns(ev);
 
-        var dispatcher = MakeDispatcher(shiftSignups: shiftSignups, shiftManagement: shiftMgmt);
+        var dispatcher = MakeDispatcher(shiftView: shiftView, shiftManagement: shiftMgmt);
 
         var result = await dispatcher.DispatchAsync(
             new AnthropicToolCall("t1", AgentToolNames.GetShiftDetails,
@@ -344,7 +337,7 @@ public class AgentToolDispatcherTests
 
     private static Humans.Infrastructure.Services.Agent.AgentToolDispatcher MakeDispatcher(
         Humans.Application.Interfaces.AuditLog.IAuditViewerService? auditViewer = null,
-        Interfaces.Shifts.IShiftSignupService? shiftSignups = null,
+        Interfaces.Shifts.IShiftView? shiftView = null,
         Interfaces.Shifts.IShiftManagementService? shiftManagement = null)
     {
         var env = new TestHostEnvironment();
@@ -355,9 +348,25 @@ public class AgentToolDispatcherTests
             sections,
             features,
             auditViewer ?? new StubAuditViewer(),
-            shiftSignups ?? Substitute.For<Interfaces.Shifts.IShiftSignupService>(),
+            shiftView ?? Substitute.For<Interfaces.Shifts.IShiftView>(),
             shiftManagement ?? Substitute.For<Interfaces.Shifts.IShiftManagementService>(),
             logger);
+    }
+
+    private static Interfaces.Shifts.IShiftView MakeViewFor(
+        Guid userId, IReadOnlyList<Humans.Domain.Entities.ShiftSignup> signups)
+    {
+        var view = Substitute.For<Interfaces.Shifts.IShiftView>();
+        var record = new Humans.Application.DTOs.Shifts.ShiftUserView(
+            UserId: userId,
+            Profile: null,
+            Availability: null,
+            BuildStatus: null,
+            TagPreferences: [],
+            Signups: signups);
+        view.GetUserAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<Humans.Application.DTOs.Shifts.ShiftUserView>(record));
+        return view;
     }
 
     private sealed class StubAuditViewer : Humans.Application.Interfaces.AuditLog.IAuditViewerService
