@@ -212,35 +212,35 @@ public sealed class CachingTicketQueryServiceTests
 
     private static TicketOrder MakeOrder(
         Guid id, Guid? matchedUserId, params TicketAttendee[] attendees) => new()
-    {
-        Id = id,
-        VendorOrderId = $"ord_{id:N}",
-        BuyerName = "Buyer",
-        BuyerEmail = "buyer@example.com",
-        TotalAmount = 100m,
-        Currency = "EUR",
-        PaymentStatus = TicketPaymentStatus.Paid,
-        VendorEventId = "ev_test",
-        PurchasedAt = Instant.FromUtc(2026, 5, 1, 0, 0),
-        SyncedAt = Instant.FromUtc(2026, 5, 1, 0, 0),
-        MatchedUserId = matchedUserId,
-        Attendees = attendees.ToList(),
-    };
+        {
+            Id = id,
+            VendorOrderId = $"ord_{id:N}",
+            BuyerName = "Buyer",
+            BuyerEmail = "buyer@example.com",
+            TotalAmount = 100m,
+            Currency = "EUR",
+            PaymentStatus = TicketPaymentStatus.Paid,
+            VendorEventId = "ev_test",
+            PurchasedAt = Instant.FromUtc(2026, 5, 1, 0, 0),
+            SyncedAt = Instant.FromUtc(2026, 5, 1, 0, 0),
+            MatchedUserId = matchedUserId,
+            Attendees = attendees.ToList(),
+        };
 
     private static TicketAttendee MakeAttendee(
         Guid? matchedUserId,
         TicketAttendeeStatus status,
         string? email = null) => new()
-    {
-        Id = Guid.NewGuid(),
-        VendorTicketId = $"tkt_{Guid.NewGuid():N}",
-        AttendeeName = "Attendee",
-        AttendeeEmail = email,
-        TicketTypeName = "Full Week",
-        Price = 50m,
-        Status = status,
-        VendorEventId = "ev_test",
-        SyncedAt = Instant.FromUtc(2026, 5, 1, 0, 0),
-        MatchedUserId = matchedUserId,
-    };
+        {
+            Id = Guid.NewGuid(),
+            VendorTicketId = $"tkt_{Guid.NewGuid():N}",
+            AttendeeName = "Attendee",
+            AttendeeEmail = email,
+            TicketTypeName = "Full Week",
+            Price = 50m,
+            Status = status,
+            VendorEventId = "ev_test",
+            SyncedAt = Instant.FromUtc(2026, 5, 1, 0, 0),
+            MatchedUserId = matchedUserId,
+        };
 }
