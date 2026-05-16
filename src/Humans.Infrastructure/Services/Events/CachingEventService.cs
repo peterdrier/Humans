@@ -518,13 +518,14 @@ public sealed class CachingEventService : IEventService, IEventViewInvalidator, 
     {
         if (settings is null) return null;
 
-        // Stop-gap (#719): read TimeZoneId from EventSettings via the inner
-        // repository. Cached at warm/refresh time; stale-on-EventSettings-edit
-        // window is documented on EventGuideSettingsView.TimeZoneId.
+        // Resolve TimeZoneId via the inner IEventService — EventSettings is
+        // owned by the Shifts section and the inner service stitches it in via
+        // IShiftManagementService (peterdrier#719). Cached at warm/refresh time;
+        // stale-on-EventSettings-edit window is documented on EventGuideSettingsView.TimeZoneId.
         string? timeZoneId = null;
         try
         {
-            var eventSettings = await _repo.GetEventSettingsByIdAsync(settings.EventSettingsId, ct);
+            var eventSettings = await WithInner(inner => inner.GetEventSettingsByIdAsync(settings.EventSettingsId, ct));
             timeZoneId = eventSettings?.TimeZoneId;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
