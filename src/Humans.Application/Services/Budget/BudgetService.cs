@@ -254,7 +254,30 @@ public sealed class BudgetService : IBudgetService, IUserDataContributor
     public async Task<BudgetCategorySnapshot?> GetCategoryByIdAsync(Guid id)
     {
         var category = await _repository.GetCategoryByIdAsync(id);
-        return category is null ? null : ToCategorySnapshot(category);
+        if (category is null)
+            return null;
+
+        // Stitch ResponsibleTeam names cross-section via ITeamService (the
+        // repository no longer Includes the obsolete BudgetLineItem.ResponsibleTeam nav).
+        var teamIds = category.LineItems
+            .Select(li => li.ResponsibleTeamId)
+            .Where(tid => tid.HasValue)
+            .Select(tid => tid!.Value)
+            .Distinct()
+            .ToList();
+
+        var teamNamesById = new Dictionary<Guid, string>();
+        if (teamIds.Count > 0)
+        {
+            var teams = await _teamService.GetTeamsAsync();
+            foreach (var teamId in teamIds)
+            {
+                if (teams.TryGetValue(teamId, out var team))
+                    teamNamesById[teamId] = team.Name;
+            }
+        }
+
+        return ToCategorySnapshot(category, teamNamesById);
     }
 
     public async Task<CoordinatorCategoryDetailViewData> GetCoordinatorCategoryDetailViewDataAsync(
@@ -278,7 +301,9 @@ public sealed class BudgetService : IBudgetService, IUserDataContributor
         return new CoordinatorCategoryDetailViewData(category, ShouldForbid: false, Teams: teams);
     }
 
-    private static BudgetCategorySnapshot ToCategorySnapshot(BudgetCategory category) =>
+    private static BudgetCategorySnapshot ToCategorySnapshot(
+        BudgetCategory category,
+        IReadOnlyDictionary<Guid, string> teamNamesById) =>
         new(
             category.Id,
             category.BudgetGroupId,
@@ -309,7 +334,7 @@ public sealed class BudgetService : IBudgetService, IUserDataContributor
                     item.Description,
                     item.Amount,
                     item.ResponsibleTeamId,
-                    item.ResponsibleTeam?.Name,
+                    item.ResponsibleTeamId is { } rtid && teamNamesById.TryGetValue(rtid, out var name) ? name : null,
                     item.Notes,
                     item.ExpectedDate,
                     item.VatRate,

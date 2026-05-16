@@ -189,13 +189,16 @@ public sealed class GoogleWorkspaceSyncServiceTests
             .Returns(SyncMode.AddOnly); // not AddAndRemove → removal should be skipped
 
         var driveResource = MakeDriveFolderResource(TestDriveFolderResourceId, TestTeamId, TestGoogleFolderId);
-        driveResource.Team = new Team
+        var team = new Team
         {
             Id = TestTeamId,
             Name = "Test Team",
             Slug = "test-team",
             IsActive = true
         };
+#pragma warning disable CS0618 // Test fixture stitches obsolete GoogleResource.Team nav for legacy reader paths.
+        driveResource.Team = team;
+#pragma warning restore CS0618
 
         _resourceRepository
             .GetByIdAsync(TestDriveFolderResourceId, Arg.Any<CancellationToken>())
@@ -206,7 +209,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
 
         var teamDict = new Dictionary<Guid, Team>
         {
-            [TestTeamId] = driveResource.Team
+            [TestTeamId] = team
         };
         _teamService
             .GetByIdsWithParentsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())

@@ -554,6 +554,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         // referenced parent so we can resolve department names and slugs).
         var teamIds2 = resources.Select(r => r.TeamId).Distinct().ToList();
         var teamsById = await _teamService.GetByIdsWithParentsAsync(teamIds2, cancellationToken);
+#pragma warning disable CS0618 // Obsolete cross-domain GoogleResource.Team nav populated in-memory by ITeamService.
         foreach (var resource in resources)
         {
             if (teamsById.TryGetValue(resource.TeamId, out var team))
@@ -561,6 +562,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
                 resource.Team = team;
             }
         }
+#pragma warning restore CS0618
 
         // Pre-load active members (primary team members) and child-team members
         // for the referenced team ids. Drive reconciliation uses the full
@@ -602,12 +604,14 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
 
                 // Only deactivate when EVERY one of a soft-deleted team's resources
                 // of this type reconciled without error.
+#pragma warning disable CS0618 // Obsolete cross-domain GoogleResource.Team nav populated in-memory by ITeamService.
                 var softDeletedTeamIds = resources
                     .Where(r => r.Team is { IsActive: false } && r.IsActive)
                     .GroupBy(r => r.TeamId)
                     .Where(g => g.All(r => !erroredGoogleIds.Contains(r.GoogleId)))
                     .Select(g => g.Key)
                     .ToList();
+#pragma warning restore CS0618
 
                 if (softDeletedTeamIds.Count > 0)
                 {
@@ -648,7 +652,9 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         if (teamsById.TryGetValue(resource.TeamId, out var team))
         {
             teamGoogleGroupEmail = team.GoogleGroupEmail;
+#pragma warning disable CS0618 // Obsolete cross-domain GoogleResource.Team nav populated in-memory by ITeamService.
             resource.Team = team;
+#pragma warning restore CS0618
         }
 
         var now = _clock.GetCurrentInstant();
@@ -670,10 +676,12 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
 
         var teamIds = allWithSameGoogleId.Select(r => r.TeamId).Distinct().ToList();
         var teamDict = await _teamService.GetByIdsWithParentsAsync(teamIds, cancellationToken);
+#pragma warning disable CS0618 // Obsolete cross-domain GoogleResource.Team nav populated in-memory by ITeamService.
         foreach (var r in allWithSameGoogleId)
         {
             if (teamDict.TryGetValue(r.TeamId, out var t)) r.Team = t;
         }
+#pragma warning restore CS0618
 
         var primary = await LoadActiveMembersByTeamAsync(teamIds, cancellationToken);
         var childBy = await LoadChildMembersByParentAsync(teamIds, cancellationToken);
@@ -707,6 +715,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
             : await _googleGroupSync.ReconcileOneAsync(groupKey, action, cancellationToken);
     }
 
+#pragma warning disable CS0618 // Obsolete cross-domain GoogleResource.Team nav read; stitched in by SyncSingleResourceAsync / SyncResourcesAsync via ITeamService.
     private async Task<ResourceSyncDiff> SyncDriveResourceGroupAsync(
         List<GoogleResource> resources,
         SyncAction action,
@@ -971,6 +980,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
             };
         }
     }
+#pragma warning restore CS0618
 
     // ==========================================================================
     // Group linking / reactivation
@@ -1141,6 +1151,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         var teamIds = groupResources.Select(r => r.TeamId).Distinct().ToList();
         var teamsById = await _teamService.GetByIdsWithParentsAsync(teamIds, cancellationToken);
         var filtered = new List<GoogleResource>();
+#pragma warning disable CS0618 // Obsolete cross-domain GoogleResource.Team nav populated/read in-memory via ITeamService.
         foreach (var r in groupResources)
         {
             if (teamsById.TryGetValue(r.TeamId, out var t) && t.IsActive)
@@ -1156,6 +1167,7 @@ public sealed class GoogleWorkspaceSyncService : IGoogleSyncService
         foreach (var resource in filtered)
         {
             var groupEmail = resource.Team.GoogleGroupEmail;
+#pragma warning restore CS0618
             if (string.IsNullOrEmpty(groupEmail))
             {
                 var prefix = resource.Url?.Split("/g/").LastOrDefault();

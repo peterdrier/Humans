@@ -13,6 +13,15 @@ public class BudgetLineItem
     public string Description { get; set; } = string.Empty;
     public decimal Amount { get; set; }
     public Guid? ResponsibleTeamId { get; set; }
+
+    /// <summary>
+    /// Cross-domain navigation to the responsible team. Do not use — callers
+    /// resolve team slices via <c>ITeamService</c>, keyed off
+    /// <see cref="ResponsibleTeamId"/>. Retained only so EF's configured FK
+    /// constraint stays modelled.
+    /// </summary>
+    [Obsolete("Cross-domain nav. Use ResponsibleTeamId + ITeamService to resolve the team.")]
+    [Architecture.ExpiresOn("2026-06-01", reason: "Stream C typed-FK conversion — readers must stitch via ITeamService.")]
     public Team? ResponsibleTeam { get; set; }
     public string? Notes { get; set; }
 
