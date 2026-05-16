@@ -254,6 +254,19 @@ public sealed class TicketSyncService : ITicketSyncService, IUserMerge
         // Use the established InvalidateTicketCaches seam (see Tickets.md
         // touch-and-clean guidance).
         _cache.InvalidateTicketCaches();
+
+        // Also drop the source and target users' per-user cache entries
+        // (UserTicketCount, UserTicketHoldings). InvalidateTicketCaches above
+        // skips per-user keys because they can't be enumerated for bulk
+        // invalidation, but in the merge-fold path we know exactly which two
+        // users are affected: tickets just moved source → target, so the
+        // source's cached counts are now meaningless and the target's are
+        // stale. Without this the homepage card and ticket-holdings widget
+        // would lag by up to 5 minutes after a merge.
+        _cache.InvalidateUserTicketCount(sourceUserId);
+        _cache.Remove(CacheKeys.UserTicketHoldings(sourceUserId));
+        _cache.InvalidateUserTicketCount(targetUserId);
+        _cache.Remove(CacheKeys.UserTicketHoldings(targetUserId));
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
