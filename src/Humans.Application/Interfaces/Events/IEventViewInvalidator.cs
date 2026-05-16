@@ -31,12 +31,4 @@ public interface IEventViewInvalidator
     /// the decorator owning the foreign table.
     /// </summary>
     Task InvalidateGuideSettingsAsync(CancellationToken ct = default);
-
-    /// <summary>
-    /// Drops every cached entry — approved events, categories, venues, and
-    /// settings — and forces the next read to re-warm from the DB. Used by
-    /// the rare wholesale-flip case (admin "reset event edition" workflow);
-    /// not part of any production write path today.
-    /// </summary>
-    Task InvalidateAllAsync(CancellationToken ct = default);
 }

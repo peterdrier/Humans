@@ -420,23 +420,6 @@ public sealed class CachingEventService : IEventService, IEventViewInvalidator, 
     public Task InvalidateGuideSettingsAsync(CancellationToken ct = default) =>
         RefreshSettingsAsync(ct);
 
-    public async Task InvalidateAllAsync(CancellationToken ct = default)
-    {
-        await _loadLock.WaitAsync(ct);
-        try
-        {
-            _eventCache.Clear();
-            _categories = [];
-            _venues = [];
-            _settings = null;
-            _isLoaded = false;
-        }
-        finally
-        {
-            _loadLock.Release();
-        }
-    }
-
     // ==========================================================================
     // Warmup — composition forces the decorator to own IHostedService directly.
     // _isLoaded / _loadLock guard all four projections together (events dict +
