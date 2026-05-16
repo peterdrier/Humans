@@ -7,18 +7,17 @@ namespace Humans.Application.Interfaces.Camps;
 /// </summary>
 /// <remarks>
 /// <para>
-/// External call paths that signal this interface:
+/// The decorator implements this interface and calls it from inside every
+/// mutating <see cref="ICampService"/> method (after the inner write
+/// completes). Cross-table effects — including
+/// <c>camp_members.HasEarlyEntry</c> / <c>Status</c> flips that drive
+/// <see cref="CampSeasonInfo.EeGrantedCount"/> — are handled by the same
+/// in-method invalidation because the mutating method already knows the
+/// affected camp id. The no-bypass discipline (only <c>CampService</c> /
+/// <c>CampRoleService</c> may use <c>ICampRepository</c>) is pinned by
+/// <c>CampsArchitectureTests</c>, so no SaveChanges interceptor backstop is
+/// needed.
 /// </para>
-/// <list type="bullet">
-///   <item>The <c>CampInfoSaveChangesInterceptor</c> in Infrastructure — fires
-///     <see cref="InvalidateCampAsync"/> for every camp touched by a write to
-///     <c>camps</c>, <c>camp_seasons</c>, <c>camp_leads</c>,
-///     <c>camp_historical_names</c>, <c>camp_images</c>, or — critically —
-///     <c>camp_members</c> (<c>HasEarlyEntry</c> / <c>Status</c> flips affect
-///     <see cref="CampSeasonInfo.EeGrantedCount"/>).</item>
-///   <item><see cref="InvalidateSettingsAsync"/> rides the same interceptor
-///     when <c>camp_settings</c> is touched.</item>
-/// </list>
 /// <para>
 /// The invalidator must resolve to the SAME singleton instance as
 /// <see cref="ICampService"/> (per §15e CRITICAL) so the dict and the

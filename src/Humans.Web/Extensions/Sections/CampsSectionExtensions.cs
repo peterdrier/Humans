@@ -50,13 +50,6 @@ internal static class CampsSectionExtensions
         // Surface CampInfo cache diagnostics on /Admin/CacheStats.
         services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingCampService>());
 
-        // SaveChanges interceptor — catches every persisted mutation to the
-        // Camps tables, including the cross-table camp_members.HasEarlyEntry
-        // dependency that EeGrantedCount projects from. Registered Singleton
-        // so the same instance is added to both AddDbContext and
-        // AddDbContextFactory option pipelines (see Program.cs).
-        services.AddSingleton<CampInfoSaveChangesInterceptor>();
-
         // CachingCampService is itself the IHostedService — TrackedCache's
         // StartAsync triggers WarmAllAsync when warmOnStartup: true. After a
         // bulk invalidation (Clear), the next read lazily re-warms via

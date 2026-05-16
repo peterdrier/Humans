@@ -298,12 +298,16 @@ public sealed record CampSeasonLookup(
 /// <b>EeGrantedCount cross-table invariant.</b>
 /// <see cref="CampSeasonInfo.EeGrantedCount"/> is computed from
 /// <c>camp_members.HasEarlyEntry</c> WHERE <c>Status = Active</c>. The
-/// <c>CampInfoSaveChangesInterceptor</c> MUST watch both
-/// <c>camp_seasons</c> AND <c>camp_members</c> (specifically
-/// <c>HasEarlyEntry</c> + <c>Status</c> changes) to invalidate this entry
-/// — missing the <c>camp_members</c> watch caused historical drift where
-/// a grant or revoke left the <see cref="EeGrantedCount"/> stale until
-/// process restart.
+/// methods that flip those fields —
+/// <see cref="ICampService.SetEarlyEntryAsync"/>,
+/// <see cref="ICampService.RemoveCampMemberAsync"/>,
+/// <see cref="ICampService.LeaveCampMembershipAsync"/>, and the membership
+/// confirm/withdraw paths — invalidate the affected camp via
+/// <see cref="ICampInfoInvalidator"/> inside the decorator, so the cached
+/// projection rebuilds with the current count on the next read. No bypass
+/// is possible because only the inner <c>CampService</c> /
+/// <c>CampRoleService</c> may touch <c>ICampRepository</c>
+/// (pinned by <c>CampsArchitectureTests</c>).
 /// </para>
 /// </remarks>
 public sealed record CampInfo(

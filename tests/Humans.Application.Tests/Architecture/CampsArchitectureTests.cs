@@ -4,7 +4,6 @@ using Humans.Application.Interfaces.Camps;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
-using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Camps;
 using Humans.Infrastructure.Services.Camps;
 using CampService = Humans.Application.Services.Camps.CampService;
@@ -19,9 +18,10 @@ namespace Humans.Application.Tests.Architecture;
 ///   never injects DbContext or IMemoryCache.</item>
 /// <item><c>CachingCampService</c> wraps it with a Singleton, hit-tracked
 ///   per-camp projection plus a separate CampSettingsInfo slot.</item>
-/// <item><c>CampInfoSaveChangesInterceptor</c> watches the cross-table
-///   <c>CampMember</c> dependency that <see cref="CampSeasonInfo.EeGrantedCount"/>
-///   projects from — historical drift bug guard.</item>
+/// <item>The set of types that depend on <see cref="ICampRepository"/> is
+///   pinned — no one outside the approved list can bypass the decorator and
+///   write to the Camps tables behind its back. This is what replaces the
+///   T-06 SaveChanges-interceptor backstop.</item>
 /// <item><see cref="CampInfo.Leads"/> is non-nullable.</item>
 /// </list>
 /// </summary>
@@ -114,7 +114,7 @@ public class CampsArchitectureTests
     {
         typeof(ICampInfoInvalidator).IsAssignableFrom(typeof(CachingCampService))
             .Should().BeTrue(
-                because: "external callers (the SaveChanges interceptor) signal cache invalidation via the one-method interface, not by reaching into the decorator directly (§15e)");
+                because: "the decorator is the cache and the signaller — every mutating method invalidates the affected camp inline after the inner write (§15e)");
     }
 
     [HumansFact]
@@ -140,30 +140,72 @@ public class CampsArchitectureTests
                 because: "§15d decorators live in Humans.Infrastructure.Services.<Section>");
     }
 
-    // ── CampInfoSaveChangesInterceptor (T-06) ────────────────────────────────
+    // ── No-bypass tripwire (replaces the T-06 SaveChanges interceptor) ───────
 
     /// <summary>
-    /// EeGrantedCount cross-table invariant: the interceptor MUST watch
-    /// <c>CampMember</c> writes. Without this, granting or revoking Early
-    /// Entry leaves <see cref="CampSeasonInfo.EeGrantedCount"/> stale until
-    /// process restart (historical drift bug — see <c>CampInfo</c> remarks).
+    /// Pins the set of types that may inject <see cref="ICampRepository"/>.
+    /// The decorator's invalidation contract holds only as long as every
+    /// write to the Camps tables goes through an <see cref="ICampService"/>
+    /// method the decorator wraps. New consumers that take the repo
+    /// directly — especially write-shaped consumers — can skip the
+    /// invalidate-after-mutate call and reintroduce the
+    /// <see cref="CampSeasonInfo.EeGrantedCount"/> drift that T-06 fixed.
+    /// If you're adding a legitimate new caller, update this list and the
+    /// remarks on <c>CachingCampService</c> together.
     /// </summary>
     [HumansFact]
-    public void CampInfoInterceptor_WatchesCampMemberWritesForEarlyEntryInvariant()
+    public void ICampRepository_HasNoUnexpectedConsumers()
     {
-        var source = typeof(CampInfoSaveChangesInterceptor)
-            .Assembly.Location;
-        // Inspect the type's transitive ChangeTracker-walk via reflection by
-        // running a quick smoke: confirm the type compiles in the expected
-        // assembly and exposes the interceptor base. The actual switch-case
-        // catch is exercised in CampInfoInterceptorTests; here we pin that
-        // the type exists in the right place so a refactor doesn't silently
-        // move it out of the EF pipeline registration.
-        source.Should().Contain("Humans.Infrastructure",
-            because: "the interceptor must remain in the Humans.Infrastructure assembly so Program.cs's AddInterceptors registration resolves it");
-        typeof(CampInfoSaveChangesInterceptor)
-            .Should().BeAssignableTo<Microsoft.EntityFrameworkCore.Diagnostics.SaveChangesInterceptor>(
-                because: "T-06 cross-table EeGrantedCount invariant — see CampInfo remarks");
+        var allowed = new HashSet<string>(StringComparer.Ordinal)
+        {
+            // Reads + writes — the inner service is the only writer.
+            "Humans.Application.Services.Camps.CampService",
+            // Repo implementation itself.
+            "Humans.Infrastructure.Repositories.Camps.CampRepository",
+            // Decorator — reads for the per-camp refresh / settings reload.
+            "Humans.Infrastructure.Services.Camps.CachingCampService",
+            // Read-only consumer — uses GetActiveLeadUserIdsAsync /
+            // IsLeadAnywhereAsync. Never writes through the repo.
+            "Humans.Infrastructure.Jobs.SystemTeamSyncJob",
+        };
+
+        var assemblies = new[]
+        {
+            typeof(CampService).Assembly,
+            typeof(CampRepository).Assembly,
+            typeof(CachingCampService).Assembly,
+        };
+
+        var consumers = assemblies
+            .SelectMany(a => a.GetTypes())
+            .Where(t => t.GetConstructors()
+                .Any(c => c.GetParameters().Any(p => p.ParameterType == typeof(ICampRepository))))
+            .Select(t => t.FullName ?? t.Name)
+            .ToList();
+
+        var unexpected = consumers.Where(c => !allowed.Contains(c)).ToList();
+
+        unexpected.Should().BeEmpty(
+            because: "T-06: every write to the Camps tables must go through ICampService so the decorator can invalidate the affected camp. If this new type only reads, add it to the allow-list with a comment explaining why; if it writes, route through ICampService instead.");
+    }
+
+    /// <summary>
+    /// Belt-on-belt: ensure the obsolete <c>CampInfoSaveChangesInterceptor</c>
+    /// hasn't crept back into the Infrastructure assembly. The decorator's
+    /// inline invalidation is the only path; a re-added interceptor would
+    /// double-fire invalidations and re-introduce the per-row
+    /// <c>CampSeason</c>→<c>CampId</c> round trip the no-bypass rule was
+    /// designed to retire.
+    /// </summary>
+    [HumansFact]
+    public void CampInfoSaveChangesInterceptor_IsNotPresent()
+    {
+        var found = typeof(CachingCampService).Assembly
+            .GetTypes()
+            .FirstOrDefault(t => string.Equals(t.Name, "CampInfoSaveChangesInterceptor", StringComparison.Ordinal));
+
+        found.Should().BeNull(
+            because: "the T-06 SaveChanges interceptor was retired in favour of decorator-only invalidation pinned by ICampRepository_HasNoUnexpectedConsumers — see CachingCampService remarks");
     }
 
     // ── CampInfo projection — leads invariant ───────────────────────────────

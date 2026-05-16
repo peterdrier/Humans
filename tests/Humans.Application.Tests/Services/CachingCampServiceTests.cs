@@ -89,9 +89,9 @@ public sealed class CachingCampServiceTests : IDisposable
             because: "warmup loads Seasons.Members and projects the active-EE count");
 
         // Now flip an existing member's HasEarlyEntry directly in the db and
-        // call InvalidateCampAsync — this is the exact path that
-        // CampInfoSaveChangesInterceptor and the decorator's write methods
-        // both end up in: RefreshEntryAsync → _repo.GetByIdAsync → projection.
+        // call InvalidateCampAsync — this is the exact path the decorator's
+        // write methods (SetEarlyEntryAsync, RemoveCampMemberAsync, …) take:
+        // RefreshEntryAsync → _repo.GetByIdAsync → projection.
         var third = _dbContext.CampMembers
             .First(m => m.CampSeasonId == season.Id && !m.HasEarlyEntry);
         third.HasEarlyEntry = true;

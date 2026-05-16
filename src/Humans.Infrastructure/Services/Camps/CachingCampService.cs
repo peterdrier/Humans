@@ -32,21 +32,18 @@ namespace Humans.Infrastructure.Services.Camps;
 /// keys into one §15-shaped projection.
 /// </para>
 /// <para>
-/// Invalidation has two paths:
+/// Invalidation is decorator-mediated only. Every mutating method in this
+/// class delegates to the inner service then calls
+/// <see cref="ICampInfoInvalidator.InvalidateCampAsync"/> /
+/// <see cref="ICampInfoInvalidator.InvalidateSettingsAsync"/>. There is no
+/// SaveChanges interceptor backstop — the no-bypass rule is pinned by
+/// <c>CampsArchitectureTests</c>: only the inner <c>CampService</c> and
+/// <c>CampRoleService</c> may touch <c>ICampRepository</c>, so every write
+/// to the Camps tables (including the cross-table
+/// <c>camp_members.HasEarlyEntry</c> dependency that
+/// <see cref="CampSeasonInfo.EeGrantedCount"/> projects from) is routed
+/// through an <see cref="ICampService"/> method this decorator wraps.
 /// </para>
-/// <list type="bullet">
-///   <item><b>Decorator-mediated.</b> Every mutating method in this class
-///     delegates to the inner service then calls
-///     <see cref="ICampInfoInvalidator.InvalidateCampAsync"/> /
-///     <see cref="ICampInfoInvalidator.InvalidateSettingsAsync"/>.</item>
-///   <item><b>Interceptor-mediated.</b>
-///     <c>CampInfoSaveChangesInterceptor</c> in Infrastructure catches every
-///     persisted mutation to the Camps tables, including
-///     <c>camp_members.HasEarlyEntry</c> — without that watch, granting or
-///     revoking EE leaves <see cref="CampSeasonInfo.EeGrantedCount"/> stale
-///     until process restart (historical drift bug). See the
-///     <c>CampInfo</c> remarks for the full invariant.</item>
-/// </list>
 /// <para>
 /// Cache size budget: ~5 MB at ~100 camps / 500-user scale, well under the
 /// §15 50-MB ceiling. See <see cref="CampInfo"/> for the per-entry breakdown.
