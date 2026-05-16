@@ -664,9 +664,26 @@ public sealed class CachingCampService :
         // cold-year requests and fall back to the inner service.
         _warmYears = years;
 
-        // Settings ride along with the per-camp warmup so /Admin/CacheStats
-        // shows a fully-warm system rather than a half-loaded one.
-        await LoadSettingsAsync(ct);
+        // Populate the settings slot from the value already fetched at the
+        // top of this method — avoids a second repo round-trip and removes
+        // the boot-time throw LoadSettingsAsync carries (no-startup-guards).
+        // If settings is null the slot stays unset and GetSettingsAsync
+        // lazy-loads on first request.
+        if (settings is not null)
+        {
+            await _settingsLock.WaitAsync(ct);
+            try
+            {
+                _settings = new CampSettingsInfo(
+                    settings.PublicYear,
+                    settings.OpenSeasons.ToList(),
+                    settings.EeStartDate);
+            }
+            finally
+            {
+                _settingsLock.Release();
+            }
+        }
     }
 
     private int SystemClockYear() => _clock.GetCurrentInstant().InUtc().Year;
