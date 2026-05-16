@@ -550,6 +550,17 @@ public sealed class CachingEventService : IEventService, IEventViewInvalidator
 
     private async Task RefreshAllEventsAsync(CancellationToken ct)
     {
+        // If the cache hasn't been warmed yet (rare write-before-warmup race),
+        // do a full WarmAllAsync rather than a partial event-only refresh —
+        // otherwise _categories/_venues/_settings stay in their empty
+        // constructor state and _isLoaded stays false, forcing a redundant
+        // re-warmup on the very next read. WarmAllAsync sets _isLoaded = true.
+        if (!_isLoaded)
+        {
+            await WarmAllAsync(ct);
+            return;
+        }
+
         var approved = await _repo.GetApprovedEventsAsync(null, null, null, null, [], ct);
         var categoriesById = (await _repo.GetActiveCategoriesAsync(ct)).ToDictionary(c => c.Id);
         var venuesById = (await _repo.GetActiveVenuesAsync(ct)).ToDictionary(v => v.Id);
