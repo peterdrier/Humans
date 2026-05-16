@@ -2321,24 +2321,25 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
             team.IsHidden);
     }
 
-    private static TeamPageTeamSummary MapTeamSummary(Team team) => new(
-        team.Id,
-        team.Name,
-        team.DisplayName,
-        team.Description,
-        team.Slug,
-        team.IsActive,
-        team.RequiresApproval,
-        team.IsSystemTeam,
-        team.SystemTeamType,
-        team.CreatedAt,
-        team.IsPublicPage,
-        team.ShowCoordinatorsOnPublicPage,
-        team.PageContent,
-        team.CallsToAction ?? [],
-        team.PageContentUpdatedAt,
-        team.PageContentUpdatedByUserId,
-        team.ParentTeam is null ? null : MapTeamLink(team.ParentTeam));
+    private static TeamPageTeamSummary MapTeamSummary(Team team) =>
+        TeamPageSummaryMapper.Map(
+            id: team.Id,
+            name: team.Name,
+            parentName: team.ParentTeam?.Name,
+            description: team.Description,
+            slug: team.Slug,
+            isActive: team.IsActive,
+            requiresApproval: team.RequiresApproval,
+            isSystemTeam: team.IsSystemTeam,
+            systemTeamType: team.SystemTeamType,
+            createdAt: team.CreatedAt,
+            isPublicPage: team.IsPublicPage,
+            showCoordinatorsOnPublicPage: team.ShowCoordinatorsOnPublicPage,
+            pageContent: team.PageContent,
+            callsToAction: team.CallsToAction ?? [],
+            pageContentUpdatedAt: team.PageContentUpdatedAt,
+            pageContentUpdatedByUserId: team.PageContentUpdatedByUserId,
+            parentLink: team.ParentTeam is null ? null : MapTeamLink(team.ParentTeam));
 
     private static TeamPageTeamLink MapTeamLink(Team team) => new(
         team.Id,

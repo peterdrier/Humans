@@ -213,28 +213,25 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
         }
     }
 
-    private static TeamPageTeamSummary MapTeamSummary(TeamInfo team, TeamInfo? parent)
-    {
-        var displayName = parent is not null ? $"{parent.Name} - {team.Name}" : team.Name;
-        return new TeamPageTeamSummary(
-            team.Id,
-            team.Name,
-            displayName,
-            team.Description,
-            team.Slug,
-            team.IsActive,
-            team.RequiresApproval,
-            team.IsSystemTeam,
-            team.SystemTeamType,
-            team.CreatedAt,
-            team.IsPublicPage,
-            team.ShowCoordinatorsOnPublicPage,
-            team.PageContent,
-            team.CallsToAction is null ? [] : [.. team.CallsToAction],
-            team.PageContentUpdatedAt,
-            team.PageContentUpdatedByUserId,
-            parent is null ? null : new TeamPageTeamLink(parent.Id, parent.Name, parent.Slug));
-    }
+    private static TeamPageTeamSummary MapTeamSummary(TeamInfo team, TeamInfo? parent) =>
+        TeamPageSummaryMapper.Map(
+            id: team.Id,
+            name: team.Name,
+            parentName: parent?.Name,
+            description: team.Description,
+            slug: team.Slug,
+            isActive: team.IsActive,
+            requiresApproval: team.RequiresApproval,
+            isSystemTeam: team.IsSystemTeam,
+            systemTeamType: team.SystemTeamType,
+            createdAt: team.CreatedAt,
+            isPublicPage: team.IsPublicPage,
+            showCoordinatorsOnPublicPage: team.ShowCoordinatorsOnPublicPage,
+            pageContent: team.PageContent,
+            callsToAction: team.CallsToAction is null ? [] : [.. team.CallsToAction],
+            pageContentUpdatedAt: team.PageContentUpdatedAt,
+            pageContentUpdatedByUserId: team.PageContentUpdatedByUserId,
+            parentLink: parent is null ? null : new TeamPageTeamLink(parent.Id, parent.Name, parent.Slug));
 
     private static TeamPageTeamLink MapTeamLink(TeamInfo team) =>
         new(team.Id, team.Name, team.Slug);
