@@ -723,7 +723,7 @@ public sealed class GoogleAdminService : IGoogleAdminService
                             .OrderBy(e => e.Email, StringComparer.OrdinalIgnoreCase)
                             .Select(e => e.Email)
                             .FirstOrDefault();
-                    return new { u.Id, u.DisplayName, GoogleEmail = googleEmail };
+                    return new { u.Id, DisplayName = u.BurnerName, GoogleEmail = googleEmail };
                 })
                 .Where(x => x.GoogleEmail is not null &&
                     x.GoogleEmail.EndsWith($"@{NobodiesTeamDomain}", StringComparison.OrdinalIgnoreCase))

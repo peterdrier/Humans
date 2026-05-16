@@ -607,7 +607,7 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
         foreach (var row in grantRowsRaw)
         {
             var recipientName = users.TryGetValue(row.UserId, out var user)
-                ? user.DisplayName
+                ? user.BurnerName
                 : string.Empty;
 
             grantRows.Add(new CampaignCodeTrackingGrant(
@@ -724,7 +724,7 @@ public sealed class CampaignService : ICampaignService, IUserDataContributor, IU
             UserId: user.Id,
             CampaignGrantId: grantId,
             RecipientEmail: recipientEmail,
-            RecipientName: user.DisplayName,
+            RecipientName: user.BurnerName,
             Subject: campaign.EmailSubject,
             MarkdownBody: campaign.EmailBodyTemplate,
             Code: code,

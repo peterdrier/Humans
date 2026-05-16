@@ -587,7 +587,7 @@ public sealed class CampService : ICampService, IUserDataContributor, IUserMerge
             .Select(l => new CampLeadSummary(
                 l.Id,
                 l.UserId,
-                users.TryGetValue(l.UserId, out var user) ? user.DisplayName : string.Empty))
+                users.TryGetValue(l.UserId, out var user) ? user.BurnerName : string.Empty))
             .ToList();
     }
 
