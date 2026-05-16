@@ -565,9 +565,10 @@ public sealed class CachingCampService :
         {
             if (_isLoaded) return;
             // Load every camp with its seasons + leads. Iterate years from
-            // settings so the projection carries seasons for every active
-            // year, not just the public year. At ~100 camps with ≤6 years
-            // of history this is one query per year, well under a second.
+            // settings (PublicYear + OpenSeasons) plus the current real-world
+            // year so the projection carries seasons for every active year,
+            // not just the public year. At ~100 camps × ~1–3 active years this
+            // is one query per year, well under a second.
             await ReloadDictUnlockedAsync(ct);
             _isLoaded = true;
         }

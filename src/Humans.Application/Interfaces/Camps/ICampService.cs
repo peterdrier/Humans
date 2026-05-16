@@ -281,10 +281,12 @@ public sealed record CampSeasonLookup(
 /// <remarks>
 /// <para>
 /// <b>Cache size budget.</b> At Nobodies' steady-state (~100 active camps,
-/// ≤6 seasons of history retained, ≤5 leads/camp, ≤5 historical names/camp)
-/// the per-entry footprint is dominated by season blurbs (~2 KB/season) plus
-/// scalar fields. Worst-case ~50 KB/camp × 100 camps ≈ 5 MB — comfortably
-/// under the ~50 MB §15 budget for a 500-user-scale projection.
+/// ≤5 leads/camp, ≤5 historical names/camp) the per-entry footprint is
+/// dominated by season blurbs (~2 KB/season) plus scalar fields. Warmup
+/// loads only the seasons referenced by <c>CampSettings.PublicYear</c> +
+/// <c>OpenSeasons</c> + the current real-world year — typically 1–3 seasons
+/// per camp, not full history. Worst-case ~50 KB/camp × 100 camps ≈ 5 MB —
+/// comfortably under the ~50 MB §15 budget for a 500-user-scale projection.
 /// </para>
 /// <para>
 /// <b>Leads invariant.</b> <see cref="Leads"/> is always non-null. The
