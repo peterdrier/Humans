@@ -68,18 +68,14 @@ public sealed class CachingCampService :
     private readonly ICampRepository _repo;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<CachingCampService> _logger;
-    private readonly SemaphoreSlim _loadLock = new(1, 1);
     private readonly SemaphoreSlim _settingsLock = new(1, 1);
-    private volatile bool _isLoaded;
     private CampSettingsInfo? _settings;
-
-    public bool IsWarmedUp => _isLoaded;
 
     public CachingCampService(
         ICampRepository repo,
         IServiceScopeFactory scopeFactory,
         ILogger<CachingCampService> logger)
-        : base("Camp.CampInfo")
+        : base("Camp.CampInfo", warmOnStartup: true)
     {
         _repo = repo;
         _scopeFactory = scopeFactory;
@@ -101,7 +97,7 @@ public sealed class CachingCampService :
     public async Task<IReadOnlyList<CampInfo>> GetCampsForYearAsync(
         int year, CancellationToken cancellationToken = default)
     {
-        await WarmIfNeededAsync(cancellationToken);
+        await EnsureWarmedAsync(cancellationToken);
         var snapshot = Values;
         var result = new List<CampInfo>(snapshot.Count);
         foreach (var camp in snapshot)
@@ -122,7 +118,7 @@ public sealed class CachingCampService :
         // Deprecated alias: filter in-memory by season status. Behavior matches
         // the legacy repo-side filter (any season for the year in the allowed
         // status set means the camp is included).
-        await WarmIfNeededAsync(cancellationToken);
+        await EnsureWarmedAsync(cancellationToken);
         var snapshot = Values;
         var result = new List<CampInfo>(snapshot.Count);
         foreach (var camp in snapshot)
@@ -147,7 +143,7 @@ public sealed class CachingCampService :
     public async Task<bool> IsUserCampLeadAsync(
         Guid userId, Guid campId, CancellationToken cancellationToken = default)
     {
-        await WarmIfNeededAsync(cancellationToken);
+        await EnsureWarmedAsync(cancellationToken);
         if (TryGet(campId, out var camp))
         {
             return camp.Leads.Any(l => l.UserId == userId);
@@ -160,7 +156,7 @@ public sealed class CachingCampService :
     public async Task<Guid?> GetCampLeadSeasonIdForYearAsync(
         Guid userId, int year, CancellationToken cancellationToken = default)
     {
-        await WarmIfNeededAsync(cancellationToken);
+        await EnsureWarmedAsync(cancellationToken);
         foreach (var camp in Values)
         {
             if (!camp.Leads.Any(l => l.UserId == userId)) continue;
@@ -312,7 +308,9 @@ public sealed class CachingCampService :
     public async Task DeleteCampAsync(Guid campId, CancellationToken cancellationToken = default)
     {
         await WithInner(inner => inner.DeleteCampAsync(campId, cancellationToken));
-        Invalidate(campId);
+        // Confirmed delete — tombstone the key without flipping warmth so the
+        // all-rows invariant (now N-1 entries) is preserved.
+        DeleteKey(campId);
     }
 
     public async Task<CampLead> AddLeadAsync(
@@ -332,7 +330,7 @@ public sealed class CachingCampService :
         if (campId is not null)
             await InvalidateCampAsync(campId.Value, cancellationToken);
         else
-            await RefreshAllAsync(cancellationToken);
+            RefreshAll();
     }
 
     public async Task AddHistoricalNameAsync(
@@ -348,7 +346,7 @@ public sealed class CachingCampService :
         // No FK back to the camp on the API surface — refresh all rather than
         // risk a stale entry. Historical-name churn is rare.
         await WithInner(inner => inner.RemoveHistoricalNameAsync(historicalNameId, cancellationToken));
-        await RefreshAllAsync(cancellationToken);
+        RefreshAll();
     }
 
     public async Task<CampImageUploadResult> UploadImageAsync(
@@ -367,7 +365,7 @@ public sealed class CachingCampService :
         // Image rows hold CampId server-side; delegate first then full-refresh
         // since we don't have a snapshot index by image id. Image churn is rare.
         await WithInner(inner => inner.DeleteImageAsync(imageId, cancellationToken));
-        await RefreshAllAsync(cancellationToken);
+        RefreshAll();
     }
 
     public async Task ReorderImagesAsync(
@@ -399,8 +397,9 @@ public sealed class CachingCampService :
         int year, LocalDate lockDate, CancellationToken cancellationToken = default)
     {
         await WithInner(inner => inner.SetNameLockDateAsync(year, lockDate, cancellationToken));
-        // Touches every season in the year — refresh all.
-        await RefreshAllAsync(cancellationToken);
+        // Touches every season in the year — drop the dict and let the next
+        // read drive a fresh WarmAllAsync via the base.
+        RefreshAll();
     }
 
     public async Task ChangeSeasonNameAsync(
@@ -517,7 +516,9 @@ public sealed class CachingCampService :
         CancellationToken ct)
     {
         await WithInnerMerge(inner => inner.ReassignAsync(mergedFromUserId, mergedToUserId, actorUserId, now, ct));
-        await RefreshAllAsync(ct);
+        // Lead reassignment can touch any camp; drop the dict so the next read
+        // re-warms from scratch (cheap at ~100 camps).
+        RefreshAll();
     }
 
     // ==========================================================================
@@ -558,31 +559,21 @@ public sealed class CachingCampService :
     // Warmup / refresh
     // ==========================================================================
 
-    public async Task WarmAllAsync(CancellationToken ct = default)
+    /// <summary>
+    /// Populates the per-camp dict. Called by
+    /// <see cref="TrackedCache{TKey,TValue}.EnsureWarmedAsync"/> at startup (via
+    /// the base's <see cref="IHostedService.StartAsync"/> when
+    /// <c>warmOnStartup: true</c>) and again on demand after a <see cref="TrackedCache{TKey,TValue}.Clear"/>
+    /// flips the warmed flag back to false. The base owns concurrency coalescing
+    /// via the warm semaphore, so this body is invoked at most once at a time.
+    ///
+    /// <para>Iterates years from settings (PublicYear + OpenSeasons) plus the
+    /// current real-world year so the projection carries seasons for every
+    /// active year, not just the public year. At ~100 camps × ~1–3 active years
+    /// this is one query per year, well under a second.</para>
+    /// </summary>
+    protected override async Task WarmAllAsync(CancellationToken ct)
     {
-        await _loadLock.WaitAsync(ct);
-        try
-        {
-            if (_isLoaded) return;
-            // Load every camp with its seasons + leads. Iterate years from
-            // settings (PublicYear + OpenSeasons) plus the current real-world
-            // year so the projection carries seasons for every active year,
-            // not just the public year. At ~100 camps × ~1–3 active years this
-            // is one query per year, well under a second.
-            await ReloadDictUnlockedAsync(ct);
-            _isLoaded = true;
-        }
-        finally
-        {
-            _loadLock.Release();
-        }
-
-        await LoadSettingsAsync(ct);
-    }
-
-    private async Task ReloadDictUnlockedAsync(CancellationToken ct)
-    {
-        Clear();
         var settings = await _repo.GetSettingsReadOnlyAsync(ct);
         var years = new HashSet<int>();
         if (settings is not null)
@@ -616,44 +607,44 @@ public sealed class CachingCampService :
             }
         }
 
+        // No defensive Clear() — the base already emptied the dict before
+        // flipping the warmed flag (Clear path) or the cache is empty on
+        // first startup. Set is upsert, so any rare leftover is overwritten.
         foreach (var (campId, camp) in byCampId)
         {
             Set(campId, ProjectCampInfo(camp));
         }
+
+        // Settings ride along with the per-camp warmup so /Admin/CacheStats
+        // shows a fully-warm system rather than a half-loaded one.
+        await LoadSettingsAsync(ct);
     }
 
     private static int SystemClockYear() => DateTime.UtcNow.Year;
 
     private async Task RefreshEntryAsync(Guid campId, CancellationToken ct)
     {
+        // Per-row replace preserving the all-rows invariant: if the row is
+        // gone the cache tombstones it via DeleteKey (warmth stays true);
+        // otherwise we Set the new projection. Never Invalidate(key) here —
+        // that would flip warmth on this warmOnStartup:true cache and force
+        // a full re-warm on the next read.
         var camp = await _repo.GetByIdAsync(campId, ct);
         if (camp is null)
         {
-            Invalidate(campId);
+            DeleteKey(campId);
             return;
         }
         Set(campId, ProjectCampInfo(camp));
     }
 
-    private async Task RefreshAllAsync(CancellationToken ct)
-    {
-        await _loadLock.WaitAsync(ct);
-        try
-        {
-            await ReloadDictUnlockedAsync(ct);
-            _isLoaded = true;
-        }
-        finally
-        {
-            _loadLock.Release();
-        }
-    }
-
-    private async Task WarmIfNeededAsync(CancellationToken ct)
-    {
-        if (_isLoaded) return;
-        await WarmAllAsync(ct);
-    }
+    /// <summary>
+    /// Drop the cached dict and let the next read trigger a fresh
+    /// <see cref="WarmAllAsync"/>. The base's <see cref="TrackedCache{TKey,TValue}.Clear"/>
+    /// flips the warmed flag back to false; load-all readers observe that and
+    /// re-warm via <see cref="TrackedCache{TKey,TValue}.EnsureWarmedAsync"/>.
+    /// </summary>
+    private void RefreshAll() => Clear();
 
     private async Task<CampSettingsInfo> LoadSettingsAsync(CancellationToken ct)
     {

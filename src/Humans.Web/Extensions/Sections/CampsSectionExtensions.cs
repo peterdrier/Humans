@@ -5,7 +5,6 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Caching;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.HostedServices;
 using Humans.Infrastructure.Repositories.Camps;
 using Humans.Infrastructure.Services.Camps;
 using Humans.Web.Models.CampAdmin;
@@ -58,9 +57,11 @@ internal static class CampsSectionExtensions
         // AddDbContextFactory option pipelines (see Program.cs).
         services.AddSingleton<CampInfoSaveChangesInterceptor>();
 
-        // Eagerly warm the CampInfo dict at startup. Failures are logged and
-        // swallowed; lazy population still works.
-        services.AddHostedService<CampInfoWarmupHostedService>();
+        // CachingCampService is itself the IHostedService — TrackedCache's
+        // StartAsync triggers WarmAllAsync when warmOnStartup: true. After a
+        // bulk invalidation (Clear), the next read lazily re-warms via
+        // EnsureWarmedAsync.
+        services.AddHostedService(sp => sp.GetRequiredService<CachingCampService>());
 
         // CampRoleService — separate sub-service, no decorator.
         services.AddSingleton<ICampRoleRepository, CampRoleRepository>();
