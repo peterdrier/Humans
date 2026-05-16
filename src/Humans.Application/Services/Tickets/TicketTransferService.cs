@@ -174,7 +174,7 @@ public sealed class TicketTransferService : ITicketTransferService
         // MUST have a legal name on file — the transfer snapshot records it onto
         // the reissued ticket. Wording matches the not-found case above so a
         // tampered POST learns nothing about why the recipient was rejected.
-        if (!receiverInfo.HasRequiredIdentityFields)
+        if (!receiverInfo.HasRequiredNameFields)
             throw new InvalidOperationException("Receiver user not found.");
         var receiverProfile = receiverInfo.Profile!;
         // No double-submits: refuse if there's already a pending transfer from this
@@ -647,7 +647,7 @@ public sealed class TicketTransferService : ITicketTransferService
         // recipients must have a legal name on file — the transfer snapshot records
         // it onto the reissued ticket. Suspension/approval state isn't relevant
         // to a transfer recipient.
-        if (info is null || !info.HasRequiredIdentityFields) return null;
+        if (info is null || !info.HasRequiredNameFields) return null;
         var profile = info.Profile!;
         var primary = await _userEmailService.GetPrimaryEmailAsync(userId, ct);
         return new ReceiverLookupResultDto(

@@ -538,6 +538,7 @@
   <data name="Consent_ThankYou" xml:space="preserve"><value>Thank you for consenting to {0}.</value><comment>{0} = document name</comment></data>
   <data name="Consent_SubmitError" xml:space="preserve"><value>Something went wrong while recording your consent. Please try again.</value></data>
   <data name="Consent_StubProfile_AddName" xml:space="preserve"><value>Add your legal name before signing consents.</value></data>
+  <data name="Onboarding_NameRequiredBeforeShifts" xml:space="preserve"><value>Add your name first — we need it before you can sign up for shifts.</value></data>
 
   <!-- ======================== -->
   <!-- Teams                    -->

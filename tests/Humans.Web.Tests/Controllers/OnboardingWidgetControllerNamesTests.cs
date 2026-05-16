@@ -56,6 +56,36 @@ public class OnboardingWidgetControllerNamesTests
     }
 
     [HumansFact]
+    public void Names_Get_ReturnsBlankViewModel_IgnoringOauthClaims()
+    {
+        // OAuth-supplied legal names are unverified — provider-set GivenName /
+        // Surname must NOT prefill the form. Reports of users blowing through
+        // the Names step with whatever Google handed us are the regression
+        // this guards.
+        var userId = Guid.NewGuid();
+        var ctrl = new OnboardingWidgetController(
+            _userService, _state, _profile, _signups, _shiftMgmt, _consents, _onboardingService, _localizer);
+        var http = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity(
+            [
+                new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
+                new Claim(ClaimTypes.GivenName, "OauthFirst"),
+                new Claim(ClaimTypes.Surname, "OauthLast"),
+            ], "test")),
+        };
+        ctrl.ControllerContext = new ControllerContext { HttpContext = http };
+
+        var result = ctrl.Names();
+
+        var view = Assert.IsType<ViewResult>(result);
+        var vm = Assert.IsType<NamesViewModel>(view.Model);
+        Assert.Equal(string.Empty, vm.BurnerName);
+        Assert.Equal(string.Empty, vm.FirstName);
+        Assert.Equal(string.Empty, vm.LastName);
+    }
+
+    [HumansFact]
     public async Task Names_Post_SavesProfile_AndRedirectsToShifts()
     {
         var userId = Guid.NewGuid();

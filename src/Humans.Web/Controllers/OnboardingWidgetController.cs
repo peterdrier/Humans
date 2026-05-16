@@ -74,13 +74,10 @@ public class OnboardingWidgetController : HumansControllerBase
     [HttpGet]
     public IActionResult Names()
     {
-        // Pre-fill from OAuth claims when present.
-        var vm = new NamesViewModel
-        {
-            FirstName = User.FindFirstValue(ClaimTypes.GivenName) ?? string.Empty,
-            LastName = User.FindFirstValue(ClaimTypes.Surname) ?? string.Empty,
-        };
-        return View(vm);
+        // Legal name must come from the user, not from OAuth claims — provider-
+        // supplied names are unverified and let users blow through the step
+        // without thinking. Force an explicit entry.
+        return View(new NamesViewModel());
     }
 
     [HttpPost]
