@@ -6,7 +6,6 @@ using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Events;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Infrastructure.HostedServices;
 using Humans.Infrastructure.Repositories.Events;
 using Humans.Infrastructure.Services.Events;
 using Humans.Web.Controllers;
@@ -286,14 +285,16 @@ public class EventsArchitectureTests
     }
 
     [HumansFact]
-    public void EventCacheWarmupHostedService_IsHostedAndTargetsCachingEventService()
+    public void CachingEventService_IsItsOwnHostedService()
     {
-        typeof(IHostedService).IsAssignableFrom(typeof(EventCacheWarmupHostedService))
-            .Should().BeTrue();
-        var ctor = typeof(EventCacheWarmupHostedService).GetConstructors().Single();
-        ctor.GetParameters().Should().Contain(
-            p => p.ParameterType == typeof(CachingEventService),
-            because: "warmup must target the same Singleton instance that backs IEventService");
+        // Post-#587 TrackedCache self-hosting pattern: caching decorators
+        // implement IHostedService directly rather than relying on an external
+        // *WarmupHostedService. CachingEventService composes TrackedCache
+        // (mixed-state decorator), so it owns IHostedService on the class
+        // itself — same shape CachingShiftViewService uses.
+        typeof(IHostedService).IsAssignableFrom(typeof(CachingEventService))
+            .Should().BeTrue(
+                because: "the decorator drives its own startup warmup via IHostedService");
     }
 
     [HumansFact]

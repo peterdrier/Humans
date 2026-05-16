@@ -3,7 +3,6 @@ using Humans.Application.Interfaces.Events;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Services.Events;
-using Humans.Infrastructure.HostedServices;
 using Humans.Infrastructure.Repositories.Events;
 using Humans.Infrastructure.Services.Events;
 using Humans.Web.Filters;
@@ -49,9 +48,10 @@ internal static class EventsSectionExtensions
         // Surface Events cache diagnostics on /Admin/CacheStats.
         services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingEventService>().EventCacheStats);
 
-        // Eagerly warm the events projection at startup. Failures are logged
-        // and swallowed; lazy population still works.
-        services.AddHostedService<EventCacheWarmupHostedService>();
+        // CachingEventService is itself the IHostedService — its StartAsync
+        // drives WarmAllAsync over all four projections. Failures are logged
+        // and swallowed; lazy population via EnsureLoadedAsync still works.
+        services.AddHostedService(sp => sp.GetRequiredService<CachingEventService>());
 
         return services;
     }

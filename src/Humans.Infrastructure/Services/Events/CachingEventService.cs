@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using Humans.Application.DTOs.Events;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Events;
@@ -6,6 +7,7 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 
@@ -34,7 +36,7 @@ namespace Humans.Infrastructure.Services.Events;
 /// a fresh pending count and the cache only holds approved events.
 /// </para>
 /// </remarks>
-public sealed class CachingEventService : IEventService, IEventViewInvalidator
+public sealed class CachingEventService : IEventService, IEventViewInvalidator, IHostedService
 {
     /// <summary>
     /// DI service key under which the undecorated inner <see cref="IEventService"/>
@@ -47,7 +49,12 @@ public sealed class CachingEventService : IEventService, IEventViewInvalidator
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<CachingEventService> _logger;
 
-    private readonly TrackedCache<Guid, ApprovedEventView> _eventCache = new("Event.ApprovedEventView");
+    // warmOnStartup: false — the decorator owns cross-cutting warmup over all
+    // four projections (events + categories + venues + settings) via its own
+    // IHostedService surface; per-cache hosted-service kickoff would only see
+    // the events dict.
+    private readonly TrackedCache<Guid, ApprovedEventView> _eventCache =
+        new("Event.ApprovedEventView", warmOnStartup: false);
 
     // Flat lookup tables — categories and venues are admin-managed lookups
     // (~10–30 rows each), so a simple immutable snapshot is the natural shape.
@@ -431,8 +438,38 @@ public sealed class CachingEventService : IEventService, IEventViewInvalidator
     }
 
     // ==========================================================================
-    // Warmup
+    // Warmup — composition forces the decorator to own IHostedService directly.
+    // _isLoaded / _loadLock guard all four projections together (events dict +
+    // categories + venues + settings); the inner _eventCache passes
+    // warmOnStartup: false because that single-dict view is not the warmup
+    // unit here.
     // ==========================================================================
+
+    async Task IHostedService.StartAsync(CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("Warming Events cache at startup");
+        var stopwatch = Stopwatch.StartNew();
+        try
+        {
+            await WarmAllAsync(cancellationToken);
+            stopwatch.Stop();
+            _logger.LogInformation(
+                "Events cache warmed in {ElapsedMs}ms",
+                stopwatch.ElapsedMilliseconds);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            _logger.LogInformation("Events cache warmup canceled during startup");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Failed to warm Events cache at startup; lazy reads will populate on demand");
+        }
+    }
+
+    Task IHostedService.StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
     public async Task WarmAllAsync(CancellationToken ct = default)
     {
