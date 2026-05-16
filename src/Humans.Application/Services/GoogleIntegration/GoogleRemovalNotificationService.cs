@@ -93,8 +93,8 @@ public sealed class GoogleRemovalNotificationService : IGoogleRemovalNotificatio
             return;
         }
 
-        var userName = !string.IsNullOrWhiteSpace(user.DisplayName)
-            ? user.DisplayName
+        var userName = !string.IsNullOrWhiteSpace(user.BurnerName)
+            ? user.BurnerName
             : removedEmail;
         var culture = string.IsNullOrWhiteSpace(user.PreferredLanguage) ? "en" : user.PreferredLanguage;
 

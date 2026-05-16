@@ -155,10 +155,10 @@ public class AgentController : HumansControllerBase
             return rows.Select(r => new AgentConversationRow(r, DisplayName: null)).ToList();
 
         var distinctUserIds = rows.Select(r => r.UserId).Distinct().ToArray();
-        var users = await _users.GetByIdsAsync(distinctUserIds, ct);
+        var users = await _users.GetUserInfosAsync(distinctUserIds, ct);
         return rows.Select(r => new AgentConversationRow(
             Conversation: r,
-            DisplayName: users.TryGetValue(r.UserId, out var u) ? u.DisplayName : null)
+            DisplayName: users.TryGetValue(r.UserId, out var u) ? u.BurnerName : null)
         ).ToList();
     }
 

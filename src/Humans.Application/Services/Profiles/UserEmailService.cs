@@ -1029,7 +1029,7 @@ public sealed class UserEmailService : IUserEmailService, IUserMerge
         return perUser
             .Select(x => new UserEmailFlagViolation(
                 x.UserId,
-                users.TryGetValue(x.UserId, out var user) ? user.DisplayName : null,
+                users.TryGetValue(x.UserId, out var user) ? user.BurnerName : null,
                 x.IsGoogleCount,
                 x.VerifiedCount,
                 x.VerifiedPrimaryCount,

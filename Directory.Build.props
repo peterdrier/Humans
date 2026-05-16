@@ -31,8 +31,15 @@
           true warnings so existing violations surface without breaking the
           build; promote to error once they're all fixed (delete these
           entries).
+        - HUM_USER_DISPLAYNAME / HUM_USERINFO_DISPLAYNAME: [Obsolete] markers
+          on User.DisplayName and UserInfo.DisplayName. Legitimate consumers
+          (Identity claims, merge/purge/delete labels, GDPR export, dev
+          seeders, email greetings, admin merge UI) remain until UserInfo
+          handles are threaded through every Application-layer service entry
+          point per issue #691. Kept visible as warnings (not hidden via
+          NoWarn) so new render-path violations stay surfaced.
     -->
-    <WarningsNotAsErrors>$(WarningsNotAsErrors);HUM0009;HUM0010;HUM0011;HUM0017;HUM0018</WarningsNotAsErrors>
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);HUM0009;HUM0010;HUM0011;HUM0017;HUM0018;HUM_USER_DISPLAYNAME;HUM_USERINFO_DISPLAYNAME</WarningsNotAsErrors>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <AnalysisLevel>latest</AnalysisLevel>

@@ -166,7 +166,7 @@ public sealed record ProfileInfo(
 /// </remarks>
 public sealed record UserInfo(
     Guid Id,
-    string DisplayName,
+    [property: Obsolete("Rendering callers must use UserInfo.BurnerName / <vc:human> — DisplayName is the raw legacy column mirror. See memory/architecture/burnername-is-the-display-name.md.", DiagnosticId = "HUM_USERINFO_DISPLAYNAME", UrlFormat = "https://github.com/nobodies-collective/Humans/issues/691")] string DisplayName,
     string PreferredLanguage,
     string? ProfilePictureUrl,
     Instant CreatedAt,

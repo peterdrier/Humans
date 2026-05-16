@@ -22,10 +22,10 @@ public sealed class CampCsvExportBuilder
     {
         var settings = await _campService.GetSettingsAsync();
         var year = settings.PublicYear;
-        var camps = await _campService.GetCampsWithLeadsForYearAsync(year);
+        var camps = await _campService.GetCampsForYearAsync(year);
 
         var leadUserIds = camps
-            .SelectMany(c => (c.Leads ?? []).Select(l => l.UserId))
+            .SelectMany(c => c.Leads.Select(l => l.UserId))
             .Distinct()
             .ToList();
         var leadUsers = await _userService.GetByIdsAsync(leadUserIds);
@@ -43,7 +43,7 @@ public sealed class CampCsvExportBuilder
             var season = camp.Seasons.FirstOrDefault();
             if (season is null) continue;
 
-            var leads = string.Join("; ", (camp.Leads ?? [])
+            var leads = string.Join("; ", camp.Leads
                 .Select(l =>
                 {
                     var user = leadUsers.TryGetValue(l.UserId, out var u) ? u : null;

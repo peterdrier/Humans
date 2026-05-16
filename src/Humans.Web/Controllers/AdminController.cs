@@ -134,7 +134,7 @@ public class AdminController : HumansControllerBase
             return RedirectToAction(nameof(ProfileController.AdminDetail), "Profile", new { id });
         }
 
-        var displayName = user.DisplayName;
+        var displayName = user.BurnerName;
 
         _logger.LogWarning(
             "Admin {AdminId} purging human {HumanId} ({DisplayName}) in {Environment}",

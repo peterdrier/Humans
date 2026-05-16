@@ -267,10 +267,10 @@ public class IssuesController : HumansControllerBase
         }
         else
         {
-            var users = await _users.GetByIdsAsync(activeIds);
+            var users = await _users.GetUserInfosAsync(activeIds);
             vm.AssigneeOptions = users.Values
-                .OrderBy(u => u.DisplayName, StringComparer.OrdinalIgnoreCase)
-                .Select(u => new AssigneeOption { Id = u.Id, DisplayName = u.DisplayName })
+                .OrderBy(u => u.BurnerName, StringComparer.OrdinalIgnoreCase)
+                .Select(u => new AssigneeOption { Id = u.Id, DisplayName = u.BurnerName })
                 .ToList();
         }
 

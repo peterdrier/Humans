@@ -98,7 +98,7 @@ Three controllers serve this section.
 |------------|-------------|------|
 | `LegalController` | `/Legal/{slug?}` | `[AllowAnonymous]` — Statutes page only |
 | `ConsentController` | `/Consent` (conventional) | `[Authorize]` |
-| `AdminLegalDocumentsController` | `/Admin/LegalDocuments` | `[Authorize(Policy = PolicyNames.BoardOrAdmin)]` |
+| `AdminLegalDocumentsController` | `/Legal/Admin/Documents` | `[Authorize(Policy = PolicyNames.BoardOrAdmin)]` |
 
 **Consent routes:**
 
@@ -112,14 +112,14 @@ Three controllers serve this section.
 
 | Route | Method | Action |
 |-------|--------|--------|
-| `/Admin/LegalDocuments` | GET | List all documents (optional `teamId` filter) |
-| `/Admin/LegalDocuments/Create` | GET | Create form |
-| `/Admin/LegalDocuments/Create` | POST | Create handler |
-| `/Admin/LegalDocuments/{id}/Edit` | GET | Edit form (includes version list) |
-| `/Admin/LegalDocuments/{id}/Edit` | POST | Update handler |
-| `/Admin/LegalDocuments/{id}/Archive` | POST | Soft-delete (`IsActive = false`) |
-| `/Admin/LegalDocuments/{id}/Sync` | POST | Trigger single-document sync |
-| `/Admin/LegalDocuments/{id}/Versions/{versionId}/Summary` | POST | Edit version changes summary |
+| `/Legal/Admin/Documents` | GET | List all documents (optional `teamId` filter) |
+| `/Legal/Admin/Documents/Create` | GET | Create form |
+| `/Legal/Admin/Documents/Create` | POST | Create handler |
+| `/Legal/Admin/Documents/{id}/Edit` | GET | Edit form (includes version list) |
+| `/Legal/Admin/Documents/{id}/Edit` | POST | Update handler |
+| `/Legal/Admin/Documents/{id}/Archive` | POST | Soft-delete (`IsActive = false`) |
+| `/Legal/Admin/Documents/{id}/Sync` | POST | Trigger single-document sync |
+| `/Legal/Admin/Documents/{id}/Versions/{versionId}/Summary` | POST | Edit version changes summary |
 
 ## Actors & Roles
 
@@ -129,7 +129,7 @@ Three controllers serve this section.
 | Any authenticated human | View own consent dashboard at `/Consent`. Sign or re-sign document versions. Accessible during onboarding (before becoming an active member) |
 | ConsentCoordinator, VolunteerCoordinator, Board, Admin | Read access to the onboarding review queue at `/OnboardingReview` (`PolicyNames.ReviewQueueAccess`) |
 | ConsentCoordinator, Board, Admin | Clear, Flag, or Reject consent checks (`PolicyNames.ConsentCoordinatorBoardOrAdmin`) |
-| Board, Admin | Manage legal documents and document versions at `/Admin/LegalDocuments` (`PolicyNames.BoardOrAdmin`): create, edit, archive, trigger manual sync, edit version summaries |
+| Board, Admin | Manage legal documents and document versions at `/Legal/Admin/Documents` (`PolicyNames.BoardOrAdmin`): create, edit, archive, trigger manual sync, edit version summaries |
 
 ## Invariants
 

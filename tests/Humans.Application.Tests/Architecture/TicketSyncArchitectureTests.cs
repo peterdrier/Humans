@@ -89,6 +89,23 @@ public class TicketSyncArchitectureTests
             because: "Application services must not depend on store abstractions (design-rules §15); the Tickets section's §15 migration does not use a store");
     }
 
+    [HumansFact]
+    public void TicketSyncService_HasNoIMemoryCacheConstructorParameter()
+    {
+        // §15c: Application-layer services are cache-unaware. TicketSyncService
+        // previously held IMemoryCache to evict the vendor event summary
+        // directly; that eviction now routes through
+        // ITicketCacheInvalidator.InvalidateVendorEventSummary so the cache
+        // abstraction stays in Infrastructure (the decorator).
+        var ctor = typeof(TicketSyncService).GetConstructors().Single();
+        var cachingParam = ctor.GetParameters()
+            .FirstOrDefault(p => (p.ParameterType.FullName ?? string.Empty)
+                .StartsWith("Microsoft.Extensions.Caching.Memory", StringComparison.Ordinal));
+
+        cachingParam.Should().BeNull(
+            because: "Application services must not import IMemoryCache (design-rules §15c); TicketSyncService evicts ticket-section caches exclusively through ITicketCacheInvalidator");
+    }
+
     // ── ITicketRepository ────────────────────────────────────────────────────
 
     [HumansFact]

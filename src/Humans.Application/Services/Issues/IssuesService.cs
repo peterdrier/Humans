@@ -338,7 +338,7 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
             a.OccurredAt,
             a.ActorUserId,
             a.ActorUserId.HasValue && actorUsers.TryGetValue(a.ActorUserId.Value, out var u)
-                ? u.DisplayName
+                ? u.BurnerName
                 : null,
             a.Action,
             a.Description));
@@ -500,10 +500,10 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
             : await _users.GetUserInfosAsync(idsToResolve, ct);
 
         var oldName = oldAssigneeId.HasValue
-            ? (users!.TryGetValue(oldAssigneeId.Value, out var ou) ? ou.DisplayName : oldAssigneeId.Value.ToString())
+            ? (users!.TryGetValue(oldAssigneeId.Value, out var ou) ? ou.BurnerName : oldAssigneeId.Value.ToString())
             : "Unassigned";
         var newName = newAssigneeUserId.HasValue
-            ? (users!.TryGetValue(newAssigneeUserId.Value, out var nu) ? nu.DisplayName : newAssigneeUserId.Value.ToString())
+            ? (users!.TryGetValue(newAssigneeUserId.Value, out var nu) ? nu.BurnerName : newAssigneeUserId.Value.ToString())
             : "Unassigned";
 
         issue.AssigneeUserId = newAssigneeUserId;
@@ -697,7 +697,7 @@ public sealed class IssuesService : IIssuesService, IUserDataContributor
         return rows
             .Select(r => new DistinctReporterRow(
                 r.UserId,
-                users.TryGetValue(r.UserId, out var u) ? u.DisplayName : r.UserId.ToString(),
+                users.TryGetValue(r.UserId, out var u) ? u.BurnerName : r.UserId.ToString(),
                 r.Count))
             .OrderBy(r => r.DisplayName, StringComparer.OrdinalIgnoreCase)
             .ToList();

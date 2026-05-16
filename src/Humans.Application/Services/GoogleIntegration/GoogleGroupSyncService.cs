@@ -370,9 +370,7 @@ public sealed class GoogleGroupSyncService : IGoogleGroupSync
             if (email is null)
                 continue;
 
-            var displayName = !string.IsNullOrWhiteSpace(user.Profile?.BurnerName)
-                ? user.Profile!.BurnerName
-                : user.DisplayName;
+            var displayName = user.BurnerName;
 
             result[user.Id] = new ExpectedMember(user.Id, email, displayName, user.ProfilePictureUrl);
         }

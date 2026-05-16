@@ -258,7 +258,7 @@ public class ProfileController : HumansControllerBase
             PendingConsentCount = pendingConsentCount,
             IsApproved = profile?.IsApproved ?? false,
             IsOwnProfile = true,
-            DisplayName = info.DisplayName,
+            DisplayName = info.BurnerName,
             CampaignGrants = campaignGrants,
         };
 
@@ -1929,8 +1929,8 @@ public class ProfileController : HumansControllerBase
         if (currentUser.Id == id)
             return RedirectToAction(nameof(ViewProfile), new { id });
 
-        var targetUser = await _userManager.FindByIdAsync(id.ToString());
-        if (targetUser is null)
+        var targetInfo = await _userService.GetUserInfoAsync(id);
+        if (targetInfo is null)
             return NotFound();
 
         if (!await _commPrefService.AcceptsFacilitatedMessagesAsync(id))
@@ -1942,7 +1942,7 @@ public class ProfileController : HumansControllerBase
         var viewModel = new SendMessageViewModel
         {
             RecipientId = id,
-            RecipientDisplayName = targetUser.DisplayName
+            RecipientDisplayName = targetInfo.BurnerName
         };
 
         return View(viewModel);
@@ -1973,7 +1973,7 @@ public class ProfileController : HumansControllerBase
         }
 
         model.RecipientId = id;
-        model.RecipientDisplayName = targetUser.DisplayName;
+        model.RecipientDisplayName = targetUser.BurnerName;
 
         if (!ModelState.IsValid)
             return View(model);
@@ -2000,12 +2000,12 @@ public class ProfileController : HumansControllerBase
         await _auditLogService.LogAsync(
             AuditAction.FacilitatedMessageSent,
             nameof(User), targetUser.Id,
-            $"Message sent to {targetUser.DisplayName} (contact info shared: {(model.IncludeContactInfo ? "yes" : "no")})",
+            $"Message sent to {targetUser.BurnerName} (contact info shared: {(model.IncludeContactInfo ? "yes" : "no")})",
             currentUser.Id);
 
         SetSuccess(string.Format(
             _localizer["SendMessage_Success"].Value,
-            targetUser.DisplayName));
+            targetUser.BurnerName));
 
         return RedirectToAction(nameof(ViewProfile), new { id });
     }
@@ -2226,8 +2226,8 @@ public class ProfileController : HumansControllerBase
     [HttpGet("{id:guid}/Admin/Roles/Add")]
     public async Task<IActionResult> AddRole(Guid id)
     {
-        var user = await _userManager.FindByIdAsync(id.ToString());
-        if (user is null)
+        var info = await _userService.GetUserInfoAsync(id);
+        if (info is null)
         {
             return NotFound();
         }
@@ -2235,7 +2235,7 @@ public class ProfileController : HumansControllerBase
         var viewModel = new CreateRoleAssignmentViewModel
         {
             UserId = id,
-            UserDisplayName = user.DisplayName,
+            UserDisplayName = info.BurnerName,
             AvailableRoles = [.. RoleChecks.GetAssignableRoles(User)]
         };
 
@@ -2247,8 +2247,8 @@ public class ProfileController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AddRole(Guid id, CreateRoleAssignmentViewModel model)
     {
-        var user = await _userManager.FindByIdAsync(id.ToString());
-        if (user is null)
+        var info = await _userService.GetUserInfoAsync(id);
+        if (info is null)
         {
             return NotFound();
         }
@@ -2256,7 +2256,7 @@ public class ProfileController : HumansControllerBase
         if (string.IsNullOrWhiteSpace(model.RoleName))
         {
             ModelState.AddModelError(nameof(model.RoleName), "Please select a role.");
-            PopulateRoleAssignmentForm(model, id, user.DisplayName);
+            PopulateRoleAssignmentForm(model, id, info.BurnerName);
             return View(model);
         }
 
@@ -2356,6 +2356,8 @@ public class ProfileController : HumansControllerBase
     private async Task<EmailsViewModel> BuildEmailsViewModelAsync(User user, bool isAdminContext = false, CancellationToken ct = default)
     {
         var emails = await _userEmailService.GetUserEmailsAsync(user.Id, ct);
+        var info = await _userService.GetUserInfoAsync(user.Id, ct);
+        var burnerName = info?.BurnerName ?? user.DisplayName;
 
         var canAdd = true;
         var minutesUntilResend = 0;
@@ -2464,7 +2466,7 @@ public class ProfileController : HumansControllerBase
             HasNobodiesTeamEmail = hasNobodiesTeam,
             GoogleEmailStatus = user.GoogleEmailStatus,
             TargetUserId = user.Id,
-            TargetDisplayName = user.DisplayName,
+            TargetDisplayName = burnerName,
             IsAdminContext = isAdminContext,
             WorkspaceLockedEmailId = workspaceLockedEmail?.Id,
             LegacyIdentityEmailColumn = isAdminContext

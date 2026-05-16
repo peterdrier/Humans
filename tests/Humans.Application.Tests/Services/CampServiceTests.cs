@@ -13,7 +13,6 @@ using Humans.Domain.ValueObjects;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Camps;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
@@ -77,7 +76,6 @@ public class CampServiceTests : IDisposable
             Substitute.For<ICampLeadJoinRequestsBadgeCacheInvalidator>(),
             new Lazy<ICampRoleService>(() => _campRoleService),
             _clock,
-            new MemoryCache(new MemoryCacheOptions()),
             NullLogger<CampService>.Instance);
     }
 

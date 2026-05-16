@@ -207,7 +207,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor, IUse
             {
                 var displayName = !string.IsNullOrWhiteSpace(burnerName)
                     ? burnerName
-                    : (users.TryGetValue(userId, out var u) ? u.DisplayName : string.Empty);
+                    : (users.TryGetValue(userId, out var u) ? u.BurnerName : string.Empty);
                 dbOnly.Add(new ProfilePictureMigrationRow(profileId, userId, displayName, contentType, updatedAt));
             }
         }

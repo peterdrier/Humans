@@ -242,7 +242,7 @@ public class OnboardingReviewController : HumansControllerBase
         return new OnboardingReviewItemViewModel
         {
             UserId = info.Id,
-            DisplayName = info.DisplayName,
+            DisplayName = info.BurnerName,
             LegalName = profile.FullName,
             ProfilePictureUrl = info.ProfilePictureUrl,
             Email = info.Email ?? string.Empty,

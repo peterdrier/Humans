@@ -69,7 +69,7 @@ public static class AdminHumanListAssembler
             return new AdminHumanRow(
                 u.Id,
                 email,
-                u.DisplayName,
+                u.BurnerName,
                 u.ProfilePictureUrl,
                 u.CreatedAt.ToDateTimeUtc(),
                 u.LastLoginAt?.ToDateTimeUtc(),

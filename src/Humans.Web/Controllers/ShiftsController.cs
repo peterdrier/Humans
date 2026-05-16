@@ -564,7 +564,7 @@ public class ShiftsController : HumansControllerBase
         IReadOnlyList<OrphanSignupSnapshot> orphans,
         IReadOnlyDictionary<Guid, UserInfo> users)
     {
-        string? GetName(Guid? id) => id.HasValue && users.TryGetValue(id.Value, out var u) ? u.DisplayName : null;
+        string? GetName(Guid? id) => id.HasValue && users.TryGetValue(id.Value, out var u) ? u.BurnerName : null;
 
         return orphans
             .Select(s => new OrphanSignupRow(

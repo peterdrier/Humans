@@ -318,9 +318,9 @@ public class CityPlanningController : HumansControllerBase
 
     private async Task<CampInfo?> FindUserLeadCampAsync(Guid userId, int year, CancellationToken ct)
     {
-        var campsWithLeads = await _campService.GetCampsWithLeadsForYearAsync(year, cancellationToken: ct);
-        return campsWithLeads.FirstOrDefault(c =>
-            c.Leads?.Any(l => l.UserId == userId) == true);
+        var camps = await _campService.GetCampsForYearAsync(year, ct);
+        return camps.FirstOrDefault(c =>
+            c.Leads.Any(l => l.UserId == userId));
     }
 
     private static (string Slug, string Name) LeadCampDisplay(bool isMapAdmin, CampInfo? userCamp, int year)

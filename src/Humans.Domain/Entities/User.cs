@@ -10,9 +10,14 @@ namespace Humans.Domain.Entities;
 public class User : IdentityUser<Guid>
 {
     /// <summary>
-    /// Display name for the user.
+    /// Display name for the user. Legacy Identity column — fallback only.
+    /// New code should render via <c>UserInfo.BurnerName</c> / <c>&lt;vc:human&gt;</c>
+    /// per <c>memory/architecture/burnername-is-the-display-name.md</c>.
+    /// Mutations live in <c>UserRepository</c> (merge / purge / delete labels)
+    /// and in <c>HumansUserClaimsPrincipalFactory</c> (Identity claim).
     /// </summary>
     [PersonalData]
+    [Obsolete("Rendering callers must use UserInfo.BurnerName / <vc:human> per memory/architecture/burnername-is-the-display-name.md. Legitimate consumers: Identity claims, repository merge/purge/delete labels, GDPR export, debug screens.", DiagnosticId = "HUM_USER_DISPLAYNAME", UrlFormat = "https://github.com/nobodies-collective/Humans/issues/691")]
     public string DisplayName { get; set; } = string.Empty;
 
     /// <summary>
@@ -121,7 +126,7 @@ public class User : IdentityUser<Guid>
     /// </remarks>
 #pragma warning disable CS0809 // Obsolete override of non-obsolete base — intentional: marks application reads as non-canonical.
     [Obsolete("NormalizedEmail is shadow-populated by Identity. Use User.Email or IUserEmailRepository for canonical email lookup.", DiagnosticId = "HUM_USER_NORMALIZEDEMAIL", UrlFormat = "https://github.com/nobodies-collective/Humans/issues/635")]
-    [Architecture.ExpiresOn("2026-05-18", reason: "Issue #635 — Identity shadow column; application reads should go through User.Email / IUserEmailRepository.")]
+    [Architecture.ExpiresOn("2026-06-01", reason: "Issue #635 — Identity shadow column; application reads should go through User.Email / IUserEmailRepository.")]
     public override string? NormalizedEmail
     {
         get => Email?.ToUpperInvariant();

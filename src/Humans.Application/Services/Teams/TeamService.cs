@@ -2231,7 +2231,7 @@ public sealed class TeamService : ITeamService, IGoogleGroupMembershipSource, IU
                 var resources = await TeamResourceService.GetTeamResourcesAsync(team.Id, cancellationToken);
 
                 await EmailService.SendAddedToTeamAsync(
-                    email, user.DisplayName, team.Name, team.Slug,
+                    email, user.BurnerName, team.Name, team.Slug,
                     resources.Select(r => (r.Name, r.Url)),
                     user.PreferredLanguage,
                     cancellationToken);

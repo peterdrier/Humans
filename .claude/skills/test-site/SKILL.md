@@ -85,7 +85,7 @@ Requires Admin or Board role.
 3. Click any member → profile info, role assignments, consent records, audit log entries
 4. `/Admin/Teams` → team list, system teams marked
 5. `/Admin/Roles` → current role assignments (Admin, Board, Lead)
-6. `/Admin/LegalDocuments` → document list
+6. `/Legal/Admin/Documents` → document list
 7. `/Admin/AuditLog` → entries load; filter by action type works
 8. `/Admin/Configuration` → config status shown, no secrets exposed
 9. `/hangfire` → dashboard loads with scheduled jobs

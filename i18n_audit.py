@@ -4,6 +4,7 @@ import sys
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
+import xml.etree.ElementTree as ET
 
 ROOT = Path("src/Humans.Web/Resources")
 DEFAULT_FILE = ROOT / "SharedResource.resx"
@@ -12,123 +13,132 @@ LOCALES = {
     "de": ROOT / "SharedResource.de.resx",
     "fr": ROOT / "SharedResource.fr.resx",
     "it": ROOT / "SharedResource.it.resx",
+    "ca": ROOT / "SharedResource.ca.resx",
 }
 REPORT_FILE = Path("i18n-audit-report.md")
 
-# Matches single-line <data name="X" xml:space="preserve"><value>Y</value></data>
-# Also handles optional <comment>...</comment> after <value>
-DATA_LINE_RE = re.compile(r'^\s*<data\s+name="([^"]+)"\s+xml:space="preserve"><value>(.*?)</value>(?:<comment>(.*?)</comment>)?</data>\s*$')
 PLACEHOLDER_RE = re.compile(r'\{(\d+)\}')
 
-
-def parse_resx(path):
-    """Parse a .resx file, returning dict of keys, values, comments, and structural info."""
-    text = path.read_text(encoding="utf-8")
-    lines = text.splitlines()
-
+def parse_resx_robust(path):
+    """Parse a .resx file using ET, preserving as much as possible."""
+    # We need to read as bytes and then decode to handle BOM correctly if present
+    content = path.read_text(encoding="utf-8")
+    
+    # ET.fromstring can handle the XML structure
+    root = ET.fromstring(content)
+    
+    data_map = {} # key -> (value, comment)
     keys = []
-    values = {}
-    comments = {}
-    data_lines = {}
-    first_data_idx = -1
-    last_data_idx = -1
-
-    for idx, line in enumerate(lines):
-        m = DATA_LINE_RE.match(line)
-        if m:
-            key = m.group(1)
-            val = m.group(2) if m.group(2) is not None else ""
-            cmt = m.group(3) if m.group(3) is not None else ""
-            if key not in values:
-                keys.append(key)
-            values[key] = val
-            comments[key] = cmt
-            data_lines[key] = line
-            if first_data_idx == -1:
-                first_data_idx = idx
-            last_data_idx = idx
-
-    prefix_lines = lines[:first_data_idx] if first_data_idx >= 0 else lines
-    suffix_lines = lines[last_data_idx + 1:] if last_data_idx >= 0 else []
-
+    
+    for entry in root.findall('data'):
+        name = entry.get('name')
+        value_node = entry.find('value')
+        comment_node = entry.find('comment')
+        
+        value = value_node.text if value_node is not None else ""
+        comment = comment_node.text if comment_node is not None else ""
+        
+        data_map[name] = (value, comment)
+        keys.append(name)
+        
     return {
         "path": path,
-        "text": text,
-        "lines": lines,
         "keys": keys,
-        "values": values,
-        "comments": comments,
-        "data_lines": data_lines,
-        "first_data_idx": first_data_idx,
-        "last_data_idx": last_data_idx,
-        "prefix_lines": prefix_lines,
-        "suffix_lines": suffix_lines,
+        "data_map": data_map,
+        "root": root
     }
-
 
 def placeholder_sig(value):
     """Get sorted tuple of placeholder indices found in value."""
     return tuple(sorted(PLACEHOLDER_RE.findall(value or "")))
 
-
-def fix_locale(default_info, locale_info):
+def fix_locale_robust(default_info, locale_info):
     """Fix locale file: add missing keys, remove orphans, preserve order from default."""
-    default_keys = set(default_info["keys"])
-    locale_keys = set(locale_info["keys"])
-
-    missing = sorted(default_keys - locale_keys)
-    orphaned = sorted(locale_keys - default_keys)
-
-    # Build identical-value and placeholder-mismatch lists
+    default_keys = default_info["keys"]
+    locale_data = locale_info["data_map"]
+    
+    missing = []
+    orphaned = [k for k in locale_info["keys"] if k not in default_info["data_map"]]
     identical = []
     placeholder_mismatches = []
-    for key in default_info["keys"]:
-        if key not in locale_info["values"]:
-            continue
-        dv = default_info["values"].get(key, "")
-        lv = locale_info["values"].get(key, "")
-        if dv == lv and dv != "":
-            identical.append(key)
-        if placeholder_sig(dv) != placeholder_sig(lv):
-            placeholder_mismatches.append(key)
-
-    # Build the template lines from default (between first and last data lines inclusive)
-    template_lines = default_info["lines"][default_info["first_data_idx"]:default_info["last_data_idx"] + 1]
-
-    # Reconstruct locale file: prefix + data lines in default order + suffix
-    out_lines = list(locale_info["prefix_lines"])
-    for line in template_lines:
-        m = DATA_LINE_RE.match(line)
-        if m:
-            key = m.group(1)
-            if key in locale_info["data_lines"]:
-                # Keep existing locale translation
-                out_lines.append(locale_info["data_lines"][key])
-            else:
-                # Missing key: add with English value as placeholder
-                out_lines.append(default_info["data_lines"][key])
+    
+    # Build new root
+    new_root = ET.Element('root')
+    # Copy non-data elements (schema, resheader, etc)
+    # This is a bit tricky with ET if we want to preserve EVERYTHING.
+    # But usually resheader and schema are at the beginning.
+    
+    # Actually, a simpler way to preserve headers is to just modify the existing root
+    # or create a new one and copy the first few elements.
+    
+    # Let's try to just use the default_info's root structure for the headers.
+    import copy
+    new_root = copy.deepcopy(default_info["root"])
+    
+    # Remove all existing data elements from the new_root
+    for data in new_root.findall('data'):
+        new_root.remove(data)
+        
+    for key in default_keys:
+        dv, dc = default_info["data_map"][key]
+        
+        if key in locale_data:
+            lv, lc = locale_data[key]
+            # Use existing locale data
+            value_to_use = lv
+            comment_to_use = lc
+            
+            if dv == lv and dv != "":
+                identical.append(key)
+            if placeholder_sig(dv) != placeholder_sig(lv):
+                placeholder_mismatches.append(key)
         else:
-            # Comment or blank line from default template - preserve
-            out_lines.append(line)
-    out_lines.extend(locale_info["suffix_lines"])
+            # Missing key
+            missing.append(key)
+            value_to_use = dv
+            comment_to_use = dc
+            
+        # Create new data element
+        data_el = ET.SubElement(new_root, 'data', {'name': key, 'xml:space': 'preserve'})
+        value_el = ET.SubElement(data_el, 'value')
+        value_el.text = value_to_use
+        if comment_to_use:
+            comment_el = ET.SubElement(data_el, 'comment')
+            comment_el.text = comment_to_use
+            
+    # Write back
+    # To maintain formatting (newlines, indents), we'd need minidom or similar.
+    # But let's just use ET and maybe some basic pretty printing.
+    
+    def indent(elem, level=0):
+        i = "\n" + level*"  "
+        if len(elem):
+            if not elem.text or not elem.text.strip():
+                elem.text = i + "  "
+            if not elem.tail or not elem.tail.strip():
+                elem.tail = i
+            for elem in elem:
+                indent(elem, level+1)
+            if not elem.tail or not elem.tail.strip():
+                elem.tail = i
+        else:
+            if level and (not elem.tail or not elem.tail.strip()):
+                elem.tail = i
 
-    # Detect line ending
-    newline = "\r\n" if "\r\n" in locale_info["text"] else "\n"
-    new_text = newline.join(out_lines)
-    # Ensure file ends with newline if original did
-    if locale_info["text"].endswith(("\n", "\r")) and not new_text.endswith(newline):
-        new_text += newline
-
-    locale_info["path"].write_text(new_text, encoding="utf-8")
+    indent(new_root)
+    tree = ET.ElementTree(new_root)
+    
+    with open(locale_info["path"], "wb") as f:
+        f.write(b'<?xml version="1.0" encoding="utf-8"?>\n')
+        tree.write(f, encoding="utf-8", xml_declaration=False)
 
     return {
         "missing_added": missing,
         "orphaned_removed": orphaned,
         "identical_values": identical,
         "placeholder_mismatches": placeholder_mismatches,
-        "final_key_count": len(default_info["keys"]),
+        "final_key_count": len(default_keys),
     }
-
 
 def build_report(default_info, results):
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%SZ")
@@ -153,7 +163,7 @@ def build_report(default_info, results):
     total_identical = 0
     total_ph = 0
 
-    for locale in ["es", "de", "fr", "it"]:
+    for locale in ["es", "de", "fr", "it", "ca"]:
         r = results[locale]
         total_missing += len(r["missing_added"])
         total_orphaned += len(r["orphaned_removed"])
@@ -196,43 +206,55 @@ def build_report(default_info, results):
             lines.append("### Placeholder mismatches")
             lines.append("")
             for k in r["placeholder_mismatches"]:
-                dv = default_info["values"].get(k, "")
-                lines.append(f"- `{k}`: default has `{placeholder_sig(dv)}`, locale differs")
+                dv, dc = default_info["data_map"].get(k, ("", ""))
+                lv, lc = results[locale]["data_map_after"].get(k, ("", ""))
+                lines.append(f"- `{k}`: default has `{placeholder_sig(dv)}`, locale has `{placeholder_sig(lv)}`")
             lines.append("")
 
     lines.append("## Summary")
     lines.append("")
-    lines.append(f"| Metric | Total across all locales |")
-    lines.append(f"|--------|------------------------|")
+    lines.append("| Metric | Total across all locales |")
+    lines.append("|--------|------------------------|")
     lines.append(f"| Missing keys added | **{total_missing}** |")
     lines.append(f"| Orphaned keys removed | **{total_orphaned}** |")
     lines.append(f"| Identical to English | **{total_identical}** |")
     lines.append(f"| Placeholder mismatches | **{total_ph}** |")
     lines.append("")
 
-    return "\n".join(lines) + "\n"
-
+    return "\n".join(lines)
 
 def main():
-    default_info = parse_resx(DEFAULT_FILE)
-    print(f"Default keys: {len(default_info['keys'])}")
+    if not DEFAULT_FILE.exists():
+        print(f"Error: Default file {DEFAULT_FILE} not found.")
+        sys.exit(1)
+
+    print(f"Default keys: {len(parse_resx_robust(DEFAULT_FILE)['keys'])}")
+    default_info = parse_resx_robust(DEFAULT_FILE)
 
     results = {}
     for locale, path in LOCALES.items():
-        locale_info = parse_resx(path)
+        if not path.exists():
+            # Create empty resx if it doesn't exist
+            # For now assume they exist as per file listing
+            pass
+        
+        locale_info = parse_resx_robust(path)
+        res = fix_locale_robust(default_info, locale_info)
+        
+        # Add the fixed data map for report mismatch check
+        res["data_map_after"] = parse_resx_robust(path)["data_map"]
+        results[locale] = res
+        
         print(f"\n{locale}: {len(locale_info['keys'])} keys before fix")
-        results[locale] = fix_locale(default_info, locale_info)
-        r = results[locale]
-        print(f"  +{len(r['missing_added'])} missing added")
-        print(f"  -{len(r['orphaned_removed'])} orphaned removed")
-        print(f"  ={len(r['identical_values'])} identical to English")
-        print(f"  !{len(r['placeholder_mismatches'])} placeholder mismatches")
-        print(f"  Final: {r['final_key_count']} keys")
+        print(f"  +{len(res['missing_added'])} missing added")
+        print(f"  -{len(res['orphaned_removed'])} orphaned removed")
+        print(f"  ={len(res['identical_values'])} identical to English")
+        print(f"  !{len(res['placeholder_mismatches'])} placeholder mismatches")
+        print(f"  Final: {res['final_key_count']} keys")
 
     report = build_report(default_info, results)
     REPORT_FILE.write_text(report, encoding="utf-8")
     print(f"\nReport written to {REPORT_FILE}")
-
 
 if __name__ == "__main__":
     main()

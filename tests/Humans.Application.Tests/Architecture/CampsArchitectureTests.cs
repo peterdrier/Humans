@@ -1,24 +1,33 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Camps;
+using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Users;
 using Humans.Infrastructure.Repositories.Camps;
+using Humans.Infrastructure.Services.Camps;
 using CampService = Humans.Application.Services.Camps.CampService;
 
 namespace Humans.Application.Tests.Architecture;
 
 /// <summary>
-/// Architecture tests enforcing the §15 repository pattern for the Camps
-/// section — migrated per issue #542. Pins the invariants:
-/// CampService lives in Application, goes through ICampRepository, and
-/// never injects DbContext or reaches directly into the Users domain.
-/// Camps did not get a caching decorator (per the §15 recommendation for
-/// sections where short-TTL IMemoryCache suffices — see design-rules §15f).
+/// Architecture tests for the Camps section — §15 repository pattern
+/// (issue #542, 2026-04-22) and T-06 caching decorator (2026-05-16). Pins:
+/// <list type="bullet">
+/// <item><c>CampService</c> goes through <see cref="ICampRepository"/>,
+///   never injects DbContext or IMemoryCache.</item>
+/// <item><c>CachingCampService</c> wraps it with a Singleton, hit-tracked
+///   per-camp projection plus a separate CampSettingsInfo slot.</item>
+/// <item>The set of types that depend on <see cref="ICampRepository"/> is
+///   pinned — no one outside the approved list can bypass the decorator and
+///   write to the Camps tables behind its back. This is what replaces the
+///   T-06 SaveChanges-interceptor backstop.</item>
+/// <item><see cref="CampInfo.Leads"/> is non-nullable.</item>
+/// </list>
 /// </summary>
 public class CampsArchitectureTests
 {
-    // ── CampService ──────────────────────────────────────────────────────────
+    // ── CampService (inner) ──────────────────────────────────────────────────
 
     [HumansFact]
     public void CampService_TakesRepository()
@@ -49,6 +58,24 @@ public class CampsArchitectureTests
             because: "filesystem I/O is delegated to the shared IFileStorage abstraction — the Application project can't touch System.IO directly (design-rules §1)");
     }
 
+    /// <summary>
+    /// T-06 pin: the inner CampService is cache-unaware. The canonical
+    /// caching layer lives on the Singleton <c>CachingCampService</c> decorator
+    /// per §15c. Reaching back into IMemoryCache here would resurrect the
+    /// pre-T-06 5-minute-TTL shortcut that this PR retired.
+    /// </summary>
+    [HumansFact]
+    public void CampService_HasNoIMemoryCacheConstructorParameter()
+    {
+        var ctor = typeof(CampService).GetConstructors().Single();
+        var cachingParam = ctor.GetParameters()
+            .FirstOrDefault(p => (p.ParameterType.FullName ?? string.Empty)
+                .StartsWith("Microsoft.Extensions.Caching.Memory", StringComparison.Ordinal));
+
+        cachingParam.Should().BeNull(
+            because: "T-06: inner CampService is cache-unaware; CachingCampService owns the §15 projection");
+    }
+
     [HumansFact]
     public void CampService_ConstructorTakesNoStoreType()
     {
@@ -58,7 +85,7 @@ public class CampsArchitectureTests
                 .StartsWith("Humans.Application.Interfaces.Stores", StringComparison.Ordinal));
 
         storeParam.Should().BeNull(
-            because: "Camps §15 migration does not use a store — IMemoryCache in-service is sufficient (§15f)");
+            because: "Camps §15 follows the no-store pattern; decorator owns the dict directly per §15d");
     }
 
     // ── ICampRepository ──────────────────────────────────────────────────────
@@ -70,6 +97,132 @@ public class CampsArchitectureTests
 
         repoType.IsSealed.Should().BeTrue(
             because: "repository implementations are sealed to prevent ad-hoc extension; any new behavior belongs on the interface");
+    }
+
+    // ── CachingCampService (T-06 decorator) ──────────────────────────────────
+
+    [HumansFact]
+    public void CachingCampService_ImplementsICampService()
+    {
+        typeof(ICampService).IsAssignableFrom(typeof(CachingCampService))
+            .Should().BeTrue(
+                because: "the decorator transparently substitutes the inner service per §15a");
+    }
+
+    [HumansFact]
+    public void CachingCampService_ImplementsICampInfoInvalidator()
+    {
+        typeof(ICampInfoInvalidator).IsAssignableFrom(typeof(CachingCampService))
+            .Should().BeTrue(
+                because: "the decorator is the cache and the signaller — every mutating method invalidates the affected camp inline after the inner write (§15e)");
+    }
+
+    [HumansFact]
+    public void CachingCampService_ExtendsTrackedCacheKeyedByCampId()
+    {
+        typeof(CachingCampService).BaseType
+            .Should().Be(typeof(TrackedCache<Guid, CampInfo>),
+                because: "the canonical Camps read-model is keyed by camp id; sub-views (year filters) project from this canonical cache rather than holding their own keys");
+    }
+
+    [HumansFact]
+    public void CachingCampService_IsSealed()
+    {
+        typeof(CachingCampService).IsSealed.Should().BeTrue(
+            because: "decorator implementations are sealed to prevent override of cache-invalidation semantics");
+    }
+
+    [HumansFact]
+    public void CachingCampService_LivesInInfrastructureServicesCampsNamespace()
+    {
+        typeof(CachingCampService).Namespace
+            .Should().Be("Humans.Infrastructure.Services.Camps",
+                because: "§15d decorators live in Humans.Infrastructure.Services.<Section>");
+    }
+
+    // ── No-bypass tripwire (replaces the T-06 SaveChanges interceptor) ───────
+
+    /// <summary>
+    /// Pins the set of types that may inject <see cref="ICampRepository"/>.
+    /// The decorator's invalidation contract holds only as long as every
+    /// write to the Camps tables goes through an <see cref="ICampService"/>
+    /// method the decorator wraps. New consumers that take the repo
+    /// directly — especially write-shaped consumers — can skip the
+    /// invalidate-after-mutate call and reintroduce the
+    /// <see cref="CampSeasonInfo.EeGrantedCount"/> drift that T-06 fixed.
+    /// If you're adding a legitimate new caller, update this list and the
+    /// remarks on <c>CachingCampService</c> together.
+    /// </summary>
+    [HumansFact]
+    public void ICampRepository_HasNoUnexpectedConsumers()
+    {
+        var allowed = new HashSet<string>(StringComparer.Ordinal)
+        {
+            // Reads + writes — the inner service is the only writer.
+            "Humans.Application.Services.Camps.CampService",
+            // Repo implementation itself.
+            "Humans.Infrastructure.Repositories.Camps.CampRepository",
+            // Decorator — reads for the per-camp refresh / settings reload.
+            "Humans.Infrastructure.Services.Camps.CachingCampService",
+            // Read-only consumer — uses GetActiveLeadUserIdsAsync /
+            // IsLeadAnywhereAsync. Never writes through the repo.
+            "Humans.Infrastructure.Jobs.SystemTeamSyncJob",
+        };
+
+        var assemblies = new[]
+        {
+            typeof(CampService).Assembly,
+            typeof(CampRepository).Assembly,
+            typeof(CachingCampService).Assembly,
+        };
+
+        var consumers = assemblies
+            .SelectMany(a => a.GetTypes())
+            .Where(t => t.GetConstructors()
+                .Any(c => c.GetParameters().Any(p => p.ParameterType == typeof(ICampRepository))))
+            .Select(t => t.FullName ?? t.Name)
+            .ToList();
+
+        var unexpected = consumers.Where(c => !allowed.Contains(c)).ToList();
+
+        unexpected.Should().BeEmpty(
+            because: "T-06: every write to the Camps tables must go through ICampService so the decorator can invalidate the affected camp. If this new type only reads, add it to the allow-list with a comment explaining why; if it writes, route through ICampService instead.");
+    }
+
+    /// <summary>
+    /// Belt-on-belt: ensure the obsolete <c>CampInfoSaveChangesInterceptor</c>
+    /// hasn't crept back into the Infrastructure assembly. The decorator's
+    /// inline invalidation is the only path; a re-added interceptor would
+    /// double-fire invalidations and re-introduce the per-row
+    /// <c>CampSeason</c>→<c>CampId</c> round trip the no-bypass rule was
+    /// designed to retire.
+    /// </summary>
+    [HumansFact]
+    public void CampInfoSaveChangesInterceptor_IsNotPresent()
+    {
+        var found = typeof(CachingCampService).Assembly
+            .GetTypes()
+            .FirstOrDefault(t => string.Equals(t.Name, "CampInfoSaveChangesInterceptor", StringComparison.Ordinal));
+
+        found.Should().BeNull(
+            because: "the T-06 SaveChanges interceptor was retired in favour of decorator-only invalidation pinned by ICampRepository_HasNoUnexpectedConsumers — see CachingCampService remarks");
+    }
+
+    // ── CampInfo projection — leads invariant ───────────────────────────────
+
+    /// <summary>
+    /// T-06 leads invariant: <see cref="CampInfo.Leads"/> is always populated
+    /// (non-null; may be empty). The legacy "null = not loaded" branch was
+    /// retired when reads moved onto the cached projection.
+    /// </summary>
+    [HumansFact]
+    public void CampInfo_LeadsPropertyIsNonNullable()
+    {
+        var leadsProp = typeof(CampInfo).GetProperty(nameof(CampInfo.Leads))!;
+        var nullability = new System.Reflection.NullabilityInfoContext()
+            .Create(leadsProp);
+        nullability.WriteState.Should().Be(System.Reflection.NullabilityState.NotNull,
+            because: "T-06: CampInfo.Leads is always populated. The legacy 'null means not loaded' branch was retired when GetCampsForYearAsync moved onto the CachingCampService projection.");
     }
 
     // ── CampLead ─────────────────────────────────────────────────────────────
