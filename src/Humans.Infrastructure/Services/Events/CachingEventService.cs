@@ -480,8 +480,12 @@ public sealed class CachingEventService : IEventService, IEventViewInvalidator, 
         {
             if (_isLoaded) return;
 
-            var categories = await _repo.GetActiveCategoriesAsync(ct);
-            var venues = await _repo.GetActiveVenuesAsync(ct);
+            // Snapshot holds ALL rows (active + inactive) — admin Edit pages
+            // and slug-uniqueness must see inactive rows, matching the DB.
+            // Active-only filtering happens at projection time in
+            // GetActiveCategoriesAsync / GetActiveVenuesAsync.
+            var categories = await _repo.GetAllCategoriesAsync(ct);
+            var venues = await _repo.GetAllVenuesAsync(ct);
             var settings = await _repo.GetGuideSettingsAsync(ct);
             var approved = await _repo.GetApprovedEventsAsync(null, null, null, null, [], ct);
 
@@ -561,13 +565,13 @@ public sealed class CachingEventService : IEventService, IEventViewInvalidator, 
 
     private async Task RefreshCategoriesAsync(CancellationToken ct)
     {
-        var categories = await _repo.GetActiveCategoriesAsync(ct);
+        var categories = await _repo.GetAllCategoriesAsync(ct);
         _categories = categories.Select(CategoryEntityToView).ToList();
     }
 
     private async Task RefreshVenuesAsync(CancellationToken ct)
     {
-        var venues = await _repo.GetActiveVenuesAsync(ct);
+        var venues = await _repo.GetAllVenuesAsync(ct);
         _venues = venues.Select(VenueEntityToView).ToList();
     }
 
@@ -580,8 +584,10 @@ public sealed class CachingEventService : IEventService, IEventViewInvalidator, 
             return;
         }
 
-        var categoriesById = (await _repo.GetActiveCategoriesAsync(ct)).ToDictionary(c => c.Id);
-        var venuesById = (await _repo.GetActiveVenuesAsync(ct)).ToDictionary(v => v.Id);
+        // All-rows lookup — an approved event can reference a now-inactive
+        // category/venue, and we still want its flattened fields populated.
+        var categoriesById = (await _repo.GetAllCategoriesAsync(ct)).ToDictionary(c => c.Id);
+        var venuesById = (await _repo.GetAllVenuesAsync(ct)).ToDictionary(v => v.Id);
         _eventCache.Set(eventId, BuildEventView(ev, categoriesById, venuesById));
     }
 
@@ -599,8 +605,8 @@ public sealed class CachingEventService : IEventService, IEventViewInvalidator, 
         }
 
         var approved = await _repo.GetApprovedEventsAsync(null, null, null, null, [], ct);
-        var categoriesById = (await _repo.GetActiveCategoriesAsync(ct)).ToDictionary(c => c.Id);
-        var venuesById = (await _repo.GetActiveVenuesAsync(ct)).ToDictionary(v => v.Id);
+        var categoriesById = (await _repo.GetAllCategoriesAsync(ct)).ToDictionary(c => c.Id);
+        var venuesById = (await _repo.GetAllVenuesAsync(ct)).ToDictionary(v => v.Id);
 
         // Rebuild the whole approved set — category / venue renames touch
         // every event row's flattened fields.
