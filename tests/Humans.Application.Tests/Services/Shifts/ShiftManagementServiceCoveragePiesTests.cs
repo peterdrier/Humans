@@ -201,22 +201,37 @@ public class ShiftManagementServiceCoveragePiesTests : IDisposable
         var (es, _, _) = SeedDeptScenario();
         var mango = new Team
         {
-            Id = Guid.NewGuid(), Name = "Mango", Slug = "mango",
-            SystemTeamType = SystemTeamType.None, ParentTeamId = null, IsActive = true,
-            CreatedAt = TestNow, UpdatedAt = TestNow
+            Id = Guid.NewGuid(),
+            Name = "Mango",
+            Slug = "mango",
+            SystemTeamType = SystemTeamType.None,
+            ParentTeamId = null,
+            IsActive = true,
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow
         };
         var appleSlice = new Team
         {
-            Id = Guid.NewGuid(), Name = "Apple Slice", Slug = "apple-slice",
-            SystemTeamType = SystemTeamType.None, ParentTeamId = mango.Id,
-            IsPromotedToDirectory = true, IsActive = true,
-            CreatedAt = TestNow, UpdatedAt = TestNow
+            Id = Guid.NewGuid(),
+            Name = "Apple Slice",
+            Slug = "apple-slice",
+            SystemTeamType = SystemTeamType.None,
+            ParentTeamId = mango.Id,
+            IsPromotedToDirectory = true,
+            IsActive = true,
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow
         };
         var banana = new Team
         {
-            Id = Guid.NewGuid(), Name = "Banana", Slug = "banana",
-            SystemTeamType = SystemTeamType.None, ParentTeamId = null, IsActive = true,
-            CreatedAt = TestNow, UpdatedAt = TestNow
+            Id = Guid.NewGuid(),
+            Name = "Banana",
+            Slug = "banana",
+            SystemTeamType = SystemTeamType.None,
+            ParentTeamId = null,
+            IsActive = true,
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow
         };
         await _dbContext.Teams.AddRangeAsync(mango, appleSlice, banana);
 
@@ -278,15 +293,21 @@ public class ShiftManagementServiceCoveragePiesTests : IDisposable
         AddConfirmedSignup(shift);
         _dbContext.ShiftSignups.Add(new ShiftSignup
         {
-            Id = Guid.NewGuid(), ShiftId = shift.Id, UserId = Guid.NewGuid(),
+            Id = Guid.NewGuid(),
+            ShiftId = shift.Id,
+            UserId = Guid.NewGuid(),
             Status = SignupStatus.Pending,
-            CreatedAt = TestNow, UpdatedAt = TestNow
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow
         });
         _dbContext.ShiftSignups.Add(new ShiftSignup
         {
-            Id = Guid.NewGuid(), ShiftId = shift.Id, UserId = Guid.NewGuid(),
+            Id = Guid.NewGuid(),
+            ShiftId = shift.Id,
+            UserId = Guid.NewGuid(),
             Status = SignupStatus.Bailed,
-            CreatedAt = TestNow, UpdatedAt = TestNow
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow
         });
         await _dbContext.SaveChangesAsync();
 
