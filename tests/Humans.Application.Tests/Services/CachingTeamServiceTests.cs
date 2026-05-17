@@ -380,6 +380,29 @@ public sealed class CachingTeamServiceTests : IDisposable
     }
 
     [HumansFact]
+    public async Task GetMyTeamMembershipsAsync_InheritedCoordinator_GetsPendingCountForChildMembership()
+    {
+        // User coordinates the parent and is a regular Member on the child.
+        // Per CanUserApproveRequestsForTeamAsync's parent-walk semantics, they
+        // can manage the child team, so the child membership row must surface
+        // its pending count.
+        var user = SeedUser("Inherited Coordinator");
+        var parent = SeedTeam("Parent");
+        var child = SeedTeam("Child");
+        child.ParentTeamId = parent.Id;
+        SeedTeamMember(parent.Id, user.Id, TeamMemberRole.Coordinator);
+        SeedTeamMember(child.Id, user.Id, TeamMemberRole.Member);
+        SeedJoinRequest(child.Id, SeedUser("Child Requester").Id);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.GetMyTeamMembershipsAsync(user.Id);
+
+        var childRow = result.Should().ContainSingle(m => m.TeamId == child.Id).Subject;
+        childRow.Role.Should().Be(TeamMemberRole.Member);
+        childRow.PendingRequestCount.Should().Be(1);
+    }
+
+    [HumansFact]
     public async Task GetMyTeamMembershipsAsync_NonCoordinatorNonBoard_DoesNotCountPending()
     {
         var user = SeedUser("Regular Member");

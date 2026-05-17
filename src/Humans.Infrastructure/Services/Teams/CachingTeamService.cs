@@ -392,8 +392,12 @@ public sealed class CachingTeamService : TrackedCache<Guid, TeamInfo>, ITeamServ
             if (membership is null)
                 continue;
 
+            // Inherited coordinator: a user can manage a team if they're a
+            // direct Coordinator, a board member, or coordinate any ancestor
+            // team (matches CanUserApproveRequestsForTeamAsync's recursive
+            // parent walk via IsUserCoordinatorOfActiveTeam).
             var canManage =
-                (membership.Role == TeamMemberRole.Coordinator || isBoardMember)
+                (isBoardMember || IsUserCoordinatorOfActiveTeam(teamsById, team.Id, userId))
                 && !team.IsSystemTeam;
 
             var pendingCount = 0;
