@@ -6,7 +6,6 @@ using Humans.Application.Services.Issues;
 using Humans.Application.Services.Legal;
 using Humans.Application.Services.Notifications;
 using Humans.Application.Services.Shifts;
-using Humans.Application.Services.Shifts.Workload;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace Humans.Application.Tests.Architecture.Rules;
@@ -35,7 +34,6 @@ namespace Humans.Application.Tests.Architecture.Rules;
 ///   <item><see cref="NotificationMeterProvider"/> — meter cache</item>
 ///   <item><see cref="NotificationService"/> — notification preferences cache</item>
 ///   <item><see cref="ShiftManagementService"/> — shift data cache</item>
-///   <item><see cref="WorkloadService"/> — workload aggregation cache (5-min sliding, same TTL as the shift dashboard analytics)</item>
 /// </list>
 /// </para>
 ///
@@ -61,8 +59,7 @@ public class ApplicationServicesTakeNoMemoryCacheRule
         typeof(NotificationInboxService),
         typeof(NotificationMeterProvider),
         typeof(NotificationService),
-        typeof(ShiftManagementService),
-        typeof(WorkloadService)
+        typeof(ShiftManagementService)
     ];
 
     [HumansFact]

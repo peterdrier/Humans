@@ -256,6 +256,17 @@ public interface IShiftManagementRepository : IRepository
         CancellationToken ct = default);
 
     /// <summary>
+    /// Returns every rota id for the given event. Small indexed point-list
+    /// lookup. Used by admin aggregations (e.g. the workload dashboard) that
+    /// then walk the per-rota <see cref="Humans.Application.DTOs.Shifts.ShiftRotaView"/>
+    /// cache via <see cref="Humans.Application.Interfaces.Shifts.IShiftView"/>
+    /// for the heavy shift + signup rows.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetRotaIdsForEventAsync(
+        Guid eventSettingsId,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Filters <paramref name="teamIds"/> to those that own at least one rota
     /// with at least one shift in the given event.
     /// </summary>

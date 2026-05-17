@@ -6,7 +6,6 @@ using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Microsoft.Extensions.Caching.Memory;
 using NodaTime;
 
 namespace Humans.Application.Services.Shifts.Workload;
@@ -16,81 +15,77 @@ namespace Humans.Application.Services.Shifts.Workload;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Reads through <see cref="IShiftManagementRepository"/> (Shifts-owned) and
-/// stitches display names via <see cref="ITeamService"/> /
-/// <see cref="IUserService"/> per the no-cross-section-EF-joins rule.
+/// Reads per-rota shift + signup rows through <see cref="IShiftView"/> — the
+/// Shifts-section per-rota cache owned by <c>CachingShiftViewService</c>
+/// (§15 Option B at the section level). Uses
+/// <see cref="IShiftManagementRepository"/> only for the active-event lookup
+/// and the small "rota ids for this event" point list. Cross-section name
+/// stitching via <see cref="ITeamService"/> / <see cref="IUserService"/>.
 /// </para>
 /// <para>
-/// §15 Option B: service-level <see cref="IMemoryCache"/> with a 5-minute sliding
-/// expiration (same TTL as the existing shift dashboard analytics). Workload
-/// queries scan every shift + signup for the active event — fine at our ~500-user
-/// scale but worth caching across multiple sort/filter requests on the page.
-/// Invalidation is intentionally TTL-only; mutations don't ping the cache,
-/// matching the dashboard pattern.
+/// This service does not hold its own cache: signup / shift / rota mutations
+/// already evict the per-rota cache entries via
+/// <see cref="IShiftViewInvalidator"/>, and the aggregation itself is
+/// microsecond-scale CPU work over a few hundred rotas at our ~500-user scale.
+/// Avoids a parallel cache key with its own invalidation path.
 /// </para>
 /// </remarks>
 public sealed class WorkloadService : IWorkloadService
 {
-    private static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(5);
     private static readonly decimal AllDayShiftHours = (decimal)Duration.FromTicks(
         Shift.AllDayWindowEnd.TickOfDay - Shift.AllDayWindowStart.TickOfDay).TotalHours;
 
     private readonly IShiftManagementRepository _repo;
+    private readonly IShiftView _view;
     private readonly ITeamService _teamService;
     private readonly IUserService _userService;
-    private readonly IMemoryCache _cache;
 
     public WorkloadService(
         IShiftManagementRepository repo,
+        IShiftView view,
         ITeamService teamService,
-        IUserService userService,
-        IMemoryCache cache)
+        IUserService userService)
     {
         _repo = repo;
+        _view = view;
         _teamService = teamService;
         _userService = userService;
-        _cache = cache;
     }
-
-    private static string CacheKey(Guid eventId) => $"workload-report:{eventId}";
 
     public async Task<WorkloadReport?> GetForActiveEventAsync(CancellationToken ct = default)
     {
         var es = await _repo.GetActiveEventSettingsAsync(ct);
         if (es is null) return null;
 
-        // IMemoryCache.GetOrCreateAsync swallows CT; we accept that — the inner
-        // compute is short and the TTL is fine if a cancellation races a build.
-        return await _cache.GetOrCreateAsync(CacheKey(es.Id), async entry =>
+        var rotaIds = await _repo.GetRotaIdsForEventAsync(es.Id, ct);
+        if (rotaIds.Count == 0)
         {
-            entry.SlidingExpiration = CacheTtl;
-            return await ComputeAsync(es, ct);
-        });
-    }
+            return new WorkloadReport(
+                EventSettingsId: es.Id,
+                EventYear: es.Year,
+                ByPerson: [],
+                ByShift: [],
+                ByDepartment: []);
+        }
 
-    private async Task<WorkloadReport> ComputeAsync(EventSettings es, CancellationToken ct)
-    {
-        // Pull every shift + signup for the event. AdminOnly + hidden rotas are
-        // INCLUDED — the workload view is admin-only and coordinators need full
-        // visibility for balancing.
-        var shifts = await _repo.GetShiftsWithSignupsForEventAsync(
-            eventSettingsId: es.Id,
-            departmentId: null,
-            includeAdminOnly: true,
-            includeHidden: true,
-            fromDayOffset: null,
-            toDayOffset: null,
-            includeRotaTags: false,
-            ct);
+        // Per-rota cache supplies Rota + Shifts + ShiftSignups. AdminOnly
+        // shifts and hidden rotas are INCLUDED — ShiftRotaView is unfiltered
+        // and the workload view is admin-only (coordinators need full
+        // visibility for balancing).
+        var views = await _view.GetRotasAsync(rotaIds, ct).ConfigureAwait(false);
+        var entries = views.Values
+            .Where(v => v.Rota is not null)
+            .SelectMany(v => v.Shifts.Select(s => (Rota: v.Rota!, Shift: s)))
+            .ToList();
 
-        var teamIds = shifts.Select(s => s.Rota.TeamId).Distinct().ToList();
+        var teamIds = entries.Select(e => e.Rota.TeamId).Distinct().ToList();
         var teamLookup = teamIds.Count > 0
             ? await _teamService.GetByIdsWithParentsAsync(teamIds, ct)
             : new Dictionary<Guid, Team>();
 
-        var byShift = BuildByShift(shifts, es, teamLookup);
-        var byDepartment = BuildByDepartment(shifts, teamLookup);
-        var byPerson = await BuildByPersonAsync(shifts, ct);
+        var byShift = BuildByShift(entries, es, teamLookup);
+        var byDepartment = BuildByDepartment(entries, teamLookup);
+        var byPerson = await BuildByPersonAsync(entries, ct);
 
         return new WorkloadReport(
             EventSettingsId: es.Id,
@@ -106,20 +101,21 @@ public sealed class WorkloadService : IWorkloadService
     // Lists are returned unsorted; the controller assembles the display order
     // (memory/architecture/display-sort-in-controllers.md).
     private static List<WorkloadByShiftRow> BuildByShift(
-        IReadOnlyList<Shift> shifts,
+        IReadOnlyList<(Rota Rota, Shift Shift)> entries,
         EventSettings es,
         IReadOnlyDictionary<Guid, Team> teamLookup) =>
-        shifts
-            .Select(s =>
+        entries
+            .Select(e =>
             {
+                var s = e.Shift;
                 var confirmed = s.ShiftSignups.Count(ss => ss.Status == SignupStatus.Confirmed);
                 var pending = s.ShiftSignups.Count(ss => ss.Status == SignupStatus.Pending);
-                var teamName = teamLookup.TryGetValue(s.Rota.TeamId, out var team) ? team.Name : "(unknown)";
+                var teamName = teamLookup.TryGetValue(e.Rota.TeamId, out var team) ? team.Name : "(unknown)";
                 return new WorkloadByShiftRow(
                     ShiftId: s.Id,
-                    RotaId: s.RotaId,
-                    RotaName: s.Rota.Name,
-                    TeamId: s.Rota.TeamId,
+                    RotaId: e.Rota.Id,
+                    RotaName: e.Rota.Name,
+                    TeamId: e.Rota.TeamId,
                     TeamName: teamName,
                     DayOffset: s.DayOffset,
                     Date: es.GateOpeningDate.PlusDays(s.DayOffset),
@@ -133,22 +129,22 @@ public sealed class WorkloadService : IWorkloadService
             .ToList();
 
     private static List<WorkloadByDepartmentRow> BuildByDepartment(
-        IReadOnlyList<Shift> shifts,
+        IReadOnlyList<(Rota Rota, Shift Shift)> entries,
         IReadOnlyDictionary<Guid, Team> teamLookup) =>
-        shifts
-            .GroupBy(s => s.Rota.TeamId)
+        entries
+            .GroupBy(e => e.Rota.TeamId)
             .Select(g =>
             {
-                var hoursPerShift = g.ToDictionary(s => s.Id, HoursOf);
-                var plannedSlots = g.Sum(s => s.MaxVolunteers);
-                var filledSlots = g.Sum(s => Math.Min(
-                    s.ShiftSignups.Count(ss => ss.Status == SignupStatus.Confirmed),
-                    s.MaxVolunteers));
-                var plannedHours = g.Sum(s => hoursPerShift[s.Id] * s.MaxVolunteers);
-                var filledHours = g.Sum(s => hoursPerShift[s.Id] *
-                    Math.Min(s.ShiftSignups.Count(ss => ss.Status == SignupStatus.Confirmed), s.MaxVolunteers));
+                var hoursPerShift = g.ToDictionary(e => e.Shift.Id, e => HoursOf(e.Shift));
+                var plannedSlots = g.Sum(e => e.Shift.MaxVolunteers);
+                var filledSlots = g.Sum(e => Math.Min(
+                    e.Shift.ShiftSignups.Count(ss => ss.Status == SignupStatus.Confirmed),
+                    e.Shift.MaxVolunteers));
+                var plannedHours = g.Sum(e => hoursPerShift[e.Shift.Id] * e.Shift.MaxVolunteers);
+                var filledHours = g.Sum(e => hoursPerShift[e.Shift.Id] *
+                    Math.Min(e.Shift.ShiftSignups.Count(ss => ss.Status == SignupStatus.Confirmed), e.Shift.MaxVolunteers));
                 var teamName = teamLookup.TryGetValue(g.Key, out var team) ? team.Name : "(unknown)";
-                var rotaCount = g.Select(s => s.RotaId).Distinct().Count();
+                var rotaCount = g.Select(e => e.Rota.Id).Distinct().Count();
                 return new WorkloadByDepartmentRow(
                     TeamId: g.Key,
                     TeamName: teamName,
@@ -162,13 +158,13 @@ public sealed class WorkloadService : IWorkloadService
             .ToList();
 
     private async Task<List<WorkloadByPersonRow>> BuildByPersonAsync(
-        IReadOnlyList<Shift> shifts,
+        IReadOnlyList<(Rota Rota, Shift Shift)> entries,
         CancellationToken ct)
     {
         // Walk every signup once. Confirmed contributes hours; Pending bumps the
         // pending count only (don't inflate burnout signal from queued work).
         var perUser = new Dictionary<Guid, (int Confirmed, int Pending, decimal Hours)>();
-        foreach (var shift in shifts)
+        foreach (var (_, shift) in entries)
         {
             var hours = HoursOf(shift);
             foreach (var signup in shift.ShiftSignups)

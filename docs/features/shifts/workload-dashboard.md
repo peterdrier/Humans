@@ -7,7 +7,7 @@
 -->
 <!-- freshness:flag-on-change
   Workload math (Confirmed-only hours, MaxVolunteers cap, all-day window),
-  pending-vs-confirmed split, cache TTL, role-hours follow-up, or scope of
+  pending-vs-confirmed split, role-hours follow-up, or scope of
   admin-only/hidden inclusion may have changed.
 -->
 
@@ -94,13 +94,11 @@ Gated to `PolicyNames.ShiftDashboardAccess` at the controller — same narrow po
 
 ## Architecture
 
-`WorkloadService` lives in `Humans.Application.Services.Shifts.Workload` — read-only, no DbSet writes. Reads through `IShiftManagementRepository.GetShiftsWithSignupsForEventAsync` (no new repository surface). Cross-section name stitching via `ITeamService.GetByIdsWithParentsAsync` and `IUserService.GetUserInfosAsync`.
+`WorkloadService` lives in `Humans.Application.Services.Shifts.Workload` — read-only, no DbSet writes. Reads per-rota shift + signup rows through `IShiftView.GetRotasAsync`; uses `IShiftManagementRepository` only for the active-event lookup and `GetRotaIdsForEventAsync` (a small indexed point-list). Cross-section name stitching via `ITeamService.GetByIdsWithParentsAsync` and `IUserService.GetUserInfosAsync`.
 
-**Cache:** Service-level `IMemoryCache` (§15 Option B), 5-minute sliding expiration. Same TTL as the existing shift-dashboard analytics. Invalidation is intentionally TTL-only; mutations don't ping the cache.
+**Cache:** No service-level cache. Source data lives in the Shifts-section per-rota cache owned by `CachingShiftViewService` (§15 Option B at the section level). Signup / shift / rota mutations evict the affected rota cache entries via `IShiftViewInvalidator`, so workload totals stay consistent without a parallel cache key. The aggregation itself is microsecond-scale CPU work over a few hundred rotas at our ~500-user scale.
 
-**Display sort:** The service returns unsorted lists; `ShiftWorkloadAdminController.SortForDisplay` applies the default ordering before passing the report to the view. Per `memory/architecture/display-sort-in-controllers.md` — sorting in the service would leak presentation into the data layer and bake a single sort order into the cached object.
-
-**Architecture-test allowlist:** `WorkloadService` is in the `ApplicationServicesTakeNoMemoryCacheRule` allowlist; the §15 caching choice is documented inline at the service.
+**Display sort:** The service returns unsorted lists; `ShiftWorkloadAdminController.SortForDisplay` applies the default ordering before passing the report to the view. Per `memory/architecture/display-sort-in-controllers.md` — sorting in the service would leak presentation into the data layer.
 
 ## Deferred — Role-based hours
 
@@ -113,6 +111,6 @@ Upstream issue stays open via `Refs nobodies-collective/Humans#734` until both f
 
 ## Related Features
 
-- [Shift Management](shift-management.md) — workload reads through the same `IShiftManagementRepository.GetShiftsWithSignupsForEventAsync`.
+- [Shift Management](shift-management.md) — workload reads source data through the same `IShiftView` cache.
 - [Department Coverage Pies](department-coverage-pies.md) — same shape (planned/filled hours) but volunteer-facing and on `/Shifts`.
 - Section invariants: [`docs/sections/Shifts.md`](../../sections/Shifts.md).

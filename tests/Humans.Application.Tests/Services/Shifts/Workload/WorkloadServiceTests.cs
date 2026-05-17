@@ -1,7 +1,9 @@
 using AwesomeAssertions;
 using Humans.Application;
+using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Teams;
 using Humans.Application.Interfaces.Users;
+using Humans.Application.Services.Shifts;
 using Humans.Application.Services.Shifts.Workload;
 using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
@@ -9,7 +11,6 @@ using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories.Shifts;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
 using NodaTime;
 using NSubstitute;
 
@@ -38,6 +39,15 @@ public class WorkloadServiceTests : IDisposable
 
         var repo = new ShiftManagementRepository(new TestDbContextFactory(options));
 
+        // IShiftView source-of-truth path uses GetRotaAsync only — the inner
+        // ShiftViewService also takes signup/availability/tracking repos for
+        // GetUserAsync, which the workload service does not call. Stub them.
+        var view = new ShiftViewService(
+            repo,
+            Substitute.For<IShiftSignupRepository>(),
+            Substitute.For<IGeneralAvailabilityRepository>(),
+            Substitute.For<IVolunteerTrackingRepository>());
+
         // Wire team/user lookups against the same in-memory DB so test seeds
         // drive both the EF reads and the cross-section name stitching.
         _teamService.GetByIdsWithParentsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
@@ -45,8 +55,7 @@ public class WorkloadServiceTests : IDisposable
         _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(call => GetUserInfosAsync(call.Arg<IReadOnlyCollection<Guid>>()));
 
-        _service = new WorkloadService(
-            repo, _teamService, _userService, new MemoryCache(new MemoryCacheOptions()));
+        _service = new WorkloadService(repo, view, _teamService, _userService);
     }
 
     public void Dispose()
