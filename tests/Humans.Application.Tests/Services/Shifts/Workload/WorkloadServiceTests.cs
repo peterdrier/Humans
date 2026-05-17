@@ -75,6 +75,9 @@ public class WorkloadServiceTests : IDisposable
     {
         if (ids.Count == 0) return new Dictionary<Guid, UserInfo>();
         var users = await _dbContext.Users.Where(u => ids.Contains(u.Id)).ToListAsync();
+        var profiles = await _dbContext.Profiles
+            .Where(p => ids.Contains(p.UserId))
+            .ToDictionaryAsync(p => p.UserId);
         return users.ToDictionary(
             u => u.Id,
             u => UserInfo.Create(
@@ -82,7 +85,7 @@ public class WorkloadServiceTests : IDisposable
                 userEmails: [],
                 eventParticipations: [],
                 externalLogins: [],
-                profile: null,
+                profile: profiles.GetValueOrDefault(u.Id),
                 contactFields: [],
                 profileLanguages: [],
                 volunteerHistory: [],
@@ -330,13 +333,18 @@ public class WorkloadServiceTests : IDisposable
             NormalizedUserName = $"{displayName.ToUpperInvariant()}@TEST",
             Email = $"{displayName}@test",
             NormalizedEmail = $"{displayName.ToUpperInvariant()}@TEST",
-#pragma warning disable HUM_USER_DISPLAYNAME // test seed of the raw DB column; rendered values go through UserInfo.BurnerName
-            DisplayName = displayName,
-#pragma warning restore HUM_USER_DISPLAYNAME
             SecurityStamp = Guid.NewGuid().ToString(),
             CreatedAt = TestNow,
         };
         _dbContext.Users.Add(user);
+        _dbContext.Profiles.Add(new Profile
+        {
+            Id = Guid.NewGuid(),
+            UserId = user.Id,
+            BurnerName = displayName,
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow,
+        });
         await _dbContext.SaveChangesAsync();
         return user;
     }
