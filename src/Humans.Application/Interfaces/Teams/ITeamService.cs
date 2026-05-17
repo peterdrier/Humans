@@ -39,7 +39,8 @@ public record TeamInfo(
     string? PageContent = null,
     IReadOnlyList<CallToAction>? CallsToAction = null,
     Instant? PageContentUpdatedAt = null,
-    Guid? PageContentUpdatedByUserId = null)
+    Guid? PageContentUpdatedByUserId = null,
+    int PendingRequestCount = 0)
 {
     /// <summary>
     /// Full Google Group email address, or null if no prefix is set. Mirrors
